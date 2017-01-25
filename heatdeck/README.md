@@ -10,6 +10,6 @@ Edit the variable `target_temperature` to your desired temperature. For example,
 const double target_temperature = 45;
 ```
 #### Step 4
-Make sure you are connected to the Heatdeck by [Selecting the correct board and port](https://www.arduino.cc/en/Guide/ArduinoUno#toc5). The Heatdeck uses an `Arduino/Genuino Uno`.
+Make sure you are connected to the Heatdeck by [selecting the correct board and port](https://www.arduino.cc/en/Guide/ArduinoUno#toc5). The Heatdeck uses an `Arduino/Genuino Uno`.
 #### Step 5
 [Uploaded Program](https://www.arduino.cc/en/Guide/ArduinoUno#toc6), and make sure no errors have occured.
