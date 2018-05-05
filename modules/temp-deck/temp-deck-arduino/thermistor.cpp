@@ -41,7 +41,10 @@ float Thermistor::peltier_temperature(float avg_adc=-1){
         float temp_diff = float(abs(TABLE[i+1][1] - TABLE[i][1]));
         float thermister_temp = float(TABLE[i][1]) + (percent_from_colder * temp_diff);
 
-        // then convert
+        // The below linear function was found through using a measuring with a
+        // thermocouple the temperature at the center of the plate, relative to
+        // the temperature of this device's thermistor at the edge of the plate
+        // TODO (andy) this should probably move to it's own function
         return (thermister_temp * 0.937685) + 2.113056;
       }
     }
