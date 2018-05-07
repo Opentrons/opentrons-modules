@@ -22,31 +22,31 @@ void Lights::display_number(int number) {
   uint8_t second_character = number % 10;
   clear_display();
   for (uint8_t i=0;i<7;i++){
-    set_pwm_pin(letters[0][i], numbers[first_character][i]);
-    set_pwm_pin(letters[1][i], numbers[second_character][i]);
+    set_pwm_pin(segments_pin_mapping[0][i], numbers[first_character][i]);
+    set_pwm_pin(segments_pin_mapping[1][i], numbers[second_character][i]);
   }
 }
 
 void Lights::show_message_low(){
   clear_display();
   for (uint8_t i=0;i<7;i++){
-    set_pwm_pin(letters[0][i], message_low[0][i]);
-    set_pwm_pin(letters[1][i], message_low[1][i]);
+    set_pwm_pin(segments_pin_mapping[0][i], message_low[0][i]);
+    set_pwm_pin(segments_pin_mapping[1][i], message_low[1][i]);
   }
 }
 
 void Lights::show_message_high(){
   clear_display();
   for (uint8_t i=0;i<7;i++){
-    set_pwm_pin(letters[0][i], message_high[0][i]);
-    set_pwm_pin(letters[1][i], message_high[1][i]);
+    set_pwm_pin(segments_pin_mapping[0][i], message_high[0][i]);
+    set_pwm_pin(segments_pin_mapping[1][i], message_high[1][i]);
   }
 }
 
 void Lights::clear_display(){
   for (uint8_t l=0; l < 7; l++) {
-    set_pwm_pin(letters[0][l], 0);
-    set_pwm_pin(letters[1][l], 0);
+    set_pwm_pin(segments_pin_mapping[0][l], 0);
+    set_pwm_pin(segments_pin_mapping[1][l], 0);
   }
 }
 
@@ -63,11 +63,11 @@ void Lights::startup_color_animation() {
   display_number(88);
   set_color_bar(0, 0, 0, 1);  // white (rgbw)
   delay(200);
-  set_color_bar(0, 0, 1, 0);  // white (rgbw)
+  set_color_bar(0, 0, 1, 0);  // blue (rgbw)
   delay(200);
-  set_color_bar(0, 1, 0, 0);  // white (rgbw)
+  set_color_bar(0, 1, 0, 0);  // green (rgbw)
   delay(200);
-  set_color_bar(1, 0, 0, 0);  // white (rgbw)
+  set_color_bar(1, 0, 0, 0);  // red (rgbw)
   delay(200);
   set_color_bar(0, 0, 0, 1);
 }
