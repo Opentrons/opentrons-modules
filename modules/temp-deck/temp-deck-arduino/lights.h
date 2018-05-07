@@ -24,7 +24,7 @@ class Lights{
   private:
 
     Adafruit_PWMServoDriver pwm;
-    const uint8_t digit_pin_mapping[2][7] = {
+    const uint8_t segments_pin_mapping[2][7] = {
       {10, 11, 4, 5, 6, 9, 8},
       {14, 15, 1, 2, 3, 13, 12}
     };
