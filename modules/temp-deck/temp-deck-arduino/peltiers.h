@@ -1,3 +1,7 @@
+//Controls Thermoelectric, peltier modules
+//Peliter_A -> Cold deck  | Peltier_B -> Hot deck
+//H-Bridges -> Drive the module?
+
 #ifndef Peltiers_h
 #define Peltiers_h
 
