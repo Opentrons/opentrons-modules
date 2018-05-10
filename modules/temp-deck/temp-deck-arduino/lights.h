@@ -1,3 +1,7 @@
+// lights.h
+// Controls an Indicator RGBW LED and two 7-segment displays
+// Uses Adafruit PWM Servo Driver to drive the two displays as well as the green & white LED pins
+
 #ifndef Lights_h
 #define Lights_h
 

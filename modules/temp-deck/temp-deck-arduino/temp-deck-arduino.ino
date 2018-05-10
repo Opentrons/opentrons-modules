@@ -146,6 +146,28 @@ void cycle_test(){
 /////////////////////////////////
 /////////////////////////////////
 
+void activate_bootloader(){
+  // Need to verify if a reset to application code 
+  // is performed properly after DFU
+  cli();
+  // disable watchdog, if enabled
+  // disable all peripherals
+  UDCON = 1;
+  USBCON = (1<<FRZCLK);  // disable USB
+  UCSR1B = 0;
+  _delay_ms(5);
+  #if defined(__AVR_ATmega32U4__)              
+      EIMSK = 0; PCICR = 0; SPCR = 0; ACSR = 0; EECR = 0; ADCSRA = 0;
+      TIMSK0 = 0; TIMSK1 = 0; TIMSK3 = 0; TIMSK4 = 0; UCSR1B = 0; TWCR = 0;
+      DDRB = 0; DDRC = 0; DDRD = 0; DDRE = 0; DDRF = 0; TWCR = 0;
+      PORTB = 0; PORTC = 0; PORTD = 0; PORTE = 0; PORTF = 0;
+      asm volatile("jmp 0x3800");   //Bootloader start address
+  #endif 
+}
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+
 void read_serial(){
   if (Serial.available()){
     char letter = Serial.read();
@@ -187,6 +209,13 @@ void read_serial(){
     else if (letter == 'r') {
       DOING_CYCLE_TEST = true;
       set_target_temperature(cycle_low);
+    }
+    else if (letter == 'u') {
+      //Update firmware
+      //TODO Send proper ACK
+      Serial.println("Entering Bootloader");
+      delay(2000);
+      activate_bootloader();
     }
     while (Serial.available() > 0) {
       Serial.read();
