@@ -25,6 +25,8 @@ boolean IS_TARGETING = false;
 /////////////////////////////////
 
 void set_target_temperature(int target_temp){
+  peltiers.disable_peltiers();
+  disable_target();
   if (target_temp < 0) target_temp = 0;
   if (target_temp > 99) target_temp = 99;
   IS_TARGETING = true;
@@ -79,23 +81,43 @@ void hot(float amount) {
 /////////////////////////////////
 /////////////////////////////////
 
-void update_target_temperature(){
+void update_target_temperature(boolean set_fan=true){
   peltiers.update_peltier_cycle();
   if (IS_TARGETING) {
     float temp = thermistor.peltier_temperature();
-    // if we've arrived, just be calm, but don't turn off
+    // HOLD TEMP
     if (int(temp) == TARGET_TEMPERATURE) {
       lights.set_color_bar(0, 1, 0, 0);
-      if (TARGET_TEMPERATURE > 25.0) hot(0.5);
-      else cold(1.0);
+      if (TARGET_TEMPERATURE > 25.0) {
+        hot(0.5);
+        if (set_fan) set_fan_percentage(0.5);
+      }
+      else {
+        cold(1.0);
+        if (set_fan) set_fan_percentage(1.0);
+      }
     }
+    // HEAT UP
     else if (TARGET_TEMPERATURE - int(temp) > 0.0) {
-      if (TARGET_TEMPERATURE > 25.0) hot(1.0);
-      else hot(0.2);
+      if (TARGET_TEMPERATURE > 25.0) {
+        hot(1.0);
+        if (set_fan) set_fan_percentage(0.5);
+      }
+      else {
+        hot(0.2);
+        if (set_fan) set_fan_percentage(1.0);
+      }
     }
+    // COOL DOWN
     else {
-      if (TARGET_TEMPERATURE < 25.0) cold(1.0);
-      else cold(0.2);
+      if (TARGET_TEMPERATURE < 25.0) {
+        cold(1.0);
+        if (set_fan) set_fan_percentage(1.0);
+      }
+      else {
+        cold(0.2);
+        if (set_fan) set_fan_percentage(0.5);
+      }
     }
   }
 }
@@ -195,7 +217,17 @@ void read_serial(){
     }
     else if (letter == 't'){
       val = Serial.parseInt();
+      set_fan_percentage(0.0);
+      unsigned long now = millis();
+      while (now + 2500 > millis()){  // wait for fan to shutdown
+        update_temperature_display();
+      }
       set_target_temperature(val);
+      now = millis();
+      while (now + 2500 > millis()){  // engage peltiers, and let current settle
+        update_target_temperature(false);
+        update_temperature_display();
+      }
     }
     else if (letter == 'p') {
       Serial.print(thermistor.average_adc());
