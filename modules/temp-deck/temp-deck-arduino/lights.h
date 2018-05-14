@@ -35,9 +35,9 @@ class Lights{
       {14, 15, 1, 2, 3, 13, 12}
     };
 
-    const uint8_t seven_segment_blank = {0, 0, 0, 0, 0, 0, 0};
-    const uint8_t seven_segment_on = {1, 1, 1, 1, 1, 1, 1};
-    const uint8_t seven_segment_neg_symbol = {0, 0, 0, 0, 0, 0, 1};
+    const uint8_t seven_segment_blank[7] = {0, 0, 0, 0, 0, 0, 0};
+    const uint8_t seven_segment_on[7] = {1, 1, 1, 1, 1, 1, 1};
+    const uint8_t seven_segment_neg_symbol[7] = {0, 0, 0, 0, 0, 0, 1};
 
     const uint8_t numbers[10][7] = {
       {1, 1, 1, 1, 1, 1, 0},  // 0
@@ -68,7 +68,7 @@ class Lights{
 
     void set_pwm_pin(int pin, float val);
     bool _is_a_stable_number(int number);
-    void _set_seven_segment(int digit_1[], int digit_2[]);
+    void _set_seven_segment(uint8_t digit_1[], uint8_t digit_2[]);
 };
 
 #endif

@@ -1,11 +1,11 @@
 #include "Gcode.h"
 
 Gcode::Gcode() {
-    COMMAND_CODES[0] = GCODE_GET_TEMP;
-    COMMAND_CODES[1] = GCODE_SET_TEMP;
-    COMMAND_CODES[2] = GCODE_DEVICE_INFO;
-    COMMAND_CODES[3] = GCODE_DISENGAGE;
-    COMMAND_CODES[4] = GCODE_DFU;
+    COMMAND_CODES[GCODE_GET_TEMP] =     "M105";
+    COMMAND_CODES[GCODE_SET_TEMP] =     "M104";
+    COMMAND_CODES[GCODE_DEVICE_INFO] =  "M115";
+    COMMAND_CODES[GCODE_DISENGAGE] =    "M18";
+    COMMAND_CODES[GCODE_DFU] =          "dfu";
 }
 
 void Gcode::_strip_serial_buffer() {
@@ -21,12 +21,12 @@ void Gcode::_strip_serial_buffer() {
 }
 
 bool Gcode::pop_command() {
-  code = "";
+  code = GCODE_NO_CODE;
   while (GCODE_BUFFER_STRING.length()) {
     for (uint8_t i=1;i<TOTAL_GCODE_COMMAND_CODES;i++) {
       if (GCODE_BUFFER_STRING.substring(0, COMMAND_CODES[i].length()) == COMMAND_CODES[i]) {
         GCODE_BUFFER_STRING.remove(0, COMMAND_CODES[i].length());
-        code = COMMAND_CODES[i];
+        code = i;
         return true;
       }
     }
@@ -58,7 +58,7 @@ void Gcode::send_ack() {
   Serial.println("ok");
 }
 
-boolean Gcode::read_int(char key) {
+bool Gcode::read_int(char key) {
   parsed_int = 0;
   int starting_key_index = GCODE_BUFFER_STRING.indexOf(key);
   if (starting_key_index >= 0) {
@@ -111,8 +111,12 @@ void Gcode::print_stablizing_temperature(int current_temp) {
   Serial.println(current_temp);
 }
 
+void Gcode::print_warning(String msg) {
+  Serial.println(msg);
+}
+
 void Gcode::setup(int baudrate) {
   Serial.begin(baudrate);
   Serial.setTimeout(2);
-  Seiral.println("Temp-Deck Starting")
+  Serial.println("Temp-Deck Starting");
 }

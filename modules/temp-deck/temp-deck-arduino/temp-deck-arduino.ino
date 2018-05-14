@@ -11,7 +11,7 @@
 Lights lights = Lights();
 Peltiers peltiers = Peltiers();
 Thermistor thermistor = Thermistor();
-Gcode gcode = Gcode(115200);
+Gcode gcode = Gcode();
 
 #define pin_tone_out 11
 #define pin_fan_pwm 9
@@ -24,9 +24,9 @@ int prev_temp = 0;
 int TARGET_TEMPERATURE = 25;
 boolean IS_TARGETING = false;
 
-String device_serial = "TD001180622A01"
-String device_model = "001"
-String device_version = "edge-1a2b3c4"
+String device_serial = "TD001180622A01";
+String device_model = "001";
+String device_version = "edge-1a2b3c4";
 
 /////////////////////////////////
 /////////////////////////////////
@@ -205,20 +205,30 @@ void print_temperature() {
 /////////////////////////////////
 /////////////////////////////////
 
+void start_dfu_timeout() {
+  //
+}
+
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+
 void read_gcode(){
   if (gcode.received_newline()) {
     while (gcode.pop_command()) {
       switch(gcode.code) {
+        case GCODE_NO_CODE:
+          break;
         case GCODE_GET_TEMP:
           print_temperature();
           break;
         case GCODE_SET_TEMP:
-          if (gcode.parse_int('S')) {
+          if (gcode.read_int('S')) {
             set_target_temperature(gcode.parsed_int);
           }
           break;
         case GCODE_DISENGAGE:
-          disengage()
+          disengage();
           break;
         case GCODE_DEVICE_INFO:
           gcode.print_device_info(device_serial, device_model, device_version);
@@ -242,7 +252,7 @@ void setup() {
   pinMode(pin_tone_out, OUTPUT);
   pinMode(pin_fan_pwm, OUTPUT);
 
-  gcode.setup();
+  gcode.setup(115200);
   peltiers.setup_peltiers();
   set_fan_percentage(0);
   lights.setup_lights();
@@ -261,9 +271,6 @@ void loop(){
   read_gcode();
   update_temperature_display();
   update_target_temperature();
-  if (DOING_CYCLE_TEST){
-    cycle_test();
-  }
 }
 
 /////////////////////////////////
