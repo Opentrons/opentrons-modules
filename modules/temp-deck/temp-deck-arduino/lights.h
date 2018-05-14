@@ -21,9 +21,11 @@ class Lights{
     Lights();
     void setup_lights();
     void startup_color_animation();
-    void display_number(int number);
+    void display_number(int number, bool force=false);
     void clear_display();
     void set_color_bar(float red, float green, float blue, float white);
+    void show_message_low(bool force=false);
+    void show_message_high(bool force=false);
 
   private:
 
@@ -32,6 +34,11 @@ class Lights{
       {10, 11, 4, 5, 6, 9, 8},
       {14, 15, 1, 2, 3, 13, 12}
     };
+
+    const uint8_t seven_segment_blank = {0, 0, 0, 0, 0, 0, 0};
+    const uint8_t seven_segment_on = {1, 1, 1, 1, 1, 1, 1};
+    const uint8_t seven_segment_neg_symbol = {0, 0, 0, 0, 0, 0, 1};
+
     const uint8_t numbers[10][7] = {
       {1, 1, 1, 1, 1, 1, 0},  // 0
       {0, 1, 1, 0, 0, 0, 0},  // 1
@@ -55,9 +62,13 @@ class Lights{
       {0, 1, 1, 0, 0, 0, 0}   // I
     };
 
+    int _same_display_number_count = 0;
+    int _previous_display_number = -100;
+    const int _same_display_number_threshold = 100;
+
     void set_pwm_pin(int pin, float val);
-    void show_message_low();
-    void show_message_high();
+    bool _is_a_stable_number(int number);
+    void _set_seven_segment(int digit_1[], int digit_2[]);
 };
 
 #endif

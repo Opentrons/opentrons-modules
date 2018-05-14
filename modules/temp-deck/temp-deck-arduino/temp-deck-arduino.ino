@@ -83,12 +83,10 @@ void set_fan_percentage(float percentage){
 
 void cold(float amount) {
   peltiers.set_cold_percentage(amount);
-  lights.set_color_bar(0, 0, 1, 0);
 }
 
 void hot(float amount) {
   peltiers.set_hot_percentage(amount);
-  lights.set_color_bar(1, 0, 0, 0);
 }
 
 /////////////////////////////////
@@ -101,7 +99,6 @@ void update_target_temperature(){
     float temp = thermistor.plate_temperature();
     // if we've arrived, just be calm, but don't turn off
     if (int(temp) == TARGET_TEMPERATURE) {
-      lights.set_color_bar(0, 1, 0, 0);
       if (TARGET_TEMPERATURE > 25.0) hot(0.5);
       else cold(1.0);
     }
@@ -120,28 +117,40 @@ void update_target_temperature(){
 /////////////////////////////////
 /////////////////////////////////
 
+void _set_color_bar_from_range(int val, int min, int max) {
+  float m = float(val - min) / float(max - min);
+  if (m < 0.0) m = 0.0;
+  if (m > 1.0) m = 1.0;
+  float colors[3][4] = {
+    {0, 0, 1, 0},  // blue
+    {0, 0, 0, 1},  // white
+    {1, 0, 0, 0}   // red
+  };
+  uint8_t ci = 0;
+  if (m > 0.5) {
+    m = 0.5 - m;
+    ci++;
+  }
+  m *= 2.0;  // map to 0-1
+  float r = (m * colors[ci][0]) + ((1.0 - m) * colors[ci + 1][1]);
+  float g = (m * colors[ci][1]) + ((1.0 - m) * colors[ci + 1][2]);
+  float b = (m * colors[ci][2]) + ((1.0 - m) * colors[ci + 1][3]);
+  float w = (m * colors[ci][3]) + ((1.0 - m) * colors[ci + 1][4]);
+  lights.set_color_bar(r, g, b, w);
+}
+
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+
 void update_temperature_display(boolean force=false){
   int current_temp = thermistor.plate_temperature();
-  boolean stable = true;
-//  for (int i=0;i<10;i++){
-//    if (int(thermistor.plate_temperature()) != current_temp) {
-//      stable = false;
-//      break;
-//    }
-//  }
-  if (stable || force) {
-    if (current_temp != prev_temp || force){
-      if (number > 99){
-        lights.show_message_low();
-      }
-      else if (number < 0){
-        lights.show_message_high();
-      }
-      else {
-        lights.display_number(current_temp);
-      }
+  if (current_temp != prev_temp || force){
+    lights.display_number(current_temp, force);
+    _set_color_bar_from_range(current_temp, TEMPERATURE_MIN, TEMPERATURE_MAX);
+    if (current_temp > TEMPERATURE_MAX || current_temp < TEMPERATURE_MIN){
+      // flash the lights or something...
     }
-    prev_temp = current_temp;
   }
 }
 
@@ -174,7 +183,6 @@ void activate_bootloader(){
 
 void disengage() {
   peltiers.disable_peltiers();
-  lights.set_color_bar(0, 0, 0, 1);
   disable_target();
   set_fan_percentage(0.0);
 }
@@ -239,7 +247,6 @@ void setup() {
   set_fan_percentage(0);
   lights.setup_lights();
   lights.startup_color_animation();
-  lights.set_color_bar(0, 0, 0, 1);
   update_temperature_display(true);
 
   Serial.begin(115200);

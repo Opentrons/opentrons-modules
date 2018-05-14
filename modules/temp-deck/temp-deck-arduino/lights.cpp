@@ -9,42 +9,53 @@ void Lights::set_pwm_pin(int pin, float val) {
   pwm.setPWM(pin, 4096 - val, val);
 }
 
-void Lights::display_number(int number) {
-  if (number > 99){
-    show_message_low();
-    return;
+bool Lights::_is_a_stable_number(int number) {
+  if (number == _previous_display_number) {
+    _same_display_number_count++;
+    if (_same_display_number_count > _same_display_number_threshold) {
+      return true;
+    }
   }
-  else if (number < 0){
-    show_message_high();
-    return;
-  }
-  uint8_t first_character = number / 10;
-  uint8_t second_character = number % 10;
-  clear_display();
-  for (uint8_t i=0;i<7;i++){
-    set_pwm_pin(segments_pin_mapping[0][i], numbers[first_character][i]);
-    set_pwm_pin(segments_pin_mapping[1][i], numbers[second_character][i]);
+  return false;
+}
+
+void Lights::_set_seven_segment(int digit_1[], int digit_2[]) {
+  for (uint8_t i=0;i<7;i++) {
+    set_pwm_pin(segments_pin_mapping[0][i], digit_1[i]);
+    set_pwm_pin(segments_pin_mapping[1][i], digit_2[i]);
   }
 }
 
-void Lights::show_message_low(){
-  clear_display();
-  for (uint8_t i=0;i<7;i++){
-    set_pwm_pin(segments_pin_mapping[0][i], message_low[0][i]);
-    set_pwm_pin(segments_pin_mapping[1][i], message_low[1][i]);
+void Lights::display_number(int number, bool force=false) {
+  if (force || _is_a_stable_number(number)) {
+    _same_display_number_count = 0;  // reset the stable counter
+    uint8_t single_digit_value = abs(number) % 10;
+    if (number < 0) {
+      _set_seven_segment(seven_segment_neg_symbol, numbers[single_digit_value]);
+    }
+    else if (number < 10) {
+      _set_seven_segment(seven_segment_blank, numbers[single_digit_value]);
+    }
+    else {
+      _set_seven_segment(abs(number) / 10, numbers[single_digit_value]);
+    }
   }
 }
 
-void Lights::show_message_high(){
-  clear_display();
-  for (uint8_t i=0;i<7;i++){
-    set_pwm_pin(segments_pin_mapping[0][i], message_high[0][i]);
-    set_pwm_pin(segments_pin_mapping[1][i], message_high[1][i]);
+void Lights::show_message_low(bool force=false){
+  _set_seven_segment(message_low[0], message_low[1])
+}
+
+void Lights::show_message_high(bool force=false){
+  _set_seven_segment(message_high[0][i], message_high[1][i]);
+  for (uint8_t l=0;l<7;l++) {
+    set_pwm_pin(segments_pin_mapping[0][l], 0);
+    set_pwm_pin(segments_pin_mapping[1][l], 0);
   }
 }
 
 void Lights::clear_display(){
-  for (uint8_t l=0; l < 7; l++) {
+  for (uint8_t l=0;l<7;l++) {
     set_pwm_pin(segments_pin_mapping[0][l], 0);
     set_pwm_pin(segments_pin_mapping[1][l], 0);
   }
