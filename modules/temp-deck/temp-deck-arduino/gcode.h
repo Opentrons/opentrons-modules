@@ -1,37 +1,3 @@
-/*
-
-
-Gcode gcode = Gcode(115200);
-
-if (gcode.received_newline()) {
-    while (gcode.pop_command()) {
-        switch(gcode.code) {
-            case GCODE_GET_TEMP:
-                gcode.print_targetting_temperature(target, current);
-                break;
-            case GCODE_SET_TEMP:
-                if (gcode.parse_int('S')) {
-                    target = gcode.parsed_int;
-                }
-                break;
-            case GCODE_DISENGAGE:
-                off()
-                break;
-            case GCODE_DEVICE_INFO:
-                gcode.print_device_info(serial, model, version);
-                break;
-            case GCODE_DFU:
-                start_dfu_timeout();
-                break;
-            default:
-                break;
-        }
-    }
-    gcode.send_ack();
-}
-
-*/
-
 #ifndef Gcode_h
 #define Gcode_h
 
