@@ -99,11 +99,13 @@ bool check_model_validity(){
 void send_error(int error_code){
 	switch(error_code){
 		case 0:
-		Serial.println("Data in EEPROM is invalid");
+			Serial.println("Data in EEPROM is invalid");
 		break;
 		case 1:
-		Serial.println("Error writing to EEPROM");
+			Serial.println("Error in gcode/parameter");
 		break;
+		case 2:
+			Serial.println("Error writing to EEPROM");
 		default:
 		break;
 	}
@@ -113,16 +115,7 @@ void send_error(int error_code){
 /////////////////////////////////
 /////////////////////////////////
 
-void send_ack(){
-	Serial.print("ok\r\nok\r\n");
-}
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
 void read_serial_ID(){
-	Serial.println("In Read Serial ID"); // TODO remove
 	char serial[16] = {'\0'};
 	if(!check_serial_validity()){
 		send_error(0);
@@ -143,24 +136,23 @@ void read_serial_ID(){
 /////////////////////////////////
 
 void write_serial_ID(){
-	Serial.println("In Write Serial ID");	//TODO remove
+	
 	String* serial_num = gcode.read_parameter();
-	Serial.println("Received Serial ID:");  //TODO remove
-	Serial.println(*serial_num);			//TODO remove
+	if(serial_num->length() == 0){
+		send_error(1);
+		return;
+	}
+	
+	digitalWrite(red_led, HIGH);
+
 	for(byte i = 0; i < 16; ++i){
 		if(i >= serial_num->length())
 			EEPROM.put(DEVICE_SERIAL_ADDR + i, '\0');
 		else
 			EEPROM.put(DEVICE_SERIAL_ADDR + i, serial_num->charAt(i));
 	}
-}
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
-String parse_serial_ID(){
-
+	delay(500);
+	digitalWrite(red_led, LOW);
 }
 
 /////////////////////////////////
@@ -168,7 +160,6 @@ String parse_serial_ID(){
 /////////////////////////////////
 
 void read_model(){
-	Serial.println("In Read Model"); // TODO remove
 	char model[16] = {'\0'};
 	if(!check_model_validity()){
 		send_error(0);
@@ -189,16 +180,23 @@ void read_model(){
 /////////////////////////////////
 
 void write_model(){
-	Serial.println("In Write Model");	//TODO remove
+
 	String* model_num = gcode.read_parameter();
-	Serial.println("Received Model num:");  //TODO remove
-	Serial.println(*model_num);			//TODO remove
+	digitalWrite(red_led, HIGH);
+
+	if(model_num->length() == 0){
+		send_error(1);
+		return;
+	}
+
 	for(byte i = 0; i < 16; ++i){
 		if(i >= model_num->length())
 			EEPROM.put(DEVICE_MODEL_ADDR + i, '\0');
 		else
 			EEPROM.put(DEVICE_MODEL_ADDR + i, model_num->charAt(i));
 	}
+	delay(500);
+	digitalWrite(red_led, LOW);
 }
 
 /////////////////////////////////
@@ -225,9 +223,7 @@ void update_model_crc(){
 
 void read_gcode(){
 	if (gcode.received_newline()) {
-		Serial.println("Received newline");
 		while (gcode.pop_command()) {
-			Serial.println("While");
 			if (gcode.code == GCODE_READ_DEVICE_SERIAL){
 				read_serial_ID();
 			}
@@ -245,7 +241,7 @@ void read_gcode(){
 			else
 				Serial.println("Didn't recognize the gcode");
 		}
-		send_ack();
+		gcode.send_ack();
 	}
 }
 
@@ -275,9 +271,6 @@ void setup() {
 	  	for(int i = DEVICE_MODEL_ADDR; i < DEVICE_MODEL_ADDR + 16; i++)
 	  	EEPROM.write(i,0);
   	}
-  // (Edge case- what about the chance of a freaky coincidence when
-  // the data is invalid but the value stored at 
-  // CRC_ADDR actually matches the CRC)
 }
 
 /////////////////////////////////
@@ -286,23 +279,7 @@ void setup() {
 
 void loop() {
   // Wait for Serial input
-
   read_gcode();
-  // If Serial input has 'M369' && data_valid
-  // Read while databyte != '\0'
-  	// char_array.Append EEPROM.read(DEVICE_ID_ADDR)
-
-  // If Serial input has 'M370'
-  // Write from byte array to EEPROM.write(DEVICE_ID_ADDR,byte[i])
-  // Update CRC at CRC_ADDR
-
-  // If Serial input has 'M371' && data_valid
-  // Read while databyte != '\0'
-  	// char_array.Append EEPROM.read(DEVICE_MODEL_ADDR)
-
-  // If Serial input has 'M372'
-  // Write from byte array to EEPROM.write(DEVICE_MODEL_ADDR,byte[i])
-  // Update CRC at CRC_ADDR
 }
 
 
