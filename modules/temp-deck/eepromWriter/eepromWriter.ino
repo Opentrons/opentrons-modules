@@ -121,6 +121,8 @@ void read_serial_ID(){
 		send_error(0);
 		return;
 	}
+
+	Serial.print("Serial: ");
 	for(byte i = 0; i < 16; ++i){
 		EEPROM.get(DEVICE_SERIAL_ADDR + i, serial[i]);
 		if(serial[i] == '\0')
@@ -142,7 +144,7 @@ void write_serial_ID(){
 		send_error(1);
 		return;
 	}
-	
+
 	digitalWrite(red_led, HIGH);
 
 	for(byte i = 0; i < 16; ++i){
@@ -165,6 +167,8 @@ void read_model(){
 		send_error(0);
 		return;
 	}
+
+	Serial.print("Model: ");
 	for(byte i = 0; i < 16; ++i){
 		EEPROM.get(DEVICE_MODEL_ADDR + i, model[i]);
 		if(model[i] == '\0')
@@ -238,10 +242,9 @@ void read_gcode(){
 				write_model();
 				update_model_crc();
 			}
-			else
-				Serial.println("Didn't recognize the gcode");
+			gcode.send_ack();
 		}
-		gcode.send_ack();
+		
 	}
 }
 
