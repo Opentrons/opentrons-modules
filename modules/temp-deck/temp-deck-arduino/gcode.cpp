@@ -23,7 +23,7 @@ void Gcode::_strip_serial_buffer() {
 bool Gcode::pop_command() {
   code = GCODE_NO_CODE;
   while (GCODE_BUFFER_STRING.length()) {
-    for (uint8_t i=1;i<TOTAL_GCODE_COMMAND_CODES;i++) {
+    for (uint8_t i=0;i<TOTAL_GCODE_COMMAND_CODES;i++) {
       if (GCODE_BUFFER_STRING.substring(0, COMMAND_CODES[i].length()) == COMMAND_CODES[i]) {
         GCODE_BUFFER_STRING.remove(0, COMMAND_CODES[i].length());
         code = i;
@@ -118,5 +118,4 @@ void Gcode::print_warning(String msg) {
 void Gcode::setup(int baudrate) {
   Serial.begin(baudrate);
   Serial.setTimeout(2);
-  Serial.println("Temp-Deck Starting");
 }

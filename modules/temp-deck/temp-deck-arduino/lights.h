@@ -20,12 +20,14 @@ class Lights{
 
     Lights();
     void setup_lights();
-    void startup_color_animation();
+    void startup_animation();
     void display_number(int number, bool force=false);
     void clear_display();
     void set_color_bar(float red, float green, float blue, float white);
     void show_message_low(bool force=false);
     void show_message_high(bool force=false);
+    void set_color_bar_brightness(float brightness);
+    void set_numbers_brightness(float brightness);
 
   private:
 
@@ -35,11 +37,11 @@ class Lights{
       {14, 15, 1, 2, 3, 13, 12}
     };
 
-    const uint8_t seven_segment_blank[7] = {0, 0, 0, 0, 0, 0, 0};
-    const uint8_t seven_segment_on[7] = {1, 1, 1, 1, 1, 1, 1};
-    const uint8_t seven_segment_neg_symbol[7] = {0, 0, 0, 0, 0, 0, 1};
+    const float seven_segment_blank[7] = {0, 0, 0, 0, 0, 0, 0};
+    const float seven_segment_on[7] = {1, 1, 1, 1, 1, 1, 1};
+    const float seven_segment_neg_symbol[7] = {0, 0, 0, 0, 0, 0, 1};
 
-    const uint8_t numbers[10][7] = {
+    const float numbers[10][7] = {
       {1, 1, 1, 1, 1, 1, 0},  // 0
       {0, 1, 1, 0, 0, 0, 0},  // 1
       {1, 1, 0, 1, 1, 0, 1},  // 2
@@ -52,12 +54,12 @@ class Lights{
       {1, 1, 1, 1, 0, 1, 1}   // 9
     };
 
-    const uint8_t message_low[2][7] = {
+    const float message_low[2][7] = {
       {0, 0, 0, 1, 1, 1, 0},  // L
       {1, 1, 1, 1, 1, 1, 0}   // O
     };
 
-    const uint8_t message_high[2][7] = {
+    const float message_high[2][7] = {
       {0, 1, 1, 0, 1, 1, 1},  // H
       {0, 1, 1, 0, 0, 0, 0}   // I
     };
@@ -66,9 +68,13 @@ class Lights{
     int _previous_display_number = -100;
     const int _same_display_number_threshold = 100;
 
+    float color_bar_brightness = 1.0;
+    float numbers_brightness = 1.0;
+
     void set_pwm_pin(int pin, float val);
+    void set_pwm_pin_inverse(int pin, float val);
     bool _is_a_stable_number(int number);
-    void _set_seven_segment(uint8_t digit_1[], uint8_t digit_2[]);
+    void _set_seven_segment(float digit_1[], float digit_2[]);
 };
 
 #endif

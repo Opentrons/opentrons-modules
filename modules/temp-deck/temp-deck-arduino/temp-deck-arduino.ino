@@ -17,12 +17,12 @@ Gcode gcode = Gcode();
 #define pin_fan_pwm 9
 
 #define TEMPERATURE_MAX 99
+#define TEMPERATURE_BURN 70
 #define TEMPERATURE_MIN -9
-
-int prev_temp = 0;
+#define TEMPERATURE_ROOM 25
 
 int TARGET_TEMPERATURE = 25;
-boolean IS_TARGETING = false;
+bool IS_TARGETING = false;
 
 String device_serial = "TD001180622A01";
 String device_model = "001";
@@ -93,16 +93,15 @@ void hot(float amount) {
 /////////////////////////////////
 /////////////////////////////////
 
-void update_target_temperature(){
+void update_target_temperature(int current_temp){
   peltiers.update_peltier_cycle();
   if (IS_TARGETING) {
-    float temp = thermistor.plate_temperature();
     // if we've arrived, just be calm, but don't turn off
-    if (int(temp) == TARGET_TEMPERATURE) {
+    if (current_temp == TARGET_TEMPERATURE) {
       if (TARGET_TEMPERATURE > 25.0) hot(0.5);
       else cold(1.0);
     }
-    else if (TARGET_TEMPERATURE - int(temp) > 0.0) {
+    else if (TARGET_TEMPERATURE - current_temp > 0.0) {
       if (TARGET_TEMPERATURE > 25.0) hot(1.0);
       else hot(0.2);
     }
@@ -117,40 +116,61 @@ void update_target_temperature(){
 /////////////////////////////////
 /////////////////////////////////
 
-void _set_color_bar_from_range(int val, int min, int max) {
-  float m = float(val - min) / float(max - min);
-  if (m < 0.0) m = 0.0;
-  if (m > 1.0) m = 1.0;
-  float colors[3][4] = {
-    {0, 0, 1, 0},  // blue
-    {0, 0, 0, 1},  // white
-    {1, 0, 0, 0}   // red
-  };
-  uint8_t ci = 0;
-  if (m > 0.5) {
-    m = 0.5 - m;
-    ci++;
+void _set_color_bar_from_range(int val, int min, int middle, int max) {
+  if (IS_TARGETING) {
+    lights.set_color_bar_brightness(1.0);
   }
-  m *= 2.0;  // map to 0-1
-  float r = (m * colors[ci][0]) + ((1.0 - m) * colors[ci + 1][1]);
-  float g = (m * colors[ci][1]) + ((1.0 - m) * colors[ci + 1][2]);
-  float b = (m * colors[ci][2]) + ((1.0 - m) * colors[ci + 1][3]);
-  float w = (m * colors[ci][3]) + ((1.0 - m) * colors[ci + 1][4]);
-  lights.set_color_bar(r, g, b, w);
+  else {
+    lights.set_color_bar_brightness(0.1);
+  }
+  float cold[4] = {0, 0, 1, 0};
+  float room[4] = {0, 0, 0, 1};
+  float hot[4] = {1, 0, 0, 0};
+  if (val == middle) {
+    lights.set_color_bar(room[0], room[1], room[2], room[3]);
+  }
+  // cold
+  else if (val < middle) {
+    if (val < min) {
+      lights.set_color_bar(cold[0], cold[1], cold[2], cold[3]);
+    }
+    else {
+      // scale it to cold color
+      float m = float(val - min) / float(middle - min);  // 1=room, 0=cold
+      float r = (m * room[0]) + ((1.0 - m) * cold[0]);
+      float g = (m * room[1]) + ((1.0 - m) * cold[1]);
+      float b = (m * room[2]) + ((1.0 - m) * cold[2]);
+      float w = (m * room[3]) + ((1.0 - m) * cold[3]);
+      lights.set_color_bar(r, g, b, w);
+    }
+  }
+  // hot
+  else {
+    if (val > max) {
+      lights.set_color_bar(hot[0], hot[1], hot[2], hot[3]);
+    }
+    else {
+      // scale it to hot color
+      float m = float(val - middle) / float(max - middle);  // 1=hot, 0=room
+      float r = (m * hot[0]) + ((1.0 - m) * room[0]);
+      float g = (m * hot[1]) + ((1.0 - m) * room[1]);
+      float b = (m * hot[2]) + ((1.0 - m) * room[2]);
+      float w = (m * hot[3]) + ((1.0 - m) * room[3]);
+      lights.set_color_bar(r, g, b, w);
+    }
+  }
 }
 
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
 
-void update_temperature_display(boolean force=false){
-  int current_temp = thermistor.plate_temperature();
-  if (current_temp != prev_temp || force){
-    lights.display_number(current_temp, force);
-    _set_color_bar_from_range(current_temp, TEMPERATURE_MIN, TEMPERATURE_MAX);
-    if (current_temp > TEMPERATURE_MAX || current_temp < TEMPERATURE_MIN){
-      // flash the lights or something...
-    }
+void update_temperature_display(int current_temp, boolean force=false){
+  lights.display_number(current_temp, force);
+  _set_color_bar_from_range(
+    current_temp, TEMPERATURE_MIN, TEMPERATURE_ROOM, TEMPERATURE_BURN);
+  if (current_temp > TEMPERATURE_MAX || current_temp < TEMPERATURE_MIN){
+    // flash the lights or something...
   }
 }
 
@@ -189,13 +209,13 @@ void disengage() {
 
 void print_temperature() {
   if (IS_TARGETING) {
-    gcode.print_stablizing_temperature(
+    gcode.print_targetting_temperature(
+      TARGET_TEMPERATURE,
       thermistor.plate_temperature()
     );
   }
   else {
-    gcode.print_targetting_temperature(
-      TARGET_TEMPERATURE,
+    gcode.print_stablizing_temperature(
       thermistor.plate_temperature()
     );
   }
@@ -206,7 +226,7 @@ void print_temperature() {
 /////////////////////////////////
 
 void start_dfu_timeout() {
-  //
+  gcode.print_warning("Restarting and entering bootloader in 2 second...");
 }
 
 /////////////////////////////////
@@ -251,16 +271,13 @@ void read_gcode(){
 void setup() {
   pinMode(pin_tone_out, OUTPUT);
   pinMode(pin_fan_pwm, OUTPUT);
-
   gcode.setup(115200);
   peltiers.setup_peltiers();
   set_fan_percentage(0);
   lights.setup_lights();
-  lights.startup_color_animation();
-  update_temperature_display(true);
-
-  Serial.begin(115200);
-  Serial.setTimeout(5);
+  disengage();
+  lights.startup_animation();
+  update_temperature_display(thermistor.plate_temperature(), true);
 }
 
 /////////////////////////////////
@@ -269,8 +286,9 @@ void setup() {
 
 void loop(){
   read_gcode();
-  update_temperature_display();
-  update_target_temperature();
+  int current_temp = thermistor.plate_temperature();
+  update_temperature_display(current_temp);
+  update_target_temperature(current_temp);
 }
 
 /////////////////////////////////
