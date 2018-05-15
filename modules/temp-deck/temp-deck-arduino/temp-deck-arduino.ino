@@ -287,7 +287,7 @@ void setup() {
 void loop(){
   read_gcode();
   int current_temp = thermistor.plate_temperature();
-  update_temperature_display(current_temp);
+  update_temperature_display(current_temp, true);
   update_target_temperature(current_temp);
 }
 
