@@ -149,6 +149,10 @@ void _set_color_bar_from_range(int val, int min, int middle, int max) {
   }
   float cold[4] = {0, 0, 1, 0};
   float room[4] = {0, 1, 0, 0};
+  if (IS_TARGETING == false) {  // set normal color to white when not active
+    room[1] = 0;
+    room[3] = 1;
+  }
   float hot[4] = {1, 0, 0, 0};
   if (val == middle) {
     lights.set_color_bar(room[0], room[1], room[2], room[3]);
