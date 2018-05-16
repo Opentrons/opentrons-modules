@@ -17,11 +17,13 @@ Gcode gcode = Gcode();
 #define pin_fan_pwm 9
 
 #define TEMPERATURE_MAX 99
-#define TEMPERATURE_BURN 70
 #define TEMPERATURE_MIN -9
-#define TEMPERATURE_ROOM 25
 
-int TARGET_TEMPERATURE = 25;
+#define TEMPERATURE_FEELS_COLD 10
+#define TEMPERATURE_ROOM 25
+#define TEMPERATURE_FEELS_HOT 60
+
+int TARGET_TEMPERATURE = TEMPERATURE_ROOM;
 bool IS_TARGETING = false;
 
 String device_serial = "TD001180622A01";
@@ -43,6 +45,8 @@ void set_target_temperature(int target_temp){
     gcode.print_warning(
       "Target temperature too high, setting to TEMPERATURE_MAX degrees");
   }
+  peltiers.disable_peltiers();
+  disable_target();
   IS_TARGETING = true;
   TARGET_TEMPERATURE = target_temp;
 }
@@ -93,21 +97,40 @@ void hot(float amount) {
 /////////////////////////////////
 /////////////////////////////////
 
-void update_target_temperature(int current_temp){
+void update_target_temperature(int current_temp, bool set_fan=false){
   peltiers.update_peltier_cycle();
   if (IS_TARGETING) {
     // if we've arrived, just be calm, but don't turn off
     if (current_temp == TARGET_TEMPERATURE) {
-      if (TARGET_TEMPERATURE > 25.0) hot(0.5);
-      else cold(1.0);
+      if (TARGET_TEMPERATURE > TEMPERATURE_ROOM) {
+        hot(0.5);
+        if (set_fan) set_fan_percentage(0.5);
+      }
+      else {
+        cold(1.0);
+        if (set_fan) set_fan_percentage(1.0);
+      }
     }
     else if (TARGET_TEMPERATURE - current_temp > 0.0) {
-      if (TARGET_TEMPERATURE > 25.0) hot(1.0);
-      else hot(0.2);
+      if (TARGET_TEMPERATURE > TEMPERATURE_ROOM) {
+        hot(1.0);
+        if (set_fan) set_fan_percentage(0.5);
+      }
+      else {
+        hot(0.2);
+        if (set_fan) set_fan_percentage(1.0);
+      }
     }
+    // COOL DOWN
     else {
-      if (TARGET_TEMPERATURE < 25.0) cold(1.0);
-      else cold(0.2);
+      if (TARGET_TEMPERATURE < TEMPERATURE_ROOM) {
+        cold(1.0);
+        if (set_fan) set_fan_percentage(1.0);
+      }
+      else {
+        cold(0.2);
+        if (set_fan) set_fan_percentage(0.5);
+      }
     }
   }
 }
@@ -121,10 +144,11 @@ void _set_color_bar_from_range(int val, int min, int middle, int max) {
     lights.set_color_bar_brightness(1.0);
   }
   else {
-    lights.set_color_bar_brightness(0.1);
+    lights.set_color_bar_brightness(0.5);
+    lights.set_color_bar(0, 0, 0, 1);
   }
   float cold[4] = {0, 0, 1, 0};
-  float room[4] = {0, 0, 0, 1};
+  float room[4] = {0, 1, 0, 0};
   float hot[4] = {1, 0, 0, 0};
   if (val == middle) {
     lights.set_color_bar(room[0], room[1], room[2], room[3]);
@@ -168,7 +192,7 @@ void _set_color_bar_from_range(int val, int min, int middle, int max) {
 void update_temperature_display(int current_temp, boolean force=false){
   lights.display_number(current_temp, force);
   _set_color_bar_from_range(
-    current_temp, TEMPERATURE_MIN, TEMPERATURE_ROOM, TEMPERATURE_BURN);
+    current_temp, TEMPERATURE_FEELS_COLD, TEMPERATURE_ROOM, TEMPERATURE_FEELS_HOT);
   if (current_temp > TEMPERATURE_MAX || current_temp < TEMPERATURE_MIN){
     // flash the lights or something...
   }
@@ -245,6 +269,20 @@ void read_gcode(){
         case GCODE_SET_TEMP:
           if (gcode.read_int('S')) {
             set_target_temperature(gcode.parsed_int);
+            set_fan_percentage(0.0);
+            // wait for fan to shutdown
+            unsigned long now = millis();
+            while (now + 2500 > millis()){
+              update_temperature_display(thermistor.plate_temperature());
+            }
+            // engage peltiers, and let current settle before turning on fan
+            now = millis();
+            float now_temp;
+            while (now + 2500 > millis()){
+              now_temp = thermistor.plate_temperature();
+              update_temperature_display(now_temp);
+              update_target_temperature(now_temp, false);  // no fan!
+            }
           }
           break;
         case GCODE_DISENGAGE:
@@ -275,8 +313,8 @@ void setup() {
   peltiers.setup_peltiers();
   set_fan_percentage(0);
   lights.setup_lights();
+  lights.set_numbers_brightness(0.5);
   disengage();
-  lights.startup_animation();
   update_temperature_display(thermistor.plate_temperature(), true);
 }
 
@@ -287,8 +325,8 @@ void setup() {
 void loop(){
   read_gcode();
   int current_temp = thermistor.plate_temperature();
-  update_temperature_display(current_temp, true);
-  update_target_temperature(current_temp);
+  update_temperature_display(current_temp);
+  update_target_temperature(current_temp, true);
 }
 
 /////////////////////////////////

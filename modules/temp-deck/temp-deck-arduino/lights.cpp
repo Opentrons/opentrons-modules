@@ -25,6 +25,7 @@ bool Lights::_is_a_stable_number(int number) {
       return true;
     }
   }
+  _previous_display_number = number;
   return false;
 }
 
