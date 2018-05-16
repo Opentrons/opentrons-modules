@@ -23,6 +23,10 @@ Gcode gcode = Gcode();
 #define TEMPERATURE_ROOM 25
 #define TEMPERATURE_FEELS_HOT 60
 
+bool START_BOOTLOADER = false;
+unsigned long start_bootloader_timestamp = 0;
+const int start_bootloader_timeout = 3000;  // 3 seconds
+
 int TARGET_TEMPERATURE = TEMPERATURE_ROOM;
 bool IS_TARGETING = false;
 
@@ -76,8 +80,7 @@ void delay_minutes(int minutes){
 /////////////////////////////////
 
 void set_fan_percentage(float percentage){
-  if (percentage < 0) percentage = 0;
-  if (percentage > 1) percentage = 1;
+  percentage = constrain(percentage, 0.0, 1.0);
   analogWrite(pin_fan_pwm, int(percentage * 255.0));
 }
 
@@ -97,7 +100,7 @@ void hot(float amount) {
 /////////////////////////////////
 /////////////////////////////////
 
-void update_target_temperature(int current_temp, bool set_fan=false){
+void stabilize_to_target_temp(int current_temp, bool set_fan=false){
   peltiers.update_peltier_cycle();
   if (IS_TARGETING) {
     // if we've arrived, just be calm, but don't turn off
@@ -140,6 +143,12 @@ void update_target_temperature(int current_temp, bool set_fan=false){
 /////////////////////////////////
 
 void _set_color_bar_from_range(int val, int min, int middle, int max) {
+  /*
+    This method uses a temperature range (Celsius), to set the color of the
+    RGBW color bar. It uses three data points in Celsius (min, middle, max),
+    and does a linear transition between them, then multiplies by the three
+    corresponding colors (cold, room, hot), to create a fade between colors
+  */
   if (IS_TARGETING) {
     lights.set_color_bar_brightness(1.0);
   }
@@ -254,7 +263,17 @@ void print_temperature() {
 /////////////////////////////////
 
 void start_dfu_timeout() {
-  gcode.print_warning("Restarting and entering bootloader in 2 second...");
+  gcode.print_warning("Restarting and entering bootloader in 3 second...");
+  START_BOOTLOADER = true;
+  start_bootloader_timestamp = millis();
+}
+
+void check_if_bootloader_starts() {
+  if (START_BOOTLOADER) {
+    if (start_bootloader_timestamp + start_bootloader_timeout < millis()) {
+      activate_bootloader();
+    }
+  }
 }
 
 /////////////////////////////////
@@ -285,7 +304,7 @@ void read_gcode(){
             while (now + 2500 > millis()){
               now_temp = thermistor.plate_temperature();
               update_temperature_display(now_temp);
-              update_target_temperature(now_temp, false);  // no fan!
+              stabilize_to_target_temp(now_temp, false);  // no fan!
             }
           }
           break;
@@ -330,7 +349,8 @@ void loop(){
   read_gcode();
   int current_temp = thermistor.plate_temperature();
   update_temperature_display(current_temp);
-  update_target_temperature(current_temp, true);
+  stabilize_to_target_temp(current_temp, true);
+  check_if_bootloader_starts();
 }
 
 /////////////////////////////////

@@ -6,15 +6,13 @@ Lights::Lights(){
 
 void Lights::set_pwm_pin(int pin, float val) {
   val = (val * 256) * 16;
-  if (val <= 0) val = 0;
-  if (val >= 4095) val = 4095;
+  val = constrain(val, 0, 4095);
   pwm.setPWM(pin, 0, val);
 }
 
 void Lights::set_pwm_pin_inverse(int pin, float val) {
   val = (val * 256) * 16;
-  if (val <= 0) val = 0;
-  if (val >= 4095) val = 4095;
+  val = constrain(val, 0, 4095);
   pwm.setPWM(pin, val, 4095);
 }
 
@@ -73,14 +71,12 @@ void Lights::set_color_bar(float red, float green, float blue, float white){
 }
 
 void Lights::set_color_bar_brightness(float brightness) {
-  if (brightness < 0.0) brightness = 0.0;
-  if (brightness > 1.0) brightness = 1.0;
+  brightness = constrain(brightness, 0.0, 1.0);
   color_bar_brightness = brightness;
 }
 
 void Lights::set_numbers_brightness(float brightness) {
-  if (brightness < 0.0) brightness = 0.0;
-  if (brightness > 1.0) brightness = 1.0;
+  brightness = constrain(brightness, 0.0, 1.0);
   numbers_brightness = brightness;
 }
 
