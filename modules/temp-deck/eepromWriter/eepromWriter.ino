@@ -14,7 +14,7 @@
 #define DEVICE_MODEL_ADDR		0x20
 #define SERIAL_CRC_ADDR			0x40
 #define MODEL_CRC_ADDR			0x60
-#define CRC_BITS				32
+#define DATA_MAX_LENGTH			32
 
 Gcode gcode = Gcode();
 
@@ -37,7 +37,7 @@ unsigned long calculate_crc(uint32_t address){
 
 	unsigned long crc = ~0L;
 
-	for(int index = 0; index < address + CRC_BITS; ++index){
+	for(int index = 0; index < address + DATA_MAX_LENGTH; ++index){
 		crc = crc_table[(crc ^ EEPROM[index]) & 0x0f] ^ (crc >> 4);
 		crc = crc_table[(crc ^ (EEPROM[index] >> 4)) & 0x0f] ^ (crc >> 4);
 		crc = ~crc;
@@ -98,14 +98,14 @@ void send_error(int error_code){
 /////////////////////////////////
 
 void read_serial_ID(){
-	char serial[16] = {'\0'};
+	char serial[DATA_MAX_LENGTH] = {'\0'};
 	if(!check_serial_validity()){
 		send_error(0);
 		return;
 	}
 
 	Serial.print("Serial: ");
-	for(byte i = 0; i < 16; ++i){
+	for(byte i = 0; i < DATA_MAX_LENGTH; ++i){
 		EEPROM.get(DEVICE_SERIAL_ADDR + i, serial[i]);
 		if(serial[i] == '\0')
 		break;
@@ -129,7 +129,7 @@ void write_serial_ID(){
 
 	digitalWrite(red_led, HIGH);
 
-	for(byte i = 0; i < 16; ++i){
+	for(byte i = 0; i < DATA_MAX_LENGTH; ++i){
 		if(i >= serial_num->length())
 			EEPROM.put(DEVICE_SERIAL_ADDR + i, '\0');
 		else
@@ -144,14 +144,14 @@ void write_serial_ID(){
 /////////////////////////////////
 
 void read_model(){
-	char model[16] = {'\0'};
+	char model[DATA_MAX_LENGTH] = {'\0'};
 	if(!check_model_validity()){
 		send_error(0);
 		return;
 	}
 
 	Serial.print("Model: ");
-	for(byte i = 0; i < 16; ++i){
+	for(byte i = 0; i < DATA_MAX_LENGTH; ++i){
 		EEPROM.get(DEVICE_MODEL_ADDR + i, model[i]);
 		if(model[i] == '\0')
 		break;
@@ -175,7 +175,7 @@ void write_model(){
 		return;
 	}
 
-	for(byte i = 0; i < 16; ++i){
+	for(byte i = 0; i < DATA_MAX_LENGTH; ++i){
 		if(i >= model_num->length())
 			EEPROM.put(DEVICE_MODEL_ADDR + i, '\0');
 		else
@@ -224,9 +224,8 @@ void read_gcode(){
 				write_model();
 				update_model_crc();
 			}
-			gcode.send_ack();
 		}
-		
+		gcode.send_ack();
 	}
 }
 
@@ -245,7 +244,7 @@ void setup() {
 
 		Serial.println("EEPROM serial data invalid");	//TODO remove
 	  	// Clear EEPROM
-	  	for(int i = DEVICE_SERIAL_ADDR; i < DEVICE_SERIAL_ADDR + 16; i++)
+	  	for(int i = DEVICE_SERIAL_ADDR; i < DEVICE_SERIAL_ADDR + DATA_MAX_LENGTH; i++)
 	  	EEPROM.write(i,0);
   	}
 
@@ -253,7 +252,7 @@ void setup() {
 
 		Serial.println("EEPROM model data invalid");	//TODO remove
 	  	// Clear EEPROM
-	  	for(int i = DEVICE_MODEL_ADDR; i < DEVICE_MODEL_ADDR + 16; i++)
+	  	for(int i = DEVICE_MODEL_ADDR; i < DEVICE_MODEL_ADDR + DATA_MAX_LENGTH; i++)
 	  	EEPROM.write(i,0);
   	}
 }
