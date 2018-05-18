@@ -1,6 +1,6 @@
 //Controls Thermoelectric, peltier modules
-//Peliter_A -> Cold deck  | Peltier_B -> Hot deck
-//H-Bridges -> Drive the module?
+//Peliter_A and Pelteir_B are wired in series
+//H-Bridges -> Controls the direction of current (hot or cold)
 
 #ifndef Peltiers_h
 #define Peltiers_h
