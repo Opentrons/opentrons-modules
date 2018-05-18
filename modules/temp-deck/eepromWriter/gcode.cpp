@@ -1,11 +1,11 @@
 #include "Gcode.h"
 
 Gcode::Gcode() {
-    COMMAND_CODES[GCODE_GET_TEMP] =             "M105";
-    COMMAND_CODES[GCODE_SET_TEMP] =             "M104";
-    COMMAND_CODES[GCODE_DEVICE_INFO] =          "M115";
-    COMMAND_CODES[GCODE_DISENGAGE] =            "M18";
-    COMMAND_CODES[GCODE_DFU] =                  "dfu";
+    COMMAND_CODES[GCODE_GET_TEMP] =     "M105";
+    COMMAND_CODES[GCODE_SET_TEMP] =     "M104";
+    COMMAND_CODES[GCODE_DEVICE_INFO] =  "M115";
+    COMMAND_CODES[GCODE_DISENGAGE] =    "M18";
+    COMMAND_CODES[GCODE_DFU] =          "dfu";
     COMMAND_CODES[GCODE_READ_DEVICE_SERIAL] =   "M369";
     COMMAND_CODES[GCODE_WRITE_DEVICE_SERIAL] =  "M370";
     COMMAND_CODES[GCODE_READ_DEVICE_MODEL] =    "M371";
@@ -27,7 +27,7 @@ void Gcode::_strip_serial_buffer() {
 bool Gcode::pop_command() {
   code = GCODE_NO_CODE;
   while (GCODE_BUFFER_STRING.length()) {
-    for (uint8_t i=1;i<TOTAL_GCODE_COMMAND_CODES;i++) {
+    for (uint8_t i=0;i<TOTAL_GCODE_COMMAND_CODES;i++) {
       if (GCODE_BUFFER_STRING.substring(0, COMMAND_CODES[i].length()) == COMMAND_CODES[i]) {
         GCODE_BUFFER_STRING.remove(0, COMMAND_CODES[i].length());
         code = i;
@@ -92,11 +92,24 @@ bool Gcode::read_int(char key) {
 }
 
 String* Gcode::read_parameter(){
+  // There's not going to be a space between the parameter and next gcode
+  // So, parse until we find a match for a valid gcode in the string
+  // This string right before the next gcode is our parameter
+  // If no gcode found, entire string is our parameter
+  for(uint8_t index = 0; index < GCODE_BUFFER_STRING.length(); ++index){
+    if((int)GCODE_BUFFER_STRING.charAt(index) > (int)'A' && (int)GCODE_BUFFER_STRING.charAt(index) < (int)'Z'){ 
+      //Check for presence of gcode
+      for (uint8_t i=0; i<TOTAL_GCODE_COMMAND_CODES; ++i) {  
+        if (GCODE_BUFFER_STRING.substring(index, index + COMMAND_CODES[i].length()) == COMMAND_CODES[i]) {
+          parameter_string = GCODE_BUFFER_STRING.substring(0, index);
+          return &parameter_string;
+        }
+      }
+    }
+    // Else, not a gcode character
+  }
+  // No additional gcode present
   return &GCODE_BUFFER_STRING;
-}
-
-void Gcode::print_warning(String msg) {
-  Serial.println(msg);
 }
 
 void Gcode::print_device_info(String serial, String model, String version) {
@@ -123,8 +136,11 @@ void Gcode::print_stablizing_temperature(int current_temp) {
   Serial.println(current_temp);
 }
 
+void Gcode::print_warning(String msg) {
+  Serial.println(msg);
+}
+
 void Gcode::setup(int baudrate) {
   Serial.begin(baudrate);
   Serial.setTimeout(2);
-  Serial.println("Temp-Deck Starting");
 }
