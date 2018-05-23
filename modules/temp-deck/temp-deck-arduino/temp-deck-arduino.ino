@@ -3,6 +3,7 @@
 /////////////////////////////////
 
 #include <Arduino.h>
+#include <avr/wdt.h>
 #include "lights.h"
 #include "peltiers.h"
 #include "thermistor.h"
@@ -23,9 +24,15 @@ Gcode gcode = Gcode();
 #define TEMPERATURE_ROOM 25
 #define TEMPERATURE_FEELS_HOT 60
 
+#define BOOTLOADER_ON_WDTO TRUE
+
 bool START_BOOTLOADER = false;
 unsigned long start_bootloader_timestamp = 0;
 const int start_bootloader_timeout = 3000;  // 3 seconds
+
+#if BOOTLOADER_ON_WDTO == TRUE
+#define WD_TIMEOUT 1000  
+#endif
 
 int TARGET_TEMPERATURE = TEMPERATURE_ROOM;
 bool IS_TARGETING = false;
@@ -216,22 +223,37 @@ void update_temperature_display(int current_temp, boolean force=false){
 /////////////////////////////////
 
 void activate_bootloader(){
-  // Need to verify if a reset to application code
-  // is performed properly after DFU
-  cli();
-  // disable watchdog, if enabled
-  // disable all peripherals
-  UDCON = 1;
-  USBCON = (1<<FRZCLK);  // disable USB
-  UCSR1B = 0;
-  _delay_ms(5);
-  #if defined(__AVR_ATmega32U4__)
-      EIMSK = 0; PCICR = 0; SPCR = 0; ACSR = 0; EECR = 0; ADCSRA = 0;
-      TIMSK0 = 0; TIMSK1 = 0; TIMSK3 = 0; TIMSK4 = 0; UCSR1B = 0; TWCR = 0;
-      DDRB = 0; DDRC = 0; DDRD = 0; DDRE = 0; DDRF = 0; TWCR = 0;
-      PORTB = 0; PORTC = 0; PORTD = 0; PORTE = 0; PORTF = 0;
-      asm volatile("jmp 0x3800");   //Bootloader start address
+  #if BOOTLOADER_ON_WDTO == TRUE
+  // Method 1: Uses a WDT reset to enter bootloader.
+  // Works on the modified Caterina bootloader that allows 
+  // bootloader access after a WDT reset
+  // -----------------------------------------------------------------
+  wdt_enable(WDTO_1S);  //Timeout in 1 second
+  unsigned long timerStart = millis();
+  while(millis() - timerStart < WD_TIMEOUT + 100){
+    //Wait out until WD times out
+  }
+  #else
+  // Method 2: Uses a jump to bootloader location from within the code
+  // -----------------------------------------------------------------
+  // cli();
+  // // disable watchdog, if enabled
+  // // disable all peripherals
+  // UDCON = 1;
+  // USBCON = (1<<FRZCLK);  // disable USB
+  // UCSR1B = 0;
+  // _delay_ms(5);
+  // #if defined(__AVR_ATmega32U4__)
+  //     EIMSK = 0; PCICR = 0; SPCR = 0; ACSR = 0; EECR = 0; ADCSRA = 0;
+  //     TIMSK0 = 0; TIMSK1 = 0; TIMSK3 = 0; TIMSK4 = 0; UCSR1B = 0; TWCR = 0;
+  //     DDRB = 0; DDRC = 0; DDRD = 0; DDRE = 0; DDRF = 0; TWCR = 0;
+  //     PORTB = 0; PORTC = 0; PORTD = 0; PORTE = 0; PORTF = 0;
+  //     asm volatile("jmp 0x7000");   //Bootloader start address
+  // #endif
   #endif
+  // Should never get here but in case it does because 
+  // WDT failed to start or timeout..
+  START_BOOTLOADER = false;
 }
 
 /////////////////////////////////
@@ -316,6 +338,7 @@ void read_gcode(){
           break;
         case GCODE_DFU:
           start_dfu_timeout();
+
           break;
         default:
           break;
@@ -330,6 +353,11 @@ void read_gcode(){
 /////////////////////////////////
 
 void setup() {
+
+  #if BOOTLOADER_ON_WDTO == TRUE
+  wdt_disable();          /* Disable watchdog if enabled by bootloader/fuses */
+  #endif
+
   pinMode(pin_tone_out, OUTPUT);
   pinMode(pin_fan_pwm, OUTPUT);
   gcode.setup(115200);
