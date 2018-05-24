@@ -27,6 +27,10 @@ bool START_BOOTLOADER = false;
 unsigned long start_bootloader_timestamp = 0;
 const int start_bootloader_timeout = 3000;  // 3 seconds
 
+unsigned long SET_TEMPERATURE_TIMESTAMP = 0;
+const int millis_till_fan_turns_off = 2500;
+const int millis_till_peltiers_drop_current = 2500;
+
 int TARGET_TEMPERATURE = TEMPERATURE_ROOM;
 bool IS_TARGETING = false;
 
@@ -103,6 +107,17 @@ void hot(float amount) {
 void stabilize_to_target_temp(int current_temp, bool set_fan=false){
   peltiers.update_peltier_cycle();
   if (IS_TARGETING) {
+    int end_time = SET_TEMPERATURE_TIMESTAMP + millis_till_fan_turns_off;
+    if (end_time > millis()) {
+      peltiers.disable_peltiers();
+      set_fan_percentage(0.0);
+      return;
+    }
+    end_time += millis_till_peltiers_drop_current;
+    if (end_time > millis()) {
+      set_fan = false;
+      set_fan_percentage(0.0);
+    }
     // if we've arrived, just be calm, but don't turn off
     if (current_temp == TARGET_TEMPERATURE) {
       if (TARGET_TEMPERATURE > TEMPERATURE_ROOM) {
@@ -292,20 +307,7 @@ void read_gcode(){
         case GCODE_SET_TEMP:
           if (gcode.read_int('S')) {
             set_target_temperature(gcode.parsed_int);
-            set_fan_percentage(0.0);
-            // wait for fan to shutdown
-            unsigned long now = millis();
-            while (now + 2500 > millis()){
-              update_temperature_display(thermistor.plate_temperature());
-            }
-            // engage peltiers, and let current settle before turning on fan
-            now = millis();
-            float now_temp;
-            while (now + 2500 > millis()){
-              now_temp = thermistor.plate_temperature();
-              update_temperature_display(now_temp);
-              stabilize_to_target_temp(now_temp, false);  // no fan!
-            }
+            SET_TEMPERATURE_TIMESTAMP = millis();
           }
           break;
         case GCODE_DISENGAGE:
