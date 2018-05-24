@@ -67,10 +67,18 @@ void Lights::set_color_bar(float red, float green, float blue, float white){
   if (!is_flashing) {
     flash_multiplier = 1.0;
   }
-  else if (flash_timestamp + flash_interval < millis()) {
-    flash_timestamp = millis();
-    flash_multiplier = 1.0 - flash_multiplier;
+  else {
+    if (flash_timestamp + flash_interval < millis()) {
+      flash_timestamp = millis();
+      flash_direction = flash_direction * -1;
+    }
+    flash_multiplier = float(millis() - flash_timestamp) / float(flash_interval);
+    if (flash_direction > 0) {
+      flash_multiplier = 1.0 - flash_multiplier;
+    }
   }
+  flash_multiplier *= (1.0 - color_bar_min_brightness);
+  flash_multiplier += color_bar_min_brightness;
   analogWrite(red_led, red * 255.0 * color_bar_brightness * flash_multiplier);
   set_pwm_pin(green_pwm_pin, green * color_bar_brightness * flash_multiplier);
   analogWrite(blue_led, blue * 255.0 * color_bar_brightness * flash_multiplier);
@@ -87,9 +95,9 @@ void Lights::set_numbers_brightness(float brightness) {
   numbers_brightness = brightness;
 }
 
-void Lights::flash_on() {
+void Lights::flash_on(int interval=1000) {
   is_flashing = true;
-  flash_timestamp = millis();
+  flash_interval = interval;
 }
 
 void Lights::flash_off() {

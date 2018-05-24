@@ -156,7 +156,7 @@ void stabilize_to_target_temp(int current_temp, bool set_fan=false){
 /////////////////////////////////
 /////////////////////////////////
 
-void _set_color_bar_from_range(int val, int min, int middle, int max) {
+void _set_color_bar_from_range(int val, int middle) {
   /*
     This method uses a temperature range (Celsius), to set the color of the
     RGBW color bar. It uses three data points in Celsius (min, middle, max),
@@ -166,38 +166,22 @@ void _set_color_bar_from_range(int val, int min, int middle, int max) {
   float cold[4] = {0, 0, 1, 0};
   float room[4] = {0, 0, 0, 1};
   float hot[4] = {1, 0, 0, 0};
-  if (val == middle) {
+  if (!IS_TARGETING || abs(val - TARGET_TEMPERATURE) < 2) {
+    lights.flash_off();
+  }
+  else {
+    lights.flash_on();
+  }
+  if (TARGET_TEMPERATURE == middle || !IS_TARGETING) {
     lights.set_color_bar(room[0], room[1], room[2], room[3]);
   }
   // cold
-  else if (val < middle) {
-    if (val < min) {
-      lights.set_color_bar(cold[0], cold[1], cold[2], cold[3]);
-    }
-    else {
-      // scale it to cold color
-      float m = float(val - min) / float(middle - min);  // 1=room, 0=cold
-      float r = (m * room[0]) + ((1.0 - m) * cold[0]);
-      float g = (m * room[1]) + ((1.0 - m) * cold[1]);
-      float b = (m * room[2]) + ((1.0 - m) * cold[2]);
-      float w = (m * room[3]) + ((1.0 - m) * cold[3]);
-      lights.set_color_bar(r, g, b, w);
-    }
+  else if (TARGET_TEMPERATURE < middle) {
+    lights.set_color_bar(cold[0], cold[1], cold[2], cold[3]);
   }
   // hot
   else {
-    if (val > max) {
-      lights.set_color_bar(hot[0], hot[1], hot[2], hot[3]);
-    }
-    else {
-      // scale it to hot color
-      float m = float(val - middle) / float(max - middle);  // 1=hot, 0=room
-      float r = (m * hot[0]) + ((1.0 - m) * room[0]);
-      float g = (m * hot[1]) + ((1.0 - m) * room[1]);
-      float b = (m * hot[2]) + ((1.0 - m) * room[2]);
-      float w = (m * hot[3]) + ((1.0 - m) * room[3]);
-      lights.set_color_bar(r, g, b, w);
-    }
+    lights.set_color_bar(hot[0], hot[1], hot[2], hot[3]);
   }
 }
 
@@ -207,11 +191,7 @@ void _set_color_bar_from_range(int val, int min, int middle, int max) {
 
 void update_temperature_display(int current_temp, boolean force=false){
   lights.display_number(current_temp, force);
-  _set_color_bar_from_range(
-    current_temp, TEMPERATURE_FEELS_COLD, TEMPERATURE_ROOM, TEMPERATURE_FEELS_HOT);
-  if (current_temp > TEMPERATURE_MAX || current_temp < TEMPERATURE_MIN){
-    // flash the lights or something...
-  }
+  _set_color_bar_from_range(current_temp, TEMPERATURE_ROOM);
 }
 
 /////////////////////////////////

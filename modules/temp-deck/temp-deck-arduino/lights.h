@@ -28,7 +28,7 @@ class Lights{
     void show_message_high(bool force=false);
     void set_color_bar_brightness(float brightness);
     void set_numbers_brightness(float brightness);
-    void flash_on();
+    void flash_on(int interval=1000);
     void flash_off();
 
   private:
@@ -80,8 +80,10 @@ class Lights{
 
     unsigned long flash_timestamp = 0;
     float flash_multiplier = 1.0;
+    int flash_direction = -1;  // 1 is up, -1 is down
     bool is_flashing = false;
-    int flash_interval = 250;
+    int flash_interval = 1000;
+    const float color_bar_min_brightness = 0.1;
 };
 
 #endif
