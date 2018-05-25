@@ -26,18 +26,10 @@ class Memory{
     public:
 
         Memory();
-        uint8_t setup();
-        uint8_t error();
-        void write_serial();
-        void write_model();
-        void read_serial();
-        void read_model();
-        void erase_serial_data();
-        void erase_model_data();
-
-        String serial;
-        String model;
-        String writeData;
+        uint8_t write_serial(String &serial);
+        uint8_t write_model(String &model);
+        uint8_t read_serial(String &serial);
+        uint8_t read_model(String &model);
 
     private:
 
@@ -58,12 +50,12 @@ class Memory{
         unsigned long calculate_crc(uint32_t address);
         bool check_eeprom_validity(int ID_type);
         void set_error_flag(int flag);
-        void read_from_eeprom(int ID_type);
-        void write_to_eeprom(uint32_t address);
+        void read_from_eeprom(int ID_type, String &readData);
+        void write_to_eeprom(int ID_type, String &writeData);
         void update_serial_crc();
         void update_model_crc();
-        void read_gcode();
         uint32_t id_type_to_address(int ID_type);
+        uint8_t error();
 };
 
 #endif

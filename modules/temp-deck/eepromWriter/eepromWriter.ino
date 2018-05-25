@@ -10,11 +10,11 @@ String model = "";
 bool reading_in_serial = true;
 
 void print_data() {
-  memory.read_serial();
-  memory.read_model();
-  Serial.print(memory.serial);
+  memory.read_serial(serial);
+  memory.read_model(model);
+  Serial.print(serial);
   Serial.print(":");
-  Serial.print(memory.model);
+  Serial.print(model);
   Serial.println();
 }
 
@@ -59,10 +59,8 @@ void loop() {
 			}
 		}
     if (serial.length() && model.length()) {
-  		memory.writeData = serial;
-  		memory.write_serial();
-  		memory.writeData = model;
-  		memory.write_model();
+  		memory.write_serial(serial);
+  		memory.write_model(model);
     }
     Serial.println();  // acknowledgement
 	}

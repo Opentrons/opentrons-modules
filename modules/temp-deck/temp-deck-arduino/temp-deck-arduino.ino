@@ -287,7 +287,7 @@ void read_gcode(){
           disengage();
           break;
         case GCODE_DEVICE_INFO:
-          gcode.print_device_info(memory.serial, memory.model, device_version);
+          gcode.print_device_info(device_serial, device_model, device_version);
           break;
         case GCODE_DFU:
           start_dfu_timeout();
@@ -308,8 +308,8 @@ void setup() {
   pinMode(pin_tone_out, OUTPUT);
   pinMode(pin_fan_pwm, OUTPUT);
   gcode.setup(115200);
-  memory.read_serial();
-  memory.read_model();
+  memory.read_serial(device_serial);
+  memory.read_model(device_model);
   peltiers.setup_peltiers();
   set_fan_percentage(0);
   lights.setup_lights();

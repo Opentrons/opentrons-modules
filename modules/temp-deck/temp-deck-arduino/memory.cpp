@@ -56,14 +56,11 @@ uint32_t Memory::id_type_to_address(int ID_type) {
     }
 }
 
-void Memory::read_from_eeprom(int ID_type){
-    if (ID_type == SERIAL_NUM) serial = "";
-    else model = "";
+void Memory::read_from_eeprom(int ID_type, String &readData){
+    readData = "";
     if(!check_eeprom_validity(ID_type)){
         set_error_flag(ERR_FLAG_EEPROM_INVALID);
-        if (ID_type == SERIAL_NUM)
-            serial = "none";
-        else model = "none";
+        readData = "none";
         return;
     }
 
@@ -74,13 +71,11 @@ void Memory::read_from_eeprom(int ID_type){
         if(eeprom_data[i] == '\0') {
             break;
         }
-        if (ID_type == SERIAL_NUM)
-            serial += char(eeprom_data[i]);
-        else model += char(eeprom_data[i]);
+        readData += char(eeprom_data[i]);
     }
 }
 
-void Memory::write_to_eeprom(uint32_t ID_type){
+void Memory::write_to_eeprom(int ID_type, String &writeData){
     uint32_t address = id_type_to_address(ID_type);
     if(writeData.length() == 0 || writeData.length() > DATA_MAX_LENGTH){
         set_error_flag(ERR_FLAG_DATA_TO_LONG);
@@ -104,32 +99,24 @@ void Memory::update_model_crc(){
     EEPROM.put(MODEL_CRC_ADDR, current_crc);
 }
 
-void Memory::erase_serial_data() {
-    // Clear EEPROM
-    for(int i = DEVICE_SERIAL_ADDR; i < DEVICE_SERIAL_ADDR + DATA_MAX_LENGTH; i++)
-    EEPROM.write(i,0);
-}
-
-void Memory::erase_model_data() {
-    // Clear EEPROM
-    for(int i = DEVICE_MODEL_ADDR; i < DEVICE_MODEL_ADDR + DATA_MAX_LENGTH; i++)
-    EEPROM.write(i,0);
-}
-
-void Memory::write_serial() {
-    write_to_eeprom(SERIAL_NUM);
+uint8_t Memory::write_serial(String &serial) {
+    write_to_eeprom(SERIAL_NUM, serial);
     update_serial_crc();
+    return error();
 }
 
-void Memory::write_model() {
-    write_to_eeprom(MODEL_NUM);
+uint8_t Memory::write_model(String &model) {
+    write_to_eeprom(MODEL_NUM, model);
     update_model_crc();
+    return error();
 }
 
-void Memory::read_serial() {
-    read_from_eeprom(SERIAL_NUM);
+uint8_t Memory::read_serial(String &serial) {
+    read_from_eeprom(SERIAL_NUM, serial);
+    return error();
 }
 
-void Memory::read_model() {
-    read_from_eeprom(MODEL_NUM);
+uint8_t Memory::read_model(String &model) {
+    read_from_eeprom(MODEL_NUM, model);
+    return error();
 }
