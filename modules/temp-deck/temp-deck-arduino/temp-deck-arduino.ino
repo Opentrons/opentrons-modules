@@ -25,7 +25,11 @@ Gcode gcode = Gcode();
 
 bool START_BOOTLOADER = false;
 unsigned long start_bootloader_timestamp = 0;
-const int start_bootloader_timeout = 3000;  // 3 seconds
+const int start_bootloader_timeout = 1000;  // 3 seconds
+
+unsigned long SET_TEMPERATURE_TIMESTAMP = 0;
+const unsigned long millis_till_fan_turns_off = 2500;
+const unsigned long millis_till_peltiers_drop_current = 2500;
 
 int TARGET_TEMPERATURE = TEMPERATURE_ROOM;
 bool IS_TARGETING = false;
@@ -49,18 +53,10 @@ void set_target_temperature(int target_temp){
     gcode.print_warning(
       "Target temperature too high, setting to TEMPERATURE_MAX degrees");
   }
-  peltiers.disable_peltiers();
-  disable_target();
   IS_TARGETING = true;
   TARGET_TEMPERATURE = target_temp;
-}
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
-void disable_target(){
-  IS_TARGETING = false;
+  SET_TEMPERATURE_TIMESTAMP = millis();
+  lights.flash_on();
 }
 
 /////////////////////////////////
@@ -103,6 +99,17 @@ void hot(float amount) {
 void stabilize_to_target_temp(int current_temp, bool set_fan=false){
   peltiers.update_peltier_cycle();
   if (IS_TARGETING) {
+    unsigned long end_time = SET_TEMPERATURE_TIMESTAMP + millis_till_fan_turns_off;
+    if (end_time > millis()) {
+      peltiers.disable_peltiers();
+      set_fan_percentage(0.0);
+      return;
+    }
+    end_time += millis_till_peltiers_drop_current;
+    if (end_time > millis()) {
+      set_fan = false;
+      set_fan_percentage(0.0);
+    }
     // if we've arrived, just be calm, but don't turn off
     if (current_temp == TARGET_TEMPERATURE) {
       if (TARGET_TEMPERATURE > TEMPERATURE_ROOM) {
@@ -131,9 +138,16 @@ void stabilize_to_target_temp(int current_temp, bool set_fan=false){
         if (set_fan) set_fan_percentage(1.0);
       }
       else {
-        cold(0.2);
+        cold(1.0);
         if (set_fan) set_fan_percentage(0.5);
       }
+    }
+  }
+  else {
+    // not targetting, so if we are far away from room temperature, put
+    // the fan on at a lower power level
+    if (abs(current_temp - TEMPERATURE_ROOM) > 5) {
+      set_fan_percentage(0.5);
     }
   }
 }
@@ -142,59 +156,32 @@ void stabilize_to_target_temp(int current_temp, bool set_fan=false){
 /////////////////////////////////
 /////////////////////////////////
 
-void _set_color_bar_from_range(int val, int min, int middle, int max) {
+void _set_color_bar_from_range(int val, int middle) {
   /*
     This method uses a temperature range (Celsius), to set the color of the
     RGBW color bar. It uses three data points in Celsius (min, middle, max),
     and does a linear transition between them, then multiplies by the three
     corresponding colors (cold, room, hot), to create a fade between colors
   */
-  if (IS_TARGETING) {
-    lights.set_color_bar_brightness(1.0);
+  float cold[4] = {0, 0, 1, 0};
+  float room[4] = {0, 0, 0, 1};
+  float hot[4] = {1, 0, 0, 0};
+  if (!IS_TARGETING || abs(val - TARGET_TEMPERATURE) < 2) {
+    lights.flash_off();
   }
   else {
-    lights.set_color_bar_brightness(0.5);
-    lights.set_color_bar(0, 0, 0, 1);
+    lights.flash_on();
   }
-  float cold[4] = {0, 0, 1, 0};
-  float room[4] = {0, 1, 0, 0};
-  if (IS_TARGETING == false) {  // set normal color to white when not active
-    room[1] = 0;
-    room[3] = 1;
-  }
-  float hot[4] = {1, 0, 0, 0};
-  if (val == middle) {
+  if (TARGET_TEMPERATURE == middle || !IS_TARGETING) {
     lights.set_color_bar(room[0], room[1], room[2], room[3]);
   }
   // cold
-  else if (val < middle) {
-    if (val < min) {
-      lights.set_color_bar(cold[0], cold[1], cold[2], cold[3]);
-    }
-    else {
-      // scale it to cold color
-      float m = float(val - min) / float(middle - min);  // 1=room, 0=cold
-      float r = (m * room[0]) + ((1.0 - m) * cold[0]);
-      float g = (m * room[1]) + ((1.0 - m) * cold[1]);
-      float b = (m * room[2]) + ((1.0 - m) * cold[2]);
-      float w = (m * room[3]) + ((1.0 - m) * cold[3]);
-      lights.set_color_bar(r, g, b, w);
-    }
+  else if (TARGET_TEMPERATURE < middle) {
+    lights.set_color_bar(cold[0], cold[1], cold[2], cold[3]);
   }
   // hot
   else {
-    if (val > max) {
-      lights.set_color_bar(hot[0], hot[1], hot[2], hot[3]);
-    }
-    else {
-      // scale it to hot color
-      float m = float(val - middle) / float(max - middle);  // 1=hot, 0=room
-      float r = (m * hot[0]) + ((1.0 - m) * room[0]);
-      float g = (m * hot[1]) + ((1.0 - m) * room[1]);
-      float b = (m * hot[2]) + ((1.0 - m) * room[2]);
-      float w = (m * hot[3]) + ((1.0 - m) * room[3]);
-      lights.set_color_bar(r, g, b, w);
-    }
+    lights.set_color_bar(hot[0], hot[1], hot[2], hot[3]);
   }
 }
 
@@ -204,11 +191,7 @@ void _set_color_bar_from_range(int val, int min, int middle, int max) {
 
 void update_temperature_display(int current_temp, boolean force=false){
   lights.display_number(current_temp, force);
-  _set_color_bar_from_range(
-    current_temp, TEMPERATURE_FEELS_COLD, TEMPERATURE_ROOM, TEMPERATURE_FEELS_HOT);
-  if (current_temp > TEMPERATURE_MAX || current_temp < TEMPERATURE_MIN){
-    // flash the lights or something...
-  }
+  _set_color_bar_from_range(current_temp, TEMPERATURE_ROOM);
 }
 
 /////////////////////////////////
@@ -240,8 +223,9 @@ void activate_bootloader(){
 
 void disengage() {
   peltiers.disable_peltiers();
-  disable_target();
+  IS_TARGETING = false;
   set_fan_percentage(0.0);
+  lights.flash_off();
 }
 
 void print_temperature() {
@@ -263,7 +247,7 @@ void print_temperature() {
 /////////////////////////////////
 
 void start_dfu_timeout() {
-  gcode.print_warning("Restarting and entering bootloader in 3 second...");
+  gcode.print_warning("Restarting and entering bootloader in 1 second...");
   START_BOOTLOADER = true;
   start_bootloader_timestamp = millis();
 }
@@ -292,20 +276,6 @@ void read_gcode(){
         case GCODE_SET_TEMP:
           if (gcode.read_int('S')) {
             set_target_temperature(gcode.parsed_int);
-            set_fan_percentage(0.0);
-            // wait for fan to shutdown
-            unsigned long now = millis();
-            while (now + 2500 > millis()){
-              update_temperature_display(thermistor.plate_temperature());
-            }
-            // engage peltiers, and let current settle before turning on fan
-            now = millis();
-            float now_temp;
-            while (now + 2500 > millis()){
-              now_temp = thermistor.plate_temperature();
-              update_temperature_display(now_temp);
-              stabilize_to_target_temp(now_temp, false);  // no fan!
-            }
           }
           break;
         case GCODE_DISENGAGE:
@@ -337,6 +307,7 @@ void setup() {
   set_fan_percentage(0);
   lights.setup_lights();
   lights.set_numbers_brightness(0.5);
+  lights.set_color_bar_brightness(1.0);
   disengage();
   update_temperature_display(thermistor.plate_temperature(), true);
 }
@@ -348,7 +319,7 @@ void setup() {
 void loop(){
   read_gcode();
   int current_temp = thermistor.plate_temperature();
-  update_temperature_display(current_temp);
+  update_temperature_display(current_temp, false);
   stabilize_to_target_temp(current_temp, true);
   check_if_bootloader_starts();
 }
