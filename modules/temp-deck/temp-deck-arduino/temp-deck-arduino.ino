@@ -149,6 +149,9 @@ void stabilize_to_target_temp(int current_temp, bool set_fan=false){
     if (abs(current_temp - TEMPERATURE_ROOM) > 5) {
       set_fan_percentage(0.5);
     }
+    else {
+      set_fan_percentage(0.0);
+    }
   }
 }
 
