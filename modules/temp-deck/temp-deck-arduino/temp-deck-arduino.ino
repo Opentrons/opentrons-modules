@@ -3,6 +3,7 @@
 /////////////////////////////////
 
 #include <Arduino.h>
+#include "memory.h"
 #include "lights.h"
 #include "peltiers.h"
 #include "thermistor.h"
@@ -12,6 +13,7 @@ Lights lights = Lights();
 Peltiers peltiers = Peltiers();
 Thermistor thermistor = Thermistor();
 Gcode gcode = Gcode();
+Memory memory = Memory();
 
 #define pin_tone_out 11
 #define pin_fan_pwm 9
@@ -285,7 +287,7 @@ void read_gcode(){
           disengage();
           break;
         case GCODE_DEVICE_INFO:
-          gcode.print_device_info(device_serial, device_model, device_version);
+          gcode.print_device_info(memory.serial, memory.model, device_version);
           break;
         case GCODE_DFU:
           start_dfu_timeout();
@@ -306,6 +308,8 @@ void setup() {
   pinMode(pin_tone_out, OUTPUT);
   pinMode(pin_fan_pwm, OUTPUT);
   gcode.setup(115200);
+  memory.read_serial();
+  memory.read_model();
   peltiers.setup_peltiers();
   set_fan_percentage(0);
   lights.setup_lights();
