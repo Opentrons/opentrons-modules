@@ -3,6 +3,7 @@
 /////////////////////////////////
 
 #include <Arduino.h>
+#include "memory.h"
 #include "lights.h"
 #include "peltiers.h"
 #include "thermistor.h"
@@ -12,6 +13,7 @@ Lights lights = Lights();
 Peltiers peltiers = Peltiers();
 Thermistor thermistor = Thermistor();
 Gcode gcode = Gcode();
+Memory memory = Memory();
 
 #define pin_tone_out 11
 #define pin_fan_pwm 9
@@ -148,6 +150,9 @@ void stabilize_to_target_temp(int current_temp, bool set_fan=false){
     // the fan on at a lower power level
     if (abs(current_temp - TEMPERATURE_ROOM) > 5) {
       set_fan_percentage(0.5);
+    }
+    else {
+      set_fan_percentage(0.0);
     }
   }
 }
@@ -303,6 +308,8 @@ void setup() {
   pinMode(pin_tone_out, OUTPUT);
   pinMode(pin_fan_pwm, OUTPUT);
   gcode.setup(115200);
+  memory.read_serial(device_serial);
+  memory.read_model(device_model);
   peltiers.setup_peltiers();
   set_fan_percentage(0);
   lights.setup_lights();

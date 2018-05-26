@@ -1,11 +1,6 @@
 #include "Gcode.h"
 
 Gcode::Gcode() {
-    COMMAND_CODES[GCODE_GET_TEMP] =     "M105";
-    COMMAND_CODES[GCODE_SET_TEMP] =     "M104";
-    COMMAND_CODES[GCODE_DEVICE_INFO] =  "M115";
-    COMMAND_CODES[GCODE_DISENGAGE] =    "M18";
-    COMMAND_CODES[GCODE_DFU] =          "dfu";
 }
 
 void Gcode::_strip_serial_buffer() {
@@ -116,6 +111,11 @@ void Gcode::print_warning(String msg) {
 }
 
 void Gcode::setup(int baudrate) {
+  COMMAND_CODES[GCODE_GET_TEMP] =     "M105";
+  COMMAND_CODES[GCODE_SET_TEMP] =     "M104";
+  COMMAND_CODES[GCODE_DEVICE_INFO] =  "M115";
+  COMMAND_CODES[GCODE_DISENGAGE] =    "M18";
+  COMMAND_CODES[GCODE_DFU] =          "dfu";
   Serial.begin(baudrate);
   Serial.setTimeout(2);
 }
