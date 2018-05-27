@@ -25,11 +25,11 @@ class Gcode{
         bool pop_command();
         void send_ack();
         int code;
-        int parsed_int;
+        float parsed_number = 0;
         void print_device_info(String serial, String model, String version);
         void print_targetting_temperature(int target_temp, int current_temp);
         void print_stablizing_temperature(int current_temp);
-        bool read_int(char key);
+        bool read_number(char key);
         void print_warning(String msg);
 
     private:

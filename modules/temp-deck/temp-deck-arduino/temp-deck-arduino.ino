@@ -23,6 +23,16 @@
 #define TEMPERATURE_BURN 55
 #define STABILIZING_ZONE 2
 
+#define FAN_HIGH 0.8
+#define FAN_LOW 0.5
+#define FAN_OFF 0.5
+
+#define DEFAULT_PID_KP 1.2
+#define DEFAULT_PID_KI 0.1
+#define DEFAULT_PID_KD 1.0
+
+#define PID_ENABLED_ZONE 10
+
 // uncomment to print temperature and PID information when receiving a '\r'
 #define TEMPDECK_DEBUG 1
 
@@ -46,10 +56,11 @@ double CURRENT_TEMPERATURE = TEMPERATURE_ROOM;
 bool IS_TARGETING = false;
 
 double TEMPERATURE_SWING;  // -1.0 is full cold peltiers, +1.0 is full hot peltiers, can be between
-double pid_Kp=25;  // reduces rise time, increases overshoot
-double pid_Ki=0; // reduces steady-state error, increases overshoot
-double pid_Kd=45;  // reduces overshoot, reduces settling time
-PID myPID(&CURRENT_TEMPERATURE, &TEMPERATURE_SWING, &TARGET_TEMPERATURE, pid_Kp, pid_Ki, pid_Kd, P_ON_M, DIRECT);
+double pid_Setpoint;
+double pid_Kp = DEFAULT_PID_KP;  // reduces rise time, increases overshoot
+double pid_Ki = DEFAULT_PID_KI;  // reduces steady-state error, increases overshoot
+double pid_Kd = DEFAULT_PID_KD;  // reduces overshoot, reduces settling time
+PID myPID(&CURRENT_TEMPERATURE, &pid_Setpoint, &TARGET_TEMPERATURE, pid_Kp, pid_Ki, pid_Kd, P_ON_M, DIRECT);
 
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
@@ -123,24 +134,9 @@ void disengage() {
 /////////////////////////////////
 /////////////////////////////////
 
-void set_fan_percentage(float percentage){
+void set_fan_power(float percentage){
   percentage = constrain(percentage, 0.0, 1.0);
   analogWrite(pin_fan_pwm, int(percentage * 255.0));
-}
-
-void set_fan_from_temperature() {
-  if (target_cold_zone()) {         // when target is cold, fan 100%
-    set_fan_percentage(1.0);
-  }
-  else if(stabilizing()) {          // fan 50% when stabilizing in middle/hot range
-    set_fan_percentage(0.5);
-  }
-  else if(TEMPERATURE_SWING < 0) {  // fan 100% when trying to get colder and NOT stabilizing
-    set_fan_percentage(1.0);
-  }
-  else {                            // default to 50%
-    set_fan_percentage(0.5);
-  }
 }
 
 /////////////////////////////////
@@ -148,61 +144,39 @@ void set_fan_from_temperature() {
 /////////////////////////////////
 
 void pid_stabilize_to_target() {
-  adjust_pid_from_temperature();
   if (myPID.Compute()) {
-    if (TEMPERATURE_SWING > 0.0) {
-      peltiers.set_hot_percentage(TEMPERATURE_SWING);
+    if (TARGET_TEMPERATURE - CURRENT_TEMPERATURE > PID_ENABLED_ZONE) {
+      TEMPERATURE_SWING = 1.0;
+    }
+    else if (CURRENT_TEMPERATURE - TARGET_TEMPERATURE > PID_ENABLED_ZONE) {
+      TEMPERATURE_SWING = -1.0;
     }
     else {
+      TEMPERATURE_SWING = pid_Setpoint;
+    }
+
+    if (TEMPERATURE_SWING < 0) {
       peltiers.set_cold_percentage(abs(TEMPERATURE_SWING));
     }
-  }
-}
-
-void adjust_pid_from_temperature() {
-  // default is full range
-  myPID.SetOutputLimits(-1.0, 1.0);
-
-  // don't let it cool down as much as it can while stabilizing
-  if (target_hot_zone() && stabilizing()) {
-    myPID.SetOutputLimits(-0.33, 1.0);
-  }
-  // cold temperatures are hard to hold, so don't heat up much down there
-  else if (target_middle_zone()) {
-    myPID.SetOutputLimits(-1.0, 0.2);
-  }
-  // don't let it heat up as much as it can while stabilizing
-  else if (target_cold_zone()) {
-    myPID.SetOutputLimits(-1.0, -0.1);
+    else {
+      peltiers.set_hot_percentage(TEMPERATURE_SWING);
+    }
   }
 }
 
 void adjust_pid_on_new_target() {
-  pid_Kp = 25;                // default
-  pid_Ki = 0;
-  pid_Kd = 25;
+  pid_Kp = DEFAULT_PID_KP;
+  pid_Ki = DEFAULT_PID_KI;
+  pid_Kd = DEFAULT_PID_KD;
 
-  if (target_cold_zone() && TARGET_TEMPERATURE < CURRENT_TEMPERATURE) {
-    pid_Kd = 1;                 // don't "hit the brakes" when trying to get super cold
-  }
-  else if (TARGET_TEMPERATURE > 90) {
-    pid_Kp = 100;               // most aggressive when super hot
-    pid_Ki = 65;
-    pid_Kd = 45;
+  if (TARGET_TEMPERATURE > 90) {
+    pid_Kp = 0.8;
+    pid_Kd = 0.1;
   }
   else if (TARGET_TEMPERATURE > 80) {
-    pid_Kp = 50;                // pretty aggressive when very hot
-    pid_Ki = 15;
-    pid_Kd = 35;
+    pid_Kp = 0.9;
   }
-  else if (TARGET_TEMPERATURE > 70) {
-    pid_Kp = 35;                // aggressive when hot
-    pid_Ki = 1;
-    pid_Kd = 35;
-  }
-  else if (target_hot_zone()) {
-    pid_Kp = 15;                // less aggressive in warm zone
-  }
+
   myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd, P_ON_M);
 }
 
@@ -216,26 +190,33 @@ void stabilize_to_target_temp(bool set_fan=true){
   unsigned long end_time = SET_TEMPERATURE_TIMESTAMP + millis_till_fan_turns_off;
   if (end_time > now) {
     peltiers.disable_peltiers();
-    set_fan_percentage(0.0);
+    set_fan_power(FAN_OFF);
     return;  // exit this function, do not turn anything ON
   }
   end_time += millis_till_peltiers_drop_current;
   if (end_time > now) {
     set_fan = false;
   }
-  if (set_fan == false) set_fan_percentage(0.0);
-  else set_fan_from_temperature();
+  if (set_fan == false) {
+    set_fan_power(FAN_OFF);
+  }
+  else if (target_cold_zone()) {
+    set_fan_power(FAN_HIGH);
+  }
+  else {
+    set_fan_power(FAN_LOW);
+  }
   pid_stabilize_to_target();
 }
 
 void stabilize_to_room_temp() {
   if (burning_hot()) {
     pid_stabilize_to_target();
-    set_fan_percentage(0.5);
+    set_fan_power(FAN_LOW);
   }
   else {
     peltiers.disable_peltiers();
-    set_fan_percentage(0.0);
+    set_fan_power(FAN_OFF);
   }
 }
 
@@ -337,18 +318,18 @@ void read_gcode(){
           print_temperature();
           break;
         case GCODE_SET_TEMP:
-          if (gcode.read_int('S')) {
-            set_target_temperature(gcode.parsed_int);
+          if (gcode.read_number('S')) {
+            set_target_temperature(gcode.parsed_number);
             IS_TARGETING = true;
           }
-          if (gcode.read_int('P')) {
-            pid_Kp = gcode.parsed_int;
+          if (gcode.read_number('P')) {
+            pid_Kp = gcode.parsed_number;
           }
-          if (gcode.read_int('I')) {
-            pid_Ki = gcode.parsed_int;
+          if (gcode.read_number('I')) {
+            pid_Ki = gcode.parsed_number;
           }
-          if (gcode.read_int('D')) {
-            pid_Kd = gcode.parsed_int;
+          if (gcode.read_number('D')) {
+            pid_Kd = gcode.parsed_number;
           }
           myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd);
           break;
@@ -377,7 +358,7 @@ void setup() {
 
   gcode.setup(115200);
 
-  set_fan_percentage(0.0);
+  set_fan_power(FAN_OFF);
 
   pinMode(pin_tone_out, OUTPUT);
   pinMode(pin_fan_pwm, OUTPUT);
@@ -396,7 +377,7 @@ void setup() {
 
   // setup PID
   myPID.SetMode(AUTOMATIC);
-  myPID.SetSampleTime(100);
+  myPID.SetSampleTime(500);
   myPID.SetOutputLimits(-1.0, 1.0);
   myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd, P_ON_M);
 
@@ -404,16 +385,21 @@ void setup() {
   lights.startup_animation(CURRENT_TEMPERATURE, 2000);
 }
 
+int debug_interval = 250;
+unsigned long debug_timestamp = 0;
+
 void loop(){
 
 #ifdef TEMPDECK_DEBUG
-  if (Serial.available() && Serial.peek() == '\r') {
+  if (debug_timestamp + debug_interval < millis()) {
+    debug_timestamp = millis();
     Serial.print(" Target=");Serial.println(TARGET_TEMPERATURE);
     Serial.print(" Current=");Serial.println(CURRENT_TEMPERATURE);
     Serial.print(" Swing=");Serial.println(TEMPERATURE_SWING);
     Serial.print(" P=");Serial.println(pid_Kp);
     Serial.print(" I=");Serial.println(pid_Ki);
     Serial.print(" D=");Serial.println(pid_Kd);
+    Serial.println();
   }
 #endif
 

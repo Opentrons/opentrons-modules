@@ -53,27 +53,34 @@ void Gcode::send_ack() {
   Serial.println("ok");
 }
 
-bool Gcode::read_int(char key) {
-  parsed_int = 0;
+bool Gcode::read_number(char key) {
   int starting_key_index = GCODE_BUFFER_STRING.indexOf(key);
   if (starting_key_index >= 0) {
-    String parsed_number = "";
+    String number_string = "";
     char next_char;
     boolean valid_command = false;
+    bool decimal = false;
     for (uint8_t i=1;i<4;i++) {
       if (GCODE_BUFFER_STRING.length() <= starting_key_index + i) {
         break;
       }
       next_char = GCODE_BUFFER_STRING.charAt(starting_key_index + i);
-      if ((next_char >= '0' && next_char <= '9') || next_char == '-') {
-        parsed_number += next_char;
+      if (next_char >= '0' && next_char <= '9') {
+        number_string += next_char;
+      }
+      else if(next_char == '-' && number_string.length() == 0) {
+        number_string += next_char;
+      }
+      else if(next_char == '.' && !decimal && number_string.length() > 0) {
+        decimal = true;
+        number_string += next_char;
       }
       else {
         break;
       }
     }
-    if (parsed_number) {
-      parsed_int = parsed_number.toInt();
+    if (number_string) {
+      parsed_number = number_string.toFloat();
       return true;
     }
     else {
