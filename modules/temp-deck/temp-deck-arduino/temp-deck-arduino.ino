@@ -49,7 +49,7 @@ double TEMPERATURE_SWING;  // -1.0 is full cold peltiers, +1.0 is full hot pelti
 double pid_Kp=25;  // reduces rise time, increases overshoot
 double pid_Ki=0; // reduces steady-state error, increases overshoot
 double pid_Kd=45;  // reduces overshoot, reduces settling time
-PID myPID(&CURRENT_TEMPERATURE, &TEMPERATURE_SWING, &TARGET_TEMPERATURE, pid_Kp, pid_Ki, pid_Kd, DIRECT);
+PID myPID(&CURRENT_TEMPERATURE, &TEMPERATURE_SWING, &TARGET_TEMPERATURE, pid_Kp, pid_Ki, pid_Kd, P_ON_M, DIRECT);
 
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
@@ -203,7 +203,7 @@ void adjust_pid_on_new_target() {
   else if (target_hot_zone()) {
     pid_Kp = 15;                // less aggressive in warm zone
   }
-  myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd);
+  myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd, P_ON_M);
 }
 
 /////////////////////////////////
@@ -398,7 +398,7 @@ void setup() {
   myPID.SetMode(AUTOMATIC);
   myPID.SetSampleTime(100);
   myPID.SetOutputLimits(-1.0, 1.0);
-  myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd);
+  myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd, P_ON_M);
 
   disengage();
   lights.startup_animation(CURRENT_TEMPERATURE, 2000);
