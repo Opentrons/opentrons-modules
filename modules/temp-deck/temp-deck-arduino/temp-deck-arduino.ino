@@ -242,9 +242,9 @@ void set_color_bar_from_temperature() {
 /////////////////////////////////
 /////////////////////////////////
 
-void update_temperature_display(boolean force=false){
+void update_temperature_display(boolean debounce=true){
   // round to closest whole-number temperature
-  lights.display_number(CURRENT_TEMPERATURE + 0.5, force);
+  lights.display_number(CURRENT_TEMPERATURE + 0.5, debounce);
   set_color_bar_from_temperature();
 }
 
@@ -395,17 +395,20 @@ void setup() {
   lights.set_numbers_brightness(0.5);
   lights.set_color_bar_brightness(1.0);
 
+  // make sure we start with an averaged plate temperatures
   while (!thermistor.update()) {}
   CURRENT_TEMPERATURE = thermistor.plate_temperature();
   TARGET_TEMPERATURE = TEMPERATURE_ROOM;
   IS_TARGETING = false;
+
+  // setup PID
   myPID.SetMode(AUTOMATIC);
   myPID.SetSampleTime(100);
   myPID.SetOutputLimits(-1.0, 1.0);
   myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd);
 
   disengage();
-  update_temperature_display(true);  // force current temp to show (no debounce)
+  update_temperature_display(false);  // force current temp to show (no debounce)
 }
 
 /////////////////////////////////
@@ -420,7 +423,7 @@ void loop(){
     CURRENT_TEMPERATURE = thermistor.plate_temperature();
   }
 
-  update_temperature_display();
+  update_temperature_display(true);  // debounce enabled
 
   if (IS_TARGETING) {
     stabilize_to_target_temp();

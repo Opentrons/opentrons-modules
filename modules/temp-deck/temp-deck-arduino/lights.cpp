@@ -16,16 +16,17 @@ void Lights::set_pwm_pin_inverse(int pin, float val) {
   pwm.setPWM(pin, val, 4095);
 }
 
-bool Lights::_is_a_stable_number(int number, bool force=false) {
-  if (force || (number == _previous_display_number && number != _previous_saved_number)) {
+bool Lights::_is_a_stable_number(int number, bool debounce=true) {
+  bool return_val = false;
+  if (!debounce || (number == _previous_display_number && number != _previous_saved_number)) {
     _same_display_number_count++;
-    if (force || (_same_display_number_count > _same_display_number_threshold)) {
-      _previous_saved_number = number;
-      return true;
+    if (!debounce || (_same_display_number_count > _same_display_number_threshold)) {
+      _same_display_number_count = 0;  // reset the stable counter
+      return_val = true;
     }
   }
   _previous_display_number = number;
-  return false;
+  return return_val;
 }
 
 void Lights::_set_seven_segment(float * digit_1, float * digit_2) {
@@ -35,9 +36,8 @@ void Lights::_set_seven_segment(float * digit_1, float * digit_2) {
   }
 }
 
-void Lights::display_number(int number, bool force=false) {
-  if (_is_a_stable_number(number, force)) {
-    _same_display_number_count = 0;  // reset the stable counter
+void Lights::display_number(int number, bool debounce=true) {
+  if (_is_a_stable_number(number, debounce)) {
     uint8_t single_digit_value = abs(number) % 10;
     if (number < 0) {
       _set_seven_segment(seven_segment_neg_symbol, numbers[single_digit_value]);

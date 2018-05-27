@@ -21,7 +21,7 @@ class Lights{
     Lights();
     void setup_lights();
     void startup_animation();
-    void display_number(int number, bool force=false);
+    void display_number(int number, bool debounce=false);
     void clear_display();
     void set_color_bar(float red, float green, float blue, float white);
     void set_color_bar_brightness(float brightness);
@@ -64,7 +64,7 @@ class Lights{
 
     void set_pwm_pin(int pin, float val);
     void set_pwm_pin_inverse(int pin, float val);
-    bool _is_a_stable_number(int number, bool force=false);
+    bool _is_a_stable_number(int number, bool debounce=false);
     void _set_seven_segment(float digit_1[], float digit_2[]);
     void update_flash_multiplier();
 
@@ -76,8 +76,8 @@ class Lights{
     const float color_bar_min_brightness = 0.1;
     unsigned long now_timestamp = 0;
 
-    float _color_bar_current[4] = {0, 0, 0, 0};
-    float _color_bar_previous[4] = {0, 0, 0, 0};
+    float _color_bar_current[4] = {-1, -1, -1, -1};
+    float _color_bar_previous[4] = {-1, -1, -1, -1};
 };
 
 #endif
