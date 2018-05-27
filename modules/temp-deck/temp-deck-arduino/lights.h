@@ -12,36 +12,42 @@
 #define red_led 5
 #define blue_led 6
 
+#define NUM_DIGITS 2
+#define NUM_SEGMENTS 7
+
 #define green_pwm_pin 0
 #define white_pwm_pin 7
+
+#define I2C_WRITE_DELAY 5
+
+#define DEFAULT_FLASH_INTERVAL 1500
 
 class Lights{
   public:
 
     Lights();
     void setup_lights();
-    void startup_animation();
-    void display_number(int number, bool debounce=false);
-    void clear_display();
+    void startup_animation(int target_number, int transition_time);
+    void display_number(int number, bool debounce=true);
     void set_color_bar(float red, float green, float blue, float white);
     void set_color_bar_brightness(float brightness);
     void set_numbers_brightness(float brightness);
-    void flash_on(int interval=1000);
+    void flash_on(int interval=DEFAULT_FLASH_INTERVAL);
     void flash_off();
 
   private:
 
     Adafruit_PWMServoDriver pwm;
-    const uint8_t segments_pin_mapping[2][7] = {
+    const uint8_t segments_pin_mapping[NUM_DIGITS][NUM_SEGMENTS] = {
       {10, 11, 4, 5, 6, 9, 8},
       {14, 15, 1, 2, 3, 13, 12}
     };
 
-    const float seven_segment_blank[7] = {0, 0, 0, 0, 0, 0, 0};
-    const float seven_segment_on[7] = {1, 1, 1, 1, 1, 1, 1};
-    const float seven_segment_neg_symbol[7] = {0, 0, 0, 0, 0, 0, 1};
+    const float seven_segment_blank[NUM_SEGMENTS] = {0, 0, 0, 0, 0, 0, 0};
+    const float seven_segment_on[NUM_SEGMENTS] = {1, 1, 1, 1, 1, 1, 1};
+    const float seven_segment_neg_symbol[NUM_SEGMENTS] = {0, 0, 0, 0, 0, 0, 1};
 
-    const float numbers[10][7] = {
+    const float numbers[10][NUM_SEGMENTS] = {
       {1, 1, 1, 1, 1, 1, 0},  // 0
       {0, 1, 1, 0, 0, 0, 0},  // 1
       {1, 1, 0, 1, 1, 0, 1},  // 2
@@ -64,17 +70,16 @@ class Lights{
 
     void set_pwm_pin(int pin, float val);
     void set_pwm_pin_inverse(int pin, float val);
-    bool _is_a_stable_number(int number, bool debounce=false);
+    bool _is_a_stable_number(int number, bool debounce=true);
     void _set_seven_segment(float digit_1[], float digit_2[]);
-    void update_flash_multiplier();
+    void _update_flash_multiplier();
 
     unsigned long flash_timestamp = 0;
+    unsigned long now;
     float flash_multiplier = 1.0;
-    int flash_direction = -1;  // 1 is up, -1 is down
     bool is_flashing = false;
-    int flash_interval = 1500;
+    int flash_interval = DEFAULT_FLASH_INTERVAL;
     const float color_bar_min_brightness = 0.1;
-    unsigned long now_timestamp = 0;
 
     float _color_bar_current[4] = {-1, -1, -1, -1};
     float _color_bar_previous[4] = {-1, -1, -1, -1};

@@ -33,6 +33,7 @@ void Peltiers::update_peltier_cycle() {
   }
   else {
     now = millis();
+    if (peltier_cycle_timestamp > now) peltier_cycle_timestamp = now;  // rollover
     if (peltiers_currently_on) {
       if (now > peltier_cycle_timestamp + peltier_on_time) {
         peltier_cycle_timestamp = now;
