@@ -9,62 +9,62 @@ void Peltiers::set_peltiers_percentage(float a_state, float b_state){
 //  Serial.print("Peltier duty cycle -> ");Serial.println(peltier_duty_cycle_ms);
   if (a_state > 0.0){
     peltier_high_pin = PELTIER_A_CONTROL;
-    peltier_low_pin = PELTIER_B_CONTROL;
+    digitalWrite(PELTIER_B_CONTROL, LOW);
     digitalWrite(PELTIER_AB_ENABLE, HIGH);  // enable the h-bridges
     enabled = true;
   }
   else if (b_state > 0.0){
     peltier_high_pin = PELTIER_B_CONTROL;
-    peltier_low_pin = PELTIER_A_CONTROL;
+    digitalWrite(PELTIER_A_CONTROL, LOW);
     digitalWrite(PELTIER_AB_ENABLE, HIGH);  // enable the h-bridges
     enabled = true;
-  }
-  else {
-    write_h_bridges(LOW);
-    digitalWrite(PELTIER_AB_ENABLE, LOW); // disable the h-bridges
-    enabled = false;
   }
 }
 
 void Peltiers::update_peltier_cycle() {
-  if (enabled == false || (peltier_on_time == 0 && peltiers_currently_on)){
-    disable_peltiers();
-    return;
+  if (enabled == false){
+    peltiers_currently_on = false;
   }
-  now = millis();
-  if (peltiers_currently_on == false) {
-    if (now > peltier_cycle_timestamp + peltier_off_time) {
-      peltier_cycle_timestamp = now;
-      write_h_bridges(HIGH);
-    }
+  else if (peltier_off_time == 0 && peltier_on_time > 0) {
+    peltiers_currently_on = true;
+  }
+  else if (peltier_on_time == 0) {
+    peltiers_currently_on = false;
   }
   else {
-    if (now > peltier_cycle_timestamp + peltier_on_time) {
-      peltier_cycle_timestamp = now;
-      if (peltier_off_time > 0){  // incase we've set it to 100%
-        write_h_bridges(LOW);
+    now = millis();
+    if (peltiers_currently_on) {
+      if (now > peltier_cycle_timestamp + peltier_on_time) {
+        peltier_cycle_timestamp = now;
+        peltiers_currently_on = false;
+      }
+    }
+    else {
+      if (now > peltier_cycle_timestamp + peltier_off_time) {
+        peltier_cycle_timestamp = now;
+        peltiers_currently_on = true;
       }
     }
   }
-}
-
-void Peltiers::write_h_bridges(int state) {
-  digitalWrite(peltier_high_pin, state);
-  digitalWrite(peltier_low_pin, LOW);
-  peltiers_currently_on = boolean(state);
-//  Serial.print("Writing pin ");Serial.print(peltier_high_pin);Serial.print(" -> ");Serial.println(state);
+  digitalWrite(peltier_high_pin, peltiers_currently_on);
 }
 
 void Peltiers::disable_peltiers(){
 //  Serial.println("Peltiers are both OFF");
   set_peltiers_percentage(0.0, 0.0);
+  digitalWrite(PELTIER_A_CONTROL, LOW);
+  digitalWrite(PELTIER_B_CONTROL, LOW);
+  digitalWrite(PELTIER_AB_ENABLE, LOW); // disable the h-bridges
+  enabled = false;
 }
 
 void Peltiers::set_cold_percentage(float perc){
+  //Serial.print(" Cold=");Serial.println(int(perc * 100));
   set_peltiers_percentage(perc, 0);
 }
 
 void Peltiers::set_hot_percentage(float perc){
+  //Serial.print(" Hot=");Serial.println(int(perc * 100));
   set_peltiers_percentage(0, perc);
 }
 

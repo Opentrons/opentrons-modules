@@ -9,11 +9,7 @@
 #include "thermistor.h"
 #include "gcode.h"
 
-Lights lights = Lights();
-Peltiers peltiers = Peltiers();
-Thermistor thermistor = Thermistor();
-Gcode gcode = Gcode();
-Memory memory = Memory();
+#include <PID_v1.h>
 
 #define pin_tone_out 11
 #define pin_fan_pwm 9
@@ -21,24 +17,79 @@ Memory memory = Memory();
 #define TEMPERATURE_MAX 99
 #define TEMPERATURE_MIN -9
 
-#define TEMPERATURE_FEELS_COLD 10
+#define TEMPERATURE_FAN_CUTOFF_COLD 15
+#define TEMPERATURE_FAN_CUTOFF_HOT 35
 #define TEMPERATURE_ROOM 25
-#define TEMPERATURE_FEELS_HOT 60
+#define TEMPERATURE_BURN 55
+#define STABILIZING_ZONE 2
+
+Lights lights = Lights();
+Peltiers peltiers = Peltiers();
+Thermistor thermistor = Thermistor();
+Gcode gcode = Gcode();
+Memory memory = Memory();
 
 bool START_BOOTLOADER = false;
 unsigned long start_bootloader_timestamp = 0;
-const int start_bootloader_timeout = 1000;  // 3 seconds
+const int start_bootloader_timeout = 1000;
 
 unsigned long SET_TEMPERATURE_TIMESTAMP = 0;
-const unsigned long millis_till_fan_turns_off = 2500;
-const unsigned long millis_till_peltiers_drop_current = 2500;
+const unsigned long millis_till_fan_turns_off = 200;
+const unsigned long millis_till_peltiers_drop_current = 200;
 
-int TARGET_TEMPERATURE = TEMPERATURE_ROOM;
+double TARGET_TEMPERATURE = TEMPERATURE_ROOM;
+double CURRENT_TEMPERATURE = TEMPERATURE_ROOM;
 bool IS_TARGETING = false;
+
+double TEMPERATURE_SWING;
+double pid_Kp=25;  // reduces rise time, increases overshoot
+double pid_Ki=0; // reduces steady-state error, increases overshoot
+double pid_Kd=35;  // reduces overshoot, reduces settling time
+PID myPID(&CURRENT_TEMPERATURE, &TEMPERATURE_SWING, &TARGET_TEMPERATURE, pid_Kp, pid_Ki, pid_Kd, DIRECT);
 
 String device_serial = "TD001180622A01";
 String device_model = "001";
 String device_version = "edge-1a2b3c4";
+
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+
+bool stabilizing() {
+  return abs(TARGET_TEMPERATURE - CURRENT_TEMPERATURE) < STABILIZING_ZONE;
+}
+
+bool burning_hot() {
+  return CURRENT_TEMPERATURE > TEMPERATURE_BURN;
+}
+
+bool cold_zone() {
+  return CURRENT_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_COLD;
+}
+
+bool middle_zone() {
+  return CURRENT_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_COLD && CURRENT_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_HOT;
+}
+
+bool hot_zone() {
+  return CURRENT_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_HOT;
+}
+
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+
+bool target_cold_zone() {
+  return TARGET_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_COLD;
+}
+
+bool target_middle_zone() {
+  return TARGET_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_COLD && TARGET_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_HOT;
+}
+
+bool target_hot_zone() {
+  return TARGET_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_HOT;
+}
 
 /////////////////////////////////
 /////////////////////////////////
@@ -55,22 +106,17 @@ void set_target_temperature(int target_temp){
     gcode.print_warning(
       "Target temperature too high, setting to TEMPERATURE_MAX degrees");
   }
-  IS_TARGETING = true;
   TARGET_TEMPERATURE = target_temp;
   SET_TEMPERATURE_TIMESTAMP = millis();
   lights.flash_on();
-}
 
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
-void delay_minutes(int minutes){
-  for (int i=0;i<minutes;i++){
-    for (int s=0; s<60; s++){
-      delay(1000);  // 1 minute
-    }
+  pid_Kd = 35;
+  // lowering Kd makes it approach the target more aggressively
+  // this is necessary for low temperatures, because they are harder to reach
+  if (target_cold_zone()) {
+    pid_Kd = 10;
   }
+  myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd);
 }
 
 /////////////////////////////////
@@ -86,74 +132,84 @@ void set_fan_percentage(float percentage){
 /////////////////////////////////
 /////////////////////////////////
 
-void cold(float amount) {
-  peltiers.set_cold_percentage(amount);
-}
-
-void hot(float amount) {
-  peltiers.set_hot_percentage(amount);
-}
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
-void stabilize_to_target_temp(int current_temp, bool set_fan=false){
-  peltiers.update_peltier_cycle();
-  if (IS_TARGETING) {
-    unsigned long end_time = SET_TEMPERATURE_TIMESTAMP + millis_till_fan_turns_off;
-    if (end_time > millis()) {
-      peltiers.disable_peltiers();
-      set_fan_percentage(0.0);
-      return;
+void pid_stabilize() {
+  if (myPID.Compute()) {
+    if (TEMPERATURE_SWING > 0.0) {
+      peltiers.set_hot_percentage(TEMPERATURE_SWING);
     }
-    end_time += millis_till_peltiers_drop_current;
-    if (end_time > millis()) {
-      set_fan = false;
-      set_fan_percentage(0.0);
-    }
-    // if we've arrived, just be calm, but don't turn off
-    if (current_temp == TARGET_TEMPERATURE) {
-      if (TARGET_TEMPERATURE > TEMPERATURE_ROOM) {
-        hot(0.5);
-        if (set_fan) set_fan_percentage(0.5);
-      }
-      else {
-        cold(1.0);
-        if (set_fan) set_fan_percentage(1.0);
-      }
-    }
-    else if (TARGET_TEMPERATURE - current_temp > 0.0) {
-      if (TARGET_TEMPERATURE > TEMPERATURE_ROOM) {
-        hot(1.0);
-        if (set_fan) set_fan_percentage(0.5);
-      }
-      else {
-        hot(0.2);
-        if (set_fan) set_fan_percentage(1.0);
-      }
-    }
-    // COOL DOWN
     else {
-      if (TARGET_TEMPERATURE < TEMPERATURE_ROOM) {
-        cold(1.0);
-        if (set_fan) set_fan_percentage(1.0);
-      }
-      else {
-        cold(1.0);
-        if (set_fan) set_fan_percentage(0.5);
-      }
+      peltiers.set_cold_percentage(abs(TEMPERATURE_SWING));
     }
+  }
+}
+
+void set_fan_from_temperature() {
+  if (target_cold_zone()) {         // when target is cold, fan 100%
+    set_fan_percentage(1.0);
+  }
+  else if(stabilizing()) {          // fan 50% when stabilizing in middle/hot range
+    set_fan_percentage(0.5);
+  }
+  else if(TEMPERATURE_SWING < 0) {  // fan 100% when trying to get colder
+    set_fan_percentage(1.0);
+  }
+  else {                            // default to 50%
+    set_fan_percentage(0.5);
+  }
+}
+
+void adjust_pid_from_temperature() {
+  // default is full range
+  myPID.SetOutputLimits(-1.0, 1.0);
+
+  // don't let it cool down as much as it can while stabilizing
+  if (stabilizing() && target_hot_zone()) {
+    myPID.SetOutputLimits(-0.33, 1.0);
+  }
+  // don't let it heat up as much as it can while stabilizing
+  else if (stabilizing() && target_cold_zone()) {
+    myPID.SetOutputLimits(-1.0, 0.1);
+  }
+  // cold temperatures are hard to hold, so don't heat up much down there
+  else if (target_cold_zone()) {
+    myPID.SetOutputLimits(-1.0, 0.33);
+  }
+}
+
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+
+void stabilize_to_target_temp(bool set_fan=true){
+  unsigned long end_time = SET_TEMPERATURE_TIMESTAMP + millis_till_fan_turns_off;
+  if (end_time > millis()) {
+    peltiers.disable_peltiers();
+    set_fan_percentage(0.0);
+    return;  // exit this function, do not turn anything ON
+  }
+  end_time += millis_till_peltiers_drop_current;
+  if (end_time > millis()) {
+    set_fan = false;
+  }
+  if (set_fan == false) set_fan_percentage(0.0);
+  else set_fan_from_temperature();
+  adjust_pid_from_temperature();
+  pid_stabilize();
+}
+
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+
+void stabilize_to_room_temp() {
+  if (burning_hot()) {
+    adjust_pid_from_temperature();
+    pid_stabilize();
+    set_fan_percentage(0.5);
   }
   else {
-    // not targetting, so if we are far away from room temperature, put
-    // the fan on at a lower power level
-    if (abs(current_temp - TEMPERATURE_ROOM) > 5) {
-      set_fan_percentage(0.5);
-    }
-    else {
-      set_fan_percentage(0.0);
-    }
+    peltiers.disable_peltiers();
+    set_fan_percentage(0.0);
   }
 }
 
@@ -161,32 +217,24 @@ void stabilize_to_target_temp(int current_temp, bool set_fan=false){
 /////////////////////////////////
 /////////////////////////////////
 
-void _set_color_bar_from_range(int val, int middle) {
-  /*
-    This method uses a temperature range (Celsius), to set the color of the
-    RGBW color bar. It uses three data points in Celsius (min, middle, max),
-    and does a linear transition between them, then multiplies by the three
-    corresponding colors (cold, room, hot), to create a fade between colors
-  */
-  float cold[4] = {0, 0, 1, 0};
-  float room[4] = {0, 0, 0, 1};
-  float hot[4] = {1, 0, 0, 0};
-  if (!IS_TARGETING || abs(val - TARGET_TEMPERATURE) < 2) {
+void set_color_bar_from_temperature() {
+  // if we are targetting, and close to the value, stop flashing
+  if (!IS_TARGETING || abs(CURRENT_TEMPERATURE - TARGET_TEMPERATURE) < 1) {
     lights.flash_off();
   }
+  // targetting and not close to value, continue flashing
   else {
     lights.flash_on();
   }
-  if (TARGET_TEMPERATURE == middle || !IS_TARGETING) {
-    lights.set_color_bar(room[0], room[1], room[2], room[3]);
+
+  if (!IS_TARGETING) {
+    lights.set_color_bar(0, 0, 0, 1);  // white
   }
-  // cold
-  else if (TARGET_TEMPERATURE < middle) {
-    lights.set_color_bar(cold[0], cold[1], cold[2], cold[3]);
+  else if (TARGET_TEMPERATURE < TEMPERATURE_ROOM) {
+    lights.set_color_bar(0, 0, 1, 0);  // blue
   }
-  // hot
   else {
-    lights.set_color_bar(hot[0], hot[1], hot[2], hot[3]);
+    lights.set_color_bar(1, 0, 0, 0);  // red
   }
 }
 
@@ -194,9 +242,10 @@ void _set_color_bar_from_range(int val, int middle) {
 /////////////////////////////////
 /////////////////////////////////
 
-void update_temperature_display(int current_temp, boolean force=false){
-  lights.display_number(current_temp, force);
-  _set_color_bar_from_range(current_temp, TEMPERATURE_ROOM);
+void update_temperature_display(boolean force=false){
+  // round to closest whole-number temperature
+  lights.display_number(CURRENT_TEMPERATURE + 0.5, force);
+  set_color_bar_from_temperature();
 }
 
 /////////////////////////////////
@@ -227,9 +276,8 @@ void activate_bootloader(){
 /////////////////////////////////
 
 void disengage() {
-  peltiers.disable_peltiers();
+  set_target_temperature(TEMPERATURE_ROOM);
   IS_TARGETING = false;
-  set_fan_percentage(0.0);
   lights.flash_off();
 }
 
@@ -237,12 +285,12 @@ void print_temperature() {
   if (IS_TARGETING) {
     gcode.print_targetting_temperature(
       TARGET_TEMPERATURE,
-      thermistor.plate_temperature()
+      CURRENT_TEMPERATURE
     );
   }
   else {
     gcode.print_stablizing_temperature(
-      thermistor.plate_temperature()
+      CURRENT_TEMPERATURE
     );
   }
 }
@@ -281,6 +329,7 @@ void read_gcode(){
         case GCODE_SET_TEMP:
           if (gcode.read_int('S')) {
             set_target_temperature(gcode.parsed_int);
+            IS_TARGETING = true;
           }
           break;
         case GCODE_DISENGAGE:
@@ -304,19 +353,59 @@ void read_gcode(){
 /////////////////////////////////
 /////////////////////////////////
 
+void read_debug() {
+  if (Serial.available() > 0) {
+    if (Serial.peek() == 'k') {
+      Serial.read();
+      pid_Kp = Serial.parseFloat();
+      pid_Ki = Serial.parseFloat();
+      pid_Kd = Serial.parseFloat();
+      myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd);
+      Serial.print(" P=");Serial.println(pid_Kp);
+      Serial.print(" I=");Serial.println(pid_Ki);
+      Serial.print(" D=");Serial.println(pid_Kd);
+    }
+    else if (Serial.peek() == '\r') {
+      Serial.println();
+      Serial.print(" Target=");Serial.println(TARGET_TEMPERATURE);
+      Serial.print(" Current=");Serial.println(CURRENT_TEMPERATURE);
+      Serial.print(" Output=");Serial.println(TEMPERATURE_SWING);
+      Serial.print(" P=");Serial.println(pid_Kp);
+      Serial.print(" I=");Serial.println(pid_Ki);
+      Serial.print(" D=");Serial.println(pid_Kd);
+    }
+  }
+}
+
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+
 void setup() {
+  gcode.setup(115200);
+
+  set_fan_percentage(0.0);
+
   pinMode(pin_tone_out, OUTPUT);
   pinMode(pin_fan_pwm, OUTPUT);
-  gcode.setup(115200);
   memory.read_serial(device_serial);
   memory.read_model(device_model);
   peltiers.setup_peltiers();
-  set_fan_percentage(0);
   lights.setup_lights();
   lights.set_numbers_brightness(0.5);
   lights.set_color_bar_brightness(1.0);
+
+  while (!thermistor.update()) {}
+  CURRENT_TEMPERATURE = thermistor.plate_temperature();
+  TARGET_TEMPERATURE = TEMPERATURE_ROOM;
+  IS_TARGETING = false;
+  myPID.SetMode(AUTOMATIC);
+  myPID.SetSampleTime(100);
+  myPID.SetOutputLimits(-1.0, 1.0);
+  myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd);
+
   disengage();
-  update_temperature_display(thermistor.plate_temperature(), true);
+  update_temperature_display(true);  // force current temp to show (no debounce)
 }
 
 /////////////////////////////////
@@ -324,10 +413,24 @@ void setup() {
 /////////////////////////////////
 
 void loop(){
+  read_debug();
   read_gcode();
-  int current_temp = thermistor.plate_temperature();
-  update_temperature_display(current_temp, false);
-  stabilize_to_target_temp(current_temp, true);
+
+  if (thermistor.update()) {
+    CURRENT_TEMPERATURE = thermistor.plate_temperature();
+  }
+
+  update_temperature_display();
+
+  if (IS_TARGETING) {
+    stabilize_to_target_temp();
+  }
+  else {
+    stabilize_to_room_temp();
+  }
+
+  peltiers.update_peltier_cycle();
+
   check_if_bootloader_starts();
 }
 

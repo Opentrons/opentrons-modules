@@ -10,28 +10,16 @@ float Thermistor::_thermistor_temp_to_plate_temp(float thermistor_temp) {
   return (thermistor_temp * 0.937685) + 2.113056;
 }
 
-float Thermistor::_average_adc(int pin=-1, int numsamples=5) {
-  uint8_t i;
-  float samples[numsamples];
-  float average;
-  if (pin < 0){
-    pin = thermistor_pin;
-  }
-  for (i=0; i< numsamples; i++) {
-   samples[i] = analogRead(pin);
-   delayMicroseconds(50);
-  }
-  average = 0;
-  for (i=0; i< numsamples; i++) {
+float Thermistor::_average_adc() {
+  float average = 0;
+  for (uint8_t i=0; i< THERMISTOR_NUM_SAMPLES; i++) {
      average += samples[i];
   }
-  return average /= numsamples;
+  return average /= THERMISTOR_NUM_SAMPLES;
 }
 
-float Thermistor::plate_temperature(float avg_adc=-1){
-  if (avg_adc < 0) {
-    avg_adc = _average_adc(thermistor_pin, 5);
-  }
+float Thermistor::plate_temperature(){
+  float avg_adc = _average_adc();
   if (avg_adc < TABLE[TABLE_SIZE-1][0]) {
     return _thermistor_temp_to_plate_temp(TABLE[TABLE_SIZE-1][1]);
   }
@@ -52,4 +40,14 @@ float Thermistor::plate_temperature(float avg_adc=-1){
       }
     }
   }
+}
+
+bool Thermistor::update() {
+  samples[sample_index] = analogRead(thermistor_pin);
+  sample_index++;
+  if (sample_index >= THERMISTOR_NUM_SAMPLES) {
+    sample_index = 0;
+    return true;
+  }
+  return false;
 }

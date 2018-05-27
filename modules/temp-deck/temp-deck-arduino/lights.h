@@ -24,8 +24,6 @@ class Lights{
     void display_number(int number, bool force=false);
     void clear_display();
     void set_color_bar(float red, float green, float blue, float white);
-    void show_message_low(bool force=false);
-    void show_message_high(bool force=false);
     void set_color_bar_brightness(float brightness);
     void set_numbers_brightness(float brightness);
     void flash_on(int interval=1000);
@@ -56,34 +54,30 @@ class Lights{
       {1, 1, 1, 1, 0, 1, 1}   // 9
     };
 
-    const float message_low[2][7] = {
-      {0, 0, 0, 1, 1, 1, 0},  // L
-      {1, 1, 1, 1, 1, 1, 0}   // O
-    };
-
-    const float message_high[2][7] = {
-      {0, 1, 1, 0, 1, 1, 1},  // H
-      {0, 1, 1, 0, 0, 0, 0}   // I
-    };
-
     int _same_display_number_count = 0;
     int _previous_display_number = -100;
-    const int _same_display_number_threshold = 100;
+    int _previous_saved_number = -100;
+    const int _same_display_number_threshold = 300;
 
     float color_bar_brightness = 1.0;
     float numbers_brightness = 1.0;
 
     void set_pwm_pin(int pin, float val);
     void set_pwm_pin_inverse(int pin, float val);
-    bool _is_a_stable_number(int number);
+    bool _is_a_stable_number(int number, bool force=false);
     void _set_seven_segment(float digit_1[], float digit_2[]);
+    void update_flash_multiplier();
 
     unsigned long flash_timestamp = 0;
     float flash_multiplier = 1.0;
     int flash_direction = -1;  // 1 is up, -1 is down
     bool is_flashing = false;
-    int flash_interval = 1000;
+    int flash_interval = 1500;
     const float color_bar_min_brightness = 0.1;
+    unsigned long now_timestamp = 0;
+
+    float _color_bar_current[4] = {0, 0, 0, 0};
+    float _color_bar_previous[4] = {0, 0, 0, 0};
 };
 
 #endif
