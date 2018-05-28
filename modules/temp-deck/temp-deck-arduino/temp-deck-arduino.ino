@@ -60,10 +60,15 @@
 // (works according to testing so far...)
 #define UP_PID_LOW_TEMP 40
 #define UP_PID_HIGH_TEMP 100
-#define UP_PID_KP_AT_LOW_TEMP 0.17    // "Kp" when target is 40 degrees
-#define UP_PID_KP_AT_HIGH_TEMP 0.26   // "Ki" when target is 40 degrees
-#define UP_PID_KI_AT_LOW_TEMP 0.012   // "Kp" when target is 100 degrees
-#define UP_PID_KI_AT_HIGH_TEMP 0.0225 // "Ki" when target is 100 degrees
+#define UP_PID_KP_AT_LOW_TEMP 0.17    // "Kp" when target is UP_PID_LOW_TEMP
+#define UP_PID_KP_AT_HIGH_TEMP 0.26   // "Kp" when target is UP_PID_HIGH_TEMP
+#define UP_PID_KI_AT_LOW_TEMP 0.012   // "Ki" when target is UP_PID_LOW_TEMP
+#define UP_PID_KI_AT_HIGH_TEMP 0.0225 // "Ki" when target is UP_PID_HIGH_TEMP
+
+// the "Kp" and "Ki" value for whenever the target is ABOVE current temperature
+// BUT also in the cold zone (<15deg)
+#define UP_PID_KP_IN_COLD_ZONE 0.21
+#define UP_PID_KI_IN_COLD_ZONE 0.015
 
 // to use with the Arduino IDE's "Serial Plotter" graphing tool
 // (very, very useful when testing PID tuning values)
@@ -224,7 +229,11 @@ void adjust_pid_on_new_target() {
   pid_Kd = DEFAULT_PID_KD;
 
   if (moving_up()) {
-    if (TARGET_TEMPERATURE <= UP_PID_LOW_TEMP) {
+    if (target_cold_zone()) {
+      pid_Kp = UP_PID_KP_IN_COLD_ZONE;
+      pid_Ki = UP_PID_KI_IN_COLD_ZONE;
+    }
+    else if (TARGET_TEMPERATURE <= UP_PID_LOW_TEMP) {
       pid_Kp = UP_PID_KP_AT_LOW_TEMP;
       pid_Ki = UP_PID_KI_AT_LOW_TEMP;
     }
@@ -248,8 +257,9 @@ void adjust_pid_on_new_target() {
 /////////////////////////////////
 
 void stabilize_to_target_temp(bool set_fan=true){
-  // first, avoid drawing too much current when the target was just changed
+
 #ifdef CONSERVE_POWER_ON_SET_TARGET
+  // first, avoid drawing too much current when the target was just changed
   now = millis();
   if (SET_TEMPERATURE_TIMESTAMP > now) SET_TEMPERATURE_TIMESTAMP = now;  // handle rollover
   unsigned long end_time = SET_TEMPERATURE_TIMESTAMP + millis_till_fan_turns_off;
@@ -282,10 +292,12 @@ void stabilize_to_target_temp(bool set_fan=true){
   set_peltiers_from_pid();
 }
 
-void stabilize_to_room_temp() {
+void stabilize_to_room_temp(bool set_fan=true) {
   if (burning_hot()) {
     set_peltiers_from_pid();
-    set_fan_power(FAN_LOW);
+    if (set_fan) {
+      set_fan_power(FAN_LOW);
+    }
   }
   else {
     peltiers.disable_peltiers();
@@ -368,12 +380,12 @@ void print_temperature() {
   if (MASTER_SET_A_TARGET) {
     gcode.print_targetting_temperature(
       TARGET_TEMPERATURE,
-      CURRENT_TEMPERATURE
+      CURRENT_TEMPERATURE + 0.5  // round to closes whole-number
     );
   }
   else {
     gcode.print_stablizing_temperature(
-      CURRENT_TEMPERATURE
+      CURRENT_TEMPERATURE + 0.5  // round to closes whole-number
     );
   }
 }
@@ -428,14 +440,19 @@ void setup() {
 
   gcode.setup(115200);
 
-  set_fan_power(FAN_OFF);
-
   pinMode(PIN_BUZZER, OUTPUT);
   pinMode(PIN_FAN, OUTPUT);
+
+  set_fan_power(FAN_OFF);
+
+  // 250ms is the PWM cycle-time (up/down) for the peltiers
+  // it shouldn't be shorter than 100ms, as peltiers are not designed to cycle that fast
+  peltiers.setup_peltiers(250);
+  peltiers.disable_peltiers();
+
   memory.read_serial(device_serial);
   memory.read_model(device_model);
-  peltiers.setup_peltiers();
-  peltiers.disable_peltiers();
+
   lights.setup_lights();
   lights.set_numbers_brightness(0.25);
   lights.set_color_bar_brightness(0.5);
@@ -455,11 +472,6 @@ void setup() {
 
   turn_off_target();
   lights.startup_animation(CURRENT_TEMPERATURE, 2000);
-
-  while (true) {
-    set_fan_power(FAN_LOW);
-    peltiers.set_hot_percentage(0.5);
-  }
 }
 
 void loop(){
@@ -475,6 +487,9 @@ void loop(){
   }
 #endif
 
+  // update the peltiers' ON/OFF cycle
+  peltiers.update_peltier_cycle();
+
   read_gcode();
 
   if (thermistor.update()) {
@@ -484,15 +499,14 @@ void loop(){
   // update the temperature display, and color-bar
   update_led_display(true);  // debounce enabled
 
-  if (myPID.Compute() && MASTER_SET_A_TARGET) {  // Compute() should run every loop
-    stabilize_to_target_temp();
+  if (myPID.Compute()) {  // Compute() should run every loop
+    if (MASTER_SET_A_TARGET) {
+      stabilize_to_target_temp();
+    }
+    else {
+      stabilize_to_room_temp();
+    }
   }
-  else {
-    stabilize_to_room_temp();
-  }
-
-  // update the peltiers' ON/OFF cycle
-  peltiers.update_peltier_cycle();
 
   check_if_bootloader_starts();
 }

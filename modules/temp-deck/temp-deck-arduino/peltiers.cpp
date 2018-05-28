@@ -4,8 +4,8 @@ Peltiers::Peltiers(){
 }
 
 void Peltiers::set_peltiers_percentage(float a_state, float b_state){
-  peltier_on_time = int(float(max(a_state, b_state)) * float(PELTIER_CYCLE_MS));
-  peltier_off_time = int(PELTIER_CYCLE_MS) - peltier_on_time;
+  peltier_on_time = int(float(max(a_state, b_state)) * PELTIER_CYCLE_MS);
+  peltier_off_time = PELTIER_CYCLE_MS - peltier_on_time;
 //  Serial.print("Peltier duty cycle -> ");Serial.println(peltier_duty_cycle_ms);
   if (a_state > 0.0){
     peltier_high_pin = PELTIER_A_CONTROL;
@@ -69,7 +69,8 @@ void Peltiers::set_hot_percentage(float perc){
   set_peltiers_percentage(0, perc);
 }
 
-void Peltiers::setup_peltiers() {
+void Peltiers::setup_peltiers(int cycle_time_ms=DEFAULT_PELTIER_CYCLE_MS) {
+  PELTIER_CYCLE_MS = cycle_time_ms;
   pinMode(PELTIER_A_CONTROL, OUTPUT);
   pinMode(PELTIER_B_CONTROL, OUTPUT);
   pinMode(PELTIER_AB_ENABLE, OUTPUT);
