@@ -174,16 +174,16 @@ bool target_hot_zone() {
 /////////////////////////////////
 /////////////////////////////////
 
-void set_target_temperature(int target_temp){
+void set_target_temperature(double target_temp){
   if (target_temp < TEMPERATURE_MIN) {
     target_temp = TEMPERATURE_MIN;
     gcode.print_warning(
-      "Target temperature too low, setting to TEMPERATURE_MIN degrees");
+      F("Target temperature too low, setting to TEMPERATURE_MIN degrees"));
   }
   if (target_temp > TEMPERATURE_MAX) {
     target_temp = TEMPERATURE_MAX;
     gcode.print_warning(
-      "Target temperature too high, setting to TEMPERATURE_MAX degrees");
+      F("Target temperature too high, setting to TEMPERATURE_MAX degrees"));
   }
   TARGET_TEMPERATURE = target_temp;
   lights.flash_on();
@@ -357,7 +357,7 @@ void activate_bootloader(){
 }
 
 void start_dfu_timeout() {
-  gcode.print_warning("Restarting and entering bootloader in 1 second...");
+  gcode.print_warning(F("Restarting and entering bootloader in 1 second..."));
   START_BOOTLOADER = true;
   start_bootloader_timestamp = millis();
 }
@@ -380,12 +380,12 @@ void print_temperature() {
   if (MASTER_SET_A_TARGET) {
     gcode.print_targetting_temperature(
       TARGET_TEMPERATURE,
-      CURRENT_TEMPERATURE + 0.5  // round to closes whole-number
+      CURRENT_TEMPERATURE
     );
   }
   else {
     gcode.print_stablizing_temperature(
-      CURRENT_TEMPERATURE + 0.5  // round to closes whole-number
+      CURRENT_TEMPERATURE
     );
   }
 }

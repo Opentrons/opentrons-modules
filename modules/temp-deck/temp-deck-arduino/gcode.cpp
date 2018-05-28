@@ -58,13 +58,10 @@ bool Gcode::read_number(char key) {
   if (starting_key_index >= 0) {
     String number_string = "";
     char next_char;
-    boolean valid_command = false;
     bool decimal = false;
-    for (uint8_t i=1;i<4;i++) {
-      if (GCODE_BUFFER_STRING.length() <= starting_key_index + i) {
-        break;
-      }
-      next_char = GCODE_BUFFER_STRING.charAt(starting_key_index + i);
+    while (starting_key_index + 1 < GCODE_BUFFER_STRING.length()) {
+      starting_key_index++;
+      next_char = GCODE_BUFFER_STRING.charAt(starting_key_index);
       if (next_char >= '0' && next_char <= '9') {
         number_string += next_char;
       }
@@ -90,27 +87,27 @@ bool Gcode::read_number(char key) {
 }
 
 void Gcode::print_device_info(String serial, String model, String version) {
-  Serial.print("serial:");
+  Serial.print(F("serial:"));
   Serial.print(serial);
-  Serial.print(" model:");
+  Serial.print(F(" model:"));
   Serial.print(model);
-  Serial.print(" version:");
+  Serial.print(F(" version:"));
   Serial.print(version);
   Serial.println();
 }
 
-void Gcode::print_targetting_temperature(int target_temp, int current_temp) {
-  Serial.print("T:");
-  Serial.print(target_temp);
-  Serial.print(" C:");
-  Serial.println(current_temp);
+void Gcode::print_targetting_temperature(float target_temp, float current_temp) {
+  Serial.print(F("T:"));
+  Serial.print(target_temp, SERIAL_DIGITS_IN_RESPONSE);
+  Serial.print(F(" C:"));
+  Serial.println(current_temp, SERIAL_DIGITS_IN_RESPONSE);
 }
 
-void Gcode::print_stablizing_temperature(int current_temp) {
-  Serial.print("T:");
-  Serial.print("none");
-  Serial.print(" C:");
-  Serial.println(current_temp);
+void Gcode::print_stablizing_temperature(float current_temp) {
+  Serial.print(F("T:"));
+  Serial.print(F("none"));
+  Serial.print(F(" C:"));
+  Serial.println(current_temp, SERIAL_DIGITS_IN_RESPONSE);
 }
 
 void Gcode::print_warning(String msg) {
