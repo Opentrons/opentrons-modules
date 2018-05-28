@@ -38,7 +38,7 @@
 #define TEMPERATURE_FAN_CUTOFF_HOT 35
 #define TEMPERATURE_ROOM 25
 #define TEMPERATURE_BURN 55
-#define STABILIZING_ZONE 1
+#define STABILIZING_ZONE 0.5
 
 // the intensities of the fan (0.0-1.0)
 #define FAN_HIGH 0.85
@@ -74,7 +74,7 @@
 // (very, very useful when testing PID tuning values)
 // uncomment below line to print temperature and PID information
 
-#define DEBUG_PLOTTER_ENABLED
+//#define DEBUG_PLOTTER_ENABLED
 
 #ifdef DEBUG_PLOTTER_ENABLED
 #define DEBUG_PLOTTER_INTERVAL 250
