@@ -21,20 +21,34 @@
 #define TEMPERATURE_FAN_CUTOFF_HOT 35
 #define TEMPERATURE_ROOM 25
 #define TEMPERATURE_BURN 55
-#define STABILIZING_ZONE 2
+#define STABILIZING_ZONE 1
 
-#define FAN_HIGH 0.8
-#define FAN_LOW 0.5
-#define FAN_OFF 0.5
+#define FAN_HIGH 0.85
+#define FAN_LOW 0.4
+#define FAN_OFF 0.0
 
-#define DEFAULT_PID_KP 1.2
-#define DEFAULT_PID_KI 0.1
-#define DEFAULT_PID_KD 1.0
+#define DEFAULT_PID_KD 0.0
+
+#define DOWN_PID_KP 0.38
+#define DOWN_PID_KI 0.0275
+
+#define UP_MIN_PID_KP 0.17
+#define UP_MIN_PID_KI 0.012
+
+#define UP_MAX_PID_KP 0.26
+#define UP_MAX_PID_KI 0.0225
+
+#define UP_MIN_PID_TEMP 40
+#define UP_MAX_PID_TEMP 100
 
 #define PID_ENABLED_ZONE 10
 
-// uncomment to print temperature and PID information when receiving a '\r'
-#define TEMPDECK_DEBUG 1
+// uncomment below 3 lines to print temperature and PID information
+// to use with the Arduino IDE's "Serial Plotter" graphing tool
+
+// #define DEBUG_PLOTTER_ENABLED 1
+// #define DEBUG_PLOTTER_INTERVAL 250
+// unsigned long debug_plotter_timestamp = 0;
 
 Lights lights = Lights();
 Peltiers peltiers = Peltiers();
@@ -56,11 +70,10 @@ double CURRENT_TEMPERATURE = TEMPERATURE_ROOM;
 bool IS_TARGETING = false;
 
 double TEMPERATURE_SWING;  // -1.0 is full cold peltiers, +1.0 is full hot peltiers, can be between
-double pid_Setpoint;
-double pid_Kp = DEFAULT_PID_KP;  // reduces rise time, increases overshoot
-double pid_Ki = DEFAULT_PID_KI;  // reduces steady-state error, increases overshoot
-double pid_Kd = DEFAULT_PID_KD;  // reduces overshoot, reduces settling time
-PID myPID(&CURRENT_TEMPERATURE, &pid_Setpoint, &TARGET_TEMPERATURE, pid_Kp, pid_Ki, pid_Kd, P_ON_M, DIRECT);
+double pid_Kp = DOWN_PID_KP;  // reduces rise time, increases overshoot
+double pid_Ki = DOWN_PID_KI;  // reduces steady-state error, increases overshoot
+double pid_Kd = DEFAULT_PID_KD;
+PID myPID(&CURRENT_TEMPERATURE, &TEMPERATURE_SWING, &TARGET_TEMPERATURE, pid_Kp, pid_Ki, pid_Kd, P_ON_M, DIRECT);
 
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
@@ -72,6 +85,14 @@ String device_version = "edge-1a2b3c4";
 
 bool stabilizing() {
   return abs(TARGET_TEMPERATURE - CURRENT_TEMPERATURE) < STABILIZING_ZONE;
+}
+
+bool moving_down() {
+  return CURRENT_TEMPERATURE - TARGET_TEMPERATURE > STABILIZING_ZONE;
+}
+
+bool moving_up() {
+  return TARGET_TEMPERATURE - CURRENT_TEMPERATURE > STABILIZING_ZONE;
 }
 
 bool burning_hot() {
@@ -143,38 +164,35 @@ void set_fan_power(float percentage){
 /////////////////////////////////
 /////////////////////////////////
 
-void pid_stabilize_to_target() {
-  if (myPID.Compute()) {
-    if (TARGET_TEMPERATURE - CURRENT_TEMPERATURE > PID_ENABLED_ZONE) {
-      TEMPERATURE_SWING = 1.0;
-    }
-    else if (CURRENT_TEMPERATURE - TARGET_TEMPERATURE > PID_ENABLED_ZONE) {
-      TEMPERATURE_SWING = -1.0;
-    }
-    else {
-      TEMPERATURE_SWING = pid_Setpoint;
-    }
-
-    if (TEMPERATURE_SWING < 0) {
-      peltiers.set_cold_percentage(abs(TEMPERATURE_SWING));
-    }
-    else {
-      peltiers.set_hot_percentage(TEMPERATURE_SWING);
-    }
+void set_peltiers_from_pid() {
+  if (TEMPERATURE_SWING < 0) {
+    peltiers.set_cold_percentage(abs(TEMPERATURE_SWING));
+  }
+  else {
+    peltiers.set_hot_percentage(TEMPERATURE_SWING);
   }
 }
 
 void adjust_pid_on_new_target() {
-  pid_Kp = DEFAULT_PID_KP;
-  pid_Ki = DEFAULT_PID_KI;
+  pid_Kp = DOWN_PID_KP;
+  pid_Ki = DOWN_PID_KI;
   pid_Kd = DEFAULT_PID_KD;
 
-  if (TARGET_TEMPERATURE > 90) {
-    pid_Kp = 0.8;
-    pid_Kd = 0.1;
-  }
-  else if (TARGET_TEMPERATURE > 80) {
-    pid_Kp = 0.9;
+  if (moving_up()) {
+    if (TARGET_TEMPERATURE <= UP_MIN_PID_TEMP) {
+      pid_Kp = UP_MIN_PID_KP;
+      pid_Ki = UP_MIN_PID_KI;
+    }
+    else if (TARGET_TEMPERATURE >= UP_MAX_PID_TEMP) {
+      pid_Kp = UP_MAX_PID_KP;
+      pid_Ki = UP_MAX_PID_KI;
+    }
+    else {
+      // linear function between the MIN and MAX Kp and Ki values when moving up
+      float scaler = (TARGET_TEMPERATURE - UP_MIN_PID_TEMP) / (UP_MAX_PID_TEMP - UP_MIN_PID_TEMP);
+      pid_Kp = UP_MIN_PID_KP + (scaler * (UP_MAX_PID_KP - UP_MIN_PID_KP));
+      pid_Ki = UP_MIN_PID_KI + (scaler * (UP_MAX_PID_KI - UP_MIN_PID_KI));
+    }
   }
 
   myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd, P_ON_M);
@@ -185,33 +203,41 @@ void adjust_pid_on_new_target() {
 /////////////////////////////////
 
 void stabilize_to_target_temp(bool set_fan=true){
+  // first, avoid drawing too much current when the target was just changed
   now = millis();
   if (SET_TEMPERATURE_TIMESTAMP > now) SET_TEMPERATURE_TIMESTAMP = now;  // handle rollover
   unsigned long end_time = SET_TEMPERATURE_TIMESTAMP + millis_till_fan_turns_off;
   if (end_time > now) {
     peltiers.disable_peltiers();
     set_fan_power(FAN_OFF);
-    return;  // exit this function, do not turn anything ON
+    return;  // EXIT the function, do nothing, wait
   }
   end_time += millis_till_peltiers_drop_current;
   if (end_time > now) {
     set_fan = false;
   }
+
+  // seconds, set the fan to the correct intensity
   if (set_fan == false) {
     set_fan_power(FAN_OFF);
   }
   else if (target_cold_zone()) {
     set_fan_power(FAN_HIGH);
   }
+  else if (target_middle_zone() && moving_down()) {
+    set_fan_power(FAN_HIGH);
+  }
   else {
     set_fan_power(FAN_LOW);
   }
-  pid_stabilize_to_target();
+
+  // third, update the
+  set_peltiers_from_pid();
 }
 
 void stabilize_to_room_temp() {
   if (burning_hot()) {
-    pid_stabilize_to_target();
+    set_peltiers_from_pid();
     set_fan_power(FAN_LOW);
   }
   else {
@@ -224,9 +250,11 @@ void stabilize_to_room_temp() {
 /////////////////////////////////
 /////////////////////////////////
 
-void set_color_bar_from_temperature() {
+void update_led_display(boolean debounce=true){
+  // round to closest whole-number temperature
+  lights.display_number(CURRENT_TEMPERATURE + 0.5, debounce);
   // if we are targetting, and close to the value, stop flashing
-  if (!IS_TARGETING || abs(CURRENT_TEMPERATURE - TARGET_TEMPERATURE) < 1) {
+  if (!IS_TARGETING || stabilizing()) {
     lights.flash_off();
   }
   // targetting and not close to value, continue flashing
@@ -234,6 +262,7 @@ void set_color_bar_from_temperature() {
     lights.flash_on();
   }
 
+  // set the color-bar color depending on if we're targing hot or cold temperatures
   if (!IS_TARGETING) {
     lights.set_color_bar(0, 0, 0, 1);  // white
   }
@@ -243,12 +272,6 @@ void set_color_bar_from_temperature() {
   else {
     lights.set_color_bar(1, 0, 0, 0);  // red
   }
-}
-
-void update_temperature_display(boolean debounce=true){
-  // round to closest whole-number temperature
-  lights.display_number(CURRENT_TEMPERATURE + 0.5, debounce);
-  set_color_bar_from_temperature();
 }
 
 /////////////////////////////////
@@ -331,7 +354,7 @@ void read_gcode(){
           if (gcode.read_number('D')) {
             pid_Kd = gcode.parsed_number;
           }
-          myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd);
+          myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd, P_ON_M);
           break;
         case GCODE_DISENGAGE:
           disengage();
@@ -373,7 +396,6 @@ void setup() {
   while (!thermistor.update()) {}
   CURRENT_TEMPERATURE = thermistor.plate_temperature();
   TARGET_TEMPERATURE = TEMPERATURE_ROOM;
-  IS_TARGETING = false;
 
   // setup PID
   myPID.SetMode(AUTOMATIC);
@@ -385,21 +407,16 @@ void setup() {
   lights.startup_animation(CURRENT_TEMPERATURE, 2000);
 }
 
-int debug_interval = 250;
-unsigned long debug_timestamp = 0;
-
 void loop(){
 
-#ifdef TEMPDECK_DEBUG
-  if (debug_timestamp + debug_interval < millis()) {
-    debug_timestamp = millis();
-    Serial.print(" Target=");Serial.println(TARGET_TEMPERATURE);
-    Serial.print(" Current=");Serial.println(CURRENT_TEMPERATURE);
-    Serial.print(" Swing=");Serial.println(TEMPERATURE_SWING);
-    Serial.print(" P=");Serial.println(pid_Kp);
-    Serial.print(" I=");Serial.println(pid_Ki);
-    Serial.print(" D=");Serial.println(pid_Kd);
-    Serial.println();
+#ifdef DEBUG_PLOTTER_ENABLED
+  if (debug_plotter_timestamp + DEBUG_PLOTTER_INTERVAL < millis()) {
+    debug_plotter_timestamp = millis();
+    Serial.print(TARGET_TEMPERATURE);
+    Serial.print('\t');
+    Serial.print(CURRENT_TEMPERATURE);
+    Serial.print('\t');
+    Serial.println((TEMPERATURE_SWING * 50) + 50.0);
   }
 #endif
 
@@ -410,9 +427,9 @@ void loop(){
   }
 
   // update the temperature display, and color-bar
-  update_temperature_display(true);  // debounce enabled
+  update_led_display(true);  // debounce enabled
 
-  if (IS_TARGETING) {
+  if (myPID.Compute() && IS_TARGETING) {  // Compute() should run every loop
     stabilize_to_target_temp();
   }
   else {
