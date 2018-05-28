@@ -3,81 +3,123 @@
 /////////////////////////////////
 
 #include <Arduino.h>
-#include "memory.h"
+
+/*
+  PID library written by github user br3ttb:
+  can be found at:
+  https://github.com/br3ttb/Arduino-PID-Library
+*/
+#include <PID_v1.h>
+
+/*
+  the below "lights.h" class uses Adafruit's 16-channel PWM I2C driver library
+  can be found at:
+  https://github.com/adafruit/Adafruit-PWM-Servo-Driver-Library
+*/
 #include "lights.h"
+
+// load in some custom classes for this device
+#include "memory.h"
 #include "peltiers.h"
 #include "thermistor.h"
 #include "gcode.h"
 
-#include <PID_v1.h>
 
-#define pin_tone_out 11
-#define pin_fan_pwm 9
+#define PIN_BUZZER 11  // a piezo buzzer we can use tone() with
+#define PIN_FAN 9      // blower-fan controlled by simple PWM analogWrite()
 
+// the maximum temperatures the device can target
+// this is limitted mostly by the 2-digit temperature display
 #define TEMPERATURE_MAX 99
 #define TEMPERATURE_MIN -9
 
+// some temperature zones to help decide on states
 #define TEMPERATURE_FAN_CUTOFF_COLD 15
 #define TEMPERATURE_FAN_CUTOFF_HOT 35
 #define TEMPERATURE_ROOM 25
 #define TEMPERATURE_BURN 55
 #define STABILIZING_ZONE 1
 
+// the intensities of the fan (0.0-1.0)
 #define FAN_HIGH 0.85
 #define FAN_LOW 0.4
 #define FAN_OFF 0.0
 
+// the "Kd" of the PID never changes in our setup
+// (works according to testing so far...)
 #define DEFAULT_PID_KD 0.0
 
+// the "Kp" and "Ki" value for whenever the target is BELOW current temperature
+// stays constant for all target temperature
+// (works according to testing so far...)
 #define DOWN_PID_KP 0.38
 #define DOWN_PID_KI 0.0275
 
-#define UP_MIN_PID_KP 0.17
-#define UP_MIN_PID_KI 0.012
+// the "Kp" and "Ki" value for whenever the target is ABOVE current temperature
+// linear interpolation between LOW and HIGH target values
+// (works according to testing so far...)
+#define UP_PID_LOW_TEMP 40
+#define UP_PID_HIGH_TEMP 100
+#define UP_PID_KP_AT_LOW_TEMP 0.17    // "Kp" when target is 40 degrees
+#define UP_PID_KP_AT_HIGH_TEMP 0.26   // "Ki" when target is 40 degrees
+#define UP_PID_KI_AT_LOW_TEMP 0.012   // "Kp" when target is 100 degrees
+#define UP_PID_KI_AT_HIGH_TEMP 0.0225 // "Ki" when target is 100 degrees
 
-#define UP_MAX_PID_KP 0.26
-#define UP_MAX_PID_KI 0.0225
-
-#define UP_MIN_PID_TEMP 40
-#define UP_MAX_PID_TEMP 100
-
-#define PID_ENABLED_ZONE 10
-
-// uncomment below 3 lines to print temperature and PID information
 // to use with the Arduino IDE's "Serial Plotter" graphing tool
+// (very, very useful when testing PID tuning values)
+// uncomment below line to print temperature and PID information
 
-// #define DEBUG_PLOTTER_ENABLED 1
-// #define DEBUG_PLOTTER_INTERVAL 250
-// unsigned long debug_plotter_timestamp = 0;
+#define DEBUG_PLOTTER_ENABLED
 
-Lights lights = Lights();
-Peltiers peltiers = Peltiers();
-Thermistor thermistor = Thermistor();
-Gcode gcode = Gcode();
-Memory memory = Memory();
+#ifdef DEBUG_PLOTTER_ENABLED
+#define DEBUG_PLOTTER_INTERVAL 250
+unsigned long debug_plotter_timestamp = 0;
+#endif
 
-bool START_BOOTLOADER = false;
-unsigned long start_bootloader_timestamp = 0;
-const int start_bootloader_timeout = 1000;
+// when a new target-temperature is set, and the peltiers need to shift directions suddenly
+// that is the moment when they draw the most current (4.3 amps). If the fan is on HIGH
+// at the same time (>2.0 amps) then we are over-working our 6.1 amp power supply.
+// So, these variables are used whenever a NEW target temperature is set. They do the following:
+//    1) turn off both the peltiers and fan, and wait until the fan has completely shut down (do nothing until then)
+//    3) once fan is off, turn on the peltiers to the correct state (potentially drawing 4.3 amps!)
+//    4) after the the peltiers' current has dropping some, turn the fan back on
 
+// uncomment to turn off system after setting the temperature
+//#define CONSERVE_POWER_ON_SET_TARGET
+
+#ifdef CONSERVE_POWER_ON_SET_TARGET
 unsigned long SET_TEMPERATURE_TIMESTAMP = 0;
-const unsigned long millis_till_fan_turns_off = 200;
-const unsigned long millis_till_peltiers_drop_current = 200;
-unsigned long now;
+const unsigned long millis_till_fan_turns_off = 2000; // how long to wait before #1 and #2 from the list above
+const unsigned long millis_till_peltiers_drop_current = 2000; // how long to wait before #2 and #3 from the list above
+#endif
 
+// -1.0 is full cold peltiers, +1.0 is full hot peltiers, can be between the two
+double TEMPERATURE_SWING;
 double TARGET_TEMPERATURE = TEMPERATURE_ROOM;
 double CURRENT_TEMPERATURE = TEMPERATURE_ROOM;
-bool IS_TARGETING = false;
+bool MASTER_SET_A_TARGET = false;
 
-double TEMPERATURE_SWING;  // -1.0 is full cold peltiers, +1.0 is full hot peltiers, can be between
-double pid_Kp = DOWN_PID_KP;  // reduces rise time, increases overshoot
-double pid_Ki = DOWN_PID_KI;  // reduces steady-state error, increases overshoot
+double pid_Kp = DOWN_PID_KP;
+double pid_Ki = DOWN_PID_KI;
 double pid_Kd = DEFAULT_PID_KD;
+
 PID myPID(&CURRENT_TEMPERATURE, &TEMPERATURE_SWING, &TARGET_TEMPERATURE, pid_Kp, pid_Ki, pid_Kd, P_ON_M, DIRECT);
 
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
-String device_version = "edge-1a2b3c4";
+String device_version = "temp-deck-pid-8afd7b7";
+
+Lights lights = Lights();  // controls 2-digit 7-segment numbers, and the RGBW color bar
+Peltiers peltiers = Peltiers();  // 2 peltiers wired in series (-1.0<->1.0 controls polarity and intensity)
+Thermistor thermistor = Thermistor();  // uses thermistor to read calculate the top-plate's temperature
+Gcode gcode = Gcode();  // reads in serial data to parse command and issue reponses
+Memory memory = Memory();  // reads from EEPROM to find device's unique serial, and model number
+
+// some variables to help initiate the bootloader some time after it has been commanded to start
+unsigned long now;
+bool START_BOOTLOADER = false;
+unsigned long start_bootloader_timestamp = 0;
+const int start_bootloader_timeout = 1000;
 
 /////////////////////////////////
 /////////////////////////////////
@@ -139,15 +181,18 @@ void set_target_temperature(int target_temp){
       "Target temperature too high, setting to TEMPERATURE_MAX degrees");
   }
   TARGET_TEMPERATURE = target_temp;
-  SET_TEMPERATURE_TIMESTAMP = millis();
   lights.flash_on();
+
+#ifdef CONSERVE_POWER_ON_SET_TARGET
+  SET_TEMPERATURE_TIMESTAMP = millis();
+#endif
 
   adjust_pid_on_new_target();
 }
 
-void disengage() {
+void turn_off_target() {
   set_target_temperature(TEMPERATURE_ROOM);
-  IS_TARGETING = false;
+  MASTER_SET_A_TARGET = false;
   lights.flash_off();
 }
 
@@ -157,7 +202,7 @@ void disengage() {
 
 void set_fan_power(float percentage){
   percentage = constrain(percentage, 0.0, 1.0);
-  analogWrite(pin_fan_pwm, int(percentage * 255.0));
+  analogWrite(PIN_FAN, int(percentage * 255.0));
 }
 
 /////////////////////////////////
@@ -179,19 +224,19 @@ void adjust_pid_on_new_target() {
   pid_Kd = DEFAULT_PID_KD;
 
   if (moving_up()) {
-    if (TARGET_TEMPERATURE <= UP_MIN_PID_TEMP) {
-      pid_Kp = UP_MIN_PID_KP;
-      pid_Ki = UP_MIN_PID_KI;
+    if (TARGET_TEMPERATURE <= UP_PID_LOW_TEMP) {
+      pid_Kp = UP_PID_KP_AT_LOW_TEMP;
+      pid_Ki = UP_PID_KI_AT_LOW_TEMP;
     }
-    else if (TARGET_TEMPERATURE >= UP_MAX_PID_TEMP) {
-      pid_Kp = UP_MAX_PID_KP;
-      pid_Ki = UP_MAX_PID_KI;
+    else if (TARGET_TEMPERATURE >= UP_PID_HIGH_TEMP) {
+      pid_Kp = UP_PID_KP_AT_HIGH_TEMP;
+      pid_Ki = UP_PID_KI_AT_HIGH_TEMP;
     }
     else {
       // linear function between the MIN and MAX Kp and Ki values when moving up
-      float scaler = (TARGET_TEMPERATURE - UP_MIN_PID_TEMP) / (UP_MAX_PID_TEMP - UP_MIN_PID_TEMP);
-      pid_Kp = UP_MIN_PID_KP + (scaler * (UP_MAX_PID_KP - UP_MIN_PID_KP));
-      pid_Ki = UP_MIN_PID_KI + (scaler * (UP_MAX_PID_KI - UP_MIN_PID_KI));
+      float scaler = (TARGET_TEMPERATURE - UP_PID_LOW_TEMP) / (UP_PID_HIGH_TEMP - UP_PID_LOW_TEMP);
+      pid_Kp = UP_PID_KP_AT_LOW_TEMP + (scaler * (UP_PID_KP_AT_HIGH_TEMP - UP_PID_KP_AT_LOW_TEMP));
+      pid_Ki = UP_PID_KI_AT_LOW_TEMP + (scaler * (UP_PID_KI_AT_HIGH_TEMP - UP_PID_KI_AT_LOW_TEMP));
     }
   }
 
@@ -204,6 +249,7 @@ void adjust_pid_on_new_target() {
 
 void stabilize_to_target_temp(bool set_fan=true){
   // first, avoid drawing too much current when the target was just changed
+#ifdef CONSERVE_POWER_ON_SET_TARGET
   now = millis();
   if (SET_TEMPERATURE_TIMESTAMP > now) SET_TEMPERATURE_TIMESTAMP = now;  // handle rollover
   unsigned long end_time = SET_TEMPERATURE_TIMESTAMP + millis_till_fan_turns_off;
@@ -216,6 +262,7 @@ void stabilize_to_target_temp(bool set_fan=true){
   if (end_time > now) {
     set_fan = false;
   }
+#endif
 
   // seconds, set the fan to the correct intensity
   if (set_fan == false) {
@@ -254,7 +301,7 @@ void update_led_display(boolean debounce=true){
   // round to closest whole-number temperature
   lights.display_number(CURRENT_TEMPERATURE + 0.5, debounce);
   // if we are targetting, and close to the value, stop flashing
-  if (!IS_TARGETING || stabilizing()) {
+  if (!MASTER_SET_A_TARGET || stabilizing()) {
     lights.flash_off();
   }
   // targetting and not close to value, continue flashing
@@ -263,7 +310,7 @@ void update_led_display(boolean debounce=true){
   }
 
   // set the color-bar color depending on if we're targing hot or cold temperatures
-  if (!IS_TARGETING) {
+  if (!MASTER_SET_A_TARGET) {
     lights.set_color_bar(0, 0, 0, 1);  // white
   }
   else if (TARGET_TEMPERATURE < TEMPERATURE_ROOM) {
@@ -318,7 +365,7 @@ void check_if_bootloader_starts() {
 /////////////////////////////////
 
 void print_temperature() {
-  if (IS_TARGETING) {
+  if (MASTER_SET_A_TARGET) {
     gcode.print_targetting_temperature(
       TARGET_TEMPERATURE,
       CURRENT_TEMPERATURE
@@ -343,7 +390,7 @@ void read_gcode(){
         case GCODE_SET_TEMP:
           if (gcode.read_number('S')) {
             set_target_temperature(gcode.parsed_number);
-            IS_TARGETING = true;
+            MASTER_SET_A_TARGET = true;
           }
           if (gcode.read_number('P')) {
             pid_Kp = gcode.parsed_number;
@@ -357,7 +404,7 @@ void read_gcode(){
           myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd, P_ON_M);
           break;
         case GCODE_DISENGAGE:
-          disengage();
+          turn_off_target();
           break;
         case GCODE_DEVICE_INFO:
           gcode.print_device_info(device_serial, device_model, device_version);
@@ -383,11 +430,12 @@ void setup() {
 
   set_fan_power(FAN_OFF);
 
-  pinMode(pin_tone_out, OUTPUT);
-  pinMode(pin_fan_pwm, OUTPUT);
+  pinMode(PIN_BUZZER, OUTPUT);
+  pinMode(PIN_FAN, OUTPUT);
   memory.read_serial(device_serial);
   memory.read_model(device_model);
   peltiers.setup_peltiers();
+  peltiers.disable_peltiers();
   lights.setup_lights();
   lights.set_numbers_brightness(0.25);
   lights.set_color_bar_brightness(0.5);
@@ -399,12 +447,19 @@ void setup() {
 
   // setup PID
   myPID.SetMode(AUTOMATIC);
-  myPID.SetSampleTime(500);
+  myPID.SetSampleTime(500);  // since peltier's update at 250ms, PID can be slower
   myPID.SetOutputLimits(-1.0, 1.0);
   myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd, P_ON_M);
+  // make sure we start with a calculated PID output
+  while (!myPID.Compute()) {}
 
-  disengage();
+  turn_off_target();
   lights.startup_animation(CURRENT_TEMPERATURE, 2000);
+
+  while (true) {
+    set_fan_power(FAN_LOW);
+    peltiers.set_hot_percentage(0.5);
+  }
 }
 
 void loop(){
@@ -429,7 +484,7 @@ void loop(){
   // update the temperature display, and color-bar
   update_led_display(true);  // debounce enabled
 
-  if (myPID.Compute() && IS_TARGETING) {  // Compute() should run every loop
+  if (myPID.Compute() && MASTER_SET_A_TARGET) {  // Compute() should run every loop
     stabilize_to_target_temp();
   }
   else {

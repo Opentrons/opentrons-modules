@@ -7,6 +7,11 @@
 
 #include "Arduino.h"
 
+/*
+  we use Adafruit's 16-channel PWM I2C driver library
+  can be found at:
+  https://github.com/adafruit/Adafruit-PWM-Servo-Driver-Library
+*/
 #include <Adafruit_PWMServoDriver.h>
 
 #define red_led 5

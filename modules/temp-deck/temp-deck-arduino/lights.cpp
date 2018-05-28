@@ -1,6 +1,11 @@
 #include "Lights.h"
 
 Lights::Lights(){
+/*
+  we use Adafruit's 16-channel PWM I2C driver library
+  can be found at:
+  https://github.com/adafruit/Adafruit-PWM-Servo-Driver-Library
+*/
   pwm = Adafruit_PWMServoDriver();
 }
 
@@ -41,8 +46,14 @@ void Lights::_set_seven_segment(float * digit_1, float * digit_2) {
 
 void Lights::_update_flash_multiplier() {
   if (!is_flashing) {
-    flash_multiplier = 1.0;
-    return;
+    // only force it to be solid once the cycle is close to the top
+    // if it is not at the top, then keep updating as if we are still flashing
+    if (flash_multiplier < 1.0 && flash_multiplier > 0.9) {
+      flash_multiplier = 1.0;
+    }
+    if (flash_multiplier == 1.0) {
+      return;
+    }
   }
   now = millis();
   if (flash_timestamp > now) flash_timestamp = now; // handle rollover

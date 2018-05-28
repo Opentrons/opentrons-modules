@@ -11,6 +11,8 @@
 #define PELTIER_B_CONTROL 10
 #define PELTIER_AB_ENABLE 8
 
+#define DEFAULT_PELTIER_CYCLE_MS 100
+
 class Peltiers{
   public:
 
@@ -30,7 +32,7 @@ class Peltiers{
     boolean enabled = false;
     boolean peltiers_currently_on = false;
 
-    const float PELTIER_CYCLE_MS = 100.0;
+    const float PELTIER_CYCLE_MS = 100;
     unsigned long peltier_cycle_timestamp = 0;
     unsigned long now = 0;
 

@@ -124,5 +124,5 @@ void Gcode::setup(int baudrate) {
   COMMAND_CODES[GCODE_DISENGAGE] =    "M18";
   COMMAND_CODES[GCODE_DFU] =          "dfu";
   Serial.begin(baudrate);
-  Serial.setTimeout(30);
+  Serial.setTimeout(3);
 }
