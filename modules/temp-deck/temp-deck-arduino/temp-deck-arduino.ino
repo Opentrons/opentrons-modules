@@ -403,7 +403,7 @@ void read_gcode(){
           gcode.print_device_info(device_serial, device_model, device_version);
           break;
         case GCODE_DFU:
-          gcode.print_warning(F("Restarting and entering bootloader in 1 second..."));
+          gcode.print_warning(F("Restarting and entering bootloader..."));
           activate_bootloader();
 
           break;
@@ -415,11 +415,20 @@ void read_gcode(){
   }
 }
 
+void turn_off_serial_lights() {
+  // disable the Tx/Rx LED output (too distracting)
+  TXLED1;
+  RXLED1;
+}
+
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
 
 void setup() {
+
+  turn_off_serial_lights();
+
   wdt_disable();          /* Disable watchdog if enabled by bootloader/fuses */
 
   gcode.setup(115200);
@@ -459,6 +468,8 @@ void setup() {
 }
 
 void loop(){
+
+  turn_off_serial_lights();
 
 #ifdef DEBUG_PLOTTER_ENABLED
   if (debug_plotter_timestamp + DEBUG_PLOTTER_INTERVAL < millis()) {
