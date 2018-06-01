@@ -5,7 +5,9 @@
 
 #define NO_TARGET_TEMP_SET 32766
 
-#define MAX_SERIAL_BUFFER_LENGTH 500
+#define MAX_SERIAL_BUFFER_LENGTH 100
+#define MAX_SERIAL_DIGITS_IN_NUMBER 7
+#define SERIAL_DIGITS_IN_RESPONSE 3
 
 #define GCODE_NO_CODE               -1
 #define GCODE_GET_TEMP              0
@@ -25,11 +27,11 @@ class Gcode{
         bool pop_command();
         void send_ack();
         int code;
-        int parsed_int;
+        float parsed_number = 0;
         void print_device_info(String serial, String model, String version);
-        void print_targetting_temperature(int target_temp, int current_temp);
-        void print_stablizing_temperature(int current_temp);
-        bool read_int(char key);
+        void print_targetting_temperature(float target_temp, float current_temp);
+        void print_stablizing_temperature(float current_temp);
+        bool read_number(char key);
         void print_warning(String msg);
 
     private:
