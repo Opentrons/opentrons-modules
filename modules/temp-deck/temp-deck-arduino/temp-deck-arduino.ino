@@ -39,13 +39,6 @@
 #define TEMPERATURE_FAN_CUTOFF_HOT 35
 #define TEMPERATURE_ROOM 25
 
-// comment out the below line if you are NOT using WDT to enter the bootloader
-#define BOOTLOADER_ON_WDTO
-
-#ifdef BOOTLOADER_ON_WDTO
-#define WD_TIMEOUT 15
-#endif
-
 #define TEMPERATURE_BURN 55
 #define STABILIZING_ZONE 0.5
 
@@ -347,34 +340,15 @@ void update_led_display(boolean debounce=true){
 /////////////////////////////////
 
 void activate_bootloader(){
-#ifdef BOOTLOADER_ON_WDTO
   // Method 1: Uses a WDT reset to enter bootloader.
   // Works on the modified Caterina bootloader that allows 
   // bootloader access after a WDT reset
   // -----------------------------------------------------------------
   wdt_enable(WDTO_15MS);  //Timeout
   unsigned long timerStart = millis();
-  while(millis() - timerStart < WD_TIMEOUT + 100){
+  while(millis() - timerStart < 25){
     //Wait out until WD times out
   }
-#else
-  // Method 2: Uses a jump to bootloader location from within the code
-  // -----------------------------------------------------------------
-  cli();
-  // disable watchdog, if enabled
-  // disable all peripherals
-  UDCON = 1;
-  USBCON = (1<<FRZCLK);  // disable USB
-  UCSR1B = 0;
-  _delay_ms(5);
-  #if defined(__AVR_ATmega32U4__)
-      EIMSK = 0; PCICR = 0; SPCR = 0; ACSR = 0; EECR = 0; ADCSRA = 0;
-      TIMSK0 = 0; TIMSK1 = 0; TIMSK3 = 0; TIMSK4 = 0; UCSR1B = 0; TWCR = 0;
-      DDRB = 0; DDRC = 0; DDRD = 0; DDRE = 0; DDRF = 0; TWCR = 0;
-      PORTB = 0; PORTC = 0; PORTD = 0; PORTE = 0; PORTF = 0;
-      asm volatile("jmp 0x7000");   //Bootloader start address
-  #endif
-#endif
   // Should never get here but in case it does because 
   // WDT failed to start or timeout..
 }
@@ -446,10 +420,7 @@ void read_gcode(){
 /////////////////////////////////
 
 void setup() {
-
-#ifdef BOOTLOADER_ON_WDTO
   wdt_disable();          /* Disable watchdog if enabled by bootloader/fuses */
-#endif
 
   gcode.setup(115200);
 
