@@ -39,10 +39,11 @@
 #define TEMPERATURE_FAN_CUTOFF_HOT 35
 #define TEMPERATURE_ROOM 25
 
-#define BOOTLOADER_ON_WDTO TRUE
+// comment out the below line if you are NOT using WDT to enter the bootloader
+#define BOOTLOADER_ON_WDTO
 
-#if BOOTLOADER_ON_WDTO == TRUE
-#define WD_TIMEOUT 1000
+#ifdef BOOTLOADER_ON_WDTO
+#define WD_TIMEOUT 15
 #endif
 
 #define TEMPERATURE_BURN 55
@@ -120,7 +121,7 @@ PID myPID(&CURRENT_TEMPERATURE, &TEMPERATURE_SWING, &TARGET_TEMPERATURE, pid_Kp,
 
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
-String device_version = "temp-deck-pid-8afd7b7";
+String device_version = "v1.0.0-beta1";
 
 Lights lights = Lights();  // controls 2-digit 7-segment numbers, and the RGBW color bar
 Peltiers peltiers = Peltiers();  // 2 peltiers wired in series (-1.0<->1.0 controls polarity and intensity)
@@ -130,8 +131,7 @@ Memory memory = Memory();  // reads from EEPROM to find device's unique serial, 
 
 // some variables to help initiate the bootloader some time after it has been commanded to start
 unsigned long now;
->>>>>>> edge
-bool START_BOOTLOADER = false;
+
 unsigned long start_bootloader_timestamp = 0;
 const int start_bootloader_timeout = 1000;
 
@@ -347,53 +347,36 @@ void update_led_display(boolean debounce=true){
 /////////////////////////////////
 
 void activate_bootloader(){
-  #if BOOTLOADER_ON_WDTO == TRUE
+#ifdef BOOTLOADER_ON_WDTO
   // Method 1: Uses a WDT reset to enter bootloader.
   // Works on the modified Caterina bootloader that allows 
   // bootloader access after a WDT reset
   // -----------------------------------------------------------------
-  wdt_enable(WDTO_1S);  //Timeout in 1 second
+  wdt_enable(WDTO_15MS);  //Timeout
   unsigned long timerStart = millis();
   while(millis() - timerStart < WD_TIMEOUT + 100){
     //Wait out until WD times out
   }
-  #else
+#else
   // Method 2: Uses a jump to bootloader location from within the code
   // -----------------------------------------------------------------
-  // cli();
-  // // disable watchdog, if enabled
-  // // disable all peripherals
-  // UDCON = 1;
-  // USBCON = (1<<FRZCLK);  // disable USB
-  // UCSR1B = 0;
-  // _delay_ms(5);
-  // #if defined(__AVR_ATmega32U4__)
-  //     EIMSK = 0; PCICR = 0; SPCR = 0; ACSR = 0; EECR = 0; ADCSRA = 0;
-  //     TIMSK0 = 0; TIMSK1 = 0; TIMSK3 = 0; TIMSK4 = 0; UCSR1B = 0; TWCR = 0;
-  //     DDRB = 0; DDRC = 0; DDRD = 0; DDRE = 0; DDRF = 0; TWCR = 0;
-  //     PORTB = 0; PORTC = 0; PORTD = 0; PORTE = 0; PORTF = 0;
-  //     asm volatile("jmp 0x7000");   //Bootloader start address
-  // #endif
+  cli();
+  // disable watchdog, if enabled
+  // disable all peripherals
+  UDCON = 1;
+  USBCON = (1<<FRZCLK);  // disable USB
+  UCSR1B = 0;
+  _delay_ms(5);
+  #if defined(__AVR_ATmega32U4__)
+      EIMSK = 0; PCICR = 0; SPCR = 0; ACSR = 0; EECR = 0; ADCSRA = 0;
+      TIMSK0 = 0; TIMSK1 = 0; TIMSK3 = 0; TIMSK4 = 0; UCSR1B = 0; TWCR = 0;
+      DDRB = 0; DDRC = 0; DDRD = 0; DDRE = 0; DDRF = 0; TWCR = 0;
+      PORTB = 0; PORTC = 0; PORTD = 0; PORTE = 0; PORTF = 0;
+      asm volatile("jmp 0x7000");   //Bootloader start address
   #endif
+#endif
   // Should never get here but in case it does because 
   // WDT failed to start or timeout..
-  START_BOOTLOADER = false;
-}
-
-void start_dfu_timeout() {
-  gcode.print_warning(F("Restarting and entering bootloader in 1 second..."));
-  START_BOOTLOADER = true;
-  start_bootloader_timestamp = millis();
-}
-
-void check_if_bootloader_starts() {
-  now = millis();
-  if (start_bootloader_timestamp > now) start_bootloader_timestamp = now;  // handle rollover
-  if (START_BOOTLOADER) {
-    if (start_bootloader_timestamp + start_bootloader_timeout < now) {
-      activate_bootloader();
-    }
-  }
 }
 
 /////////////////////////////////
@@ -446,7 +429,8 @@ void read_gcode(){
           gcode.print_device_info(device_serial, device_model, device_version);
           break;
         case GCODE_DFU:
-          start_dfu_timeout();
+          gcode.print_warning(F("Restarting and entering bootloader in 1 second..."));
+          activate_bootloader();
 
           break;
         default:
@@ -463,9 +447,9 @@ void read_gcode(){
 
 void setup() {
 
-  #if BOOTLOADER_ON_WDTO == TRUE
+#ifdef BOOTLOADER_ON_WDTO
   wdt_disable();          /* Disable watchdog if enabled by bootloader/fuses */
-  #endif
+#endif
 
   gcode.setup(115200);
 
@@ -536,8 +520,6 @@ void loop(){
       stabilize_to_room_temp();
     }
   }
-
-  check_if_bootloader_starts();
 }
 
 /////////////////////////////////
