@@ -37,9 +37,9 @@ bool Lights::_is_a_stable_number(int number, bool debounce=true) {
 
 void Lights::_set_seven_segment(float * digit_1, float * digit_2) {
   for (uint8_t i=0;i<NUM_SEGMENTS;i++) {
-    delay(I2C_WRITE_DELAY);
+    delayMicroseconds(I2C_WRITE_DELAY_US);
     set_pwm_pin_inverse(segments_pin_mapping[0][i], digit_1[i] * numbers_brightness);
-    delay(I2C_WRITE_DELAY);
+    delayMicroseconds(I2C_WRITE_DELAY_US);
     set_pwm_pin_inverse(segments_pin_mapping[1][i], digit_2[i] * numbers_brightness);
   }
 }
@@ -173,7 +173,7 @@ void Lights::setup_lights() {
   pinMode(blue_led, OUTPUT);
   Wire.setClock(400000);
   pwm.begin();
-  delay(I2C_WRITE_DELAY);
+  delayMicroseconds(I2C_WRITE_DELAY_US);
   pwm.setPWMFreq(1600); // max frequency is 1600
-  delay(I2C_WRITE_DELAY);
+  delayMicroseconds(I2C_WRITE_DELAY_US);
 }

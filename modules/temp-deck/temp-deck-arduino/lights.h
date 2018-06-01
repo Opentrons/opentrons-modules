@@ -23,7 +23,7 @@
 #define green_pwm_pin 0
 #define white_pwm_pin 7
 
-#define I2C_WRITE_DELAY 5
+#define I2C_WRITE_DELAY_US 20
 
 #define DEFAULT_FLASH_INTERVAL 1500
 
