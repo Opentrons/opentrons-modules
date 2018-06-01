@@ -6,15 +6,23 @@
 #define thermistor_pin 5
 #define TABLE_SIZE 34
 
+#define THERMISTOR_NUM_SAMPLES 15
+
 class Thermistor{
   public:
 
     Thermistor();
-    float plate_temperature(float avg_adc=-1);
+    bool update();
+    float plate_temperature();
+    void set_samples(int n);
 
   private:
 
-    float _average_adc(int pin=-1, int numsamples=5);
+    uint8_t sample_index = 0;
+    int samples[THERMISTOR_NUM_SAMPLES];
+    float average = 0;
+
+    float _average_adc();
     float _thermistor_temp_to_plate_temp(float thermistor_temp);
 
     // lookup table provided for thermistor PN: NXFT15XV103FA2B150

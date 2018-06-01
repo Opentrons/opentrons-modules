@@ -11,11 +11,13 @@
 #define PELTIER_B_CONTROL 10
 #define PELTIER_AB_ENABLE 8
 
+#define DEFAULT_PELTIER_CYCLE_MS 250
+
 class Peltiers{
   public:
 
     Peltiers();
-    void setup_peltiers();
+    void setup_peltiers(int cycle_time_ms=DEFAULT_PELTIER_CYCLE_MS);
     void update_peltier_cycle();
     void disable_peltiers();
     void set_cold_percentage(float perc);
@@ -30,7 +32,7 @@ class Peltiers{
     boolean enabled = false;
     boolean peltiers_currently_on = false;
 
-    const float PELTIER_CYCLE_MS = 100.0;
+    float PELTIER_CYCLE_MS = DEFAULT_PELTIER_CYCLE_MS;
     unsigned long peltier_cycle_timestamp = 0;
     unsigned long now = 0;
 

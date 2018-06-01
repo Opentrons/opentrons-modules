@@ -1,11 +1,6 @@
 #include "Gcode.h"
 
 Gcode::Gcode() {
-    COMMAND_CODES[GCODE_GET_TEMP] =     "M105";
-    COMMAND_CODES[GCODE_SET_TEMP] =     "M104";
-    COMMAND_CODES[GCODE_DEVICE_INFO] =  "M115";
-    COMMAND_CODES[GCODE_DISENGAGE] =    "M18";
-    COMMAND_CODES[GCODE_DFU] =          "dfu";
 }
 
 void Gcode::_strip_serial_buffer() {
@@ -58,27 +53,31 @@ void Gcode::send_ack() {
   Serial.println("ok");
 }
 
-bool Gcode::read_int(char key) {
-  parsed_int = 0;
+bool Gcode::read_number(char key) {
   int starting_key_index = GCODE_BUFFER_STRING.indexOf(key);
   if (starting_key_index >= 0) {
-    String parsed_number = "";
+    String number_string = "";
     char next_char;
-    boolean valid_command = false;
-    for (uint8_t i=1;i<4;i++) {
-      if (GCODE_BUFFER_STRING.length() <= starting_key_index + i) {
-        break;
+    bool decimal = false;
+    while (starting_key_index + 1 < GCODE_BUFFER_STRING.length()) {
+      starting_key_index++;
+      next_char = GCODE_BUFFER_STRING.charAt(starting_key_index);
+      if (next_char >= '0' && next_char <= '9') {
+        number_string += next_char;
       }
-      next_char = GCODE_BUFFER_STRING.charAt(starting_key_index + i);
-      if ((next_char >= '0' && next_char <= '9') || next_char == '-') {
-        parsed_number += next_char;
+      else if(next_char == '-' && number_string.length() == 0) {
+        number_string += next_char;
+      }
+      else if(next_char == '.' && !decimal && number_string.length() > 0) {
+        decimal = true;
+        number_string += next_char;
       }
       else {
         break;
       }
     }
-    if (parsed_number) {
-      parsed_int = parsed_number.toInt();
+    if (number_string) {
+      parsed_number = number_string.toFloat();
       return true;
     }
     else {
@@ -88,27 +87,27 @@ bool Gcode::read_int(char key) {
 }
 
 void Gcode::print_device_info(String serial, String model, String version) {
-  Serial.print("serial:");
+  Serial.print(F("serial:"));
   Serial.print(serial);
-  Serial.print(" model:");
+  Serial.print(F(" model:"));
   Serial.print(model);
-  Serial.print(" version:");
+  Serial.print(F(" version:"));
   Serial.print(version);
   Serial.println();
 }
 
-void Gcode::print_targetting_temperature(int target_temp, int current_temp) {
-  Serial.print("T:");
-  Serial.print(target_temp);
-  Serial.print(" C:");
-  Serial.println(current_temp);
+void Gcode::print_targetting_temperature(float target_temp, float current_temp) {
+  Serial.print(F("T:"));
+  Serial.print(target_temp, SERIAL_DIGITS_IN_RESPONSE);
+  Serial.print(F(" C:"));
+  Serial.println(current_temp, SERIAL_DIGITS_IN_RESPONSE);
 }
 
-void Gcode::print_stablizing_temperature(int current_temp) {
-  Serial.print("T:");
-  Serial.print("none");
-  Serial.print(" C:");
-  Serial.println(current_temp);
+void Gcode::print_stablizing_temperature(float current_temp) {
+  Serial.print(F("T:"));
+  Serial.print(F("none"));
+  Serial.print(F(" C:"));
+  Serial.println(current_temp, SERIAL_DIGITS_IN_RESPONSE);
 }
 
 void Gcode::print_warning(String msg) {
@@ -116,6 +115,11 @@ void Gcode::print_warning(String msg) {
 }
 
 void Gcode::setup(int baudrate) {
+  COMMAND_CODES[GCODE_GET_TEMP] =     "M105";
+  COMMAND_CODES[GCODE_SET_TEMP] =     "M104";
+  COMMAND_CODES[GCODE_DEVICE_INFO] =  "M115";
+  COMMAND_CODES[GCODE_DISENGAGE] =    "M18";
+  COMMAND_CODES[GCODE_DFU] =          "dfu";
   Serial.begin(baudrate);
-  Serial.setTimeout(2);
+  Serial.setTimeout(3);
 }
