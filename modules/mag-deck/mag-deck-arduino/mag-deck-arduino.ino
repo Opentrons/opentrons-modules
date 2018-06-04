@@ -6,48 +6,62 @@
 //4) Move to found-height
 
 #include <Arduino.h>
+#include <avr/wdt.h>
+
 #include <Wire.h>
 
-const char ADDRESS_DIGIPOT = 0x2D;  // 7-bit address
+// load in some custom classes for this device
+#include "memory.h"
+#include "gcodemagdeck.h"
 
-const uint8_t MOTOR_ENGAGE_PIN = 10;
-const uint8_t MOTOR_DIRECTION_PIN = 9;
-const uint8_t MOTOR_STEP_PIN = 6;
-const uint8_t LED_UP_PIN = 5;
-const uint8_t LED_DOWN_PIN = 13;
-const uint8_t ENDSTOP_PIN = A5;
-const uint8_t TONE_PIN = 11;
+String device_serial = "";  // leave empty, this value is read from eeprom during setup()
+String device_model = "";   // leave empty, this value is read from eeprom during setup()
+String device_version = "v1.0.0-beta1";
 
-const uint8_t DIRECTION_DOWN = HIGH;
-const uint8_t DIRECTION_UP = LOW;
+GcodeMagDeck gcode = GcodeMagDeck();  // reads in serial data to parse command and issue reponses
+Memory memory = Memory();  // reads from EEPROM to find device's unique serial, and model number
 
-const uint8_t ENDSTOP_TRIGGERED_STATE = LOW;
+#define ADDRESS_DIGIPOT 0x2D  // 7-bit address
 
-const float CURRENT_TO_BYTES_FACTOR = 77.0;
+#define MOTOR_ENGAGE_PIN 10
+#define MOTOR_DIRECTION_PIN 9
+#define MOTOR_STEP_PIN 6
+#define LED_UP_PIN 5
+#define LED_DOWN_PIN 13
+#define ENDSTOP_PIN A5
+#define TONE_PIN 11
 
-const unsigned long STEPS_PER_MM = 50;  // full-stepping
+#define DIRECTION_DOWN HIGH
+#define DIRECTION_UP LOW
+
+#define ENDSTOP_TRIGGERED_STATE LOW
+
+#define CURRENT_TO_BYTES_FACTOR 77.0
+
+#define STEPS_PER_MM 50  // full-stepping
 unsigned long STEP_DELAY_MICROSECONDS = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
 
-const float MAX_TRAVEL_DISTANCE_MM = 30;
+#define MAX_TRAVEL_DISTANCE_MM 30
 float FOUND_HEIGHT = MAX_TRAVEL_DISTANCE_MM - 5;
 
-const float CURRENT_HIGH = 0.3;
-const float CURRENT_LOW = 0.075;
+#define CURRENT_HIGH 0.3
+#define CURRENT_LOW 0.075
+
+#define HOMING_RETRACT 2
+
+#define SPEED_HIGH 30
+#define SPEED_LOW 7
 
 float CURRENT_POSITION_MM = 0.0;
-const int HOMING_RETRACT = 2;
-
-const float SPEED_HIGH = 30;
-const float SPEED_LOW = 7;
-
 float SAVED_POSITION_OFFSET = 0;
 
 float MM_PER_SEC = SPEED_LOW;
 
-const float ACCELERATION_STARTING_DELAY_MICROSECONDS = 1000;
-const float ACCELERATION_DELAY_FEEDBACK = 0.9;
+#define ACCELERATION_STARTING_DELAY_MICROSECONDS 1000
+#define ACCELERATION_DELAY_FEEDBACK 0.9
+#define PULSE_HIGH_MICROSECONDS 2
+
 float ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS;
-const uint8_t PULSE_HIGH_MICROSECONDS = 2;
 
 void i2c_write(byte address, byte value) {
   Wire.beginTransmission(ADDRESS_DIGIPOT);
@@ -205,61 +219,67 @@ void setup_pins() {
   digitalWrite(TONE_PIN, LOW);
 }
 
-void serial_ack(){
-  Serial.println("ok");
-  Serial.println("ok");
+void activate_bootloader(){
+  // Method 1: Uses a WDT reset to enter bootloader.
+  // Works on the modified Caterina bootloader that allows 
+  // bootloader access after a WDT reset
+  // -----------------------------------------------------------------
+  wdt_enable(WDTO_15MS);  //Timeout
+  unsigned long timerStart = millis();
+  while(millis() - timerStart < 25){
+    //Wait out until WD times out
+  }
+  // Should never get here but in case it does because 
+  // WDT failed to start or timeout..
 }
 
 void setup() {
-  Serial.begin(115200);
-  Serial.setTimeout(30);
   setup_pins();
   setup_digipot();
   set_current(CURRENT_LOW);
   set_speed(SPEED_LOW);
   disable_motor();
+
+  gcode.setup(115200);
+  memory.read_serial(device_serial);
+  memory.read_model(device_model);
 }
 
 void loop() {
-  if (Serial.available()){
-    char l = Serial.read();
-    if (l == 'h') {
-      home_motor();
-      serial_ack();
+  if (gcode.received_newline()) {
+    while (gcode.pop_command()) {
+      switch(gcode.code) {
+        case GCODE_HOME:
+          home_motor();
+          break;
+        case GCODE_PROBE:
+          low_current_rise();
+          FOUND_HEIGHT = home_motor();
+          break;
+        case GCODE_GET_PROBED_DISTANCE:
+          gcode.print_probed_distance(FOUND_HEIGHT);
+          break;
+        case GCODE_MOVE:
+          if (gcode.read_number('Z')) {
+            set_current(CURRENT_HIGH);
+            set_speed(SPEED_HIGH);
+            move_to_position(FOUND_HEIGHT - gcode.parsed_number);
+          }
+          break;
+        case GCODE_GET_POSITION:
+          gcode.print_current_position(CURRENT_POSITION_MM);
+          break;
+        case GCODE_DEVICE_INFO:
+          gcode.print_device_info(device_serial, device_model, device_version);
+          break;
+        case GCODE_DFU:
+          gcode.print_warning(F("Restarting and entering bootloader..."));
+          activate_bootloader();
+          break;
+        default:
+          break;
+      }
     }
-    if (l == 't') {
-      home_motor();
-      serial_ack();
-    }
-    else if (l == 'm') {
-      low_current_rise();
-      FOUND_HEIGHT = home_motor();
-      serial_ack();
-    }
-    else if (l == '=') {
-      move_to_top();
-      serial_ack();
-    }
-    else if (l == '-') {
-      move_to_bottom();
-      serial_ack();
-    }
-    else if(l == 'w') {
-      set_current(CURRENT_HIGH);
-      set_speed(SPEED_HIGH);
-      move_to_position(FOUND_HEIGHT - 0.35);
-      serial_ack();
-    }
-    else if (l == 'j') {
-      set_current(CURRENT_HIGH);
-      set_speed(SPEED_HIGH);
-      move_millimeters(-1);
-    }
-    else if (l == 'p') {
-      set_current(CURRENT_HIGH);
-      set_speed(SPEED_HIGH);
-      move_to_position(FOUND_HEIGHT - Serial.parseFloat());
-      serial_ack();
-    }
+    gcode.send_ack();
   }
 }
