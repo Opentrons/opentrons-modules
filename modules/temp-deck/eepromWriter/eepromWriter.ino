@@ -27,7 +27,7 @@ void clear_port() {
 
 void setup() {
 	Serial.begin(115200);
-	Serial.setTimeout(30);
+  Serial.setTimeout(30);
   clear_port();
 }
 
