@@ -6,12 +6,12 @@
 #include <EEPROM.h>
 
 // Sample EEPROM representation after being written to:
-// 0x00     0 1 2 3 4 5 6 7 8 9 A B C \0 \0 \0...       Serial Number
-// 0x20     t e m p - v 1 . 3 . 4 \0 \0 \0 \0 \0...     Model number
-// 0x40     1 a 2 b 3 c 4 d 5 e 6 f 7 8 9 0...          32-bit crc (serial)
-// 0x60     a b c d e f 1 2 3 \0 \0 \0 \0 \0 \0...      32-bit crc (model)
+// 0x00     '0' '1' '2' '3' '4' '5' '6' \0 \0 \0...     Serial Number
+// 0x20     't' 'e' 'm' 'p' '-' 'v' '1' '.' '3'...      Model number
+// 0x40     1 a 2 b 3 c 4 d                             32-bit crc (serial)
+// 0x60     a b c d e f 1 2                             32-bit crc (model)
 
-// Assuming both ID & Model no. are not more than 16 bytes long
+// Assuming both ID & Model no. are not more than 32 bytes long
 #define DEVICE_SERIAL_ADDR      0x00
 #define DEVICE_MODEL_ADDR       0x20
 #define SERIAL_CRC_ADDR         0x40
