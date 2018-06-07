@@ -1,0 +1,50 @@
+{
+  "packages": [
+    {
+      "name": "Opentrons",
+      "maintainer": "Opentrons Labworks Inc",
+      "websiteURL": "https://opentrons.com",
+      "help": {
+        "online": "https://support.opentrons.com"
+      },
+      "platforms": [
+        {
+          "category": "Opentrons",
+          "help": {
+            "online": "https://support.opentrons.com/ot-2"
+          },
+          "url": "https://github.com/Opentrons/opentrons-modules/blob/modules_arduino-board-files/arduino-board-files/opentrons-1.1.0.zip",
+          "checksum": "067115844dbfdd0e09979d96bf95ad4152a69b80e4e611bc95326f59580a5b36",
+          "version": "1.1.0",
+          "architecture": "avr",
+          "archiveFileName": "opentrons-1.1.0.zip",
+          "boards": [
+            {
+              "name": "TempDeck"
+            }
+          ],
+          "size": "48266",
+          "toolsDependencies": [
+            {
+              "packager": "arduino",
+              "version": "4.8.1-arduino5",
+              "name": "avr-gcc"
+            },
+            {
+              "packager": "arduino",
+              "version": "6.0.1-arduino5",
+              "name": "avrdude"
+            }
+          ],
+          "name": "Opentrons AVR Boards"
+        }
+      ],
+      "tools": [
+        {
+
+        }
+      ],
+      "email": "info@opentrons.com"
+    }
+  ]
+}
