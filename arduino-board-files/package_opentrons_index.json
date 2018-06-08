@@ -4,6 +4,7 @@
       "name": "Opentrons",
       "maintainer": "Opentrons Labworks Inc",
       "websiteURL": "https://opentrons.com",
+      "email": "info@opentrons.com",
       "help": {
         "online": "https://support.opentrons.com"
       },
@@ -23,7 +24,7 @@
               "name": "TempDeck"
             }
           ],
-          "size": "48266",
+          "size": "32429",
           "toolsDependencies": [
             {
               "packager": "arduino",
@@ -40,11 +41,7 @@
         }
       ],
       "tools": [
-        {
-
-        }
-      ],
-      "email": "info@opentrons.com"
+      ]
     }
   ]
 }
