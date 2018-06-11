@@ -14,8 +14,8 @@
           "help": {
             "online": "https://support.opentrons.com/ot-2"
           },
-          "url": "https://github.com/Opentrons/opentrons-modules/raw/modules_arduino-board-files/arduino-board-files/opentrons-1.1.0.tar.bz2",
-          "checksum": "SHA-256:34a6c9a4b6910df3f6acc1674e9fdd83163503ac0960bde9d5d6afe9621f40d2",
+          "url": "https://s3.us-east-2.amazonaws.com/opentrons-modules/opentrons-1.1.0.tar.bz2",
+          "checksum": "SHA-256:87e981e3ed7f649b606ed8cbff9f6765d9ada540f2c9642afc31324cfabc3a6d",
           "version": "1.1.0",
           "architecture": "avr",
           "archiveFileName": "opentrons-1.1.0.tar.bz2",
@@ -24,7 +24,7 @@
               "name": "TempDeck"
             }
           ],
-          "size": "32429",
+          "size": "32337",
           "toolsDependencies": [
             {
               "packager": "arduino",

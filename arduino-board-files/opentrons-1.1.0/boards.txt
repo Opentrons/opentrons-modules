@@ -1,0 +1,33 @@
+##############################################################
+# Opentrons TempDeck 32u4 w/Caterina Configuration
+tempdeck32u4cat.name=Opentrons TempDeck
+
+tempdeck32u4cat.bootloader.low_fuses=0xff
+tempdeck32u4cat.bootloader.high_fuses=0xd8
+tempdeck32u4cat.bootloader.extended_fuses=0xcb
+tempdeck32u4cat.bootloader.file=caterina/Caterina-tempdeck32u4.hex
+tempdeck32u4cat.bootloader.unlock_bits=0x3F
+tempdeck32u4cat.bootloader.lock_bits=0x2F
+tempdeck32u4cat.bootloader.tool=arduino:avrdude
+
+tempdeck32u4cat.build.mcu=atmega32u4
+tempdeck32u4cat.build.f_cpu=16000000L
+tempdeck32u4cat.build.vid=0x04D8
+tempdeck32u4cat.build.pid=0xEE93
+tempdeck32u4cat.build.core=arduino:arduino
+tempdeck32u4cat.build.variant=tempdeck32u4
+tempdeck32u4cat.build.board=AVR_TEMPDECK
+tempdeck32u4cat.build.usb_product="Opentrons TempDeck"
+tempdeck32u4cat.build.usb_manufacturer="Microchip Technology Inc"
+tempdeck32u4cat.build.extra_flags={build.usb_flags}
+
+tempdeck32u4cat.upload.protocol=avr109
+tempdeck32u4cat.upload.maximum_size=28672
+tempdeck32u4cat.upload.speed=57600
+tempdeck32u4cat.upload.disable_flushing=true
+tempdeck32u4cat.upload.use_1200bps_touch=true
+tempdeck32u4cat.upload.wait_for_upload_port=true
+tempdeck32u4cat.upload.tool=arduino:avrdude
+
+tempdeck32u4cat.vid.0=0x04D8
+tempdeck32u4cat.pid.0=0xEE93
