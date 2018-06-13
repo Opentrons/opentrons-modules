@@ -195,6 +195,8 @@ const USB_Descriptor_String_t ProductString =
 
 	#if DEVICE_PID == 0xEE93
 	.UnicodeString			= L"Opentrons TempDeck"
+	#elif DEVICE_PID == 0xEE90
+	.UnicodeString			= L"Opentrons MagDeck"
 	#else
 	.UnicodeString			= L"USB IO board    "
 	#endif
@@ -204,9 +206,7 @@ const USB_Descriptor_String_t ManufNameString =
 {
 	.Header					= {.Size = USB_STRING_LEN(25), .Type = DTYPE_String},
 	
-	#if DEVICE_VID == 0x2341
-	.UnicodeString			= L"Arduino LLC"
-	#elif DEVICE_VID == 0x04D8
+	#if DEVICE_VID == 0x04D8
 	.UnicodeString			= L"Microchip Technology Inc."
 	#else
 	.UnicodeString			= L"Unknown    "

@@ -19,6 +19,17 @@
 # Denver Gingerich
 #
 #----------------------------------------------------------------------------
+# OPENTRONS README:
+# [Check the <Bootloader>.txt file for the tools needed to build this project]
+#
+# - Uncomment the PID for the product you want to use
+# - Set the LUFA_PATH to the LUFA directory on your machine (relative path)
+# - Uncomment the TARGET (file name) you would be using
+# - Make project. This will create the .hex bootloader file 
+#   (If one already exists for the selected board, the new file will replace old)
+# - Clean the project
+#
+#----------------------------------------------------------------------------
 # On command line:
 #
 # make all = Make software.
@@ -51,14 +62,10 @@
 VID = 0x04D8
 
 # USB product ID (PID)
-# official Leonardo PID
-# PID = 0x0036
-# official Micro PID
-# PID = 0x0037
-# official Esplora PID
-# PID = 0x003C
 # Opentrons TempDeck PID
 PID = 0xEE93
+# Opentrons MagDeck PID
+# PID = 0xEE90
 
 # MCU name
 MCU = atmega32u4
@@ -115,10 +122,12 @@ BOOT_START           = 0x$(shell echo "obase=16; ($(FLASH_SIZE_KB) - $(BOOT_SECT
 # Output format. (can be srec, ihex, binary)
 FORMAT = ihex
 
-
+SOURCE = Caterina
 # Target file name (without extension).
-TARGET = Caterina
-
+# Opentrons TempDeck
+TARGET = Caterina-tempdeck32u4
+# Opentrons MagDeck
+# TARGET = Caterina-magdeck32u4
 
 # Object files directory
 #     To put object files in current directory, use a dot (.), do NOT make
@@ -127,7 +136,7 @@ OBJDIR = .
 
 
 # Path to the LUFA library
-LUFA_PATH = ../../../../../../../LUFA/LUFA-111009
+LUFA_PATH = ../../../../../../LUFA/LUFA-111009
 
 
 # LUFA library compile-time options and predefined tokens
@@ -154,7 +163,7 @@ include $(LUFA_PATH)/LUFA/makefile
 
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = $(TARGET).c                                                 \
+SRC = $(SOURCE).c                                                 \
 	  Descriptors.c                                               \
 	  $(LUFA_SRC_USB)                                             \
 
@@ -686,7 +695,7 @@ clean: begin clean_list end
 clean_list :
 	@echo
 	@echo $(MSG_CLEANING)
-	$(REMOVE) $(TARGET).hex
+#	$(REMOVE) $(TARGET).hex
 	$(REMOVE) $(TARGET).eep
 	$(REMOVE) $(TARGET).cof
 	$(REMOVE) $(TARGET).elf
