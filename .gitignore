@@ -110,4 +110,7 @@ ENV/
 # Rope project settings
 .ropeproject
 
+# node
+node_modules
+
 releases
