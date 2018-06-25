@@ -7,7 +7,8 @@ float Thermistor::_thermistor_temp_to_plate_temp(float thermistor_temp) {
   // thermocouple the temperature at the center of the plate, relative to
   // the temperature of this device's thermistor at the edge of the plate
   // TODO (andy) this should probably move to it's own function
-  return (thermistor_temp * 0.937685) + 2.113056;
+  // return (thermistor_temp * 0.937685) + 2.113056;
+  return thermistor_temp;
 }
 
 float Thermistor::_average_adc() {
