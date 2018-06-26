@@ -43,7 +43,7 @@
 #define STABILIZING_ZONE 0.5
 
 // the intensities of the fan (0.0-1.0)
-#define FAN_HIGH 0.85
+#define FAN_HIGH 1.0
 #define FAN_LOW 0.4
 #define FAN_OFF 0.0
 
