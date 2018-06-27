@@ -29,10 +29,11 @@ Memory memory = Memory();  // reads from EEPROM to find device's unique serial, 
 #define LED_UP_PIN 5
 #define LED_DOWN_PIN 13
 #define ENDSTOP_PIN A5
+#define ENDSTOP_PIN_TOP A4
 #define TONE_PIN 11
 
-#define DIRECTION_DOWN HIGH
-#define DIRECTION_UP LOW
+#define DIRECTION_DOWN LOW
+#define DIRECTION_UP HIGH
 
 #define ENDSTOP_TRIGGERED_STATE LOW
 
