@@ -132,44 +132,48 @@ const int start_bootloader_timeout = 1000;
 /////////////////////////////////
 /////////////////////////////////
 
-bool stabilizing() {
+bool is_stabilizing() {
   return abs(TARGET_TEMPERATURE - CURRENT_TEMPERATURE) < STABILIZING_ZONE;
 }
 
-bool moving_down() {
+bool is_moving_down() {
   return CURRENT_TEMPERATURE - TARGET_TEMPERATURE > STABILIZING_ZONE;
 }
 
-bool moving_up() {
+bool is_moving_up() {
   return TARGET_TEMPERATURE - CURRENT_TEMPERATURE > STABILIZING_ZONE;
 }
 
-bool burning_hot() {
+bool is_burning_hot() {
   return CURRENT_TEMPERATURE > TEMPERATURE_BURN;
 }
 
-bool cold_zone() {
+bool is_cold_zone() {
   return CURRENT_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_COLD;
 }
 
-bool middle_zone() {
+bool is_middle_zone() {
   return CURRENT_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_COLD && CURRENT_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_HOT;
 }
 
-bool hot_zone() {
+bool is_hot_zone() {
   return CURRENT_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_HOT;
 }
 
-bool target_cold_zone() {
+bool is_targeting_cold_zone() {
   return TARGET_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_COLD;
 }
 
-bool target_middle_zone() {
+bool is_targeting_middle_zone() {
   return TARGET_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_COLD && TARGET_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_HOT;
 }
 
-bool target_hot_zone() {
+bool is_targeting_hot_zone() {
   return TARGET_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_HOT;
+}
+
+bool is_fan_on_high() {
+  return is_targeting_cold_zone() || (is_targeting_middle_zone() && is_moving_down());
 }
 
 /////////////////////////////////
@@ -187,12 +191,24 @@ void set_target_temperature(double target_temp){
     gcode.print_warning(
       F("Target temperature too high, setting to TEMPERATURE_MAX degrees"));
   }
-  TARGET_TEMPERATURE = target_temp;
-  lights.flash_on();
 
 #ifdef CONSERVE_POWER_ON_SET_TARGET
-  SET_TEMPERATURE_TIMESTAMP = millis();
+  // in case the fan was PREVIOUSLY set on high
+  if (is_fan_on_high()) {
+    SET_TEMPERATURE_TIMESTAMP = millis();
+  }
 #endif
+
+  TARGET_TEMPERATURE = target_temp;  // set the target temperature
+
+#ifdef CONSERVE_POWER_ON_SET_TARGET
+  // in case the fan is NOW GOING TO be set on high (with new target)
+  if (is_fan_on_high()) {
+    SET_TEMPERATURE_TIMESTAMP = millis();
+  }
+#endif
+
+  lights.flash_on();
 
   adjust_pid_on_new_target();
 }
@@ -230,8 +246,8 @@ void adjust_pid_on_new_target() {
   pid_Ki = DOWN_PID_KI;
   pid_Kd = DEFAULT_PID_KD;
 
-  if (moving_up()) {
-    if (target_cold_zone()) {
+  if (is_moving_up()) {
+    if (is_targeting_cold_zone()) {
       pid_Kp = UP_PID_KP_IN_COLD_ZONE;
       pid_Ki = UP_PID_KI_IN_COLD_ZONE;
     }
@@ -280,10 +296,7 @@ void stabilize_to_target_temp(bool set_fan=true){
   if (set_fan == false) {
     set_fan_power(FAN_OFF);
   }
-  else if (target_cold_zone()) {
-    set_fan_power(FAN_HIGH);
-  }
-  else if (target_middle_zone() && moving_down()) {
+  else if (is_fan_on_high()) {
     set_fan_power(FAN_HIGH);
   }
   else {
@@ -295,7 +308,7 @@ void stabilize_to_target_temp(bool set_fan=true){
 }
 
 void stabilize_to_room_temp(bool set_fan=true) {
-  if (burning_hot()) {
+  if (is_burning_hot()) {
     set_peltiers_from_pid();
     if (set_fan) {
       set_fan_power(FAN_LOW);
@@ -315,7 +328,7 @@ void update_led_display(boolean debounce=true){
   // round to closest whole-number temperature
   lights.display_number(CURRENT_TEMPERATURE + 0.5, debounce);
   // if we are targetting, and close to the value, stop flashing
-  if (!MASTER_SET_A_TARGET || stabilizing()) {
+  if (!MASTER_SET_A_TARGET || is_stabilizing()) {
     lights.flash_off();
   }
   // targetting and not close to value, continue flashing
