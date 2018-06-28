@@ -92,7 +92,7 @@ unsigned long debug_plotter_timestamp = 0;
 //    4) after the the peltiers' current has dropping some, turn the fan back on
 
 // uncomment to turn off system after setting the temperature
-//#define CONSERVE_POWER_ON_SET_TARGET
+#define CONSERVE_POWER_ON_SET_TARGET
 
 #ifdef CONSERVE_POWER_ON_SET_TARGET
 unsigned long SET_TEMPERATURE_TIMESTAMP = 0;
