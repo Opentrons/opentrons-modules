@@ -42,27 +42,30 @@ Memory memory = Memory();  // reads from EEPROM to find device's unique serial, 
 #define STEPS_PER_MM 50  // full-stepping
 unsigned long STEP_DELAY_MICROSECONDS = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
 
-#define MAX_TRAVEL_DISTANCE_MM 30
-float FOUND_HEIGHT = MAX_TRAVEL_DISTANCE_MM - 5;
+#define MAX_TRAVEL_DISTANCE_MM 45
+float FOUND_HEIGHT = MAX_TRAVEL_DISTANCE_MM - 15;
 
-#define CURRENT_HIGH 0.3
-#define CURRENT_LOW 0.075
+#define CURRENT_HIGH 0.75
+#define CURRENT_LOW 0.02
+#define SET_CURRENT_DELAY_MS 20
 
 #define HOMING_RETRACT 2
 
-#define SPEED_HIGH 30
-#define SPEED_LOW 7
+#define SPEED_HIGH 50
+#define SPEED_LOW 20
+#define SPEED_PROBE 10
 
 float CURRENT_POSITION_MM = 0.0;
-float SAVED_POSITION_OFFSET = 0;
+float SAVED_POSITION_OFFSET = 0.0;
 
 float MM_PER_SEC = SPEED_LOW;
 
 #define ACCELERATION_STARTING_DELAY_MICROSECONDS 1000
-#define ACCELERATION_DELAY_FEEDBACK 0.9
+#define ACCELERATION_DELAY_FEEDBACK 0.9  // bigger number means faster acceleration
 #define PULSE_HIGH_MICROSECONDS 2
 
 float ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS;
+const int steps_per_acceleration_cycle = ACCELERATION_STARTING_DELAY_MICROSECONDS / ACCELERATION_DELAY_FEEDBACK;
 
 void i2c_write(byte address, byte value) {
   Wire.beginTransmission(ADDRESS_DIGIPOT);
@@ -74,14 +77,15 @@ void i2c_write(byte address, byte value) {
   }
 }
 
-void acceleration_reset() {
+void acceleration_reset(float factor=1.0) {
   ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS - STEP_DELAY_MICROSECONDS;
+  ACCELERATION_DELAY_MICROSECONDS *= factor;
 }
 
 int get_next_acceleration_delay() {
   ACCELERATION_DELAY_MICROSECONDS -= ACCELERATION_DELAY_FEEDBACK;
   if(ACCELERATION_DELAY_MICROSECONDS <0) ACCELERATION_DELAY_MICROSECONDS = 0;
-  return STEP_DELAY_MICROSECONDS + ACCELERATION_DELAY_MICROSECONDS;
+  return ACCELERATION_DELAY_MICROSECONDS;
 }
 
 void motor_step(uint8_t dir) {
@@ -92,6 +96,10 @@ void motor_step(uint8_t dir) {
   delayMicroseconds(PULSE_HIGH_MICROSECONDS);
   digitalWrite(MOTOR_STEP_PIN, LOW);
   delayMicroseconds(get_next_acceleration_delay());  // this sets the speed!!
+  delayMicroseconds(STEP_DELAY_MICROSECONDS % 1000);
+  if (STEP_DELAY_MICROSECONDS >= 1000) {
+    delay(STEP_DELAY_MICROSECONDS / 1000);
+  }
 }
 
 
@@ -109,6 +117,7 @@ void set_current(float current) {
   if(c > 255) c = 255;
   // first wiper address on digi-pot is at location 0x00
   i2c_write(0x00, c);
+  delay(SET_CURRENT_DELAY_MS);
 }
 
 float find_endstop(){
@@ -125,14 +134,14 @@ float find_endstop(){
   return mm + (remainder / float(STEPS_PER_MM));
 }
 
-void move_millimeters(float mm, boolean limit_switch=true){
+void move_millimeters(float mm, boolean limit_switch, float accel_factor=1.0){
 //  Serial.print("MOVING "); Serial.print(mm); Serial.println("mm");
   uint8_t dir = DIRECTION_UP;
   if (mm < 0) {
     dir = DIRECTION_DOWN;
   }
   unsigned long steps = abs(mm) * float(STEPS_PER_MM);
-  acceleration_reset();
+  acceleration_reset(accel_factor);
   boolean hit_endstop = false;
   enable_motor();
   for (unsigned long i=0;i<steps;i++) {
@@ -142,12 +151,7 @@ void move_millimeters(float mm, boolean limit_switch=true){
       break;
     }
   }
-  if (hit_endstop) {
-    CURRENT_POSITION_MM = 0;
-  }
-  else {
-    CURRENT_POSITION_MM += mm;
-  }
+  CURRENT_POSITION_MM += mm;
   disable_motor();
 }
 
@@ -157,8 +161,9 @@ float home_motor(bool save_distance=false) {
   set_speed(SPEED_LOW);
   float f = find_endstop();
   move_millimeters(HOMING_RETRACT, false);
+  CURRENT_POSITION_MM = 0;
   disable_motor();
-  return f;
+  return f - HOMING_RETRACT;
 }
 
 void disable_motor() {
@@ -169,15 +174,8 @@ void enable_motor() {
   digitalWrite(MOTOR_ENGAGE_PIN, LOW);
 }
 
-void low_current_rise(){
-//  Serial.println("Low-Current Search...\n");
-  set_current(CURRENT_LOW);
-  set_speed(SPEED_LOW);
-  move_millimeters(MAX_TRAVEL_DISTANCE_MM);
-}
-
 void move_to_position(float mm) {
-  move_millimeters(mm - CURRENT_POSITION_MM);
+  move_millimeters(mm - CURRENT_POSITION_MM, true);
 }
 
 void move_to_top(){
@@ -244,6 +242,12 @@ void setup() {
   gcode.setup(115200);
   memory.read_serial(device_serial);
   memory.read_model(device_model);
+
+  delay(1000);
+
+  tone(TONE_PIN, 440, 200);
+  tone(TONE_PIN, 440 * 2, 200);
+  tone(TONE_PIN, 440 * 2 * 2, 200);
 }
 
 void loop() {
@@ -254,17 +258,26 @@ void loop() {
           home_motor();
           break;
         case GCODE_PROBE:
-          low_current_rise();
+          if (gcode.read_number('C')) set_current(gcode.parsed_number);
+          else set_current(CURRENT_LOW);
+          if (gcode.read_number('F')) set_speed(gcode.parsed_number);
+          else set_speed(SPEED_PROBE);
+          move_millimeters(MAX_TRAVEL_DISTANCE_MM, false, 2.0);  // 2x slower acceleration
           FOUND_HEIGHT = home_motor();
           break;
         case GCODE_GET_PROBED_DISTANCE:
           gcode.print_probed_distance(FOUND_HEIGHT);
           break;
         case GCODE_MOVE:
+          if (gcode.read_number('F')) {
+            set_speed(gcode.parsed_number);
+          }
+          else {
+            set_speed(SPEED_HIGH);
+          }
           if (gcode.read_number('Z')) {
             set_current(CURRENT_HIGH);
-            set_speed(SPEED_HIGH);
-            move_to_position(FOUND_HEIGHT - gcode.parsed_number);
+            move_to_position(gcode.parsed_number);
           }
           break;
         case GCODE_GET_POSITION:
