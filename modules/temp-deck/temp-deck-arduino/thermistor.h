@@ -20,7 +20,6 @@ class Thermistor{
 
     uint8_t sample_index = 0;
     int samples[THERMISTOR_NUM_SAMPLES];
-    float average = 0;
 
     void _calculate_average_adc();
     float _average_adc;

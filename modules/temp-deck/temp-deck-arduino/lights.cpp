@@ -25,7 +25,7 @@ bool Lights::_is_a_stable_number(int number, bool debounce=true) {
   bool return_val = false;
   if (!debounce || (number == _previous_display_number && number != _previous_saved_number)) {
     _same_display_number_count++;
-    if (!debounce || (_same_display_number_count > _same_display_number_threshold)) {
+    if (!debounce || (_same_display_number_count > SAME_DISPLAY_NUMBER_THRESHOLD)) {
       _same_display_number_count = 0;  // reset the stable counter
       _previous_saved_number = number;
       return_val = true;
@@ -35,12 +35,12 @@ bool Lights::_is_a_stable_number(int number, bool debounce=true) {
   return return_val;
 }
 
-void Lights::_set_seven_segment(float * digit_1, float * digit_2) {
+void Lights::_set_seven_segment(bool * digit_1, bool * digit_2) {
   for (uint8_t i=0;i<NUM_SEGMENTS;i++) {
     delayMicroseconds(I2C_WRITE_DELAY_US);
-    set_pwm_pin_inverse(segments_pin_mapping[0][i], digit_1[i] * numbers_brightness);
+    set_pwm_pin_inverse(segments_pin_mapping[0][i], float(digit_1[i]) * numbers_brightness);
     delayMicroseconds(I2C_WRITE_DELAY_US);
-    set_pwm_pin_inverse(segments_pin_mapping[1][i], digit_2[i] * numbers_brightness);
+    set_pwm_pin_inverse(segments_pin_mapping[1][i], float(digit_2[i]) * numbers_brightness);
   }
 }
 
@@ -55,7 +55,7 @@ void Lights::_update_flash_multiplier() {
       return;
     }
   }
-  now = millis();
+  unsigned long now = millis();
   if (flash_timestamp > now) flash_timestamp = now; // handle rollover
   if (flash_timestamp + flash_interval < now) {
     flash_timestamp += flash_interval;

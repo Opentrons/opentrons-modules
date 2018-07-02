@@ -27,6 +27,9 @@
 
 #define DEFAULT_FLASH_INTERVAL 1500
 
+#define SAME_DISPLAY_NUMBER_THRESHOLD 300
+#define color_bar_min_brightness 0.1
+
 class Lights{
   public:
 
@@ -48,11 +51,11 @@ class Lights{
       {14, 15, 1, 2, 3, 13, 12}
     };
 
-    const float seven_segment_blank[NUM_SEGMENTS] = {0, 0, 0, 0, 0, 0, 0};
-    const float seven_segment_on[NUM_SEGMENTS] = {1, 1, 1, 1, 1, 1, 1};
-    const float seven_segment_neg_symbol[NUM_SEGMENTS] = {0, 0, 0, 0, 0, 0, 1};
+    const bool seven_segment_blank[NUM_SEGMENTS] = {0, 0, 0, 0, 0, 0, 0};
+    const bool seven_segment_on[NUM_SEGMENTS] = {1, 1, 1, 1, 1, 1, 1};
+    const bool seven_segment_neg_symbol[NUM_SEGMENTS] = {0, 0, 0, 0, 0, 0, 1};
 
-    const float numbers[10][NUM_SEGMENTS] = {
+    const bool numbers[10][NUM_SEGMENTS] = {
       {1, 1, 1, 1, 1, 1, 0},  // 0
       {0, 1, 1, 0, 0, 0, 0},  // 1
       {1, 1, 0, 1, 1, 0, 1},  // 2
@@ -68,7 +71,6 @@ class Lights{
     int _same_display_number_count = 0;
     int _previous_display_number = -100;
     int _previous_saved_number = -100;
-    const int _same_display_number_threshold = 300;
 
     float color_bar_brightness = 1.0;
     float numbers_brightness = 1.0;
@@ -76,15 +78,13 @@ class Lights{
     void set_pwm_pin(int pin, float val);
     void set_pwm_pin_inverse(int pin, float val);
     bool _is_a_stable_number(int number, bool debounce=true);
-    void _set_seven_segment(float digit_1[], float digit_2[]);
+    void _set_seven_segment(bool digit_1[], bool digit_2[]);
     void _update_flash_multiplier();
 
     unsigned long flash_timestamp = 0;
-    unsigned long now;
     float flash_multiplier = 1.0;
     bool is_flashing = false;
     int flash_interval = DEFAULT_FLASH_INTERVAL;
-    const float color_bar_min_brightness = 0.1;
 
     float _color_bar_current[4] = {-1, -1, -1, -1};
     float _color_bar_previous[4] = {-1, -1, -1, -1};

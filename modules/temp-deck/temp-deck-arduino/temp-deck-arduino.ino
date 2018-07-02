@@ -25,6 +25,7 @@
 #include "thermistor.h"
 #include "gcode.h"
 
+#define device_version "v1.0.0-beta2"
 
 #define PIN_BUZZER 11  // a piezo buzzer we can use tone() with
 #define PIN_FAN 9      // blower-fan controlled by simple PWM analogWrite()
@@ -96,8 +97,8 @@ unsigned long debug_plotter_timestamp = 0;
 
 #ifdef CONSERVE_POWER_ON_SET_TARGET
 unsigned long SET_TEMPERATURE_TIMESTAMP = 0;
-const unsigned long millis_till_fan_turns_off = 2000; // how long to wait before #1 and #2 from the list above
-const unsigned long millis_till_peltiers_drop_current = 2000; // how long to wait before #2 and #3 from the list above
+#define millis_till_fan_turns_off 2000 // how long to wait before #1 and #2 from the list above
+#define millis_till_peltiers_drop_current 2000 // how long to wait before #2 and #3 from the list above
 #endif
 
 // -1.0 is full cold peltiers, +1.0 is full hot peltiers, can be between the two
@@ -106,24 +107,16 @@ double TARGET_TEMPERATURE = TEMPERATURE_ROOM;
 double CURRENT_TEMPERATURE = TEMPERATURE_ROOM;
 bool MASTER_SET_A_TARGET = false;
 
-double pid_Kp = DOWN_PID_KP;
-double pid_Ki = DOWN_PID_KI;
-double pid_Kd = DEFAULT_PID_KD;
-
-PID myPID(&CURRENT_TEMPERATURE, &TEMPERATURE_SWING, &TARGET_TEMPERATURE, pid_Kp, pid_Ki, pid_Kd, P_ON_M, DIRECT);
+PID myPID(&CURRENT_TEMPERATURE, &TEMPERATURE_SWING, &TARGET_TEMPERATURE, DOWN_PID_KP, DOWN_PID_KI, DEFAULT_PID_KD, P_ON_M, DIRECT);
 
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
-String device_version = "v1.0.0-beta1";
 
 Lights lights = Lights();  // controls 2-digit 7-segment numbers, and the RGBW color bar
 Peltiers peltiers = Peltiers();  // 2 peltiers wired in series (-1.0<->1.0 controls polarity and intensity)
 Thermistor thermistor = Thermistor();  // uses thermistor to read calculate the top-plate's temperature
 Gcode gcode = Gcode();  // reads in serial data to parse command and issue reponses
 Memory memory = Memory();  // reads from EEPROM to find device's unique serial, and model number
-
-// some variables to help initiate the bootloader some time after it has been commanded to start
-unsigned long now;
 
 unsigned long start_bootloader_timestamp = 0;
 const int start_bootloader_timeout = 1000;
@@ -242,32 +235,38 @@ void set_peltiers_from_pid() {
 }
 
 void adjust_pid_on_new_target() {
-  pid_Kp = DOWN_PID_KP;
-  pid_Ki = DOWN_PID_KI;
-  pid_Kd = DEFAULT_PID_KD;
-
   if (is_moving_up()) {
     if (is_targeting_cold_zone()) {
-      pid_Kp = UP_PID_KP_IN_COLD_ZONE;
-      pid_Ki = UP_PID_KI_IN_COLD_ZONE;
+      myPID.SetTunings(
+        UP_PID_KP_IN_COLD_ZONE,
+        UP_PID_KI_IN_COLD_ZONE,
+        DEFAULT_PID_KD,
+        P_ON_M);
     }
     else if (TARGET_TEMPERATURE <= UP_PID_LOW_TEMP) {
-      pid_Kp = UP_PID_KP_AT_LOW_TEMP;
-      pid_Ki = UP_PID_KI_AT_LOW_TEMP;
+      myPID.SetTunings(
+        UP_PID_KP_AT_LOW_TEMP,
+        UP_PID_KI_AT_LOW_TEMP,
+        DEFAULT_PID_KD,
+        P_ON_M);
     }
     else if (TARGET_TEMPERATURE >= UP_PID_HIGH_TEMP) {
-      pid_Kp = UP_PID_KP_AT_HIGH_TEMP;
-      pid_Ki = UP_PID_KI_AT_HIGH_TEMP;
+      myPID.SetTunings(
+        UP_PID_KP_AT_HIGH_TEMP,
+        UP_PID_KI_AT_HIGH_TEMP,
+        DEFAULT_PID_KD,
+        P_ON_M);
     }
     else {
       // linear function between the MIN and MAX Kp and Ki values when moving up
       float scaler = (TARGET_TEMPERATURE - UP_PID_LOW_TEMP) / (UP_PID_HIGH_TEMP - UP_PID_LOW_TEMP);
-      pid_Kp = UP_PID_KP_AT_LOW_TEMP + (scaler * (UP_PID_KP_AT_HIGH_TEMP - UP_PID_KP_AT_LOW_TEMP));
-      pid_Ki = UP_PID_KI_AT_LOW_TEMP + (scaler * (UP_PID_KI_AT_HIGH_TEMP - UP_PID_KI_AT_LOW_TEMP));
+      myPID.SetTunings(
+        UP_PID_KP_AT_LOW_TEMP + (scaler * (UP_PID_KP_AT_HIGH_TEMP - UP_PID_KP_AT_LOW_TEMP)),
+        UP_PID_KI_AT_LOW_TEMP + (scaler * (UP_PID_KI_AT_HIGH_TEMP - UP_PID_KI_AT_LOW_TEMP)),
+        DEFAULT_PID_KD,
+        P_ON_M);
     }
   }
-
-  myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd, P_ON_M);
 }
 
 /////////////////////////////////
@@ -278,7 +277,7 @@ void stabilize_to_target_temp(bool set_fan=true){
 
 #ifdef CONSERVE_POWER_ON_SET_TARGET
   // first, avoid drawing too much current when the target was just changed
-  now = millis();
+  unsigned long now = millis();
   if (SET_TEMPERATURE_TIMESTAMP > now) SET_TEMPERATURE_TIMESTAMP = now;  // handle rollover
   unsigned long end_time = SET_TEMPERATURE_TIMESTAMP + millis_till_fan_turns_off;
   if (end_time > now) {
@@ -398,16 +397,6 @@ void read_gcode(){
             set_target_temperature(gcode.parsed_number);
             MASTER_SET_A_TARGET = true;
           }
-          if (gcode.read_number('P')) {
-            pid_Kp = gcode.parsed_number;
-          }
-          if (gcode.read_number('I')) {
-            pid_Ki = gcode.parsed_number;
-          }
-          if (gcode.read_number('D')) {
-            pid_Kd = gcode.parsed_number;
-          }
-          myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd, P_ON_M);
           break;
         case GCODE_DISENGAGE:
           turn_off_target();
@@ -472,7 +461,6 @@ void setup() {
   myPID.SetMode(AUTOMATIC);
   myPID.SetSampleTime(500);  // since peltier's update at 250ms, PID can be slower
   myPID.SetOutputLimits(-1.0, 1.0);
-  myPID.SetTunings(pid_Kp, pid_Ki, pid_Kd, P_ON_M);
   // make sure we start with a calculated PID output
   while (!myPID.Compute()) {}
 
