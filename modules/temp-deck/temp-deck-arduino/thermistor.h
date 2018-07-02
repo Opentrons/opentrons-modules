@@ -22,8 +22,8 @@ class Thermistor{
     int samples[THERMISTOR_NUM_SAMPLES];
     float average = 0;
 
-    float _average_adc();
-    float _thermistor_temp_to_plate_temp(float thermistor_temp);
+    void _calculate_average_adc();
+    float _average_adc;
 
     // lookup table provided for thermistor PN: NXFT15XV103FA2B150
     const unsigned int TABLE[TABLE_SIZE][2] = {
