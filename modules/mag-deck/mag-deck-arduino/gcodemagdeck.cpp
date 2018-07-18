@@ -102,7 +102,7 @@ void GcodeMagDeck::print_probed_distance(float mm) {
 }
 
 void GcodeMagDeck::print_current_position(float mm) {
-  Serial.print(F("Z"));
+  Serial.print(F("Z:"));
   Serial.println(mm, SERIAL_DIGITS_IN_RESPONSE);
 }
 
