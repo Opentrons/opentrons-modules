@@ -7,7 +7,8 @@ BAD_BARCODE_MESSAGE = 'Unexpected Serial -> {}'
 WRITE_FAIL_MESSAGE = 'Data not saved'
 
 MODELS = {
-    'TDV01': 'temp_deck_v1'
+    'TDV01': 'temp_deck_v1',
+    'MDV01': 'mag_deck_v1'
 }
 
 
