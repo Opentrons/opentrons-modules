@@ -88,7 +88,7 @@ Get the device's current position, specifically the distance in millimeters from
 Getting the current position:
 ```
 -> M114.2\r\n
-<- 12.34\r\nok\r\nok\r\n
+<- Z:12.34\r\nok\r\nok\r\n
 ```
 
 ### Probe Plate
@@ -112,7 +112,7 @@ Retrieve the measured distance found from a previously executed probe command (`
 #### Example:
 ```
 -> M836\r\n
-<- 12.34\r\nok\r\nok\r\n
+<- height:12.34\r\nok\r\nok\r\n
 ```
 
 ### Get Device Information
