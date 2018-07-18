@@ -26,8 +26,8 @@ Memory memory = Memory();  // reads from EEPROM to find device's unique serial, 
 #define MOTOR_ENGAGE_PIN 10
 #define MOTOR_DIRECTION_PIN 9
 #define MOTOR_STEP_PIN 6
-#define LED_UP_PIN 5
-#define LED_DOWN_PIN 13
+#define LED_UP_PIN 13
+#define LED_DOWN_PIN 5
 #define ENDSTOP_PIN A5
 #define ENDSTOP_PIN_TOP A4
 #define TONE_PIN 11
@@ -37,7 +37,7 @@ Memory memory = Memory();  // reads from EEPROM to find device's unique serial, 
 
 #define ENDSTOP_TRIGGERED_STATE LOW
 
-#define CURRENT_TO_BYTES_FACTOR 77.0
+#define CURRENT_TO_BYTES_FACTOR 114
 
 #define STEPS_PER_MM 50  // full-stepping
 unsigned long STEP_DELAY_MICROSECONDS = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
@@ -45,7 +45,7 @@ unsigned long STEP_DELAY_MICROSECONDS = 1000000 / (STEPS_PER_MM * 10);  // defau
 #define MAX_TRAVEL_DISTANCE_MM 45
 float FOUND_HEIGHT = MAX_TRAVEL_DISTANCE_MM - 15;
 
-#define CURRENT_HIGH 0.75
+#define CURRENT_HIGH 0.5
 #define CURRENT_LOW 0.02
 #define SET_CURRENT_DELAY_MS 20
 
@@ -88,9 +88,17 @@ int get_next_acceleration_delay() {
   return ACCELERATION_DELAY_MICROSECONDS;
 }
 
+void set_lights_up() {
+  digitalWrite(LED_UP_PIN, HIGH);
+  digitalWrite(LED_DOWN_PIN, LOW);
+}
+
+void set_lights_down() {
+  digitalWrite(LED_UP_PIN, LOW);
+  digitalWrite(LED_DOWN_PIN, HIGH);
+}
+
 void motor_step(uint8_t dir) {
-  digitalWrite(LED_UP_PIN, dir);
-  digitalWrite(LED_DOWN_PIN, 1 - dir);
   digitalWrite(MOTOR_DIRECTION_PIN, dir);
   digitalWrite(MOTOR_STEP_PIN, HIGH);
   delayMicroseconds(PULSE_HIGH_MICROSECONDS);
@@ -134,11 +142,13 @@ float find_endstop(){
   return mm + (remainder / float(STEPS_PER_MM));
 }
 
+float home_motor(bool save_distance=false);
+
 void move_millimeters(float mm, boolean limit_switch, float accel_factor=1.0){
 //  Serial.print("MOVING "); Serial.print(mm); Serial.println("mm");
   uint8_t dir = DIRECTION_UP;
   if (mm < 0) {
-    dir = DIRECTION_DOWN;
+    dir = DIRECTION_DOWN;  
   }
   unsigned long steps = abs(mm) * float(STEPS_PER_MM);
   acceleration_reset(accel_factor);
@@ -151,18 +161,25 @@ void move_millimeters(float mm, boolean limit_switch, float accel_factor=1.0){
       break;
     }
   }
-  CURRENT_POSITION_MM += mm;
-  disable_motor();
+  if (hit_endstop) {
+    home_motor();
+  }
+  else {
+    CURRENT_POSITION_MM += mm;
+    disable_motor();
+  }
 }
 
 float home_motor(bool save_distance=false) {
 //  Serial.println("HOMING");
+  set_lights_down();
   set_current(CURRENT_HIGH);
   set_speed(SPEED_LOW);
   float f = find_endstop();
   move_millimeters(HOMING_RETRACT, false);
   CURRENT_POSITION_MM = 0;
   disable_motor();
+  set_lights_down();
   return f - HOMING_RETRACT;
 }
 
@@ -174,8 +191,20 @@ void enable_motor() {
   digitalWrite(MOTOR_ENGAGE_PIN, LOW);
 }
 
-void move_to_position(float mm) {
-  move_millimeters(mm - CURRENT_POSITION_MM, true);
+void move_to_position(float mm, bool limit_switch=true, float accel_factory=1.0) {
+  if (mm < CURRENT_POSITION_MM) {
+    set_lights_down();
+  }
+  else {
+    set_lights_up();
+  }
+  move_millimeters(mm - CURRENT_POSITION_MM, limit_switch, accel_factory);
+  if (int(CURRENT_POSITION_MM) < 1) {
+    set_lights_down();
+  }
+  else {
+    set_lights_up();
+  }
 }
 
 void move_to_top(){
@@ -235,7 +264,7 @@ void activate_bootloader(){
 void setup() {
   setup_pins();
   setup_digipot();
-  set_current(CURRENT_LOW);
+  set_current(CURRENT_HIGH);
   set_speed(SPEED_LOW);
   disable_motor();
 
@@ -262,7 +291,7 @@ void loop() {
           else set_current(CURRENT_LOW);
           if (gcode.read_number('F')) set_speed(gcode.parsed_number);
           else set_speed(SPEED_PROBE);
-          move_millimeters(MAX_TRAVEL_DISTANCE_MM, false, 2.0);  // 2x slower acceleration
+          move_to_position(MAX_TRAVEL_DISTANCE_MM, false, 2.0);  // 2x slower acceleration
           FOUND_HEIGHT = home_motor();
           break;
         case GCODE_GET_PROBED_DISTANCE:
