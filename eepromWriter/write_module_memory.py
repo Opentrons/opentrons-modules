@@ -8,7 +8,7 @@ WRITE_FAIL_MESSAGE = 'Data not saved'
 
 MODELS = {
     'TDV01': 'temp_deck_v1',
-    'TEMPD': 'temp_deck_v2',
+    'TEMPD': 'temp_deck_v2',  # pre-production
     'MDV01': 'mag_deck_v1'
 }
 
