@@ -61,9 +61,10 @@ float SAVED_POSITION_OFFSET = 0.0;
 float MM_PER_SEC = SPEED_LOW;
 
 #define ACCELERATION_STARTING_DELAY_MICROSECONDS 1000
-#define ACCELERATION_DELAY_FEEDBACK 0.9  // bigger number means faster acceleration
+#define DEFAULT_ACCELERATION_DELAY_FEEDBACK 0.9  // bigger number means faster acceleration
 #define PULSE_HIGH_MICROSECONDS 2
 
+float ACCELERATION_DELAY_FEEDBACK = DEFAULT_ACCELERATION_DELAY_FEEDBACK;
 float ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS;
 const int steps_per_acceleration_cycle = ACCELERATION_STARTING_DELAY_MICROSECONDS / ACCELERATION_DELAY_FEEDBACK;
 
@@ -77,15 +78,44 @@ void i2c_write(byte address, byte value) {
   }
 }
 
+#define ACCELERATE_OFF 0
+#define ACCELERATE_DOWN 1
+#define ACCELERATE_UP 2
+uint8_t accelerate_direction = ACCELERATE_OFF;
+float acceleration_factor = 1.0;
+unsigned long number_of_acceleration_steps = 0;
+
 void acceleration_reset(float factor=1.0) {
+  acceleration_factor = factor;
   ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS - STEP_DELAY_MICROSECONDS;
-  ACCELERATION_DELAY_MICROSECONDS *= factor;
+  ACCELERATION_DELAY_FEEDBACK = DEFAULT_ACCELERATION_DELAY_FEEDBACK / factor;
+  accelerate_direction = ACCELERATE_UP;
+  number_of_acceleration_steps = 0;
 }
 
 int get_next_acceleration_delay() {
-  ACCELERATION_DELAY_MICROSECONDS -= ACCELERATION_DELAY_FEEDBACK;
-  if(ACCELERATION_DELAY_MICROSECONDS <0) ACCELERATION_DELAY_MICROSECONDS = 0;
+  if (accelerate_direction == ACCELERATE_UP) {
+    ACCELERATION_DELAY_MICROSECONDS -= ACCELERATION_DELAY_FEEDBACK;
+    number_of_acceleration_steps += 1;
+    if(ACCELERATION_DELAY_MICROSECONDS < 0) {
+      ACCELERATION_DELAY_MICROSECONDS = 0;
+      accelerate_direction = ACCELERATE_OFF;
+    }
+  }
+  else if (accelerate_direction == ACCELERATE_DOWN){
+    ACCELERATION_DELAY_MICROSECONDS += ACCELERATION_DELAY_FEEDBACK;
+    if(ACCELERATION_DELAY_MICROSECONDS > ACCELERATION_STARTING_DELAY_MICROSECONDS - STEP_DELAY_MICROSECONDS) {
+      ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS - STEP_DELAY_MICROSECONDS;
+      accelerate_direction = ACCELERATE_OFF;
+    }
+  }
   return ACCELERATION_DELAY_MICROSECONDS;
+}
+
+void enable_deceleration_if_needed(int current_step, int total_steps) {
+  if (total_steps - current_step <= number_of_acceleration_steps) {
+    accelerate_direction = ACCELERATE_DOWN;
+  }
 }
 
 void set_lights_up() {
@@ -98,12 +128,12 @@ void set_lights_down() {
   digitalWrite(LED_DOWN_PIN, HIGH);
 }
 
-void motor_step(uint8_t dir) {
+void motor_step(uint8_t dir, int speed_delay) {
   digitalWrite(MOTOR_DIRECTION_PIN, dir);
   digitalWrite(MOTOR_STEP_PIN, HIGH);
   delayMicroseconds(PULSE_HIGH_MICROSECONDS);
   digitalWrite(MOTOR_STEP_PIN, LOW);
-  delayMicroseconds(get_next_acceleration_delay());  // this sets the speed!!
+  delayMicroseconds(speed_delay);  // this sets the speed!!
   delayMicroseconds(STEP_DELAY_MICROSECONDS % 1000);
   if (STEP_DELAY_MICROSECONDS >= 1000) {
     delay(STEP_DELAY_MICROSECONDS / 1000);
@@ -133,7 +163,7 @@ float find_endstop(){
   acceleration_reset();
   enable_motor();
   while (digitalRead(ENDSTOP_PIN) != ENDSTOP_TRIGGERED_STATE) {
-    motor_step(DIRECTION_DOWN);
+    motor_step(DIRECTION_DOWN, get_next_acceleration_delay());
     steps_taken++;
   }
   CURRENT_POSITION_MM = 0.0;
@@ -155,7 +185,8 @@ void move_millimeters(float mm, boolean limit_switch, float accel_factor=1.0){
   boolean hit_endstop = false;
   enable_motor();
   for (unsigned long i=0;i<steps;i++) {
-    motor_step(dir);
+    enable_deceleration_if_needed(i, steps);
+    motor_step(dir, get_next_acceleration_delay());
     if (limit_switch && digitalRead(ENDSTOP_PIN) == ENDSTOP_TRIGGERED_STATE) {
       hit_endstop = true;
       break;
