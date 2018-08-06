@@ -16,7 +16,7 @@
 
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
-String device_version = "v1.0.0-beta1";
+String device_version = "v1.0.0-beta2";
 
 GcodeMagDeck gcode = GcodeMagDeck();  // reads in serial data to parse command and issue reponses
 Memory memory = Memory();  // reads from EEPROM to find device's unique serial, and model number
@@ -32,8 +32,8 @@ Memory memory = Memory();  // reads from EEPROM to find device's unique serial, 
 #define ENDSTOP_PIN_TOP A4
 #define TONE_PIN 11
 
-#define DIRECTION_DOWN LOW
-#define DIRECTION_UP HIGH
+#define DIRECTION_DOWN HIGH
+#define DIRECTION_UP LOW
 
 #define ENDSTOP_TRIGGERED_STATE LOW
 
@@ -178,7 +178,7 @@ void move_millimeters(float mm, boolean limit_switch, float accel_factor=1.0){
 //  Serial.print("MOVING "); Serial.print(mm); Serial.println("mm");
   uint8_t dir = DIRECTION_UP;
   if (mm < 0) {
-    dir = DIRECTION_DOWN;  
+    dir = DIRECTION_DOWN;
   }
   unsigned long steps = abs(mm) * float(STEPS_PER_MM);
   acceleration_reset(accel_factor);
@@ -280,7 +280,7 @@ void setup_pins() {
 
 void activate_bootloader(){
   // Method 1: Uses a WDT reset to enter bootloader.
-  // Works on the modified Caterina bootloader that allows 
+  // Works on the modified Caterina bootloader that allows
   // bootloader access after a WDT reset
   // -----------------------------------------------------------------
   wdt_enable(WDTO_15MS);  //Timeout
@@ -288,7 +288,7 @@ void activate_bootloader(){
   while(millis() - timerStart < 25){
     //Wait out until WD times out
   }
-  // Should never get here but in case it does because 
+  // Should never get here but in case it does because
   // WDT failed to start or timeout..
 }
 
