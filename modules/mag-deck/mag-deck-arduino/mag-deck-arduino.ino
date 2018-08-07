@@ -329,14 +329,11 @@ void loop() {
           gcode.print_probed_distance(FOUND_HEIGHT);
           break;
         case GCODE_MOVE:
-          if (gcode.read_number('F')) {
-            set_speed(gcode.parsed_number);
-          }
-          else {
-            set_speed(SPEED_HIGH);
-          }
+          if (gcode.read_number('C')) set_current(gcode.parsed_number);
+          else set_current(CURRENT_HIGH);
+          if (gcode.read_number('F')) set_speed(gcode.parsed_number);
+          else set_speed(SPEED_HIGH);
           if (gcode.read_number('Z')) {
-            set_current(CURRENT_HIGH);
             move_to_position(gcode.parsed_number);
           }
           break;
