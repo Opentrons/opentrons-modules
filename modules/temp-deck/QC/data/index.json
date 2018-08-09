@@ -1,0 +1,11 @@
+{
+  "labware": {
+    "baseDefinitionDir": "/etc/labware",
+    "userDefinitionDir": "/data/user_storage/opentrons_data/labware/definitions",
+    "offsetDir": "/data/user_storage/opentrons_data/labware/offsets"
+  },
+  "pipetteConfigFile": "/etc/robot-data/pipette-config.json",
+  "featureFlagFile": "/data/settings.json",
+  "deckCalibrationFile": "/data/user_storage/opentrons_data/config.json",
+  "robotSettingsFile": "/data/user_storage/opentrons_data/robotSettings.json"
+}
