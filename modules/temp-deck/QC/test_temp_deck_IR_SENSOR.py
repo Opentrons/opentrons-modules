@@ -1,4 +1,9 @@
+# this must happen before attempting to import opentrons
+import os
+os.environ['OVERRIDE_SETTINGS_DIR'] = './data'
+
 import serial
+import system
 import time
 
 from serial.tools.list_ports import comports
@@ -14,8 +19,11 @@ SECONDS_WAIT_AT_TEMP = 1200
 def connect_to_temp_deck(default_port=None):
     tempdeck = temp_deck.TempDeck()
     ports = []
+    keyword = 'tempdeck'
+    if system.platorm().lower() == 'Windows':
+        keyword = 'device'
     for p in comports():
-        if 'tempdeck' in p.description.lower():
+        if keyword in p.description.lower():
             ports.append(p.device)
     if not ports:
         raise RuntimeError('Can not find a TempDeck connected over USB')
@@ -34,8 +42,11 @@ def connect_to_temp_deck(default_port=None):
 
 def connect_to_ir_sensor(default_port=None):
     ports = []
+    keyword = 'ft232r'
+    if system.platorm().lower() == 'Windows':
+        keyword = 'port'
     for p in comports():
-        if 'ft232r' in p.description.lower():
+        if keyword in p.description.lower():
             ports.append(p.device)
     if not ports:
         raise RuntimeError('Can not find a IR Sensor connected over USB')
@@ -121,34 +132,35 @@ def analyze_results(results):
 
 
 def main(tempdeck, sensor, targets):
-    try:
-        results = []
-        for i in range(len(targets)):
-            tempdeck.set_temperature(targets[i])
-            while not is_temp_arrived(tempdeck, targets[i]):
-                log_temperatures(tempdeck, sensor)
-            timestamp = time.time()
-            delta_temperatures = []
-            while not is_finished_stabilizing(targets[i], timestamp, SECONDS_WAIT_AT_TEMP):
-                delta_temp = log_temperatures(tempdeck, sensor)
-                delta_temperatures.append(delta_temp)
-            average_delta = round(
-                sum(delta_temperatures) / len(delta_temperatures), 2)
-            min_delta = round(min(delta_temperatures), 2)
-            max_delta = round(max(delta_temperatures), 2)
-            results.append({
-                'target': targets[i],
-                'average': average_delta,
-                'min': min_delta,
-                'max': max_delta
-            })
-        analyze_results(results)
-    finally:
-        tempdeck.disengage()
+    results = []
+    for i in range(len(targets)):
+        tempdeck.set_temperature(targets[i])
+        while not is_temp_arrived(tempdeck, targets[i]):
+            log_temperatures(tempdeck, sensor)
+        timestamp = time.time()
+        delta_temperatures = []
+        while not is_finished_stabilizing(targets[i], timestamp, SECONDS_WAIT_AT_TEMP):
+            delta_temp = log_temperatures(tempdeck, sensor)
+            delta_temperatures.append(delta_temp)
+        average_delta = round(
+            sum(delta_temperatures) / len(delta_temperatures), 2)
+        min_delta = round(min(delta_temperatures), 2)
+        max_delta = round(max(delta_temperatures), 2)
+        results.append({
+            'target': targets[i],
+            'average': average_delta,
+            'min': min_delta,
+            'max': max_delta
+        })
+    analyze_results(results)
 
 
 
 if __name__ == '__main__':
-    sensor = connect_to_ir_sensor()
-    tempdeck = connect_to_temp_deck()
-    main(tempdeck, sensor, TARGET_TEMPERATURES)
+    try:
+        sensor = connect_to_ir_sensor()
+        tempdeck = connect_to_temp_deck()
+        main(tempdeck, sensor, TARGET_TEMPERATURES)
+    finally:
+        del os.environ['OVERRIDE_SETTINGS_DIR']
+        tempdeck.disengage()

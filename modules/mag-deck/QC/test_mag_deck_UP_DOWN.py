@@ -1,4 +1,9 @@
+# this must happen before attempting to import opentrons
+import os
+os.environ['OVERRIDE_SETTINGS_DIR'] = './data'
+
 import sys
+import system
 import time
 
 import serial
@@ -26,8 +31,11 @@ FIRMWARE_HOMING_RETRACT = 2
 
 def connect_to_mag_deck(default_port=None):
     ports = []
+    keyword = 'magdeck'
+    if system.platorm().lower() == 'Windows':
+        keyword = 'device'
     for p in comports():
-        if 'magdeck' in p.description.lower():
+        if keyword in p.description.lower():
             ports.append(p.device)
     if not ports:
         raise RuntimeError('Can not find a MagDeck connected over USB')
@@ -112,4 +120,7 @@ def main(cycles, default_port=None):
 
 
 if __name__ == '__main__':
-    main(TEST_CYCLES, default_port=sys.argv[-1])
+    try:
+        main(TEST_CYCLES, default_port=sys.argv[-1])
+    finally:
+        del os.environ['OVERRIDE_SETTINGS_DIR']
