@@ -11,9 +11,10 @@ from serial.tools.list_ports import comports
 from opentrons.drivers import temp_deck
 
 
-TARGET_TEMPERATURES = [95]
+TARGET_TEMPERATURES = [4, 95]
 
-SECONDS_WAIT_AT_TEMP = 1200
+SECONDS_WAIT_AT_TEMP = 60
+SECONDS_TO_IGNORE = 30
 
 
 def connect_to_temp_deck(default_port=None):
@@ -142,6 +143,7 @@ def main(tempdeck, sensor, targets):
         while not is_finished_stabilizing(targets[i], timestamp, SECONDS_WAIT_AT_TEMP):
             delta_temp = log_temperatures(tempdeck, sensor)
             delta_temperatures.append(delta_temp)
+        delta_temperatures = delta_temperatures[SECONDS_TO_IGNORE:]
         average_delta = round(
             sum(delta_temperatures) / len(delta_temperatures), 2)
         min_delta = round(min(delta_temperatures), 2)
