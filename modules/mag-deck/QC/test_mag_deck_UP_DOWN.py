@@ -3,12 +3,13 @@ import os
 os.environ['OVERRIDE_SETTINGS_DIR'] = './data'
 
 import sys
-import platform
 import time
 
 import serial
 from serial.tools.list_ports import comports
 
+
+PID_MAGDECK = 61072
 
 TEST_CYCLES = 100
 MAX_ALLOWED_FAILURES = 3
@@ -31,11 +32,8 @@ FIRMWARE_HOMING_RETRACT = 2
 
 def connect_to_mag_deck(default_port=None):
     ports = []
-    keyword = 'magdeck'
-    if 'windows' in platform.platform().lower():
-        keyword = 'device'
     for p in comports():
-        if keyword in p.description.lower():
+        if p.pid == PID_MAGDECK:
             ports.append(p.device)
     if not ports:
         raise RuntimeError('Can not find a MagDeck connected over USB')

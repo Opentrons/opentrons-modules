@@ -3,13 +3,15 @@ import os
 os.environ['OVERRIDE_SETTINGS_DIR'] = './data'
 
 import serial
-import platform
 import time
 
 from serial.tools.list_ports import comports
 
 from opentrons.drivers import temp_deck
 
+
+PID_TEMPDECK = 61075
+PID_FTDI = 24577
 
 TARGET_TEMPERATURES = [4, 95]
 
@@ -20,11 +22,8 @@ SECONDS_TO_IGNORE = 30
 def connect_to_temp_deck(default_port=None):
     tempdeck = temp_deck.TempDeck()
     ports = []
-    keyword = 'tempdeck'
-    if 'windows' in platform.platform().lower():
-        keyword = 'device'
     for p in comports():
-        if keyword in p.description.lower():
+        if p.pid == PID_TEMPDECK:
             ports.append(p.device)
     if not ports:
         raise RuntimeError('Can not find a TempDeck connected over USB')
@@ -43,11 +42,8 @@ def connect_to_temp_deck(default_port=None):
 
 def connect_to_ir_sensor(default_port=None):
     ports = []
-    keyword = 'ft232r'
-    if 'windows' in platform.platform().lower():
-        keyword = 'port'
     for p in comports():
-        if keyword in p.description.lower():
+        if p.pid == PID_FTDI:
             ports.append(p.device)
     if not ports:
         raise RuntimeError('Can not find a IR Sensor connected over USB')
