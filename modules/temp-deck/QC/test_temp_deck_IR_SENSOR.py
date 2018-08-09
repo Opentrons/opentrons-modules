@@ -3,7 +3,7 @@ import os
 os.environ['OVERRIDE_SETTINGS_DIR'] = './data'
 
 import serial
-import system
+import platform
 import time
 
 from serial.tools.list_ports import comports
@@ -21,7 +21,7 @@ def connect_to_temp_deck(default_port=None):
     tempdeck = temp_deck.TempDeck()
     ports = []
     keyword = 'tempdeck'
-    if system.platorm().lower() == 'Windows':
+    if 'windows' in platform.platform().lower():
         keyword = 'device'
     for p in comports():
         if keyword in p.description.lower():
@@ -44,7 +44,7 @@ def connect_to_temp_deck(default_port=None):
 def connect_to_ir_sensor(default_port=None):
     ports = []
     keyword = 'ft232r'
-    if system.platorm().lower() == 'Windows':
+    if 'windows' in platform.platform().lower():
         keyword = 'port'
     for p in comports():
         if keyword in p.description.lower():

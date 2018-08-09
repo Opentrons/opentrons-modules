@@ -3,7 +3,7 @@ import os
 os.environ['OVERRIDE_SETTINGS_DIR'] = './data'
 
 import sys
-import system
+import platform
 import time
 
 import serial
@@ -32,7 +32,7 @@ FIRMWARE_HOMING_RETRACT = 2
 def connect_to_mag_deck(default_port=None):
     ports = []
     keyword = 'magdeck'
-    if system.platorm().lower() == 'Windows':
+    if 'windows' in platform.platform().lower():
         keyword = 'device'
     for p in comports():
         if keyword in p.description.lower():
