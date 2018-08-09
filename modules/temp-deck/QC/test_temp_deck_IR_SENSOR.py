@@ -65,14 +65,9 @@ def read_ir_temp(ir_sensor):
         exit()
 
 
-def is_temp_arrived(tempdeck, target_temperature, samples=10):
-    average_temp = 0
-    for i in range(samples):
-        td_temp, _ = read_temperatures(tempdeck)
-        average_temp += td_temp
-        time.sleep(0.1)
-    average_temp = average_temp / samples
-    return bool(abs(average_temp - target_temperature) <= 0.5)
+def is_temp_arrived(tempdeck, target_temperature):
+    td_temp, _ = read_average_temperatures(tempdeck)
+    return bool(abs(td_temp - target_temperature) <= 0.5)
 
 
 def is_finished_stabilizing(target_temperature, timestamp, time_to_stabilize):
@@ -81,17 +76,22 @@ def is_finished_stabilizing(target_temperature, timestamp, time_to_stabilize):
     return bool(timestamp + time_to_stabilize < time.time())
 
 
-def read_temperatures(tempdeck, ir_sensor=None):
-    tempdeck.update_temperature()
-    if ir_sensor:
-        ir_temp = read_ir_temp(ir_sensor);
-    else:
-        ir_temp = None
-    return (tempdeck.temperature, ir_temp)
+def read_average_temperatures(tempdeck, ir_sensor=None, samples=10):
+    average_td_temp = 0
+    average_ir_temp = 0
+    for i in range(samples):
+        tempdeck.update_temperature()
+        average_td_temp += tempdeck.temperature
+        if ir_sensor:
+            average_ir_temp += read_ir_temp(ir_sensor);
+        time.sleep(0.025)
+    average_td_temp = average_td_temp / samples
+    average_ir_temp = average_ir_temp / samples
+    return (average_td_temp, average_ir_temp)
 
 
 def log_temperatures(tempdeck, ir_sensor):
-    tempdeck_temp, ir_temp = read_temperatures(tempdeck, ir_sensor)
+    tempdeck_temp, ir_temp = read_average_temperatures(tempdeck, ir_sensor)
     print(
         'Module: {0},\tIR Sensor: {1},\tDelta: {2}'.format(
             round(tempdeck_temp, 2),
