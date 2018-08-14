@@ -50,7 +50,7 @@ def connect_to_ir_sensor(default_port=None):
         ports = [default_port] + ports
     for p in ports:
         try:
-            ir_sensor = serial.Serial(p, 115200, timeout=1)
+            ir_sensor = serial.Serial(p, 9600, timeout=1)
             time.sleep(2)
             return ir_sensor
         except KeyboardInterrupt:
