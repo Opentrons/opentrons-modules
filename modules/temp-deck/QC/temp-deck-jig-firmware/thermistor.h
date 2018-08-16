@@ -3,8 +3,8 @@
 
 #include "Arduino.h"
 
-#define thermistor_pin 4
-#define TABLE_SIZE 34
+#define thermistor_pin 0
+#define TABLE_SIZE 22
 
 #define THERMISTOR_NUM_SAMPLES 15
 
@@ -13,7 +13,7 @@ class Thermistor{
 
     Thermistor();
     bool update();
-    float plate_temperature();
+    float temperature();
     void set_samples(int n);
 
   private:
@@ -25,40 +25,30 @@ class Thermistor{
     float _average_adc;
 
     // lookup table provided for thermistor PN: NXFT15XV103FA2B150
-    const unsigned int TABLE[TABLE_SIZE][2] = {
+    const int TABLE[TABLE_SIZE][2] = {
       // ADC, Celsius
-      {994, -40},
-      {983, -35},
-      {968, -30},
-      {950, -25},
-      {928, -20},
-      {900, -15},
-      {865, -10},
-      {826, -5},
-      {781, 0},
-      {732, 5},
-      {680, 10},
-      {624, 15},
+      {827, -5},
+      {783, 0},
+      {734, 5},
+      {681, 10},
+      {625, 15},
       {568, 20},
       {512, 25},
-      {457, 30},
-      {405, 35},
-      {357, 40},
-      {313, 45},
-      {273, 50},
-      {237, 55},
-      {206, 60},
-      {179, 65},
-      {155, 70},
-      {134, 75},
-      {116, 80},
-      {101, 85},
-      {88, 90},
-      {77, 95},
-      {67, 100},
-      {44, 115},
-      {38, 120},
-      {34, 125}
+      {456, 30},
+      {404, 35},
+      {356, 40},
+      {311, 45},
+      {271, 50},
+      {235, 55},
+      {204, 60},
+      {176, 65},
+      {152, 70},
+      {132, 75},
+      {114, 80},
+      {99, 85},
+      {86, 90},
+      {75, 95},
+      {65, 100}
     };
 
 };

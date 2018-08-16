@@ -2,6 +2,7 @@
 import os
 os.environ['OVERRIDE_SETTINGS_DIR'] = './data'
 
+from datetime import datetime
 import serial
 import time
 
@@ -17,6 +18,9 @@ TARGET_TEMPERATURES = [4, 95]
 
 SECONDS_WAIT_AT_TEMP = 60
 
+test_start_time = 0
+date_string = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d_%H:%M:%S')
+csv_file_path = './data/td_test_{}'.format(date_string)
 
 def connect_to_temp_deck(default_port=None):
     tempdeck = temp_deck.TempDeck()
@@ -60,20 +64,26 @@ def connect_to_ir_sensor(default_port=None):
     raise Exception('Could not connect to IR Sensor')
 
 
-def read_ir_temp(ir_sensor):
+def test_time_seconds():
+    global test_start_time
+    return round(time.time() - test_start_time, 2)
+
+
+def read_temperature_sensors(ir_sensor):
     ir_sensor.reset_input_buffer()
     ir_sensor.write(b'\r\n')
-    time.sleep(0.1)
+    time.sleep(0.025)
     try:
         res = ir_sensor.readline().decode().strip()
-        return float(res)
+        both_temps = res.split(':')[:2]
+        return (float(both_temps[0]), float(both_temps[1]))
     except Exception:
         print('Error parsing "{}"'.format(res))
         exit()
 
 
 def is_temp_arrived(tempdeck, target_temperature):
-    td_temp, _ = read_average_temperatures(tempdeck)
+    td_temp, _, _ = read_temperatures(tempdeck)
     return bool(abs(td_temp - target_temperature) <= 0.5)
 
 
@@ -83,30 +93,30 @@ def is_finished_stabilizing(target_temperature, timestamp, time_to_stabilize):
     return bool(timestamp + time_to_stabilize < time.time())
 
 
-def read_average_temperatures(tempdeck, ir_sensor=None, samples=10):
-    average_td_temp = 0
-    average_ir_temp = 0
-    for i in range(samples):
-        tempdeck.update_temperature()
-        average_td_temp += tempdeck.temperature
-        if ir_sensor:
-            average_ir_temp += read_ir_temp(ir_sensor);
-        time.sleep(0.025)
-    average_td_temp = average_td_temp / samples
-    average_ir_temp = average_ir_temp / samples
-    return (average_td_temp, average_ir_temp)
+def read_temperatures(tempdeck, ir_sensor=None, samples=10):
+    tempdeck.update_temperature()
+    ir_temp, thermistor_temp = read_temperature_sensors(ir_sensor);
+    return (tempdeck.temperature, ir_temp, thermistor_temp)
+
+
+def write_to_file(data_line):
+    global csv_file_path
+    with open(csv_file_path, 'a+') as f:
+        f.write(data_line + '\r\n')
 
 
 def log_temperatures(tempdeck, ir_sensor):
-    tempdeck_temp, ir_temp = read_average_temperatures(tempdeck, ir_sensor)
-    print(
-        'Module: {0},\tIR Sensor: {1},\tDelta: {2}'.format(
-            round(tempdeck_temp, 2),
-            round(ir_temp, 2),
-            round(ir_temp - tempdeck_temp, 2)
-        )
-    )
-    return abs(ir_temp - tempdeck_temp)  # return the absolute DELTA
+    tempdeck_temp, ir_temp, thermistor_temp = read_temperatures(tempdeck, ir_sensor)
+    csv_line = '{0}, {1}, {2}, {3}'.format(
+        test_time_seconds(),
+        round(tempdeck_temp, 2),
+        round(ir_temp, 2),
+        round(thermistor_temp, 2))
+    print(csv_line)
+    write_to_file(csv_line)
+    ir_delta = abs(ir_temp - tempdeck_temp)
+    thermistor_delta = abs(thermistor_temp - tempdeck_temp)
+    return (ir_delta, thermistor_delta)  # return the absolute DELTA
 
 
 def analyze_results(results):
@@ -128,16 +138,22 @@ def analyze_results(results):
 
 
 def main(tempdeck, sensor, targets):
+    global test_start_time
+    test_start_time = time.time()
+    write_to_file('seconds', 'tempdeck', 'ir', 'thermistor')
     results = []
     for i in range(len(targets)):
         tempdeck.set_temperature(targets[i])
         while not is_temp_arrived(tempdeck, targets[i]):
             log_temperatures(tempdeck, sensor)
-        timestamp = time.time()
         delta_temperatures = []
+        timestamp = time.time()
         while not is_finished_stabilizing(targets[i], timestamp, SECONDS_WAIT_AT_TEMP):
-            delta_temp = log_temperatures(tempdeck, sensor)
-            delta_temperatures.append(delta_temp)
+            delta_temp_ir, delta_temp_thermistor = log_temperatures(tempdeck, sensor)
+            if targets[i] < 25:
+                delta_temperatures.append(delta_temp_thermistor)
+            else:
+                delta_temperatures.append(delta_temperatures_ir)
         average_delta = round(
             sum(delta_temperatures) / len(delta_temperatures), 2)
         min_delta = round(min(delta_temperatures), 2)
