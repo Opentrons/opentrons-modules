@@ -1,5 +1,10 @@
 import sys
 
+from serial import Serial
+from serial.tools.list_ports import comports
+
+
+OPENTRONS_VID = 1240
 
 port = ''
 
@@ -12,9 +17,15 @@ MODELS = {
 }
 
 
-def connect_to_temp_deck(port):
+def connect_to_temp_deck():
+    port = None
+    for p in comports():
+        if p.vid == OPENTRONS_VID:
+            port = p.device
+            break
+    if port is None:
+        raise RuntimeError('Could not find Opentrons Model connected over USB')
     print()
-    from serial import Serial
     print('Connecting to temp-deck...')
     td = Serial(port, 115200, timeout=1)
     return td
@@ -68,12 +79,12 @@ def _parse_model_from_barcode(barcode):
     raise Exception(BAD_BARCODE_MESSAGE.format(barcode))
 
 
-def main(temp_deck_port):
+def main():
     print('\n')
     try:
         barcode = _user_submitted_barcode(32)
         model = _parse_model_from_barcode(barcode)
-        tempdeck = connect_to_temp_deck(temp_deck_port)
+        tempdeck = connect_to_temp_deck()
         check_previous_data(tempdeck)
         write_identifiers(tempdeck, barcode, model)
         print('PASS: Saved -> {0} (model {1})'.format(barcode, model))
@@ -81,12 +92,8 @@ def main(temp_deck_port):
         exit()
     except Exception as e:
         print('FAIL: {}'.format(e))
-    main(temp_deck_port)
+    main()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        port = sys.argv[1]
-        main(port)
-    else:
-        raise Exception('Add the PORT argument when calling this script')
+    main()
