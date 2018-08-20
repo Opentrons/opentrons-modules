@@ -8,7 +8,7 @@ WRITE_FAIL_MESSAGE = 'Data not saved'
 
 MODELS = {
     'TDV01': 'temp_deck_v1.1',  # make sure to skip v2 if model updates
-    'MDV01': 'mag_deck_v1'
+    'MDV01': 'mag_deck_v1.1'
 }
 
 
