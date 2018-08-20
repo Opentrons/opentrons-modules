@@ -16,11 +16,11 @@ PID_FTDI = 24577
 
 TARGET_TEMPERATURES = [4, 95]
 
-SECONDS_WAIT_AT_TEMP = 60
+SECONDS_WAIT_BEFORE_MEASURING = 3 * 60
+SECONDS_TO_RECORD = 1 * 60
 
 test_start_time = 0
-date_string = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d_%H:%M:%S')
-csv_file_path = './data/td_test_{}'.format(date_string)
+csv_file_path = './data/{id}_{date}'
 
 def connect_to_temp_deck(default_port=None):
     tempdeck = temp_deck.TempDeck()
@@ -55,7 +55,7 @@ def connect_to_ir_sensor(default_port=None):
     for p in ports:
         try:
             ir_sensor = serial.Serial(p, 9600, timeout=1)
-            time.sleep(2)
+            time.sleep(3)
             return ir_sensor
         except KeyboardInterrupt:
             exit()
@@ -75,7 +75,7 @@ def read_temperature_sensors(ir_sensor):
     time.sleep(0.025)
     try:
         res = ir_sensor.readline().decode().strip()
-        both_temps = res.split(':')[:2]
+        both_temps = res.split(',')[:2]
         return (float(both_temps[0]), float(both_temps[1]))
     except Exception:
         print('Error parsing "{}"'.format(res))
@@ -93,8 +93,11 @@ def is_finished_stabilizing(target_temperature, timestamp, time_to_stabilize):
     return bool(timestamp + time_to_stabilize < time.time())
 
 
-def read_temperatures(tempdeck, ir_sensor=None, samples=10):
+def read_temperatures(tempdeck, ir_sensor=None):
+    time.sleep(0.05)
     tempdeck.update_temperature()
+    if not ir_sensor:
+        return (tempdeck.temperature, None, None)
     ir_temp, thermistor_temp = read_temperature_sensors(ir_sensor);
     return (tempdeck.temperature, ir_temp, thermistor_temp)
 
@@ -138,22 +141,31 @@ def analyze_results(results):
 
 
 def main(tempdeck, sensor, targets):
-    global test_start_time
+    global test_start_time, csv_file_path
     test_start_time = time.time()
-    write_to_file('seconds', 'tempdeck', 'ir', 'thermistor')
+    serial_number = tempdeck.get_device_info().get('serial')
+    if not serial_number:
+        raise RuntimeError('Module has no ID, please write ID before testing')
+    date_string = datetime.utcfromtimestamp(time.time()).strftime(
+        '%Y-%m-%d_%H-%M-%S')
+    csv_file_path = csv_file_path.format(id=serial_number, date=date_string)
+    write_to_file('seconds, tempdeck, ir, thermistor')
     results = []
     for i in range(len(targets)):
         tempdeck.set_temperature(targets[i])
         while not is_temp_arrived(tempdeck, targets[i]):
             log_temperatures(tempdeck, sensor)
+        timestamp = time.time()
+        while time.time() - timestamp < SECONDS_WAIT_BEFORE_MEASURING:
+            log_temperatures(tempdeck, sensor)
         delta_temperatures = []
         timestamp = time.time()
-        while not is_finished_stabilizing(targets[i], timestamp, SECONDS_WAIT_AT_TEMP):
+        while not is_finished_stabilizing(targets[i], timestamp, SECONDS_TO_RECORD):
             delta_temp_ir, delta_temp_thermistor = log_temperatures(tempdeck, sensor)
             if targets[i] < 25:
                 delta_temperatures.append(delta_temp_thermistor)
             else:
-                delta_temperatures.append(delta_temperatures_ir)
+                delta_temperatures.append(delta_temp_ir)
         average_delta = round(
             sum(delta_temperatures) / len(delta_temperatures), 2)
         min_delta = round(min(delta_temperatures), 2)

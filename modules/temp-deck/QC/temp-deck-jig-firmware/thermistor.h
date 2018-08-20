@@ -24,7 +24,7 @@ class Thermistor{
     void _calculate_average_adc();
     float _average_adc;
 
-    // lookup table provided for thermistor PN: NXFT15XV103FA2B150
+    // lookup table provided for thermistor PN: KS103J2
     const int TABLE[TABLE_SIZE][2] = {
       // ADC, Celsius
       {827, -5},
