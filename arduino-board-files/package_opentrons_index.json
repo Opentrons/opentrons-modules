@@ -41,6 +41,39 @@
             }
           ],
           "name": "Opentrons Modules Boards"
+        },
+        {
+          "category": "Opentrons",
+          "help": {
+            "online": "https://support.opentrons.com/ot-2"
+          },
+          "url": "https://s3.us-east-2.amazonaws.com/opentrons-modules/opentrons-1.2.0.tar.bz2",
+          "checksum": "SHA-256:7940f83d97f8171d860d126de5ae66eb0f30856cff50c91233cea8f97fd82474",
+          "version": "1.2.0",
+          "architecture": "avr",
+          "archiveFileName": "opentrons-1.2.0.tar.bz2",
+          "boards": [
+            {
+              "name": "TempDeck"
+            },
+            {
+              "name": "MagDeck"
+            }
+          ],
+          "size": "29885",
+          "toolsDependencies": [
+            {
+              "packager": "arduino",
+              "version": "4.8.1-arduino5",
+              "name": "avr-gcc"
+            },
+            {
+              "packager": "arduino",
+              "version": "6.0.1-arduino5",
+              "name": "avrdude"
+            }
+          ],
+          "name": "Opentrons Modules Boards"
         }
       ],
       "tools": []
