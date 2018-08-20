@@ -283,6 +283,10 @@ void activate_bootloader(){
   // Works on the modified Caterina bootloader that allows
   // bootloader access after a WDT reset
   // -----------------------------------------------------------------
+  unsigned long tempWait = millis();
+  while(millis() - tempWait < 3000){
+    // Pi has 3 seconds to cleanly disconnect
+  }
   wdt_enable(WDTO_15MS);  //Timeout
   unsigned long timerStart = millis();
   while(millis() - timerStart < 25){
@@ -304,10 +308,13 @@ void setup() {
   memory.read_model(device_model);
 
   delay(1000);
+  home_motor();
+  delay(1000);
 
   tone(TONE_PIN, 440, 200);
   tone(TONE_PIN, 440 * 2, 200);
   tone(TONE_PIN, 440 * 2 * 2, 200);
+
 }
 
 void loop() {
@@ -344,6 +351,7 @@ void loop() {
           gcode.print_device_info(device_serial, device_model, device_version);
           break;
         case GCODE_DFU:
+          gcode.send_ack(); // Send ack here since we not reaching the end of the loop
           gcode.print_warning(F("Restarting and entering bootloader..."));
           activate_bootloader();
           break;

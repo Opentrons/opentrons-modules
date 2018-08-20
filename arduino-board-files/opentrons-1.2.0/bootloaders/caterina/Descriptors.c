@@ -191,12 +191,10 @@ const USB_Descriptor_String_t LanguageString =
  */
 const USB_Descriptor_String_t ProductString =
 {
-	.Header                 = {.Size = USB_STRING_LEN(18), .Type = DTYPE_String},
+	.Header                 = {.Size = USB_STRING_LEN(20), .Type = DTYPE_String},
 
-	#if DEVICE_PID == 0xEE93
-	.UnicodeString			= L"Opentrons TempDeck"
-	#elif DEVICE_PID == 0xEE90
-	.UnicodeString			= L"Opentrons MagDeck"
+	#if DEVICE_PID == 0xEE5A
+	.UnicodeString			= L"OT Module Bootloader"
 	#else
 	.UnicodeString			= L"USB IO board    "
 	#endif
