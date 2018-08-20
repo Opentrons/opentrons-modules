@@ -16,7 +16,7 @@
 
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
-String device_version = "v1.0.0-beta2";
+String device_version = "v1.0.0";
 
 GcodeMagDeck gcode = GcodeMagDeck();  // reads in serial data to parse command and issue reponses
 Memory memory = Memory();  // reads from EEPROM to find device's unique serial, and model number

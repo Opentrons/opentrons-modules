@@ -25,7 +25,7 @@
 #include "thermistor.h"
 #include "gcode.h"
 
-#define device_version "v1.0.0-beta2"
+#define device_version "v1.0.0"
 
 #define PIN_BUZZER 11  // a piezo buzzer we can use tone() with
 #define PIN_FAN 9      // blower-fan controlled by simple PWM analogWrite()
