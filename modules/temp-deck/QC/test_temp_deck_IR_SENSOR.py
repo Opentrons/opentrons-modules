@@ -22,6 +22,9 @@ SEC_TO_RECORD = 1 * 60
 test_start_time = 0
 csv_file_path = './data/{id}_{date}.csv'
 
+length_samples_test_stabilize = 100
+samples_test_stabilize = []
+
 def connect_to_temp_deck(default_port=None):
     tempdeck = temp_deck.TempDeck()
     ports = []
@@ -75,16 +78,25 @@ def read_temperature_sensors(external_sensor):
     time.sleep(0.025)
     try:
         res = external_sensor.readline().decode().strip()
-        both_temps = res.split(',')[:2]
-        return (float(both_temps[0]), float(both_temps[1]))
+        return float(res)
     except Exception:
         print('Error parsing "{}"'.format(res))
         exit()
 
 
 def is_temp_arrived(tempdeck, target_temperature):
+    global samples_test_stabilize, length_samples_test_stabilize
     td_temp, _ = read_temperatures(tempdeck)
-    return bool(abs(td_temp - target_temperature) <= 0.5)
+    while len(samples_test_stabilize) >= length_samples_test_stabilize:
+        samples_test_stabilize.pop(0)
+    samples_test_stabilize.append(td_temp)
+    if len(samples_test_stabilize) < length_samples_test_stabilize:
+        return False
+    if abs(min(samples_test_stabilize) - target_temperature) > 0.5:
+        return False
+    if abs(max(samples_test_stabilize) - target_temperature) > 0.5:
+        return False
+    return True
 
 
 def is_finished_stabilizing(target_temperature, timestamp, time_to_stabilize):
@@ -97,7 +109,7 @@ def read_temperatures(tempdeck, external_sensor=None):
     time.sleep(0.05)
     tempdeck.update_temperature()
     if not external_sensor:
-        return (tempdeck.temperature, None, None)
+        return (tempdeck.temperature, None)
     external_temp = read_temperature_sensors(external_sensor);
     return (tempdeck.temperature, external_temp)
 
