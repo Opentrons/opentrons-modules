@@ -67,6 +67,9 @@ coverage.xml
 *,cover
 .hypothesis/
 
+# Data from QC tests
+*.csv
+
 # Translations
 *.mo
 *.pot
