@@ -25,7 +25,7 @@ csv_file_path = './data/{id}_{date}.csv'
 length_samples_test_stabilize = 100
 samples_test_stabilize = []
 
-def connect_to_temp_deck(default_port=None):
+def connect_to_temp_deck():
     tempdeck = temp_deck.TempDeck()
     ports = []
     for p in comports():
@@ -33,8 +33,6 @@ def connect_to_temp_deck(default_port=None):
             ports.append(p.device)
     if not ports:
         raise RuntimeError('Can not find a TempDeck connected over USB')
-    if default_port and default_port in ports:
-        ports = [default_port] + ports
     for p in ports:
         try:
             tempdeck.connect(p)
@@ -46,15 +44,13 @@ def connect_to_temp_deck(default_port=None):
     raise Exception('Could not connect to TempDeck')
 
 
-def connect_to_external_sensor(default_port=None):
+def connect_to_external_sensor():
     ports = []
     for p in comports():
         if p.pid == PID_FTDI:
             ports.append(p.device)
     if not ports:
         raise RuntimeError('Can not find a External Sensor connected over USB')
-    if default_port and default_port in ports:
-        ports = [default_port] + ports
     for p in ports:
         try:
             external_sensor = serial.Serial(p, 9600, timeout=1)
