@@ -10,7 +10,7 @@ void Thermistor::_calculate_average_adc() {
   _average_adc /= THERMISTOR_NUM_SAMPLES;
 }
 
-float Thermistor::plate_temperature(){
+float Thermistor::temperature(){
   _calculate_average_adc();
   if (_average_adc < TABLE[TABLE_SIZE-1][0]) {
     return TABLE[TABLE_SIZE-1][1];
