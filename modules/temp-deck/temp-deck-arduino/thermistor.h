@@ -13,8 +13,7 @@ class Thermistor{
 
     Thermistor();
     bool update();
-    float plate_temperature();
-    void set_samples(int n);
+    float temperature();
 
   private:
 
@@ -25,7 +24,7 @@ class Thermistor{
     float _average_adc;
 
     // lookup table provided for thermistor PN: NXFT15XV103FA2B150
-    const unsigned int TABLE[TABLE_SIZE][2] = {
+    const int TABLE[TABLE_SIZE][2] = {
       // ADC, Celsius
       {994, -40},
       {983, -35},

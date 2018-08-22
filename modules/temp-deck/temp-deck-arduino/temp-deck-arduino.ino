@@ -25,7 +25,7 @@
 #include "thermistor.h"
 #include "gcode.h"
 
-#define device_version "v1.0.0"
+#define device_version "v1.0.1"
 
 #define PIN_BUZZER 11  // a piezo buzzer we can use tone() with
 #define PIN_FAN 9      // blower-fan controlled by simple PWM analogWrite()
@@ -38,10 +38,20 @@
 // some temperature zones to help decide on states
 #define TEMPERATURE_FAN_CUTOFF_COLD 15
 #define TEMPERATURE_FAN_CUTOFF_HOT 35
-#define TEMPERATURE_ROOM 25
+#define TEMPERATURE_ROOM 23
 
 #define TEMPERATURE_BURN 55
 #define STABILIZING_ZONE 0.5
+
+// values used to scale the thermistors temperature
+// to more accurately reflect the temperature of the top-plate
+#define THERMISTOR_OFFSET_LOW_TEMP 5.25
+#define THERMISTOR_OFFSET_LOW_VALUE 0.7
+#define THERMISTOR_OFFSET_HIGH_TEMP 95
+#define THERMISTOR_OFFSET_HIGH_VALUE 0.6
+const float THERMISTOR_OFFSET_HIGH_TEMP_DIFF = THERMISTOR_OFFSET_HIGH_TEMP - TEMPERATURE_ROOM;
+const float THERMISTOR_OFFSET_LOW_TEMP_DIFF = TEMPERATURE_ROOM - THERMISTOR_OFFSET_LOW_TEMP;
+float _offset_temp_diff = 0.0;
 
 // the intensities of the fan (0.0-1.0)
 #define FAN_HIGH 1.0
@@ -351,6 +361,25 @@ void update_led_display(boolean debounce=true){
 /////////////////////////////////
 /////////////////////////////////
 
+void read_thermistor_and_apply_offset() {
+  if (thermistor.update()) {
+    CURRENT_TEMPERATURE = thermistor.temperature();
+    // apply a small offset to the temperature
+    // depending on how far below/above room temperature we currently are
+    _offset_temp_diff = CURRENT_TEMPERATURE - TEMPERATURE_ROOM;
+    if (_offset_temp_diff > 0) {
+      CURRENT_TEMPERATURE += (_offset_temp_diff / THERMISTOR_OFFSET_HIGH_TEMP_DIFF) * THERMISTOR_OFFSET_HIGH_VALUE;
+    }
+    else {
+      CURRENT_TEMPERATURE -= (abs(_offset_temp_diff) / THERMISTOR_OFFSET_LOW_TEMP_DIFF) * THERMISTOR_OFFSET_LOW_VALUE;
+    }
+  }
+}
+
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+
 void activate_bootloader(){
   // Method 1: Uses a WDT reset to enter bootloader.
   // Works on the modified Caterina bootloader that allows 
@@ -458,7 +487,7 @@ void setup() {
 
   // make sure we start with an averaged plate temperatures
   while (!thermistor.update()) {}
-  CURRENT_TEMPERATURE = thermistor.plate_temperature();
+  CURRENT_TEMPERATURE = thermistor.temperature();
   TARGET_TEMPERATURE = TEMPERATURE_ROOM;
 
   // setup PID
@@ -492,9 +521,7 @@ void loop(){
 
   read_gcode();
 
-  if (thermistor.update()) {
-    CURRENT_TEMPERATURE = thermistor.plate_temperature();
-  }
+  read_thermistor_and_apply_offset();
 
   // update the temperature display, and color-bar
   update_led_display(true);  // debounce enabled
