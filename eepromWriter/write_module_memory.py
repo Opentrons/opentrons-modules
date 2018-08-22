@@ -17,7 +17,7 @@ MODELS = {
 }
 
 
-def connect_to_temp_deck():
+def connect_to_module():
     port = None
     for p in comports():
         if p.vid == OPENTRONS_VID:
@@ -26,22 +26,22 @@ def connect_to_temp_deck():
     if port is None:
         raise RuntimeError('Could not find Opentrons Model connected over USB')
     print()
-    print('Connecting to temp-deck...')
+    print('Connecting to module...')
     td = Serial(port, 115200, timeout=1)
     return td
 
 
-def write_identifiers(tempdeck, new_id, new_model):
+def write_identifiers(module, new_id, new_model):
     msg = '{0}:{1}'.format(new_id, new_model)
-    tempdeck.write(msg.encode())
-    tempdeck.read_until(b'\r\n')
-    serial, model = _get_info(tempdeck)
+    module.write(msg.encode())
+    module.read_until(b'\r\n')
+    serial, model = _get_info(module)
     _assert_the_same(new_id, serial)
     _assert_the_same(new_model, model)
 
 
-def check_previous_data(tempdeck):
-    serial, model = _get_info(tempdeck)
+def check_previous_data(module):
+    serial, model = _get_info(module)
     if not serial or not model:
         print('No old data on this pipette')
         return
@@ -49,10 +49,10 @@ def check_previous_data(tempdeck):
         'Overwriting old data: id={0}, model={1}'.format(serial, model))
 
 
-def _get_info(tempdeck):
+def _get_info(module):
     info = (None, None)
-    tempdeck.write(b'&')  # special character to retrive old data
-    res = tempdeck.read_until(b'\r\n').decode().strip()
+    module.write(b'&')  # special character to retrive old data
+    res = module.read_until(b'\r\n').decode().strip()
     return tuple(res.split(':'))
 
 
@@ -67,7 +67,9 @@ def _user_submitted_barcode(max_length):
         raise Exception(BAD_BARCODE_MESSAGE.format(barcode))
     # remove all characters before the letter T
     # for example, remove ASCII selector code "\x1b(B" on chinese keyboards
-    barcode = barcode[barcode.index('T'):]
+    for m in MODELS.values():
+        if m in barcode:
+            barcode = barcode[barcode.index(m):]
     barcode = barcode.split('\n')[0].split('\r')[0]
     return barcode
 
@@ -84,9 +86,10 @@ def main():
     try:
         barcode = _user_submitted_barcode(32)
         model = _parse_model_from_barcode(barcode)
-        tempdeck = connect_to_temp_deck()
-        check_previous_data(tempdeck)
-        write_identifiers(tempdeck, barcode, model)
+        module = connect_to_module()
+        check_previous_data(module)
+        write_identifiers(module, barcode, model)
+        module.close()
         print('PASS: Saved -> {0} (model {1})'.format(barcode, model))
     except KeyboardInterrupt:
         exit()
