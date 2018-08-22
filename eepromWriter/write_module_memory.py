@@ -67,7 +67,7 @@ def _user_submitted_barcode(max_length):
         raise Exception(BAD_BARCODE_MESSAGE.format(barcode))
     # remove all characters before the letter T
     # for example, remove ASCII selector code "\x1b(B" on chinese keyboards
-    for m in MODELS.values():
+    for m in MODELS.keys():
         if m in barcode:
             barcode = barcode[barcode.index(m):]
     barcode = barcode.split('\n')[0].split('\r')[0]
