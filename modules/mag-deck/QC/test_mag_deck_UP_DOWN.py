@@ -26,6 +26,7 @@ GCODE_MOVE = 'G0Z{position}C{current}'
 GCODE_GET_POSITION = 'M114.2'
 GCODE_PROBE = 'G38.2'
 GCODE_GET_PROBE_POS = 'M836'
+GCODE_GET_INFO = 'M115'
 
 FIRMWARE_DEFAULT_CURRENT = 0.5
 FIRMWARE_HOMING_RETRACT = 2
@@ -60,6 +61,17 @@ def send_command(port, data):
     return res.replace(ack, '')
 
 
+def assert_magdeck_has_serial(port):
+    res = send_command(port, GCODE_GET_INFO)
+    res = res.split(' ')[:3]
+    info = {
+        r.split(':')[0]: r.split(':')[1]
+        for r in res
+    }
+    assert 'MD' in info['serial']
+    assert 'mag' in info['model']
+
+
 def home(port):
     send_command(port, GCODE_HOME)
 
@@ -92,6 +104,13 @@ def test_probe(port):
 
 def main(cycles, default_port=None):
     magdeck = connect_to_mag_deck(default_port)
+
+    try:
+        assert_magdeck_has_serial(magdeck)
+    except:
+        print('\n\tFAIL: Please write ID to module\n')
+        magdeck.close()
+        exit()
 
     print('\n\nStarting test, homing...\n')
     home(magdeck)
