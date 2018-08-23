@@ -14,20 +14,22 @@ PID_MAGDECK = 61072
 TEST_CYCLES = 100
 MAX_ALLOWED_FAILURES = 3
 
-TEST_TOP_POS = 40
 TEST_BOTTOM_POS = 1
 
 SKIPPING_TOLERANCE = 0.5
-CURRENT_PERCENTAGE = 1.0
+CURRENT_PERCENTAGE = 0.85
 
 MOVE_DELAY_SECONDS = 0.5
 
 GCODE_HOME = 'G28.2'
 GCODE_MOVE = 'G0Z{position}C{current}'
 GCODE_GET_POSITION = 'M114.2'
+GCODE_PROBE = 'G38.2'
+GCODE_GET_PROBE_POS = 'M836'
 
 FIRMWARE_DEFAULT_CURRENT = 0.5
 FIRMWARE_HOMING_RETRACT = 2
+FIRMWARE_MAX_TRAVEL_DISTANCE = 40
 
 
 def connect_to_mag_deck(default_port=None):
@@ -41,7 +43,7 @@ def connect_to_mag_deck(default_port=None):
         ports = [default_port] + ports
     for p in ports:
         try:
-            return serial.Serial(p, 115200, timeout=5)
+            return serial.Serial(p, 115200, timeout=10)
         except KeyboardInterrupt:
             exit()
         except:
@@ -81,6 +83,13 @@ def test_for_skipping(port):
     assert position(port) == 0.0
 
 
+def test_probe(port):
+    send_command(port, GCODE_PROBE)
+    res = send_command(port, GCODE_GET_PROBE_POS)
+    found_height = round(float(res.split(':')[1].strip()))
+    assert found_height == FIRMWARE_MAX_TRAVEL_DISTANCE
+
+
 def main(cycles, default_port=None):
     magdeck = connect_to_mag_deck(default_port)
 
@@ -95,12 +104,13 @@ def main(cycles, default_port=None):
         print('  {0}/{1}: '.format(i + 1, TEST_CYCLES), end='', flush=True)
         try:
             time.sleep(MOVE_DELAY_SECONDS)
-            move(magdeck, TEST_TOP_POS)
-            assert position(magdeck) == TEST_TOP_POS
+            move(magdeck, FIRMWARE_MAX_TRAVEL_DISTANCE)
+            assert position(magdeck) == FIRMWARE_MAX_TRAVEL_DISTANCE
             time.sleep(MOVE_DELAY_SECONDS)
             move(magdeck, TEST_BOTTOM_POS)
             assert position(magdeck) == TEST_BOTTOM_POS
             test_for_skipping(magdeck)
+            test_probe(magdeck)
             print('PASS')
         except AssertionError:
             fail_count += 1
