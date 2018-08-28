@@ -16,7 +16,7 @@
 
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
-String device_version = "v1.0.0";
+String device_version = "v1.0.1";
 
 GcodeMagDeck gcode = GcodeMagDeck();  // reads in serial data to parse command and issue reponses
 Memory memory = Memory();  // reads from EEPROM to find device's unique serial, and model number
@@ -42,12 +42,13 @@ Memory memory = Memory();  // reads from EEPROM to find device's unique serial, 
 #define STEPS_PER_MM 50  // full-stepping
 unsigned long STEP_DELAY_MICROSECONDS = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
 
-#define MAX_TRAVEL_DISTANCE_MM 45
+#define MAX_TRAVEL_DISTANCE_MM 40
 float FOUND_HEIGHT = MAX_TRAVEL_DISTANCE_MM - 15;
 
-#define CURRENT_HIGH 0.5
+#define CURRENT_HIGH 0.25
 #define CURRENT_LOW 0.02
 #define SET_CURRENT_DELAY_MS 20
+#define ENABLE_DELAY_MS 20
 
 #define HOMING_RETRACT 2
 
@@ -220,6 +221,7 @@ void disable_motor() {
 
 void enable_motor() {
   digitalWrite(MOTOR_ENGAGE_PIN, LOW);
+  delay(ENABLE_DELAY_MS);
 }
 
 void move_to_position(float mm, bool limit_switch=true, float accel_factory=1.0) {
