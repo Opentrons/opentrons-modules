@@ -11,12 +11,15 @@ from serial.tools.list_ports import comports
 
 PID_MAGDECK = 61072
 
-TEST_CYCLES = 100
+TEST_CYCLES = 50
 MAX_ALLOWED_FAILURES = 3
 
+FIRMWARE_HOMING_RETRACT = 2  # must match firmware!!
+FIRMWARE_MAX_TRAVEL_DISTANCE = 40  # must match firmware!!
 TEST_BOTTOM_POS = 1
-
 SKIPPING_TOLERANCE = 0.5
+
+FIRMWARE_DEFAULT_CURRENT = 0.25  # must match firmware!!
 CURRENT_PERCENTAGE = 0.85
 
 MOVE_DELAY_SECONDS = 0.5
@@ -28,10 +31,6 @@ GCODE_PROBE = 'G38.2'
 GCODE_GET_PROBE_POS = 'M836'
 GCODE_GET_INFO = 'M115'
 
-FIRMWARE_DEFAULT_CURRENT = 0.5
-FIRMWARE_HOMING_RETRACT = 2
-FIRMWARE_MAX_TRAVEL_DISTANCE = 40
-
 
 def connect_to_mag_deck(default_port=None):
     ports = []
@@ -40,10 +39,13 @@ def connect_to_mag_deck(default_port=None):
             ports.append(p.device)
     if not ports:
         raise RuntimeError('Can not find a MagDeck connected over USB')
+    print('default {}'.format(default_port))
+    print(ports)
     if default_port and default_port in ports:
         ports = [default_port] + ports
     for p in ports:
         try:
+            print('trying {}'.format(p))
             return serial.Serial(p, 115200, timeout=10)
         except KeyboardInterrupt:
             exit()
