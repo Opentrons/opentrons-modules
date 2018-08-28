@@ -19,8 +19,11 @@ FIRMWARE_MAX_TRAVEL_DISTANCE = 40  # must match firmware!!
 TEST_BOTTOM_POS = 1
 SKIPPING_TOLERANCE = 0.5
 
-FIRMWARE_DEFAULT_CURRENT = 0.25  # must match firmware!!
-CURRENT_PERCENTAGE = 0.85
+FIRMWARE_DEFAULT_MOVE_CURRENT = 0.4  # must match firmware!!
+CURRENT_MOVE_PERCENTAGE = 0.75
+
+FIRMWARE_DEFAULT_PROBE_CURRENT = 0.04  # must match firmware!!
+CURRENT_PROBE_PERCENTAGE = 0.5
 
 MOVE_DELAY_SECONDS = 0.5
 
@@ -79,7 +82,7 @@ def home(port):
 
 
 def move(port, pos):
-    current = round(FIRMWARE_DEFAULT_CURRENT * CURRENT_PERCENTAGE, 2)
+    current = round(FIRMWARE_DEFAULT_MOVE_CURRENT * CURRENT_MOVE_PERCENTAGE, 2)
     cmd = GCODE_MOVE.format(position=pos, current=current)
     send_command(port, cmd)
 
@@ -98,7 +101,9 @@ def test_for_skipping(port):
 
 
 def test_probe(port):
-    send_command(port, GCODE_PROBE)
+    current = round(
+        FIRMWARE_DEFAULT_PROBE_CURRENT * CURRENT_PROBE_PERCENTAGE, 2)
+    send_command(port, '{0}C{1}'.format(GCODE_PROBE, current))
     res = send_command(port, GCODE_GET_PROBE_POS)
     found_height = round(float(res.split(':')[1].strip()))
     assert found_height == FIRMWARE_MAX_TRAVEL_DISTANCE
