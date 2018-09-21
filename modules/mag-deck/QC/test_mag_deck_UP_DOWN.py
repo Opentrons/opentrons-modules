@@ -136,7 +136,7 @@ def main(cycles, default_port=None):
             move(magdeck, TEST_BOTTOM_POS)
             assert position(magdeck) == TEST_BOTTOM_POS
             test_for_skipping(magdeck)
-            test_probe(magdeck)
+            # test_probe(magdeck)
             print('PASS')
         except AssertionError:
             fail_count += 1
