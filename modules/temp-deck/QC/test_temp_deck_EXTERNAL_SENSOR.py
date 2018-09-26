@@ -246,23 +246,25 @@ def run_test(tempdeck, sensor, targets):
     while tempdeck.temperature > 50:
         time.sleep(1)
         tempdeck.update_temperature()
+    time.sleep(1)
     tempdeck.disengage()
+    time.sleep(1)
     return result
 
 
 def main():
     try:
-        robot._driver.turn_on_blue_button_light()
+        robot._driver._set_button_light(blue=True)
         sensor = connect_to_external_sensor()
         tempdeck = connect_to_temp_deck()
         create_data_file(tempdeck)
         if run_test(tempdeck, sensor, TARGET_TEMPERATURES):
             robot._driver._set_button_light(green=True)
         else:
-            robot._driver.turn_on_red_button_light()
+            robot._driver._set_button_light(red=True)
     except Exception as e:
-        write_line_to_file(e)
-        robot._driver.turn_on_red_button_light()
+        write_line_to_file(str(e))
+        robot._driver._set_button_light(red=True)
     finally:
         try:
             sensor.close()
