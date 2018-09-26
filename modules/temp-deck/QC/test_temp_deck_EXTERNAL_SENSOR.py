@@ -257,7 +257,7 @@ def main():
         tempdeck = connect_to_temp_deck()
         create_data_file(tempdeck)
         if run_test(tempdeck, sensor, TARGET_TEMPERATURES):
-            robot._driver.turn_on_green_button_light()
+            robot._driver._set_button_light(green=True)
         else:
             robot._driver.turn_on_red_button_light()
     except Exception as e:
