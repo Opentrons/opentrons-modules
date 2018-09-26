@@ -6,6 +6,7 @@ import time
 
 from serial.tools.list_ports import comports
 
+from opentrons import robot
 from opentrons.drivers import temp_deck
 
 
@@ -24,7 +25,8 @@ SEC_WAIT_BEFORE_MEASURING = 3 * 60
 SEC_TO_RECORD = 1 * 60
 
 test_start_time = 0
-results_file_path = '{id}_{date}.txt'
+original_results_file_path = '{id}_{date}.txt'
+results_file_path = ''
 
 length_samples_test_stabilize = 100
 samples_test_stabilize = []
@@ -85,7 +87,7 @@ def read_temperature_sensors(external_sensor):
         return float(res)
     except Exception:
         write_line_to_file('Error parsing "{}"'.format(res))
-        exit()
+        raise Exception('Error parsing "{}"'.format(res))
 
 
 def is_temp_arrived(tempdeck, target_temperature):
@@ -159,22 +161,36 @@ def assert_tempdeck_has_serial(tempdeck):
     assert info.get('model') != 'none'
 
 
-def main(tempdeck, sensor, targets):
-    global test_start_time, results_file_path, dir_path
-    try:
-        assert_tempdeck_has_serial(tempdeck)
-    except AssertionError as e:
-        write_line_to_file('\n\tFAIL: Please write ID to module\n')
-        exit()
-    test_start_time = time.time()
+def create_data_file(tempdeck):
+    global results_file_path, original_results_file_path, dir_path
+
+    # create the folder to save the test results
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    usb_path = '/mnt/usbdrive'
+    if os.path.isdir(usb_path):
+        dir_path = usb_path
+    data_path = os.path.join(dir_path, 'temp-deck-QC')
+    if not os.path.isdir(data_path):
+        os.mkdir(data_path)
+
     serial_number = tempdeck.get_device_info().get('serial')
     if not serial_number:
         raise RuntimeError('Module has no ID, please write ID before testing')
     date_string = datetime.utcfromtimestamp(time.time()).strftime(
         '%Y-%m-%d_%H-%M-%S')
-    results_file_path = results_file_path.format(id=serial_number, date=date_string)
-    results_file_path = os.path.join(dir_path, results_file_path)
+    results_file_path = original_results_file_path.format(id=serial_number, date=date_string)
+    results_file_path = os.path.join(data_path, results_file_path)
     write_line_to_file('Temp-Deck: {}'.format(serial_number))
+
+
+def run_test(tempdeck, sensor, targets):
+    global test_start_time
+    try:
+        assert_tempdeck_has_serial(tempdeck)
+    except AssertionError as e:
+        write_line_to_file('\n\tFAIL: Please write ID to module\n')
+        raise Exception('FAIL: Please write ID to module')
+    test_start_time = time.time()
     results = []
     write_line_to_file('\nStarting Test')
     for i in range(len(targets)):
@@ -226,20 +242,33 @@ def main(tempdeck, sensor, targets):
     tempdeck.disengage()
 
 
+def main():
+    try:
+        robot._driver.turn_on_blue_button_light()
+        sensor = connect_to_external_sensor()
+        tempdeck = connect_to_temp_deck()
+        create_data_file(tempdeck)
+        run_test(tempdeck, sensor, TARGET_TEMPERATURES)
+        robot._driver.turn_on_green_button_light()
+    except Exception as e:
+        write_line_to_file(e)
+        robot._driver.turn_on_red_button_light()
+    finally:
+        try:
+            sensor.close()
+            tempdeck.disengage()
+            tempdeck.disconnect()
+        except:
+            pass
+
 
 if __name__ == '__main__':
-    # create the folder to save the test results
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    usb_path = '/mnt/usbdrive'
-    if os.path.isdir(usb_path):
-        dir_path = usb_path
-    data_path = os.path.join(dir_path, 'data')
-    if not os.path.isdir(data_path):
-        os.mkdir(data_path)
-
-    sensor = connect_to_external_sensor()
-    tempdeck = connect_to_temp_deck()
-    try:
-        main(tempdeck, sensor, TARGET_TEMPERATURES)
-    finally:
-        tempdeck.disengage()
+    robot._driver.turn_off_button_light()
+    while True:
+        if os.environ.get('RUNNING_ON_PI'):
+            print('Press the BUTTON to start...')
+            while not robot._driver.read_button():
+                pass
+        else:
+            input('Press ENTER when ready to run...')
+        main()
