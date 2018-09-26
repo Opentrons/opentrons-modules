@@ -230,7 +230,7 @@ def main(tempdeck, sensor, targets):
 if __name__ == '__main__':
     # create the folder to save the test results
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    usb_path = os.path.join('mnt', 'usbdrive')
+    usb_path = '/mnt/usbdrive'
     if os.path.isdir(usb_path):
         dir_path = usb_path
     data_path = os.path.join(dir_path, 'data')
