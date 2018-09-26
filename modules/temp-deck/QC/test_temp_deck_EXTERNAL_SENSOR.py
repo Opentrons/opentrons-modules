@@ -15,14 +15,16 @@ PID_FTDI = 24577
 PID_UNO = 67
 PID_UNO_CHINESE = 29987
 
-TARGET_TEMPERATURES = [6, 4, 95]
+TARGET_TEMPERATURES = [94, 95]
 
 TOLERANCE_TO_PASS_TEST_LOW = 1
 TOLERANCE_TO_PASS_TEST_HIGH = 1
 MAX_ALLOWABLE_DELTA = 3
 
-SEC_WAIT_BEFORE_MEASURING = 3 * 60
-SEC_TO_RECORD = 1 * 60
+# SEC_WAIT_BEFORE_MEASURING = 3 * 60
+SEC_WAIT_BEFORE_MEASURING = 10
+# SEC_TO_RECORD = 1 * 60
+SEC_TO_RECORD = 10
 
 test_start_time = 0
 original_results_file_path = '{id}_{date}.txt'
@@ -133,9 +135,8 @@ def get_sensors_delta(tempdeck, external_sensor):
     return external_delta  # return the absolute DELTA
 
 
-def analyze_results(serial_number, results):
+def analyze_results(results):
     write_line_to_file('\n\n')
-    write_line_to_file('PN: {}'.format(serial_number))
     for r in results:
         write_line_to_file(
             '{0}C:\tAverage: {1}'.format(
@@ -238,7 +239,7 @@ def run_test(tempdeck, sensor, targets):
                 'min': min_delta,
                 'max': max_delta
             })
-    analyze_results(serial_number, results)
+    analyze_results(results)
     tempdeck.set_temperature(0)
     time.sleep(1)
     while tempdeck.temperature > 50:
