@@ -8,6 +8,7 @@
     7) Check to make sure it return the correct information (M115)
 '''
 
+import os
 import subprocess
 import sys
 import time
@@ -28,11 +29,14 @@ MODELS = {
     'MDV01': 'mag_deck_v1.1'
 }
 
-EEPROM_FIRMARE_PATH = './firmware/eepromWriter.hex'
-TEMP_DECK_FIRMARE_PATH = './firmware/temp-deck-arduino.ino.tempdeck32u4.hex'
-MAG_DECK_FIRMARE_PATH = './firmware/mag-deck-arduino.ino.magdeck32u4.hex'
+DIR_NAME = os.path.dirname(os.path.realpath(__file__))
+AVR_CONFIG_FILE = os.path.join(DIR_NAME, 'avrdude.conf')
+FIRMWARE_DIR = os.path.join(DIR_NAME, 'firmware')
+EEPROM_FIRMARE_PATH = os.path.join(FIRMWARE_DIR, 'eepromWriter.hex')
+TEMP_DECK_FIRMARE_PATH = os.path.join(FIRMWARE_DIR, 'temp-deck-arduino.ino.tempdeck32u4.hex')
+MAG_DECK_FIRMARE_PATH = os.path.join(FIRMWARE_DIR, 'mag-deck-arduino.ino.magdeck32u4.hex')
 
-AVR_COMMAND = 'avrdude -C ./avrdude.conf -v -patmega32u4 -cavr109 -P {port} -b 57600 -D -U flash:w:{firmware}:i'  # NOQA
+AVR_COMMAND = 'avrdude -C {config} -v -patmega32u4 -cavr109 -P {port} -b 57600 -D -U flash:w:{firmware}:i'  # NOQA
 
 
 def find_opentrons_port():
@@ -72,7 +76,7 @@ def trigger_bootloader(port_name):
 
 def upload_eeprom_sketch(port_name):
     cmd = AVR_COMMAND.format(
-        port=port_name, firmware=EEPROM_FIRMARE_PATH)
+        config=AVR_CONFIG_FILE, port=port_name, firmware=EEPROM_FIRMARE_PATH)
     res = subprocess.check_output('{}'.format(cmd), shell=True)
     print('AVR gave response:')
     print(res)
@@ -88,7 +92,7 @@ def upload_application_firmware(port_name, model):
         raise RuntimeError(
             'Unknown model for writing firmware: {}'.format(model))
     cmd = AVR_COMMAND.format(
-        port=port_name, firmware=hex_file)
+        config=AVR_CONFIG_FILE, port=port_name, firmware=hex_file)
     res = subprocess.check_output('{}'.format(cmd), shell=True)
     print('AVR gave response:')
     print(res)
