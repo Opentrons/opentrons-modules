@@ -105,7 +105,7 @@ def is_temp_arrived(tempdeck, target_temperature):
     return True
 
 
-def is_finished_stabilizing(target_temperature, timestamp, time_to_stabilize):
+def is_finished_stabilizing(tempdeck, target_temperature, timestamp, time_to_stabilize):
     if not is_temp_arrived(tempdeck, target_temperature):
         return False
     return bool(timestamp + time_to_stabilize < time.time())
@@ -222,7 +222,7 @@ def run_test(tempdeck, sensor, targets):
             tstamp = time.time()
             write_line_to_file('Measuring temperature for {0} seconds...'.format(
                 SEC_TO_RECORD))
-            while not is_finished_stabilizing(targets[i], tstamp, SEC_TO_RECORD):
+            while not is_finished_stabilizing(tempdeck, targets[i], tstamp, SEC_TO_RECORD):
                 delta_temp_thermistor = get_sensors_delta(tempdeck, sensor)
                 delta_temperatures.append(delta_temp_thermistor)
                 if delta_temp_thermistor > MAX_ALLOWABLE_DELTA:
