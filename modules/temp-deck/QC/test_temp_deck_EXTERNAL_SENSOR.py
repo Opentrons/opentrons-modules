@@ -207,7 +207,12 @@ def run_test(tempdeck, sensor, targets):
                 timestamp = time.time()
         tstamp = time.time()
         if i == 0:
-            input("\nPut on COLD plate, and press ENTER when sensor is in Water")
+            if os.environ.get('RUNNING_ON_PI'):
+                print('Press button to continue test')
+                while not robot._driver.read_button():
+                    pass
+            else:
+                input("\nPut on COLD plate, and press ENTER when sensor is in Water")
         else:
             write_line_to_file('Waiting for {0} seconds before measuring...'.format(
                 SEC_WAIT_BEFORE_MEASURING))
