@@ -15,7 +15,7 @@ PID_FTDI = 24577
 PID_UNO = 67
 PID_UNO_CHINESE = 29987
 
-TARGET_TEMPERATURES = [94, 95]
+TARGET_TEMPERATURES = [64, 65]
 
 TOLERANCE_TO_PASS_TEST_LOW = 1
 TOLERANCE_TO_PASS_TEST_HIGH = 1
@@ -142,18 +142,19 @@ def analyze_results(results):
             '{0}C:\tAverage: {1}'.format(
             r['target'], r['average']))
     write_line_to_file('\n\n')
-    did_fail = False
+    did_pass = True
     for r in results:
         pass_thresh = TOLERANCE_TO_PASS_TEST_HIGH
         if r['target'] < 25:
             pass_thresh = TOLERANCE_TO_PASS_TEST_LOW
         if r['average'] > pass_thresh:
             write_line_to_file('*** FAIL ***')
-            did_fail = True
+            did_pass = False
             break
-    if not did_fail:
+    if did_pass:
         write_line_to_file('PASS')
     write_line_to_file('\n\n')
+    return did_pass
 
 
 def assert_tempdeck_has_serial(tempdeck):
@@ -239,13 +240,14 @@ def run_test(tempdeck, sensor, targets):
                 'min': min_delta,
                 'max': max_delta
             })
-    analyze_results(results)
+    result = analyze_results(results)
     tempdeck.set_temperature(0)
     time.sleep(1)
     while tempdeck.temperature > 50:
         time.sleep(1)
         tempdeck.update_temperature()
     tempdeck.disengage()
+    return result
 
 
 def main():
@@ -254,8 +256,10 @@ def main():
         sensor = connect_to_external_sensor()
         tempdeck = connect_to_temp_deck()
         create_data_file(tempdeck)
-        run_test(tempdeck, sensor, TARGET_TEMPERATURES)
-        robot._driver.turn_on_green_button_light()
+        if run_test(tempdeck, sensor, TARGET_TEMPERATURES):
+            robot._driver.turn_on_green_button_light()
+        else:
+            robot._driver.turn_on_red_button_light()
     except Exception as e:
         write_line_to_file(e)
         robot._driver.turn_on_red_button_light()
