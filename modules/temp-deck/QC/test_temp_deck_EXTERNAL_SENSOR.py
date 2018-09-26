@@ -1,9 +1,5 @@
 # this must happen before attempting to import opentrons
 import os
-dir_path = os.path.dirname(os.path.realpath(__file__))
-data_path = os.path.join(dir_path, 'data')
-os.environ['OVERRIDE_SETTINGS_DIR'] = data_path
-
 from datetime import datetime
 import serial
 import time
@@ -20,14 +16,15 @@ PID_UNO_CHINESE = 29987
 
 TARGET_TEMPERATURES = [6, 4, 95]
 
-TOLERANCE_TO_PASS_TEST = 2
+TOLERANCE_TO_PASS_TEST_LOW = 1
+TOLERANCE_TO_PASS_TEST_HIGH = 1
 MAX_ALLOWABLE_DELTA = 3
 
 SEC_WAIT_BEFORE_MEASURING = 3 * 60
 SEC_TO_RECORD = 1 * 60
 
 test_start_time = 0
-csv_file_path = '{id}_{date}.csv'
+results_file_path = '{id}_{date}.txt'
 
 length_samples_test_stabilize = 100
 samples_test_stabilize = []
@@ -87,7 +84,7 @@ def read_temperature_sensors(external_sensor):
         res = external_sensor.readline().decode().strip()
         return float(res)
     except Exception:
-        print('Error parsing "{}"'.format(res))
+        write_line_to_file('Error parsing "{}"'.format(res))
         exit()
 
 
@@ -121,39 +118,39 @@ def read_temperatures(tempdeck, external_sensor=None):
     return (tempdeck.temperature, external_temp)
 
 
-def write_to_file(data_line):
-    global csv_file_path
-    with open(csv_file_path, 'a+') as f:
+def write_line_to_file(data_line):
+    global results_file_path
+    print(data_line)
+    with open(results_file_path, 'a+') as f:
         f.write(data_line + '\r\n')
 
 
-def log_temperatures(tempdeck, external_sensor):
+def get_sensors_delta(tempdeck, external_sensor):
     tempdeck_temp, external_temp = read_temperatures(tempdeck, external_sensor)
-    csv_line = '{0}, {1}, {2}'.format(
-        test_time_seconds(),
-        round(tempdeck_temp, 2),
-        round(external_temp, 2))
-    write_to_file(csv_line)
     external_delta = abs(external_temp - tempdeck_temp)
     return external_delta  # return the absolute DELTA
 
 
-def analyze_results(results):
-    print('\n\n\n\n')
+def analyze_results(serial_number, results):
+    write_line_to_file('\n\n')
+    write_line_to_file('PN: {}'.format(serial_number))
     for r in results:
-        print(
-            '{0}C:\tAvg: {1},\tMin: {2},\tMax: {3}'.format(
-            r['target'], r['average'], r['min'], r['max']))
-    print('\n\n\n\n')
+        write_line_to_file(
+            '{0}C:\tAverage: {1}'.format(
+            r['target'], r['average']))
+    write_line_to_file('\n\n')
     did_fail = False
     for r in results:
-        if r['average'] > TOLERANCE_TO_PASS_TEST:
-            print('*** FAIL ***')
+        pass_thresh = TOLERANCE_TO_PASS_TEST_HIGH
+        if r['target'] < 25:
+            pass_thresh = TOLERANCE_TO_PASS_TEST_LOW
+        if r['average'] > pass_thresh:
+            write_line_to_file('*** FAIL ***')
             did_fail = True
             break
     if not did_fail:
-        print('PASS')
-    print('\n\n\n\n')
+        write_line_to_file('PASS')
+    write_line_to_file('\n\n')
 
 
 def assert_tempdeck_has_serial(tempdeck):
@@ -163,11 +160,11 @@ def assert_tempdeck_has_serial(tempdeck):
 
 
 def main(tempdeck, sensor, targets):
-    global test_start_time, csv_file_path, dir_path
+    global test_start_time, results_file_path, dir_path
     try:
         assert_tempdeck_has_serial(tempdeck)
     except AssertionError as e:
-        print('\n\tFAIL: Please write ID to module\n')
+        write_line_to_file('\n\tFAIL: Please write ID to module\n')
         exit()
     test_start_time = time.time()
     serial_number = tempdeck.get_device_info().get('serial')
@@ -175,38 +172,37 @@ def main(tempdeck, sensor, targets):
         raise RuntimeError('Module has no ID, please write ID before testing')
     date_string = datetime.utcfromtimestamp(time.time()).strftime(
         '%Y-%m-%d_%H-%M-%S')
-    csv_file_path = csv_file_path.format(id=serial_number, date=date_string)
-    csv_file_path = os.path.join(dir_path, csv_file_path)
-    write_to_file('seconds, internal, external')
+    results_file_path = results_file_path.format(id=serial_number, date=date_string)
+    results_file_path = os.path.join(dir_path, results_file_path)
+    write_line_to_file('Temp-Deck: {}'.format(serial_number))
     results = []
-    print('\nStarting Test')
+    write_line_to_file('\nStarting Test')
     for i in range(len(targets)):
-        print('Setting temperature to {} Celsius'.format(targets[i]))
+        write_line_to_file('Setting temperature to {} Celsius'.format(targets[i]))
         tempdeck.set_temperature(targets[i])
         time.sleep(1)
         timestamp = time.time()
         seconds_passed = 0
         while not is_temp_arrived(tempdeck, targets[i]):
-            log_temperatures(tempdeck, sensor)
             if time.time() - timestamp > 30:
                 seconds_passed += 30
-                print('Waiting {0} seconds to reach {1}'.format(
+                write_line_to_file('Waiting {0} seconds to reach {1}'.format(
                     int(seconds_passed), targets[i]))
                 timestamp = time.time()
         tstamp = time.time()
         if i == 0:
             input("\nPut on COLD plate, and press ENTER when sensor is in Water")
         else:
-            print('Waiting for {0} seconds before measuring...'.format(
+            write_line_to_file('Waiting for {0} seconds before measuring...'.format(
                 SEC_WAIT_BEFORE_MEASURING))
             while time.time() - tstamp < SEC_WAIT_BEFORE_MEASURING:
-                log_temperatures(tempdeck, sensor)
+                pass
             delta_temperatures = []
             tstamp = time.time()
-            print('Measuring temperature for {0} seconds...'.format(
+            write_line_to_file('Measuring temperature for {0} seconds...'.format(
                 SEC_TO_RECORD))
             while not is_finished_stabilizing(targets[i], tstamp, SEC_TO_RECORD):
-                delta_temp_thermistor = log_temperatures(tempdeck, sensor)
+                delta_temp_thermistor = get_sensors_delta(tempdeck, sensor)
                 delta_temperatures.append(delta_temp_thermistor)
                 if delta_temp_thermistor > MAX_ALLOWABLE_DELTA:
                     raise Exception(
@@ -221,7 +217,7 @@ def main(tempdeck, sensor, targets):
                 'min': min_delta,
                 'max': max_delta
             })
-    analyze_results(results)
+    analyze_results(serial_number, results)
     tempdeck.set_temperature(0)
     time.sleep(1)
     while tempdeck.temperature > 50:
@@ -232,10 +228,18 @@ def main(tempdeck, sensor, targets):
 
 
 if __name__ == '__main__':
+    # create the folder to save the test results
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    usb_path = os.path.join('mnt', 'usbdrive')
+    if os.path.isdir(usb_path):
+        dir_path = usb_path
+    data_path = os.path.join(dir_path, 'data')
+    if not os.path.isdir(data_path):
+        os.mkdir(data_path)
+
+    sensor = connect_to_external_sensor()
+    tempdeck = connect_to_temp_deck()
     try:
-        sensor = connect_to_external_sensor()
-        tempdeck = connect_to_temp_deck()
         main(tempdeck, sensor, TARGET_TEMPERATURES)
     finally:
         tempdeck.disengage()
-        del os.environ['OVERRIDE_SETTINGS_DIR']
