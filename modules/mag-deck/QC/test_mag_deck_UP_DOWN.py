@@ -1,6 +1,7 @@
 # this must happen before attempting to import opentrons
 import os
-os.environ['OVERRIDE_SETTINGS_DIR'] = './data'
+dir_path = os.path.dirname(os.path.realpath(__file__))
+os.environ['OVERRIDE_SETTINGS_DIR'] = '{}/data'.format(dir_path)
 
 import sys
 import time

@@ -17,13 +17,14 @@ from serial.tools.list_ports import comports
 
 
 OPENTRONS_VID = 1240
-BOOTLOADER_VID = 10755
+BOOTLOADER_PID = 61018
 
 BAD_BARCODE_MESSAGE = 'Unexpected Serial -> {}'
 WRITE_FAIL_MESSAGE = 'Data not saved'
 
 MODELS = {
     'TDV01': 'temp_deck_v1.1',  # make sure to skip v2 if model updates
+    'TDV03': 'temp_deck_v3.0',  # this model has the new fans
     'MDV01': 'mag_deck_v1.1'
 }
 
@@ -36,7 +37,10 @@ AVR_COMMAND = 'avrdude -C ./avrdude.conf -v -patmega32u4 -cavr109 -P {port} -b 5
 
 def find_opentrons_port():
     for i in range(5 * 2):
-        print('.')
+        print([
+            'PID:{0}, VID:{1}'.format(p.pid, p.vid)
+            for p in comports() if p.vid
+        ])
         for p in comports():
             if p.vid == OPENTRONS_VID:
                 time.sleep(1)
@@ -46,8 +50,12 @@ def find_opentrons_port():
 
 def find_bootloader_port():
     for i in range(5 * 2):
+        print([
+            'PID:{0}, VID:{1}'.format(p.pid, p.vid)
+            for p in comports() if p.vid
+        ])
         for p in comports():
-            if p.vid == BOOTLOADER_VID:
+            if p.vid == OPENTRONS_VID and p.pid == BOOTLOADER_PID:
                 time.sleep(1)
                 return p.device
         time.sleep(0.5)
@@ -185,6 +193,7 @@ def main():
         print('\nUploading application')
         upload_application_firmware(find_bootloader_port(), model)
         print('\nConnecting to device and testing')
+        time.sleep(5)  # wait for it to boot up
         connected_port = connect_to_module(find_opentrons_port())
         assert_id_and_model(connected_port, barcode, model)
         print('\n\n-----------------')

@@ -25,7 +25,7 @@
 #include "thermistor.h"
 #include "gcode.h"
 
-#define device_version "v1.0.1"
+#define device_version "v1.1.0"
 
 #define PIN_BUZZER 11  // a piezo buzzer we can use tone() with
 #define PIN_FAN 9      // blower-fan controlled by simple PWM analogWrite()
@@ -57,6 +57,15 @@ float _offset_temp_diff = 0.0;
 #define FAN_HIGH 1.0
 #define FAN_LOW 0.4
 #define FAN_OFF 0.0
+
+// model version 3 has differents fans, and requires on/off cycles (not PWM)
+#define MAX_FAN_OFF_TIME 2000
+#define FAN_V3_LOW 0.95
+unsigned long fan_on_time = 0;
+unsigned long fan_off_time = MAX_FAN_OFF_TIME;
+unsigned long fan_timestamp = 0;
+bool is_fan_on = false;
+bool is_v3_fan = false;
 
 // the "Kd" of the PID never changes in our setup
 // (works according to testing so far...)
@@ -228,7 +237,40 @@ void turn_off_target() {
 
 void set_fan_power(float percentage){
   percentage = constrain(percentage, 0.0, 1.0);
-  analogWrite(PIN_FAN, int(percentage * 255.0));
+  if (is_v3_fan) {
+    fan_on_time = percentage * MAX_FAN_OFF_TIME;
+    fan_off_time = MAX_FAN_OFF_TIME - fan_on_time;
+  }
+  else {
+    analogWrite(PIN_FAN, int(percentage * 255.0));
+  }
+}
+
+void fan_v3_on() {
+  digitalWrite(PIN_FAN, HIGH);
+  is_fan_on = true;
+}
+
+void fan_v3_off() {
+  digitalWrite(PIN_FAN, LOW);
+  is_fan_on = false;
+}
+
+void adjust_v3_fan_state() {
+  if (fan_on_time == 0) fan_v3_off();
+  else if (fan_off_time == 0) fan_v3_on();
+  else {
+    if (is_fan_on) {
+      if (millis() - fan_timestamp > fan_on_time) {
+        fan_timestamp = millis();
+        fan_v3_off();
+      }
+    }
+    else if (millis() - fan_timestamp > fan_off_time) {
+      fan_timestamp = millis();
+      fan_v3_on();
+    }
+  }
 }
 
 /////////////////////////////////
@@ -309,7 +351,8 @@ void stabilize_to_target_temp(bool set_fan=true){
     set_fan_power(FAN_HIGH);
   }
   else {
-    set_fan_power(FAN_LOW);
+    if (is_v3_fan) set_fan_power(FAN_V3_LOW);
+    else set_fan_power(FAN_LOW);
   }
 
   // third, update the
@@ -320,7 +363,8 @@ void stabilize_to_room_temp(bool set_fan=true) {
   if (is_burning_hot()) {
     set_peltiers_from_pid();
     if (set_fan) {
-      set_fan_power(FAN_LOW);
+      if (is_v3_fan) set_fan_power(FAN_V3_LOW);
+      else set_fan_power(FAN_LOW);
     }
   }
   else {
@@ -481,6 +525,10 @@ void setup() {
   memory.read_serial(device_serial);
   memory.read_model(device_model);
 
+  if (device_model.indexOf("v3") > 0) {
+    is_v3_fan = true;
+  }
+
   lights.setup_lights();
   lights.set_numbers_brightness(0.25);
   lights.set_color_bar_brightness(0.5);
@@ -522,6 +570,8 @@ void loop(){
   read_gcode();
 
   read_thermistor_and_apply_offset();
+
+  if (is_v3_fan) adjust_v3_fan_state();
 
   // update the temperature display, and color-bar
   update_led_display(true);  // debounce enabled

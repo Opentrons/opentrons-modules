@@ -24,7 +24,7 @@ void print_temperature(bool force=false) {
 }
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(115200);
     while (!thermistor.update()) {}
     current_temp_thermistor = thermistor.temperature();
 }
