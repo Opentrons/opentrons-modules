@@ -251,17 +251,20 @@ def run_test(tempdeck, sensor, targets):
 
 
 def main():
+    data_file_created = False
     try:
         robot._driver._set_button_light(blue=True)
         sensor = connect_to_external_sensor()
         tempdeck = connect_to_temp_deck()
         create_data_file(tempdeck)
+        data_file_created = True
         if run_test(tempdeck, sensor, TARGET_TEMPERATURES):
             robot._driver._set_button_light(green=True)
         else:
             robot._driver._set_button_light(red=True)
     except Exception as e:
-        write_line_to_file(str(e))
+        if data_file_created:
+            write_line_to_file(str(e))
         robot._driver._set_button_light(red=True)
     finally:
         try:
