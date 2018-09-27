@@ -129,23 +129,27 @@ def write_line_to_file(data_line):
 
 def get_sensors_delta(tempdeck, external_sensor):
     tempdeck_temp, external_temp = read_temperatures(tempdeck, external_sensor)
-    external_delta = abs(external_temp - tempdeck_temp)
-    return external_delta  # return the absolute DELTA
+    external_delta = external_temp - tempdeck_temp
+    return external_delta
 
 
 def analyze_results(results):
     write_line_to_file('\n\n')
     for r in results:
         write_line_to_file(
-            '{0}C:\tAverage: {1}'.format(
-            r['target'], r['average']))
+            '{0}C:\tAverage Delta: {1}\tAverage Abs Delta{2}:'.format(
+            r['target'], r['average'], r['absolute']))
     write_line_to_file('\n\n')
     did_pass = True
     for r in results:
         pass_thresh = TOLERANCE_TO_PASS_TEST_HIGH
         if r['target'] < 25:
             pass_thresh = TOLERANCE_TO_PASS_TEST_LOW
-        if r['average'] > pass_thresh:
+        if abs(r['average']) > pass_thresh:
+            write_line_to_file('*** FAIL ***')
+            did_pass = False
+            break
+        if r['absolute'] > pass_thresh:
             write_line_to_file('*** FAIL ***')
             did_pass = False
             break
@@ -241,23 +245,24 @@ def run_test(tempdeck, sensor, targets):
                 check_if_exit_button()
                 delta_temp_thermistor = get_sensors_delta(tempdeck, sensor)
                 delta_temperatures.append(delta_temp_thermistor)
-                if delta_temp_thermistor > MAX_ALLOWABLE_DELTA:
+                if abs(delta_temp_thermistor) > MAX_ALLOWABLE_DELTA:
                     raise Exception(
                         'External Sensor is {} degrees different, this is too much!'.format(delta_temp_thermistor))
+            absolute_deltas = [abs(d) for d in delta_temperatures]
             average_delta = round(
                 sum(delta_temperatures) / len(delta_temperatures), 2)
-            min_delta = round(min(delta_temperatures), 2)
-            max_delta = round(max(delta_temperatures), 2)
+            average_absolute_delta = round(
+                sum(absolute_deltas) / len(delta_temperatures), 2)
             results.append({
                 'target': targets[i],
                 'average': average_delta,
-                'min': min_delta,
-                'max': max_delta
+                'absolute': average_absolute_delta
             })
     result = analyze_results(results)
     tempdeck.set_temperature(0)
     time.sleep(1)
     while tempdeck.temperature > 50:
+        check_if_exit_button()
         time.sleep(1)
         tempdeck.update_temperature()
     time.sleep(1)
