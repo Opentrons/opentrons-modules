@@ -183,6 +183,20 @@ def create_data_file(tempdeck):
     write_line_to_file('Temp-Deck: {}'.format(serial_number))
 
 
+def wait_for_button_click():
+    while robot._driver.read_button():
+        pass
+    while not robot._driver.read_button():
+        pass
+    while robot._driver.read_button():
+        pass
+
+
+def check_if_exit_button():
+    if robot._driver.read_button():
+        raise Exception('Exit button pressed')
+
+
 def run_test(tempdeck, sensor, targets):
     global test_start_time
     try:
@@ -200,6 +214,7 @@ def run_test(tempdeck, sensor, targets):
         timestamp = time.time()
         seconds_passed = 0
         while not is_temp_arrived(tempdeck, targets[i]):
+            check_if_exit_button()
             if time.time() - timestamp > 30:
                 seconds_passed += 30
                 write_line_to_file('Waiting {0} seconds to reach {1}'.format(
@@ -209,20 +224,21 @@ def run_test(tempdeck, sensor, targets):
         if i == 0:
             if os.environ.get('RUNNING_ON_PI'):
                 print('Press button to continue test')
-                while not robot._driver.read_button():
-                    pass
+                wait_for_button_click()
             else:
                 input("\nPut on COLD plate, and press ENTER when sensor is in Water")
         else:
             write_line_to_file('Waiting for {0} seconds before measuring...'.format(
                 SEC_WAIT_BEFORE_MEASURING))
             while time.time() - tstamp < SEC_WAIT_BEFORE_MEASURING:
+                check_if_exit_button()
                 pass
             delta_temperatures = []
             tstamp = time.time()
             write_line_to_file('Measuring temperature for {0} seconds...'.format(
                 SEC_TO_RECORD))
             while not is_finished_stabilizing(tempdeck, targets[i], tstamp, SEC_TO_RECORD):
+                check_if_exit_button()
                 delta_temp_thermistor = get_sensors_delta(tempdeck, sensor)
                 delta_temperatures.append(delta_temp_thermistor)
                 if delta_temp_thermistor > MAX_ALLOWABLE_DELTA:
@@ -280,8 +296,7 @@ if __name__ == '__main__':
     while True:
         if os.environ.get('RUNNING_ON_PI'):
             print('Press the BUTTON to start...')
-            while not robot._driver.read_button():
-                pass
+            wait_for_button_click()
         else:
             input('Press ENTER when ready to run...')
         main()
