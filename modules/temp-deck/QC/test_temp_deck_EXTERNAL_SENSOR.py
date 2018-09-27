@@ -19,7 +19,6 @@ TARGET_TEMPERATURES = [3, 4, 95]
 
 TOLERANCE_TO_PASS_TEST_LOW = 1
 TOLERANCE_TO_PASS_TEST_HIGH = 2
-MAX_ALLOWABLE_DELTA = 7
 
 SEC_WAIT_BEFORE_MEASURING = 5 * 60
 SEC_TO_RECORD = 1 * 60
@@ -245,9 +244,8 @@ def run_test(tempdeck, sensor, targets):
                 check_if_exit_button()
                 delta_temp_thermistor = get_sensors_delta(tempdeck, sensor)
                 delta_temperatures.append(delta_temp_thermistor)
-                if abs(delta_temp_thermistor) > MAX_ALLOWABLE_DELTA:
-                    raise Exception(
-                        'External Sensor is {} degrees different, this is too much!'.format(delta_temp_thermistor))
+                write_line_to_file('Delta Temp at {0}C: {1}'.format(
+                    targets[i], delta_temp_thermistor))
             absolute_deltas = [abs(d) for d in delta_temperatures]
             average_delta = round(
                 sum(delta_temperatures) / len(delta_temperatures), 2)
