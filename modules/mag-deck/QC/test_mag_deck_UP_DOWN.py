@@ -1,13 +1,11 @@
-# this must happen before attempting to import opentrons
 import os
-dir_path = os.path.dirname(os.path.realpath(__file__))
-os.environ['OVERRIDE_SETTINGS_DIR'] = '{}/data'.format(dir_path)
-
 import sys
 import time
 
 import serial
 from serial.tools.list_ports import comports
+
+from opentrons import robot
 
 
 PID_MAGDECK = 61072
@@ -36,17 +34,14 @@ GCODE_GET_PROBE_POS = 'M836'
 GCODE_GET_INFO = 'M115'
 
 
-def connect_to_mag_deck(default_port=None):
+def connect_to_mag_deck():
     ports = []
     for p in comports():
         if p.pid == PID_MAGDECK:
             ports.append(p.device)
     if not ports:
         raise RuntimeError('Can not find a MagDeck connected over USB')
-    print('default {}'.format(default_port))
     print(ports)
-    if default_port and default_port in ports:
-        ports = [default_port] + ports
     for p in ports:
         try:
             print('trying {}'.format(p))
@@ -65,6 +60,22 @@ def send_command(port, data):
     port.write(data.encode() + b'\r\n')
     res = port.read_until(ack.encode()).decode()
     return res.replace(ack, '')
+
+
+def wait_for_button_click():
+    if not os.environ.get('RUNNING_ON_PI'):
+        return
+    while robot._driver.read_button():
+        pass
+    while not robot._driver.read_button():
+        pass
+    while robot._driver.read_button():
+        pass
+
+
+def check_if_exit_button():
+    if os.environ.get('RUNNING_ON_PI') and robot._driver.read_button():
+        raise Exception('Exit button pressed')
 
 
 def assert_magdeck_has_serial(port):
@@ -101,24 +112,9 @@ def test_for_skipping(port):
     assert position(port) == 0.0
 
 
-def test_probe(port):
-    current = round(
-        FIRMWARE_DEFAULT_PROBE_CURRENT * CURRENT_PROBE_PERCENTAGE, 2)
-    send_command(port, '{0}C{1}'.format(GCODE_PROBE, current))
-    res = send_command(port, GCODE_GET_PROBE_POS)
-    found_height = round(float(res.split(':')[1].strip()))
-    assert found_height == FIRMWARE_MAX_TRAVEL_DISTANCE
+def main(magdeck, cycles):
 
-
-def main(cycles, default_port=None):
-    magdeck = connect_to_mag_deck(default_port)
-
-    try:
-        assert_magdeck_has_serial(magdeck)
-    except:
-        print('\n\tFAIL: Please write ID to module\n')
-        magdeck.close()
-        exit()
+    assert_magdeck_has_serial(magdeck)
 
     print('\n\nStarting test, homing...\n')
     home(magdeck)
@@ -129,33 +125,33 @@ def main(cycles, default_port=None):
     for i in range(cycles):
         cycles_ran += 1
         print('  {0}/{1}: '.format(i + 1, TEST_CYCLES), end='', flush=True)
-        try:
-            time.sleep(MOVE_DELAY_SECONDS)
-            move(magdeck, FIRMWARE_MAX_TRAVEL_DISTANCE)
-            assert position(magdeck) == FIRMWARE_MAX_TRAVEL_DISTANCE
-            time.sleep(MOVE_DELAY_SECONDS)
-            move(magdeck, TEST_BOTTOM_POS)
-            assert position(magdeck) == TEST_BOTTOM_POS
-            test_for_skipping(magdeck)
-            # test_probe(magdeck)
-            print('PASS')
-        except AssertionError:
-            fail_count += 1
-            print(' *** FAIL ***')
-            if fail_count >= MAX_ALLOWED_FAILURES:
-                break
-        except KeyboardInterrupt:
-            exit()
+        time.sleep(MOVE_DELAY_SECONDS)
+        move(magdeck, FIRMWARE_MAX_TRAVEL_DISTANCE)
+        assert position(magdeck) == FIRMWARE_MAX_TRAVEL_DISTANCE
+        time.sleep(MOVE_DELAY_SECONDS)
+        move(magdeck, TEST_BOTTOM_POS)
+        assert position(magdeck) == TEST_BOTTOM_POS
+        test_for_skipping(magdeck)
+        print('PASS')
 
-    if fail_count:
-        print('\n\nFAILED {0} times after {1} cycles\n\n'.format(
-            fail_count, cycles_ran))
-    else:
-        print('\n\nPASSED\n\n')
+    print('\n\nPASSED\n\n')
 
 
 if __name__ == '__main__':
-    try:
-        main(TEST_CYCLES, default_port=sys.argv[-1])
-    finally:
-        del os.environ['OVERRIDE_SETTINGS_DIR']
+    robot._driver.turn_off_button_light()
+    while True:
+        if os.environ.get('RUNNING_ON_PI'):
+            print('Press the BUTTON to start...')
+            wait_for_button_click()
+        else:
+            input('Press ENTER when ready to run...')
+        magdeck = None
+        try:
+            robot._driver._set_button_light(blue=True)
+            magdeck = connect_to_mag_deck()
+            main(magdeck, TEST_CYCLES)
+            robot._driver._set_button_light(green=True)
+        except:
+            if magdeck:
+                magdeck.close()
+            robot._driver._set_button_light(red=True)

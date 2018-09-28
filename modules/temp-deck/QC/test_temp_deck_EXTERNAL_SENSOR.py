@@ -1,4 +1,3 @@
-# this must happen before attempting to import opentrons
 import os
 from datetime import datetime
 import serial
@@ -187,6 +186,8 @@ def create_data_file(tempdeck):
 
 
 def wait_for_button_click():
+    if not os.environ.get('RUNNING_ON_PI'):
+        return
     while robot._driver.read_button():
         pass
     while not robot._driver.read_button():
@@ -196,7 +197,7 @@ def wait_for_button_click():
 
 
 def check_if_exit_button():
-    if robot._driver.read_button():
+    if os.environ.get('RUNNING_ON_PI') and robot._driver.read_button():
         raise Exception('Exit button pressed')
 
 
