@@ -15,13 +15,12 @@ PID_FTDI = 24577
 PID_UNO = 67
 PID_UNO_CHINESE = 29987
 
-TARGET_TEMPERATURES = [6, 4, 95]
+TARGET_TEMPERATURES = [3, 4, 95]
 
 TOLERANCE_TO_PASS_TEST_LOW = 1
-TOLERANCE_TO_PASS_TEST_HIGH = 1
-MAX_ALLOWABLE_DELTA = 3
+TOLERANCE_TO_PASS_TEST_HIGH = 2
 
-SEC_WAIT_BEFORE_MEASURING = 3 * 60
+SEC_WAIT_BEFORE_MEASURING = 5 * 60
 SEC_TO_RECORD = 1 * 60
 
 test_start_time = 0
@@ -105,7 +104,7 @@ def is_temp_arrived(tempdeck, target_temperature):
     return True
 
 
-def is_finished_stabilizing(target_temperature, timestamp, time_to_stabilize):
+def is_finished_stabilizing(tempdeck, target_temperature, timestamp, time_to_stabilize):
     if not is_temp_arrived(tempdeck, target_temperature):
         return False
     return bool(timestamp + time_to_stabilize < time.time())
@@ -129,30 +128,34 @@ def write_line_to_file(data_line):
 
 def get_sensors_delta(tempdeck, external_sensor):
     tempdeck_temp, external_temp = read_temperatures(tempdeck, external_sensor)
-    external_delta = abs(external_temp - tempdeck_temp)
-    return external_delta  # return the absolute DELTA
+    external_delta = external_temp - tempdeck_temp
+    return external_delta
 
 
-def analyze_results(serial_number, results):
+def analyze_results(results):
     write_line_to_file('\n\n')
-    write_line_to_file('PN: {}'.format(serial_number))
     for r in results:
         write_line_to_file(
-            '{0}C:\tAverage: {1}'.format(
-            r['target'], r['average']))
+            '{0}C:\tAverage Delta: {1}\tAverage Abs Delta{2}:'.format(
+            r['target'], r['average'], r['absolute']))
     write_line_to_file('\n\n')
-    did_fail = False
+    did_pass = True
     for r in results:
         pass_thresh = TOLERANCE_TO_PASS_TEST_HIGH
         if r['target'] < 25:
             pass_thresh = TOLERANCE_TO_PASS_TEST_LOW
-        if r['average'] > pass_thresh:
+        if abs(r['average']) > pass_thresh:
             write_line_to_file('*** FAIL ***')
-            did_fail = True
+            did_pass = False
             break
-    if not did_fail:
+        if r['absolute'] > pass_thresh:
+            write_line_to_file('*** FAIL ***')
+            did_pass = False
+            break
+    if did_pass:
         write_line_to_file('PASS')
     write_line_to_file('\n\n')
+    return did_pass
 
 
 def assert_tempdeck_has_serial(tempdeck):
@@ -183,6 +186,20 @@ def create_data_file(tempdeck):
     write_line_to_file('Temp-Deck: {}'.format(serial_number))
 
 
+def wait_for_button_click():
+    while robot._driver.read_button():
+        pass
+    while not robot._driver.read_button():
+        pass
+    while robot._driver.read_button():
+        pass
+
+
+def check_if_exit_button():
+    if robot._driver.read_button():
+        raise Exception('Exit button pressed')
+
+
 def run_test(tempdeck, sensor, targets):
     global test_start_time
     try:
@@ -200,6 +217,7 @@ def run_test(tempdeck, sensor, targets):
         timestamp = time.time()
         seconds_passed = 0
         while not is_temp_arrived(tempdeck, targets[i]):
+            check_if_exit_button()
             if time.time() - timestamp > 30:
                 seconds_passed += 30
                 write_line_to_file('Waiting {0} seconds to reach {1}'.format(
@@ -209,55 +227,64 @@ def run_test(tempdeck, sensor, targets):
         if i == 0:
             if os.environ.get('RUNNING_ON_PI'):
                 print('Press button to continue test')
-                while not robot._driver.read_button():
-                    pass
+                wait_for_button_click()
             else:
                 input("\nPut on COLD plate, and press ENTER when sensor is in Water")
         else:
             write_line_to_file('Waiting for {0} seconds before measuring...'.format(
                 SEC_WAIT_BEFORE_MEASURING))
             while time.time() - tstamp < SEC_WAIT_BEFORE_MEASURING:
+                check_if_exit_button()
                 pass
             delta_temperatures = []
             tstamp = time.time()
             write_line_to_file('Measuring temperature for {0} seconds...'.format(
                 SEC_TO_RECORD))
-            while not is_finished_stabilizing(targets[i], tstamp, SEC_TO_RECORD):
+            while not is_finished_stabilizing(tempdeck, targets[i], tstamp, SEC_TO_RECORD):
+                check_if_exit_button()
                 delta_temp_thermistor = get_sensors_delta(tempdeck, sensor)
                 delta_temperatures.append(delta_temp_thermistor)
-                if delta_temp_thermistor > MAX_ALLOWABLE_DELTA:
-                    raise Exception(
-                        'External Sensor is {} degrees different, this is too much!'.format(delta_temp_thermistor))
+                write_line_to_file('Delta Temp at {0}C: {1}'.format(
+                    targets[i], delta_temp_thermistor))
+            absolute_deltas = [abs(d) for d in delta_temperatures]
             average_delta = round(
                 sum(delta_temperatures) / len(delta_temperatures), 2)
-            min_delta = round(min(delta_temperatures), 2)
-            max_delta = round(max(delta_temperatures), 2)
+            average_absolute_delta = round(
+                sum(absolute_deltas) / len(delta_temperatures), 2)
             results.append({
                 'target': targets[i],
                 'average': average_delta,
-                'min': min_delta,
-                'max': max_delta
+                'absolute': average_absolute_delta
             })
-    analyze_results(serial_number, results)
+    result = analyze_results(results)
     tempdeck.set_temperature(0)
     time.sleep(1)
     while tempdeck.temperature > 50:
+        check_if_exit_button()
         time.sleep(1)
         tempdeck.update_temperature()
+    time.sleep(1)
     tempdeck.disengage()
+    time.sleep(1)
+    return result
 
 
 def main():
+    data_file_created = False
     try:
-        robot._driver.turn_on_blue_button_light()
+        robot._driver._set_button_light(blue=True)
         sensor = connect_to_external_sensor()
         tempdeck = connect_to_temp_deck()
         create_data_file(tempdeck)
-        run_test(tempdeck, sensor, TARGET_TEMPERATURES)
-        robot._driver.turn_on_green_button_light()
+        data_file_created = True
+        if run_test(tempdeck, sensor, TARGET_TEMPERATURES):
+            robot._driver._set_button_light(green=True)
+        else:
+            robot._driver._set_button_light(red=True)
     except Exception as e:
-        write_line_to_file(e)
-        robot._driver.turn_on_red_button_light()
+        if data_file_created:
+            write_line_to_file(str(e))
+        robot._driver._set_button_light(red=True)
     finally:
         try:
             sensor.close()
@@ -272,8 +299,7 @@ if __name__ == '__main__':
     while True:
         if os.environ.get('RUNNING_ON_PI'):
             print('Press the BUTTON to start...')
-            while not robot._driver.read_button():
-                pass
+            wait_for_button_click()
         else:
             input('Press ENTER when ready to run...')
         main()
