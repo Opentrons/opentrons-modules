@@ -41,10 +41,8 @@ def connect_to_mag_deck():
             ports.append(p.device)
     if not ports:
         raise RuntimeError('Can not find a MagDeck connected over USB')
-    print(ports)
     for p in ports:
         try:
-            print('trying {}'.format(p))
             return serial.Serial(p, 115200, timeout=10)
         except KeyboardInterrupt:
             exit()
@@ -59,7 +57,8 @@ def send_command(port, data):
     port.reset_input_buffer()
     port.write(data.encode() + b'\r\n')
     res = port.read_until(ack.encode()).decode()
-    return res.replace(ack, '')
+    res = res.replace(ack, '')
+    return res
 
 
 def wait_for_button_click():
@@ -114,6 +113,7 @@ def test_for_skipping(port):
 
 def main(magdeck, cycles):
 
+    print('Testing if serial number is saved')
     assert_magdeck_has_serial(magdeck)
 
     print('\n\nStarting test, homing...\n')
@@ -126,11 +126,14 @@ def main(magdeck, cycles):
         cycles_ran += 1
         print('  {0}/{1}: '.format(i + 1, TEST_CYCLES), end='', flush=True)
         time.sleep(MOVE_DELAY_SECONDS)
+        check_if_exit_button()
         move(magdeck, FIRMWARE_MAX_TRAVEL_DISTANCE)
         assert position(magdeck) == FIRMWARE_MAX_TRAVEL_DISTANCE
         time.sleep(MOVE_DELAY_SECONDS)
+        check_if_exit_button()
         move(magdeck, TEST_BOTTOM_POS)
         assert position(magdeck) == TEST_BOTTOM_POS
+        check_if_exit_button()
         test_for_skipping(magdeck)
         print('PASS')
 
@@ -149,6 +152,7 @@ if __name__ == '__main__':
         try:
             robot._driver._set_button_light(blue=True)
             magdeck = connect_to_mag_deck()
+            magdeck.reset_input_buffer()
             main(magdeck, TEST_CYCLES)
             robot._driver._set_button_light(green=True)
         except:
