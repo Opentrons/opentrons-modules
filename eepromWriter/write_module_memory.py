@@ -24,7 +24,8 @@ WRITE_FAIL_MESSAGE = 'Data not saved'
 
 MODELS = {
     'TDV01': 'temp_deck_v1.1',  # make sure to skip v2 if model updates
-    'TDV03': 'temp_deck_v3.0',  # this model has the new fans
+    'TDV03': 'temp_deck_v3.0',  # this model has the new fans with pcb fan_v4
+    'TDV04': 'temp_deck_v4.0',  # this model has the new fans with pcb fan_v4.1
     'MDV01': 'mag_deck_v1.1'
 }
 
