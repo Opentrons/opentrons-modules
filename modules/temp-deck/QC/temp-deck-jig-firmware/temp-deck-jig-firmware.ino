@@ -1,5 +1,10 @@
 #include "thermistor.h"
 
+#include "lights.h"
+
+
+Lights lights = Lights();
+
 Thermistor thermistor = Thermistor();
 float current_temp_thermistor = 0.0;
 
@@ -10,6 +15,7 @@ const int print_interval = 250;
 void read_thermistor() {
     if (thermistor.update()) {
         current_temp_thermistor = thermistor.temperature();
+        lights.display_number(current_temp_thermistor + 0.5, true);
     }
 }
 
@@ -27,6 +33,8 @@ void setup() {
     Serial.begin(115200);
     while (!thermistor.update()) {}
     current_temp_thermistor = thermistor.temperature();
+    lights.setup_lights();
+    lights.set_numbers_brightness(0.25);
 }
 
 void loop() {
