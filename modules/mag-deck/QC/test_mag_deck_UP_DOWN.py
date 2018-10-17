@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 import sys
 import time
 
@@ -32,6 +33,9 @@ GCODE_GET_POSITION = 'M114.2'
 GCODE_PROBE = 'G38.2'
 GCODE_GET_PROBE_POS = 'M836'
 GCODE_GET_INFO = 'M115'
+
+original_results_file_path = '{id}_{date}.txt'
+results_file_path = ''
 
 
 def connect_to_mag_deck():
@@ -86,6 +90,7 @@ def assert_magdeck_has_serial(port):
     }
     assert 'MD' in info['serial']
     assert 'mag' in info['model']
+    return info['serial']
 
 
 def home(port):
@@ -111,12 +116,35 @@ def test_for_skipping(port):
     assert position(port) == 0.0
 
 
+def create_data_file(serial_number):
+    global results_file_path, original_results_file_path
+
+    # create the folder to save the test results
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    usb_path = '/mnt/usbdrive'
+    if os.path.isdir(usb_path):
+        dir_path = usb_path
+    data_path = os.path.join(dir_path, 'mag-deck-QC')
+    if not os.path.isdir(data_path):
+        os.mkdir(data_path)
+
+    date_string = datetime.utcfromtimestamp(time.time()).strftime(
+        '%Y-%m-%d_%H-%M-%S')
+    results_file_path = original_results_file_path.format(id=serial_number, date=date_string)
+    results_file_path = os.path.join(data_path, results_file_path)
+    write_line_to_file('Mag-Deck: {}'.format(serial_number))
+
+
+def write_line_to_file(data_line, end='\r\n'):
+    global results_file_path
+    print(data_line, end=end, flush=True)
+    with open(results_file_path, 'a+') as f:
+        f.write(data_line + end)
+
+
 def main(magdeck, cycles):
 
-    print('Testing if serial number is saved')
-    assert_magdeck_has_serial(magdeck)
-
-    print('\n\nStarting test, homing...\n')
+    write_line_to_file('\n\nStarting test, homing...\n')
     home(magdeck)
 
     fail_count = 0
@@ -124,7 +152,7 @@ def main(magdeck, cycles):
 
     for i in range(cycles):
         cycles_ran += 1
-        print('  {0}/{1}: '.format(i + 1, TEST_CYCLES), end='', flush=True)
+        write_line_to_file('  {0}/{1}: '.format(i + 1, TEST_CYCLES), end='')
         time.sleep(MOVE_DELAY_SECONDS)
         check_if_exit_button()
         move(magdeck, FIRMWARE_MAX_TRAVEL_DISTANCE)
@@ -135,9 +163,9 @@ def main(magdeck, cycles):
         assert position(magdeck) == TEST_BOTTOM_POS
         check_if_exit_button()
         test_for_skipping(magdeck)
-        print('PASS')
+        write_line_to_file('PASS')
 
-    print('\n\nPASSED\n\n')
+    write_line_to_file('\n\nPASSED\n\n')
 
 
 if __name__ == '__main__':
@@ -149,13 +177,20 @@ if __name__ == '__main__':
         else:
             input('Press ENTER when ready to run...')
         magdeck = None
+        data_file_created = False
         try:
             robot._driver._set_button_light(blue=True)
             magdeck = connect_to_mag_deck()
             magdeck.reset_input_buffer()
+            serial_number = assert_magdeck_has_serial(magdeck)
+            create_data_file(serial_number)
+            data_file_created = True
             main(magdeck, TEST_CYCLES)
             robot._driver._set_button_light(green=True)
-        except:
+        except Exception as e:
+            print(str(e))
             if magdeck:
                 magdeck.close()
+            if data_file_created:
+                write_line_to_file(str(e))
             robot._driver._set_button_light(red=True)
