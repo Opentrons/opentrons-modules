@@ -226,11 +226,8 @@ def run_test(tempdeck, sensor, targets):
                 timestamp = time.time()
         tstamp = time.time()
         if i == 0:
-            if os.environ.get('RUNNING_ON_PI'):
-                print('Press button to continue test')
-                wait_for_button_click()
-            else:
-                input("\nPut on COLD plate, and press ENTER when sensor is in Water")
+            write_line_to_file('Successfully reached {} degrees'.format(targets[i]))
+            continue
         else:
             write_line_to_file('Waiting for {0} seconds before measuring...'.format(
                 SEC_WAIT_BEFORE_MEASURING))
