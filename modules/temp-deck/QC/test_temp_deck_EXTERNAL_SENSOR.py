@@ -226,11 +226,8 @@ def run_test(tempdeck, sensor, targets):
                 timestamp = time.time()
         tstamp = time.time()
         if i == 0:
-            if os.environ.get('RUNNING_ON_PI'):
-                print('Press button to continue test')
-                wait_for_button_click()
-            else:
-                input("\nPut on COLD plate, and press ENTER when sensor is in Water")
+            write_line_to_file('Successfully reached {} degrees'.format(targets[i]))
+            continue
         else:
             write_line_to_file('Waiting for {0} seconds before measuring...'.format(
                 SEC_WAIT_BEFORE_MEASURING))
@@ -245,8 +242,10 @@ def run_test(tempdeck, sensor, targets):
                 check_if_exit_button()
                 delta_temp_thermistor = get_sensors_delta(tempdeck, sensor)
                 delta_temperatures.append(delta_temp_thermistor)
-                write_line_to_file('Delta Temp at {0}C: {1}'.format(
-                    targets[i], delta_temp_thermistor))
+                write_line_to_file('Plate is {0}C, Sensor is {1}C'.format(
+                    round(tempdeck.temperature, 2),
+                    round(tempdeck.temperature + delta_temp_thermistor, 2)
+                ))
             absolute_deltas = [abs(d) for d in delta_temperatures]
             average_delta = round(
                 sum(delta_temperatures) / len(delta_temperatures), 2)
