@@ -245,8 +245,10 @@ def run_test(tempdeck, sensor, targets):
                 check_if_exit_button()
                 delta_temp_thermistor = get_sensors_delta(tempdeck, sensor)
                 delta_temperatures.append(delta_temp_thermistor)
-                write_line_to_file('Delta Temp at {0}C: {1}'.format(
-                    targets[i], delta_temp_thermistor))
+                write_line_to_file('Plate is {0}C, Sensor is {1}C'.format(
+                    round(tempdeck.temperature, 2),
+                    round(tempdeck.temperature + delta_temp_thermistor, 2)
+                ))
             absolute_deltas = [abs(d) for d in delta_temperatures]
             average_delta = round(
                 sum(delta_temperatures) / len(delta_temperatures), 2)
