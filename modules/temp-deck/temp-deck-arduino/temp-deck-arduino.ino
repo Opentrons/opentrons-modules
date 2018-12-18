@@ -25,7 +25,7 @@
 #include "thermistor.h"
 #include "gcode.h"
 
-#define device_version "v1.1.0"
+#define device_version "v1.2.0"
 
 #define PIN_BUZZER 11  // a piezo buzzer we can use tone() with
 #define PIN_FAN 9      // blower-fan controlled by simple PWM analogWrite()
@@ -46,9 +46,9 @@
 // values used to scale the thermistors temperature
 // to more accurately reflect the temperature of the top-plate
 #define THERMISTOR_OFFSET_LOW_TEMP 5.25
-#define THERMISTOR_OFFSET_LOW_VALUE 0.7
+#define THERMISTOR_OFFSET_LOW_VALUE 1.3
 #define THERMISTOR_OFFSET_HIGH_TEMP 95
-#define THERMISTOR_OFFSET_HIGH_VALUE 0.6
+#define THERMISTOR_OFFSET_HIGH_VALUE 2.6
 const float THERMISTOR_OFFSET_HIGH_TEMP_DIFF = THERMISTOR_OFFSET_HIGH_TEMP - TEMPERATURE_ROOM;
 const float THERMISTOR_OFFSET_LOW_TEMP_DIFF = TEMPERATURE_ROOM - THERMISTOR_OFFSET_LOW_TEMP;
 float _offset_temp_diff = 0.0;
