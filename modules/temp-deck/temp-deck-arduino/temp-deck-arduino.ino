@@ -46,7 +46,7 @@
 // values used to scale the thermistors temperature
 // to more accurately reflect the temperature of the top-plate
 #define THERMISTOR_OFFSET_LOW_TEMP 5.25
-#define THERMISTOR_OFFSET_LOW_VALUE 0.1
+#define THERMISTOR_OFFSET_LOW_VALUE -0.1
 #define THERMISTOR_OFFSET_HIGH_TEMP 95
 #define THERMISTOR_OFFSET_HIGH_VALUE -1.4
 const float THERMISTOR_OFFSET_HIGH_TEMP_DIFF = THERMISTOR_OFFSET_HIGH_TEMP - TEMPERATURE_ROOM;
