@@ -7,7 +7,7 @@
 #define PIN_COVER_OPEN_SWITCH       8
 #define PIN_COVER_CLOSED_SWITCH     9
 
-#define PIN_SOLENOID                11
+#define PIN_SOLENOID                A1
 
 #define PIN_STEPPER_STEP            1
 #define PIN_STEPPER_DIR             3

@@ -5,7 +5,7 @@ ThermistorsADC::ThermistorsADC() {}
 void ThermistorsADC::setup(float voltage) {
   adc_a = new Adafruit_ADS1115(ADDRESS_A);
   adc_b = new Adafruit_ADS1115(ADDRESS_B);
-  
+
   adsGain_t gain = gain_settings[0];  // safest gain by default
   for (uint8_t i=1;i<TOTAL_GAIN_SETTINGS;i++) {
     if (voltage < gain_max_voltage[i]) {
@@ -42,13 +42,25 @@ float ThermistorsADC::average_plate_temperature() {
   return (
     // front_left_temperature() +
     // front_center_temperature() +
-    // front_right_temperature()
+    // front_right_temperature() +
     // back_left_temperature() +
-    // back_center_temperature()
+    // back_center_temperature() +
     // back_right_temperature() +
-    heat_sink_temperature() + 
+    heat_sink_temperature() +
     0.0
   ) / TOTAL_PLATE_THERMISTORS;
+}
+
+float ThermistorsADC::left_pair_temperature() {
+  return (front_left_temperature() + back_left_temperature())/2;
+}
+
+float ThermistorsADC::center_pair_temperature() {
+  return (front_center_temperature() + back_center_temperature())/2;
+}
+
+float ThermistorsADC::right_pair_temperature() {
+  return (front_right_temperature() + back_right_temperature())/2;
 }
 
 float ThermistorsADC::front_left_temperature() {

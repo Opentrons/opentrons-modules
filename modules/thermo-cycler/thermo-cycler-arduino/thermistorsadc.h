@@ -41,6 +41,9 @@ class ThermistorsADC{
             bool update();
 
             float average_plate_temperature();
+            float left_pair_temperature();
+            float center_pair_temperature();
+            float right_pair_temperature();
             float front_left_temperature();
             float front_center_temperature();
             float front_right_temperature();
