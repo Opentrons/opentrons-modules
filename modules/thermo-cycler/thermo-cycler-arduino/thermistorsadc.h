@@ -20,18 +20,19 @@
 #define GAIN_EIGHT_VOLTAGE       0.512
 #define GAIN_SIXTEEN_VOLTAGE     0.256
 
-#define ADC_INDEX_PLATE_FRONT_LEFT     0
-#define ADC_INDEX_PLATE_FRONT_CENTER   1
-#define ADC_INDEX_PLATE_FRONT_RIGHT    2
-#define ADC_INDEX_PLATE_BACK_LEFT      4
-#define ADC_INDEX_PLATE_BACK_CENTER    5
-#define ADC_INDEX_PLATE_BACK_RIGHT     6
+#define ADC_INDEX_HEAT_SINK            0
+#define ADC_INDEX_PLATE_FRONT_RIGHT    1  //Bottom Right on sch.
+#define ADC_INDEX_PLATE_FRONT_CENTER   2  //Bottom Center on sch.
+#define ADC_INDEX_PLATE_FRONT_LEFT     3  //Bottom Lef on sch.
+#define ADC_INDEX_PLATE_BACK_LEFT      4  //Top Left on sch.
+#define ADC_INDEX_PLATE_BACK_CENTER    5  //Top Center on sch.
+#define ADC_INDEX_PLATE_BACK_RIGHT     6  //Top Right on sch.
 
-#define ADC_INDEX_HEAT_SINK            4
+
 #define ADC_INDEX_COVER                7
 
 #define TOTAL_THERMISTORS              8
-#define TOTAL_PLATE_THERMISTORS        1
+#define TOTAL_PLATE_THERMISTORS        6
 
 class ThermistorsADC{
       public:

@@ -40,13 +40,13 @@ bool ThermistorsADC::update() {
 
 float ThermistorsADC::average_plate_temperature() {
   return (
-    // front_left_temperature() +
-    // front_center_temperature() +
-    // front_right_temperature() +
-    // back_left_temperature() +
-    // back_center_temperature() +
-    // back_right_temperature() +
-    heat_sink_temperature() +
+    front_left_temperature() +
+    front_center_temperature() +
+    front_right_temperature() +
+    back_left_temperature() +
+    back_center_temperature() +
+    back_right_temperature() +
+    //heat_sink_temperature() +
     0.0
   ) / TOTAL_PLATE_THERMISTORS;
 }
@@ -97,7 +97,7 @@ float ThermistorsADC::heat_sink_temperature() {
 
 
 int ThermistorsADC::_read_adc(int index) {
-  switch (index / ADC_PER_DEVICE) {
+  switch (int(index / ADC_PER_DEVICE)) {
     case 0:
       return max(adc_a->readADC_SingleEnded(index % ADC_PER_DEVICE), 0);
     case 1:

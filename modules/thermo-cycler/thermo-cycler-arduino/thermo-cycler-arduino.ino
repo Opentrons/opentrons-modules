@@ -85,6 +85,7 @@ double TEMPERATURE_SWING_LEFT_PEL = 0.5;
 double TEMPERATURE_SWING_CENTER_PEL = 0.5;
 double TEMPERATURE_SWING_RIGHT_PEL = 0.5;
 
+// Left Peltier -> PELTIER_3
 PID PID_left_pel(
   &CURRENT_LEFT_PEL_TEMP,
   &TEMPERATURE_SWING_LEFT_PEL,
@@ -94,6 +95,7 @@ PID PID_left_pel(
   DIRECT
 );
 
+// Center Peltier -> PELTIER_2
 PID PID_center_pel(
   &CURRENT_CENTER_PEL_TEMP,
   &TEMPERATURE_SWING_CENTER_PEL,
@@ -103,6 +105,7 @@ PID PID_center_pel(
   DIRECT
 );
 
+// Right Peltier -> PELTIER_1
 PID PID_right_pel(
   &CURRENT_RIGHT_PEL_TEMP,
   &TEMPERATURE_SWING_RIGHT_PEL,
@@ -242,14 +245,11 @@ bool is_temp_far_away() {
 float get_average_temp(Peltier_num pel_n) {
   switch(pel_n){
     case PELTIER_1:
-      return (temp_probes.front_left_temperature()
-              + temp_probes.back_left_temperature())/2;
+      return temp_probes.right_pair_temperature();
     case PELTIER_2:
-      return (temp_probes.front_center_temperature()
-              + temp_probes.back_center_temperature())/2;
+      return temp_probes.center_pair_temperature();
     case PELTIER_3:
-      return (temp_probes.front_right_temperature()
-              + temp_probes.back_right_temperature())/2;
+      return temp_probes.left_pair_temperature();
     default:
       Serial.println("ERROR<get_average_temp>! Invalid Peltier number");
       break;
@@ -271,18 +271,18 @@ void update_peltiers_from_pid() {
     // }
     if (PID_left_pel.Compute()) {
       if (TEMPERATURE_SWING_LEFT_PEL < 0) {
-        peltiers.set_cold_percentage(abs(TEMPERATURE_SWING_LEFT_PEL), PELTIER_1);
+        peltiers.set_cold_percentage(abs(TEMPERATURE_SWING_LEFT_PEL), PELTIER_3);
       }
       else {
-        peltiers.set_hot_percentage(TEMPERATURE_SWING_LEFT_PEL, PELTIER_1);
+        peltiers.set_hot_percentage(TEMPERATURE_SWING_LEFT_PEL, PELTIER_3);
       }
     }
     if (PID_right_pel.Compute()) {
       if (TEMPERATURE_SWING_RIGHT_PEL < 0) {
-        peltiers.set_cold_percentage(abs(TEMPERATURE_SWING_RIGHT_PEL), PELTIER_3);
+        peltiers.set_cold_percentage(abs(TEMPERATURE_SWING_RIGHT_PEL), PELTIER_1);
       }
       else {
-        peltiers.set_hot_percentage(TEMPERATURE_SWING_RIGHT_PEL, PELTIER_3);
+        peltiers.set_hot_percentage(TEMPERATURE_SWING_RIGHT_PEL, PELTIER_1);
       }
     }
     if (PID_center_pel.Compute()) {
@@ -342,13 +342,13 @@ void ramp_temp_after_change_temp() {
     // }
     PID_left_pel.SetSampleTime(1);
     PID_left_pel.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
-    if (is_ramping_up(PELTIER_1) && TEMPERATURE_SWING_LEFT_PEL < 0.95){
-      peltiers.set_hot_percentage(1.0, PELTIER_1);
+    if (is_ramping_up(PELTIER_3) && TEMPERATURE_SWING_LEFT_PEL < 0.95){
+      peltiers.set_hot_percentage(1.0, PELTIER_3);
       while (TEMPERATURE_SWING_LEFT_PEL < 0.95)
         PID_left_pel.Compute();
     }
-    else if (is_ramping_down(PELTIER_1) && TEMPERATURE_SWING_LEFT_PEL > 0.95){
-      peltiers.set_cold_percentage(1.0, PELTIER_1);
+    else if (is_ramping_down(PELTIER_3) && TEMPERATURE_SWING_LEFT_PEL > 0.95){
+      peltiers.set_cold_percentage(1.0, PELTIER_3);
       while (TEMPERATURE_SWING_LEFT_PEL > -0.95)
         PID_left_pel.Compute();
     }
@@ -368,14 +368,14 @@ void ramp_temp_after_change_temp() {
 
     PID_right_pel.SetSampleTime(1);
     PID_right_pel.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
-    if (is_ramping_up(PELTIER_3) && TEMPERATURE_SWING_RIGHT_PEL < 0.95){
-      peltiers.set_hot_percentage(1.0, PELTIER_3);
+    if (is_ramping_up(PELTIER_1) && TEMPERATURE_SWING_RIGHT_PEL < 0.95){
+      peltiers.set_hot_percentage(1.0, PELTIER_1);
       while (TEMPERATURE_SWING_RIGHT_PEL < 0.95)
         PID_right_pel.Compute();
     }
-    else if (is_ramping_down(PELTIER_3) && TEMPERATURE_SWING_RIGHT_PEL > 0.95){
-      peltiers.set_cold_percentage(1.0, PELTIER_3);
-      while (TEMPERATURE_SWING_CENTER_PEL > -0.95)
+    else if (is_ramping_down(PELTIER_1) && TEMPERATURE_SWING_RIGHT_PEL > 0.95){
+      peltiers.set_cold_percentage(1.0, PELTIER_1);
+      while (TEMPERATURE_SWING_RIGHT_PEL > -0.95)
         PID_right_pel.Compute();
     }
   }
@@ -426,17 +426,17 @@ void print_info(bool force=false) {
         Serial.print(CURRENT_TEMPERATURE_PLATE);
         if (debug_print_mode){
           Serial.print("\n\t\t-------- Thermistors -------\n");
-          Serial.print(temp_probes.front_left_temperature());
-          Serial.print("\t");
-          Serial.print(temp_probes.front_center_temperature());
-          Serial.print("/t");
-          Serial.print(temp_probes.front_right_temperature());
-          Serial.print("\n\n");
           Serial.print(temp_probes.back_left_temperature());
           Serial.print("\t");
           Serial.print(temp_probes.back_center_temperature());
           Serial.print("\t");
           Serial.print(temp_probes.back_right_temperature());
+          Serial.print("\n\n");
+          Serial.print(temp_probes.front_left_temperature());
+          Serial.print("\t");
+          Serial.print(temp_probes.front_center_temperature());
+          Serial.print("\t");
+          Serial.print(temp_probes.front_right_temperature());
           Serial.print("\n");
           Serial.print("\t\t-------------------------------");
         }
