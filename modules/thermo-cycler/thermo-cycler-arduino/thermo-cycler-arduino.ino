@@ -72,10 +72,6 @@ bool just_changed_temp = false;
 double TEMPERATURE_SWING_PLATE = 0.5;
 double TARGET_TEMPERATURE_PLATE = TEMPERATURE_ROOM;
 double CURRENT_TEMPERATURE_PLATE = TEMPERATURE_ROOM;
-//
-// PID PID_Plate(
-//   &CURRENT_TEMPERATURE_PLATE, &TEMPERATURE_SWING_PLATE, &TARGET_TEMPERATURE_PLATE,
-//   current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M, DIRECT);
 
 double TESTING_OFFSET_TEMP = TARGET_TEMPERATURE_PLATE;
 double CURRENT_LEFT_PEL_TEMP = TEMPERATURE_ROOM;
@@ -261,14 +257,6 @@ float get_average_temp(Peltier_num pel_n) {
 
 void update_peltiers_from_pid() {
   if (MASTER_SET_A_TARGET) {
-    // if (PID_Plate.Compute()) {
-    //   if (TEMPERATURE_SWING_PLATE < 0) {
-    //     peltiers.set_cold_percentage(abs(TEMPERATURE_SWING_PLATE), PELTIER_1);
-    //   }
-    //   else {
-    //     peltiers.set_hot_percentage(TEMPERATURE_SWING_PLATE, PELTIER_1);
-    //   }
-    // }
     if (PID_left_pel.Compute()) {
       if (TEMPERATURE_SWING_LEFT_PEL < 0) {
         peltiers.set_cold_percentage(abs(TEMPERATURE_SWING_LEFT_PEL), PELTIER_3);
@@ -330,16 +318,6 @@ void update_fan_from_state() {
 
 void ramp_temp_after_change_temp() {
   if (is_temp_far_away()) {
-    // PID_Plate.SetSampleTime(1);
-    // PID_Plate.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
-    // if (is_ramping_up() && TEMPERATURE_SWING_PLATE < 0.95) {
-    //   peltiers.set_hot_percentage(1.0, PELTIER_1);
-    //   while (TEMPERATURE_SWING_PLATE < 0.95) PID_Plate.Compute();
-    // }
-    // else if (is_ramping_down() && TEMPERATURE_SWING_PLATE > -0.95) {
-    //   peltiers.set_cold_percentage(1.0, PELTIER_1);
-    //   while (TEMPERATURE_SWING_PLATE > -0.95) PID_Plate.Compute();
-    // }
     PID_left_pel.SetSampleTime(1);
     PID_left_pel.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
     if (is_ramping_up(PELTIER_3) && TEMPERATURE_SWING_LEFT_PEL < 0.95){

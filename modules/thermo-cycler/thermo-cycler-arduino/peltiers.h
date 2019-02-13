@@ -43,13 +43,6 @@ class Peltiers{
 
   private:
     Peltier_property pel[3];
-
-    uint8_t peltier_1a_control;
-    uint8_t peltier_1b_control;
-    uint8_t peltier_2a_control;
-    uint8_t peltier_2b_control;
-    uint8_t peltier_3a_control;
-    uint8_t peltier_3b_control;
     uint8_t peltiers_enable;
 };
 
