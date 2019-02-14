@@ -1,4 +1,4 @@
-#include "Pwmfrequency.h"
+#include "pwmfrequency.h"
 
 Pwmfrequency::Pwmfrequency(){}
 
@@ -24,7 +24,7 @@ void Pwmfrequency::pwm_with_frequency(int pin, double duty, double freq_k_hz) {
 
   // Enable the port multiplexer for the digital pin
   PORT->Group[g_APinDescription[pin].ulPort].PINCFG[g_APinDescription[pin].ulPin].bit.PMUXEN = 1;
-  
+
   // Connect the TCC0 timer to digital - port pins are paired odd PMUXO and even PMUXE
   // F & E specify the timers: TCC0, TCC1 and TCC2
   if (pin % 2 == 0) {
@@ -50,7 +50,7 @@ void Pwmfrequency::pwm_with_frequency(int pin, double duty, double freq_k_hz) {
   double num_ticks_per_duty = 48000 / (freq_k_hz * 2);
   REG_TCC0_PER = num_ticks_per_duty;         // Set the frequency of the PWM on TCC0
   while (TCC0->SYNCBUSY.bit.PER);                // Wait for synchronization
-  
+
   // Set the PWM signal to output 50% duty cycle
   if (pin == ALLOWED_PIN_SEVEN) {
     REG_TCC0_CC3 = uint8_t(duty * num_ticks_per_duty);         // TCC0 CC3 - on D7
@@ -68,7 +68,7 @@ void Pwmfrequency::pwm_with_frequency(int pin, double duty, double freq_k_hz) {
     REG_TCC0_CC0 = uint8_t(duty * num_ticks_per_duty);         // TCC0 CC3 - on D2
     while (TCC0->SYNCBUSY.bit.CC0);                // Wait for synchronization
   }
-  
+
   // Divide the 48MHz signal by 1 giving 48MHz (20.83ns) TCC0 timer tick and enable the outputs
   REG_TCC0_CTRLA |= TCC_CTRLA_PRESCALER_DIV1 |    // Divide GCLK4 by 1
                     TCC_CTRLA_ENABLE;             // Enable the TCC0 output

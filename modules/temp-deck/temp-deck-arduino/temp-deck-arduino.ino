@@ -432,7 +432,7 @@ void read_thermistor_and_apply_offset() {
 
 void activate_bootloader(){
   // Method 1: Uses a WDT reset to enter bootloader.
-  // Works on the modified Caterina bootloader that allows 
+  // Works on the modified Caterina bootloader that allows
   // bootloader access after a WDT reset
   // -----------------------------------------------------------------
   unsigned long tempWait = millis();
@@ -444,7 +444,7 @@ void activate_bootloader(){
   while(millis() - timerStart < 25){
     //Wait out until WD times out
   }
-  // Should never get here but in case it does because 
+  // Should never get here but in case it does because
   // WDT failed to start or timeout..
 }
 

@@ -1,0 +1,17 @@
+language: c
+sudo: false
+
+cache:
+  directories:
+    - ~/arduino_ide
+
+install:
+  - make setup-ino
+
+script:
+  - make build
+
+notifications:
+  email:
+    on_success: change
+    on_failure: change
