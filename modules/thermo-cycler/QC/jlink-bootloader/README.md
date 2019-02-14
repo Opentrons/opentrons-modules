@@ -6,7 +6,6 @@ https://www.segger.com/downloads/jlink/#J-LinkSoftwareAndDocumentationPack
 
 run `JLinkExe` in Terminal
 connect over SWD, speed 4000 (default)
-defice is `ATSAMD21G18`
 
 3) Reset the device's registers
 
