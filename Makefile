@@ -14,6 +14,9 @@ ARDUINO_SAMD_VER ?= 1.6.20
 ADAFRUIT_SAMD_VER ?= 1.2.9
 OPENTRONS_BOARDS_VER ?= 1.2.0
 
+ADAFRUIT_BOARD_URL := https://adafruit.github.io/arduino-board-index/package_adafruit_index.json
+OPENTRONS_BOARD_URL := https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json
+
 ifeq ($(CI_SYSTEM), Darwin)
 	ARDUINO := $(INO_DIR)/Arduino.app/Contents/MacOS/Arduino
 	ARDUINO_ARCHIVE := arduino-$(ARDUINO_VERSION)-macosx.zip
@@ -53,14 +56,14 @@ setup-ino:
 	# Download Arduino
 	mkdir -p $(INO_DIR)
 	# if not already cached, download and install/unpack arduino IDE
-	$(if $(NO_ARDUINO), wget --quiet $(DOWNLOAD_LINK), @echo "Arduino already present")
+	$(if $(NO_ARDUINO), curl -O --get $(DOWNLOAD_LINK), @echo "Arduino already present")
 	$(if $(NO_ARDUINO), $(UNPACK_CMD))
 	# Change sketchbook location to the repository in order to link library files
 	$(ARDUINO) --pref "sketchbook.path=$(CURDIR)" --save-prefs
 	# Change build path to a known path
 	$(ARDUINO) --pref "build.path=$(BUILDS_DIR)/tmp" --save-prefs
 	# Add board packages
-	$(ARDUINO) --pref "boardsmanager.additional.urls=https://adafruit.github.io/arduino-board-index/package_adafruit_index.json, https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json" --save-prefs
+	$(ARDUINO) --pref "boardsmanager.additional.urls=$(ADAFRUIT_BOARD_URL), $(OPENTRONS_BOARD_URL)" --save-prefs
 	# Install all required boards
 	echo -n "Installing board packages.."
 	echo -n "Arduino SAMD: "
