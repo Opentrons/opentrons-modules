@@ -31,7 +31,7 @@ else
 	ARDUINO15_LOC := $(HOME)/.arduino15
 endif
 
-BUILDS_DIR := $(HOME)/.arduino_builds
+BUILDS_DIR := ./build
 DOWNLOAD_LINK := https://downloads.arduino.cc/$(ARDUINO_ARCHIVE)
 
 ifeq ($(wildcard $(ARDUINO)), )
@@ -51,13 +51,14 @@ ifeq ($(wildcard $(ARDUINO15_LOC)/packages/Opentrons/hardware/avr/$(OPENTRONS_BO
 endif
 
 # setup Arduino
-.PHONY: setup-ino
-setup-ino:
+.PHONY: setup
+setup:
 	# Download Arduino
 	mkdir -p $(INO_DIR)
 	# if not already cached, download and install/unpack arduino IDE
 	$(if $(NO_ARDUINO), curl -O --get $(DOWNLOAD_LINK), @echo "Arduino already present")
 	$(if $(NO_ARDUINO), $(UNPACK_CMD))
+	rm -rf $(ARDUINO_ARCHIVE)
 	# Change sketchbook location to the repository in order to link library files
 	$(ARDUINO) --pref "sketchbook.path=$(CURDIR)" --save-prefs
 	# Change build path to a known path
@@ -94,3 +95,8 @@ build-thermocycler:
 	$(ARDUINO) --verify --board adafruit:samd:adafruit_feather_m0 $(MODULES_DIR)/thermo-cycler/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
 	mkdir -p $(BUILDS_DIR)/thermo-cycler
 	cp $(BUILDS_DIR)/tmp/thermo-cycler-arduino.ino.bin $(BUILDS_DIR)/thermo-cycler/
+
+.PHONY: teardown
+teardown:
+	rm -rf $(INO_DIR)
+	rm -rf $(ARDUINO15_LOC)

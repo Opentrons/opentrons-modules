@@ -1,13 +1,11 @@
 language: c
 
-sudo: false
-
 cache:
   directories:
     - ~/arduino_ide
 
 install:
-  - make setup-ino
+  - make setup
 
 script:
   - make build
