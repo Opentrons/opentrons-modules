@@ -1,4 +1,4 @@
-#include "Thermistor.h"
+#include "thermistor.h"
 
 Thermistor::Thermistor(){}
 

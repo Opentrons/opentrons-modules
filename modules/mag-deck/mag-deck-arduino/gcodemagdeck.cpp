@@ -1,4 +1,4 @@
-#include "GcodeMagDeck.h"
+#include "gcodemagdeck.h"
 
 GcodeMagDeck::GcodeMagDeck() {
 }

@@ -1,4 +1,4 @@
-#include "Peltiers.h"
+#include "peltiers.h"
 
 Peltiers::Peltiers(){
 }

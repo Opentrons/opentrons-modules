@@ -1,4 +1,4 @@
-#include "ThermistorsADC.h"
+#include "thermistorsadc.h"
 
 ThermistorsADC::ThermistorsADC() {}
 
