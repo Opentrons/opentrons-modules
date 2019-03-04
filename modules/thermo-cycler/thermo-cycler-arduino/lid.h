@@ -40,6 +40,13 @@
 #define STEPS_PER_MM 15  // full-stepping
 #define PULSE_HIGH_MICROSECONDS 2
 
+typedef enum{
+  UNKNOWN = 0,
+  CLOSED,
+  OPEN
+}Lid_status;
+
+static const char * LID_STATUS_STRINGS[] = {"Unknown", "Closed", "Open"};
 
 class Lid{
   public:
@@ -48,8 +55,7 @@ class Lid{
     void setup();
     void open_cover();
     void close_cover();
-    bool is_lid_open();
-    bool is_lid_closed();
+    Lid_status status();
     void solenoid_on();
     void solenoid_off();
     void motor_off();
@@ -60,7 +66,10 @@ class Lid{
     void move_millimeters(float mm, bool top_switch, bool bottom_switch);
 
   private:
-
+    bool is_lid_open();
+    bool is_lid_closed();
+    bool is_open_switch_pressed();
+    bool is_closed_switch_pressed();
     void wait_to_hit_bottom();
     void wait_to_hit_top();
     void setup_digipot();

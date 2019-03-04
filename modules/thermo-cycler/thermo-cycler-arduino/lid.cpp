@@ -45,12 +45,23 @@ void Lid::setup_digipot(){
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
+Lid_status Lid::status() {
+  if(is_open_switch_pressed() && !is_closed_switch_pressed()) {
+    return OPEN;
+  }
+  else if(is_closed_switch_pressed() && !is_open_switch_pressed()) {
+    return CLOSED;
+  }
+  else {
+    return UNKNOWN;
+  }
+}
 
-bool Lid::is_lid_open() {
+bool Lid::is_open_switch_pressed() {
   return (digitalRead(PIN_COVER_OPEN_SWITCH) == SWITCH_PRESSED_STATE);
 }
 
-bool Lid::is_lid_closed() {
+bool Lid::is_closed_switch_pressed() {
   return (digitalRead(PIN_COVER_CLOSED_SWITCH) == SWITCH_PRESSED_STATE);
 }
 
@@ -130,20 +141,24 @@ void Lid::move_millimeters(float mm, bool top_switch, bool bottom_switch){
   for (unsigned long i=0;i<steps;i++) {
     motor_step(dir);
     update_acceleration();
-    if (top_switch && is_lid_open()) return;
-    if (bottom_switch && is_lid_closed()) return;
+    if (top_switch && is_open_switch_pressed()) return;
+    if (bottom_switch && is_closed_switch_pressed()) return;
   }
   motor_off();
 }
 
 void Lid::open_cover() {
-  if (is_lid_open()) return;
+  if (is_open_switch_pressed()) {
+     return;
+  }
   move_millimeters(300, true, false);
   motor_off();
 }
 
 void Lid::close_cover() {
-  if (is_lid_closed()) return;
+  if (is_closed_switch_pressed()) {
+    return;
+  }
   move_millimeters(-300, false, true);
   motor_off();
 }

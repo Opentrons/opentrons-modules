@@ -1,137 +1,4 @@
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
-#include <PID_v1.h>
-#include "thermistorsadc.h"
-#include "lid.h"
-#include "peltiers.h"
-
-#define THERMISTOR_VOLTAGE 1.5
-
-ThermistorsADC temp_probes;
-Lid lid;
-Peltiers peltiers;
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
-#include <Adafruit_NeoPixel_ZeroDMA.h>
-
-#define NEO_PWR     4
-#define NEO_PIN     A5
-#define NUM_PIXELS  22
-
-Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_RGBW);
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
-#define PIN_FAN_SINK_CTRL           A4   // uses PWM frequency generator
-#define PIN_FAN_SINK_ENABLE         2    // Heat sink fan
-
-#define PIN_HEAT_PAD_CONTROL        A3
-#define PIN_FAN_COVER               A2
-
-double CURRENT_FAN_POWER = 0;
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
-#define TEMPERATURE_ROOM 23
-#define TEMPERATURE_COVER_HOT 105
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
-#define DEFAULT_PLATE_PID_TIME 20
-
-#define PID_KP_PLATE_UP 0.05
-#define PID_KI_PLATE_UP 0.01
-#define PID_KD_PLATE_UP 0.0
-
-#define PID_KP_PLATE_DOWN PID_KP_PLATE_UP
-#define PID_KI_PLATE_DOWN PID_KI_PLATE_UP
-#define PID_KD_PLATE_DOWN PID_KD_PLATE_UP
-
-#define PID_STABILIZING_THRESH 5
-#define PID_FAR_AWAY_THRESH 10
-
-double current_plate_kp = PID_KP_PLATE_UP;
-double current_plate_ki = PID_KI_PLATE_UP;
-double current_plate_kd = PID_KD_PLATE_UP;
-
-bool MASTER_SET_A_TARGET = false;
-bool auto_fan = true;
-bool just_changed_temp = false;
-
-double TEMPERATURE_SWING_PLATE = 0.5;
-double TARGET_TEMPERATURE_PLATE = TEMPERATURE_ROOM;
-double CURRENT_TEMPERATURE_PLATE = TEMPERATURE_ROOM;
-
-double TESTING_OFFSET_TEMP = TARGET_TEMPERATURE_PLATE;
-double CURRENT_LEFT_PEL_TEMP = TEMPERATURE_ROOM;
-double CURRENT_CENTER_PEL_TEMP = TEMPERATURE_ROOM;
-double CURRENT_RIGHT_PEL_TEMP = TEMPERATURE_ROOM;
-double TEMPERATURE_SWING_LEFT_PEL = 0.5;
-double TEMPERATURE_SWING_CENTER_PEL = 0.5;
-double TEMPERATURE_SWING_RIGHT_PEL = 0.5;
-
-// Left Peltier -> PELTIER_3
-PID PID_left_pel(
-  &CURRENT_LEFT_PEL_TEMP,
-  &TEMPERATURE_SWING_LEFT_PEL,
-  &TARGET_TEMPERATURE_PLATE,
-  current_plate_kp, current_plate_ki, current_plate_kd,
-  P_ON_M,
-  DIRECT
-);
-
-// Center Peltier -> PELTIER_2
-PID PID_center_pel(
-  &CURRENT_CENTER_PEL_TEMP,
-  &TEMPERATURE_SWING_CENTER_PEL,
-  &TARGET_TEMPERATURE_PLATE,
-  current_plate_kp, current_plate_ki, current_plate_kd,
-  P_ON_M,
-  DIRECT
-);
-
-// Right Peltier -> PELTIER_1
-PID PID_right_pel(
-  &CURRENT_RIGHT_PEL_TEMP,
-  &TEMPERATURE_SWING_RIGHT_PEL,
-  &TARGET_TEMPERATURE_PLATE,
-  current_plate_kp, current_plate_ki, current_plate_kd,
-  P_ON_M,
-  DIRECT
-);
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
-#define PID_KP_COVER 0.2
-#define PID_KI_COVER 0.01
-#define PID_KD_COVER 0.0
-
-double TEMPERATURE_SWING_COVER = 0.5;
-double TARGET_TEMPERATURE_COVER = TEMPERATURE_ROOM;
-double CURRENT_TEMPERATURE_COVER = TEMPERATURE_ROOM;
-
-bool COVER_SHOULD_BE_HOT = false;
-
-PID PID_Cover(
-  &CURRENT_TEMPERATURE_COVER, &TEMPERATURE_SWING_COVER, &TARGET_TEMPERATURE_COVER,
-  PID_KP_COVER, PID_KI_COVER, PID_KD_COVER, P_ON_M, DIRECT);
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
+#include "thermo-cycler.h"
 
 void set_heat_pad_power(float val) {
   int byte_val = max(min(val * 255.0, 255), 0);
@@ -202,6 +69,12 @@ bool is_stabilizing(Peltier_num pel_n = NO_PELTIER) {
     return abs(TARGET_TEMPERATURE_PLATE - CURRENT_TEMPERATURE_PLATE) < PID_STABILIZING_THRESH;
   else
     return abs(TARGET_TEMPERATURE_PLATE - get_average_temp(pel_n)) < PID_STABILIZING_THRESH;
+}
+
+bool is_at_target(){
+  return abs(
+    TARGET_TEMPERATURE_PLATE - temp_probes.average_plate_temperature()) \
+    < TARGET_TEMP_TOLERANCE;
 }
 
 bool is_target_hot() {
@@ -357,11 +230,7 @@ void ramp_temp_after_change_temp() {
         PID_right_pel.Compute();
     }
   }
-  Serial.println("Setting Tunings!");
-  Serial.println(current_plate_kp, 6);
-  Serial.println(current_plate_ki, 6);
-  Serial.println(current_plate_kd, 6);
-  Serial.println();
+  /******** Temperature stabilizing towards target *********/
   PID_left_pel.SetSampleTime(DEFAULT_PLATE_PID_TIME);
   PID_left_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
   PID_center_pel.SetSampleTime(DEFAULT_PLATE_PID_TIME);
@@ -376,17 +245,101 @@ void ramp_temp_after_change_temp() {
 /////////////////////////////////
 /////////////////////////////////
 
-unsigned long plotter_timestamp = 0;
-const int plotter_interval = 500;
-bool running_from_script = false;
-bool debug_print_mode = true;
-bool running_graph = false;
-bool zoom_mode = false;
+#if USE_GCODES == true
+  void read_gcode()
+  {
 
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
+    if(gcode.received_newline())
+    {
+      while(gcode.pop_command())
+      {
+        switch(gcode.code)
+        {
+          case GCODE_NO_CODE:
+            break;
+          case GCODE_GET_LID_STATUS:
+            gcode.response("Lid", LID_STATUS_STRINGS[lid.status()]);
+            break;
+          case GCODE_OPEN_LID:
+            lid.open_cover();
+            break;
+          case GCODE_CLOSE_LID:
+            lid.close_cover();
+            break;
+          case GCODE_SET_LID_TEMP:
+            break;
+          case GCODE_DEACTIVATE_LID_HEATING:
+            heat_pad_off();
+            break;
+          case GCODE_SET_PLATE_TEMP:
+            if(gcode.read_number('S')) {
+              TARGET_TEMPERATURE_PLATE = gcode.parsed_number;
+            }
+            else {
+              gcode.response("ERROR");
+              break;
+            }
+            MASTER_SET_A_TARGET = true;
+            just_changed_temp = true;
+            tc_timer.reset();
+            if(gcode.read_number('H')) {
+              tc_timer.total_hold_time = gcode.parsed_number;
+            }
+            break;
+          case GCODE_GET_PLATE_TEMP:
+            if(MASTER_SET_A_TARGET){
+              gcode.targetting_temperature_response(TARGET_TEMPERATURE_PLATE,
+              CURRENT_TEMPERATURE_PLATE, tc_timer.time_left());
+            }
+            else{
+              gcode.idle_temperature_response(CURRENT_TEMPERATURE_PLATE);
+            }
+            break;
+          case GCODE_SET_RAMP_RATE:
+            if(MASTER_SET_A_TARGET) {
+              gcode.response("BUSY");
+            }
+            else {
+              // This should calculate and change PID sample time and Ki
+            }
+            break;
+          case GCODE_EDIT_PID_PARAMS:
+            if(MASTER_SET_A_TARGET) {
+              gcode.response("BUSY");
+            }
+            else {
+              // Currently, all three peltiers use the same PID values
+              if(gcode.read_number('P')) {
+                current_plate_kp = gcode.parsed_number;
+              }
+              if(gcode.read_number('I')) {
+                current_plate_ki = gcode.parsed_number;
+              }
+              if (gcode.read_number('D')) {
+                current_plate_kd = gcode.parsed_number;
+              }
+            }
+            break;
+          case GCODE_PAUSE:
+            // Flush out details about how to resume and what happens to the timer
+            // when paused
+            break;
+          case GCODE_DEACTIVATE_ALL:
+            heat_pad_off();
+            fan_sink_off();
+            peltiers.disable();
+            TARGET_TEMPERATURE_PLATE = TEMPERATURE_ROOM;
+            MASTER_SET_A_TARGET = false;
+            tc_timer.reset();
+            break;
+          case GCODE_DFU:
+            break;
+        }
+      }
+      gcode.send_ack();
+    }
+  }
+#else
 void print_info(bool force=false) {
     if (force || (millis() - plotter_timestamp > plotter_interval)) {
         plotter_timestamp = millis();
@@ -561,7 +514,7 @@ void read_from_serial() {
         empty_serial_buffer();
     }
 }
-
+#endif
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
@@ -596,13 +549,12 @@ uint32_t Wheel(byte WheelPos) {
 /////////////////////////////////
 
 void setup() {
-
-  Serial.begin(115200);
-  Serial.setTimeout(5);
+  gcode.setup(BAUDRATE);
+  delay(1000);
+  Serial.println("Setting up stuff..");
 
   lid.setup();
   peltiers.setup();
-
   temp_probes.setup(THERMISTOR_VOLTAGE);
   while (!temp_probes.update()) {}
   CURRENT_TEMPERATURE_PLATE = temp_probes.average_plate_temperature();
@@ -649,14 +601,13 @@ void setup() {
   rainbow_test();
 }
 
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
 void loop() {
-
+#if USE_GCODES
+  read_gcode();
+#else
   read_from_serial();
-
+  if (!running_from_script) print_info();
+#endif
   if (temp_probes.update()) {
     CURRENT_LEFT_PEL_TEMP = temp_probes.left_pair_temperature();
     CURRENT_RIGHT_PEL_TEMP = temp_probes.right_pair_temperature();
@@ -664,15 +615,16 @@ void loop() {
     CURRENT_TEMPERATURE_PLATE = temp_probes.average_plate_temperature();
     CURRENT_TEMPERATURE_COVER = temp_probes.cover_temperature();
   }
-
-  if (auto_fan) update_fan_from_state();
-  if (just_changed_temp) ramp_temp_after_change_temp();
+  if (auto_fan){
+    update_fan_from_state();
+  }
+  if (just_changed_temp){
+    ramp_temp_after_change_temp();
+  }
+  if (MASTER_SET_A_TARGET && tc_timer.get_status() == IDLE && is_at_target()) {
+      tc_timer.start();
+  }
+  tc_timer.update();
   update_peltiers_from_pid();
   update_cover_from_pid();
-
-  if (!running_from_script) print_info();
 }
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
