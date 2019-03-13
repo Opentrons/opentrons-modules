@@ -1,13 +1,18 @@
 #include "gcode.h"
 
-Gcode::Gcode() {
-}
+#undef GCODE_DEF
+#define GCODE_DEF(_, str) #str
 
-void Gcode::_strip_serial_buffer() {
-  for(uint8_t i=0;i<SERIAL_BUFFER_STRING.length();i++) {
-    for (uint8_t c=0;c<sizeof(CHARACTERS_TO_STRIP);c++) {
-      if(SERIAL_BUFFER_STRING[i] == CHARACTERS_TO_STRIP[c]) {
-        SERIAL_BUFFER_STRING.remove(i, 1);
+String COMMAND_CODES[] = { GCODES_TABLE };
+char _CHARACTERS_TO_STRIP[] = {' ', '\r', '\n'};
+
+GcodeHandler::GcodeHandler() {}
+
+void GcodeHandler::_strip_serial_buffer() {
+  for(uint8_t i=0;i<_serial_buffer_string.length();i++) {
+    for (uint8_t c=0;c<sizeof(_CHARACTERS_TO_STRIP);c++) {
+      if(_serial_buffer_string[i] == _CHARACTERS_TO_STRIP[c]) {
+        _serial_buffer_string.remove(i, 1);
         i--;
         break;
       }
@@ -15,78 +20,125 @@ void Gcode::_strip_serial_buffer() {
   }
 }
 
-bool Gcode::pop_command() {
-  _strip_serial_buffer();
-  GCODE_BUFFER_STRING += SERIAL_BUFFER_STRING;
-  SERIAL_BUFFER_STRING = "";
-  code = GCODE_NO_CODE;
-  while (GCODE_BUFFER_STRING.length()) {
-    for (uint8_t i=GCODE_GET_LID_STATUS; i<=TOTAL_GCODE_COMMAND_CODES; i++) {
-      if (GCODE_BUFFER_STRING.substring(0, COMMAND_CODES[i].length()) == COMMAND_CODES[i]) {
-        GCODE_BUFFER_STRING.remove(0, COMMAND_CODES[i].length());
-        code = i;
+/* Searches for gcode in the given string and updates the index reference with
+ * index of gcode found */
+bool GcodeHandler::_find_command(String _string, uint8_t * code_int, uint8_t * index)
+{
+  for (uint8_t str_index = 0; str_index < _string.length(); str_index++, (*index)++)
+  {
+    // Search for substring that matches a valid thermocycler gcode
+    for (uint8_t i= CODE_INT(Gcode::no_code) + 1; i < CODE_INT(Gcode::max); i++)
+    {
+      if (_string.substring(str_index, str_index+COMMAND_CODES[i].length()) == COMMAND_CODES[i])
+      {
+        // A gcode found
+        *code_int = i;
         return true;
       }
     }
-    GCODE_BUFFER_STRING.remove(0, 1);
   }
   return false;
 }
 
-bool Gcode::received_newline() {
-  if (Serial.available()){
-    if (SERIAL_BUFFER_STRING.length() > MAX_SERIAL_BUFFER_LENGTH) {
-      SERIAL_BUFFER_STRING = "";
-    }
-    SERIAL_BUFFER_STRING += Serial.readStringUntil('\n');
-    if (SERIAL_BUFFER_STRING.charAt(SERIAL_BUFFER_STRING.length() - 1) == '\r') {
-      return true;
-    }
-  }
-  return false;
-}
-
-void Gcode::send_ack() {
-  Serial.println("ok");
-  Serial.println("ok");
-}
-
-bool Gcode::read_number(char key) {
-  // NOTE: Has a flaw where if there's 2 `set_temperature` gcodes in the buffer,
-  //       with the first one without a hold time and the next having one,
-  //       then the next hold time will be captured and associated with the
-  //       first gcode
-  int starting_key_index = GCODE_BUFFER_STRING.indexOf(key);
-  if (starting_key_index >= 0) {
-    String number_string = "";
-    char next_char;
-    bool decimal = false;
-    while (starting_key_index + 1 < GCODE_BUFFER_STRING.length()) {
-      starting_key_index++;
-      next_char = GCODE_BUFFER_STRING.charAt(starting_key_index);
-      if (isDigit(next_char)) {
-        number_string += next_char;
-      }
-      else if(next_char == '-' && number_string.length() == 0) {
-        number_string += next_char;
-      }
-      else if(next_char == '.' && !decimal && number_string.length() > 0) {
-        decimal = true;
-        number_string += next_char;
-      }
-      else {
+/* get_command() returns the first command in the _serial_buffer_string and
+ * stores the code and its args into _command struct  */
+Gcode GcodeHandler::get_command()
+{
+  _strip_serial_buffer();
+  _command.code = Gcode::no_code;
+  uint8_t arg_start = 0;
+  uint8_t sbuf_index = 0;
+  uint8_t code_int = 0;
+  while(sbuf_index < _serial_buffer_string.length())
+  {
+    if(_find_command(_serial_buffer_string.substring(sbuf_index), &code_int, &sbuf_index))
+    {
+      if(_command.code != Gcode::no_code)
+      {
+        // Second Gcode in a row
+        sbuf_index--;
         break;
       }
+      _command.code = static_cast<Gcode>(code_int);
+      arg_start = sbuf_index + COMMAND_CODES[code_int].length();
+      sbuf_index = arg_start;
     }
-    if (number_string) {
-      parsed_number = number_string.toFloat();
+  }
+  if(arg_start != 0)
+  {
+    _command.args_string = _serial_buffer_string.substring(arg_start, sbuf_index+1);
+  }
+  _serial_buffer_string.remove(0, sbuf_index+1);
+  return _command.code;
+}
+
+/* Returns true if a valid line ending in '\r\n' is received. This function reads
+ * the received line into `_serial_buffer_string`, removing it from the Serial
+ * buffer of the uC */
+bool GcodeHandler::received_newline()
+{
+  if (Serial.available())
+  {
+    if (_serial_buffer_string.length() > MAX_SERIAL_BUFFER_LENGTH)
+    {
+      _serial_buffer_string = "";
+    }
+    _serial_buffer_string += Serial.readStringUntil('\n');
+    if (_serial_buffer_string.charAt(_serial_buffer_string.length() - 1) == '\r')
+    {
       return true;
     }
   }
   return false;
 }
 
-void Gcode::device_info_response(String serial, String model, String version) {
+/* Returns whether _serial_buffer_string has unread characters (false) or not (true) */
+bool GcodeHandler::buffer_empty()
+{
+  return !_serial_buffer_string.length() > 0;
+}
+
+void GcodeHandler::send_ack()
+{
+  Serial.println("ok");
+  Serial.println("ok");
+}
+
+/* If the given key and a valid corresponding number is present in _command.args_string,
+ * pop_arg(key) pops the argument off of _command.args_string and returns true.
+ * Else, returns false  */
+bool GcodeHandler::pop_arg(char key)
+{
+  int key_index = _command.args_string.indexOf(key);
+  if (key_index >= 0)
+  {
+    // Convert to number
+    String number_string = _command.args_string.substring(key_index+1);
+    uint8_t array_len = number_string.length()+1; // the number + array end char
+    char c_array[array_len];
+    number_string.toCharArray(c_array, array_len);
+
+    char *p = c_array;
+    char *end;
+    float f = strtod(p, &end);
+    _command.args_string.remove(key_index, end-p+1);  // +1 cuz key_index has to be included too
+    if(p != end && errno != ERANGE)
+    {
+      _parsed_arg = f;
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Returns the argument obtained by pop_arg() */
+float GcodeHandler::popped_arg()
+{
+  return _parsed_arg;
+}
+
+void GcodeHandler::device_info_response(String serial, String model, String version)
+{
   Serial.print(F("serial:"));
   Serial.print(serial);
   Serial.print(F(" model:"));
@@ -96,46 +148,39 @@ void Gcode::device_info_response(String serial, String model, String version) {
   Serial.println();
 }
 
-void Gcode::targetting_temperature_response(float target_temp, float current_temp,\
-   float time_remaining) {
+void GcodeHandler::targetting_temperature_response(float target_temp,
+                                    float current_temp, float time_remaining)
+{
   Serial.print(F("T:"));
   Serial.print(target_temp, SERIAL_DIGITS_IN_RESPONSE);
   Serial.print(F(" C:"));
   Serial.print(current_temp, SERIAL_DIGITS_IN_RESPONSE);
   Serial.print(F(" H:"));
-  Serial.println(time_remaining);
+  Serial.println((unsigned int)time_remaining);
 }
 
-void Gcode::idle_temperature_response(float current_temp) {
-  Serial.print(F("T: none"));
+void GcodeHandler::idle_temperature_response(float current_temp)
+{
+  Serial.print(F("T:none"));
   Serial.print(F(" C:"));
   Serial.print(current_temp, SERIAL_DIGITS_IN_RESPONSE);
-  Serial.println(F(" H: none"));
+  Serial.println(F(" H:none"));
 }
 
-void Gcode::response(String param, String msg) {
+void GcodeHandler::response(String param, String msg)
+{
   Serial.print(param);
-  Serial.print(": ");
+  Serial.print(":");
   response(msg);
 }
 
-void Gcode::response(String msg) {
+void GcodeHandler::response(String msg)
+{
   Serial.println(msg);
 }
 
-void Gcode::setup(int baudrate) {
-  COMMAND_CODES[GCODE_GET_LID_STATUS] =  "M119";
-  COMMAND_CODES[GCODE_OPEN_LID] =        "M126";
-  COMMAND_CODES[GCODE_CLOSE_LID] =       "M127";
-  COMMAND_CODES[GCODE_SET_LID_TEMP] =    "M140";
-  COMMAND_CODES[GCODE_DEACTIVATE_LID_HEATING] = "M108";
-  COMMAND_CODES[GCODE_SET_PLATE_TEMP] =  "M104";
-  COMMAND_CODES[GCODE_GET_PLATE_TEMP] =  "M105";
-  COMMAND_CODES[GCODE_SET_RAMP_RATE] =   "M566";
-  COMMAND_CODES[GCODE_EDIT_PID_PARAMS] = "M301";
-  COMMAND_CODES[GCODE_PAUSE] =           "M76";
-  COMMAND_CODES[GCODE_DEACTIVATE_ALL] =  "M18";
-  COMMAND_CODES[GCODE_DFU] =             "dfu";
+void GcodeHandler::setup(int baudrate)
+{
   Serial.begin(baudrate);
   Serial.setTimeout(3);
 }

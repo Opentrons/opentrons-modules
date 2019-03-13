@@ -8,19 +8,12 @@
 #include "gcode.h"
 #include "tc_timer.h"
 
-TC_Timer tc_timer;
-
 /********* GCODE *********/
 #define BAUDRATE 115200
-Gcode gcode = Gcode();
 
 /********* THERMISTORS *********/
 
 #define THERMISTOR_VOLTAGE 1.5
-
-ThermistorsADC temp_probes;
-Lid lid;
-Peltiers peltiers;
 
 /********* INDICATOR NEOPIXELS *********/
 
@@ -29,8 +22,6 @@ Peltiers peltiers;
 #define NEO_PWR     4
 #define NEO_PIN     A5
 #define NUM_PIXELS  22
-
-Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_RGBW);
 
 /********* FAN *********/
 
@@ -82,36 +73,6 @@ double TEMPERATURE_SWING_LEFT_PEL = 0.5;
 double TEMPERATURE_SWING_CENTER_PEL = 0.5;
 double TEMPERATURE_SWING_RIGHT_PEL = 0.5;
 
-// Left Peltier -> PELTIER_3
-PID PID_left_pel(
-  &CURRENT_LEFT_PEL_TEMP,
-  &TEMPERATURE_SWING_LEFT_PEL,
-  &TARGET_TEMPERATURE_PLATE,
-  current_plate_kp, current_plate_ki, current_plate_kd,
-  P_ON_M,
-  DIRECT
-);
-
-// Center Peltier -> PELTIER_2
-PID PID_center_pel(
-  &CURRENT_CENTER_PEL_TEMP,
-  &TEMPERATURE_SWING_CENTER_PEL,
-  &TARGET_TEMPERATURE_PLATE,
-  current_plate_kp, current_plate_ki, current_plate_kd,
-  P_ON_M,
-  DIRECT
-);
-
-// Right Peltier -> PELTIER_1
-PID PID_right_pel(
-  &CURRENT_RIGHT_PEL_TEMP,
-  &TEMPERATURE_SWING_RIGHT_PEL,
-  &TARGET_TEMPERATURE_PLATE,
-  current_plate_kp, current_plate_ki, current_plate_kd,
-  P_ON_M,
-  DIRECT
-);
-
 /********* PID: COVER HEAT PAD *********/
 
 #define PID_KP_COVER 0.2
@@ -123,10 +84,6 @@ double TARGET_TEMPERATURE_COVER = TEMPERATURE_ROOM;
 double CURRENT_TEMPERATURE_COVER = TEMPERATURE_ROOM;
 
 bool COVER_SHOULD_BE_HOT = false;
-
-PID PID_Cover(
-  &CURRENT_TEMPERATURE_COVER, &TEMPERATURE_SWING_COVER, &TARGET_TEMPERATURE_COVER,
-  PID_KP_COVER, PID_KI_COVER, PID_KD_COVER, P_ON_M, DIRECT);
 
 /********* MISC GLOBALS *********/
 

@@ -1,20 +1,22 @@
 #ifndef TC_TIMER_H_
 #define TC_TIMER_H_
 
-typedef enum{
-  IDLE,
-  RUNNING,
-  COMPLETE
-}Timer_status;
+enum class Timer_status
+{
+  idle,
+  running,
+  complete
+};
 
-class TC_Timer{
+class TC_Timer
+{
   public:
     unsigned int total_hold_time;
     TC_Timer();
     void reset();
     bool start();
-    unsigned long time_left();
-    Timer_status get_status();
+    unsigned int time_left();
+    Timer_status status();
     void update();
   private:
     unsigned long _total_hold_time_millis = 0;

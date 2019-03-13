@@ -2,55 +2,67 @@
 #define GCODE_H
 
 #include "Arduino.h"
+#include <cerrno>
+#include <cstdlib>
 
-#define TOTAL_GCODE_COMMAND_CODES   11
+#define CODE_INT(gcode) static_cast<int>(gcode)
+
 #define MAX_SERIAL_BUFFER_LENGTH    100
 #define MAX_SERIAL_DIGITS_IN_NUMBER 7
 #define SERIAL_DIGITS_IN_RESPONSE   3
 
-typedef enum{
-  GCODE_NO_CODE = -1,
-  GCODE_GET_LID_STATUS = 0,
-  GCODE_OPEN_LID,
-  GCODE_CLOSE_LID,
-  GCODE_SET_LID_TEMP,
-  GCODE_DEACTIVATE_LID_HEATING,
-  GCODE_SET_PLATE_TEMP,
-  GCODE_GET_PLATE_TEMP,
-  GCODE_SET_RAMP_RATE,
-  GCODE_EDIT_PID_PARAMS,
-  GCODE_PAUSE,
-  GCODE_DEACTIVATE_ALL,
-  GCODE_DFU
-}Gcode_enum;
+#define GCODES_TABLE  \
+  GCODE_DEF(no_code, -),            \
+  GCODE_DEF(get_lid_status, M119),  \
+  GCODE_DEF(open_lid, M126),        \
+  GCODE_DEF(close_lid, M127),       \
+  GCODE_DEF(set_lid_temp, M140),    \
+  GCODE_DEF(deactivate_lid_heating, M108),  \
+  GCODE_DEF(set_plate_temp, M104),  \
+  GCODE_DEF(get_plate_temp, M105),  \
+  GCODE_DEF(set_ramp_rate, M566),   \
+  GCODE_DEF(edit_pid_params, M301), \
+  GCODE_DEF(pause, M76),            \
+  GCODE_DEF(deactivate_all, M18),   \
+  GCODE_DEF(dfu, dfu),              \
+  GCODE_DEF(max, -)
 
-class Gcode{
+#define GCODE_DEF(name, _) name
+
+enum class Gcode
+{
+  GCODES_TABLE
+};
+
+class GcodeHandler
+{
     public:
-        Gcode();
-        void setup(int baudrate);
-        bool received_newline();
-        bool pop_command();
-        void send_ack();
-        int code;
-        float parsed_number = 0;
-        void device_info_response(String serial, String model, String version);
-        void targetting_temperature_response(float target_temp,
-                                             float current_temp, float time_left);
-        void idle_temperature_response(float current_temp);
-        bool read_number(char key);
-        void response(String msg);
-        void response(String param, String msg);
+      GcodeHandler();
+      void setup(int baudrate);
+      bool received_newline();
+      Gcode get_command();
+      void send_ack();
+      bool buffer_empty();
+      void device_info_response(String serial, String model, String version);
+      void targetting_temperature_response(float target_temp,
+                                           float current_temp, float time_left);
+      void idle_temperature_response(float current_temp);
+      float popped_arg();
+      bool pop_arg(char key);
+      void response(String msg);
+      void response(String param, String msg);
 
     private:
-
-        String COMMAND_CODES[TOTAL_GCODE_COMMAND_CODES];
-        String GCODE_BUFFER_STRING;
-        String SERIAL_BUFFER_STRING;
-        char CHARACTERS_TO_STRIP[3] = {' ', '\r', '\n'};
-        bool SEND_ACK_NEXT_UPDATE = false;
-
-        void _strip_serial_buffer();
-        void _parse_gcode_commands();
+      struct
+      {
+        Gcode code;
+        String args_string;
+      }_command;
+      String _gcode_buffer_string;
+      String _serial_buffer_string;
+      void _strip_serial_buffer();
+      float _parsed_arg;
+      bool _find_command(String, uint8_t *, uint8_t *);
 };
 
 #endif
