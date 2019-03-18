@@ -439,6 +439,9 @@ void ramp_temp_after_change_temp()
             MASTER_SET_A_TARGET = false;
             tc_timer.reset();
             break;
+          case Gcode::get_device_info:
+            gcode.device_info_response(device_serial, device_model, device_version);
+            break;
           case Gcode::dfu:
             break;
         }

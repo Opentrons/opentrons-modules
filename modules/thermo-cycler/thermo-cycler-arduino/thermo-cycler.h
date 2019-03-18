@@ -85,6 +85,12 @@ double CURRENT_TEMPERATURE_COVER = TEMPERATURE_ROOM;
 
 bool COVER_SHOULD_BE_HOT = false;
 
+/********* DEVICE INFO **********/
+
+String device_serial = "";  // leave empty, this value is read from eeprom during setup()
+String device_model = "";   // leave empty, this value is read from eeprom during setup()
+String device_version = "v1.0.1";
+
 /********* MISC GLOBALS *********/
 
 #define USE_GCODES true

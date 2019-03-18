@@ -8,16 +8,30 @@ char _CHARACTERS_TO_STRIP[] = {' ', '\r', '\n'};
 
 GcodeHandler::GcodeHandler() {}
 
-void GcodeHandler::_strip_serial_buffer() {
-  for(uint8_t i=0;i<_serial_buffer_string.length();i++) {
-    for (uint8_t c=0;c<sizeof(_CHARACTERS_TO_STRIP);c++) {
-      if(_serial_buffer_string[i] == _CHARACTERS_TO_STRIP[c]) {
-        _serial_buffer_string.remove(i, 1);
-        i--;
-        break;
+void GcodeHandler::_strip_serial_buffer()
+{
+  char temp[_serial_buffer_string.length()];
+  char * p;
+  p = temp;
+  bool skip = false;
+  for (const auto& sb_char : _serial_buffer_string)
+  {
+    for (const auto& c: _CHARACTERS_TO_STRIP)
+    {
+      if (sb_char == c)
+      {
+        skip = true;
       }
     }
+    if (!skip)
+    {
+      *p = sb_char;
+      p++;
+    }
+    skip = false;
   }
+  *p = '\0';
+  _serial_buffer_string = temp;
 }
 
 /* Searches for gcode in the given string and updates the index reference with
