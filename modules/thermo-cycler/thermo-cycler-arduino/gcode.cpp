@@ -3,8 +3,8 @@
 #undef GCODE_DEF
 #define GCODE_DEF(_, str) #str
 
-String COMMAND_CODES[] = { GCODES_TABLE };
-char _CHARACTERS_TO_STRIP[] = {' ', '\r', '\n'};
+const String COMMAND_CODES[] = { GCODES_TABLE };
+const char _CHARACTERS_TO_STRIP[] = {' ', '\r', '\n'};
 
 GcodeHandler::GcodeHandler() {}
 
@@ -193,6 +193,8 @@ void GcodeHandler::response(String msg)
   Serial.println(msg);
 }
 
+/* Use in .ino setup() with the baudrate to enable
+ * serial communication using gcodes */
 void GcodeHandler::setup(int baudrate)
 {
   Serial.begin(baudrate);

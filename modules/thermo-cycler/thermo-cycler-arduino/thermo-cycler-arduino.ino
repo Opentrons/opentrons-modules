@@ -8,38 +8,38 @@ Peltiers peltiers;
 
 Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_RGBW);
 
-// Left Peltier -> PELTIER_3
+// Left Peltier -> Peltier::pel_3
 PID PID_left_pel(
-  &CURRENT_LEFT_PEL_TEMP,
-  &TEMPERATURE_SWING_LEFT_PEL,
-  &TARGET_TEMPERATURE_PLATE,
+  &current_left_pel_temp,
+  &temperature_swing_left_pel,
+  &target_temperature_plate,
   current_plate_kp, current_plate_ki, current_plate_kd,
   P_ON_M,
   DIRECT
 );
 
-// Center Peltier -> PELTIER_2
+// Center Peltier -> Peltier::pel_2
 PID PID_center_pel(
-  &CURRENT_CENTER_PEL_TEMP,
-  &TEMPERATURE_SWING_CENTER_PEL,
-  &TARGET_TEMPERATURE_PLATE,
+  &current_center_pel_temp,
+  &temperature_swing_center_pel,
+  &target_temperature_plate,
   current_plate_kp, current_plate_ki, current_plate_kd,
   P_ON_M,
   DIRECT
 );
 
-// Right Peltier -> PELTIER_1
+// Right Peltier -> Peltier::pel_1
 PID PID_right_pel(
-  &CURRENT_RIGHT_PEL_TEMP,
-  &TEMPERATURE_SWING_RIGHT_PEL,
-  &TARGET_TEMPERATURE_PLATE,
+  &current_right_pel_temp,
+  &temperature_swing_right_pel,
+  &target_temperature_plate,
   current_plate_kp, current_plate_ki, current_plate_kd,
   P_ON_M,
   DIRECT
 );
 
 PID PID_Cover(
-  &CURRENT_TEMPERATURE_COVER, &TEMPERATURE_SWING_COVER, &TARGET_TEMPERATURE_COVER,
+  &current_temperature_cover, &temperature_swing_cover, &target_temperature_cover,
   PID_KP_COVER, PID_KI_COVER, PID_KD_COVER, P_ON_M, DIRECT);
 
 /***************************************/
@@ -55,14 +55,14 @@ void set_heat_pad_power(float val)
 
 void heat_pad_off()
 {
-  COVER_SHOULD_BE_HOT = false;
-  TEMPERATURE_SWING_COVER = 0.0;
+  cover_should_be_hot = false;
+  temperature_swing_cover = 0.0;
   set_heat_pad_power(0);
 }
 
 void heat_pad_on()
 {
-  COVER_SHOULD_BE_HOT = true;
+  cover_should_be_hot = true;
 }
 
 void fan_cover_on()
@@ -83,7 +83,7 @@ void fan_sink_percentage(float value)
   int val = value * 255.0;
   if (val < 0) val = 0;
   else if (val > 255) val = 255;
-  CURRENT_FAN_POWER = value;
+  current_fan_power = value;
   analogWrite(PIN_FAN_SINK_CTRL, val);
 }
 
@@ -93,7 +93,7 @@ void fan_sink_off()
   pinMode(PIN_FAN_SINK_ENABLE, OUTPUT);
   digitalWrite(PIN_FAN_SINK_CTRL, LOW);
   digitalWrite(PIN_FAN_SINK_ENABLE, HIGH);
-  CURRENT_FAN_POWER = 0.0;
+  current_fan_power = 0.0;
 }
 
 /////////////////////////////////
@@ -105,90 +105,90 @@ void disable_scary_stuff()
     heat_pad_off();
     fan_sink_off();
     peltiers.disable();
-    TARGET_TEMPERATURE_PLATE = TEMPERATURE_ROOM;
+    target_temperature_plate = TEMPERATURE_ROOM;
 }
 
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
 
-bool is_stabilizing(Peltier_num pel_n = NO_PELTIER)
+bool is_stabilizing(Peltier pel_n = Peltier::no_peltier)
 {
-  if (pel_n < 0)
+  if (pel_n == Peltier::no_peltier)
   {
-    return abs(TARGET_TEMPERATURE_PLATE - CURRENT_TEMPERATURE_PLATE) < PID_STABILIZING_THRESH;
+    return abs(target_temperature_plate - current_temperature_plate) < PID_STABILIZING_THRESH;
   }
   else
   {
-    return abs(TARGET_TEMPERATURE_PLATE - get_average_temp(pel_n)) < PID_STABILIZING_THRESH;
+    return abs(target_temperature_plate - get_average_temp(pel_n)) < PID_STABILIZING_THRESH;
   }
 }
 
 bool is_at_target()
 {
   return abs(
-    TARGET_TEMPERATURE_PLATE - temp_probes.average_plate_temperature()) \
+    target_temperature_plate - temp_probes.average_plate_temperature()) \
     < TARGET_TEMP_TOLERANCE;
 }
 
 bool is_target_hot()
 {
-  return TARGET_TEMPERATURE_PLATE > TEMPERATURE_ROOM;
+  return target_temperature_plate > TEMPERATURE_ROOM;
 }
 
 bool is_target_cold()
 {
-  return TARGET_TEMPERATURE_PLATE < TEMPERATURE_ROOM;
+  return target_temperature_plate < TEMPERATURE_ROOM;
 }
 
-bool is_moving_up(Peltier_num pel_n = NO_PELTIER)
+bool is_moving_up(Peltier pel_n = Peltier::no_peltier)
 {
-  if (pel_n < 0)
+  if (pel_n == Peltier::no_peltier)
   {
-    return TARGET_TEMPERATURE_PLATE > CURRENT_TEMPERATURE_PLATE;
+    return target_temperature_plate > current_temperature_plate;
   }
   else
   {
-    return TARGET_TEMPERATURE_PLATE > get_average_temp(pel_n);
+    return target_temperature_plate > get_average_temp(pel_n);
   }
 }
 
-bool is_moving_down(Peltier_num pel_n = NO_PELTIER)
+bool is_moving_down(Peltier pel_n = Peltier::no_peltier)
 {
-  if(pel_n < 0)
+  if(pel_n == Peltier::no_peltier)
   {
-    return TARGET_TEMPERATURE_PLATE < CURRENT_TEMPERATURE_PLATE;
+    return target_temperature_plate < current_temperature_plate;
   }
   else
   {
-    return TARGET_TEMPERATURE_PLATE < get_average_temp(pel_n);
+    return target_temperature_plate < get_average_temp(pel_n);
   }
 }
 
-bool is_ramping_up(Peltier_num pel_n = NO_PELTIER)
+bool is_ramping_up(Peltier pel_n = Peltier::no_peltier)
 {
   return (!is_stabilizing(pel_n) && is_moving_up(pel_n));
 }
 
-bool is_ramping_down(Peltier_num pel_n = NO_PELTIER)
+bool is_ramping_down(Peltier pel_n = Peltier::no_peltier)
 {
   return (!is_stabilizing(pel_n) && is_moving_down(pel_n));
 }
 
 bool is_temp_far_away()
 {
-  return abs(TARGET_TEMPERATURE_PLATE - CURRENT_TEMPERATURE_PLATE) > PID_FAR_AWAY_THRESH;
+  return abs(target_temperature_plate - current_temperature_plate) > PID_FAR_AWAY_THRESH;
 }
 
-float get_average_temp(Peltier_num pel_n)
+float get_average_temp(Peltier pel_n)
 {
   switch(pel_n)
   {
-    case PELTIER_1:
+    case Peltier::pel_1:
       return temp_probes.right_pair_temperature();
-    case PELTIER_2:
+    case Peltier::pel_2:
       return temp_probes.center_pair_temperature();
-    case PELTIER_3:
+    case Peltier::pel_3:
       return temp_probes.left_pair_temperature();
     default:
       Serial.println("ERROR<get_average_temp>! Invalid Peltier number");
@@ -198,39 +198,39 @@ float get_average_temp(Peltier_num pel_n)
 
 void update_peltiers_from_pid()
 {
-  if (MASTER_SET_A_TARGET)
+  if (master_set_a_target)
   {
     if (PID_left_pel.Compute())
     {
-      if (TEMPERATURE_SWING_LEFT_PEL < 0)
+      if (temperature_swing_left_pel < 0)
       {
-        peltiers.set_cold_percentage(abs(TEMPERATURE_SWING_LEFT_PEL), PELTIER_3);
+        peltiers.set_cold_percentage(abs(temperature_swing_left_pel), Peltier::pel_3);
       }
       else
       {
-        peltiers.set_hot_percentage(TEMPERATURE_SWING_LEFT_PEL, PELTIER_3);
+        peltiers.set_hot_percentage(temperature_swing_left_pel, Peltier::pel_3);
       }
     }
     if (PID_right_pel.Compute())
     {
-      if (TEMPERATURE_SWING_RIGHT_PEL < 0)
+      if (temperature_swing_right_pel < 0)
       {
-        peltiers.set_cold_percentage(abs(TEMPERATURE_SWING_RIGHT_PEL), PELTIER_1);
+        peltiers.set_cold_percentage(abs(temperature_swing_right_pel), Peltier::pel_1);
       }
       else
       {
-        peltiers.set_hot_percentage(TEMPERATURE_SWING_RIGHT_PEL, PELTIER_1);
+        peltiers.set_hot_percentage(temperature_swing_right_pel, Peltier::pel_1);
       }
     }
     if (PID_center_pel.Compute())
     {
-      if (TEMPERATURE_SWING_CENTER_PEL < 0)
+      if (temperature_swing_center_pel < 0)
       {
-        peltiers.set_cold_percentage(abs(TEMPERATURE_SWING_CENTER_PEL), PELTIER_2);
+        peltiers.set_cold_percentage(abs(temperature_swing_center_pel), Peltier::pel_2);
       }
       else
       {
-        peltiers.set_hot_percentage(TEMPERATURE_SWING_CENTER_PEL, PELTIER_2);
+        peltiers.set_hot_percentage(temperature_swing_center_pel, Peltier::pel_2);
       }
     }
   }
@@ -238,11 +238,11 @@ void update_peltiers_from_pid()
 
 void update_cover_from_pid()
 {
-  if (COVER_SHOULD_BE_HOT)
+  if (cover_should_be_hot)
   {
     if (PID_Cover.Compute())
     {
-      set_heat_pad_power(TEMPERATURE_SWING_COVER);
+      set_heat_pad_power(temperature_swing_cover);
     }
   }
   else
@@ -269,7 +269,7 @@ void update_fan_from_state()
   {
     fan_sink_percentage(0.0);
   }
-  if (COVER_SHOULD_BE_HOT)
+  if (cover_should_be_hot)
   {
     fan_cover_on();
   }
@@ -285,46 +285,46 @@ void ramp_temp_after_change_temp()
   {
     PID_left_pel.SetSampleTime(1);
     PID_left_pel.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
-    if (is_ramping_up(PELTIER_3) && TEMPERATURE_SWING_LEFT_PEL < 0.95)
+    if (is_ramping_up(Peltier::pel_3) && temperature_swing_left_pel < 0.95)
     {
-      peltiers.set_hot_percentage(1.0, PELTIER_3);
-      while (TEMPERATURE_SWING_LEFT_PEL < 0.95)
+      peltiers.set_hot_percentage(1.0, Peltier::pel_3);
+      while (temperature_swing_left_pel < 0.95)
         PID_left_pel.Compute();
     }
-    else if (is_ramping_down(PELTIER_3) && TEMPERATURE_SWING_LEFT_PEL > 0.95)
+    else if (is_ramping_down(Peltier::pel_3) && temperature_swing_left_pel > 0.95)
     {
-      peltiers.set_cold_percentage(1.0, PELTIER_3);
-      while (TEMPERATURE_SWING_LEFT_PEL > -0.95)
+      peltiers.set_cold_percentage(1.0, Peltier::pel_3);
+      while (temperature_swing_left_pel > -0.95)
         PID_left_pel.Compute();
     }
 
     PID_center_pel.SetSampleTime(1);
     PID_center_pel.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
-    if (is_ramping_up(PELTIER_2) && TEMPERATURE_SWING_CENTER_PEL < 0.95)
+    if (is_ramping_up(Peltier::pel_2) && temperature_swing_center_pel < 0.95)
     {
-      peltiers.set_hot_percentage(1.0, PELTIER_2);
-      while (TEMPERATURE_SWING_CENTER_PEL < 0.95)
+      peltiers.set_hot_percentage(1.0, Peltier::pel_2);
+      while (temperature_swing_center_pel < 0.95)
         PID_center_pel.Compute();
     }
-    else if (is_ramping_down(PELTIER_2) && TEMPERATURE_SWING_CENTER_PEL > 0.95)
+    else if (is_ramping_down(Peltier::pel_2) && temperature_swing_center_pel > 0.95)
     {
-      peltiers.set_cold_percentage(1.0, PELTIER_2);
-      while (TEMPERATURE_SWING_CENTER_PEL > -0.95)
+      peltiers.set_cold_percentage(1.0, Peltier::pel_2);
+      while (temperature_swing_center_pel > -0.95)
         PID_center_pel.Compute();
     }
 
     PID_right_pel.SetSampleTime(1);
     PID_right_pel.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
-    if (is_ramping_up(PELTIER_1) && TEMPERATURE_SWING_RIGHT_PEL < 0.95)
+    if (is_ramping_up(Peltier::pel_1) && temperature_swing_right_pel < 0.95)
     {
-      peltiers.set_hot_percentage(1.0, PELTIER_1);
-      while (TEMPERATURE_SWING_RIGHT_PEL < 0.95)
+      peltiers.set_hot_percentage(1.0, Peltier::pel_1);
+      while (temperature_swing_right_pel < 0.95)
         PID_right_pel.Compute();
     }
-    else if (is_ramping_down(PELTIER_1) && TEMPERATURE_SWING_RIGHT_PEL > 0.95)
+    else if (is_ramping_down(Peltier::pel_1) && temperature_swing_right_pel > 0.95)
     {
-      peltiers.set_cold_percentage(1.0, PELTIER_1);
-      while (TEMPERATURE_SWING_RIGHT_PEL > -0.95)
+      peltiers.set_cold_percentage(1.0, Peltier::pel_1);
+      while (temperature_swing_right_pel > -0.95)
         PID_right_pel.Compute();
     }
   }
@@ -374,8 +374,8 @@ void ramp_temp_after_change_temp()
               gcode.response("ERROR", "Arg error");
               break;
             }
-            TARGET_TEMPERATURE_PLATE = gcode.popped_arg();
-            MASTER_SET_A_TARGET = true;
+            target_temperature_plate = gcode.popped_arg();
+            master_set_a_target = true;
             just_changed_temp = true;
             tc_timer.reset();
             // Check if hold time is specified
@@ -385,18 +385,18 @@ void ramp_temp_after_change_temp()
             }
             break;
           case Gcode::get_plate_temp:
-            if(MASTER_SET_A_TARGET)
+            if(master_set_a_target)
             {
-              gcode.targetting_temperature_response(TARGET_TEMPERATURE_PLATE,
-              CURRENT_TEMPERATURE_PLATE, tc_timer.time_left());
+              gcode.targetting_temperature_response(target_temperature_plate,
+              current_temperature_plate, tc_timer.time_left());
             }
             else
             {
-              gcode.idle_temperature_response(CURRENT_TEMPERATURE_PLATE);
+              gcode.idle_temperature_response(current_temperature_plate);
             }
             break;
           case Gcode::set_ramp_rate:
-            if(MASTER_SET_A_TARGET)
+            if(master_set_a_target)
             {
               gcode.response("ERROR", "BUSY");
             }
@@ -406,7 +406,7 @@ void ramp_temp_after_change_temp()
             }
             break;
           case Gcode::edit_pid_params:
-            if(MASTER_SET_A_TARGET)
+            if(master_set_a_target)
             {
               gcode.response("ERROR", "BUSY");
             }
@@ -435,8 +435,8 @@ void ramp_temp_after_change_temp()
             heat_pad_off();
             fan_sink_off();
             peltiers.disable();
-            TARGET_TEMPERATURE_PLATE = TEMPERATURE_ROOM;
-            MASTER_SET_A_TARGET = false;
+            target_temperature_plate = TEMPERATURE_ROOM;
+            master_set_a_target = false;
             tc_timer.reset();
             break;
           case Gcode::get_device_info:
@@ -456,15 +456,15 @@ void print_info(bool force=false) {
         if (zoom_mode) {
           // Serial.print(double(millis()) / 1000.0, 2);
           // Serial.print(',');
-          Serial.print(CURRENT_TEMPERATURE_PLATE - TARGET_TEMPERATURE_PLATE);
+          Serial.print(current_temperature_plate - target_temperature_plate);
           // Serial.print(',');
-          // Serial.print(CURRENT_TEMPERATURE_COVER - TEMPERATURE_COVER_HOT);
+          // Serial.print(current_temperature_cover - temperature_cover_hot);
           Serial.println();
           return;
         }
         if (debug_print_mode) Serial.println("\n\n*******");
         if (debug_print_mode) Serial.print("\nAverage Plate-Temp (Heat sink temp):\t\t");
-        Serial.print(CURRENT_TEMPERATURE_PLATE);
+        Serial.print(current_temperature_plate);
         if (debug_print_mode){
           Serial.print("\n\t\t-------- Thermistors -------\n");
           Serial.print(temp_probes.back_left_temperature());
@@ -483,26 +483,26 @@ void print_info(bool force=false) {
         }
         if (running_from_script || running_graph) Serial.print(" ");
         if (debug_print_mode) Serial.print("\n\tPlate-Target:\t");
-        if (!MASTER_SET_A_TARGET && debug_print_mode) Serial.print("off");
-        else Serial.print(TARGET_TEMPERATURE_PLATE);
+        if (!master_set_a_target && debug_print_mode) Serial.print("off");
+        else Serial.print(target_temperature_plate);
         if (running_from_script || running_graph) Serial.print(" ");
         if (debug_print_mode) Serial.print("\n\tPlate-PID:\t");
-        if (!MASTER_SET_A_TARGET && debug_print_mode) Serial.print("off");
-        else Serial.print((TEMPERATURE_SWING_PLATE * 50.0) + 50.0);
+        if (!master_set_a_target && debug_print_mode) Serial.print("off");
+        else Serial.print((temperature_swing_plate * 50.0) + 50.0);
         if (running_from_script || running_graph) Serial.print(" ");
         if (debug_print_mode) Serial.print("\nCover-Temp:\t\t");
-        Serial.print(CURRENT_TEMPERATURE_COVER);
+        Serial.print(current_temperature_cover);
         if (running_from_script || running_graph) Serial.print(" ");
         if (debug_print_mode) Serial.print("\n\tCover-Target:\t");
         if (!COVER_SHOULD_BE_HOT && debug_print_mode) Serial.print("off");
-        else Serial.print(TEMPERATURE_COVER_HOT);
+        else Serial.print(temperature_cover_hot);
         if (running_from_script || running_graph) Serial.print(" ");
         if (debug_print_mode) Serial.print("\n\tCover-PID:\t");
         if (!COVER_SHOULD_BE_HOT && debug_print_mode) Serial.print("off");
-        else Serial.print(TEMPERATURE_SWING_COVER * 100.0);
+        else Serial.print(temperature_swing_cover * 100.0);
         if (running_from_script || running_graph) Serial.print(" ");
         if (debug_print_mode) Serial.print("\nFan Power:\t\t");
-        Serial.print(CURRENT_FAN_POWER * 100);
+        Serial.print(current_fan_power * 100);
         Serial.println();
     }
 }
@@ -527,8 +527,8 @@ void empty_serial_buffer() {
 void read_from_serial() {
     if (Serial.available() > 0){
         if (Serial.peek() == 'x') {
-            MASTER_SET_A_TARGET = false;
-            COVER_SHOULD_BE_HOT = false;
+            master_set_a_target = false;
+            cover_should_be_hot = false;
             disable_scary_stuff();
         }
         else if (Serial.peek() == 'd') {
@@ -566,14 +566,14 @@ void read_from_serial() {
         }
         else if (Serial.peek() == 't') {
             Serial.read();
-            MASTER_SET_A_TARGET = true;
-            TARGET_TEMPERATURE_PLATE = Serial.parseFloat();
-            TESTING_OFFSET_TEMP = TARGET_TEMPERATURE_PLATE;
+            master_set_a_target = true;
+            target_temperature_plate = Serial.parseFloat();
+            testing_offset_temp = target_temperature_plate;
             if (Serial.peek() == 'o') {
               Serial.read();
-              TARGET_TEMPERATURE_PLATE -= Serial.parseFloat();
+              target_temperature_plate -= Serial.parseFloat();
               Serial.print("Setting Offset to ");
-              Serial.println(TARGET_TEMPERATURE_PLATE, 6);
+              Serial.println(target_temperature_plate, 6);
             }
             if (Serial.peek() == 'p') {
               Serial.read();
@@ -668,8 +668,8 @@ void setup()
   peltiers.setup();
   temp_probes.setup(THERMISTOR_VOLTAGE);
   while (!temp_probes.update()) {}
-  CURRENT_TEMPERATURE_PLATE = temp_probes.average_plate_temperature();
-  CURRENT_TEMPERATURE_COVER = temp_probes.cover_temperature();
+  current_temperature_plate = temp_probes.average_plate_temperature();
+  current_temperature_cover = temp_probes.cover_temperature();
 
   pinMode(PIN_FAN_SINK_CTRL, OUTPUT);
   pinMode(PIN_FAN_COVER, OUTPUT);
@@ -700,10 +700,10 @@ void setup()
   while (!PID_right_pel.Compute()) {}
   while (!PID_Cover.Compute()) {}
 
-  TARGET_TEMPERATURE_PLATE = TEMPERATURE_ROOM;
-  TARGET_TEMPERATURE_COVER = TEMPERATURE_COVER_HOT;
-  MASTER_SET_A_TARGET = false;
-  COVER_SHOULD_BE_HOT = false;
+  target_temperature_plate = TEMPERATURE_ROOM;
+  target_temperature_cover = TEMPERATURE_COVER_HOT;
+  master_set_a_target = false;
+  cover_should_be_hot = false;
 
   strip.begin();
   strip.setBrightness(32);
@@ -722,11 +722,11 @@ void loop()
 #endif
   if (temp_probes.update())
   {
-    CURRENT_LEFT_PEL_TEMP = temp_probes.left_pair_temperature();
-    CURRENT_RIGHT_PEL_TEMP = temp_probes.right_pair_temperature();
-    CURRENT_CENTER_PEL_TEMP = temp_probes.center_pair_temperature();
-    CURRENT_TEMPERATURE_PLATE = temp_probes.average_plate_temperature();
-    CURRENT_TEMPERATURE_COVER = temp_probes.cover_temperature();
+    current_left_pel_temp = temp_probes.left_pair_temperature();
+    current_right_pel_temp = temp_probes.right_pair_temperature();
+    current_center_pel_temp = temp_probes.center_pair_temperature();
+    current_temperature_plate = temp_probes.average_plate_temperature();
+    current_temperature_cover = temp_probes.cover_temperature();
   }
   if (auto_fan)
   {
@@ -736,7 +736,7 @@ void loop()
   {
     ramp_temp_after_change_temp();
   }
-  if (MASTER_SET_A_TARGET && tc_timer.status() == Timer_status::idle && is_at_target())
+  if (master_set_a_target && tc_timer.status() == Timer_status::idle && is_at_target())
   {
       tc_timer.start();
   }

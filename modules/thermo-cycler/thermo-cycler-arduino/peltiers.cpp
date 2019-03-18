@@ -1,11 +1,11 @@
 #include "peltiers.h"
 
-Peltiers::Peltiers(){
-}
+Peltiers::Peltiers(){}
 
-void Peltiers::disable(){
-//  Serial.println("Peltiers are both OFF");
-  for(int n=0; n<3; n++){
+void Peltiers::disable()
+{
+  for(int n = 0; n < PEL_INT(Peltier::max_num); n++)
+  {
     pinMode(pel[n].pin_a, OUTPUT);
     pinMode(pel[n].pin_b, OUTPUT);
     digitalWrite(pel[n].pin_a, LOW);
@@ -16,11 +16,13 @@ void Peltiers::disable(){
   digitalWrite(PIN_PELTIER_ENABLE, LOW); // disable the h-bridges
 }
 
-void Peltiers::set_cold_percentage(double perc, Peltier_num n){
-  //Serial.print(" Cold=");Serial.println(int(perc * 100));
+void Peltiers::set_cold_percentage(double perc, Peltier pel_enum)
+{
+  int n = PEL_INT(pel_enum);
   digitalWrite(PIN_PELTIER_ENABLE, HIGH);
   int val = min(max(perc * 255.0, 0.0), 255.0);
-  if (val != pel[n].prev_val_a) {
+  if (val != pel[n].prev_val_a)
+  {
     pinMode(pel[n].pin_a, OUTPUT);
     pinMode(pel[n].pin_b, OUTPUT);
     digitalWrite(pel[n].pin_b, LOW);
@@ -32,11 +34,13 @@ void Peltiers::set_cold_percentage(double perc, Peltier_num n){
   pel[n].prev_val_a = val;
 }
 
-void Peltiers::set_hot_percentage(double perc, Peltier_num n){
-  //Serial.print(" Hot=");Serial.println(int(perc * 100));
+void Peltiers::set_hot_percentage(double perc, Peltier pel_enum)
+{
+  int n = PEL_INT(pel_enum);
   digitalWrite(PIN_PELTIER_ENABLE, HIGH);
   int val = min(max(perc * 255.0, 0.0), 255.0);
-  if (val != pel[n].prev_val_b) {
+  if (val != pel[n].prev_val_b)
+  {
     pinMode(pel[n].pin_a, OUTPUT);
     pinMode(pel[n].pin_b, OUTPUT);
     digitalWrite(pel[n].pin_a, LOW);
@@ -48,12 +52,14 @@ void Peltiers::set_hot_percentage(double perc, Peltier_num n){
   pel[n].prev_val_b = val;
 }
 
-void Peltiers::setup(){
-  pel[PELTIER_1] = {PIN_PELTIER_CONTROL_1A, PIN_PELTIER_CONTROL_1B, 0, 0};
-  pel[PELTIER_2] = {PIN_PELTIER_CONTROL_2A, PIN_PELTIER_CONTROL_2B, 0, 0};
-  pel[PELTIER_3] = {PIN_PELTIER_CONTROL_3A, PIN_PELTIER_CONTROL_3B, 0, 0};
+void Peltiers::setup()
+{
+  pel[PEL_INT(Peltier::pel_1)] = {PIN_PELTIER_CONTROL_1A, PIN_PELTIER_CONTROL_1B, 0, 0};
+  pel[PEL_INT(Peltier::pel_2)] = {PIN_PELTIER_CONTROL_2A, PIN_PELTIER_CONTROL_2B, 0, 0};
+  pel[PEL_INT(Peltier::pel_3)] = {PIN_PELTIER_CONTROL_3A, PIN_PELTIER_CONTROL_3B, 0, 0};
 
-  for(int n=0; n<3; n++){
+  for(int n = 0; n < PEL_INT(Peltier::max_num); n++)
+  {
     pinMode(pel[n].pin_a, OUTPUT);
     pinMode(pel[n].pin_b, OUTPUT);
   }
