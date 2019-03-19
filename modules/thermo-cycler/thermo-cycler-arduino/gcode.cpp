@@ -37,7 +37,7 @@ void GcodeHandler::_strip_serial_buffer()
 
 /* Searches for gcode in the given string and updates the index reference with
  * index of gcode found */
-bool GcodeHandler::_find_command(const String _string, uint8_t * code_int, uint8_t * index)
+bool GcodeHandler::_find_command(const String& _string, uint8_t * code_int, uint8_t * index)
 {
   for (uint8_t str_index = 0; str_index < _string.length(); str_index++, (*index)++)
   {

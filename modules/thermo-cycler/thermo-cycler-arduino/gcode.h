@@ -75,7 +75,7 @@ class GcodeHandler
       String _serial_buffer_string;
       void _strip_serial_buffer();
       float _parsed_arg;
-      bool _find_command(String, uint8_t *, uint8_t *);
+      bool _find_command(const String&, uint8_t *, uint8_t *);
 };
 
 #endif
