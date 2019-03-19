@@ -1,4 +1,6 @@
 #include "gcode.h"
+#include <cerrno>
+#include <cstdlib>
 
 #undef GCODE_DEF
 #define GCODE_DEF(_, str) #str
@@ -13,9 +15,9 @@ void GcodeHandler::_strip_serial_buffer()
   char temp[_serial_buffer_string.length()];
   char * p;
   p = temp;
-  bool skip = false;
   for (const auto& sb_char : _serial_buffer_string)
   {
+    bool skip = false;
     for (const auto& c: _CHARACTERS_TO_STRIP)
     {
       if (sb_char == c)
@@ -28,7 +30,6 @@ void GcodeHandler::_strip_serial_buffer()
       *p = sb_char;
       p++;
     }
-    skip = false;
   }
   *p = '\0';
   _serial_buffer_string = temp;
@@ -36,7 +37,7 @@ void GcodeHandler::_strip_serial_buffer()
 
 /* Searches for gcode in the given string and updates the index reference with
  * index of gcode found */
-bool GcodeHandler::_find_command(String _string, uint8_t * code_int, uint8_t * index)
+bool GcodeHandler::_find_command(const String _string, uint8_t * code_int, uint8_t * index)
 {
   for (uint8_t str_index = 0; str_index < _string.length(); str_index++, (*index)++)
   {
@@ -129,10 +130,8 @@ bool GcodeHandler::pop_arg(char key)
     // Convert to number
     String number_string = _command.args_string.substring(key_index+1);
     uint8_t array_len = number_string.length()+1; // the number + array end char
-    char c_array[array_len];
-    number_string.toCharArray(c_array, array_len);
 
-    char *p = c_array;
+    const char *p = number_string.c_str();
     char *end;
     float f = strtod(p, &end);
     _command.args_string.remove(key_index, end-p+1);  // +1 cuz key_index has to be included too

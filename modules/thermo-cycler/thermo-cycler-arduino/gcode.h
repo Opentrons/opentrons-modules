@@ -2,8 +2,6 @@
 #define GCODE_H
 
 #include "Arduino.h"
-#include <cerrno>
-#include <cstdlib>
 
 #define CODE_INT(gcode) static_cast<int>(gcode)
 
