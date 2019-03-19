@@ -7,12 +7,16 @@
 
 #include "Arduino.h"
 
-typedef enum{
-    NO_PELTIER=-1,
-    PELTIER_1=0,
-    PELTIER_2,
-    PELTIER_3,
-}Peltier_num;
+#define PEL_INT(pel)  static_cast<int>(pel)
+
+enum class Peltier
+{
+    no_peltier=-1,
+    pel_1=0,
+    pel_2,
+    pel_3,
+    max_num
+};
 
 #define PIN_PELTIER_CONTROL_1A       5   // uses PWM frequency generator
 #define PIN_PELTIER_CONTROL_1B       11  // uses PWM frequency generator
@@ -32,18 +36,18 @@ typedef struct Peltier_property
     int prev_val_b;
 };
 
-class Peltiers{
+class Peltiers
+{
   public:
 
     Peltiers();
     void setup();
     void disable();
-    void set_cold_percentage(double perc, Peltier_num n);
-    void set_hot_percentage(double perc, Peltier_num n);
+    void set_cold_percentage(double perc, Peltier n);
+    void set_hot_percentage(double perc, Peltier n);
 
   private:
-    Peltier_property pel[3];
-    uint8_t peltiers_enable;
+    Peltier_property pel[PEL_INT(Peltier::max_num)];
 };
 
 #endif

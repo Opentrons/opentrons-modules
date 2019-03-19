@@ -40,16 +40,30 @@
 #define STEPS_PER_MM 15  // full-stepping
 #define PULSE_HIGH_MICROSECONDS 2
 
+#define STATUS_TABLE \
+          STATUS(unknown),  \
+          STATUS(closed),   \
+          STATUS(open)
 
-class Lid{
+#define STATUS(_status) _status
+
+enum class Lid_status
+{
+  STATUS_TABLE
+};
+
+#undef STATUS
+#define STATUS(_status) #_status
+
+class Lid
+{
   public:
 
     Lid();
     void setup();
     void open_cover();
     void close_cover();
-    bool is_lid_open();
-    bool is_lid_closed();
+    Lid_status status();
     void solenoid_on();
     void solenoid_off();
     void motor_off();
@@ -58,22 +72,22 @@ class Lid{
     void set_acceleration(float mm_per_sec_per_sec);
     void set_current(float current);
     void move_millimeters(float mm, bool top_switch, bool bottom_switch);
+    static const char * LID_STATUS_STRINGS[3];
 
   private:
+    bool _is_open_switch_pressed();
+    bool _is_closed_switch_pressed();
+    void _setup_digipot();
+    void _save_current();
+    void _i2c_write(byte address, byte value);
+    void _reset_acceleration();
+    void _calculate_step_delay();
+    void _update_acceleration();
+    void _motor_step(uint8_t dir);
 
-    void wait_to_hit_bottom();
-    void wait_to_hit_top();
-    void setup_digipot();
-    void save_current();
-    void i2c_write(byte address, byte value);
-    void reset_acceleration();
-    void calculate_step_delay();
-    void update_acceleration();
-    void motor_step(uint8_t dir);
-
-    double STEP_DELAY_MICROSECONDS = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
-    double MM_PER_SEC = 20;
-    double ACCELERATION = 300;  // mm/sec/sec
+    double _step_delay_microseconds = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
+    double _mm_per_sec = 20;
+    double _acceleration = 300;  // mm/sec/sec
     const double _start_mm_per_sec = 1;
     double _active_mm_per_sec;
 };
