@@ -440,7 +440,7 @@ void ramp_temp_after_change_temp()
             tc_timer.reset();
             break;
           case Gcode::get_device_info:
-            gcode.device_info_response(device_serial, device_model, device_version);
+            gcode.device_info_response("dummySerial", "dummyModel", device_version);
             break;
           case Gcode::dfu:
             break;
