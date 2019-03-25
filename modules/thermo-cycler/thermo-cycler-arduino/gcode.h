@@ -21,6 +21,7 @@
   GCODE_DEF(set_ramp_rate, M566),   \
   GCODE_DEF(edit_pid_params, M301), \
   GCODE_DEF(pause, M76),            \
+  GCODE_DEF(resume, M77),            \
   GCODE_DEF(deactivate_all, M18),   \
   GCODE_DEF(get_device_info, M115), \
   GCODE_DEF(dfu, dfu),              \

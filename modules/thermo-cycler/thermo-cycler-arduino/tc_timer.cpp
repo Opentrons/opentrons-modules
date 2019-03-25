@@ -47,7 +47,7 @@ bool TC_Timer::resume()
 unsigned int TC_Timer::time_left()
 {
   update();
-  if(_status == Timer_status::running)
+  if(_status == Timer_status::running || _status == Timer_status::paused)
   {
     return (_total_hold_time_millis - _elapsed_time) / 1000;
   }
