@@ -428,8 +428,12 @@ void ramp_temp_after_change_temp()
             }
             break;
           case Gcode::pause:
-            // Flush out details about how to resume and what happens to the timer
-            // when paused
+            tc_timer.pause();
+            // TODO: hold temp in addition to pausing timer
+            break;
+          case Gcode::resume:
+            tc_timer.resume();
+            // TODO: continue ramping in addition to resuming timer
             break;
           case Gcode::deactivate_all:
             heat_pad_off();
