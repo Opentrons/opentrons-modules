@@ -17,10 +17,31 @@ bool TC_Timer::start()
   {
     return false;
   }
-    _total_hold_time_millis = total_hold_time * 1000;
-    _hold_start_timestamp = millis();
-    _status = Timer_status::running;
-    return true;
+  _total_hold_time_millis = total_hold_time * 1000;
+  _hold_start_timestamp = millis();
+  _status = Timer_status::running;
+  return true;
+}
+
+bool TC_Timer::pause()
+{
+  if(_status != Timer_status::running)
+  {
+    return false;
+  }
+  _status = Timer_status::paused;
+  return true;
+}
+
+bool TC_Timer::resume()
+{
+  if(_status != Timer_status::paused)
+  {
+    return false;
+  }
+  _hold_start_timestamp = _hold_start_timestamp + ((millis() - _hold_start_timestamp) - _elapsed_time);
+  _status = Timer_status::running;
+  return true;
 }
 
 unsigned int TC_Timer::time_left()

@@ -5,6 +5,7 @@ enum class Timer_status
 {
   idle,
   running,
+  paused,
   complete
 };
 
@@ -15,6 +16,8 @@ class TC_Timer
     TC_Timer();
     void reset();
     bool start();
+    bool pause();
+    bool resume();
     unsigned int time_left();
     Timer_status status();
     void update();
