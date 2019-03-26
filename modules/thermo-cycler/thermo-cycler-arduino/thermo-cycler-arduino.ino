@@ -625,6 +625,58 @@ void read_from_serial() {
     }
 }
 #endif
+
+/* Set up a timer interrupt to check lid switches' status every 20ms.
+ * Keeping the frequency high helps in getting rid of switch debounce. The timer ISR
+ * sets a flag when it's time to check the status of the switches. The loop()
+ * checks this flag and calls lid.switch_poller
+ */
+void setup_timer_interrupt()
+{
+  /* 48MHz/240 = 200kHz (8-bit divisor) | Select Generic Clock (GCLK) 4*/
+  REG_GCLK_GENDIV = GCLK_GENDIV_DIV(240) | GCLK_GENDIV_ID(4);
+  while (GCLK->STATUS.bit.SYNCBUSY);     // Wait for synchronization
+
+  REG_GCLK_GENCTRL = GCLK_GENCTRL_IDC |           // Set duty cycle to 50%
+                     GCLK_GENCTRL_GENEN |         // Enable GCLK4
+                     GCLK_GENCTRL_SRC_DFLL48M |   // Select 48MHz clock source
+                     GCLK_GENDIV_ID(4);           // Select GCLK4
+  while (GCLK->STATUS.bit.SYNCBUSY);              // Wait for synchronization
+
+  // Feed GCLK4 to TC4 & TC5
+  REG_GCLK_CLKCTRL = GCLK_CLKCTRL_CLKEN |         // Enable GCLK4 to TC4 & TC5
+                     GCLK_CLKCTRL_GEN_GCLK4 |     // Select GCLK4
+                     GCLK_CLKCTRL_ID_TC4_TC5;     // Feed the GCLK4 to TC4
+  while (GCLK->STATUS.bit.SYNCBUSY);              // Wait for synchronization
+
+  REG_TC4_CTRLA |= TC_CTRLA_MODE_COUNT8;          // Set the counter to 8-bit mode
+  while (TC4->COUNT8.STATUS.bit.SYNCBUSY);        // Wait for synchronization
+
+  REG_TC4_COUNT8_PER = 0xFA;   // Set the PER (period) reg to get 20ms interrupts (0xFA = 250)
+  while (TC4->COUNT8.STATUS.bit.SYNCBUSY);  // Wait for synchronization
+
+  NVIC_SetPriority(TC4_IRQn, 0);    // Set NVIC priority for TC4 to 0 (highest)
+  NVIC_EnableIRQ(TC4_IRQn);         // Connect TC4 to NVIC
+
+  REG_TC4_INTFLAG |= TC_INTFLAG_MC1 | TC_INTFLAG_MC0 | TC_INTFLAG_OVF;  // Clear interrupt flags
+  REG_TC4_INTENSET = TC_INTENSET_OVF;     // Enable TC4 ovf interrupt
+
+  REG_TC4_CTRLA |= TC_CTRLA_PRESCALER_DIV16 |   // Set prescaler to 16, f=12.5kHz (legal values 1,2,4,8,16,64,256,1024)
+                   TC_CTRLA_ENABLE;             // Enable TC4
+  while (TC4->COUNT8.STATUS.bit.SYNCBUSY);      // Wait for synchronization
+}
+
+volatile bool check_lid = false;
+
+void TC4_Handler()
+{
+  if (TC4->COUNT8.INTFLAG.bit.OVF && TC4->COUNT8.INTENSET.bit.OVF)
+  {
+    check_lid = true;
+    REG_TC4_INTFLAG = TC_INTFLAG_OVF;
+  }
+}
+
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
@@ -710,16 +762,32 @@ void setup()
   strip.show();
   startTime = micros();  // for the rainbow test
   rainbow_test();
+  setup_timer_interrupt();
 }
 
 void loop()
 {
 #if USE_GCODES
+  /* Check if gcode(s) available on Serial */
   read_gcode();
 #else
   read_from_serial();
   if (!running_from_script) print_info();
 #endif
+
+  /* Poll for lid status every few milliseconds determined by the timer interrupt frequency.
+   * This makes checking for debounce easier and non blocking.
+   * When heating/cooling, if lid is open then send a warning through Serial */
+  if (check_lid)
+  {
+    check_lid = false;
+    lid.switch_poller();
+    if (master_set_a_target && lid.status() != Lid_status::closed)
+    {
+      gcode.response("WARNING", "Lid Open");
+    }
+  }
+
   if (temp_probes.update())
   {
     current_left_pel_temp = temp_probes.left_pair_temperature();
@@ -738,7 +806,7 @@ void loop()
   }
   if (master_set_a_target && tc_timer.status() == Timer_status::idle && is_at_target())
   {
-      tc_timer.start();
+    tc_timer.start();
   }
   tc_timer.update();
   update_peltiers_from_pid();
