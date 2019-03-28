@@ -1,6 +1,10 @@
 #include "lid.h"
 
 const char * Lid::LID_STATUS_STRINGS[] = { STATUS_TABLE };
+volatile bool cover_switch_toggled = false;
+volatile bool bottom_switch_toggled = false;
+volatile unsigned long cover_switch_toggled_at = 0;
+volatile unsigned long bottom_switch_toggled_at = 0;
 
 Lid::Lid()
 {}
@@ -46,28 +50,55 @@ void Lid::_setup_digipot()
 
 Lid_status Lid::status()
 {
-  if(_is_open_switch_pressed() && !_is_closed_switch_pressed())
-  {
-    return Lid_status::open;
-  }
-  else if(_is_closed_switch_pressed() && !_is_open_switch_pressed())
-  {
-    return Lid_status::closed;
-  }
-  else
-  {
-    return Lid_status::unknown;
-  }
+  _update_status();
+  return _status;
 }
 
-bool Lid::_is_open_switch_pressed()
- {
-  return (digitalRead(PIN_COVER_OPEN_SWITCH) == SWITCH_PRESSED_STATE);
-}
-
-bool Lid::_is_closed_switch_pressed()
+void Lid::_update_status()
 {
-  return (digitalRead(PIN_COVER_CLOSED_SWITCH) == SWITCH_PRESSED_STATE);
+  uint8_t status_bits = (_is_cover_switch_pressed << 1) | (_is_bottom_switch_pressed << 0);
+  /* Truth Table */
+  /* Bit 1 | Bit 0
+  /*    0     0   -- Both switches OPEN
+   *    0     1   -- Bottom switch CLOSED, cover switch OPEN
+   *    1     0   -- Bottom switch OPEN, cover switch CLOSED
+   *    1     1   -- Both switches CLOSED
+   */
+  switch(status_bits)
+  {
+    case 0x00:
+      _status = Lid_status::in_between;
+      break;
+    case 0x01:
+      _status = Lid_status::closed;
+      break;
+    case 0x02:
+      _status = Lid_status::open;
+      break;
+    default:
+      _status = Lid_status::error;
+      break;
+  }
+}
+
+void Lid::check_switches()
+{
+  if (cover_switch_toggled)
+  {
+    if (millis() - cover_switch_toggled_at >= 200)
+    {
+      cover_switch_toggled = false;
+      _is_cover_switch_pressed = !bool(digitalRead(PIN_COVER_SWITCH));
+    }
+  }
+  if (bottom_switch_toggled)
+  {
+    if (millis() - bottom_switch_toggled_at >= 200)
+    {
+      bottom_switch_toggled = false;
+      _is_bottom_switch_pressed = !bool(digitalRead(PIN_BOTTOM_SWITCH));
+    }
+  }
 }
 
 void Lid::solenoid_on()
@@ -110,7 +141,6 @@ void Lid::_motor_step(uint8_t dir)
 
 void Lid::set_speed(float mm_per_sec)
 {
-//  Serial.print("\tSpeed: ");Serial.println(mm_per_sec);
   _mm_per_sec = mm_per_sec;
 }
 
@@ -139,9 +169,8 @@ void Lid::_update_acceleration()
   _calculate_step_delay();
 }
 
-void Lid::move_millimeters(float mm, bool top_switch, bool bottom_switch)
+bool Lid::move_millimeters(float mm)
 {
-  // Serial.print("MOVING "); Serial.print(mm); Serial.println("mm");
   uint8_t dir = DIRECTION_UP;
   if (mm < 0) dir = DIRECTION_DOWN;
   unsigned long steps = abs(mm) * float(STEPS_PER_MM);
@@ -151,30 +180,58 @@ void Lid::move_millimeters(float mm, bool top_switch, bool bottom_switch)
   {
     _motor_step(dir);
     _update_acceleration();
-    if (top_switch && _is_open_switch_pressed()) return;
-    if (bottom_switch && _is_closed_switch_pressed()) return;
+    check_switches();
+    if (dir)
+    {
+      if (_is_cover_switch_pressed)
+      {
+        return true;
+      }
+    }
+    else
+    {
+      if (_is_bottom_switch_pressed)
+      {
+        return true;
+      }
+    }
   }
   motor_off();
+  return false;
 }
 
 void Lid::open_cover()
 {
-  if (_is_open_switch_pressed())
+  if (_is_cover_switch_pressed)
   {
      return;
   }
-  move_millimeters(300, true, false);
+  move_millimeters(LID_MOTOR_RANGE_MM);
   motor_off();
 }
 
 void Lid::close_cover()
 {
-  if (_is_closed_switch_pressed())
+  if (_is_bottom_switch_pressed)
   {
     return;
   }
-  move_millimeters(-300, false, true);
+  move_millimeters(-LID_MOTOR_RANGE_MM);
   motor_off();
+}
+
+// Not a Lid class method
+void _cover_switch_callback()
+{
+  cover_switch_toggled = true;
+  cover_switch_toggled_at = millis();
+}
+
+// Not a Lid class method
+void _bottom_switch_callback()
+{
+  bottom_switch_toggled = true;
+  bottom_switch_toggled_at = millis();
 }
 
 void Lid::setup()
@@ -185,7 +242,18 @@ void Lid::setup()
 	pinMode(PIN_STEPPER_DIR, OUTPUT);
 	pinMode(PIN_STEPPER_ENABLE, OUTPUT);
 	motor_off();
-	pinMode(PIN_COVER_OPEN_SWITCH, INPUT);
-	pinMode(PIN_COVER_CLOSED_SWITCH, INPUT);
-	_setup_digipot();
+#if DUMMY_BOARD
+  pinMode(PIN_COVER_SWITCH, INPUT_PULLUP);
+  pinMode(PIN_BOTTOM_SWITCH, INPUT_PULLUP);
+#else
+  pinMode(PIN_COVER_SWITCH, INPUT);
+  pinMode(PIN_BOTTOM_SWITCH, INPUT);
+#endif
+  _setup_digipot();
+  delay(1);
+  _is_cover_switch_pressed = !bool(digitalRead(PIN_COVER_SWITCH));
+  _is_bottom_switch_pressed = !bool(digitalRead(PIN_BOTTOM_SWITCH));
+  _update_status();
+  attachInterrupt(digitalPinToInterrupt(PIN_COVER_SWITCH), _cover_switch_callback, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_BOTTOM_SWITCH), _bottom_switch_callback, CHANGE);
 }

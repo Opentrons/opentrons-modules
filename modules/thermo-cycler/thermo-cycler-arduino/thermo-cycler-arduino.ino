@@ -625,6 +625,7 @@ void read_from_serial() {
     }
 }
 #endif
+
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
@@ -662,14 +663,13 @@ void setup()
 {
   gcode.setup(BAUDRATE);
   delay(1000);
-  Serial.println("Setting up stuff..");
 
-  lid.setup();
   peltiers.setup();
   temp_probes.setup(THERMISTOR_VOLTAGE);
   while (!temp_probes.update()) {}
   current_temperature_plate = temp_probes.average_plate_temperature();
   current_temperature_cover = temp_probes.cover_temperature();
+  lid.setup();
 
   pinMode(PIN_FAN_SINK_CTRL, OUTPUT);
   pinMode(PIN_FAN_COVER, OUTPUT);
@@ -715,11 +715,19 @@ void setup()
 void loop()
 {
 #if USE_GCODES
+  /* Check if gcode(s) available on Serial */
   read_gcode();
 #else
   read_from_serial();
   if (!running_from_script) print_info();
 #endif
+
+  lid.check_switches();
+  if (master_set_a_target && lid.status() != Lid_status::closed)
+  {
+    gcode.response("WARNING", "Lid Open");
+  }
+#if !DUMMY_BOARD
   if (temp_probes.update())
   {
     current_left_pel_temp = temp_probes.left_pair_temperature();
@@ -728,6 +736,7 @@ void loop()
     current_temperature_plate = temp_probes.average_plate_temperature();
     current_temperature_cover = temp_probes.cover_temperature();
   }
+#endif
   if (auto_fan)
   {
     update_fan_from_state();
@@ -738,7 +747,7 @@ void loop()
   }
   if (master_set_a_target && tc_timer.status() == Timer_status::idle && is_at_target())
   {
-      tc_timer.start();
+    tc_timer.start();
   }
   tc_timer.update();
   update_peltiers_from_pid();

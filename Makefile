@@ -77,12 +77,13 @@ setup:
 .PHONY: build
 build: build-magdeck build-tempdeck build-thermocycler
 
+DUMMY_BOARD := false
+
 .PHONY: build-magdeck
 build-magdeck:
 	$(ARDUINO) --verify --board Opentrons:avr:magdeck32u4cat $(MODULES_DIR)/mag-deck/mag-deck-arduino/mag-deck-arduino.ino --verbose-build
 	mkdir -p $(BUILDS_DIR)/mag-deck
 	cp $(BUILDS_DIR)/tmp/mag-deck-arduino.ino.hex $(BUILDS_DIR)/mag-deck/
-
 
 .PHONY: build-tempdeck
 build-tempdeck:
@@ -92,6 +93,7 @@ build-tempdeck:
 
 .PHONY: build-thermocycler
 build-thermocycler:
+	echo "compiler.cpp.extra_flags=-DDUMMY_BOARD=$(DUMMY_BOARD)" > $(ARDUINO15_LOC)/packages/adafruit/hardware/samd/1.3.0/platform.local.txt
 	$(ARDUINO) --verify --board adafruit:samd:adafruit_feather_m0 $(MODULES_DIR)/thermo-cycler/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
 	mkdir -p $(BUILDS_DIR)/thermo-cycler
 	cp $(BUILDS_DIR)/tmp/thermo-cycler-arduino.ino.bin $(BUILDS_DIR)/thermo-cycler/

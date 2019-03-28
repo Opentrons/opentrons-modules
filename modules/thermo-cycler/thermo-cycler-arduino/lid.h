@@ -4,8 +4,12 @@
 #include "Arduino.h"
 #include <Wire.h>
 
-#define PIN_COVER_OPEN_SWITCH       8
-#define PIN_COVER_CLOSED_SWITCH     9
+#if DUMMY_BOARD
+  #define PIN_COVER_SWITCH PIN_SPI_MOSI
+#else
+  #define PIN_COVER_SWITCH      8
+#endif
+#define PIN_BOTTOM_SWITCH     9
 
 #define PIN_SOLENOID                A1
 
@@ -38,12 +42,25 @@
 #define DIRECTION_UP HIGH
 
 #define STEPS_PER_MM 15  // full-stepping
+#define LID_MOTOR_RANGE_MM  300 // The max distance in mm the motor should move between open to close positions
 #define PULSE_HIGH_MICROSECONDS 2
 
+#define TO_INT(an_enum) static_cast<int>(an_enum)
+
+/* The TC has two switches to detect lid positions: one inside the lid (PIN_COVER_SWITCH)
+ * that is engaged when the lid fully opens and the other in the main
+ * boards assembly (PIN_BOTTOM_SWITCH) which is engaged when the lid is closed
+ * and locked. These are N.O. switches and the pins read HIGH when not engaged.
+ * When neither of the switch is engaged, the lid is assumed to be 'in_between'
+ * 'open' and 'closed' status. When both switches read LOW (which should never happen),
+ * the lid is in 'error' state.
+ */
 #define STATUS_TABLE \
-          STATUS(unknown),  \
+          STATUS(in_between),  \
           STATUS(closed),   \
-          STATUS(open)
+          STATUS(open),   \
+          STATUS(error),  \
+          STATUS(max)
 
 #define STATUS(_status) _status
 
@@ -71,12 +88,13 @@ class Lid
     void set_speed(float mm_per_sec);
     void set_acceleration(float mm_per_sec_per_sec);
     void set_current(float current);
-    void move_millimeters(float mm, bool top_switch, bool bottom_switch);
-    static const char * LID_STATUS_STRINGS[3];
+    bool move_millimeters(float mm);
+    void check_switches();
+    static const char * LID_STATUS_STRINGS[TO_INT(Lid_status::max)+1];
 
   private:
-    bool _is_open_switch_pressed();
-    bool _is_closed_switch_pressed();
+    bool _is_bottom_switch_pressed;
+    bool _is_cover_switch_pressed;
     void _setup_digipot();
     void _save_current();
     void _i2c_write(byte address, byte value);
@@ -84,12 +102,20 @@ class Lid
     void _calculate_step_delay();
     void _update_acceleration();
     void _motor_step(uint8_t dir);
+    void _update_status();
 
     double _step_delay_microseconds = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
     double _mm_per_sec = 20;
     double _acceleration = 300;  // mm/sec/sec
     const double _start_mm_per_sec = 1;
     double _active_mm_per_sec;
+    Lid_status _status;
+    enum class _Lid_switch {
+      cover_switch,
+      bottom_switch,
+      max
+    };
+    uint16_t _debounce_state[TO_INT(_Lid_switch::max)] = {0};
 };
 
 #endif
