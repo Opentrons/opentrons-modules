@@ -1,6 +1,10 @@
 #include "lid.h"
 
 const char * Lid::LID_STATUS_STRINGS[] = { STATUS_TABLE };
+volatile bool cover_switch_toggled = false;
+volatile bool bottom_switch_toggled = false;
+volatile unsigned long cover_switch_toggled_at = 0;
+volatile unsigned long bottom_switch_toggled_at = 0;
 
 Lid::Lid()
 {}
@@ -46,6 +50,7 @@ void Lid::_setup_digipot()
 
 Lid_status Lid::status()
 {
+  _update_status();
   return _status;
 }
 
@@ -70,52 +75,30 @@ void Lid::_update_status()
     case 0x02:
       _status = Lid_status::open;
       break;
-    case 0x03:
+    default:
       _status = Lid_status::error;
       break;
   }
 }
 
-/* This poller keeps track of changes on the lid switches and updating the status.
- * Uses a bit shifting technique described here:
- * https://forum.arduino.cc/index.php?topic=451164.0
- */
-void Lid::switch_poller()
+void Lid::check_switches()
 {
-  bool cover_pin_bit = 0;
-  bool bottom_pin_bit = 0;
-  switch(_status)
+  if (cover_switch_toggled)
   {
-    case Lid_status::in_between:
-      cover_pin_bit = digitalRead(PIN_COVER_SWITCH);
-      bottom_pin_bit = digitalRead(PIN_BOTTOM_SWITCH);
-      break;
-    case Lid_status::closed:
-      cover_pin_bit = digitalRead(PIN_COVER_SWITCH);
-      bottom_pin_bit = digitalRead(PIN_BOTTOM_SWITCH) ^ (1 << 0);
-      break;
-    case Lid_status::open:
-      cover_pin_bit = digitalRead(PIN_COVER_SWITCH) ^ (1 << 0);
-      bottom_pin_bit = digitalRead(PIN_BOTTOM_SWITCH);
-      break;
-    case Lid_status::error:
-      cover_pin_bit = digitalRead(PIN_COVER_SWITCH) ^ (1 << 0);
-      bottom_pin_bit = digitalRead(PIN_BOTTOM_SWITCH) ^ (1 << 0);
-      break;
+    if (millis() - cover_switch_toggled_at >= 200)
+    {
+      cover_switch_toggled = false;
+      _is_cover_switch_pressed = !bool(digitalRead(PIN_COVER_SWITCH));
+    }
   }
-  _debounce_state[TO_INT(_Lid_switch::cover_switch)] = (_debounce_state[TO_INT(_Lid_switch::cover_switch)] << 1) |
-                                                       cover_pin_bit | 0xF800;
-  _debounce_state[TO_INT(_Lid_switch::bottom_switch)] = (_debounce_state[TO_INT(_Lid_switch::bottom_switch)] << 1) |
-                                                        bottom_pin_bit | 0xF800;
-  if (_debounce_state[TO_INT(_Lid_switch::cover_switch)] == 0xFC00)
+  if (bottom_switch_toggled)
   {
-    _is_cover_switch_pressed = !_is_cover_switch_pressed;
+    if (millis() - bottom_switch_toggled_at >= 200)
+    {
+      bottom_switch_toggled = false;
+      _is_bottom_switch_pressed = !bool(digitalRead(PIN_BOTTOM_SWITCH));
+    }
   }
-  if (_debounce_state[TO_INT(_Lid_switch::bottom_switch)] == 0xFC00)
-  {
-    _is_bottom_switch_pressed = !_is_bottom_switch_pressed;
-  }
-  _update_status();
 }
 
 void Lid::solenoid_on()
@@ -197,6 +180,7 @@ bool Lid::move_millimeters(float mm)
   {
     _motor_step(dir);
     _update_acceleration();
+    check_switches();
     if (dir)
     {
       if (_is_cover_switch_pressed)
@@ -206,7 +190,7 @@ bool Lid::move_millimeters(float mm)
     }
     else
     {
-      if(_is_bottom_switch_pressed)
+      if (_is_bottom_switch_pressed)
       {
         return true;
       }
@@ -222,7 +206,7 @@ void Lid::open_cover()
   {
      return;
   }
-  move_millimeters(300);
+  move_millimeters(LID_MOTOR_RANGE_MM);
   motor_off();
 }
 
@@ -232,8 +216,22 @@ void Lid::close_cover()
   {
     return;
   }
-  move_millimeters(-300);
+  move_millimeters(-LID_MOTOR_RANGE_MM);
   motor_off();
+}
+
+// Not a Lid class method
+void _cover_switch_callback()
+{
+  cover_switch_toggled = true;
+  cover_switch_toggled_at = millis();
+}
+
+// Not a Lid class method
+void _bottom_switch_callback()
+{
+  bottom_switch_toggled = true;
+  bottom_switch_toggled_at = millis();
 }
 
 void Lid::setup()
@@ -253,21 +251,9 @@ void Lid::setup()
 #endif
   _setup_digipot();
   delay(1);
-  if (digitalRead(PIN_COVER_SWITCH) == HIGH)
-  {
-    _is_cover_switch_pressed = false;
-  }
-  else
-  {
-    _is_cover_switch_pressed = true;
-  }
-  if (digitalRead(PIN_BOTTOM_SWITCH) == HIGH)
-  {
-    _is_bottom_switch_pressed = false;
-  }
-  else
-  {
-    _is_bottom_switch_pressed = true;
-  }
+  _is_cover_switch_pressed = !bool(digitalRead(PIN_COVER_SWITCH));
+  _is_bottom_switch_pressed = !bool(digitalRead(PIN_BOTTOM_SWITCH));
   _update_status();
+  attachInterrupt(digitalPinToInterrupt(PIN_COVER_SWITCH), _cover_switch_callback, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_BOTTOM_SWITCH), _bottom_switch_callback, CHANGE);
 }

@@ -4,9 +4,11 @@
 #include "Arduino.h"
 #include <Wire.h>
 
-#define DUMMY_BOARD true  // To be used for internal dev only
-
-#define PIN_COVER_SWITCH      8
+#if DUMMY_BOARD
+  #define PIN_COVER_SWITCH PIN_SPI_MOSI
+#else
+  #define PIN_COVER_SWITCH      8
+#endif
 #define PIN_BOTTOM_SWITCH     9
 
 #define PIN_SOLENOID                A1
@@ -40,6 +42,7 @@
 #define DIRECTION_UP HIGH
 
 #define STEPS_PER_MM 15  // full-stepping
+#define LID_MOTOR_RANGE_MM  300 // The max distance in mm the motor should move between open to close positions
 #define PULSE_HIGH_MICROSECONDS 2
 
 #define TO_INT(an_enum) static_cast<int>(an_enum)
@@ -86,12 +89,12 @@ class Lid
     void set_acceleration(float mm_per_sec_per_sec);
     void set_current(float current);
     bool move_millimeters(float mm);
-    void switch_poller();
+    void check_switches();
     static const char * LID_STATUS_STRINGS[TO_INT(Lid_status::max)+1];
 
   private:
-    bool _is_cover_switch_pressed;
     bool _is_bottom_switch_pressed;
+    bool _is_cover_switch_pressed;
     void _setup_digipot();
     void _save_current();
     void _i2c_write(byte address, byte value);
