@@ -62,7 +62,7 @@ setup:
 	# Change sketchbook location to the repository in order to link library files
 	$(ARDUINO) --pref "sketchbook.path=$(CURDIR)" --save-prefs
 	# Change build path to a known path
-	$(ARDUINO) --pref "build.path=$(BUILDS_DIR)/tmp" --save-prefs
+	$(ARDUINO) --pref "build.path=$(CURDIR)/$(BUILDS_DIR)/tmp" --save-prefs
 	# Add board packages
 	$(ARDUINO) --pref "boardsmanager.additional.urls=$(ADAFRUIT_BOARD_URL), $(OPENTRONS_BOARD_URL)" --save-prefs
 	# Install all required boards
