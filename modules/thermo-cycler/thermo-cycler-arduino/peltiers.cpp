@@ -1,4 +1,5 @@
 #include "peltiers.h"
+#include "high_frequency_pwm.h"
 
 Peltiers::Peltiers(){}
 
@@ -29,7 +30,7 @@ void Peltiers::set_cold_percentage(double perc, Peltier pel_enum)
     pel[n].prev_val_b = 0;
     if (val == 255) digitalWrite(pel[n].pin_a, HIGH);
     else if (val == 0) digitalWrite(pel[n].pin_a, LOW);
-    else analogWrite(pel[n].pin_a, val);
+    else hfq_analogWrite(pel[n].pin_a, val);
   }
   pel[n].prev_val_a = val;
 }
@@ -47,7 +48,7 @@ void Peltiers::set_hot_percentage(double perc, Peltier pel_enum)
     pel[n].prev_val_a = 0;
     if (val == 255) digitalWrite(pel[n].pin_b, HIGH);
     else if (val == 0) digitalWrite(pel[n].pin_b, LOW);
-    else analogWrite(pel[n].pin_b, val);
+    else hfq_analogWrite(pel[n].pin_b, val);
   }
   pel[n].prev_val_b = val;
 }
