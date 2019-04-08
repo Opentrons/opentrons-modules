@@ -2,7 +2,7 @@
 #include "wiring_private.h"
 
 /* This function mimics Arduino's analogWrite() function (found in wiring_analog.c)
- * in setting the Timer/Counter registers for generating a high frequency (~23kHZ),
+ * in setting the Timer/Counter registers for generating a high frequency (~25kHZ),
  * PWM waveform.
  * ##IMP NOTE:### Do not use analogWrite() and hfq_analogWrite() in the same code.
  * This will result in unpredictable frequencies since the functions will try to
@@ -37,6 +37,8 @@ void hfq_analogWrite(uint8_t pin, uint8_t value)
     uint32_t tcNum = GetTCNumber(pinDesc.ulPWMChannel);
     uint8_t tcChannel = GetTCChannelNumber(pinDesc.ulPWMChannel);
     static bool tcEnabled[TCC_INST_NUM+TC_INST_NUM];
+
+    value = map(value, 0, 255, 0, 240);
 
     if (attr & PIN_ATTR_TIMER)
     {
@@ -97,8 +99,8 @@ void hfq_analogWrite(uint8_t pin, uint8_t value)
     		// Set Timer counter Mode to 16 bits, normal PWM
     		TCx->COUNT8.CTRLA.reg |= TC_CTRLA_MODE_COUNT8 | TC_CTRLA_WAVEGEN_NPWM;
     		_syncTC_8(TCx);
-        // Set PER to counter value of 255 (resolution : 0xFF)
-        TCx->COUNT8.PER.reg = 0xFF;
+        // Set PER to counter value of 240 (resolution : 0xFF)
+        TCx->COUNT8.PER.reg = 0xF0;
         _syncTC_8(TCx);
     		// Set the initial value
     		TCx->COUNT8.CC[tcChannel].reg = (uint32_t) value;
@@ -120,8 +122,8 @@ void hfq_analogWrite(uint8_t pin, uint8_t value)
     		// Set the initial value
     		TCCx->CC[tcChannel].reg = (uint32_t) value;
     		_syncTCC(TCCx);
-    		// Set PER to counter value of 255 (resolution : 0xFF)
-    		TCCx->PER.reg = 0xFF;
+    		// Set PER to counter value of 240 (resolution : 0xFF)
+    		TCCx->PER.reg = 0xF0;
     		_syncTCC(TCCx);
     		// Enable TCCx
     		TCCx->CTRLA.bit.ENABLE = 1;

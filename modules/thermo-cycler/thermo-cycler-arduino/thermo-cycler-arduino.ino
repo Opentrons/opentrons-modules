@@ -49,9 +49,9 @@ PID PID_Cover(
 
 void set_heat_pad_power(float val)
 {
-  int byte_val = max(min(val * 255.0, 255), 0);
+  uint8_t byte_val = max(min(val * 255.0, 255), 0);
   pinMode(PIN_HEAT_PAD_CONTROL, OUTPUT);
-  if (byte_val == 255) digitalWrite(PIN_HEAT_PAD_CONTROL, HIGH);
+  if (byte_val >= 255) digitalWrite(PIN_HEAT_PAD_CONTROL, HIGH);
   else if (byte_val == 0) digitalWrite(PIN_HEAT_PAD_CONTROL, LOW);
   else hfq_analogWrite(PIN_HEAT_PAD_CONTROL, byte_val);
 }
@@ -234,19 +234,16 @@ void update_fans_from_state()
     {
       if (is_target_cold())
       {
-        Serial.println("target's cold");
         heatsink_fan.set_percentage(1.0);
         return;
       }
       else if (is_ramping_down())
       {
-        Serial.println("ramping down");
         heatsink_fan.set_percentage(0.5);
         return;
       }
       else if (is_ramping_up())
       {
-        Serial.println("ramping up");
         heatsink_fan.set_percentage(0.2);
         return;
       }
@@ -254,12 +251,10 @@ void update_fans_from_state()
     if (temp_probes.heat_sink_temperature() > 45)
     {
       // Fan speed propertional to temperature
-      Serial.println("heatsink temp > 45");
       heatsink_fan.set_percentage((temp_probes.heat_sink_temperature() * 0.8) / 100);
     }
-    else if(temp_probes.heat_sink_temperature() < 43)
+    else if(temp_probes.heat_sink_temperature() < 38)
     {
-      Serial.println("heatsink temp < 43");
       heatsink_fan.disable();
     }
 
@@ -339,6 +334,20 @@ void ramp_temp_after_change_temp()
 /////////////////////////////////
 
 #if USE_GCODES == true
+  void debug_status_prints()
+  {
+    // Thermistors:
+    gcode.response("Pel1", temp_probes.left_pair_temperature());
+    gcode.response("Pel2", temp_probes.center_pair_temperature());
+    gcode.response("Pel3", temp_probes.right_pair_temperature());
+    gcode.response("Heatsink", temp_probes.heat_sink_temperature());
+
+    // Fan power:
+    gcode.response("Fan", heatsink_fan.current_power);
+    // Cover temperature:
+    gcode.response("Lid_temp", temp_probes.cover_temperature());
+  }
+
   void read_gcode()
   {
     if(gcode.received_newline())
@@ -359,6 +368,15 @@ void ramp_temp_after_change_temp()
             lid.close_cover();
             break;
           case Gcode::set_lid_temp:
+            if (!gcode.pop_arg('S'))
+            {
+              target_temperature_cover = TEMPERATURE_COVER_HOT;
+            }
+            else
+            {
+              target_temperature_cover = gcode.popped_arg();
+            }
+            heat_pad_on();
             break;
           case Gcode::deactivate_lid_heating:
             heat_pad_off();
@@ -450,6 +468,23 @@ void ramp_temp_after_change_temp()
             gcode.device_info_response(device_serial, device_model, device_version);
             break;
           case Gcode::dfu:
+            break;
+          case Gcode::debug_mode:
+            if (gcode.pop_arg('S'))
+            {
+              if(gcode.popped_arg() == 0)
+              {
+                debug_print_mode = false;
+                break;
+              }
+            }
+            debug_print_mode = true;
+            break;
+          case Gcode::print_debug_stat:
+            if (debug_print_mode)
+            {
+              debug_status_prints();
+            }
             break;
         }
       }
@@ -747,10 +782,7 @@ void loop()
   {
     update_fans_from_state();
   }
-  if (just_changed_temp)
-  {
-    ramp_temp_after_change_temp();
-  }
+
   if (master_set_a_target && tc_timer.status() == Timer_status::idle && is_at_target())
   {
     tc_timer.start();

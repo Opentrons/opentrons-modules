@@ -1,5 +1,4 @@
 #include "fan.h"
-#include "wiring_private.h"
 #include "high_frequency_pwm.h"
 
 Fan::Fan()

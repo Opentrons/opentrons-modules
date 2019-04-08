@@ -192,6 +192,13 @@ void GcodeHandler::response(String msg)
   Serial.println(msg);
 }
 
+void GcodeHandler::response(String param, float val)
+{
+  Serial.print(param);
+  Serial.print(":");
+  Serial.println(val);
+}
+
 /* Use in .ino setup() with the baudrate to enable
  * serial communication using gcodes */
 void GcodeHandler::setup(int baudrate)

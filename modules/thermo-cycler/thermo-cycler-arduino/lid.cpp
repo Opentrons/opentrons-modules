@@ -59,10 +59,10 @@ void Lid::_update_status()
   uint8_t status_bits = (_is_cover_switch_pressed << 1) | (_is_bottom_switch_pressed << 0);
   /* Truth Table */
   /* Bit 1 | Bit 0
-  /*    0     0   -- Both switches OPEN
-   *    0     1   -- Bottom switch CLOSED, cover switch OPEN
-   *    1     0   -- Bottom switch OPEN, cover switch CLOSED
-   *    1     1   -- Both switches CLOSED
+  /*    0     0   -- Both switches CLOSED
+   *    0     1   -- Bottom switch OPEN, cover switch CLOSED
+   *    1     0   -- Bottom switch CLOSED, cover switch OPEN
+   *    1     1   -- Both switches OPEN
    */
   switch(status_bits)
   {
@@ -88,7 +88,7 @@ void Lid::check_switches()
     if (millis() - cover_switch_toggled_at >= 200)
     {
       cover_switch_toggled = false;
-      _is_cover_switch_pressed = !bool(digitalRead(PIN_COVER_SWITCH));
+      _is_cover_switch_pressed = bool(digitalRead(PIN_COVER_SWITCH));
     }
   }
   if (bottom_switch_toggled)
@@ -96,7 +96,7 @@ void Lid::check_switches()
     if (millis() - bottom_switch_toggled_at >= 200)
     {
       bottom_switch_toggled = false;
-      _is_bottom_switch_pressed = !bool(digitalRead(PIN_BOTTOM_SWITCH));
+      _is_bottom_switch_pressed = bool(digitalRead(PIN_BOTTOM_SWITCH));
     }
   }
 }
@@ -251,8 +251,9 @@ void Lid::setup()
 #endif
   _setup_digipot();
   delay(1);
-  _is_cover_switch_pressed = !bool(digitalRead(PIN_COVER_SWITCH));
-  _is_bottom_switch_pressed = !bool(digitalRead(PIN_BOTTOM_SWITCH));
+  // Both switches are NORMALLY CLOSED
+  _is_cover_switch_pressed = bool(digitalRead(PIN_COVER_SWITCH));
+  _is_bottom_switch_pressed = bool(digitalRead(PIN_BOTTOM_SWITCH));
   _update_status();
   attachInterrupt(digitalPinToInterrupt(PIN_COVER_SWITCH), _cover_switch_callback, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PIN_BOTTOM_SWITCH), _bottom_switch_callback, CHANGE);

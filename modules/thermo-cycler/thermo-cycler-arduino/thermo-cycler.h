@@ -43,10 +43,10 @@
 
 /********* PID: PLATE PELTIERS *********/
 
-#define DEFAULT_PLATE_PID_TIME 20
+#define DEFAULT_PLATE_PID_TIME 100
 
-#define PID_KP_PLATE_UP 0.05
-#define PID_KI_PLATE_UP 0.01
+#define PID_KP_PLATE_UP 0.2
+#define PID_KI_PLATE_UP 0.1
 #define PID_KD_PLATE_UP 0.0
 
 #define PID_KP_PLATE_DOWN PID_KP_PLATE_UP
@@ -97,7 +97,7 @@ String device_version = "v1.0.1";
 
 /********* MISC GLOBALS *********/
 
-#define USE_GCODES false
+#define USE_GCODES true
 unsigned long plotter_timestamp = 0;
 const int plotter_interval = 500;
 bool running_from_script = false;

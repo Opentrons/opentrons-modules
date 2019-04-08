@@ -26,6 +26,8 @@
   GCODE_DEF(heatsink_fan_on, M106), \
   GCODE_DEF(heatsink_fan_off, M107),\
   GCODE_DEF(dfu, dfu),              \
+  GCODE_DEF(debug_mode, M111),      \
+  GCODE_DEF(print_debug_stat, stat),\
   GCODE_DEF(max, -)
 
 #define GCODE_DEF(name, _) name
@@ -66,6 +68,7 @@ class GcodeHandler
       bool pop_arg(char key);
       void response(String msg);
       void response(String param, String msg);
+      void response(String param, float val);
 
     private:
       struct
