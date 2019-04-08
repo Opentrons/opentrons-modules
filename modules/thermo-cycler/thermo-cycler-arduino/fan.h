@@ -5,6 +5,9 @@
 
 #define ENABLE_DEFAULT_ACTIVE_HIGH  true
 
+/* This class is used to control the two fans in the thermocycler:
+ *  - Cover heatpad fan: Digital control (ON/OFF only)
+ *  - Heatsink fan: PWM control + ON/OFF control */
 class Fan
 {
   public:

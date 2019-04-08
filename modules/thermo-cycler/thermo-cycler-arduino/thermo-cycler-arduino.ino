@@ -51,7 +51,7 @@ void set_heat_pad_power(float val)
 {
   uint8_t byte_val = max(min(val * 255.0, 255), 0);
   pinMode(PIN_HEAT_PAD_CONTROL, OUTPUT);
-  if (byte_val >= 255) digitalWrite(PIN_HEAT_PAD_CONTROL, HIGH);
+  if (byte_val == 255) digitalWrite(PIN_HEAT_PAD_CONTROL, HIGH);
   else if (byte_val == 0) digitalWrite(PIN_HEAT_PAD_CONTROL, LOW);
   else hfq_analogWrite(PIN_HEAT_PAD_CONTROL, byte_val);
 }

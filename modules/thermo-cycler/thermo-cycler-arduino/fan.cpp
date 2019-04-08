@@ -4,22 +4,17 @@
 Fan::Fan()
 {}
 
+/* Only for the pwm controlled heatsink fan */
 void Fan::set_percentage(float p)
 {
   enable();
+  p = constrain(p, 0, 1);
   uint8_t val = p * 255.0;
-  if (val < 0)
-  {
-    val = 0;
-  }
-  else if (val > 255)
-  {
-    val = 255;
-  }
   current_power = p;
   hfq_analogWrite(_pwm_pin, val);
 }
 
+/* Only for the pwm controlled heatsink fan */
 void Fan::setup_pwm_pin(uint8_t pwm_pin)
 {
   _pwm_pin = pwm_pin;
