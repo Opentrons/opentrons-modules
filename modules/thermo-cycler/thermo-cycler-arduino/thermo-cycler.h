@@ -7,6 +7,7 @@
 #include "peltiers.h"
 #include "gcode.h"
 #include "tc_timer.h"
+#include "fan.h"
 
 /********* GCODE *********/
 #define BAUDRATE 115200
@@ -23,15 +24,17 @@
 #define NEO_PIN     A5
 #define NUM_PIXELS  22
 
-/********* FAN *********/
-
-#define PIN_FAN_SINK_CTRL           A4   // uses PWM frequency generator
-#define PIN_FAN_SINK_ENABLE         2    // Heat sink fan
+/********** HEAT PAD **********/
 
 #define PIN_HEAT_PAD_CONTROL        A3
-#define PIN_FAN_COVER               A2
 
-double current_fan_power = 0;
+/********* FAN *********/
+
+#define PIN_FAN_COVER               A2
+#define PIN_FAN_SINK_CTRL           A4   // uses PWM frequency generator
+#define PIN_FAN_SINK_ENABLE         2    // Heat sink fan
+#define FAN_POWER_HIGH              0.8
+#define FAN_POWER_LOW               0.2
 
 /********* TEMPERATURE PREDEFS *********/
 
@@ -40,10 +43,10 @@ double current_fan_power = 0;
 
 /********* PID: PLATE PELTIERS *********/
 
-#define DEFAULT_PLATE_PID_TIME 20
+#define DEFAULT_PLATE_PID_TIME 100
 
-#define PID_KP_PLATE_UP 0.05
-#define PID_KI_PLATE_UP 0.01
+#define PID_KP_PLATE_UP 0.2
+#define PID_KI_PLATE_UP 0.1
 #define PID_KD_PLATE_UP 0.0
 
 #define PID_KP_PLATE_DOWN PID_KP_PLATE_UP

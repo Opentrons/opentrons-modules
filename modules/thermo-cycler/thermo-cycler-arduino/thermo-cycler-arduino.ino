@@ -1,10 +1,13 @@
 #include "thermo-cycler.h"
+#include "high_frequency_pwm.h"
 
 TC_Timer tc_timer;
 GcodeHandler gcode;
 ThermistorsADC temp_probes;
 Lid lid;
 Peltiers peltiers;
+Fan cover_fan;
+Fan heatsink_fan;
 
 Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_RGBW);
 
@@ -46,11 +49,11 @@ PID PID_Cover(
 
 void set_heat_pad_power(float val)
 {
-  int byte_val = max(min(val * 255.0, 255), 0);
+  uint8_t byte_val = max(min(val * 255.0, 255), 0);
   pinMode(PIN_HEAT_PAD_CONTROL, OUTPUT);
   if (byte_val == 255) digitalWrite(PIN_HEAT_PAD_CONTROL, HIGH);
   else if (byte_val == 0) digitalWrite(PIN_HEAT_PAD_CONTROL, LOW);
-  else analogWrite(PIN_HEAT_PAD_CONTROL, byte_val);
+  else hfq_analogWrite(PIN_HEAT_PAD_CONTROL, byte_val);
 }
 
 void heat_pad_off()
@@ -65,37 +68,6 @@ void heat_pad_on()
   cover_should_be_hot = true;
 }
 
-void fan_cover_on()
-{
-  digitalWrite(PIN_FAN_COVER, LOW);
-}
-
-void fan_cover_off()
-{
-  digitalWrite(PIN_FAN_COVER, HIGH);
-}
-
-void fan_sink_percentage(float value)
-{
-  pinMode(PIN_FAN_SINK_CTRL, OUTPUT);
-  pinMode(PIN_FAN_SINK_ENABLE, OUTPUT);
-  digitalWrite(PIN_FAN_SINK_ENABLE, LOW);
-  int val = value * 255.0;
-  if (val < 0) val = 0;
-  else if (val > 255) val = 255;
-  current_fan_power = value;
-  analogWrite(PIN_FAN_SINK_CTRL, val);
-}
-
-void fan_sink_off()
-{
-  pinMode(PIN_FAN_SINK_CTRL, OUTPUT);
-  pinMode(PIN_FAN_SINK_ENABLE, OUTPUT);
-  digitalWrite(PIN_FAN_SINK_CTRL, LOW);
-  digitalWrite(PIN_FAN_SINK_ENABLE, HIGH);
-  current_fan_power = 0.0;
-}
-
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
@@ -103,7 +75,7 @@ void fan_sink_off()
 void disable_scary_stuff()
 {
     heat_pad_off();
-    fan_sink_off();
+    heatsink_fan.disable();
     peltiers.disable();
     target_temperature_plate = TEMPERATURE_ROOM;
 }
@@ -251,31 +223,49 @@ void update_cover_from_pid()
   }
 }
 
-void update_fan_from_state()
+void update_fans_from_state()
 {
-  if (is_target_cold())
+  static unsigned long last_checked = 0;
+
+  if (millis() - last_checked > 100)
   {
-    fan_sink_percentage(1.0);
-  }
-  else if (is_ramping_down())
-  {
-    fan_sink_percentage(0.5);
-  }
-  else if (is_ramping_up())
-  {
-    fan_sink_percentage(0.2);
-  }
-  else if (is_stabilizing())
-  {
-    fan_sink_percentage(0.0);
-  }
-  if (cover_should_be_hot)
-  {
-    fan_cover_on();
-  }
-  else
-  {
-    fan_cover_off();
+    last_checked = millis();
+    if (master_set_a_target)
+    {
+      if (is_target_cold())
+      {
+        heatsink_fan.set_percentage(1.0);
+        return;
+      }
+      else if (is_ramping_down())
+      {
+        heatsink_fan.set_percentage(0.5);
+        return;
+      }
+      else if (is_ramping_up())
+      {
+        heatsink_fan.set_percentage(0.2);
+        return;
+      }
+    }
+    if (temp_probes.heat_sink_temperature() > 45)
+    {
+      // Fan speed propertional to temperature
+      heatsink_fan.set_percentage((temp_probes.heat_sink_temperature() * 0.8) / 100);
+    }
+    else if(temp_probes.heat_sink_temperature() < 38)
+    {
+      heatsink_fan.disable();
+    }
+
+    if (cover_should_be_hot)
+    {
+      cover_fan.enable();
+    }
+    else
+    {
+      cover_fan.disable();
+    }
   }
 }
 
@@ -344,6 +334,20 @@ void ramp_temp_after_change_temp()
 /////////////////////////////////
 
 #if USE_GCODES == true
+  void debug_status_prints()
+  {
+    // Thermistors:
+    gcode.response("Pel1", temp_probes.left_pair_temperature());
+    gcode.response("Pel2", temp_probes.center_pair_temperature());
+    gcode.response("Pel3", temp_probes.right_pair_temperature());
+    gcode.response("Heatsink", temp_probes.heat_sink_temperature());
+
+    // Fan power:
+    gcode.response("Fan", heatsink_fan.current_power);
+    // Cover temperature:
+    gcode.response("Lid_temp", temp_probes.cover_temperature());
+  }
+
   void read_gcode()
   {
     if(gcode.received_newline())
@@ -364,6 +368,15 @@ void ramp_temp_after_change_temp()
             lid.close_cover();
             break;
           case Gcode::set_lid_temp:
+            if (!gcode.pop_arg('S'))
+            {
+              target_temperature_cover = TEMPERATURE_COVER_HOT;
+            }
+            else
+            {
+              target_temperature_cover = gcode.popped_arg();
+            }
+            heat_pad_on();
             break;
           case Gcode::deactivate_lid_heating:
             heat_pad_off();
@@ -427,13 +440,25 @@ void ramp_temp_after_change_temp()
               }
             }
             break;
+          case Gcode::heatsink_fan_on:
+            auto_fan = false;
+            heatsink_fan.enable();
+            if (gcode.pop_arg('S'))
+            {
+              heatsink_fan.set_percentage(gcode.popped_arg());
+            }
+            break;
+          case Gcode::heatsink_fan_off:
+            auto_fan = false;
+            heatsink_fan.disable();
+            break;
           case Gcode::pause:
             // Flush out details about how to resume and what happens to the timer
             // when paused
             break;
           case Gcode::deactivate_all:
             heat_pad_off();
-            fan_sink_off();
+            heatsink_fan.disable();
             peltiers.disable();
             target_temperature_plate = TEMPERATURE_ROOM;
             master_set_a_target = false;
@@ -443,6 +468,23 @@ void ramp_temp_after_change_temp()
             gcode.device_info_response(device_serial, device_model, device_version);
             break;
           case Gcode::dfu:
+            break;
+          case Gcode::debug_mode:
+            if (gcode.pop_arg('S'))
+            {
+              if(gcode.popped_arg() == 0)
+              {
+                debug_print_mode = false;
+                break;
+              }
+            }
+            debug_print_mode = true;
+            break;
+          case Gcode::print_debug_stat:
+            if (debug_print_mode)
+            {
+              debug_status_prints();
+            }
             break;
         }
       }
@@ -463,8 +505,8 @@ void print_info(bool force=false) {
           return;
         }
         if (debug_print_mode) Serial.println("\n\n*******");
-        if (debug_print_mode) Serial.print("\nAverage Plate-Temp (Heat sink temp):\t\t");
-        Serial.print(current_temperature_plate);
+        if (debug_print_mode) Serial.print("\nHeat sink temp:\t\t");
+        Serial.print(temp_probes.heat_sink_temperature());
         if (debug_print_mode){
           Serial.print("\n\t\t-------- Thermistors -------\n");
           Serial.print(temp_probes.back_left_temperature());
@@ -494,15 +536,15 @@ void print_info(bool force=false) {
         Serial.print(current_temperature_cover);
         if (running_from_script || running_graph) Serial.print(" ");
         if (debug_print_mode) Serial.print("\n\tCover-Target:\t");
-        if (!COVER_SHOULD_BE_HOT && debug_print_mode) Serial.print("off");
-        else Serial.print(temperature_cover_hot);
+        if (!cover_should_be_hot && debug_print_mode) Serial.print("off");
+        else Serial.print(TEMPERATURE_COVER_HOT);
         if (running_from_script || running_graph) Serial.print(" ");
         if (debug_print_mode) Serial.print("\n\tCover-PID:\t");
-        if (!COVER_SHOULD_BE_HOT && debug_print_mode) Serial.print("off");
+        if (!cover_should_be_hot && debug_print_mode) Serial.print("off");
         else Serial.print(temperature_swing_cover * 100.0);
         if (running_from_script || running_graph) Serial.print(" ");
         if (debug_print_mode) Serial.print("\nFan Power:\t\t");
-        Serial.print(current_fan_power * 100);
+        Serial.print(heatsink_fan.current_power * 100);
         Serial.println();
     }
 }
@@ -615,7 +657,7 @@ void read_from_serial() {
             else {
               auto_fan = false;
               float percentage = Serial.parseFloat();
-              fan_sink_percentage(percentage / 100.0);
+              heatsink_fan.set_percentage(percentage / 100.0);
             }
         }
         else if (Serial.peek() == 'p') {
@@ -670,12 +712,11 @@ void setup()
   current_temperature_plate = temp_probes.average_plate_temperature();
   current_temperature_cover = temp_probes.cover_temperature();
   lid.setup();
-
-  pinMode(PIN_FAN_SINK_CTRL, OUTPUT);
-  pinMode(PIN_FAN_COVER, OUTPUT);
-  fan_sink_off();
-  fan_cover_off();
-
+  cover_fan.setup_enable_pin(PIN_FAN_COVER, true);  // ON-OFF only. No speed control
+  cover_fan.disable();
+  heatsink_fan.setup_enable_pin(PIN_FAN_SINK_ENABLE, false);
+  heatsink_fan.setup_pwm_pin(PIN_FAN_SINK_CTRL);
+  heatsink_fan.disable();
   heat_pad_off();
 
   PID_left_pel.SetSampleTime(DEFAULT_PLATE_PID_TIME);
@@ -714,19 +755,19 @@ void setup()
 
 void loop()
 {
+  lid.check_switches();
 #if USE_GCODES
   /* Check if gcode(s) available on Serial */
   read_gcode();
+  if (master_set_a_target && lid.status() != Lid_status::closed)
+  {
+    gcode.response("WARNING", "Lid Open");
+  }
 #else
   read_from_serial();
   if (!running_from_script) print_info();
 #endif
 
-  lid.check_switches();
-  if (master_set_a_target && lid.status() != Lid_status::closed)
-  {
-    gcode.response("WARNING", "Lid Open");
-  }
 #if !DUMMY_BOARD
   if (temp_probes.update())
   {
@@ -739,12 +780,9 @@ void loop()
 #endif
   if (auto_fan)
   {
-    update_fan_from_state();
+    update_fans_from_state();
   }
-  if (just_changed_temp)
-  {
-    ramp_temp_after_change_temp();
-  }
+
   if (master_set_a_target && tc_timer.status() == Timer_status::idle && is_at_target())
   {
     tc_timer.start();
