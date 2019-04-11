@@ -172,6 +172,15 @@ void GcodeHandler::targetting_temperature_response(float target_temp,
   Serial.println((unsigned int)time_remaining);
 }
 
+void GcodeHandler::targetting_temperature_response(float target_temp,
+                                                   float current_temp)
+{
+  Serial.print(F("T:"));
+  Serial.print(target_temp, SERIAL_DIGITS_IN_RESPONSE);
+  Serial.print(F(" C:"));
+  Serial.println(current_temp, SERIAL_DIGITS_IN_RESPONSE);
+}
+
 void GcodeHandler::idle_temperature_response(float current_temp)
 {
   Serial.print(F("T:none"));
@@ -180,10 +189,16 @@ void GcodeHandler::idle_temperature_response(float current_temp)
   Serial.println(F(" H:none"));
 }
 
+void GcodeHandler::idle_lid_temperature_response(float current_temp)
+{
+  Serial.print(F("T:none"));
+  Serial.print(F(" C:"));
+  Serial.println(current_temp, SERIAL_DIGITS_IN_RESPONSE);
+}
 void GcodeHandler::response(String param, String msg)
 {
   Serial.print(param);
-  Serial.print(":");
+  Serial.print(F(":"));
   response(msg);
 }
 
@@ -192,11 +207,12 @@ void GcodeHandler::response(String msg)
   Serial.println(msg);
 }
 
-void GcodeHandler::response(String param, float val)
+void GcodeHandler::add_debug_response(String param, float val)
 {
   Serial.print(param);
-  Serial.print(":");
-  Serial.println(val);
+  Serial.print(F(":"));
+  Serial.print(val);
+  Serial.print(F(" "));
 }
 
 /* Use in .ino setup() with the baudrate to enable

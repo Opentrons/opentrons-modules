@@ -97,7 +97,6 @@ String device_version = "v1.0.1";
 
 /********* MISC GLOBALS *********/
 
-#define USE_GCODES true
 unsigned long plotter_timestamp = 0;
 const int plotter_interval = 500;
 bool running_from_script = false;

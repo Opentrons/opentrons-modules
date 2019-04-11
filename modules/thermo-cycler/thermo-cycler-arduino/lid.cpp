@@ -17,7 +17,7 @@ void Lid::_i2c_write(byte address, byte value)
   byte error = Wire.endTransmission();
   if (error)
   {
-    Serial.print("Digipot I2C Error: "); Serial.println(error);
+    // Serial.print("Digipot I2C Error: "); Serial.println(error);
   }
 }
 
@@ -76,7 +76,7 @@ void Lid::_update_status()
       _status = Lid_status::open;
       break;
     default:
-      _status = Lid_status::error;
+      _status = Lid_status::unknown;
       break;
   }
 }

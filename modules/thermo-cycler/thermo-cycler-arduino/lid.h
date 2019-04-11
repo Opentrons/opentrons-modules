@@ -59,7 +59,7 @@
           STATUS(in_between),  \
           STATUS(closed),   \
           STATUS(open),   \
-          STATUS(error),  \
+          STATUS(unknown),  \
           STATUS(max)
 
 #define STATUS(_status) _status

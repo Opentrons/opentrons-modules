@@ -78,6 +78,8 @@ setup:
 build: build-magdeck build-tempdeck build-thermocycler
 
 DUMMY_BOARD := false
+USE_GCODES := true
+LID_WARNING := true
 
 .PHONY: build-magdeck
 build-magdeck:
@@ -93,7 +95,8 @@ build-tempdeck:
 
 .PHONY: build-thermocycler
 build-thermocycler:
-	echo "compiler.cpp.extra_flags=-DDUMMY_BOARD=$(DUMMY_BOARD)" > $(ARDUINO15_LOC)/packages/adafruit/hardware/samd/1.3.0/platform.local.txt
+	echo "compiler.cpp.extra_flags=-DDUMMY_BOARD=$(DUMMY_BOARD) -DUSE_GCODES=$(USE_GCODES) -DLID_WARNING=$(LID_WARNING)" \
+	> $(ARDUINO15_LOC)/packages/adafruit/hardware/samd/1.3.0/platform.local.txt
 	$(ARDUINO) --verify --board adafruit:samd:adafruit_feather_m0 $(MODULES_DIR)/thermo-cycler/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
 	mkdir -p $(BUILDS_DIR)/thermo-cycler
 	cp $(BUILDS_DIR)/tmp/thermo-cycler-arduino.ino.bin $(BUILDS_DIR)/thermo-cycler/
