@@ -9,7 +9,7 @@ volatile unsigned long bottom_switch_toggled_at = 0;
 Lid::Lid()
 {}
 
-void Lid::_i2c_write(byte address, byte value)
+bool Lid::_i2c_write(byte address, byte value)
 {
   Wire.beginTransmission(ADDRESS_DIGIPOT);
   Wire.write(address);
@@ -17,11 +17,12 @@ void Lid::_i2c_write(byte address, byte value)
   byte error = Wire.endTransmission();
   if (error)
   {
-    // Serial.print("Digipot I2C Error: "); Serial.println(error);
+    return false;
   }
+  return true;
 }
 
-void Lid::set_current(float current)
+bool Lid::_set_current(float current)
 {
   // when wiper is set to "one_amp_byte_value", then current is 1.0 amp
   int c = 255.0 * current * 0.5;
@@ -30,22 +31,33 @@ void Lid::set_current(float current)
     c = 255;
   }
   // first wiper address on digi-pot is at location 0x00
-  _i2c_write(AD5110_SET_VALUE_CMD, c);
+  if(!_i2c_write(AD5110_SET_VALUE_CMD, c))
+  {
+    return false;
+  }
   delay(SET_CURRENT_DELAY_MS);
+  return true;
 }
 
-void Lid::_save_current()
+bool Lid::_save_current()
 {
-  _i2c_write(AD5110_SAVE_VALUE_CMD, 0x00);
+  if(!_i2c_write(AD5110_SAVE_VALUE_CMD, 0x00))
+  {
+    return false;
+  }
   delay(SET_CURRENT_DELAY_MS);
+  return true;
 }
 
-void Lid::_setup_digipot()
+bool Lid::_setup_digipot()
 {
   Wire.begin();
   // make sure that on power-up, the digi-pot sets the current to 0.0amps
-  set_current(0.0);
-  _save_current();
+  if(_set_current(0.0) && _save_current())
+  {
+    return true;
+  }
+  return false;
 }
 
 Lid_status Lid::status()
@@ -234,7 +246,7 @@ void _bottom_switch_callback()
   bottom_switch_toggled_at = millis();
 }
 
-void Lid::setup()
+bool Lid::setup()
 {
 	pinMode(PIN_SOLENOID, OUTPUT);
 	solenoid_off();
@@ -249,12 +261,16 @@ void Lid::setup()
   pinMode(PIN_COVER_SWITCH, INPUT);
   pinMode(PIN_BOTTOM_SWITCH, INPUT);
 #endif
-  _setup_digipot();
-  delay(1);
   // Both switches are NORMALLY CLOSED
   _is_cover_switch_pressed = bool(digitalRead(PIN_COVER_SWITCH));
   _is_bottom_switch_pressed = bool(digitalRead(PIN_BOTTOM_SWITCH));
   _update_status();
   attachInterrupt(digitalPinToInterrupt(PIN_COVER_SWITCH), _cover_switch_callback, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PIN_BOTTOM_SWITCH), _bottom_switch_callback, CHANGE);
+  // Digipot used for stepper control
+  if(_setup_digipot())
+  {
+    return true;
+  }
+  return false;
 }

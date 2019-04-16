@@ -361,18 +361,10 @@ void ramp_temp_after_change_temp()
             gcode.response("Lid", lid.LID_STATUS_STRINGS[static_cast<int>(lid.status())]);
             break;
           case Gcode::open_lid:
-            // Send ack right away since opening cover takes time > serial_response_timeout (driver)
-            gcode.send_ack();
             lid.open_cover();
-            // Indicate lid open action over
-            gcode.response("Lid opened");
             break;
           case Gcode::close_lid:
-            // Send ack right away since closing cover takes time > serial_response_timeout (driver)
-            gcode.send_ack();
             lid.close_cover();
-            // Indicate lid closing action over
-            gcode.response("Lid closed");
             break;
           case Gcode::set_lid_temp:
             if (!gcode.pop_arg('S'))
@@ -723,13 +715,16 @@ void setup()
 {
   gcode.setup(BAUDRATE);
   delay(1000);
-
   peltiers.setup();
   temp_probes.setup(THERMISTOR_VOLTAGE);
   while (!temp_probes.update()) {}
   current_temperature_plate = temp_probes.average_plate_temperature();
   current_temperature_cover = temp_probes.cover_temperature();
-  lid.setup();
+  if(!lid.setup())
+  {
+    gcode.response("Lid","I2C Error");
+    gcode.send_ack();
+  }
   cover_fan.setup_enable_pin(PIN_FAN_COVER, true);  // ON-OFF only. No speed control
   cover_fan.disable();
   heatsink_fan.setup_enable_pin(PIN_FAN_SINK_ENABLE, false);

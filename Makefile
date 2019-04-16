@@ -77,9 +77,9 @@ setup:
 .PHONY: build
 build: build-magdeck build-tempdeck build-thermocycler
 
-DUMMY_BOARD := false
-USE_GCODES := true
-LID_WARNING := true
+DUMMY_BOARD ?= false
+USE_GCODES ?= true
+LID_WARNING ?= true
 
 .PHONY: build-magdeck
 build-magdeck:
