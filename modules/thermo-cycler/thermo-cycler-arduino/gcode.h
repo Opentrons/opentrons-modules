@@ -15,6 +15,7 @@
   GCODE_DEF(open_lid, M126),        \
   GCODE_DEF(close_lid, M127),       \
   GCODE_DEF(set_lid_temp, M140),    \
+  GCODE_DEF(get_lid_temp, M141),    \
   GCODE_DEF(deactivate_lid_heating, M108),  \
   GCODE_DEF(set_plate_temp, M104),  \
   GCODE_DEF(get_plate_temp, M105),  \
@@ -61,14 +62,16 @@ class GcodeHandler
       void send_ack();
       bool buffer_empty();
       void device_info_response(String serial, String model, String version);
+      void targetting_temperature_response(float target_temp, float current_temp);
       void targetting_temperature_response(float target_temp,
                                            float current_temp, float time_left);
       void idle_temperature_response(float current_temp);
+      void idle_lid_temperature_response(float current_temp);
       float popped_arg();
       bool pop_arg(char key);
       void response(String msg);
       void response(String param, String msg);
-      void response(String param, float val);
+      void add_debug_response(String param, float val);
 
     private:
       struct

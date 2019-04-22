@@ -333,19 +333,18 @@ void ramp_temp_after_change_temp()
 /////////////////////////////////
 /////////////////////////////////
 
-#if USE_GCODES == true
+#if USE_GCODES
   void debug_status_prints()
   {
     // Thermistors:
-    gcode.response("Pel1", temp_probes.left_pair_temperature());
-    gcode.response("Pel2", temp_probes.center_pair_temperature());
-    gcode.response("Pel3", temp_probes.right_pair_temperature());
-    gcode.response("Heatsink", temp_probes.heat_sink_temperature());
-
+    gcode.add_debug_response("Pel1", temp_probes.left_pair_temperature());
+    gcode.add_debug_response("Pel2", temp_probes.center_pair_temperature());
+    gcode.add_debug_response("Pel3", temp_probes.right_pair_temperature());
+    gcode.add_debug_response("Heatsink", temp_probes.heat_sink_temperature());
     // Fan power:
-    gcode.response("Fan", heatsink_fan.current_power);
+    gcode.add_debug_response("Fan", heatsink_fan.current_power);
     // Cover temperature:
-    gcode.response("Lid_temp", temp_probes.cover_temperature());
+    gcode.add_debug_response("Lid_temp", temp_probes.cover_temperature());
   }
 
   void read_gcode()
@@ -377,6 +376,17 @@ void ramp_temp_after_change_temp()
               target_temperature_cover = gcode.popped_arg();
             }
             heat_pad_on();
+            break;
+          case Gcode::get_lid_temp:
+            if (cover_should_be_hot)
+            {
+              gcode.targetting_temperature_response(target_temperature_cover,
+              current_temperature_cover);
+            }
+            else
+            {
+              gcode.idle_lid_temperature_response(current_temperature_cover);
+            }
             break;
           case Gcode::deactivate_lid_heating:
             heat_pad_off();
@@ -705,13 +715,16 @@ void setup()
 {
   gcode.setup(BAUDRATE);
   delay(1000);
-
   peltiers.setup();
   temp_probes.setup(THERMISTOR_VOLTAGE);
   while (!temp_probes.update()) {}
   current_temperature_plate = temp_probes.average_plate_temperature();
   current_temperature_cover = temp_probes.cover_temperature();
-  lid.setup();
+  if(!lid.setup())
+  {
+    gcode.response("Lid","I2C Error");
+    gcode.send_ack();
+  }
   cover_fan.setup_enable_pin(PIN_FAN_COVER, true);  // ON-OFF only. No speed control
   cover_fan.disable();
   heatsink_fan.setup_enable_pin(PIN_FAN_SINK_ENABLE, false);
@@ -759,10 +772,13 @@ void loop()
 #if USE_GCODES
   /* Check if gcode(s) available on Serial */
   read_gcode();
-  if (master_set_a_target && lid.status() != Lid_status::closed)
-  {
-    gcode.response("WARNING", "Lid Open");
-  }
+  #if LID_WARNING
+    if (master_set_a_target && lid.status() != Lid_status::closed)
+    {
+      gcode.response("WARNING", "Lid Open");
+      gcode.send_ack();
+    }
+  #endif
 #else
   read_from_serial();
   if (!running_from_script) print_info();

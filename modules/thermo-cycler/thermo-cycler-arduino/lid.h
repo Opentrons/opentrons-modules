@@ -50,16 +50,16 @@
 /* The TC has two switches to detect lid positions: one inside the lid (PIN_COVER_SWITCH)
  * that is engaged when the lid fully opens and the other in the main
  * boards assembly (PIN_BOTTOM_SWITCH) which is engaged when the lid is closed
- * and locked. These are N.O. switches and the pins read HIGH when not engaged.
+ * and locked. These are N.C. switches and the pins read LOW when not engaged.
  * When neither of the switch is engaged, the lid is assumed to be 'in_between'
- * 'open' and 'closed' status. When both switches read LOW (which should never happen),
+ * 'open' and 'closed' status. When both switches read HIGH (which should never happen),
  * the lid is in 'error' state.
  */
 #define STATUS_TABLE \
           STATUS(in_between),  \
           STATUS(closed),   \
           STATUS(open),   \
-          STATUS(error),  \
+          STATUS(unknown),  \
           STATUS(max)
 
 #define STATUS(_status) _status
@@ -77,7 +77,7 @@ class Lid
   public:
 
     Lid();
-    void setup();
+    bool setup();
     void open_cover();
     void close_cover();
     Lid_status status();
@@ -87,7 +87,6 @@ class Lid
     void motor_on();
     void set_speed(float mm_per_sec);
     void set_acceleration(float mm_per_sec_per_sec);
-    void set_current(float current);
     bool move_millimeters(float mm);
     void check_switches();
     static const char * LID_STATUS_STRINGS[TO_INT(Lid_status::max)+1];
@@ -95,9 +94,10 @@ class Lid
   private:
     bool _is_bottom_switch_pressed;
     bool _is_cover_switch_pressed;
-    void _setup_digipot();
-    void _save_current();
-    void _i2c_write(byte address, byte value);
+    bool _setup_digipot();
+    bool _save_current();
+    bool _set_current(float current);
+    bool _i2c_write(byte address, byte value);
     void _reset_acceleration();
     void _calculate_step_delay();
     void _update_acceleration();
