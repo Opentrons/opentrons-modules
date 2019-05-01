@@ -34,6 +34,12 @@
 #define TOTAL_THERMISTORS              8
 #define TOTAL_PLATE_THERMISTORS        6
 
+typedef struct
+{
+  int adc_reading;
+  float celsius;
+}AdcToCelsius;
+
 class ThermistorsADC{
       public:
 
@@ -91,7 +97,7 @@ class ThermistorsADC{
             // lookup table provided for thermistor PN: KS103J2
             // ADC values calculated for when powering 1.5 volts into
             // a 10k ohm resistor, followed by the thermistor leading to GND
-            static const int TABLE[ADC_TABLE_SIZE][2];
+            static const AdcToCelsius TABLE[ADC_TABLE_SIZE];
 };
 
 #endif
