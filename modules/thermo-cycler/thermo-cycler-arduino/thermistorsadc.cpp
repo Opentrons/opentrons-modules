@@ -106,28 +106,28 @@ int ThermistorsADC::_read_adc(int index) {
 }
 
 float ThermistorsADC::_adc_to_celsius(int _adc) {
-  if (_adc < TABLE[ADC_TABLE_SIZE-1][0]) {
-    return TABLE[ADC_TABLE_SIZE-1][1];
+  if (_adc < TABLE[ADC_TABLE_SIZE-1].adc_reading) {
+    return TABLE[ADC_TABLE_SIZE-1].celsius;
   }
-  else if (_adc > TABLE[0][0]){
-    return TABLE[0][1];
+  else if (_adc > TABLE[0].adc_reading){
+    return TABLE[0].celsius;
   }
   else {
     int ADC_LOW, ADC_HIGH;
     for (int i=0;i<ADC_TABLE_SIZE - 1;i++){
-      ADC_HIGH = TABLE[i][0];
-      ADC_LOW = TABLE[i+1][0];
+      ADC_HIGH = TABLE[i].adc_reading;
+      ADC_LOW = TABLE[i+1].adc_reading;
       if (_adc >= ADC_LOW && _adc <= ADC_HIGH){
         float p = float(abs(ADC_HIGH - _adc)) / abs(ADC_HIGH - ADC_LOW);
-        p *= float(abs(TABLE[i+1][1] - TABLE[i][1]));
-        p += float(TABLE[i][1]);
+        p *= float(abs(TABLE[i+1].celsius - TABLE[i].celsius));
+        p += float(TABLE[i].celsius);
         return p;
       }
     }
   }
 }
 
-const int ThermistorsADC::TABLE[][2] = {
+const AdcToCelsius ThermistorsADC::TABLE[] = {
       // ADC, Celsius
       {21758, -20},
       {21638, -19},
