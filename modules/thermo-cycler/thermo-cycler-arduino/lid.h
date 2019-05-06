@@ -37,8 +37,18 @@
 #define ADDRESS_DIGIPOT 0x2C  // 7-bit address
 #define SET_CURRENT_DELAY_MS 20
 #define AD5110_CURRENT_SCALER 1.0
+
+// Current setting values calculated from datasheet
+#define CURRENT_SETTING_1 12  // Vout = 0.08V
+#define CURRENT_SETTING_2 85  // Vout = 0.55V
+#define CURRENT_SETTING_3 64  // Vout = 0.3945 (approx)
+#define CURRENT_SETTING_4 77  // Vout = 0.48  (Imax=1.2)
+#define CURRENT_SETTING_5 99  // Vout = 0.7V (calculated. Not observed)
+
+#define CURRENT_SETTING CURRENT_SETTING_4
 #define AD5110_SET_VALUE_CMD 0x02
 #define AD5110_SAVE_VALUE_CMD 0x01
+#define AD5110_READ_TOLERANCE_CMD 0x06
 
 #define MOTOR_CURRENT_VREF 0.75   // TODO: Update this to correct value later
 
@@ -46,12 +56,14 @@
 #define CURRENT_LOW 0.01
 #define MOTOR_ENABLE_DELAY_MS 5
 
-#define DIRECTION_DOWN LOW
-#define DIRECTION_UP HIGH
+#define DIRECTION_DOWN HIGH
+#define DIRECTION_UP LOW
 
-#define STEPS_PER_MM 15  // full-stepping
-#define LID_MOTOR_RANGE_MM  300 // The max distance in mm the motor should move between open to close positions
+#define STEPS_PER_MM 480  // full-stepping
+#define LID_MOTOR_RANGE_MM  390 // The max distance in mm the motor should move between open to close positions
 #define PULSE_HIGH_MICROSECONDS 2
+#define MOTOR_STEP_DELAY 60
+#define LID_CLOSE_BACKTRACK_STEPS 3600
 
 #define TO_INT(an_enum) static_cast<int>(an_enum)
 
@@ -86,8 +98,8 @@ class Lid
 
     Lid();
     bool setup();
-    void open_cover();
-    void close_cover();
+    bool open_cover();
+    bool close_cover();
     Lid_status status();
     void solenoid_on();
     void solenoid_off();
@@ -100,19 +112,21 @@ class Lid
     void reset_motor_driver();
     bool is_driver_faulted();
     static const char * LID_STATUS_STRINGS[TO_INT(Lid_status::max)+1];
+    float _read_tolerance();
 
   private:
     bool _is_bottom_switch_pressed;
     bool _is_cover_switch_pressed;
     bool _setup_digipot();
     bool _save_current();
-    bool _set_current(float current);
+    bool _set_current(uint8_t current_data);
     bool _i2c_write(byte address, byte value);
     void _reset_acceleration();
     void _calculate_step_delay();
     void _update_acceleration();
     void _motor_step(uint8_t dir);
     void _update_status();
+    byte _i2c_read();
     uint16_t _to_dac_out(float driver_vref);
 
     double _step_delay_microseconds = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
@@ -127,6 +141,7 @@ class Lid
       max
     };
     uint16_t _debounce_state[TO_INT(_Lid_switch::max)] = {0};
+    float digipot_tolerance;
 };
 
 #endif

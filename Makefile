@@ -83,6 +83,7 @@ LID_WARNING ?= true
 HFQ_PWM ?= false
 OLD_PID_INTERVAL ?= true
 HW_VERSION ?= 3
+LID_TESTING ?= false
 
 .PHONY: build-magdeck
 build-magdeck:
@@ -98,7 +99,7 @@ build-tempdeck:
 
 .PHONY: build-thermocycler
 build-thermocycler:
-	echo "compiler.cpp.extra_flags=-DDUMMY_BOARD=$(DUMMY_BOARD) -DUSE_GCODES=$(USE_GCODES) -DLID_WARNING=$(LID_WARNING) -DHFQ_PWM=$(HFQ_PWM) -DOLD_PID_INTERVAL=$(OLD_PID_INTERVAL) -DHW_VERSION=$(HW_VERSION)" \
+	echo "compiler.cpp.extra_flags=-DDUMMY_BOARD=$(DUMMY_BOARD) -DUSE_GCODES=$(USE_GCODES) -DLID_WARNING=$(LID_WARNING) -DHFQ_PWM=$(HFQ_PWM) -DOLD_PID_INTERVAL=$(OLD_PID_INTERVAL) -DHW_VERSION=$(HW_VERSION) -DLID_TESTING=$(LID_TESTING)" \
 	> $(ARDUINO15_LOC)/packages/Opentrons/hardware/samd/$(OPENTRONS_SAMD_BOARDS_VER)/platform.local.txt
 	$(ARDUINO) --verify --board Opentrons:samd:thermocycler_m0 $(MODULES_DIR)/thermo-cycler/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
 	mkdir -p $(BUILDS_DIR)/thermo-cycler

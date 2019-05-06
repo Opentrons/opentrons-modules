@@ -23,16 +23,23 @@ bool Lid::_i2c_write(byte address, byte value)
   return true;
 }
 
-bool Lid::_set_current(float current)
+byte Lid::_i2c_read()
 {
-  // when wiper is set to "one_amp_byte_value", then current is 1.0 amp
-  int c = 255.0 * current * 0.5;
-  if(c > 255)
+  Wire.requestFrom(ADDRESS_DIGIPOT, 1); // request 1 byte from the digipot
+  delay(10);
+  if(Wire.available())
   {
-    c = 255;
+    byte r = Wire.read();
+    Serial.print("Received from digipot: "); Serial.println(r, BIN);
+    return r;
   }
+  return -1;
+}
+
+bool Lid::_set_current(uint8_t data)
+{
   // first wiper address on digi-pot is at location 0x00
-  if(!_i2c_write(AD5110_SET_VALUE_CMD, c))
+  if(!_i2c_write(AD5110_SET_VALUE_CMD, data))
   {
     return false;
   }
@@ -48,6 +55,28 @@ bool Lid::_save_current()
   }
   delay(SET_CURRENT_DELAY_MS);
   return true;
+}
+
+float Lid::_read_tolerance()
+{
+  _i2c_write(AD5110_READ_TOLERANCE_CMD, 0x01);
+  delay(30);
+  byte tol_byte = _i2c_read();
+  byte integer = ((tol_byte & 0b01111000) >> 3);
+  byte fraction = tol_byte & 0b00000111;
+  byte sign = ((tol_byte & 0b10000000) >> 7);
+  if (sign == 0)
+  {
+    sign = -1;
+  }
+  else
+  {
+    sign = 1;
+  }
+  float tol = sign * (integer + ((fraction & 0x04) >> 2) * 0.5 +
+                                ((fraction & 0x02) >> 1) * 0.25 +
+                                ((fraction & 0x01) >> 0) * 0.125);
+  return tol;
 }
 
 bool Lid::_setup_digipot()
@@ -153,11 +182,7 @@ void Lid::_motor_step(uint8_t dir)
   digitalWrite(PIN_STEPPER_STEP, HIGH);
   delayMicroseconds(PULSE_HIGH_MICROSECONDS);
   digitalWrite(PIN_STEPPER_STEP, LOW);
-  delayMicroseconds(long(_step_delay_microseconds) % 1000);
-  if (_step_delay_microseconds >= 1000)
-  {
-    delay(_step_delay_microseconds / 1000);
-  }
+  delayMicroseconds(MOTOR_STEP_DELAY);
 }
 
 uint16_t Lid::_to_dac_out(float driver_vref)
@@ -208,14 +233,19 @@ bool Lid::move_millimeters(float mm)
   uint8_t dir = DIRECTION_UP;
   if (mm < 0) dir = DIRECTION_DOWN;
   unsigned long steps = abs(mm) * float(STEPS_PER_MM);
-  motor_on();
+
   _reset_acceleration();
   for (unsigned long i=0;i<steps;i++)
   {
     _motor_step(dir);
-    _update_acceleration();
     check_switches();
-    if (dir)
+  #if LID_TESTING
+    if (Serial.available())
+    {
+      return false;
+    }
+  #endif
+    if (dir == DIRECTION_UP)
     {
       if (_is_cover_switch_pressed)
       {
@@ -226,32 +256,47 @@ bool Lid::move_millimeters(float mm)
     {
       if (_is_bottom_switch_pressed)
       {
+        for (int j = 0; j < LID_CLOSE_BACKTRACK_STEPS; j++)
+        {
+          // Backtrack a bit
+          _motor_step(DIRECTION_UP);
+        }
         return true;
       }
     }
   }
-  motor_off();
   return false;
 }
 
-void Lid::open_cover()
+bool Lid::open_cover()
 {
   if (_is_cover_switch_pressed)
   {
-     return;
+     return true;
   }
-  move_millimeters(LID_MOTOR_RANGE_MM);
+  motor_on();
+  move_millimeters(-10);    // move down a bit
+  solenoid_on();
+  move_millimeters(10);     // move up a bit
+  solenoid_off();
+  bool res = move_millimeters(LID_MOTOR_RANGE_MM);
   motor_off();
+  return res;
 }
 
-void Lid::close_cover()
+bool Lid::close_cover()
 {
   if (_is_bottom_switch_pressed)
   {
-    return;
+    return true;
   }
-  move_millimeters(-LID_MOTOR_RANGE_MM);
+  solenoid_on();
+  motor_on();
+  bool res = move_millimeters(-LID_MOTOR_RANGE_MM);
+  solenoid_off();
+  delay(500);
   motor_off();
+  return res;
 }
 
 // Not a Lid class method
@@ -280,6 +325,7 @@ void _motor_fault_callback()
 
 bool Lid::setup()
 {
+  bool status = true;
 	pinMode(PIN_SOLENOID, OUTPUT);
 	solenoid_off();
 #if HW_VERSION >= 3
@@ -290,7 +336,24 @@ bool Lid::setup()
 	pinMode(PIN_STEPPER_STEP, OUTPUT);
 	pinMode(PIN_STEPPER_DIR, OUTPUT);
 	pinMode(PIN_STEPPER_ENABLE, OUTPUT);
+#if HW_VERSION >= 3
+  attachInterrupt(digitalPinToInterrupt(PIN_MOTOR_FAULT), _motor_fault_callback, FALLING);
+  // Use DAC to set Vref for motor current limit
+  analogWriteResolution(10);
+  analogWrite(PIN_MOTOR_CURRENT_VREF, _to_dac_out(MOTOR_CURRENT_VREF));
+  analogWriteResolution(8);
+  status = true;
+#else
+  // No fault detection
+  // Digipot used for stepper control Vref for motor current limit
+  if(!_setup_digipot())
+  {
+    status = false;
+  }
+#endif
 	motor_off();
+  _set_current(CURRENT_SETTING);
+  _save_current();
 #if DUMMY_BOARD
   pinMode(PIN_COVER_SWITCH, INPUT_PULLUP);
   pinMode(PIN_BOTTOM_SWITCH, INPUT_PULLUP);
@@ -298,28 +361,11 @@ bool Lid::setup()
   pinMode(PIN_COVER_SWITCH, INPUT);
   pinMode(PIN_BOTTOM_SWITCH, INPUT);
 #endif
-
   // Both switches are NORMALLY CLOSED
   _is_cover_switch_pressed = bool(digitalRead(PIN_COVER_SWITCH));
   _is_bottom_switch_pressed = bool(digitalRead(PIN_BOTTOM_SWITCH));
   _update_status();
   attachInterrupt(digitalPinToInterrupt(PIN_COVER_SWITCH), _cover_switch_callback, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PIN_BOTTOM_SWITCH), _bottom_switch_callback, CHANGE);
-
-#if HW_VERSION >= 3
-  attachInterrupt(digitalPinToInterrupt(PIN_MOTOR_FAULT), _motor_fault_callback, FALLING);
-  // Use DAC to set Vref for motor current limit
-  analogWriteResolution(10);
-  analogWrite(PIN_MOTOR_CURRENT_VREF, _to_dac_out(MOTOR_CURRENT_VREF));
-  analogWriteResolution(8);
-  return true;
-#else
-  // No fault detection
-  // Digipot used for stepper control Vref for motor current limit
-  if(_setup_digipot())
-  {
-    return true;
-  }
-#endif
-  return false;
+  return status;
 }

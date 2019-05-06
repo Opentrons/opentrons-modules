@@ -315,10 +315,42 @@ void update_fans_from_state()
             gcode.response("Lid", lid.LID_STATUS_STRINGS[static_cast<int>(lid.status())]);
             break;
           case Gcode::open_lid:
+          #if LID_TESTING
+            gcode_rec_timestamp = millis();
+            Serial.print("Opening, ");
+            if (lid.open_cover())
+            {
+              Serial.print("Opened, ");
+              Serial.print(millis() - gcode_rec_timestamp);
+              Serial.print(", ");
+            }
+            else
+            {
+              Serial.print("Errored, ");
+              Serial.print(millis() - gcode_rec_timestamp);
+              Serial.print(", ");
+            }
+          #else
             lid.open_cover();
+          #endif
             break;
           case Gcode::close_lid:
+          #if LID_TESTING
+            gcode_rec_timestamp = millis();
+            Serial.print("Closing, ");
+            if (lid.close_cover())
+            {
+              Serial.print("Closed, ");
+              Serial.println(millis() - gcode_rec_timestamp);
+            }
+            else
+            {
+              Serial.print("Errored:");
+              Serial.println(millis() - gcode_rec_timestamp);
+            }
+          #else
             lid.close_cover();
+          #endif
             break;
           case Gcode::set_lid_temp:
             if (!gcode.pop_arg('S'))
@@ -459,7 +491,9 @@ void update_fans_from_state()
             break;
         }
       }
+    #if !LID_TESTING
       gcode.send_ack();
+    #endif
     }
   }
 #else

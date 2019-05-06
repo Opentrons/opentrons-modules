@@ -133,5 +133,8 @@ bool debug_print_mode = true;
 bool gcode_debug_mode = false;  // Debug mode is not compatible with API
 bool running_graph = false;
 bool zoom_mode = false;
+#if LID_TESTING
+unsigned long gcode_rec_timestamp;
+#endif
 /***************************************/
 #endif
