@@ -53,14 +53,18 @@ void set_heat_pad_power(float val)
   pinMode(PIN_HEAT_PAD_CONTROL, OUTPUT);
   if (byte_val == 255) digitalWrite(PIN_HEAT_PAD_CONTROL, HIGH);
   else if (byte_val == 0) digitalWrite(PIN_HEAT_PAD_CONTROL, LOW);
+#if HFQ_PWM
   else hfq_analogWrite(PIN_HEAT_PAD_CONTROL, byte_val);
+#else
+    else analogWrite(PIN_HEAT_PAD_CONTROL, byte_val);
+#endif
 }
 
 void heat_pad_off()
 {
   cover_should_be_hot = false;
   temperature_swing_cover = 0.0;
-  set_heat_pad_power(0);
+  // set_heat_pad_power(0);
 }
 
 void heat_pad_on()
@@ -768,6 +772,10 @@ void setup()
 
 void loop()
 {
+  if (analogRead(PIN_HEAT_PAD_CONTROL) == HIGH)
+  {
+    Serial.println("Blink");
+  }
   lid.check_switches();
 #if USE_GCODES
   /* Check if gcode(s) available on Serial */

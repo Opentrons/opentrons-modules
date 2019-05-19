@@ -11,7 +11,11 @@ void Fan::set_percentage(float p)
   p = constrain(p, 0, 1);
   uint8_t val = p * 255.0;
   current_power = p;
+#if HFQ_PWM
   hfq_analogWrite(_pwm_pin, val);
+#else
+  analogWrite(_pwm_pin, val);
+#endif
 }
 
 /* Only for the pwm controlled heatsink fan */

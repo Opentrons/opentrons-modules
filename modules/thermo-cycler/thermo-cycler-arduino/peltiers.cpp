@@ -30,7 +30,11 @@ void Peltiers::set_cold_percentage(double perc, Peltier pel_enum)
     pel[n].prev_val_b = 0;
     if (val == 255) digitalWrite(pel[n].pin_a, HIGH);
     else if (val == 0) digitalWrite(pel[n].pin_a, LOW);
+#if HFQ_PWM
     else hfq_analogWrite(pel[n].pin_a, val);
+#else
+    else analogWrite(pel[n].pin_a, val);
+#endif
   }
   pel[n].prev_val_a = val;
 }
@@ -48,7 +52,11 @@ void Peltiers::set_hot_percentage(double perc, Peltier pel_enum)
     pel[n].prev_val_a = 0;
     if (val == 255) digitalWrite(pel[n].pin_b, HIGH);
     else if (val == 0) digitalWrite(pel[n].pin_b, LOW);
+#if HFQ_PWM
     else hfq_analogWrite(pel[n].pin_b, val);
+#else
+    else analogWrite(pel[n].pin_b, val);
+#endif
   }
   pel[n].prev_val_b = val;
 }

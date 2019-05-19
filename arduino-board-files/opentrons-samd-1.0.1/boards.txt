@@ -1,0 +1,52 @@
+# Copyright (c) 2014-2015 Arduino LLC.  All right reserved.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Opentrons SAMD Modules Board Configurations
+#
+# For more information see:
+# - https://github.com/arduino/Arduino/wiki/Arduino-IDE-1.5---3rd-party-Hardware-specification
+# - https://github.com/arduino/Arduino/wiki/Arduino-Hardware-Cores-migration-guide-from-1.0-to-1.6
+#
+##############################################################
+menu.cache=Cache
+
+thermocycler_m0.name=Opentrons Thermocycler M0
+thermocycler_m0.vid.0=0x04D8
+thermocycler_m0.pid.0=0xED8C
+thermocycler_m0.vid.1=0x239A
+thermocycler_m0.pid.1=0x000B
+thermocycler_m0.upload.tool=bossac
+thermocycler_m0.upload.protocol=sam-ba
+thermocycler_m0.upload.maximum_size=262144
+thermocycler_m0.upload.offset=0x2000
+thermocycler_m0.upload.use_1200bps_touch=true
+thermocycler_m0.upload.wait_for_upload_port=true
+thermocycler_m0.upload.native_usb=true
+thermocycler_m0.build.mcu=cortex-m0plus
+thermocycler_m0.build.f_cpu=48000000L
+thermocycler_m0.build.usb_product="Opentrons Thermocycler"
+thermocycler_m0.build.usb_manufacturer="Microchip Technology Inc"
+thermocycler_m0.build.board=SAMD_ZERO
+thermocycler_m0.build.core=arduino
+thermocycler_m0.build.extra_flags=-DARDUINO_SAMD_ZERO -DARM_MATH_CM0PLUS  -DADAFRUIT_FEATHER_M0 -D__SAMD21G18A__ {build.usb_flags}
+thermocycler_m0.build.ldscript=linker_scripts/gcc/flash_with_bootloader.ld
+thermocycler_m0.build.openocdscript=openocd_scripts/feather_m0.cfg
+thermocycler_m0.build.variant=thermocycler
+thermocycler_m0.build.variant_system_lib=
+thermocycler_m0.build.vid=0x04D8
+thermocycler_m0.build.pid=0xED8C
+thermocycler_m0.bootloader.tool=openocd
+thermocycler_m0.bootloader.file=featherM0/bootloader-feather_m0-v2.0.0-adafruit.5.bin

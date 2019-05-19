@@ -19,14 +19,20 @@ enum class Peltier
 };
 
 #define PIN_PELTIER_CONTROL_1A       5   // uses PWM frequency generator
-#define PIN_PELTIER_CONTROL_1B       11  // uses PWM frequency generator
-#define PIN_PELTIER_CONTROL_2A       13  // uses PWM frequency generator
-#define PIN_PELTIER_CONTROL_2B       10  // uses PWM frequency generator
-#define PIN_PELTIER_CONTROL_3A       12  // uses PWM frequency generator
+#if HW_VERSION >= 3
+  #define PIN_PELTIER_CONTROL_2A       11  // uses PWM frequency generator
+  #define PIN_PELTIER_CONTROL_3A       13  // uses PWM frequency generator
+  #define PIN_PELTIER_CONTROL_1B       10  // uses PWM frequency generator
+  #define PIN_PELTIER_CONTROL_2B       12  // uses PWM frequency generator
+#else
+  #define PIN_PELTIER_CONTROL_1B       11  // uses PWM frequency generator
+  #define PIN_PELTIER_CONTROL_2A       13  // uses PWM frequency generator
+  #define PIN_PELTIER_CONTROL_2B       10  // uses PWM frequency generator
+  #define PIN_PELTIER_CONTROL_3A       12  // uses PWM frequency generator
+#endif
 #define PIN_PELTIER_CONTROL_3B       6   // uses PWM frequency generator
-#define PIN_PELTIER_ENABLE           7
 
-#define SINGLE_PID  false
+#define PIN_PELTIER_ENABLE           7
 
 typedef struct Peltier_property
 {

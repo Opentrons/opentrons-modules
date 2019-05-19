@@ -11,6 +11,12 @@
 #endif
 #define PIN_BOTTOM_SWITCH     9
 
+#if HW_VERSION >= 3
+  #define PIN_MOTOR_CURRENT_VREF        14
+  #define PIN_MOTOR_FAULT               22
+  #define PIN_MOTOR_RST                 38
+#endif
+
 #define PIN_SOLENOID                A1
 
 #define PIN_STEPPER_STEP            1

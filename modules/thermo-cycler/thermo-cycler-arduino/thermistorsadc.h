@@ -28,8 +28,13 @@
 #define ADC_INDEX_PLATE_BACK_CENTER    5  //Top Center on sch.
 #define ADC_INDEX_PLATE_BACK_RIGHT     6  //Top Right on sch.
 
-
-#define ADC_INDEX_COVER                7
+#if HW_VERSION >=3
+  #define ADC_INDEX_COVER              7
+  #define PIN_ADC_1_ALERT              30
+  #define PIN_ADC_2_ALERT              31
+#else
+  #define ADC_INDEX_COVER                7
+#endif
 
 #define TOTAL_THERMISTORS              8
 #define TOTAL_PLATE_THERMISTORS        6

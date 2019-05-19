@@ -1,6 +1,13 @@
 #ifndef THERMOCYCLER_H
 #define THERMOCYCLER_H
 
+// #ifdef PIN_LED_TXL
+// #undef PIN_LED_TXL
+// #endif
+// #ifdef PIN_LED_RXL
+// #undef PIN_LED_RXL
+// #endif
+
 #include <PID_v1.h>
 #include "thermistorsadc.h"
 #include "lid.h"
@@ -8,6 +15,11 @@
 #include "gcode.h"
 #include "tc_timer.h"
 #include "fan.h"
+
+/********* Versions **********/
+/* Version guidelines: */
+#define FW_VERSION "Beta3.0"
+#define HW_VERSION 3
 
 /********* GCODE *********/
 #define BAUDRATE 115200
@@ -26,6 +38,9 @@
 
 /********** HEAT PAD **********/
 
+#if HW_VERSION >= 3
+  #define PIN_HEAT_PAD_EN           25
+#endif
 #define PIN_HEAT_PAD_CONTROL        A3
 
 /********* FAN *********/
@@ -42,12 +57,27 @@
 #define TEMPERATURE_COVER_HOT 105
 
 /********* PID: PLATE PELTIERS *********/
+// NOTE: temp_probes.update takes 136-137ms while rest of the loop takes 0-1ms.
+//       Using 135ms sample time guarantees that the PID value is computed every
+//       137ms with a very minute error in computation due to 1-2ms difference.
+//       If <135ms, PID computation error will increase
+//       If >=137ms, the compute will miss the window before temp_probes.update
+//       is called again; which makes the next PID compute 2*137ms away
+#if OLD_PID_INTERVAL
+  #define DEFAULT_PLATE_PID_TIME 100
+#else
+  #define DEFAULT_PLATE_PID_TIME 135
+#endif
 
-#define DEFAULT_PLATE_PID_TIME 100
-
-#define PID_KP_PLATE_UP 0.2
-#define PID_KI_PLATE_UP 0.1
-#define PID_KD_PLATE_UP 0.0
+#if HFQ_PWM
+  #define PID_KP_PLATE_UP 0.1   //0.11 dampens the first spike but takes slightly longer to stabilize
+  #define PID_KI_PLATE_UP 0.03
+  #define PID_KD_PLATE_UP 0.0
+#else
+  #define PID_KP_PLATE_UP 0.2   // 0.16
+  #define PID_KI_PLATE_UP 0.1   // 0.07
+  #define PID_KD_PLATE_UP 0.0
+#endif
 
 #define PID_KP_PLATE_DOWN PID_KP_PLATE_UP
 #define PID_KI_PLATE_DOWN PID_KI_PLATE_UP
@@ -94,6 +124,13 @@ bool cover_should_be_hot = false;
 String device_serial = "dummySerial";  // TODO: remove stub, later leave empty, this value is read from eeprom during setup()
 String device_model = "dummyModel";   // TODO: remove stub, later leave empty, this value is read from eeprom during setup()
 String device_version = "v1.0.1";
+
+/********* Front Switch *********/
+
+#if HW_VERSION >= 3
+  #define PIN_FRONT_BUTTON_SW 23
+  #define PIN_FRONT_BUTTON_LED  24
+#endif
 
 /********* MISC GLOBALS *********/
 
