@@ -1,13 +1,6 @@
 #ifndef THERMOCYCLER_H
 #define THERMOCYCLER_H
 
-// #ifdef PIN_LED_TXL
-// #undef PIN_LED_TXL
-// #endif
-// #ifdef PIN_LED_RXL
-// #undef PIN_LED_RXL
-// #endif
-
 #include <PID_v1.h>
 #include "thermistorsadc.h"
 #include "lid.h"
@@ -19,7 +12,6 @@
 /********* Versions **********/
 /* Version guidelines: */
 #define FW_VERSION "Beta3.0"
-#define HW_VERSION 3
 
 /********* GCODE *********/
 #define BAUDRATE 115200
@@ -128,7 +120,7 @@ String device_version = "v1.0.1";
 /********* Front Switch *********/
 
 #if HW_VERSION >= 3
-  #define PIN_FRONT_BUTTON_SW 23
+  #define PIN_FRONT_BUTTON_SW   23
   #define PIN_FRONT_BUTTON_LED  24
 #endif
 
@@ -138,6 +130,7 @@ unsigned long plotter_timestamp = 0;
 const int plotter_interval = 500;
 bool running_from_script = false;
 bool debug_print_mode = true;
+bool gcode_debug_mode = false;  // Debug mode is not compatible with API
 bool running_graph = false;
 bool zoom_mode = false;
 /***************************************/

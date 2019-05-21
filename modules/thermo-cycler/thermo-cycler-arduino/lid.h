@@ -40,6 +40,8 @@
 #define AD5110_SET_VALUE_CMD 0x02
 #define AD5110_SAVE_VALUE_CMD 0x01
 
+#define MOTOR_CURRENT_VREF 0.75   // TODO: Update this to correct value later
+
 #define CURRENT_HIGH 0.5
 #define CURRENT_LOW 0.01
 #define MOTOR_ENABLE_DELAY_MS 5
@@ -95,6 +97,8 @@ class Lid
     void set_acceleration(float mm_per_sec_per_sec);
     bool move_millimeters(float mm);
     void check_switches();
+    void reset_motor_driver();
+    bool is_driver_faulted();
     static const char * LID_STATUS_STRINGS[TO_INT(Lid_status::max)+1];
 
   private:
@@ -109,6 +113,7 @@ class Lid
     void _update_acceleration();
     void _motor_step(uint8_t dir);
     void _update_status();
+    uint16_t _to_dac_out(uint8_t driver_vref);
 
     double _step_delay_microseconds = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
     double _mm_per_sec = 20;

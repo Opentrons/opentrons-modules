@@ -64,12 +64,18 @@ void heat_pad_off()
 {
   cover_should_be_hot = false;
   temperature_swing_cover = 0.0;
+#if HW_VERSION >= 3
+  digitalWrite(PIN_HEAT_PAD_EN, LOW);
+#endif
   // set_heat_pad_power(0);
 }
 
 void heat_pad_on()
 {
   cover_should_be_hot = true;
+#if HW_VERSION >= 3
+  digitalWrite(PIN_HEAT_PAD_EN, HIGH);
+#endif
 }
 
 /////////////////////////////////
@@ -349,6 +355,10 @@ void ramp_temp_after_change_temp()
     gcode.add_debug_response("Fan", heatsink_fan.current_power);
     // Cover temperature:
     gcode.add_debug_response("Lid_temp", temp_probes.cover_temperature());
+    // Motor status:
+#if HW_VERSION >= 3
+    gcode.add_debug_response("Motor_driver_faulted", int(lid.is_driver_faulted()));
+#endif
   }
 
   void read_gcode()
@@ -488,16 +498,23 @@ void ramp_temp_after_change_temp()
             {
               if(gcode.popped_arg() == 0)
               {
-                debug_print_mode = false;
+                gcode_debug_mode = false;
                 break;
               }
             }
-            debug_print_mode = true;
+            gcode_debug_mode = true;
             break;
           case Gcode::print_debug_stat:
-            if (debug_print_mode)
+            if (gcode_debug_mode)
             {
               debug_status_prints();
+            }
+            break;
+          case Gcode::motor_reset:
+            if (gcode_debug_mode)
+            {
+              gcode.response("Resetting motor driver");
+              lid.reset_motor_driver();
             }
             break;
         }
@@ -558,7 +575,8 @@ void print_info(bool force=false) {
         else Serial.print(temperature_swing_cover * 100.0);
         if (running_from_script || running_graph) Serial.print(" ");
         if (debug_print_mode) Serial.print("\nFan Power:\t\t");
-        Serial.print(heatsink_fan.current_power * 100);
+        Serial.println(heatsink_fan.current_power * 100);
+        Serial.print("Motor faulted?:"); Serial.println(lid.is_driver_faulted());
         Serial.println();
     }
 }
@@ -677,6 +695,11 @@ void read_from_serial() {
         else if (Serial.peek() == 'p') {
             if (running_from_script) print_info(true);
         }
+        else if (Serial.peek() == 'm')
+        {
+          Serial.println("Resetting motor driver");
+          lid.reset_motor_driver();
+        }
         empty_serial_buffer();
     }
 }
@@ -772,10 +795,6 @@ void setup()
 
 void loop()
 {
-  if (analogRead(PIN_HEAT_PAD_CONTROL) == HIGH)
-  {
-    Serial.println("Blink");
-  }
   lid.check_switches();
 #if USE_GCODES
   /* Check if gcode(s) available on Serial */

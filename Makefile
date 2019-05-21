@@ -11,10 +11,9 @@ INO_DIR := $(HOME)/arduino_ide
 
 ARDUINO_VERSION ?= 1.8.5
 ARDUINO_SAMD_VER ?= 1.6.20
-ADAFRUIT_SAMD_VER ?= 1.2.9
 OPENTRONS_BOARDS_VER ?= 1.2.0
+OPENTRONS_SAMD_BOARDS_VER ?= 1.0.1
 
-ADAFRUIT_BOARD_URL := https://adafruit.github.io/arduino-board-index/package_adafruit_index.json
 OPENTRONS_BOARD_URL := https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json
 
 ifeq ($(CI_SYSTEM), Darwin)
@@ -42,13 +41,14 @@ ifeq ($(wildcard $(ARDUINO15_LOC)/packages/arduino/hardware/samd/$(ARDUINO_SAMD_
 	NO_ARDUINO_SAMD := true
 endif
 
-ifeq ($(wildcard $(ARDUINO15_LOC)/packages/adafruit/hardware/samd/$(ADAFRUIT_SAMD_VER)/boards.txt), )
-	NO_ADAFRUIT_SAMD := true
-endif
-
 ifeq ($(wildcard $(ARDUINO15_LOC)/packages/Opentrons/hardware/avr/$(OPENTRONS_BOARDS_VER)/boards.txt), )
 	NO_OPENTRONS_BOARDS := true
 endif
+
+ifeq ($(wildcard $(ARDUINO15_LOC)/packages/Opentrons/hardware/samd/$(OPENTRONS_SAMD_BOARDS_VER)/boards.txt), )
+	NO_OPENTRONS_SAMD_BOARDS := true
+endif
+
 
 # setup Arduino
 .PHONY: setup
@@ -69,8 +69,8 @@ setup:
 	echo -n "Installing board packages.."
 	echo -n "Arduino SAMD: "
 	$(if $(NO_ARDUINO_SAMD), $(ARDUINO) --install-boards arduino:samd, @echo "Arduino SAMD already installed")
-	echo -n "Adafruit SAMD: "
-	$(if $(NO_ADAFRUIT_SAMD), $(ARDUINO) --install-boards adafruit:samd, @echo "Adafruit SAMD already installed")
+	echo -n "Opentrons SAMD: "
+	$(if $(NO_OPENTRONS_SAMD_BOARDS), $(ARDUINO) --install-boards Opentrons:samd, @echo "Opentrons SAMD already installed")
 	echo -n "Opentrons modules: "
 	$(if $(NO_OPENTRONS_BOARDS), $(ARDUINO) --install-boards Opentrons:avr, @echo "Opentrons boards already installed")
 
@@ -82,6 +82,7 @@ USE_GCODES ?= true
 LID_WARNING ?= true
 HFQ_PWM ?= false
 OLD_PID_INTERVAL ?= true
+HW_VERSION ?= 3
 
 .PHONY: build-magdeck
 build-magdeck:
@@ -97,9 +98,9 @@ build-tempdeck:
 
 .PHONY: build-thermocycler
 build-thermocycler:
-	echo "compiler.cpp.extra_flags=-DDUMMY_BOARD=$(DUMMY_BOARD) -DUSE_GCODES=$(USE_GCODES) -DLID_WARNING=$(LID_WARNING) -DHFQ_PWM=$(HFQ_PWM) -DOLD_PID_INTERVAL=$(OLD_PID_INTERVAL)" \
-	> $(ARDUINO15_LOC)/packages/adafruit/hardware/samd/1.3.0/platform.local.txt
-	$(ARDUINO) --verify --board adafruit:samd:adafruit_feather_m0 $(MODULES_DIR)/thermo-cycler/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
+	echo "compiler.cpp.extra_flags=-DDUMMY_BOARD=$(DUMMY_BOARD) -DUSE_GCODES=$(USE_GCODES) -DLID_WARNING=$(LID_WARNING) -DHFQ_PWM=$(HFQ_PWM) -DOLD_PID_INTERVAL=$(OLD_PID_INTERVAL) -DHW_VERSION=$(HW_VERSION)" \
+	> $(ARDUINO15_LOC)/packages/Opentrons/hardware/samd/$(OPENTRONS_SAMD_BOARDS_VER)/platform.local.txt
+	$(ARDUINO) --verify --board Opentrons:samd:thermocycler_m0 $(MODULES_DIR)/thermo-cycler/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
 	mkdir -p $(BUILDS_DIR)/thermo-cycler
 	cp $(BUILDS_DIR)/tmp/thermo-cycler-arduino.ino.bin $(BUILDS_DIR)/thermo-cycler/
 

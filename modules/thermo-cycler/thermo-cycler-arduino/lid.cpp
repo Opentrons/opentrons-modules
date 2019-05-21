@@ -3,6 +3,7 @@
 const char * Lid::LID_STATUS_STRINGS[] = { STATUS_TABLE };
 volatile bool cover_switch_toggled = false;
 volatile bool bottom_switch_toggled = false;
+volatile bool motor_driver_faulted = false;
 volatile unsigned long cover_switch_toggled_at = 0;
 volatile unsigned long bottom_switch_toggled_at = 0;
 
@@ -113,6 +114,13 @@ void Lid::check_switches()
   }
 }
 
+bool Lid::is_driver_faulted()
+{
+#if HW_VERSION >= 3
+  return motor_driver_faulted;
+#endif
+}
+
 void Lid::solenoid_on()
 {
   digitalWrite(PIN_SOLENOID, SOLENOID_STATE_ON);
@@ -151,6 +159,19 @@ void Lid::_motor_step(uint8_t dir)
   }
 }
 
+uint16_t Lid::_to_dac_out(uint8_t driver_vref)
+{
+  return uint16_t(driver_vref * float(1023/3.3));
+}
+
+void Lid::reset_motor_driver()
+{
+#if HW_VERSION >= 3
+  digitalWrite(PIN_MOTOR_RST, LOW);
+  delay(100);
+  digitalWrite(PIN_MOTOR_RST, HIGH);
+#endif
+}
 void Lid::set_speed(float mm_per_sec)
 {
   _mm_per_sec = mm_per_sec;
@@ -246,10 +267,25 @@ void _bottom_switch_callback()
   bottom_switch_toggled_at = millis();
 }
 
+void _motor_fault_callback()
+{
+#if HW_VERSION >= 3
+  if(digitalRead(PIN_MOTOR_FAULT) == LOW)
+  {
+    motor_driver_faulted = true;
+  }
+#endif
+}
+
 bool Lid::setup()
 {
 	pinMode(PIN_SOLENOID, OUTPUT);
 	solenoid_off();
+#if HW_VERSION >= 3
+  pinMode(PIN_MOTOR_FAULT, INPUT_PULLUP);
+  pinMode(PIN_MOTOR_RST, OUTPUT);
+  digitalWrite(PIN_MOTOR_RST, HIGH);
+#endif
 	pinMode(PIN_STEPPER_STEP, OUTPUT);
 	pinMode(PIN_STEPPER_DIR, OUTPUT);
 	pinMode(PIN_STEPPER_ENABLE, OUTPUT);
@@ -261,16 +297,28 @@ bool Lid::setup()
   pinMode(PIN_COVER_SWITCH, INPUT);
   pinMode(PIN_BOTTOM_SWITCH, INPUT);
 #endif
+
   // Both switches are NORMALLY CLOSED
   _is_cover_switch_pressed = bool(digitalRead(PIN_COVER_SWITCH));
   _is_bottom_switch_pressed = bool(digitalRead(PIN_BOTTOM_SWITCH));
   _update_status();
   attachInterrupt(digitalPinToInterrupt(PIN_COVER_SWITCH), _cover_switch_callback, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PIN_BOTTOM_SWITCH), _bottom_switch_callback, CHANGE);
-  // Digipot used for stepper control
+
+#if HW_VERSION >= 3
+  attachInterrupt(digitalPinToInterrupt(PIN_MOTOR_FAULT), _motor_fault_callback, FALLING);
+  // Use DAC to set Vref for motor current limit
+  analogWriteResolution(10);
+  analogWrite(PIN_MOTOR_CURRENT_VREF, _to_dac_out(MOTOR_CURRENT_VREF));
+  analogWriteResolution(8);
+  return true;
+#else
+  // No fault detection
+  // Digipot used for stepper control Vref for motor current limit
   if(_setup_digipot())
   {
     return true;
   }
+#endif
   return false;
 }
