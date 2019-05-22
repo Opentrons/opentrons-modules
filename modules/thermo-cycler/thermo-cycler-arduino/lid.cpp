@@ -119,6 +119,7 @@ bool Lid::is_driver_faulted()
 #if HW_VERSION >= 3
   return motor_driver_faulted;
 #endif
+  return false;
 }
 
 void Lid::solenoid_on()

@@ -279,66 +279,6 @@ void update_fans_from_state()
   }
 }
 
-void ramp_temp_after_change_temp()
-{
-  if (is_temp_far_away())
-  {
-    PID_left_pel.SetSampleTime(1);
-    PID_left_pel.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
-    if (is_ramping_up(Peltier::pel_3) && temperature_swing_left_pel < 0.95)
-    {
-      peltiers.set_hot_percentage(1.0, Peltier::pel_3);
-      while (temperature_swing_left_pel < 0.95)
-        PID_left_pel.Compute();
-    }
-    else if (is_ramping_down(Peltier::pel_3) && temperature_swing_left_pel > 0.95)
-    {
-      peltiers.set_cold_percentage(1.0, Peltier::pel_3);
-      while (temperature_swing_left_pel > -0.95)
-        PID_left_pel.Compute();
-    }
-
-    PID_center_pel.SetSampleTime(1);
-    PID_center_pel.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
-    if (is_ramping_up(Peltier::pel_2) && temperature_swing_center_pel < 0.95)
-    {
-      peltiers.set_hot_percentage(1.0, Peltier::pel_2);
-      while (temperature_swing_center_pel < 0.95)
-        PID_center_pel.Compute();
-    }
-    else if (is_ramping_down(Peltier::pel_2) && temperature_swing_center_pel > 0.95)
-    {
-      peltiers.set_cold_percentage(1.0, Peltier::pel_2);
-      while (temperature_swing_center_pel > -0.95)
-        PID_center_pel.Compute();
-    }
-
-    PID_right_pel.SetSampleTime(1);
-    PID_right_pel.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
-    if (is_ramping_up(Peltier::pel_1) && temperature_swing_right_pel < 0.95)
-    {
-      peltiers.set_hot_percentage(1.0, Peltier::pel_1);
-      while (temperature_swing_right_pel < 0.95)
-        PID_right_pel.Compute();
-    }
-    else if (is_ramping_down(Peltier::pel_1) && temperature_swing_right_pel > 0.95)
-    {
-      peltiers.set_cold_percentage(1.0, Peltier::pel_1);
-      while (temperature_swing_right_pel > -0.95)
-        PID_right_pel.Compute();
-    }
-  }
-  /******** Temperature stabilizing towards target *********/
-  PID_left_pel.SetSampleTime(DEFAULT_PLATE_PID_TIME);
-  PID_left_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
-  PID_center_pel.SetSampleTime(DEFAULT_PLATE_PID_TIME);
-  PID_center_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
-  PID_right_pel.SetSampleTime(DEFAULT_PLATE_PID_TIME);
-  PID_right_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
-
-  just_changed_temp = false;
-}
-
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
@@ -576,7 +516,9 @@ void print_info(bool force=false) {
         if (running_from_script || running_graph) Serial.print(" ");
         if (debug_print_mode) Serial.print("\nFan Power:\t\t");
         Serial.println(heatsink_fan.current_power * 100);
+      #if HW_VERSION >= 3
         Serial.print("Motor faulted?:"); Serial.println(lid.is_driver_faulted());
+      #endif
         Serial.println();
     }
 }
@@ -700,6 +642,18 @@ void read_from_serial() {
           Serial.println("Resetting motor driver");
           lid.reset_motor_driver();
         }
+        else if (Serial.peek() == 'l') // lowercase L
+        {
+          Serial.read();
+          if (Serial.peek() == '1')
+          {
+            lid.open_cover();
+          }
+          else
+          {
+            lid.close_cover();
+          }
+        }
         empty_serial_buffer();
     }
 }
@@ -709,8 +663,6 @@ void read_from_serial() {
 /////////////////////////////////
 /////////////////////////////////
 
-uint32_t startTime;
-
 void set_leds_white()
 {
   for(int i=0; i<strip.numPixels(); i++)
@@ -719,29 +671,6 @@ void set_leds_white()
     strip.show();
     delay(30);
   }
-}
-
-void rainbow_test() {
-  // Rainbow cycle
-  uint32_t elapsed = micros() - startTime;
-  for(int i=0; i<strip.numPixels(); i++) {
-    strip.setPixelColor(i, Wheel((uint8_t)(
-      (elapsed * 256 / 1000000) + i * 256 / strip.numPixels())));
-  }
-  strip.show();
-}
-
-uint32_t Wheel(byte WheelPos) {
-  WheelPos = 255 - WheelPos;
-  if(WheelPos < 85) {
-    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
-  }
-  if(WheelPos < 170) {
-    WheelPos -= 85;
-    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
-  }
-  WheelPos -= 170;
-  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
 /////////////////////////////////
