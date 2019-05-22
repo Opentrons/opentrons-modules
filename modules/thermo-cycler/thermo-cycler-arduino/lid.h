@@ -12,7 +12,7 @@
 #define PIN_BOTTOM_SWITCH     9
 
 #if HW_VERSION >= 3
-  #define PIN_MOTOR_CURRENT_VREF        14
+  #define PIN_MOTOR_CURRENT_VREF        A0
   #define PIN_MOTOR_FAULT               22
   #define PIN_MOTOR_RST                 38
 #endif
@@ -113,7 +113,7 @@ class Lid
     void _update_acceleration();
     void _motor_step(uint8_t dir);
     void _update_status();
-    uint16_t _to_dac_out(uint8_t driver_vref);
+    uint16_t _to_dac_out(float driver_vref);
 
     double _step_delay_microseconds = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
     double _mm_per_sec = 20;

@@ -159,7 +159,7 @@ void Lid::_motor_step(uint8_t dir)
   }
 }
 
-uint16_t Lid::_to_dac_out(uint8_t driver_vref)
+uint16_t Lid::_to_dac_out(float driver_vref)
 {
   return uint16_t(driver_vref * float(1023/3.3));
 }

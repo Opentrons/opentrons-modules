@@ -711,6 +711,16 @@ void read_from_serial() {
 
 uint32_t startTime;
 
+void set_leds_white()
+{
+  for(int i=0; i<strip.numPixels(); i++)
+  {
+    strip.setPixelColor(i, 0, 0, 0, 255); // strip.setPixelColor(n, red, green, blue, white);
+    strip.show();
+    delay(30);
+  }
+}
+
 void rainbow_test() {
   // Rainbow cycle
   uint32_t elapsed = micros() - startTime;
@@ -786,11 +796,13 @@ void setup()
   master_set_a_target = false;
   cover_should_be_hot = false;
 
+  pinMode(NEO_PWR, OUTPUT);
+  pinMode(NEO_PIN, OUTPUT);
+  digitalWrite(NEO_PWR, HIGH);
   strip.begin();
-  strip.setBrightness(32);
+  strip.setBrightness(50);
   strip.show();
-  startTime = micros();  // for the rainbow test
-  rainbow_test();
+  set_leds_white();
 }
 
 void loop()

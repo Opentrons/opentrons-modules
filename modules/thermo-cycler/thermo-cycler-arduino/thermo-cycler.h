@@ -26,7 +26,7 @@
 
 #define NEO_PWR     4
 #define NEO_PIN     A5
-#define NUM_PIXELS  22
+#define NUM_PIXELS  16
 
 /********** HEAT PAD **********/
 
