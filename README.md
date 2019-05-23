@@ -28,7 +28,7 @@ cd into `opentrons-modules/` and simply enter `make setup`
 This should implement the following:
 - Installing Arduino IDE at `$HOME/arduino_ide`
 - Installing board definition files required by all the modules (Opentrons Magdeck,
-  Opentrons Tempdeck, Adafruit SAMD, Arduino SAMD)
+  Opentrons Tempdeck, Opentrons SAMD, Arduino SAMD)
 - Setting up the sketchbook/ library path
 - Adding build path at `/opentrons-modules/build` to save the builds
 
@@ -38,14 +38,13 @@ This should implement the following:
 
 1. Install Arduino IDE (v1.8.5) from https://www.arduino.cc/en/Main/OldSoftwareReleases#previous
 2. Install board files:
-   - Go to _File->Preferences_ and in _'Additional Boards Manager URLs'_ paste these
-   two urls (comma separated):
-`https://adafruit.github.io/arduino-board-index/package_adafruit_index.json`,
+   - Go to _File->Preferences_ and in _'Additional Boards Manager URLs'_ paste this
+   url (if you already have other boards' urls then separate these with commas):
 `https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json`
    - Go to _Tools->Boards_ and select _'Board Manager..'_. Search for and install the
    latest versions of the following:
      - Arduino SAMD Boards
-     - Adafruit SAMD Boards
+     - Opentrons SAMD Boards
      - Opentrons Modules Boards
 3. Set up preferences:
 Go to _File->Preferences_ and change _'Sketchbook Location'_ to your `opentrons-modules` repository path
@@ -70,8 +69,10 @@ in the build directory under its module name eg. `../build/thermo-cycler/thermo-
 
 **Windows:**
 Use Arduino IDE to compile:
-Select the correct board file for your project from _Tools->board_
-(currently, the thermocycler project uses 'Adafruit Feather M0' board).
+Select the correct board file for your project from _Tools->board_ (Opentrons Thermocycler M0/ Opentrons Magdeck/ Opentrons Tempdeck)
+
+* NOTE: For Opentrons Thermocycler M0, you will have to set the appropriate flags in the `platform.local.txt` file: Find this file in your Arduino15 folder at `../packages/Opentrons/hardware/samd/1.0.1`. Paste this line in the file above: `compiler.cpp.extra_flags=-DDUMMY_BOARD=false -DUSE_GCODES=true -DLID_WARNING=false -DHFQ_PWM=false -DOLD_PID_INTERVAL=true -DHW_VERSION=3` (set appropriate flag values)
+
 Then select _Sketch->Compile_.
 
 The build will be saved in a windows temp directory. You can check verbose compilation

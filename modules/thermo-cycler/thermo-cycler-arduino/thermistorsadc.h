@@ -24,12 +24,21 @@
 #define ADC_INDEX_PLATE_FRONT_RIGHT    1  //Bottom Right on sch.
 #define ADC_INDEX_PLATE_FRONT_CENTER   2  //Bottom Center on sch.
 #define ADC_INDEX_PLATE_FRONT_LEFT     3  //Bottom Lef on sch.
-#define ADC_INDEX_PLATE_BACK_LEFT      4  //Top Left on sch.
-#define ADC_INDEX_PLATE_BACK_CENTER    5  //Top Center on sch.
-#define ADC_INDEX_PLATE_BACK_RIGHT     6  //Top Right on sch.
 
-
-#define ADC_INDEX_COVER                7
+#if HW_VERSION >=3
+  #define ADC_INDEX_PLATE_BACK_LEFT      4
+  #define ADC_INDEX_COVER                5
+  #define ADC_INDEX_PLATE_BACK_RIGHT     6
+  #define ADC_INDEX_PLATE_BACK_CENTER    7
+  // TODO: Test the use of adc alerts for i2c updates
+  #define PIN_ADC_1_ALERT              30
+  #define PIN_ADC_2_ALERT              31
+#else
+  #define ADC_INDEX_PLATE_BACK_LEFT      4  //Top Left on sch.
+  #define ADC_INDEX_PLATE_BACK_CENTER    5  //Top Center on sch.
+  #define ADC_INDEX_PLATE_BACK_RIGHT     6  //Top Right on sch.
+  #define ADC_INDEX_COVER                7
+#endif
 
 #define TOTAL_THERMISTORS              8
 #define TOTAL_PLATE_THERMISTORS        6

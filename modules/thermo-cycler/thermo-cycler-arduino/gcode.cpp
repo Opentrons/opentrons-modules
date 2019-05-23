@@ -212,7 +212,7 @@ void GcodeHandler::add_debug_response(String param, float val)
   Serial.print(param);
   Serial.print(F(":"));
   Serial.print(val);
-  Serial.print(F(" "));
+  Serial.print(F("\t"));
 }
 
 /* Use in .ino setup() with the baudrate to enable

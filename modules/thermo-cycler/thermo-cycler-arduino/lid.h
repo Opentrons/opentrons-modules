@@ -11,6 +11,12 @@
 #endif
 #define PIN_BOTTOM_SWITCH     9
 
+#if HW_VERSION >= 3
+  #define PIN_MOTOR_CURRENT_VREF        A0
+  #define PIN_MOTOR_FAULT               22
+  #define PIN_MOTOR_RST                 38
+#endif
+
 #define PIN_SOLENOID                A1
 
 #define PIN_STEPPER_STEP            1
@@ -33,6 +39,8 @@
 #define AD5110_CURRENT_SCALER 1.0
 #define AD5110_SET_VALUE_CMD 0x02
 #define AD5110_SAVE_VALUE_CMD 0x01
+
+#define MOTOR_CURRENT_VREF 0.75   // TODO: Update this to correct value later
 
 #define CURRENT_HIGH 0.5
 #define CURRENT_LOW 0.01
@@ -89,6 +97,8 @@ class Lid
     void set_acceleration(float mm_per_sec_per_sec);
     bool move_millimeters(float mm);
     void check_switches();
+    void reset_motor_driver();
+    bool is_driver_faulted();
     static const char * LID_STATUS_STRINGS[TO_INT(Lid_status::max)+1];
 
   private:
@@ -103,6 +113,7 @@ class Lid
     void _update_acceleration();
     void _motor_step(uint8_t dir);
     void _update_status();
+    uint16_t _to_dac_out(float driver_vref);
 
     double _step_delay_microseconds = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
     double _mm_per_sec = 20;

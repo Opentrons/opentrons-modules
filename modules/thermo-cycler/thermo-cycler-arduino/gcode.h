@@ -27,6 +27,7 @@
   GCODE_DEF(heatsink_fan_on, M106), \
   GCODE_DEF(heatsink_fan_off, M107),\
   GCODE_DEF(dfu, dfu),              \
+  GCODE_DEF(motor_reset, mrst),     \
   GCODE_DEF(debug_mode, M111),      \
   GCODE_DEF(print_debug_stat, stat),\
   GCODE_DEF(max, -)

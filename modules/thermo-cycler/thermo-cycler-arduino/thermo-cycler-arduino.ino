@@ -53,19 +53,29 @@ void set_heat_pad_power(float val)
   pinMode(PIN_HEAT_PAD_CONTROL, OUTPUT);
   if (byte_val == 255) digitalWrite(PIN_HEAT_PAD_CONTROL, HIGH);
   else if (byte_val == 0) digitalWrite(PIN_HEAT_PAD_CONTROL, LOW);
+#if HFQ_PWM
   else hfq_analogWrite(PIN_HEAT_PAD_CONTROL, byte_val);
+#else
+    else analogWrite(PIN_HEAT_PAD_CONTROL, byte_val);
+#endif
 }
 
 void heat_pad_off()
 {
   cover_should_be_hot = false;
   temperature_swing_cover = 0.0;
-  set_heat_pad_power(0);
+#if HW_VERSION >= 3
+  digitalWrite(PIN_HEAT_PAD_EN, LOW);
+#endif
+  // set_heat_pad_power(0);
 }
 
 void heat_pad_on()
 {
   cover_should_be_hot = true;
+#if HW_VERSION >= 3
+  digitalWrite(PIN_HEAT_PAD_EN, HIGH);
+#endif
 }
 
 /////////////////////////////////
@@ -269,66 +279,6 @@ void update_fans_from_state()
   }
 }
 
-void ramp_temp_after_change_temp()
-{
-  if (is_temp_far_away())
-  {
-    PID_left_pel.SetSampleTime(1);
-    PID_left_pel.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
-    if (is_ramping_up(Peltier::pel_3) && temperature_swing_left_pel < 0.95)
-    {
-      peltiers.set_hot_percentage(1.0, Peltier::pel_3);
-      while (temperature_swing_left_pel < 0.95)
-        PID_left_pel.Compute();
-    }
-    else if (is_ramping_down(Peltier::pel_3) && temperature_swing_left_pel > 0.95)
-    {
-      peltiers.set_cold_percentage(1.0, Peltier::pel_3);
-      while (temperature_swing_left_pel > -0.95)
-        PID_left_pel.Compute();
-    }
-
-    PID_center_pel.SetSampleTime(1);
-    PID_center_pel.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
-    if (is_ramping_up(Peltier::pel_2) && temperature_swing_center_pel < 0.95)
-    {
-      peltiers.set_hot_percentage(1.0, Peltier::pel_2);
-      while (temperature_swing_center_pel < 0.95)
-        PID_center_pel.Compute();
-    }
-    else if (is_ramping_down(Peltier::pel_2) && temperature_swing_center_pel > 0.95)
-    {
-      peltiers.set_cold_percentage(1.0, Peltier::pel_2);
-      while (temperature_swing_center_pel > -0.95)
-        PID_center_pel.Compute();
-    }
-
-    PID_right_pel.SetSampleTime(1);
-    PID_right_pel.SetTunings(current_plate_kp, 1.0, current_plate_kd, P_ON_M);
-    if (is_ramping_up(Peltier::pel_1) && temperature_swing_right_pel < 0.95)
-    {
-      peltiers.set_hot_percentage(1.0, Peltier::pel_1);
-      while (temperature_swing_right_pel < 0.95)
-        PID_right_pel.Compute();
-    }
-    else if (is_ramping_down(Peltier::pel_1) && temperature_swing_right_pel > 0.95)
-    {
-      peltiers.set_cold_percentage(1.0, Peltier::pel_1);
-      while (temperature_swing_right_pel > -0.95)
-        PID_right_pel.Compute();
-    }
-  }
-  /******** Temperature stabilizing towards target *********/
-  PID_left_pel.SetSampleTime(DEFAULT_PLATE_PID_TIME);
-  PID_left_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
-  PID_center_pel.SetSampleTime(DEFAULT_PLATE_PID_TIME);
-  PID_center_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
-  PID_right_pel.SetSampleTime(DEFAULT_PLATE_PID_TIME);
-  PID_right_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
-
-  just_changed_temp = false;
-}
-
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
@@ -345,6 +295,10 @@ void ramp_temp_after_change_temp()
     gcode.add_debug_response("Fan", heatsink_fan.current_power);
     // Cover temperature:
     gcode.add_debug_response("Lid_temp", temp_probes.cover_temperature());
+    // Motor status:
+#if HW_VERSION >= 3
+    gcode.add_debug_response("Motor_driver_faulted", int(lid.is_driver_faulted()));
+#endif
   }
 
   void read_gcode()
@@ -484,16 +438,23 @@ void ramp_temp_after_change_temp()
             {
               if(gcode.popped_arg() == 0)
               {
-                debug_print_mode = false;
+                gcode_debug_mode = false;
                 break;
               }
             }
-            debug_print_mode = true;
+            gcode_debug_mode = true;
             break;
           case Gcode::print_debug_stat:
-            if (debug_print_mode)
+            if (gcode_debug_mode)
             {
               debug_status_prints();
+            }
+            break;
+          case Gcode::motor_reset:
+            if (gcode_debug_mode)
+            {
+              gcode.response("Resetting motor driver");
+              lid.reset_motor_driver();
             }
             break;
         }
@@ -554,7 +515,10 @@ void print_info(bool force=false) {
         else Serial.print(temperature_swing_cover * 100.0);
         if (running_from_script || running_graph) Serial.print(" ");
         if (debug_print_mode) Serial.print("\nFan Power:\t\t");
-        Serial.print(heatsink_fan.current_power * 100);
+        Serial.println(heatsink_fan.current_power * 100);
+      #if HW_VERSION >= 3
+        Serial.print("Motor faulted?:"); Serial.println(lid.is_driver_faulted());
+      #endif
         Serial.println();
     }
 }
@@ -673,6 +637,23 @@ void read_from_serial() {
         else if (Serial.peek() == 'p') {
             if (running_from_script) print_info(true);
         }
+        else if (Serial.peek() == 'm')
+        {
+          Serial.println("Resetting motor driver");
+          lid.reset_motor_driver();
+        }
+        else if (Serial.peek() == 'l') // lowercase L
+        {
+          Serial.read();
+          if (Serial.peek() == '1')
+          {
+            lid.open_cover();
+          }
+          else
+          {
+            lid.close_cover();
+          }
+        }
         empty_serial_buffer();
     }
 }
@@ -682,29 +663,14 @@ void read_from_serial() {
 /////////////////////////////////
 /////////////////////////////////
 
-uint32_t startTime;
-
-void rainbow_test() {
-  // Rainbow cycle
-  uint32_t elapsed = micros() - startTime;
-  for(int i=0; i<strip.numPixels(); i++) {
-    strip.setPixelColor(i, Wheel((uint8_t)(
-      (elapsed * 256 / 1000000) + i * 256 / strip.numPixels())));
+void set_leds_white()
+{
+  for(int i=0; i<strip.numPixels(); i++)
+  {
+    strip.setPixelColor(i, 0, 0, 0, 255); // strip.setPixelColor(n, red, green, blue, white);
+    strip.show();
+    delay(30);
   }
-  strip.show();
-}
-
-uint32_t Wheel(byte WheelPos) {
-  WheelPos = 255 - WheelPos;
-  if(WheelPos < 85) {
-    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
-  }
-  if(WheelPos < 170) {
-    WheelPos -= 85;
-    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
-  }
-  WheelPos -= 170;
-  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
 /////////////////////////////////
@@ -759,11 +725,13 @@ void setup()
   master_set_a_target = false;
   cover_should_be_hot = false;
 
+  pinMode(NEO_PWR, OUTPUT);
+  pinMode(NEO_PIN, OUTPUT);
+  digitalWrite(NEO_PWR, HIGH);
   strip.begin();
-  strip.setBrightness(32);
+  strip.setBrightness(50);
   strip.show();
-  startTime = micros();  // for the rainbow test
-  rainbow_test();
+  set_leds_white();
 }
 
 void loop()
