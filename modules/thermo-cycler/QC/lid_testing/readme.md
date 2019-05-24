@@ -11,8 +11,8 @@ Lid Testing Instructions- WINDOWS OS
 *Uploading firmware:*
 1. Open Arduino
 2. Open the thermocycler sketch (if not already open) from File->sketchbook->modules->thermo-cycler->thermo-cycler-arduino
-3. Go to Tools->Board and select 'Adafruit Feather M0'
-4. Go to Tools->Port and select the thermocycler port (should show up as a COM port with description- 'Adafruit Feather M0')
+3. Go to Tools->Board and select 'Opentrons Thermocycler M0'
+4. Go to Tools->Port and select the thermocycler port (should show up as a COM port with description- 'Opentrons Thermocycler M0')
 5. Upload the firmware by clicking the arrow button below the menu items or from Sketch->Upload
 
 *Running the python script:*
@@ -27,4 +27,5 @@ So, eg command to run the script:
 `python TC_lid_tester.py -P COM3 -F lid_test_data`
 
 *The script will run until 1000 rounds of Open+Close are complete.
-To stop the script before that, use Ctrl+Pause/Brk in the cmd window*
+To change the number of rounds, see TC_lid_tester.py, line 8.
+To stop the script before that, use Ctrl+Pause/Break in the cmd window.*
