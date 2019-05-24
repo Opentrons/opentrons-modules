@@ -71,7 +71,7 @@ in the build directory under its module name eg. `../build/thermo-cycler/thermo-
 Use Arduino IDE to compile:
 Select the correct board file for your project from _Tools->board_ (Opentrons Thermocycler M0/ Opentrons Magdeck/ Opentrons Tempdeck)
 
-* NOTE: For Opentrons Thermocycler M0, you will have to set the appropriate flags in the `platform.local.txt` file: Find this file in your Arduino15 folder at `../packages/Opentrons/hardware/samd/1.0.1`. Paste this line in the file above: `compiler.cpp.extra_flags=-DDUMMY_BOARD=false -DUSE_GCODES=true -DLID_WARNING=false -DHFQ_PWM=false -DOLD_PID_INTERVAL=true -DHW_VERSION=3` (set appropriate flag values)
+* NOTE: For Opentrons Thermocycler M0, you will have to set the appropriate flags in the `platform.local.txt` file: Find this file in your Arduino15 folder at `../packages/Opentrons/hardware/samd/1.0.1`. Paste this line in the file above: `compiler.cpp.extra_flags=-DDUMMY_BOARD=false -DUSE_GCODES=true -DLID_WARNING=false -DHFQ_PWM=false -DOLD_PID_INTERVAL=true -DHW_VERSION=3 -DLID_TESTING=false -DRGBW_NEO=true` (set appropriate flag values)
 
 Then select _Sketch->Compile_.
 

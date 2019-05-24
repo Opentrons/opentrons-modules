@@ -63,7 +63,7 @@
 #define LID_MOTOR_RANGE_MM  390 // The max distance in mm the motor should move between open to close positions
 #define PULSE_HIGH_MICROSECONDS 2
 #define MOTOR_STEP_DELAY 60
-#define LID_CLOSE_BACKTRACK_STEPS 3600
+#define LID_CLOSE_BACKTRACK_STEPS 3200
 
 #define TO_INT(an_enum) static_cast<int>(an_enum)
 

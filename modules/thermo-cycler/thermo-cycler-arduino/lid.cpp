@@ -294,7 +294,7 @@ bool Lid::close_cover()
   motor_on();
   bool res = move_millimeters(-LID_MOTOR_RANGE_MM);
   solenoid_off();
-  delay(500);
+  delay(700);
   motor_off();
   return res;
 }
@@ -328,15 +328,13 @@ bool Lid::setup()
   bool status = true;
 	pinMode(PIN_SOLENOID, OUTPUT);
 	solenoid_off();
-#if HW_VERSION >= 3
-  pinMode(PIN_MOTOR_FAULT, INPUT_PULLUP);
-  pinMode(PIN_MOTOR_RST, OUTPUT);
-  digitalWrite(PIN_MOTOR_RST, HIGH);
-#endif
 	pinMode(PIN_STEPPER_STEP, OUTPUT);
 	pinMode(PIN_STEPPER_DIR, OUTPUT);
 	pinMode(PIN_STEPPER_ENABLE, OUTPUT);
 #if HW_VERSION >= 3
+  pinMode(PIN_MOTOR_FAULT, INPUT_PULLUP);
+  pinMode(PIN_MOTOR_RST, OUTPUT);
+  digitalWrite(PIN_MOTOR_RST, HIGH);
   attachInterrupt(digitalPinToInterrupt(PIN_MOTOR_FAULT), _motor_fault_callback, FALLING);
   // Use DAC to set Vref for motor current limit
   analogWriteResolution(10);
