@@ -122,6 +122,7 @@ String device_version = "v1.0.1";
 #if HW_VERSION >= 3
   #define PIN_FRONT_BUTTON_SW   23
   #define PIN_FRONT_BUTTON_LED  24
+  #define LED_BRIGHTNESS        150
 #endif
 
 /********* MISC GLOBALS *********/
@@ -133,5 +134,8 @@ bool debug_print_mode = true;
 bool gcode_debug_mode = false;  // Debug mode is not compatible with API
 bool running_graph = false;
 bool zoom_mode = false;
+#if LID_TESTING
+unsigned long gcode_rec_timestamp;
+#endif
 /***************************************/
 #endif

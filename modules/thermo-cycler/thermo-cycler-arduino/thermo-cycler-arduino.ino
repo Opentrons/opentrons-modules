@@ -9,7 +9,11 @@ Peltiers peltiers;
 Fan cover_fan;
 Fan heatsink_fan;
 
+#if RGBW_NEO
 Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_RGBW);
+#else
+Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_GRB + NEO_KHZ800);
+#endif
 
 // Left Peltier -> Peltier::pel_3
 PID PID_left_pel(
@@ -315,10 +319,42 @@ void update_fans_from_state()
             gcode.response("Lid", lid.LID_STATUS_STRINGS[static_cast<int>(lid.status())]);
             break;
           case Gcode::open_lid:
+          #if LID_TESTING
+            gcode_rec_timestamp = millis();
+            Serial.print("Opening, ");
+            if (lid.open_cover())
+            {
+              Serial.print("Opened, ");
+              Serial.print(millis() - gcode_rec_timestamp);
+              Serial.print(", ");
+            }
+            else
+            {
+              Serial.print("Errored, ");
+              Serial.print(millis() - gcode_rec_timestamp);
+              Serial.print(", ");
+            }
+          #else
             lid.open_cover();
+          #endif
             break;
           case Gcode::close_lid:
+          #if LID_TESTING
+            gcode_rec_timestamp = millis();
+            Serial.print("Closing, ");
+            if (lid.close_cover())
+            {
+              Serial.print("Closed, ");
+              Serial.println(millis() - gcode_rec_timestamp);
+            }
+            else
+            {
+              Serial.print("Errored:");
+              Serial.println(millis() - gcode_rec_timestamp);
+            }
+          #else
             lid.close_cover();
+          #endif
             break;
           case Gcode::set_lid_temp:
             if (!gcode.pop_arg('S'))
@@ -459,7 +495,9 @@ void update_fans_from_state()
             break;
         }
       }
+    #if !LID_TESTING
       gcode.send_ack();
+    #endif
     }
   }
 #else
@@ -647,10 +685,14 @@ void read_from_serial() {
           Serial.read();
           if (Serial.peek() == '1')
           {
+            empty_serial_buffer();
+            Serial.println("Opening cover");
             lid.open_cover();
           }
           else
           {
+            empty_serial_buffer();
+            Serial.println("Closing cover");
             lid.close_cover();
           }
         }
@@ -667,7 +709,11 @@ void set_leds_white()
 {
   for(int i=0; i<strip.numPixels(); i++)
   {
+  #if RGBW_NEO
     strip.setPixelColor(i, 0, 0, 0, 255); // strip.setPixelColor(n, red, green, blue, white);
+  #else
+    strip.setPixelColor(i, 220, 220, 200);
+  #endif
     strip.show();
     delay(30);
   }
@@ -732,6 +778,10 @@ void setup()
   strip.setBrightness(50);
   strip.show();
   set_leds_white();
+
+  pinMode(PIN_FRONT_BUTTON_SW, INPUT);
+  analogWrite(PIN_FRONT_BUTTON_LED, LED_BRIGHTNESS);
+
 }
 
 void loop()
