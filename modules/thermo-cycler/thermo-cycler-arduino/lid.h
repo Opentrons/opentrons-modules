@@ -105,8 +105,6 @@ class Lid
     void solenoid_off();
     void motor_off();
     void motor_on();
-    void set_speed(float mm_per_sec);
-    void set_acceleration(float mm_per_sec_per_sec);
     bool move_millimeters(float mm);
     void check_switches();
     void reset_motor_driver();
@@ -121,19 +119,11 @@ class Lid
     bool _save_current();
     bool _set_current(uint8_t current_data);
     bool _i2c_write(byte address, byte value);
-    void _reset_acceleration();
-    void _calculate_step_delay();
-    void _update_acceleration();
     void _motor_step(uint8_t dir);
     void _update_status();
     byte _i2c_read();
     uint16_t _to_dac_out(float driver_vref);
 
-    double _step_delay_microseconds = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
-    double _mm_per_sec = 20;
-    double _acceleration = 300;  // mm/sec/sec
-    const double _start_mm_per_sec = 1;
-    double _active_mm_per_sec;
     Lid_status _status;
     enum class _Lid_switch {
       cover_switch,

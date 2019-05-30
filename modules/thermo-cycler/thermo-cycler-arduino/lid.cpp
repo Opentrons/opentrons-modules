@@ -198,35 +198,6 @@ void Lid::reset_motor_driver()
   digitalWrite(PIN_MOTOR_RST, HIGH);
 #endif
 }
-void Lid::set_speed(float mm_per_sec)
-{
-  _mm_per_sec = mm_per_sec;
-}
-
-void Lid::set_acceleration(float mm_per_sec_per_sec)
-{
-  _acceleration = mm_per_sec_per_sec;
-}
-
-void Lid::_reset_acceleration()
-{
-  _active_mm_per_sec = _start_mm_per_sec;
-  _calculate_step_delay();
-}
-
-void Lid::_calculate_step_delay()
-{
-  _step_delay_microseconds = 1000000 / (STEPS_PER_MM * _active_mm_per_sec);
-  _step_delay_microseconds -= PULSE_HIGH_MICROSECONDS;
-}
-
-void Lid::_update_acceleration()
-{
-  // take the time since the last step, and calculate how much to adjust mm/sec
-  _active_mm_per_sec += ((_step_delay_microseconds + PULSE_HIGH_MICROSECONDS) / 1000000) * _acceleration;
-  _active_mm_per_sec = min(_active_mm_per_sec, _mm_per_sec);
-  _calculate_step_delay();
-}
 
 bool Lid::move_millimeters(float mm)
 {
@@ -234,7 +205,6 @@ bool Lid::move_millimeters(float mm)
   if (mm < 0) dir = DIRECTION_DOWN;
   unsigned long steps = abs(mm) * float(STEPS_PER_MM);
 
-  _reset_acceleration();
   for (unsigned long i=0;i<steps;i++)
   {
     _motor_step(dir);
