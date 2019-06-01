@@ -739,7 +739,7 @@ void setup()
   }
   cover_fan.setup_enable_pin(PIN_FAN_COVER, true);  // ON-OFF only. No speed control
   cover_fan.disable();
-  heatsink_fan.setup_enable_pin(PIN_FAN_SINK_ENABLE, false);
+  heatsink_fan.setup_enable_pin(PIN_FAN_SINK_ENABLE, true);
   heatsink_fan.setup_pwm_pin(PIN_FAN_SINK_CTRL);
   heatsink_fan.disable();
   heat_pad_off();

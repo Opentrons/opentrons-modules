@@ -20,12 +20,11 @@
 #define GAIN_EIGHT_VOLTAGE       0.512
 #define GAIN_SIXTEEN_VOLTAGE     0.256
 
-#define ADC_INDEX_HEAT_SINK            0
-#define ADC_INDEX_PLATE_FRONT_RIGHT    1  //Bottom Right on sch.
-#define ADC_INDEX_PLATE_FRONT_CENTER   2  //Bottom Center on sch.
-#define ADC_INDEX_PLATE_FRONT_LEFT     3  //Bottom Lef on sch.
-
 #if HW_VERSION >=3
+  #define ADC_INDEX_HEAT_SINK            0
+  #define ADC_INDEX_PLATE_FRONT_LEFT     1
+  #define ADC_INDEX_PLATE_FRONT_CENTER   2
+  #define ADC_INDEX_PLATE_FRONT_RIGHT    3
   #define ADC_INDEX_PLATE_BACK_LEFT      4
   #define ADC_INDEX_COVER                5
   #define ADC_INDEX_PLATE_BACK_RIGHT     6
@@ -34,6 +33,10 @@
   #define PIN_ADC_1_ALERT              30
   #define PIN_ADC_2_ALERT              31
 #else
+  #define ADC_INDEX_HEAT_SINK            0
+  #define ADC_INDEX_PLATE_FRONT_RIGHT    1  //Bottom Right on sch.
+  #define ADC_INDEX_PLATE_FRONT_CENTER   2  //Bottom Center on sch.
+  #define ADC_INDEX_PLATE_FRONT_LEFT     3  //Bottom Lef on sch.
   #define ADC_INDEX_PLATE_BACK_LEFT      4  //Top Left on sch.
   #define ADC_INDEX_PLATE_BACK_CENTER    5  //Top Center on sch.
   #define ADC_INDEX_PLATE_BACK_RIGHT     6  //Top Right on sch.
