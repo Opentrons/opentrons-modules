@@ -54,13 +54,10 @@ PID PID_Cover(
 void set_heat_pad_power(float val)
 {
   uint8_t byte_val = max(min(val * 255.0, 255), 0);
-  pinMode(PIN_HEAT_PAD_CONTROL, OUTPUT);
-  if (byte_val == 255) digitalWrite(PIN_HEAT_PAD_CONTROL, HIGH);
-  else if (byte_val == 0) digitalWrite(PIN_HEAT_PAD_CONTROL, LOW);
 #if HFQ_PWM
-  else hfq_analogWrite(PIN_HEAT_PAD_CONTROL, byte_val);
+  hfq_analogWrite(PIN_HEAT_PAD_CONTROL, byte_val);
 #else
-    else analogWrite(PIN_HEAT_PAD_CONTROL, byte_val);
+  analogWrite(PIN_HEAT_PAD_CONTROL, byte_val);
 #endif
 }
 
@@ -71,7 +68,7 @@ void heat_pad_off()
 #if HW_VERSION >= 3
   digitalWrite(PIN_HEAT_PAD_EN, LOW);
 #endif
-  // set_heat_pad_power(0);
+  set_heat_pad_power(0);
 }
 
 void heat_pad_on()
@@ -248,7 +245,7 @@ void update_fans_from_state()
     {
       if (is_target_cold())
       {
-        heatsink_fan.set_percentage(1.0);
+        heatsink_fan.set_percentage(0.7);
         return;
       }
       else if (is_ramping_down())
@@ -739,7 +736,11 @@ void setup()
   }
   cover_fan.setup_enable_pin(PIN_FAN_COVER, true);  // ON-OFF only. No speed control
   cover_fan.disable();
+#if HW_VERSION >=3
   heatsink_fan.setup_enable_pin(PIN_FAN_SINK_ENABLE, true);
+#else
+  heatsink_fan.setup_enable_pin(PIN_FAN_SINK_ENABLE, false);
+#endif
   heatsink_fan.setup_pwm_pin(PIN_FAN_SINK_CTRL);
   heatsink_fan.disable();
   heat_pad_off();
@@ -779,9 +780,10 @@ void setup()
   strip.show();
   set_leds_white();
 
+#if HW_VERSION >= 3
   pinMode(PIN_FRONT_BUTTON_SW, INPUT);
   analogWrite(PIN_FRONT_BUTTON_LED, LED_BRIGHTNESS);
-
+#endif
 }
 
 void loop()
