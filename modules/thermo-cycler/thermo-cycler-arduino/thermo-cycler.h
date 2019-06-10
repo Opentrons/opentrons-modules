@@ -129,6 +129,7 @@ String device_version = "v1.0.1";
 
 unsigned long plotter_timestamp = 0;
 const int plotter_interval = 500;
+bool front_button_pressed = false;
 bool running_from_script = false;
 bool debug_print_mode = true;
 bool gcode_debug_mode = false;  // Debug mode is not compatible with API

@@ -702,6 +702,27 @@ void read_from_serial() {
 /////////////////////////////////
 /////////////////////////////////
 
+void front_button_callback()
+{
+  if(digitalRead(PIN_FRONT_BUTTON_SW) == LOW)
+  {
+    front_button_pressed = true;
+  }
+}
+
+void front_button_check()
+{
+  if (front_button_pressed)
+  {
+    delay(100); // debounce
+    if(digitalRead(PIN_FRONT_BUTTON_SW) == LOW)
+    {
+      lid.open_cover();
+      front_button_pressed = false;
+    }
+  }
+}
+
 void set_leds_white()
 {
   for(int i=0; i<strip.numPixels(); i++)
@@ -737,6 +758,7 @@ void setup()
   cover_fan.setup_enable_pin(PIN_FAN_COVER, true);  // ON-OFF only. No speed control
   cover_fan.disable();
 #if HW_VERSION >=3
+  pinMode(PIN_HEAT_PAD_EN, OUTPUT);
   heatsink_fan.setup_enable_pin(PIN_FAN_SINK_ENABLE, true);
 #else
   heatsink_fan.setup_enable_pin(PIN_FAN_SINK_ENABLE, false);
@@ -783,6 +805,7 @@ void setup()
 #if HW_VERSION >= 3
   pinMode(PIN_FRONT_BUTTON_SW, INPUT);
   analogWrite(PIN_FRONT_BUTTON_LED, LED_BRIGHTNESS);
+  attachInterrupt(digitalPinToInterrupt(PIN_FRONT_BUTTON_SW), front_button_callback, CHANGE);
 #endif
 }
 
@@ -826,4 +849,7 @@ void loop()
   tc_timer.update();
   update_peltiers_from_pid();
   update_cover_from_pid();
+#if HW_VERSION >=3
+  front_button_check();
+#endif
 }
