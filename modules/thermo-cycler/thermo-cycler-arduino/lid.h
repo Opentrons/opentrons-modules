@@ -50,20 +50,30 @@
 #define AD5110_SAVE_VALUE_CMD 0x01
 #define AD5110_READ_TOLERANCE_CMD 0x06
 
-#define MOTOR_CURRENT_VREF 0.75   // TODO: Update this to correct value later
+#define MOTOR_CURRENT_VREF 0.48
 
 #define CURRENT_HIGH 0.5
 #define CURRENT_LOW 0.01
 #define MOTOR_ENABLE_DELAY_MS 5
 
+#if HW_VERSION >=3
+#define DIRECTION_DOWN LOW
+#define DIRECTION_UP HIGH
+#else
 #define DIRECTION_DOWN HIGH
 #define DIRECTION_UP LOW
+#endif
 
+#define STEP_ANGLE  1.8
+#define MICRO_STEP  32
+#define MOTOR_REDUCTION_RATIO  99.5
+#define STEPS_PER_ANGLE  uint16_t((MICRO_STEP * MOTOR_REDUCTION_RATIO) / STEP_ANGLE)
 #define STEPS_PER_MM 480  // full-stepping
 #define LID_MOTOR_RANGE_MM  390 // The max distance in mm the motor should move between open to close positions
+#define LID_MOTOR_RANGE_DEG 100 // Max angle the lid motor can move
 #define PULSE_HIGH_MICROSECONDS 2
-#define MOTOR_STEP_DELAY 60
-#define LID_CLOSE_BACKTRACK_STEPS 3200
+#define MOTOR_STEP_DELAY 60   // microseconds
+#define LID_CLOSE_BACKTRACK_STEPS 2500
 
 #define TO_INT(an_enum) static_cast<int>(an_enum)
 
@@ -105,7 +115,7 @@ class Lid
     void solenoid_off();
     void motor_off();
     void motor_on();
-    bool move_millimeters(float mm);
+    bool move_angle(float deg);
     void check_switches();
     void reset_motor_driver();
     bool is_driver_faulted();

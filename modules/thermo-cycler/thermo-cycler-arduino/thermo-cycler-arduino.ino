@@ -10,7 +10,7 @@ Fan cover_fan;
 Fan heatsink_fan;
 
 #if RGBW_NEO
-Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_RGBW);
+Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_GRBW);
 #else
 Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_GRB + NEO_KHZ800);
 #endif
@@ -280,6 +280,16 @@ void update_fans_from_state()
   }
 }
 
+void deactivate_all()
+{
+  heat_pad_off();
+  heatsink_fan.disable();
+  peltiers.disable();
+  target_temperature_plate = TEMPERATURE_ROOM;
+  master_set_a_target = false;
+  tc_timer.reset();
+}
+
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
@@ -454,12 +464,7 @@ void update_fans_from_state()
             // when paused
             break;
           case Gcode::deactivate_all:
-            heat_pad_off();
-            heatsink_fan.disable();
-            peltiers.disable();
-            target_temperature_plate = TEMPERATURE_ROOM;
-            master_set_a_target = false;
-            tc_timer.reset();
+            deactivate_all();
             break;
           case Gcode::get_device_info:
             gcode.device_info_response(device_serial, device_model, device_version);
@@ -707,20 +712,21 @@ void front_button_callback()
   if(digitalRead(PIN_FRONT_BUTTON_SW) == LOW)
   {
     front_button_pressed = true;
+    front_button_pressed_at = millis();
   }
 }
 
-void front_button_check()
+bool is_front_button_pressed()
 {
-  if (front_button_pressed)
+  if (front_button_pressed && millis() - front_button_pressed_at >= 200)
   {
-    delay(100); // debounce
     if(digitalRead(PIN_FRONT_BUTTON_SW) == LOW)
     {
-      lid.open_cover();
       front_button_pressed = false;
+      return true;
     }
   }
+  return false;
 }
 
 void set_leds_white()
@@ -728,7 +734,7 @@ void set_leds_white()
   for(int i=0; i<strip.numPixels(); i++)
   {
   #if RGBW_NEO
-    strip.setPixelColor(i, 0, 0, 0, 255); // strip.setPixelColor(n, red, green, blue, white);
+    strip.setPixelColor(i, 220, 220, 200, 0); // strip.setPixelColor(n, red, green, blue, white);
   #else
     strip.setPixelColor(i, 220, 220, 200);
   #endif
@@ -850,6 +856,10 @@ void loop()
   update_peltiers_from_pid();
   update_cover_from_pid();
 #if HW_VERSION >=3
-  front_button_check();
+  if (is_front_button_pressed())
+  {
+    deactivate_all();
+    lid.open_cover();
+  }
 #endif
 }
