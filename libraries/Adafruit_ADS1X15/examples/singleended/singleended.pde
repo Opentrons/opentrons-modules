@@ -2,7 +2,7 @@
 #include <Adafruit_ADS1015.h>
 
 // Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
-Adafruit_ADS1015 ads;     /* Use thi for the 12-bit version */
+Adafruit_ADS1015 ads;     /* Use this for the 12-bit version */
 
 void setup(void) 
 {
@@ -26,6 +26,10 @@ void setup(void)
   // ads.setGain(GAIN_SIXTEEN);    // 16x gain  +/- 0.256V  1 bit = 0.125mV  0.0078125mV
   
   ads.begin();
+  ads.setSPS(ADS1115_DR_475SPS);                      // for ADS1115 fastest samples per second is 860 (default is 128)
+
+  ads.readADC_Differential_0_1();                   // in case chip was previously in contuous mode, take out of continuous
+  ads.waitForConversion();   
 }
 
 void loop(void) 

@@ -15,6 +15,8 @@ Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_RGBW);
 Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_GRB + NEO_KHZ800);
 #endif
 
+unsigned long timeStamp = 0;
+
 // Left Peltier -> Peltier::pel_3
 PID PID_left_pel(
   &current_left_pel_temp,
@@ -288,10 +290,14 @@ void update_fans_from_state()
   void debug_status_prints()
   {
     // Thermistors:
-    gcode.add_debug_response("Pel1", temp_probes.left_pair_temperature());
-    gcode.add_debug_response("Pel2", temp_probes.center_pair_temperature());
-    gcode.add_debug_response("Pel3", temp_probes.right_pair_temperature());
+    gcode.add_debug_response("Therm1", temp_probes.front_left_temperature());
+    gcode.add_debug_response("Therm2", temp_probes.front_center_temperature());
+    gcode.add_debug_response("Therm3", temp_probes.front_right_temperature());
+    gcode.add_debug_response("Therm4", temp_probes.back_left_temperature());
+    gcode.add_debug_response("Therm5", temp_probes.back_center_temperature());
+    gcode.add_debug_response("Therm6", temp_probes.back_right_temperature());
     gcode.add_debug_response("Heatsink", temp_probes.heat_sink_temperature());
+    gcode.add_debug_response("Therm update sec", float(timeStamp)/1000);
     // Fan power:
     gcode.add_debug_response("Fan", heatsink_fan.current_power);
     // Cover temperature:
@@ -805,6 +811,7 @@ void loop()
 #endif
 
 #if !DUMMY_BOARD
+  timeStamp = millis();
   if (temp_probes.update())
   {
     current_left_pel_temp = temp_probes.left_pair_temperature();
@@ -813,6 +820,7 @@ void loop()
     current_temperature_plate = temp_probes.average_plate_temperature();
     current_temperature_cover = temp_probes.cover_temperature();
   }
+  timeStamp = millis() - timeStamp;
 #endif
   if (auto_fan)
   {
