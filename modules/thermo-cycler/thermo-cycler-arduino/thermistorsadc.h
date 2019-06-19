@@ -77,8 +77,8 @@ class ThermistorsADC{
             Adafruit_ADS1115 *adc_a;
             Adafruit_ADS1115 *adc_b;
 
-            int _read_adc(int index);
-            float _adc_to_celsius(int _adc);
+            uint16_t _read_adc(int index);
+            float _adc_to_celsius(uint16_t _adc);
 
             double probe_temps[TOTAL_THERMISTORS] = {0, };
             double sum_probe_temps[TOTAL_THERMISTORS] = {0, };

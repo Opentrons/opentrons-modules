@@ -96,16 +96,24 @@ float ThermistorsADC::heat_sink_temperature() {
 }
 
 
-int ThermistorsADC::_read_adc(int index) {
+uint16_t ThermistorsADC::_read_adc(int index) {
+  int res = 0;
   switch (int(index / ADC_PER_DEVICE)) {
     case 0:
-      return max(adc_a->readADC_SingleEnded(index % ADC_PER_DEVICE), 0);
+      res = adc_a->readADC_SingleEnded(index % ADC_PER_DEVICE);
+      break;
     case 1:
-      return max(adc_b->readADC_SingleEnded(index % ADC_PER_DEVICE), 0);
+      res = adc_b->readADC_SingleEnded(index % ADC_PER_DEVICE);
+      break;
   }
+  if (res >=0)
+  {
+    return uint16_t(res);
+  }
+  return uint16_t(0);
 }
 
-float ThermistorsADC::_adc_to_celsius(int _adc) {
+float ThermistorsADC::_adc_to_celsius(uint16_t _adc) {
   if (_adc < TABLE[ADC_TABLE_SIZE-1].adc_reading) {
     return TABLE[ADC_TABLE_SIZE-1].celsius;
   }
