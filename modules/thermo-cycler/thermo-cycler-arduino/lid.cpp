@@ -199,11 +199,11 @@ void Lid::reset_motor_driver()
 #endif
 }
 
-bool Lid::move_millimeters(float mm)
+bool Lid::move_angle(float deg)
 {
   uint8_t dir = DIRECTION_UP;
-  if (mm < 0) dir = DIRECTION_DOWN;
-  unsigned long steps = abs(mm) * float(STEPS_PER_MM);
+  if (deg < 0) dir = DIRECTION_DOWN;
+  unsigned long steps = abs(deg) * STEPS_PER_ANGLE;
 
   for (unsigned long i=0;i<steps;i++)
   {
@@ -226,6 +226,7 @@ bool Lid::move_millimeters(float mm)
     {
       if (_is_bottom_switch_pressed)
       {
+        delay(50);
         for (int j = 0; j < LID_CLOSE_BACKTRACK_STEPS; j++)
         {
           // Backtrack a bit
@@ -245,11 +246,12 @@ bool Lid::open_cover()
      return true;
   }
   motor_on();
-  move_millimeters(-10);    // move down a bit
+  move_angle(-1);    // move down a bit
   solenoid_on();
-  move_millimeters(10);     // move up a bit
+  delay(100);
+  move_angle(5);     // move up a bit
   solenoid_off();
-  bool res = move_millimeters(LID_MOTOR_RANGE_MM);
+  bool res = move_angle(LID_MOTOR_RANGE_DEG);
   motor_off();
   return res;
 }
@@ -260,9 +262,9 @@ bool Lid::close_cover()
   {
     return true;
   }
-  solenoid_on();
+  // solenoid_on();
   motor_on();
-  bool res = move_millimeters(-LID_MOTOR_RANGE_MM);
+  bool res = move_angle(-LID_MOTOR_RANGE_DEG);
   solenoid_off();
   delay(700);
   motor_off();
