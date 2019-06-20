@@ -30,6 +30,7 @@
   GCODE_DEF(motor_reset, mrst),     \
   GCODE_DEF(debug_mode, M111),      \
   GCODE_DEF(print_debug_stat, stat),\
+  GCODE_DEF(continous_debug_stat, cont),\
   GCODE_DEF(max, -)
 
 #define GCODE_DEF(name, _) name
@@ -73,6 +74,7 @@ class GcodeHandler
       void response(String msg);
       void response(String param, String msg);
       void add_debug_response(String param, float val);
+      void add_debug_timestamp();
 
     private:
       struct

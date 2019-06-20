@@ -210,8 +210,15 @@ void GcodeHandler::response(String msg)
 void GcodeHandler::add_debug_response(String param, float val)
 {
   Serial.print(param);
-  Serial.print(F(":"));
+  Serial.print(F(": "));
   Serial.print(val);
+  Serial.print(F("\t"));
+}
+
+void GcodeHandler::add_debug_timestamp()
+{
+  Serial.print(F("millis: "));
+  Serial.print(millis());
   Serial.print(F("\t"));
 }
 

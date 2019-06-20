@@ -18,6 +18,9 @@ void ThermistorsADC::setup(float voltage) {
 
   adc_a->begin();
   adc_b->begin();
+
+  adc_a->setSPS(ADS1115_DR_860SPS);   // Sample rate 860 per sec
+  adc_b->setSPS(ADS1115_DR_860SPS);   // Sample rate 860 per sec
 }
 
 bool ThermistorsADC::update() {
