@@ -18,6 +18,7 @@ class Fan
     void enable();
     void disable();
     float current_power;
+    float manual_power;
 
   private:
     uint8_t _pwm_pin;

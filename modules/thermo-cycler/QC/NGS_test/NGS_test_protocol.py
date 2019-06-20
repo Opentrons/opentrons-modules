@@ -5,19 +5,28 @@ import threading
 from argparse import ArgumentParser
 
 #---------------------------------------#
-TOTAL_RUNS = 250
-GCODES = True
-TC_GCODE_ROUNDING_PRECISION = 2
+# Users can change these values as required #
+
+TOTAL_RUNS = 1
+
+HI_TEMP_OFFSET = 1.2
+LO_TEMP_OFFSET = 0.4
 
 COVER_TEMP = 105
 PLATE_TEMP_PRE = 10
-PLATE_TEMP_HOLD_1 = (94, 180)
-# Following temp durations have been increased by 10 sec to accommodate for ramp time
-PLATE_TEMP_REPEAT = [(94, 20), (70, 40), (72, 40)]
-PLATE_TEMP_HOLD_2 = (72, 300)
+PLATE_TEMP_HOLD_1 = (94 - HI_TEMP_OFFSET, 180)
+PLATE_TEMP_REPEAT = [(94 - HI_TEMP_OFFSET, 10), (70 - LO_TEMP_OFFSET, 30), (72 - LO_TEMP_OFFSET, 30)]
+PLATE_TEMP_HOLD_2 = (72 - LO_TEMP_OFFSET, 300)
 PLATE_TEMP_POST = 4
 CYCLES = 29
+
 #---------------------------------------#
+# DO NOT change any of these
+GCODES = True
+TC_GCODE_ROUNDING_PRECISION = 2
+# Use this global var with care. Status will have Hold_time of 0 when there was
+# no hold time set as well as when the hold timer runs out
+CURRENT_HOLD_TIME = 99
 
 BAUDRATE = 115200
 GCODES = {
@@ -97,30 +106,43 @@ def parse_key_from_substring(substring) -> str:
 
 
 def run_protocol(ser, lock):
+	global CURRENT_HOLD_TIME
 	for run_x in range(TOTAL_RUNS):
 		print("****** Run #{} *******".format(run_x))
 		_send(ser, lock, PROTOCOL_STEPS[0])	# Plate PRE
 		_send(ser, lock, PROTOCOL_STEPS[1])	# Lid temp
 		time.sleep(150)	 # Takes approx 5 minutes for lid to heat
 		_send(ser, lock, PROTOCOL_STEPS[2])	# First point
-		time.sleep(PLATE_TEMP_HOLD_1[1])
+		time.sleep(5)	# wait until recorder catches up
+		while CURRENT_HOLD_TIME != 0:
+			time.sleep(0.5)
 		for i in range(CYCLES):
 			_send(ser, lock, PROTOCOL_STEPS[3])	# First repeat
-			time.sleep(PLATE_TEMP_REPEAT[0][1])
+			time.sleep(5)	# wait until recorder catches up
+			while CURRENT_HOLD_TIME != 0:
+				time.sleep(0.5)
 			_send(ser, lock, PROTOCOL_STEPS[4])	# Second repeat
-			time.sleep(PLATE_TEMP_REPEAT[1][1])
+			time.sleep(5)	# wait until recorder catches up
+			while CURRENT_HOLD_TIME != 0:
+				time.sleep(0.5)
 			_send(ser, lock, PROTOCOL_STEPS[5])	# Last repeat
-			time.sleep(PLATE_TEMP_REPEAT[2][1])
+			time.sleep(5)	# wait until recorder catches up
+			while CURRENT_HOLD_TIME != 0:
+				time.sleep(0.5)
+			print("________ Cycle {} complete _______".format(i))
 		_send(ser, lock, PROTOCOL_STEPS[6])	# Rest step
-		time.sleep(PLATE_TEMP_HOLD_2[1])
+		time.sleep(5)	# wait until recorder catches up
+		while CURRENT_HOLD_TIME != 0:
+			time.sleep(0.5)
 		_send(ser, lock, PROTOCOL_STEPS[7])	# Lid stop
 		_send(ser, lock, PROTOCOL_STEPS[8])	# incubate
 		time.sleep(200)
 		print("******* Run #{} Completed *******".format(run_x))
-	_send(ser, lock, DEACTIVATE)
+	# _send(ser, lock, DEACTIVATE)
 
 
 def record_status(filename, ser, lock):
+	global CURRENT_HOLD_TIME
 	_send(ser, lock, GCODE_DEBUG_PRINT_MODE)
 	time.sleep(0.5)
 	ser.readline()
@@ -139,6 +161,7 @@ def record_status(filename, ser, lock):
 				key = parse_key_from_substring(substr)
 				value = parse_number_from_substring(substr, TC_GCODE_ROUNDING_PRECISION)
 				data_res[key] = value
+			CURRENT_HOLD_TIME = data_res['Hold_time']
 			print()
 			print("---------------------")
 			status_list = []

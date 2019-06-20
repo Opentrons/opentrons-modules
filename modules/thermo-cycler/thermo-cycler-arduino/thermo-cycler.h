@@ -45,7 +45,7 @@
 
 /********* TEMPERATURE PREDEFS *********/
 
-#define TEMPERATURE_ROOM 23
+#define TEMPERATURE_ROOM 26
 #define TEMPERATURE_COVER_HOT 105
 
 /********* PID: PLATE PELTIERS *********/
