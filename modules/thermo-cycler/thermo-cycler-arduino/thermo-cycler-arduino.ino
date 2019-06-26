@@ -874,6 +874,10 @@ void setup()
 
 void temp_safety_check()
 {
+  if (!master_set_a_target)
+  {
+    return;
+  }
   if (temp_probes.heat_sink_temperature() >= 70
       || (temp_probes.back_left_temperature() > 100
           || temp_probes.back_center_temperature() > 100
