@@ -24,12 +24,13 @@
   GCODE_DEF(pause, M76),            \
   GCODE_DEF(deactivate_all, M18),   \
   GCODE_DEF(get_device_info, M115), \
-  GCODE_DEF(heatsink_fan_on, M106), \
-  GCODE_DEF(heatsink_fan_off, M107),\
+  GCODE_DEF(heatsink_fan_pwr_manual, M106), \
+  GCODE_DEF(heatsink_fan_auto_on, M107),  \
   GCODE_DEF(dfu, dfu),              \
   GCODE_DEF(motor_reset, mrst),     \
   GCODE_DEF(debug_mode, M111),      \
   GCODE_DEF(print_debug_stat, stat),\
+  GCODE_DEF(continous_debug_stat, cont),\
   GCODE_DEF(max, -)
 
 #define GCODE_DEF(name, _) name
@@ -73,6 +74,7 @@ class GcodeHandler
       void response(String msg);
       void response(String param, String msg);
       void add_debug_response(String param, float val);
+      void add_debug_timestamp();
 
     private:
       struct
