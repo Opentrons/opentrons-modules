@@ -286,16 +286,6 @@ void update_fans_from_state()
     {
       heatsink_fan.disable();
     }
-
-    // TODO: decide what to do about cover fan
-    // if (cover_should_be_hot)
-    // {
-    //   cover_fan.enable();
-    // }
-    // else
-    // {
-    //   cover_fan.disable();
-    // }
   }
 }
 
@@ -878,13 +868,13 @@ void temp_safety_check()
   {
     return;
   }
-  if (temp_probes.heat_sink_temperature() >= 70
-      || (temp_probes.back_left_temperature() > 100
-          || temp_probes.back_center_temperature() > 100
-          || temp_probes.back_right_temperature() > 100
-          || temp_probes.front_left_temperature() > 100
-          || temp_probes.front_center_temperature() > 100
-          || temp_probes.front_right_temperature() > 100
+  if (temp_probes.heat_sink_temperature() >= HEATSINK_SAFE_TEMP_LIMIT
+      || (temp_probes.back_left_temperature() > PELTIER_SAFE_TEMP_LIMIT
+          || temp_probes.back_center_temperature() > PELTIER_SAFE_TEMP_LIMIT
+          || temp_probes.back_right_temperature() > PELTIER_SAFE_TEMP_LIMIT
+          || temp_probes.front_left_temperature() > PELTIER_SAFE_TEMP_LIMIT
+          || temp_probes.front_center_temperature() > PELTIER_SAFE_TEMP_LIMIT
+          || temp_probes.front_right_temperature() > PELTIER_SAFE_TEMP_LIMIT
         )
       )
   {
