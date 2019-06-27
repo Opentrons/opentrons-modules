@@ -42,13 +42,19 @@
 #define PIN_FAN_SINK_ENABLE         2    // Heat sink fan
 #define FAN_POWER_HIGH              0.8
 #define FAN_POWER_LOW               0.2
+#define FAN_PWR_COLD_TARGET         0.7
+#define FAN_PWR_RAMPING_DOWN        0.55
+#define HEATSINK_P_CONSTANT         1.0
 
 /********* TEMPERATURE PREDEFS *********/
 
-#define TEMPERATURE_ROOM 23
-#define TEMPERATURE_COVER_HOT 105
-#define PELTIER_SAFE_TEMP_LIMIT 105
-#define HEATSINK_SAFE_TEMP_LIMIT 75
+#define TEMPERATURE_ROOM          23
+#define TEMPERATURE_COVER_HOT     105
+#define PELTIER_SAFE_TEMP_LIMIT   105
+#define HEATSINK_SAFE_TEMP_LIMIT  75
+#define HEATSINK_FAN_LO_TEMP      38
+#define HEATSINK_FAN_HI_TEMP      55
+#define HEATSINK_FAN_OFF_TEMP     36
 
 /********* PID: PLATE PELTIERS *********/
 // NOTE: temp_probes.update takes 136-137ms while rest of the loop takes 0-1ms.

@@ -245,10 +245,10 @@ void update_fans_from_state()
   {
     if (!auto_fan)
     { // Heatsink safety threshold overrides manual operation
-      if (temp_probes.heat_sink_temperature() > 55)
+      if (temp_probes.heat_sink_temperature() > HEATSINK_FAN_HI_TEMP)
       {
         // Fan speed proportional to temperature
-        float pwr = temp_probes.heat_sink_temperature() / 100;
+        float pwr = HEATSINK_P_CONSTANT * temp_probes.heat_sink_temperature() / 100.0;
         pwr = max(pwr, heatsink_fan.manual_power);
         heatsink_fan.set_percentage(pwr);
       }
@@ -259,12 +259,12 @@ void update_fans_from_state()
     {
       if (is_target_cold())
       {
-        heatsink_fan.set_percentage(0.7);
+        heatsink_fan.set_percentage(FAN_PWR_COLD_TARGET);
         return;
       }
       else if (is_ramping_down())
       {
-        heatsink_fan.set_percentage(0.55);
+        heatsink_fan.set_percentage(FAN_PWR_RAMPING_DOWN);
         return;
       }
       // else if (is_ramping_up())
@@ -272,17 +272,17 @@ void update_fans_from_state()
       //   heatsink_fan.set_percentage(0.2);
       //   return;
       // }
-      else if (temp_probes.heat_sink_temperature() > 38)
+      else if (temp_probes.heat_sink_temperature() > HEATSINK_FAN_LO_TEMP)
       {
-        heatsink_fan.set_percentage(0.2);
+        heatsink_fan.set_percentage(FAN_POWER_LOW);
       }
     }
-    if (temp_probes.heat_sink_temperature() > 55)
+    if (temp_probes.heat_sink_temperature() > HEATSINK_FAN_HI_TEMP)
     {
       // Fan speed proportional to temperature
-      heatsink_fan.set_percentage(temp_probes.heat_sink_temperature() / 100);
+      heatsink_fan.set_percentage(HEATSINK_P_CONSTANT * temp_probes.heat_sink_temperature() / 100.0);
     }
-    else if(temp_probes.heat_sink_temperature() < 36)
+    else if(temp_probes.heat_sink_temperature() < HEATSINK_FAN_OFF_TEMP)
     {
       heatsink_fan.disable();
     }
