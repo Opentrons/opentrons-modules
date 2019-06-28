@@ -226,12 +226,6 @@ bool Lid::move_angle(float deg)
     {
       if (_is_bottom_switch_pressed)
       {
-        delay(50);
-        for (int j = 0; j < LID_CLOSE_BACKTRACK_STEPS; j++)
-        {
-          // Backtrack a bit
-          _motor_step(DIRECTION_UP);
-        }
         return true;
       }
     }
@@ -246,11 +240,14 @@ bool Lid::open_cover()
      return true;
   }
   motor_on();
-  move_angle(-1);    // move down a bit
-  solenoid_on();
-  delay(100);
-  move_angle(5);     // move up a bit
-  solenoid_off();
+  if(move_angle(-5))  // move down a bit
+  {
+    // lid hit bottom switch
+    solenoid_on();
+    delay(400);
+    move_angle(10);     // move up a bit
+    solenoid_off();
+  }
   bool res = move_angle(LID_MOTOR_RANGE_DEG);
   motor_off();
   return res;
@@ -265,7 +262,7 @@ bool Lid::close_cover()
   // solenoid_on();
   motor_on();
   bool res = move_angle(-LID_MOTOR_RANGE_DEG);
-  solenoid_off();
+  // solenoid_off();
   delay(700);
   motor_off();
   return res;
