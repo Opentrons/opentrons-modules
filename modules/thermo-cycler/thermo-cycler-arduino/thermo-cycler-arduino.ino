@@ -303,452 +303,252 @@ void deactivate_all()
 /////////////////////////////////
 /////////////////////////////////
 
-#if USE_GCODES
-  void debug_status_prints()
-  {
-    static unsigned long lastPrint = 0;
 
-    if (millis() - lastPrint < DEBUG_PRINT_INTERVAL)
-    {
-      return;
-    }
-    lastPrint = millis();
-    // Timestamp
-    gcode.add_debug_timestamp();
-    // Target
-    gcode.add_debug_response("Plt_Target", target_temperature_plate);
-    gcode.add_debug_response("Cov_Target", target_temperature_cover);
-    gcode.add_debug_response("Hold_time", tc_timer.time_left());
-    // Thermistors:
-    gcode.add_debug_response("T1", temp_probes.front_left_temperature());
-    gcode.add_debug_response("T2", temp_probes.front_center_temperature());
-    gcode.add_debug_response("T3", temp_probes.front_right_temperature());
-    gcode.add_debug_response("T4", temp_probes.back_left_temperature());
-    gcode.add_debug_response("T5", temp_probes.back_center_temperature());
-    gcode.add_debug_response("T6", temp_probes.back_right_temperature());
-    gcode.add_debug_response("T.sink", temp_probes.heat_sink_temperature());
-    gcode.add_debug_response("loop_time", float(timeStamp)/1000);
-    // Fan power:
-    gcode.add_debug_response("Fan", heatsink_fan.current_power);
-    gcode.add_debug_response("Fan auto?", auto_fan);
-    // Cover temperature:
-    gcode.add_debug_response("T.Lid", temp_probes.cover_temperature());
-    // Motor status:
+void debug_status_prints()
+{
+  static unsigned long lastPrint = 0;
+
+  if (millis() - lastPrint < DEBUG_PRINT_INTERVAL)
+  {
+    return;
+  }
+  lastPrint = millis();
+  // Timestamp
+  gcode.add_debug_timestamp();
+  // Target
+  gcode.add_debug_response("Plt_Target", target_temperature_plate);
+  gcode.add_debug_response("Cov_Target", target_temperature_cover);
+  gcode.add_debug_response("Hold_time", tc_timer.time_left());
+  // Thermistors:
+  gcode.add_debug_response("T1", temp_probes.front_left_temperature());
+  gcode.add_debug_response("T2", temp_probes.front_center_temperature());
+  gcode.add_debug_response("T3", temp_probes.front_right_temperature());
+  gcode.add_debug_response("T4", temp_probes.back_left_temperature());
+  gcode.add_debug_response("T5", temp_probes.back_center_temperature());
+  gcode.add_debug_response("T6", temp_probes.back_right_temperature());
+  gcode.add_debug_response("T.sink", temp_probes.heat_sink_temperature());
+  gcode.add_debug_response("loop_time", float(timeStamp)/1000);
+  // Fan power:
+  gcode.add_debug_response("Fan", heatsink_fan.current_power);
+  gcode.add_debug_response("Fan auto?", auto_fan);
+  // Cover temperature:
+  gcode.add_debug_response("T.Lid", temp_probes.cover_temperature());
+  // Motor status:
 #if HW_VERSION >= 3
-    gcode.add_debug_response("Motor_fault", int(lid.is_driver_faulted()));
+  gcode.add_debug_response("Motor_fault", int(lid.is_driver_faulted()));
 #endif
-    gcode.response("");
-  }
+  gcode.response("");
+}
 
-  void read_gcode()
+void read_gcode()
+{
+  if(gcode.received_newline())
   {
-    if(gcode.received_newline())
+    while(!gcode.buffer_empty())
     {
-      while(!gcode.buffer_empty())
+      switch(gcode.get_command())
       {
-        switch(gcode.get_command())
-        {
-          case Gcode::no_code:
-            break;
-          case Gcode::get_lid_status:
-            gcode.response("Lid", lid.LID_STATUS_STRINGS[static_cast<int>(lid.status())]);
-            break;
-          case Gcode::open_lid:
-          #if LID_TESTING
-            gcode_rec_timestamp = millis();
-            Serial.print("Opening, ");
-            if (lid.open_cover())
-            {
-              Serial.print("Opened, ");
-              Serial.print(millis() - gcode_rec_timestamp);
-              Serial.print(", ");
-            }
-            else
-            {
-              Serial.print("Errored, ");
-              Serial.print(millis() - gcode_rec_timestamp);
-              Serial.print(", ");
-            }
-          #else
-            lid.open_cover();
-          #endif
-            break;
-          case Gcode::close_lid:
-          #if LID_TESTING
-            gcode_rec_timestamp = millis();
-            Serial.print("Closing, ");
-            if (lid.close_cover())
-            {
-              Serial.print("Closed, ");
-              Serial.println(millis() - gcode_rec_timestamp);
-            }
-            else
-            {
-              Serial.print("Errored:");
-              Serial.println(millis() - gcode_rec_timestamp);
-            }
-          #else
-            lid.close_cover();
-          #endif
-            break;
-          case Gcode::set_lid_temp:
-            if (!gcode.pop_arg('S'))
-            {
-              target_temperature_cover = TEMPERATURE_COVER_HOT;
-            }
-            else
-            {
-              target_temperature_cover = gcode.popped_arg();
-            }
-            heat_pad_on();
-            break;
-          case Gcode::get_lid_temp:
-            if (cover_should_be_hot)
-            {
-              gcode.targetting_temperature_response(target_temperature_cover,
-              current_temperature_cover);
-            }
-            else
-            {
-              gcode.idle_lid_temperature_response(current_temperature_cover);
-            }
-            break;
-          case Gcode::deactivate_lid_heating:
-            heat_pad_off();
-            break;
-          case Gcode::set_plate_temp:
-            if (!gcode.pop_arg('S'))
-            {
-              gcode.response("ERROR", "Arg error");
-              break;
-            }
-            target_temperature_plate = gcode.popped_arg();
-            master_set_a_target = true;
-            just_changed_temp = true;
-            tc_timer.reset();
-            // Check if hold time is specified
-            if (gcode.pop_arg('H'))
-            {
-              tc_timer.total_hold_time = gcode.popped_arg();
-            }
-            break;
-          case Gcode::get_plate_temp:
-            if(master_set_a_target)
-            {
-              gcode.targetting_temperature_response(target_temperature_plate,
-              current_temperature_plate, tc_timer.time_left());
-            }
-            else
-            {
-              gcode.idle_temperature_response(current_temperature_plate);
-            }
-            break;
-          case Gcode::set_ramp_rate:
-            if(master_set_a_target)
-            {
-              gcode.response("ERROR", "BUSY");
-            }
-            else
-            {
-              // This should calculate and change PID sample time and Ki
-            }
-            break;
-          case Gcode::edit_pid_params:
-            if(master_set_a_target)
-            {
-              gcode.response("ERROR", "BUSY");
-            }
-            else
-            {
-              // Currently, all three peltiers use the same PID values
-              if(gcode.pop_arg('P'))
-              {
-                current_plate_kp = gcode.popped_arg();
-              }
-              if(gcode.pop_arg('I'))
-              {
-                current_plate_ki = gcode.popped_arg();
-              }
-              if (gcode.pop_arg('D'))
-              {
-                current_plate_kd = gcode.popped_arg();
-              }
-            }
-            break;
-          case Gcode::heatsink_fan_pwr_manual:
-            // Control fan power manually. Arg is specified with 'S' and should be
-            // a fractional value. If heatsink temperature exceeds safe limit
-            // then manual power is overridden by a higher value power proportional
-            // to heatsink temperature.
-            auto_fan = false;
-            heatsink_fan.enable();
-            if (gcode.pop_arg('S'))
-            {
-              heatsink_fan.manual_power = gcode.popped_arg();
-              heatsink_fan.set_percentage(heatsink_fan.manual_power);
-            }
-            break;
-          case Gcode::heatsink_fan_auto_on:
-            heatsink_fan.manual_power = 0;
-            auto_fan = true;
-            break;
-          case Gcode::pause:
-            // Flush out details about how to resume and what happens to the timer
-            // when paused
-            break;
-          case Gcode::deactivate_all:
-            deactivate_all();
-            break;
-          case Gcode::get_device_info:
-            gcode.device_info_response(device_serial, device_model, device_version);
-            break;
-          case Gcode::dfu:
-            break;
-          case Gcode::debug_mode:
-            if (gcode.pop_arg('S'))
-            {
-              if(gcode.popped_arg() == 0)
-              {
-                gcode_debug_mode = false;
-                break;
-              }
-            }
-            gcode_debug_mode = true;
-            break;
-          case Gcode::print_debug_stat:
-            continuous_debug_stat_mode = false;
-            if (gcode_debug_mode)
-            {
-              debug_status_prints();
-            }
-            break;
-          case Gcode::continous_debug_stat:
-            if (gcode_debug_mode)
-            {
-              continuous_debug_stat_mode = true;
-            }
-            break;
-          case Gcode::motor_reset:
-            if (gcode_debug_mode)
-            {
-              gcode.response("Resetting motor driver");
-              lid.reset_motor_driver();
-            }
-            break;
-        }
-      }
-    #if !LID_TESTING
-      if (!continuous_debug_stat_mode)
-      {
-        gcode.send_ack();
-      }
-    #endif
-    }
-    if (continuous_debug_stat_mode)
-    {
-      debug_status_prints();
-    }
-  }
-#else
-void print_info(bool force=false) {
-    if (force || (millis() - plotter_timestamp > plotter_interval)) {
-        plotter_timestamp = millis();
-        if (zoom_mode) {
-          // Serial.print(double(millis()) / 1000.0, 2);
-          // Serial.print(',');
-          Serial.print(current_temperature_plate - target_temperature_plate);
-          // Serial.print(',');
-          // Serial.print(current_temperature_cover - temperature_cover_hot);
-          Serial.println();
-          return;
-        }
-        if (debug_print_mode) Serial.println("\n\n*******");
-        if (debug_print_mode) Serial.print("\nHeat sink temp:\t\t");
-        Serial.print(temp_probes.heat_sink_temperature());
-        if (debug_print_mode){
-          Serial.print("\n\t\t-------- Thermistors -------\n");
-          Serial.print(temp_probes.back_left_temperature());
-          Serial.print("\t");
-          Serial.print(temp_probes.back_center_temperature());
-          Serial.print("\t");
-          Serial.print(temp_probes.back_right_temperature());
-          Serial.print("\n\n");
-          Serial.print(temp_probes.front_left_temperature());
-          Serial.print("\t");
-          Serial.print(temp_probes.front_center_temperature());
-          Serial.print("\t");
-          Serial.print(temp_probes.front_right_temperature());
-          Serial.print("\n");
-          Serial.print("\t\t-------------------------------");
-        }
-        if (running_from_script || running_graph) Serial.print(" ");
-        if (debug_print_mode) Serial.print("\n\tPlate-Target:\t");
-        if (!master_set_a_target && debug_print_mode) Serial.print("off");
-        else Serial.print(target_temperature_plate);
-        if (running_from_script || running_graph) Serial.print(" ");
-        if (debug_print_mode) Serial.print("\n\tPlate-PID:\t");
-        if (!master_set_a_target && debug_print_mode) Serial.print("off");
-        else Serial.print((temperature_swing_plate * 50.0) + 50.0);
-        if (running_from_script || running_graph) Serial.print(" ");
-        if (debug_print_mode) Serial.print("\nCover-Temp:\t\t");
-        Serial.print(current_temperature_cover);
-        if (running_from_script || running_graph) Serial.print(" ");
-        if (debug_print_mode) Serial.print("\n\tCover-Target:\t");
-        if (!cover_should_be_hot && debug_print_mode) Serial.print("off");
-        else Serial.print(TEMPERATURE_COVER_HOT);
-        if (running_from_script || running_graph) Serial.print(" ");
-        if (debug_print_mode) Serial.print("\n\tCover-PID:\t");
-        if (!cover_should_be_hot && debug_print_mode) Serial.print("off");
-        else Serial.print(temperature_swing_cover * 100.0);
-        if (running_from_script || running_graph) Serial.print(" ");
-        if (debug_print_mode) Serial.print("\nFan Power:\t\t");
-        Serial.println(heatsink_fan.current_power * 100);
-      #if HW_VERSION >= 3
-        Serial.print("Motor faulted?:"); Serial.println(lid.is_driver_faulted());
-      #endif
-        Serial.println();
-    }
-}
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
-void empty_serial_buffer() {
-    if (running_from_script){
-        Serial.println("ok");
-    }
-    while (Serial.available()){
-      Serial.read();
-    }
-}
-
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
-
-void read_from_serial() {
-    if (Serial.available() > 0){
-        if (Serial.peek() == 'x') {
-            master_set_a_target = false;
-            cover_should_be_hot = false;
-            disable_scary_stuff();
-        }
-        else if (Serial.peek() == 'd') {
-            running_from_script = false;
-            debug_print_mode = true;
-            running_graph = false;
-            zoom_mode = false;
-        }
-        else if (Serial.peek() == 's') {
-            running_from_script = true;
-            debug_print_mode = false;
-            running_graph = false;
-            zoom_mode = false;
-        }
-        else if (Serial.peek() == 'g') {
-            running_from_script = false;
-            debug_print_mode = false;
-            running_graph = true;
-            zoom_mode = false;
-        }
-        else if (Serial.peek() == 'z') {
-            running_from_script = false;
-            debug_print_mode = false;
-            running_graph = false;
-            zoom_mode = true;
-        }
-        else if (Serial.peek() == 'c') {
-            Serial.read();
-            if (Serial.peek() == '1') {
-              heat_pad_on();
-            }
-            else {
-              heat_pad_off();
-            }
-        }
-        else if (Serial.peek() == 't') {
-            Serial.read();
-            master_set_a_target = true;
-            target_temperature_plate = Serial.parseFloat();
-            testing_offset_temp = target_temperature_plate;
-            if (Serial.peek() == 'o') {
-              Serial.read();
-              target_temperature_plate -= Serial.parseFloat();
-              Serial.print("Setting Offset to ");
-              Serial.println(target_temperature_plate, 6);
-            }
-            if (Serial.peek() == 'p') {
-              Serial.read();
-              current_plate_kp = Serial.parseFloat();
-              Serial.print("Setting P to ");
-              Serial.println(current_plate_kp, 6);
-            }
-            else {
-              if (is_moving_up()) current_plate_kp = PID_KP_PLATE_UP;
-              else current_plate_kp = PID_KP_PLATE_DOWN;
-            }
-            if (Serial.peek() == 'i') {
-              Serial.read();
-              current_plate_ki = Serial.parseFloat();
-              Serial.print("Setting I to ");
-              Serial.println(current_plate_ki, 6);
-            }
-            else {
-              if (is_moving_up()) current_plate_ki = PID_KI_PLATE_UP;
-              else current_plate_ki = PID_KI_PLATE_DOWN;
-            }
-            if (Serial.peek() == 'd') {
-              Serial.read();
-              current_plate_kd = Serial.parseFloat();
-              Serial.print("Setting D to ");
-              Serial.println(current_plate_kd, 6);
-            }
-            else {
-              if (is_moving_up()) current_plate_kd = PID_KD_PLATE_UP;
-              else current_plate_kd = PID_KD_PLATE_DOWN;
-            }
-            just_changed_temp = true;
-        }
-        else if (Serial.peek() == 'f') {
-            Serial.read();
-            if (!Serial.available() || Serial.peek() == '\n' || Serial.peek() == '\r') {
-              auto_fan = true;
-            }
-            else {
-              auto_fan = false;
-              float percentage = Serial.parseFloat();
-              heatsink_fan.set_percentage(percentage / 100.0);
-            }
-        }
-        else if (Serial.peek() == 'p') {
-            if (running_from_script) print_info(true);
-        }
-        else if (Serial.peek() == 'm')
-        {
-          Serial.println("Resetting motor driver");
-          lid.reset_motor_driver();
-        }
-        else if (Serial.peek() == 'l') // lowercase L
-        {
-          Serial.read();
-          if (Serial.peek() == '1')
+        case Gcode::no_code:
+          break;
+        case Gcode::get_lid_status:
+          gcode.response("Lid", lid.LID_STATUS_STRINGS[static_cast<int>(lid.status())]);
+          break;
+        case Gcode::open_lid:
+        #if LID_TESTING
+          gcode_rec_timestamp = millis();
+          Serial.print("Opening, ");
+          if (lid.open_cover())
           {
-            empty_serial_buffer();
-            Serial.println("Opening cover");
-            lid.open_cover();
+            Serial.print("Opened, ");
+            Serial.print(millis() - gcode_rec_timestamp);
+            Serial.print(", ");
           }
           else
           {
-            empty_serial_buffer();
-            Serial.println("Closing cover");
-            lid.close_cover();
+            Serial.print("Errored, ");
+            Serial.print(millis() - gcode_rec_timestamp);
+            Serial.print(", ");
           }
-        }
-        empty_serial_buffer();
+        #else
+          lid.open_cover();
+        #endif
+          break;
+        case Gcode::close_lid:
+        #if LID_TESTING
+          gcode_rec_timestamp = millis();
+          Serial.print("Closing, ");
+          if (lid.close_cover())
+          {
+            Serial.print("Closed, ");
+            Serial.println(millis() - gcode_rec_timestamp);
+          }
+          else
+          {
+            Serial.print("Errored:");
+            Serial.println(millis() - gcode_rec_timestamp);
+          }
+        #else
+          lid.close_cover();
+        #endif
+          break;
+        case Gcode::set_lid_temp:
+          if (!gcode.pop_arg('S'))
+          {
+            target_temperature_cover = TEMPERATURE_COVER_HOT;
+          }
+          else
+          {
+            target_temperature_cover = gcode.popped_arg();
+          }
+          heat_pad_on();
+          break;
+        case Gcode::get_lid_temp:
+          if (cover_should_be_hot)
+          {
+            gcode.targetting_temperature_response(target_temperature_cover,
+            current_temperature_cover);
+          }
+          else
+          {
+            gcode.idle_lid_temperature_response(current_temperature_cover);
+          }
+          break;
+        case Gcode::deactivate_lid_heating:
+          heat_pad_off();
+          break;
+        case Gcode::set_plate_temp:
+          if (!gcode.pop_arg('S'))
+          {
+            gcode.response("ERROR", "Arg error");
+            break;
+          }
+          target_temperature_plate = gcode.popped_arg();
+          master_set_a_target = true;
+          just_changed_temp = true;
+          tc_timer.reset();
+          // Check if hold time is specified
+          if (gcode.pop_arg('H'))
+          {
+            tc_timer.total_hold_time = gcode.popped_arg();
+          }
+          break;
+        case Gcode::get_plate_temp:
+          if(master_set_a_target)
+          {
+            gcode.targetting_temperature_response(target_temperature_plate,
+            current_temperature_plate, tc_timer.time_left());
+          }
+          else
+          {
+            gcode.idle_temperature_response(current_temperature_plate);
+          }
+          break;
+        case Gcode::set_ramp_rate:
+          if(master_set_a_target)
+          {
+            gcode.response("ERROR", "BUSY");
+          }
+          else
+          {
+            // This should calculate and change PID sample time and Ki
+          }
+          break;
+        case Gcode::edit_pid_params:
+          if(master_set_a_target)
+          {
+            gcode.response("ERROR", "BUSY");
+          }
+          else
+          {
+            // Currently, all three peltiers use the same PID values
+            if(gcode.pop_arg('P'))
+            {
+              current_plate_kp = gcode.popped_arg();
+            }
+            if(gcode.pop_arg('I'))
+            {
+              current_plate_ki = gcode.popped_arg();
+            }
+            if (gcode.pop_arg('D'))
+            {
+              current_plate_kd = gcode.popped_arg();
+            }
+          }
+          break;
+        case Gcode::heatsink_fan_pwr_manual:
+          // Control fan power manually. Arg is specified with 'S' and should be
+          // a fractional value. If heatsink temperature exceeds safe limit
+          // then manual power is overridden by a higher value power proportional
+          // to heatsink temperature.
+          auto_fan = false;
+          heatsink_fan.enable();
+          if (gcode.pop_arg('S'))
+          {
+            heatsink_fan.manual_power = gcode.popped_arg();
+            heatsink_fan.set_percentage(heatsink_fan.manual_power);
+          }
+          break;
+        case Gcode::heatsink_fan_auto_on:
+          heatsink_fan.manual_power = 0;
+          auto_fan = true;
+          break;
+        case Gcode::pause:
+          // Flush out details about how to resume and what happens to the timer
+          // when paused
+          break;
+        case Gcode::deactivate_all:
+          deactivate_all();
+          break;
+        case Gcode::get_device_info:
+          gcode.device_info_response(device_serial, device_model, device_version);
+          break;
+        case Gcode::dfu:
+          break;
+        case Gcode::debug_mode:
+          if (gcode.pop_arg('S'))
+          {
+            if(gcode.popped_arg() == 0)
+            {
+              gcode_debug_mode = false;
+              break;
+            }
+          }
+          gcode_debug_mode = true;
+          break;
+        case Gcode::print_debug_stat:
+          continuous_debug_stat_mode = false;
+          if (gcode_debug_mode)
+          {
+            debug_status_prints();
+          }
+          break;
+        case Gcode::continous_debug_stat:
+          if (gcode_debug_mode)
+          {
+            continuous_debug_stat_mode = true;
+          }
+          break;
+        case Gcode::motor_reset:
+          if (gcode_debug_mode)
+          {
+            gcode.response("Resetting motor driver");
+            lid.reset_motor_driver();
+          }
+          break;
+      }
     }
+  #if !LID_TESTING
+    if (!continuous_debug_stat_mode)
+    {
+      gcode.send_ack();
+    }
+  #endif
+  }
+  if (continuous_debug_stat_mode)
+  {
+    debug_status_prints();
+  }
 }
-#endif
 
 /////////////////////////////////
 /////////////////////////////////
@@ -787,6 +587,56 @@ void set_leds_white()
   #endif
     strip.show();
     delay(30);
+  }
+}
+
+void set_25ms_interrupt()
+{
+  GCLK->GENDIV.reg = GCLK_GENDIV_DIV(200) | GCLK_GENDIV_ID(4);
+  while ( GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY );  /* Wait for synchronization */
+
+  GCLK->GENCTRL.reg = GCLK_GENCTRL_IDC |           // Set duty cycle to 50%
+                      GCLK_GENCTRL_GENEN |         // Enable GCLK4
+                      GCLK_GENCTRL_SRC_OSC8M |     // Select 8MHz clock source
+                      GCLK_GENDIV_ID(4);           // Select GCLK4
+  while ( GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY ); /* Wait for synchronization */
+  
+  GCLK->CLKCTRL.reg = (uint16_t) (GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK4 | GCLK_CLKCTRL_ID(GCM_TC4_TC5));
+  while (GCLK->STATUS.bit.SYNCBUSY == 1);
+
+  // -- Configure TC
+  // Disable TC
+  TC4->COUNT8.CTRLA.bit.ENABLE = 0;
+  while (TC4->COUNT16.STATUS.bit.SYNCBUSY);
+
+  // Set Timer counter Mode to 8 bits, normal PWM
+  TC4->COUNT8.CTRLA.reg |= TC_CTRLA_MODE_COUNT8 | TC_CTRLA_WAVEGEN_NPWM;
+  while (TC4->COUNT8.STATUS.bit.SYNCBUSY);
+
+  // Set PER to calculated value
+  TC4->COUNT8.PER.reg = 0xFA;
+  while (TC4->COUNT8.STATUS.bit.SYNCBUSY);
+
+  NVIC_SetPriority(TC4_IRQn, 0);    // Set NVIC priority for TC4 to 0 (highest)
+  NVIC_EnableIRQ(TC4_IRQn);         // Connect TC4 to NVIC
+
+  TC4->COUNT8.INTFLAG.reg |= TC_INTFLAG_MC1 | TC_INTFLAG_MC0 | TC_INTFLAG_OVF;  // Clear interrupt flags
+  TC4->COUNT8.INTENSET.reg |= TC_INTENSET_OVF; // Enable TC4 ovf interrupt
+
+  TC4->COUNT8.CTRLA.reg |= TC_CTRLA_PRESCALER_DIV4 | TC_CTRLA_PRESCSYNC_PRESC;  // Set prescaler to 4, f=10kHz (legal values 1,2,4,8,16,64,256,1024)
+  while (TC4->COUNT8.STATUS.bit.SYNCBUSY);      // Wait for synchronization
+
+  // Enable TC
+  TC4->COUNT8.CTRLA.bit.ENABLE = 1;
+  while (TC4->COUNT8.STATUS.bit.SYNCBUSY);
+}
+
+void TC4_Handler()
+{
+  if (TC4->COUNT8.INTFLAG.bit.OVF && TC4->COUNT8.INTENSET.bit.OVF)
+  {
+    Serial.println(millis());
+    REG_TC4_INTFLAG = TC_INTFLAG_OVF;
   }
 }
 
@@ -860,6 +710,7 @@ void setup()
   analogWrite(PIN_FRONT_BUTTON_LED, LED_BRIGHTNESS);
   attachInterrupt(digitalPinToInterrupt(PIN_FRONT_BUTTON_SW), front_button_callback, CHANGE);
 #endif
+  set_25ms_interrupt();
 }
 
 void temp_safety_check()
@@ -887,8 +738,6 @@ void loop()
 {
   temp_safety_check();
   lid.check_switches();
-
-#if USE_GCODES
   /* Check if gcode(s) available on Serial */
   read_gcode();
   timeStamp = millis();
@@ -899,10 +748,6 @@ void loop()
       gcode.send_ack();
     }
   #endif
-#else
-  read_from_serial();
-  if (!running_from_script) print_info();
-#endif
 
 #if !DUMMY_BOARD
   if (temp_probes.update())
