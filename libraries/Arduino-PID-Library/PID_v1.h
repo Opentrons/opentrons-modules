@@ -52,7 +52,8 @@ class PID
                                           //   the PID calculation is performed.  default is 100
 
 
-
+    void SetSamplingMode(int);          // Set to Auto Sampling (@SampleTime interval)
+                                    // Or manual sampling (User calls compute() at regular intervals)
   //Display functions ****************************************************************
 	double GetKp();						  // These functions query the pid for interal values.
 	double GetKi();						  //  they were created mainly for the pid front-end,
@@ -81,10 +82,9 @@ class PID
 
 	unsigned long lastTime;
 	double outputSum, lastInput;
-
+  bool auto_sampling;
 	unsigned long SampleTime;
 	double outMin, outMax;
 	bool inAuto, pOnE;
 };
 #endif
-

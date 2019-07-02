@@ -60,7 +60,7 @@ bool PID::Compute()
    if(!inAuto) return false;
    unsigned long now = millis();
    unsigned long timeChange = (now - lastTime);
-   if(timeChange>=SampleTime)
+   if(auto_sampling || (!auto_sampling && timeChange>=SampleTime))
    {
       /*Compute all the working error variables*/
       double input = *myInput;
@@ -125,7 +125,7 @@ void PID::SetTunings(double Kp, double Ki, double Kd, int POn)
  * Set Tunings using the last-rembered POn setting
  ******************************************************************************/
 void PID::SetTunings(double Kp, double Ki, double Kd){
-    SetTunings(Kp, Ki, Kd, pOn); 
+    SetTunings(Kp, Ki, Kd, pOn);
 }
 
 /* SetSampleTime(...) *********************************************************
@@ -141,6 +141,20 @@ void PID::SetSampleTime(int NewSampleTime)
       kd /= ratio;
       SampleTime = (unsigned long)NewSampleTime;
    }
+}
+
+/* SetSamplingMode(...) *********************************************************
+ * Set to Auto Sampling (@SampleTime interval)
+ * Or manual sampling (User calls compute() at regular intervals)
+ ******************************************************************************/
+void PID::SetSamplingMode(int NewSamplingMode)
+{
+  bool newAuto = (NewSamplingMode == AUTOMATIC);
+  if(newAuto && !auto_sampling)
+  {  /*we just went from manual to auto*/
+      PID::Initialize();
+  }
+  auto_sampling = newAuto;
 }
 
 /* SetOutputLimits(...)****************************************************
@@ -221,4 +235,3 @@ double PID::GetKi(){ return  dispKi;}
 double PID::GetKd(){ return  dispKd;}
 int PID::GetMode(){ return  inAuto ? AUTOMATIC : MANUAL;}
 int PID::GetDirection(){ return controllerDirection;}
-

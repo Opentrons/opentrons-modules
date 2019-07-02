@@ -182,42 +182,54 @@ float get_average_temp(Peltier pel_n)
   }
 }
 
-void update_peltiers_from_pid()
+void update_peltiers_from_pid(Peltier pel_n)
 {
   if (master_set_a_target)
   {
-    if (PID_left_pel.Compute())
+    switch(pel_n)
     {
-      if (temperature_swing_left_pel < 0)
-      {
-        peltiers.set_cold_percentage(abs(temperature_swing_left_pel), Peltier::pel_3);
-      }
-      else
-      {
-        peltiers.set_hot_percentage(temperature_swing_left_pel, Peltier::pel_3);
-      }
-    }
-    if (PID_right_pel.Compute())
-    {
-      if (temperature_swing_right_pel < 0)
-      {
-        peltiers.set_cold_percentage(abs(temperature_swing_right_pel), Peltier::pel_1);
-      }
-      else
-      {
-        peltiers.set_hot_percentage(temperature_swing_right_pel, Peltier::pel_1);
-      }
-    }
-    if (PID_center_pel.Compute())
-    {
-      if (temperature_swing_center_pel < 0)
-      {
-        peltiers.set_cold_percentage(abs(temperature_swing_center_pel), Peltier::pel_2);
-      }
-      else
-      {
-        peltiers.set_hot_percentage(temperature_swing_center_pel, Peltier::pel_2);
-      }
+      case Peltier::pel_1:
+        if (PID_right_pel.Compute())
+        {
+          // Serial.print("Pel1 compute:"); Serial.println(millis());
+          if (temperature_swing_right_pel < 0)
+          {
+            peltiers.set_cold_percentage(abs(temperature_swing_right_pel), Peltier::pel_1);
+          }
+          else
+          {
+            peltiers.set_hot_percentage(temperature_swing_right_pel, Peltier::pel_1);
+          }
+        }
+        break;
+      case Peltier::pel_2:
+        if (PID_center_pel.Compute())
+        {
+          // Serial.print("Pel2 compute:"); Serial.println(millis());
+          if (temperature_swing_center_pel < 0)
+          {
+            peltiers.set_cold_percentage(abs(temperature_swing_center_pel), Peltier::pel_2);
+          }
+          else
+          {
+            peltiers.set_hot_percentage(temperature_swing_center_pel, Peltier::pel_2);
+          }
+        }
+        break;
+      case Peltier::pel_3:
+        if (PID_left_pel.Compute())
+        {
+          // Serial.print("Pel3 compute:"); Serial.println(millis());
+          if (temperature_swing_left_pel < 0)
+          {
+            peltiers.set_cold_percentage(abs(temperature_swing_left_pel), Peltier::pel_3);
+          }
+          else
+          {
+            peltiers.set_hot_percentage(temperature_swing_left_pel, Peltier::pel_3);
+          }
+        }
+        break;
     }
   }
 }
@@ -600,7 +612,7 @@ void set_25ms_interrupt()
                       GCLK_GENCTRL_SRC_OSC8M |     // Select 8MHz clock source
                       GCLK_GENDIV_ID(4);           // Select GCLK4
   while ( GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY ); /* Wait for synchronization */
-  
+
   GCLK->CLKCTRL.reg = (uint16_t) (GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK4 | GCLK_CLKCTRL_ID(GCM_TC4_TC5));
   while (GCLK->STATUS.bit.SYNCBUSY == 1);
 
@@ -635,8 +647,16 @@ void TC4_Handler()
 {
   if (TC4->COUNT8.INTFLAG.bit.OVF && TC4->COUNT8.INTENSET.bit.OVF)
   {
-    Serial.println(millis());
-    REG_TC4_INTFLAG = TC_INTFLAG_OVF;
+    timer_interrupted = true;
+    if (therm_read_state >= 4)
+    {
+      therm_read_state = 1;
+    }
+    else
+    {
+      therm_read_state += 1;
+    }
+    TC4->COUNT8.INTFLAG.bit.MC0 = 1;
   }
 }
 
@@ -649,8 +669,13 @@ void setup()
   gcode.setup(BAUDRATE);
   delay(1000);
   peltiers.setup();
+
   temp_probes.setup(THERMISTOR_VOLTAGE);
-  while (!temp_probes.update()) {}
+  temp_probes.update(ThermistorPair::right);
+  temp_probes.update(ThermistorPair::center);
+  temp_probes.update(ThermistorPair::left);
+  temp_probes.update(ThermistorPair::cover_n_heatsink);
+
   current_temperature_plate = temp_probes.average_plate_temperature();
   current_temperature_cover = temp_probes.cover_temperature();
   if(!lid.setup())
@@ -670,15 +695,15 @@ void setup()
   heatsink_fan.disable();
   heat_pad_off();
 
-  PID_left_pel.SetSampleTime(DEFAULT_PLATE_PID_TIME);
+  PID_left_pel.SetSamplingMode(AUTOMATIC);
   PID_left_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
   PID_left_pel.SetMode(AUTOMATIC);
   PID_left_pel.SetOutputLimits(-1.0, 1.0);
-  PID_center_pel.SetSampleTime(DEFAULT_PLATE_PID_TIME);
+  PID_center_pel.SetSamplingMode(AUTOMATIC);
   PID_center_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
   PID_center_pel.SetMode(AUTOMATIC);
   PID_center_pel.SetOutputLimits(-1.0, 1.0);
-  PID_right_pel.SetSampleTime(DEFAULT_PLATE_PID_TIME);
+  PID_right_pel.SetSamplingMode(AUTOMATIC);
   PID_right_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
   PID_right_pel.SetMode(AUTOMATIC);
   PID_right_pel.SetOutputLimits(-1.0, 1.0);
@@ -686,7 +711,6 @@ void setup()
   PID_Cover.SetMode(AUTOMATIC);
   PID_Cover.SetSampleTime(250);
   PID_Cover.SetOutputLimits(0.0, 1.0);
-
   while (!PID_left_pel.Compute()) {}
   while (!PID_center_pel.Compute()) {}
   while (!PID_right_pel.Compute()) {}
@@ -736,11 +760,37 @@ void temp_safety_check()
 
 void loop()
 {
+  timeStamp = micros();
   temp_safety_check();
+  if (timer_interrupted)
+  {
+    switch(therm_read_state)
+    {
+      case 1:
+        temp_probes.update(ThermistorPair::right);
+        current_right_pel_temp = temp_probes.right_pair_temperature();
+        update_peltiers_from_pid(Peltier::pel_1);
+        break;
+      case 2:
+        temp_probes.update(ThermistorPair::center);
+        current_center_pel_temp = temp_probes.center_pair_temperature();
+        update_peltiers_from_pid(Peltier::pel_2);
+        break;
+      case 3:
+        temp_probes.update(ThermistorPair::left);
+        current_left_pel_temp = temp_probes.left_pair_temperature();
+        update_peltiers_from_pid(Peltier::pel_3);
+        break;
+      case 4:
+        temp_probes.update(ThermistorPair::cover_n_heatsink);
+        current_temperature_cover = temp_probes.cover_temperature();
+        break;
+    }
+    current_temperature_plate = temp_probes.average_plate_temperature();
+    timer_interrupted = false;
+  }
+
   lid.check_switches();
-  /* Check if gcode(s) available on Serial */
-  read_gcode();
-  timeStamp = millis();
   #if LID_WARNING
     if (master_set_a_target && lid.status() != Lid_status::closed)
     {
@@ -749,17 +799,6 @@ void loop()
     }
   #endif
 
-#if !DUMMY_BOARD
-  if (temp_probes.update())
-  {
-    current_left_pel_temp = temp_probes.left_pair_temperature();
-    current_right_pel_temp = temp_probes.right_pair_temperature();
-    current_center_pel_temp = temp_probes.center_pair_temperature();
-    current_temperature_plate = temp_probes.average_plate_temperature();
-    current_temperature_cover = temp_probes.cover_temperature();
-  }
-#endif
-
   update_fans_from_state();
 
   if (master_set_a_target && tc_timer.status() == Timer_status::idle && is_at_target())
@@ -767,7 +806,6 @@ void loop()
     tc_timer.start();
   }
   tc_timer.update();
-  update_peltiers_from_pid();
   update_cover_from_pid();
 #if HW_VERSION >=3
   if (is_front_button_pressed())
@@ -776,5 +814,7 @@ void loop()
     lid.open_cover();
   }
 #endif
-  timeStamp = millis() - timeStamp;
+  timeStamp = micros() - timeStamp;
+  /* Check if gcode(s) available on Serial */
+  read_gcode();
 }

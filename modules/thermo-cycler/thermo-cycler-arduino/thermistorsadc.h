@@ -46,6 +46,14 @@
 #define TOTAL_THERMISTORS              8
 #define TOTAL_PLATE_THERMISTORS        6
 
+enum class ThermistorPair
+{
+    left=0,
+    center,
+    right,
+    cover_n_heatsink
+};
+
 typedef struct
 {
   int adc_reading;
@@ -57,7 +65,7 @@ class ThermistorsADC{
 
             ThermistorsADC();
             void setup(float voltage);
-            bool update();
+            void update(ThermistorPair n);
 
             float average_plate_temperature();
             float left_pair_temperature();
