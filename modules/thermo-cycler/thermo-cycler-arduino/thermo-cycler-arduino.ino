@@ -191,7 +191,6 @@ void update_peltiers_from_pid(Peltier pel_n)
       case Peltier::pel_1:
         if (PID_right_pel.Compute())
         {
-          // Serial.print("Pel1 compute:"); Serial.println(millis());
           if (temperature_swing_right_pel < 0)
           {
             peltiers.set_cold_percentage(abs(temperature_swing_right_pel), Peltier::pel_1);
@@ -205,7 +204,6 @@ void update_peltiers_from_pid(Peltier pel_n)
       case Peltier::pel_2:
         if (PID_center_pel.Compute())
         {
-          // Serial.print("Pel2 compute:"); Serial.println(millis());
           if (temperature_swing_center_pel < 0)
           {
             peltiers.set_cold_percentage(abs(temperature_swing_center_pel), Peltier::pel_2);
@@ -219,7 +217,6 @@ void update_peltiers_from_pid(Peltier pel_n)
       case Peltier::pel_3:
         if (PID_left_pel.Compute())
         {
-          // Serial.print("Pel3 compute:"); Serial.println(millis());
           if (temperature_swing_left_pel < 0)
           {
             peltiers.set_cold_percentage(abs(temperature_swing_left_pel), Peltier::pel_3);
@@ -604,7 +601,7 @@ void set_leds_white()
 
 void set_25ms_interrupt()
 {
-  GCLK->GENDIV.reg = GCLK_GENDIV_DIV(200) | GCLK_GENDIV_ID(4);
+  GCLK->GENDIV.reg = GCLK_GENDIV_DIV(200) | GCLK_GENDIV_ID(4);  // 8M/200 = 4M
   while ( GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY );  /* Wait for synchronization */
 
   GCLK->GENCTRL.reg = GCLK_GENCTRL_IDC |           // Set duty cycle to 50%
@@ -626,6 +623,7 @@ void set_25ms_interrupt()
   while (TC4->COUNT8.STATUS.bit.SYNCBUSY);
 
   // Set PER to calculated value
+  // 0xFA = 250 // @f=10kHz, timer interval = 1/10kHz * 250 = 25ms
   TC4->COUNT8.PER.reg = 0xFA;
   while (TC4->COUNT8.STATUS.bit.SYNCBUSY);
 
@@ -635,7 +633,8 @@ void set_25ms_interrupt()
   TC4->COUNT8.INTFLAG.reg |= TC_INTFLAG_MC1 | TC_INTFLAG_MC0 | TC_INTFLAG_OVF;  // Clear interrupt flags
   TC4->COUNT8.INTENSET.reg |= TC_INTENSET_OVF; // Enable TC4 ovf interrupt
 
-  TC4->COUNT8.CTRLA.reg |= TC_CTRLA_PRESCALER_DIV4 | TC_CTRLA_PRESCSYNC_PRESC;  // Set prescaler to 4, f=10kHz (legal values 1,2,4,8,16,64,256,1024)
+  // Set prescaler to 4, So f=10kHz (legal values 1,2,4,8,16,64,256,1024)
+  TC4->COUNT8.CTRLA.reg |= TC_CTRLA_PRESCALER_DIV4 | TC_CTRLA_PRESCSYNC_PRESC;
   while (TC4->COUNT8.STATUS.bit.SYNCBUSY);      // Wait for synchronization
 
   // Enable TC
@@ -695,15 +694,15 @@ void setup()
   heatsink_fan.disable();
   heat_pad_off();
 
-  PID_left_pel.SetSamplingMode(AUTOMATIC);
+  PID_left_pel.SetSamplingMode(MANUAL);
   PID_left_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
   PID_left_pel.SetMode(AUTOMATIC);
   PID_left_pel.SetOutputLimits(-1.0, 1.0);
-  PID_center_pel.SetSamplingMode(AUTOMATIC);
+  PID_center_pel.SetSamplingMode(MANUAL);
   PID_center_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
   PID_center_pel.SetMode(AUTOMATIC);
   PID_center_pel.SetOutputLimits(-1.0, 1.0);
-  PID_right_pel.SetSamplingMode(AUTOMATIC);
+  PID_right_pel.SetSamplingMode(MANUAL);
   PID_right_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
   PID_right_pel.SetMode(AUTOMATIC);
   PID_right_pel.SetOutputLimits(-1.0, 1.0);
@@ -758,10 +757,41 @@ void temp_safety_check()
   }
 }
 
-void loop()
+void temp_plot()
 {
-  timeStamp = micros();
-  temp_safety_check();
+  static unsigned long lastPrint = 0;
+
+  if (millis() - lastPrint < 150)
+  {
+    return;
+  }
+  lastPrint = millis();
+  Serial.print(target_temperature_plate); Serial.print("\t");
+  Serial.print(temp_probes.front_left_temperature()); Serial.print("\t");
+  Serial.print(temp_probes.front_center_temperature()); Serial.print("\t");
+  Serial.print(temp_probes.front_right_temperature()); Serial.print("\t");
+  Serial.print(temp_probes.back_left_temperature()); Serial.print("\t");
+  Serial.print(temp_probes.back_center_temperature()); Serial.print("\t");
+  Serial.print(temp_probes.back_right_temperature()); Serial.print("\t");
+  Serial.print(temp_probes.heat_sink_temperature()); Serial.print("\t");
+  Serial.print(temp_probes.cover_temperature()); Serial.print("\t");
+  Serial.println();
+}
+
+/* **** therm_pid_peltier_update ******
+ * This function would run every 25ms (timed by an interrupt) and will:
+ * 1. Read the values of a specific pair of thermistors on each iteration &
+ * compute PID & update peltiers in the following manner:
+ * 1st interrupt- read pel_1 thermistors, compute pel_1 PID, update pel_1
+ * 2nd interrupt- read pel_2 thermistors, compute pel_2 PID, update pel_2
+ * 3rd interrupt- read pel_3 thermistors, compute pel_3 PID, update pel_3
+ * 4th interrupt- read heatsink & cover thermistors
+ * ..repeat all 4 interrupts..
+ * This makes sure all three PID computes use the very latest thermistor reading
+ * available and the computation happens exactly every 100ms
+ */
+void therm_pid_peltier_update()
+{
   if (timer_interrupted)
   {
     switch(therm_read_state)
@@ -789,7 +819,14 @@ void loop()
     current_temperature_plate = temp_probes.average_plate_temperature();
     timer_interrupted = false;
   }
+}
 
+void loop()
+{
+  timeStamp = micros();
+  temp_safety_check();
+  therm_pid_peltier_update();
+  // temp_plot();
   lid.check_switches();
   #if LID_WARNING
     if (master_set_a_target && lid.status() != Lid_status::closed)
