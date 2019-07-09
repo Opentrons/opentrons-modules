@@ -74,8 +74,8 @@
   #define PID_KI_PLATE_UP 0.03
   #define PID_KD_PLATE_UP 0.0
 #else
-  #define PID_KP_PLATE_UP 0.2   // 0.16
-  #define PID_KI_PLATE_UP 0.1   // 0.07
+  #define PID_KP_PLATE_UP 0.2   // 0.2
+  #define PID_KI_PLATE_UP 0.07  // 0.1
   #define PID_KD_PLATE_UP 0.0
 #endif
 
