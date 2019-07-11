@@ -74,8 +74,8 @@
   #define PID_KI_PLATE_UP 0.03
   #define PID_KD_PLATE_UP 0.0
 #else
-  #define PID_KP_PLATE_UP 0.2   // 0.16
-  #define PID_KI_PLATE_UP 0.1   // 0.07
+  #define PID_KP_PLATE_UP 0.2   // 0.2
+  #define PID_KI_PLATE_UP 0.07  // 0.1
   #define PID_KD_PLATE_UP 0.0
 #endif
 
@@ -140,6 +140,8 @@ unsigned long plotter_timestamp = 0;
 const int plotter_interval = 500;
 bool front_button_pressed = false;
 unsigned long front_button_pressed_at = 0;
+bool timer_interrupted = false;
+uint8_t therm_read_state = 0;
 bool running_from_script = false;
 bool debug_print_mode = true;
 bool gcode_debug_mode = false;  // Debug mode is not compatible with API

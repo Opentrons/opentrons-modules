@@ -57,12 +57,6 @@ eg., `make build-tempdeck` for tempdeck, `make build-thermocycler` for thermocyc
 
 `make build` builds all the modules
 
-* Internal dev stuff:
-to build for a dummy board, use `make build-thermocycler DUMMY_BOARD=true`.
-This will add the DUMMY_BOARD preprocessor option to your compiler flags. To compile
-for the actual module board, remember to change the flag back by building without
-the DUMMY_BOARD argument.
-
 The latest build files would be saved in `/opentrons-modules/build/tmp`.
 Also, latest .hex/.bin files for the last build of a particular board will be saved
 in the build directory under its module name eg. `../build/thermo-cycler/thermo-cycler-arduino.ino.bin`.
@@ -71,7 +65,7 @@ in the build directory under its module name eg. `../build/thermo-cycler/thermo-
 Use Arduino IDE to compile:
 Select the correct board file for your project from _Tools->board_ (Opentrons Thermocycler M0/ Opentrons Magdeck/ Opentrons Tempdeck)
 
-* NOTE: For Opentrons Thermocycler M0, you will have to set the appropriate flags in the `platform.local.txt` file: Find this file in your Arduino15 folder at `../packages/Opentrons/hardware/samd/1.0.1`. Paste this line in the file above: `compiler.cpp.extra_flags=-DDUMMY_BOARD=false -DUSE_GCODES=true -DLID_WARNING=false -DHFQ_PWM=false -DOLD_PID_INTERVAL=true -DHW_VERSION=3 -DLID_TESTING=false -DRGBW_NEO=true` (set appropriate flag values)
+* NOTE: For Opentrons Thermocycler M0, you will have to set the appropriate flags in the `platform.local.txt` file: Find this file in your Arduino15 folder at `../packages/Opentrons/hardware/samd/1.0.1`. Paste this line in the file above: `compiler.cpp.extra_flags=-DLID_WARNING=false -DHFQ_PWM=false -DOLD_PID_INTERVAL=true -DHW_VERSION=3 -DLID_TESTING=false -DRGBW_NEO=true` (set appropriate flag values)
 
 Then select _Sketch->Compile_.
 

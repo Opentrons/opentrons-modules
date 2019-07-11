@@ -19,26 +19,35 @@ void ThermistorsADC::setup(float voltage) {
   adc_a->begin();
   adc_b->begin();
 
-  adc_a->setSPS(ADS1115_DR_860SPS);   // Sample rate 860 per sec
-  adc_b->setSPS(ADS1115_DR_860SPS);   // Sample rate 860 per sec
+  adc_a->setSPS(ADS1115_DR_250SPS);   // Sample rate 250 per sec
+  adc_b->setSPS(ADS1115_DR_250SPS);   // Sample rate 250 per sec
 }
 
-bool ThermistorsADC::update() {
-  for (uint8_t i=0;i<TOTAL_THERMISTORS;i++){
-    sum_probe_temps[i] += _adc_to_celsius(_read_adc(i));
-    // small delay found to help avoid I2C read errors
-    delay(inter_temp_read_interval);
+void ThermistorsADC::update(ThermistorPair n) {
+  uint8_t therm_index1, therm_index2;
+  switch(n)
+  {
+    case ThermistorPair::left:
+      therm_index1 = ADC_INDEX_PLATE_FRONT_LEFT;
+      therm_index2 = ADC_INDEX_PLATE_BACK_LEFT;
+      break;
+    case ThermistorPair::center:
+      therm_index1 = ADC_INDEX_PLATE_FRONT_CENTER;
+      therm_index2 = ADC_INDEX_PLATE_BACK_CENTER;
+      break;
+    case ThermistorPair::right:
+      therm_index1 = ADC_INDEX_PLATE_FRONT_RIGHT;
+      therm_index2 = ADC_INDEX_PLATE_BACK_RIGHT;
+      break;
+    case ThermistorPair::cover_n_heatsink:
+      therm_index1 = ADC_INDEX_HEAT_SINK;
+      therm_index2 = ADC_INDEX_COVER;
+      break;
   }
-  probe_sample_count += 1;
-  if (millis() - temp_read_timestamp > temp_read_interval) {
-    for (uint8_t i=0;i<TOTAL_THERMISTORS;i++){
-      probe_temps[i] = sum_probe_temps[i] / probe_sample_count;
-      sum_probe_temps[i] = 0;
-    }
-    probe_sample_count = 0;
-    return true;
-  }
-  return false;
+  probe_temps[therm_index1] = _adc_to_celsius(_read_adc(therm_index1));
+  delay(inter_temp_read_interval);
+  probe_temps[therm_index2] = _adc_to_celsius(_read_adc(therm_index2));
+  delay(inter_temp_read_interval);
 }
 
 float ThermistorsADC::average_plate_temperature() {
