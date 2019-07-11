@@ -240,15 +240,20 @@ bool Lid::open_cover()
      return true;
   }
   motor_on();
-  if(move_angle(-5))  // move down a bit
+  bool res;
+  if(move_angle(LID_OPEN_SWITCH_PROBE_ANGLE))  // move down to reach bottom switch
   {
     // lid hit bottom switch
     solenoid_on();
     delay(400);
     move_angle(10);     // move up a bit
     solenoid_off();
+    res = move_angle(LID_MOTOR_RANGE_DEG);
   }
-  bool res = move_angle(LID_MOTOR_RANGE_DEG);
+  else
+  {
+    res = false;
+  }
   motor_off();
   return res;
 }
@@ -259,11 +264,14 @@ bool Lid::close_cover()
   {
     return true;
   }
-  // solenoid_on();
   motor_on();
   bool res = move_angle(-LID_MOTOR_RANGE_DEG);
-  // solenoid_off();
-  delay(700);
+  delay(500);
+  if (res)
+  {
+    move_angle(LID_CLOSE_BACKTRACK_ANGLE);
+  }
+  delay(250);
   motor_off();
   return res;
 }
