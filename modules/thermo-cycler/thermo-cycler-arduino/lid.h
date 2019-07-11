@@ -73,7 +73,8 @@
 #define LID_MOTOR_RANGE_DEG 100 // Max angle the lid motor can move
 #define PULSE_HIGH_MICROSECONDS 2
 #define MOTOR_STEP_DELAY 60   // microseconds
-#define LID_CLOSE_BACKTRACK_STEPS 2500
+#define LID_CLOSE_BACKTRACK_ANGLE 3.0
+#define LID_OPEN_SWITCH_PROBE_ANGLE -30
 
 #define TO_INT(an_enum) static_cast<int>(an_enum)
 
