@@ -4,7 +4,7 @@ import csv
 import time
 from argparse import ArgumentParser
 
-IP = "10.10.3.79"
+IP = "10.10.3.151"
 TC_SERIAL = "dummySerial"
 
 def build_arg_parser():
@@ -32,11 +32,14 @@ async def main():
                 data_writer = csv.writer(data_file, delimiter=',', quoting=csv.QUOTE_NONE)
                 res = time.localtime()
                 timestamp = '{}:{}:{}'.format(res.tm_hour, res.tm_min, res.tm_sec)
-                data_writer.writerow([timestamp, 
-                                      data['data']['lidTemp'],
-                                      data['data']['currentTemp'], 
-                                      data['data']['targetTemp'],
-                                      data['data']['holdTime']])
+                data_list = [timestamp, data['data']['lidTemp'],
+                                    data['data']['currentTemp'],
+                                    data['data']['targetTemp'],
+                                    data['data']['holdTime']]
+                for item in data_list:
+                    print(item, end="\t")
+                print()
+                data_writer.writerow(data_list)
         await asyncio.sleep(1)
 
 loop = asyncio.get_event_loop()
