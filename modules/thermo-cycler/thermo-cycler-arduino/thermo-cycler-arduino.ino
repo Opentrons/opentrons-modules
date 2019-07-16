@@ -563,6 +563,61 @@ void read_gcode()
 /////////////////////////////////
 /////////////////////////////////
 
+#define FIRST_TEMP_TIME = 0
+#define A_SECOND 1000 //millis
+#define CYCLES  30
+
+struct temp_points
+{
+  float temp;
+  unsigned int hold_time;
+};
+
+temp_points TEMP_POINTS[] = {{10, 0}, {70, 30}, {94, 30}, {4, 0}};
+unsigned long wait_time = 0;
+
+void ngs_set_temp(float temp, unsigned int hold_time = 0)
+{
+  target_temperature_plate = temp;
+  master_set_a_target = true;
+  just_changed_temp = true;
+  tc_timer.reset();
+  // Check if hold time is specified
+  // TODO: check if shouldn't set hold time if 0
+  tc_timer.total_hold_time = hold_time;
+}
+
+bool run_ngs_test = false;
+void run_ngs()
+{
+  static unsigned long previous_step = 0;
+  static uint8_t i = 0;
+  static uint8_t cycle = 0;
+
+  if (millis() - previous_step > wait_time || (TEMP_POINTS[i].hold_time != 0 && tc_timer.time_left() == 0))
+  {
+    ngs_set_temp(TEMP_POINTS[i].temp, TEMP_POINTS[i].hold_time);
+    previous_step = millis();
+    wait_time = 120 * A_SECOND;
+    i++;
+    if (i == 3)
+    {
+      if (cycle < CYCLES)
+      {
+        i -= 2;
+      }
+    }
+    else if(i > 3)
+    {
+      run_ngs_test = false;
+      deactivate_all();
+    }
+  }
+}
+
+/////////////////////////////////
+
+
 void front_button_callback()
 {
   if(digitalRead(PIN_FRONT_BUTTON_SW) == LOW)
@@ -578,6 +633,7 @@ bool is_front_button_pressed()
   {
     if(digitalRead(PIN_FRONT_BUTTON_SW) == LOW)
     {
+      run_ngs_test = true;
       front_button_pressed = false;
       return true;
     }
@@ -665,6 +721,7 @@ void TC4_Handler()
 
 void setup()
 {
+
   gcode.setup(BAUDRATE);
   delay(1000);
   peltiers.setup();
@@ -732,6 +789,7 @@ void setup()
   pinMode(PIN_FRONT_BUTTON_SW, INPUT);
   analogWrite(PIN_FRONT_BUTTON_LED, LED_BRIGHTNESS);
   attachInterrupt(digitalPinToInterrupt(PIN_FRONT_BUTTON_SW), front_button_callback, CHANGE);
+
 #endif
   set_25ms_interrupt();
 }
@@ -847,11 +905,17 @@ void loop()
 #if HW_VERSION >=3
   if (is_front_button_pressed())
   {
-    deactivate_all();
-    lid.open_cover();
+    // deactivate_all();
+    // lid.open_cover();
+    run_ngs_test = true;
   }
 #endif
   timeStamp = micros() - timeStamp;
   /* Check if gcode(s) available on Serial */
+
   read_gcode();
+  if (run_ngs_test)
+  {
+    run_ngs();
+  }
 }
