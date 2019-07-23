@@ -25,7 +25,7 @@
 #include "thermistor.h"
 #include "gcode.h"
 
-#define device_version "v1.2.0"
+#define device_version "v2.0.0"
 
 #define PIN_BUZZER 11  // a piezo buzzer we can use tone() with
 #define PIN_FAN 9      // blower-fan controlled by simple PWM analogWrite()
@@ -55,21 +55,21 @@ float _offset_temp_diff = 0.0;
 
 // the intensities of the fan (0.0-1.0)
 #define FAN_HIGH 1.0
-#define FAN_LOW 0.4
+#define FAN_LOW 0.3
 #define FAN_OFF 0.0
 
-// model version 3.0 has differents fans, and requires on/off cycles (not PWM)
+// model versions 3.0+ & 4.0+ have a different fan that requires on/off cycles (not PWM)
 #define MAX_FAN_OFF_TIME 2000
-#define FAN_V3_0_LOW 0.95
+#define FAN_V3_V4_LOW 0.95
 unsigned long fan_on_time = 0;
 unsigned long fan_off_time = MAX_FAN_OFF_TIME;
 unsigned long fan_timestamp = 0;
 bool is_fan_on = false;
-bool is_v3_0_fan = false;
+bool is_v3_v4_fan = false;
 
-// model version 3.1 has same fans as v3.0, but pcb uses mosfet to PWM fan power
-#define FAN_V4_0_LOW 0.1
-bool is_v4_0_fan = false;
+// LED pins for model versions 3 & 4: red = 6, blue = 5
+// LED pins for model versions < 3  : red = 5, blue = 6
+bool is_blue_pin_5 = false;
 
 // the "Kd" of the PID never changes in our setup
 // (works according to testing so far...)
@@ -134,6 +134,7 @@ PID myPID(&CURRENT_TEMPERATURE, &TEMPERATURE_SWING, &TARGET_TEMPERATURE, DOWN_PI
 
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
+int model_version;          // value is read from device_model during setup()
 
 Lights lights = Lights();  // controls 2-digit 7-segment numbers, and the RGBW color bar
 Peltiers peltiers = Peltiers();  // 2 peltiers wired in series (-1.0<->1.0 controls polarity and intensity)
@@ -149,7 +150,7 @@ const int start_bootloader_timeout = 1000;
 /////////////////////////////////
 
 bool is_stabilizing() {
-  return abs(TARGET_TEMPERATURE - CURRENT_TEMPERATURE) < STABILIZING_ZONE;
+  return abs(TARGET_TEMPERATURE - CURRENT_TEMPERATURE) <= STABILIZING_ZONE;
 }
 
 bool is_moving_down() {
@@ -165,11 +166,11 @@ bool is_burning_hot() {
 }
 
 bool is_cold_zone() {
-  return CURRENT_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_COLD;
+  return CURRENT_TEMPERATURE <= TEMPERATURE_FAN_CUTOFF_COLD;
 }
 
 bool is_middle_zone() {
-  return CURRENT_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_COLD && CURRENT_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_HOT;
+  return CURRENT_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_COLD && CURRENT_TEMPERATURE <= TEMPERATURE_FAN_CUTOFF_HOT;
 }
 
 bool is_hot_zone() {
@@ -177,11 +178,11 @@ bool is_hot_zone() {
 }
 
 bool is_targeting_cold_zone() {
-  return TARGET_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_COLD;
+  return TARGET_TEMPERATURE <= TEMPERATURE_FAN_CUTOFF_COLD;
 }
 
 bool is_targeting_middle_zone() {
-  return TARGET_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_COLD && TARGET_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_HOT;
+  return TARGET_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_COLD && TARGET_TEMPERATURE <= TEMPERATURE_FAN_CUTOFF_HOT;
 }
 
 bool is_targeting_hot_zone() {
@@ -241,7 +242,7 @@ void turn_off_target() {
 
 void set_fan_power(float percentage){
   percentage = constrain(percentage, 0.0, 1.0);
-  if (is_v3_0_fan) {
+  if (is_v3_v4_fan) {
     fan_on_time = percentage * MAX_FAN_OFF_TIME;
     fan_off_time = MAX_FAN_OFF_TIME - fan_on_time;
   }
@@ -250,29 +251,29 @@ void set_fan_power(float percentage){
   }
 }
 
-void fan_v3_0_on() {
+void fan_v3_v4_on() {
   digitalWrite(PIN_FAN, HIGH);
   is_fan_on = true;
 }
 
-void fan_v3_0_off() {
+void fan_v3_v4_off() {
   digitalWrite(PIN_FAN, LOW);
   is_fan_on = false;
 }
 
-void adjust_v3_0_fan_state() {
-  if (fan_on_time == 0) fan_v3_0_off();
-  else if (fan_off_time == 0) fan_v3_0_on();
+void adjust_v3_v4_fan_state() {
+  if (fan_on_time == 0) fan_v3_v4_off();
+  else if (fan_off_time == 0) fan_v3_v4_on();
   else {
     if (is_fan_on) {
       if (millis() - fan_timestamp > fan_on_time) {
         fan_timestamp = millis();
-        fan_v3_0_off();
+        fan_v3_v4_off();
       }
     }
     else if (millis() - fan_timestamp > fan_off_time) {
       fan_timestamp = millis();
-      fan_v3_0_on();
+      fan_v3_v4_on();
     }
   }
 }
@@ -355,8 +356,7 @@ void stabilize_to_target_temp(bool set_fan=true){
     set_fan_power(FAN_HIGH);
   }
   else {
-    if (is_v3_0_fan) set_fan_power(FAN_V3_0_LOW);
-    else if (is_v4_0_fan) set_fan_power(FAN_V4_0_LOW);
+    if (is_v3_v4_fan) set_fan_power(FAN_V3_V4_LOW);
     else set_fan_power(FAN_LOW);
   }
 
@@ -367,11 +367,7 @@ void stabilize_to_target_temp(bool set_fan=true){
 void stabilize_to_room_temp(bool set_fan=true) {
   if (is_burning_hot()) {
     set_peltiers_from_pid();
-    if (set_fan) {
-      if (is_v3_0_fan) set_fan_power(FAN_V3_0_LOW);
-      else if (is_v4_0_fan) set_fan_power(FAN_V4_0_LOW);
-      else set_fan_power(FAN_LOW);
-    }
+    set_fan_power(FAN_HIGH);
   }
   else {
     peltiers.disable_peltiers();
@@ -487,6 +483,12 @@ void read_gcode(){
         case GCODE_DEVICE_INFO:
           gcode.print_device_info(device_serial, device_model, device_version);
           break;
+        case GCODE_FAN:
+          if (gcode.read_number('S'))
+          {
+              set_fan_power(gcode.parsed_number);
+          }
+          break;
         case GCODE_DFU:
           gcode.send_ack(); // Send ack here since we not reaching the end of the loop
           gcode.print_warning(F("Restarting and entering bootloader..."));
@@ -531,10 +533,16 @@ void setup() {
   memory.read_serial(device_serial);
   memory.read_model(device_model);
 
-  if (device_model.indexOf("v3.0") > 0) is_v3_0_fan = true;
-  else if (device_model.indexOf("v4.0") > 0) is_v4_0_fan = true;
+  const String model_ver_template= "temp_deck_v";
+  String ver = device_model.substring(model_ver_template.length());
+  model_version = ver.toInt();
 
-  lights.setup_lights();
+  if (model_version == 3 || model_version == 4)
+  {
+    is_v3_v4_fan = true;
+    is_blue_pin_5 = true;
+  }
+  lights.setup_lights(is_blue_pin_5);
   lights.set_numbers_brightness(0.25);
   lights.set_color_bar_brightness(0.5);
 
@@ -576,7 +584,7 @@ void loop(){
 
   read_thermistor_and_apply_offset();
 
-  if (is_v3_0_fan) adjust_v3_0_fan_state();
+  if (is_v3_v4_fan) adjust_v3_v4_fan_state();
 
   // update the temperature display, and color-bar
   update_led_display(true);  // debounce enabled

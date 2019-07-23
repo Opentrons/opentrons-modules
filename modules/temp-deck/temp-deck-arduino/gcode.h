@@ -15,7 +15,8 @@
 #define GCODE_DISENGAGE             2
 #define GCODE_DEVICE_INFO           3
 #define GCODE_DFU                   4
-#define TOTAL_GCODE_COMMAND_CODES   5
+#define GCODE_FAN                   5
+#define TOTAL_GCODE_COMMAND_CODES   6
 
 class Gcode{
 

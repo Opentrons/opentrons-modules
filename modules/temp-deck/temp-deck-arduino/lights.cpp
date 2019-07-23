@@ -168,7 +168,17 @@ void Lights::startup_animation(int target_number, int transition_time) {
   set_color_bar(0, 0, 0, 1);
 }
 
-void Lights::setup_lights() {
+void Lights::setup_lights(bool is_blue_pin_5) {
+  if (is_blue_pin_5)
+  {
+    blue_led = 5;
+    red_led = 6;
+  }
+  else
+  {
+    blue_led = 6;
+    red_led = 5;
+  }
   pinMode(red_led, OUTPUT);
   pinMode(blue_led, OUTPUT);
   Wire.setClock(400000);
