@@ -1,3 +1,8 @@
+### WARNING: These instructions are for the old bootloader and might not work
+### correctly with the new boards & bootloader.
+### For latest bootloader and instructions, please refer to: 
+### `arduino-board-files` -> `opentrons-samd` -> `bootloaders` -> `thermocycler_m0`
+
 1) Download and install J-Link CLI tool:
 
 https://www.segger.com/downloads/jlink/#J-LinkSoftwareAndDocumentationPack
