@@ -131,9 +131,9 @@
             "online": "https://support.opentrons.com/ot-2"
           },
           "url": "https://s3.us-east-2.amazonaws.com/opentrons-modules/opentrons-samd-1.0.2.tar.bz2",
-          "checksum": "SHA-256:2caaae2ca8d3b0da276f6776f4295044006fa89f6529c8d8cf869a5767741804",
+          "checksum": "SHA-256:9c7d5712f7c536117812d2d41072dabfb7b8e4fedee06494712aceeedd65cf7e",
           "version": "1.0.2",
-          "size": "883397",
+          "size": "883389",
           "architecture": "samd",
           "archiveFileName": "opentrons-samd-1.0.2.tar.bz2",
           "toolsDependencies": [
