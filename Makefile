@@ -12,7 +12,7 @@ INO_DIR := $(HOME)/arduino_ide
 ARDUINO_VERSION ?= 1.8.5
 ARDUINO_SAMD_VER ?= 1.6.20
 OPENTRONS_BOARDS_VER ?= 1.2.0
-OPENTRONS_SAMD_BOARDS_VER ?= 1.0.1
+OPENTRONS_SAMD_BOARDS_VER ?= 1.0.2
 
 OPENTRONS_BOARD_URL := https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json
 
