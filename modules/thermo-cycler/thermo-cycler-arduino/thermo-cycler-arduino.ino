@@ -342,6 +342,8 @@ void debug_status_prints()
   gcode.add_debug_response("Fan auto?", auto_fan);
   // Cover temperature:
   gcode.add_debug_response("T.Lid", temp_probes.cover_temperature());
+  // Thermistor status:
+  gcode.add_debug_response("T_error", int(thermistor_failure));
   // Motor status:
 #if HW_VERSION >= 3
   gcode.add_debug_response("Motor_fault", int(lid.is_driver_faulted()));
@@ -510,6 +512,16 @@ void read_gcode()
           break;
         case Gcode::get_device_info:
           gcode.device_info_response(device_serial, device_model, device_version);
+          break;
+        case Gcode::get_device_state:
+          if (temp_probes.detected_invalid_val)
+          {
+            gcode.response("Device Error");
+          }
+          else
+          {
+            gcode.response("All OK");
+          }
           break;
         case Gcode::dfu:
           break;
@@ -824,8 +836,13 @@ void therm_pid_peltier_update()
 void loop()
 {
   timeStamp = micros();
-  temp_safety_check();
   therm_pid_peltier_update();
+  if (temp_probes.detected_invalid_val)
+  {
+    gcode.response("");
+    deactivate_all();
+  }
+  temp_safety_check();
   // temp_plot();
   lid.check_switches();
   #if LID_WARNING

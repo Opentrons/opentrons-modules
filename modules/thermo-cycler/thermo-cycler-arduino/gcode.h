@@ -26,6 +26,7 @@
   GCODE_DEF(get_device_info, M115), \
   GCODE_DEF(heatsink_fan_pwr_manual, M106), \
   GCODE_DEF(heatsink_fan_auto_on, M107),  \
+  GCODE_DEF(get_device_state, M78), \
   GCODE_DEF(dfu, dfu),              \
   GCODE_DEF(motor_reset, mrst),     \
   GCODE_DEF(debug_mode, M111),      \

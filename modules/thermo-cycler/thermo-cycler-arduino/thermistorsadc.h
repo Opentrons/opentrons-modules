@@ -79,6 +79,7 @@ class ThermistorsADC{
             float back_right_temperature();
             float cover_temperature();
             float heat_sink_temperature();
+            bool detected_invalid_val;
 
       private:
 

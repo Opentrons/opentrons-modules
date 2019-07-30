@@ -48,6 +48,15 @@ void ThermistorsADC::update(ThermistorPair n) {
   delay(inter_temp_read_interval);
   probe_temps[therm_index2] = _adc_to_celsius(_read_adc(therm_index2));
   delay(inter_temp_read_interval);
+  if (!is_in_range(probe_temps[therm_index1]) || !is_in_range(probe_temps[therm_index2]))
+  {
+    detected_invalid_val = true;
+  }
+}
+
+bool is_in_range(double celsius)
+{
+  return (celsius < THERMISTOR_ERROR_VAL_HI && celsius > THERMISTOR_ERROR_VAL_LOW)
 }
 
 float ThermistorsADC::average_plate_temperature() {

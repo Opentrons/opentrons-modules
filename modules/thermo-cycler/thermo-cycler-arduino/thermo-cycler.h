@@ -55,6 +55,8 @@
 #define HEATSINK_FAN_LO_TEMP      38
 #define HEATSINK_FAN_HI_TEMP      55
 #define HEATSINK_FAN_OFF_TEMP     36
+#define THERMISTOR_ERROR_VAL_LOW  -10
+#define THERMISTOR_ERROR_VAL_HI   120
 
 /********* PID: PLATE PELTIERS *********/
 // NOTE: temp_probes.update takes 136-137ms while rest of the loop takes 0-1ms.
