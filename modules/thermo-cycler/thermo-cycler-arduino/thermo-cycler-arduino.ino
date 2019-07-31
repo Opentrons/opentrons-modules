@@ -832,7 +832,6 @@ void loop()
     if (millis() - last_error_print > ERROR_PRINT_INTERVAL)
     {
       gcode.response("ERROR", "Invalid thermistor value");
-      gcode.send_ack();
       last_error_print = millis();
     }
     deactivate_all();
@@ -847,7 +846,6 @@ void loop()
       if (millis() - last_error_print > ERROR_PRINT_INTERVAL)
       {
         gcode.response("WARNING", "Lid Open");
-        gcode.send_ack();
         last_error_print = millis();
       }
     }
