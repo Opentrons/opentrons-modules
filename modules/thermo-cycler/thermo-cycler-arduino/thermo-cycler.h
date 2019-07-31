@@ -55,8 +55,6 @@
 #define HEATSINK_FAN_LO_TEMP      38
 #define HEATSINK_FAN_HI_TEMP      55
 #define HEATSINK_FAN_OFF_TEMP     36
-#define THERMISTOR_ERROR_VAL_LOW  -10
-#define THERMISTOR_ERROR_VAL_HI   120
 
 /********* PID: PLATE PELTIERS *********/
 // NOTE: temp_probes.update takes 136-137ms while rest of the loop takes 0-1ms.
@@ -138,18 +136,14 @@ String device_version = "v1.0.1";
 /********* MISC GLOBALS *********/
 
 #define DEBUG_PRINT_INTERVAL 2000  // millisec
-unsigned long plotter_timestamp = 0;
-const int plotter_interval = 500;
+#define ERROR_PRINT_INTERVAL  2000  //ms
+unsigned long last_error_print = 0;
 bool front_button_pressed = false;
 unsigned long front_button_pressed_at = 0;
 bool timer_interrupted = false;
 uint8_t therm_read_state = 0;
-bool running_from_script = false;
-bool debug_print_mode = true;
-bool gcode_debug_mode = false;  // Debug mode is not compatible with API
-bool continuous_debug_stat_mode = false;
-bool running_graph = false;
-bool zoom_mode = false;
+bool gcode_debug_mode = false;
+bool continuous_debug_stat_mode = false; // continuous_debug_stat_mode is not compatible with API
 #if LID_TESTING
 unsigned long gcode_rec_timestamp;
 #endif

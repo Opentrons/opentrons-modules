@@ -50,13 +50,14 @@ void ThermistorsADC::update(ThermistorPair n) {
   delay(inter_temp_read_interval);
   if (!is_in_range(probe_temps[therm_index1]) || !is_in_range(probe_temps[therm_index2]))
   {
+    // Once set to true, will need system reset to clear
     detected_invalid_val = true;
   }
 }
 
-bool is_in_range(double celsius)
+bool ThermistorsADC::is_in_range(double celsius)
 {
-  return (celsius < THERMISTOR_ERROR_VAL_HI && celsius > THERMISTOR_ERROR_VAL_LOW)
+  return (celsius < THERMISTOR_ERROR_VAL_HI && celsius > THERMISTOR_ERROR_VAL_LOW);
 }
 
 float ThermistorsADC::average_plate_temperature() {
@@ -66,9 +67,7 @@ float ThermistorsADC::average_plate_temperature() {
     front_right_temperature() +
     back_left_temperature() +
     back_center_temperature() +
-    back_right_temperature() +
-    //heat_sink_temperature() +
-    0.0
+    back_right_temperature()
   ) / TOTAL_PLATE_THERMISTORS;
 }
 
