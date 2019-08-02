@@ -540,7 +540,23 @@ void setup() {
   if (model_version == 3 || model_version == 4)
   {
     is_v3_v4_fan = true;
-    is_blue_pin_5 = true;
+    if (model_version == 3)
+    {
+      // V3 tempdecks produced after Oct 15 have different LED pin configuration
+      const String serial_ver_template = "TDV03P2018"; // example serial-TDV03P20181008A01
+      const uint8_t date_length = 4;
+      String serial_date = device_serial.substring(
+        serial_ver_template.length(), serial_ver_template.length() + date_length);
+      int v3_date = serial_date.toInt();
+      if (v3_date > 1019)
+      {
+        is_blue_pin_5 = true;
+      }
+    }
+    else
+    {
+      is_blue_pin_5 = true;
+    }
   }
   lights.setup_lights(is_blue_pin_5);
   lights.set_numbers_brightness(0.25);
