@@ -46,6 +46,11 @@
 #define TOTAL_THERMISTORS              8
 #define TOTAL_PLATE_THERMISTORS        6
 
+// When thermistor is disconnected, the value at open ckt = -20
+// But we don't want to reach low -ve or  high +ve values either..
+#define THERMISTOR_ERROR_VAL_LOW  -10
+#define THERMISTOR_ERROR_VAL_HI   120
+
 enum class ThermistorPair
 {
     left=0,
@@ -79,6 +84,7 @@ class ThermistorsADC{
             float back_right_temperature();
             float cover_temperature();
             float heat_sink_temperature();
+            bool detected_invalid_val;
 
       private:
 
@@ -87,6 +93,7 @@ class ThermistorsADC{
 
             uint16_t _read_adc(int index);
             float _adc_to_celsius(uint16_t _adc);
+            bool is_in_range(double celsius);
 
             double probe_temps[TOTAL_THERMISTORS] = {0, };
             double sum_probe_temps[TOTAL_THERMISTORS] = {0, };

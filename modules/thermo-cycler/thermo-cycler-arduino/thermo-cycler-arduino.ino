@@ -342,6 +342,8 @@ void debug_status_prints()
   gcode.add_debug_response("Fan auto?", auto_fan);
   // Cover temperature:
   gcode.add_debug_response("T.Lid", temp_probes.cover_temperature());
+  // Thermistor status:
+  gcode.add_debug_response("T_error", int(temp_probes.detected_invalid_val));
   // Motor status:
 #if HW_VERSION >= 3
   gcode.add_debug_response("Motor_fault", int(lid.is_driver_faulted()));
@@ -824,15 +826,28 @@ void therm_pid_peltier_update()
 void loop()
 {
   timeStamp = micros();
-  temp_safety_check();
   therm_pid_peltier_update();
+  if (temp_probes.detected_invalid_val)
+  {
+    if (millis() - last_error_print > ERROR_PRINT_INTERVAL)
+    {
+      gcode.response("ERROR", "Invalid thermistor value");
+      last_error_print = millis();
+    }
+    deactivate_all();
+  }
+  temp_safety_check();
   // temp_plot();
   lid.check_switches();
   #if LID_WARNING
+  // TODO: Confirm if lid warning is required at all
     if (master_set_a_target && lid.status() != Lid_status::closed)
     {
-      gcode.response("WARNING", "Lid Open");
-      gcode.send_ack();
+      if (millis() - last_error_print > ERROR_PRINT_INTERVAL)
+      {
+        gcode.response("WARNING", "Lid Open");
+        last_error_print = millis();
+      }
     }
   #endif
 
