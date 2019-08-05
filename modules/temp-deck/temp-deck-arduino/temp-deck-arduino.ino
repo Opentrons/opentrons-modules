@@ -26,6 +26,10 @@
 #include "gcode.h"
 
 #define device_version "v2.0.0"
+#define MODEL_VER_TEMPLATE "temp_deck_v"
+#define MODEL_VER_TEMPLATE_LEN sizeof(MODEL_VER_TEMPLATE) - 1
+#define SERIAL_VER_TEMPLATE "TDV03P2018"
+#define SERIAL_VER_TEMPLATE_LEN sizeof(SERIAL_VER_TEMPLATE) - 1
 
 #define PIN_BUZZER 11  // a piezo buzzer we can use tone() with
 #define PIN_FAN 9      // blower-fan controlled by simple PWM analogWrite()
@@ -532,9 +536,7 @@ void setup() {
 
   memory.read_serial(device_serial);
   memory.read_model(device_model);
-
-  const String model_ver_template= "temp_deck_v";
-  String ver = device_model.substring(model_ver_template.length());
+  String ver = device_model.substring(MODEL_VER_TEMPLATE_LEN);
   model_version = ver.toInt();
 
   if (model_version == 3 || model_version == 4)
@@ -543,12 +545,12 @@ void setup() {
     if (model_version == 3)
     {
       // V3 tempdecks produced after Oct 15 have different LED pin configuration
-      const String serial_ver_template = "TDV03P2018"; // example serial-TDV03P20181008A01
-      const uint8_t date_length = 4;
+      // serial number has the production date. eg. TDV03P*20181008*A01
+      const uint8_t date_length = 4;  // MMDD
       String serial_date = device_serial.substring(
-        serial_ver_template.length(), serial_ver_template.length() + date_length);
+        SERIAL_VER_TEMPLATE_LEN, SERIAL_VER_TEMPLATE_LEN + date_length);
       int v3_date = serial_date.toInt();
-      if (v3_date > 1019)
+      if (v3_date > 1015)
       {
         is_blue_pin_5 = true;
       }
