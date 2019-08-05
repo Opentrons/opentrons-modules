@@ -120,7 +120,6 @@ void Gcode::setup(int baudrate) {
   COMMAND_CODES[GCODE_DEVICE_INFO] =  "M115";
   COMMAND_CODES[GCODE_DISENGAGE] =    "M18";
   COMMAND_CODES[GCODE_DFU] =          "dfu";
-  COMMAND_CODES[GCODE_FAN] =          "M106";
   Serial.begin(baudrate);
   Serial.setTimeout(3);
 }

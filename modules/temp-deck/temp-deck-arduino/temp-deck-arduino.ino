@@ -71,8 +71,8 @@ unsigned long fan_timestamp = 0;
 bool is_fan_on = false;
 bool is_v3_v4_fan = false;
 
-// LED pins for model versions 3 & 4: red = 6, blue = 5
-// LED pins for model versions < 3  : red = 5, blue = 6
+// LED pins for model versions 3 (post 2018.10.15) & 4: red = 6, blue = 5
+// LED pins for model versions < 3 & 3.0 (pre- 2018.10.15) : red = 5, blue = 6
 bool is_blue_pin_5 = false;
 
 // the "Kd" of the PID never changes in our setup
@@ -486,12 +486,6 @@ void read_gcode(){
           break;
         case GCODE_DEVICE_INFO:
           gcode.print_device_info(device_serial, device_model, device_version);
-          break;
-        case GCODE_FAN:
-          if (gcode.read_number('S'))
-          {
-              set_fan_power(gcode.parsed_number);
-          }
           break;
         case GCODE_DFU:
           gcode.send_ack(); // Send ack here since we not reaching the end of the loop
