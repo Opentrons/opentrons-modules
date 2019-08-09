@@ -2,10 +2,10 @@
 
 const char * Lid::LID_STATUS_STRINGS[] = { STATUS_TABLE };
 volatile bool cover_switch_toggled = false;
-volatile bool bottom_switch_toggled = false;
+volatile bool bottom_switch_toggled = true;
 volatile bool motor_driver_faulted = false;
 volatile unsigned long cover_switch_toggled_at = 0;
-volatile unsigned long bottom_switch_toggled_at = 0;
+volatile unsigned long bottom_switch_toggled_at = 1;
 
 Lid::Lid()
 {}
@@ -138,7 +138,7 @@ void Lid::check_switches()
     if (millis() - bottom_switch_toggled_at >= 200)
     {
       bottom_switch_toggled = false;
-      _is_bottom_switch_pressed = bool(digitalRead(PIN_BOTTOM_SWITCH));
+      _is_bottom_switch_pressed = !bool(digitalRead(PIN_BOTTOM_SWITCH));
     }
   }
 }
@@ -241,7 +241,7 @@ bool Lid::open_cover()
   }
   motor_on();
   bool res;
-  move_angle(LID_OPEN_DOWN_MOTION_ANGLE); // move down a bit to release latch
+  move_angle(-LID_OPEN_DOWN_MOTION_ANGLE); // move down a bit to release latch
   solenoid_on();
   delay(400);
   move_angle(10);     // move up a bit
@@ -260,9 +260,13 @@ bool Lid::close_cover()
   motor_on();
   bool res = move_angle(-LID_MOTOR_RANGE_DEG);
   delay(500);
+  Serial.println(res);
   if (res)
-  { // move down a bit more
+  { // move down a bit
+    Serial.println("I GOT HERE ");
+    Serial.println(-LID_CLOSE_LAST_STEP_ANGLE);
     move_angle(-LID_CLOSE_LAST_STEP_ANGLE);
+    Serial.println("I GOT HERE 2");
     delay(250);
     move_angle(LID_CLOSE_BACKTRACK_ANGLE);
   }

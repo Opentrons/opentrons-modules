@@ -76,7 +76,7 @@
 #define LID_CLOSE_BACKTRACK_ANGLE 3.0
 #define LID_CLOSE_LAST_STEP_ANGLE 1.5
 #define LID_OPEN_SWITCH_PROBE_ANGLE -30
-#define LID_OPEN_DOWN_MOTION_ANGLE 2.0
+#define LID_OPEN_DOWN_MOTION_ANGLE 4.0
 
 #define TO_INT(an_enum) static_cast<int>(an_enum)
 
