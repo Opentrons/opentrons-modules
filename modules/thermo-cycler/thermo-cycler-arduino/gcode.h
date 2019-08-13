@@ -19,6 +19,8 @@
   GCODE_DEF(deactivate_lid_heating, M108),  \
   GCODE_DEF(set_plate_temp, M104),  \
   GCODE_DEF(get_plate_temp, M105),  \
+  GCODE_DEF(set_led_override, M200),\
+  GCODE_DEF(set_led, M210),         \
   GCODE_DEF(set_ramp_rate, M566),   \
   GCODE_DEF(edit_pid_params, M301), \
   GCODE_DEF(pause, M76),            \

@@ -8,6 +8,7 @@
 #include "gcode.h"
 #include "tc_timer.h"
 #include "fan.h"
+#include "lights.h"
 
 /********* Versions **********/
 /* Version guidelines: */
@@ -19,14 +20,6 @@
 /********* THERMISTORS *********/
 
 #define THERMISTOR_VOLTAGE 1.5
-
-/********* INDICATOR NEOPIXELS *********/
-
-#include <Adafruit_NeoPixel_ZeroDMA.h>
-
-#define NEO_PWR     4
-#define NEO_PIN     A5
-#define NUM_PIXELS  16
 
 /********** HEAT PAD **********/
 
