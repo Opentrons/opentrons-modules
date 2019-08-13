@@ -2,10 +2,10 @@
 
 const char * Lid::LID_STATUS_STRINGS[] = { STATUS_TABLE };
 volatile bool cover_switch_toggled = false;
-volatile bool bottom_switch_toggled = true;
+volatile bool bottom_switch_toggled = false;
 volatile bool motor_driver_faulted = false;
 volatile unsigned long cover_switch_toggled_at = 0;
-volatile unsigned long bottom_switch_toggled_at = 1;
+volatile unsigned long bottom_switch_toggled_at = 0;
 
 Lid::Lid()
 {}
@@ -138,7 +138,13 @@ void Lid::check_switches()
     if (millis() - bottom_switch_toggled_at >= 200)
     {
       bottom_switch_toggled = false;
-      _is_bottom_switch_pressed = !bool(digitalRead(PIN_BOTTOM_SWITCH));
+      #if HW_VERSION <= 3
+        // Bottom switch is NORMALLY CLOSED
+        _is_bottom_switch_pressed = bool(digitalRead(PIN_BOTTOM_SWITCH));
+      #else
+        // Bottom optical switch reads HIGH normally
+        _is_bottom_switch_pressed = !bool(digitalRead(PIN_BOTTOM_SWITCH));
+      #endif
     }
   }
 }
@@ -241,7 +247,12 @@ bool Lid::open_cover()
   }
   motor_on();
   bool res;
-  move_angle(-LID_OPEN_DOWN_MOTION_ANGLE); // move down a bit to release latch
+  // move down a bit to release latch
+  unsigned long push_steps = abs(LID_OPEN_DOWN_MOTION_ANGLE) * STEPS_PER_ANGLE;
+  for (unsigned long i=0;i<push_steps;i++)
+  {
+    _motor_step(DIRECTION_DOWN);
+  }
   solenoid_on();
   delay(400);
   move_angle(10);     // move up a bit
@@ -259,15 +270,17 @@ bool Lid::close_cover()
   }
   motor_on();
   bool res = move_angle(-LID_MOTOR_RANGE_DEG);
-  delay(500);
-  Serial.println(res);
   if (res)
-  { // move down a bit
-    Serial.println("I GOT HERE ");
-    Serial.println(-LID_CLOSE_LAST_STEP_ANGLE);
-    move_angle(-LID_CLOSE_LAST_STEP_ANGLE);
-    Serial.println("I GOT HERE 2");
-    delay(250);
+  {
+#if HW_VERSION >=4
+    // move down a bit
+    unsigned long final_steps = abs(LID_CLOSE_LAST_STEP_ANGLE) * STEPS_PER_ANGLE;
+    for (unsigned long i=0;i<final_steps;i++)
+    {
+      _motor_step(DIRECTION_DOWN);
+    }
+#endif
+  delay(500);
     move_angle(LID_CLOSE_BACKTRACK_ANGLE);
   }
   delay(250);
@@ -335,9 +348,15 @@ bool Lid::setup()
   pinMode(PIN_COVER_SWITCH, INPUT);
   pinMode(PIN_BOTTOM_SWITCH, INPUT);
 #endif
-  // Both switches are NORMALLY CLOSED
+  // Cover switch is NORMALLY CLOSED
   _is_cover_switch_pressed = bool(digitalRead(PIN_COVER_SWITCH));
+#if HW_VERSION <= 3
+  // Bottom switch is NORMALLY CLOSED
   _is_bottom_switch_pressed = bool(digitalRead(PIN_BOTTOM_SWITCH));
+#else
+  // Bottom optical switch reads HIGH normally
+  _is_bottom_switch_pressed = !bool(digitalRead(PIN_BOTTOM_SWITCH));
+#endif
   _update_status();
   attachInterrupt(digitalPinToInterrupt(PIN_COVER_SWITCH), _cover_switch_callback, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PIN_BOTTOM_SWITCH), _bottom_switch_callback, CHANGE);
