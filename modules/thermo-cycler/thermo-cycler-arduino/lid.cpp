@@ -138,13 +138,7 @@ void Lid::check_switches()
     if (millis() - bottom_switch_toggled_at >= 200)
     {
       bottom_switch_toggled = false;
-      #if HW_VERSION <= 3
-        // Bottom switch is NORMALLY CLOSED
-        _is_bottom_switch_pressed = bool(digitalRead(PIN_BOTTOM_SWITCH));
-      #else
-        // Bottom optical switch reads HIGH normally
-        _is_bottom_switch_pressed = !bool(digitalRead(PIN_BOTTOM_SWITCH));
-      #endif
+      _is_bottom_switch_pressed = _bottom_switch_check();
     }
   }
 }
@@ -205,7 +199,7 @@ void Lid::reset_motor_driver()
 #endif
 }
 
-bool Lid::move_angle(float deg)
+bool Lid::move_angle(float deg, bool ignore_switches=false)
 {
   uint8_t dir = DIRECTION_UP;
   if (deg < 0) dir = DIRECTION_DOWN;
@@ -221,24 +215,34 @@ bool Lid::move_angle(float deg)
       return false;
     }
   #endif
-    if (dir == DIRECTION_UP)
+    if (!ignore_switches)
     {
-      if (_is_cover_switch_pressed)
+      if (dir == DIRECTION_UP)
       {
-        return true;
+        if (_is_cover_switch_pressed)
+        {
+          return true;
+        }
       }
-    }
-    else
-    {
-      if (_is_bottom_switch_pressed)
+      else
       {
-        return true;
+        if (_is_bottom_switch_pressed)
+        {
+          return true;
+        }
       }
     }
   }
   return false;
 }
 
+/* Steps to open cover when in closed position:
+ * 1. Move down to clear solenoid/latch
+ * 2. Engage solenoid to open latch
+ * 3. Move up past the latch
+ * 4. Disengage solenoid
+ * 5. Keep moving up until cover_switch is engaged
+ */
 bool Lid::open_cover()
 {
   if (_is_cover_switch_pressed)
@@ -247,21 +251,38 @@ bool Lid::open_cover()
   }
   motor_on();
   bool res;
-  // move down a bit to release latch
-  unsigned long push_steps = abs(LID_OPEN_DOWN_MOTION_ANGLE) * STEPS_PER_ANGLE;
-  for (unsigned long i=0;i<push_steps;i++)
-  {
-    _motor_step(DIRECTION_DOWN);
+#if HW_VERSION >= 4
+  // This version uses an optical switch in the bottom which stays engaged in
+  // lid closed position.
+  // Move down a bit to clear solenoid while ignoring bottom switch state
+  move_angle(-LID_OPEN_DOWN_MOTION_ANGLE, true);
+#else
+  // move down, until lid hits bottom switch, to clear the solenoid
+  if (move_angle(-LID_OPEN_SWITCH_PROBE_ANGLE))
+  { // Lid hit bottom switch
+#endif
+    // <Solenoid assumed cleared>
+    solenoid_on();
+    delay(250); // allow quarter of a second for solenoid to pull latch fully
+    move_angle(10);     // move up a few degrees until we are clear of the latch mechanism
+    solenoid_off();     // Turn solenoid off now that the lid has moved past it
+    res = move_angle(LID_MOTOR_RANGE_DEG);  // move up until cover switch is pressed
+#if HW_VERSION < 4
   }
-  solenoid_on();
-  delay(400);
-  move_angle(10);     // move up a bit
-  solenoid_off();
-  res = move_angle(LID_MOTOR_RANGE_DEG);  // move up until cover switch is pressed
+  else
+  {
+    res = false;
+  }
+#endif
   motor_off();
   return res;
 }
 
+/* Steps to close cover when opened
+ * 1. Move the lid down until lid is fully closed and not obstructing the latch.
+ * 2. The latch stays in resting position, ready to lock onto the hook
+ * 3. Move up a bit to have the hook sit flush with the latch.
+ */
 bool Lid::close_cover()
 {
   if (_is_bottom_switch_pressed)
@@ -269,21 +290,19 @@ bool Lid::close_cover()
     return true;
   }
   motor_on();
-  bool res = move_angle(-LID_MOTOR_RANGE_DEG);
+  bool res = move_angle(-LID_MOTOR_RANGE_DEG);  // Move down until bottom switch is pressed
   if (res)
   {
+    // <bottom switch engaged>
 #if HW_VERSION >=4
-    // move down a bit
-    unsigned long final_steps = abs(LID_CLOSE_LAST_STEP_ANGLE) * STEPS_PER_ANGLE;
-    for (unsigned long i=0;i<final_steps;i++)
-    {
-      _motor_step(DIRECTION_DOWN);
-    }
+    // This version uses an optical switch in the bottom which engages a few mm
+    // before the lid actually fully closes. Hence, move down a few more steps
+    // after the switch engages to fully close. (ignore_switches -> true)
+    move_angle(-LID_CLOSE_LAST_STEP_ANGLE, true);
 #endif
-  delay(500);
+    delay(500); // small time buffer to allow for the latch to release fully
     move_angle(LID_CLOSE_BACKTRACK_ANGLE);
   }
-  delay(250);
   motor_off();
   return res;
 }
@@ -310,6 +329,17 @@ void _motor_fault_callback()
     motor_driver_faulted = true;
   }
 #endif
+}
+
+inline bool Lid::_bottom_switch_check()
+{
+  #if HW_VERSION <= 3
+    // Bottom switch is NORMALLY CLOSED
+    return bool(digitalRead(PIN_BOTTOM_SWITCH));
+  #else
+    // Bottom optical switch reads HIGH normally
+    return !bool(digitalRead(PIN_BOTTOM_SWITCH));
+  #endif
 }
 
 bool Lid::setup()
@@ -348,15 +378,11 @@ bool Lid::setup()
   pinMode(PIN_COVER_SWITCH, INPUT);
   pinMode(PIN_BOTTOM_SWITCH, INPUT);
 #endif
-  // Cover switch is NORMALLY CLOSED
+  // Cover switch is HIGH when engaged
   _is_cover_switch_pressed = bool(digitalRead(PIN_COVER_SWITCH));
-#if HW_VERSION <= 3
-  // Bottom switch is NORMALLY CLOSED
-  _is_bottom_switch_pressed = bool(digitalRead(PIN_BOTTOM_SWITCH));
-#else
-  // Bottom optical switch reads HIGH normally
-  _is_bottom_switch_pressed = !bool(digitalRead(PIN_BOTTOM_SWITCH));
-#endif
+  // Different configs for EVT & DVT
+  _is_bottom_switch_pressed = _bottom_switch_check();
+
   _update_status();
   attachInterrupt(digitalPinToInterrupt(PIN_COVER_SWITCH), _cover_switch_callback, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PIN_BOTTOM_SWITCH), _bottom_switch_callback, CHANGE);
