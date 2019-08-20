@@ -68,23 +68,31 @@
 #define MICRO_STEP  32
 #define MOTOR_REDUCTION_RATIO  99.5
 #define STEPS_PER_ANGLE  uint16_t((MICRO_STEP * MOTOR_REDUCTION_RATIO) / STEP_ANGLE)
-#define STEPS_PER_MM 480  // full-stepping
-#define LID_MOTOR_RANGE_MM  390 // The max distance in mm the motor should move between open to close positions
 #define LID_MOTOR_RANGE_DEG 100 // Max angle the lid motor can move
 #define PULSE_HIGH_MICROSECONDS 2
 #define MOTOR_STEP_DELAY 60   // microseconds
+
+#if HW_VERSION <= 3
+#define LID_OPEN_SWITCH_PROBE_ANGLE 30
+#else
+#define LID_CLOSE_LAST_STEP_ANGLE 2.5
+#define LID_OPEN_DOWN_MOTION_ANGLE 4.0
+#endif
 #define LID_CLOSE_BACKTRACK_ANGLE 3.0
-#define LID_OPEN_SWITCH_PROBE_ANGLE -30
 
 #define TO_INT(an_enum) static_cast<int>(an_enum)
 
 /* The TC has two switches to detect lid positions: one inside the lid (PIN_COVER_SWITCH)
  * that is engaged when the lid fully opens and the other in the main
  * boards assembly (PIN_BOTTOM_SWITCH) which is engaged when the lid is closed
- * and locked. These are N.C. switches and the pins read LOW when not engaged.
- * When neither of the switch is engaged, the lid is assumed to be 'in_between'
- * 'open' and 'closed' status. When both switches read HIGH (which should never happen),
+ * and locked. When neither of the switch is engaged, the lid is assumed to be 'in_between'
+ * 'open' and 'closed' status. When both switches read as engaged (which should never happen),
  * the lid is in 'error' state.
+ * For EVT units (HW_VERSION == 3): These are N.C. switches and
+ *                                  the pins read LOW when not engaged.
+ * For DVT units (HW_VERSION == 4): Cover switch is same as in EVT.
+                                    Bottom switch is an optical switch which
+ *                                  reads LOW when engaged.
  */
 #define STATUS_TABLE \
           STATUS(in_between),  \
@@ -116,7 +124,7 @@ class Lid
     void solenoid_off();
     void motor_off();
     void motor_on();
-    bool move_angle(float deg);
+    bool move_angle(float deg, bool ignore_switches);
     void check_switches();
     void reset_motor_driver();
     bool is_driver_faulted();
@@ -134,7 +142,7 @@ class Lid
     void _update_status();
     byte _i2c_read();
     uint16_t _to_dac_out(float driver_vref);
-
+    inline bool _bottom_switch_check();
     Lid_status _status;
     enum class _Lid_switch {
       cover_switch,
