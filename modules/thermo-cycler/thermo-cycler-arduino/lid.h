@@ -142,7 +142,7 @@ class Lid
     void _update_status();
     byte _i2c_read();
     uint16_t _to_dac_out(float driver_vref);
-    inline bool _bottom_switch_check();
+    bool _bottom_switch_check();
     Lid_status _status;
     enum class _Lid_switch {
       cover_switch,

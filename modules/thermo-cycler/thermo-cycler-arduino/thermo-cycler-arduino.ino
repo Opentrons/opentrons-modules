@@ -576,6 +576,7 @@ void front_button_callback()
 
 bool is_front_button_pressed()
 {
+#if HW_VERSION >=3
   if (front_button_pressed && millis() - front_button_pressed_at >= 200)
   {
     if(digitalRead(PIN_FRONT_BUTTON_SW) == LOW)
@@ -584,6 +585,7 @@ bool is_front_button_pressed()
       return true;
     }
   }
+#endif
   return false;
 }
 
@@ -859,13 +861,23 @@ void loop()
   }
   tc_timer.update();
   update_cover_from_pid();
-#if HW_VERSION >=3
   if (is_front_button_pressed())
   {
-    deactivate_all();
-    lid.open_cover();
+    if(lid.status() == Lid_status::closed || lid.status() == Lid_status::in_between)
+    {
+      lid.open_cover();
+    }
+    else if (lid.status() == Lid_status::open)
+    {
+      lid.close_cover();
+    }
+    else
+    {
+      // Else, lid status is unknown and there could be issues with lid switches.
+      // Hence, an open/close won't be performed
+      gcode.response("Error", "Lid_status: unknown");
+    }
   }
-#endif
   timeStamp = micros() - timeStamp;
   /* Check if gcode(s) available on Serial */
   read_gcode();
