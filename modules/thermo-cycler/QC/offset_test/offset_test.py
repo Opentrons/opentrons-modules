@@ -149,7 +149,7 @@ def record_status(filename, ser):
             #Only for rampdown
             if previous_reading-temps_list['T1'] > 0.5:
                 print("Delta 1",previous_reading-temps_list['T1'])
-                ser._send(fan_power(0.6))
+                ser._send(fan_power(0.4))
             elif previous_reading-temps_list['T1'] < 0.5:
                 print("Delta 2",previous_reading-temps_list['T1'])
                 ser._send(fan_power(0))
@@ -194,7 +194,7 @@ if __name__== '__main__':
     subprocess.Popen(['python',
                     'H1_thermometer.py','-t {0}'.format(options.temperature)],
                     creationflags=subprocess.CREATE_NEW_CONSOLE )
-    subprocess.Popen(['python', 'C1_thermometer.py', '-t {0}'.format(options.temperature)],
+    subprocess.Popen(['python', 'C5_thermometer.py', '-t {0}'.format(options.temperature)],
                     creationflags=subprocess.CREATE_NEW_CONSOLE )
     #pause till therometers are readings data
     time.sleep(6) #Manual time pause to sync subprocess with thermocycler thread
