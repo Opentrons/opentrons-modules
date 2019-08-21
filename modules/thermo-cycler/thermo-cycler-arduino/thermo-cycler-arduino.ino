@@ -254,7 +254,7 @@ void update_fans_from_state()
   {
     if (!auto_fan)
     { // Heatsink safety threshold overrides manual operation
-      if (temp_probes.heat_sink_temperature() > HEATSINK_FAN_HI_TEMP)
+      if (temp_probes.heat_sink_temperature() > MANUAL_MODE_HEATSINK_HI_TEMP)
       {
         // Fan speed proportional to temperature
         float pwr = HEATSINK_P_CONSTANT * temp_probes.heat_sink_temperature() / 100.0;

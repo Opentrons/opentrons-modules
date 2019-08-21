@@ -51,10 +51,11 @@
 #define TEMPERATURE_ROOM          23
 #define TEMPERATURE_COVER_HOT     105
 #define PELTIER_SAFE_TEMP_LIMIT   105
-#define HEATSINK_SAFE_TEMP_LIMIT  75
+#define HEATSINK_SAFE_TEMP_LIMIT  80
 #define HEATSINK_FAN_LO_TEMP      38
 #define HEATSINK_FAN_HI_TEMP      55
 #define HEATSINK_FAN_OFF_TEMP     36
+#define MANUAL_MODE_HEATSINK_HI_TEMP 80
 
 /********* PID: PLATE PELTIERS *********/
 // NOTE: temp_probes.update takes 136-137ms while rest of the loop takes 0-1ms.
