@@ -80,7 +80,7 @@ DEACTIVATE = '{}{}'.format(GCODES['DEACTIVATE'], SERIAL_ACK)
 def time_to_seconds():
    dt = datetime.now() - start_time
    ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
-   return ms*1000
+   return ms/1000
 
 #Fan duty cycle function
 def fan_power(duty_cycle):
