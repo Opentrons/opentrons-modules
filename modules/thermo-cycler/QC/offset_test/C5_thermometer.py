@@ -1,8 +1,6 @@
 import os, sys, time
-import serial
 import optparse
 from datetime import datetime
-from datetime import timedelta
 #import thermometer library from local directory
 sys.path.insert(0, os.path.abspath('../../../../../Mechanical-Test/Equipment'))
 #local library
@@ -12,7 +10,7 @@ import csv
 def millis():
    dt = datetime.now() - start_time
    ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
-   return ms
+   return ms/1000
 
 if __name__ == '__main__':
     #options to pick from
@@ -39,7 +37,7 @@ if __name__ == '__main__':
             print("start_time: ", start_time)
             while time.time() < t_end:
                 test_data['C5_Temp'] = thermometer_C5.temp_read()
-                test_data['time'] = millis()/1000
+                test_data['time'] = millis()
                 log_file.writerow(test_data)
                 print(test_data)
                 data_file.flush()

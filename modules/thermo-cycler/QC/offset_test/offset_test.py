@@ -1,5 +1,8 @@
-"""This test script is for internal use only, this uses two Eutechnics 4500 Thermometers to read
-well temperatures."""
+"""
+This test script is for internal use only, this uses two Eutechnics 4500 Thermometers to read
+well temperatures. The thermometers are placed in the hottest and coldest locations on the well plate.
+This determines the delta temperature offsets of the well.
+"""
 
 import sys, os, time
 import csv
@@ -189,9 +192,9 @@ if __name__== '__main__':
     print(file_name)
     #open subprocess for thermometers
     subprocess.Popen(['python',
-                    'thermometer_test.py','-t {0}'.format(options.temperature)],
+                    'H1_thermometer.py','-t {0}'.format(options.temperature)],
                     creationflags=subprocess.CREATE_NEW_CONSOLE )
-    subprocess.Popen(['python', 'thermometer_2.py', '-t {0}'.format(options.temperature)],
+    subprocess.Popen(['python', 'C1_thermometer.py', '-t {0}'.format(options.temperature)],
                     creationflags=subprocess.CREATE_NEW_CONSOLE )
     #pause till therometers are readings data
     time.sleep(6) #Manual time pause to sync subprocess with thermocycler thread
