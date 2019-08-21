@@ -251,6 +251,9 @@ bool Lid::open_cover()
   }
   motor_on();
   bool res;
+  // <Solenoid activated same time as lid is moved down
+  // ..to avoid the lid getting stuck becaue of lid jump-back>
+  solenoid_on();
 #if HW_VERSION >= 4
   // This version uses an optical switch in the bottom which stays engaged in
   // lid closed position.
@@ -261,8 +264,6 @@ bool Lid::open_cover()
   if (move_angle(-LID_OPEN_SWITCH_PROBE_ANGLE))
   { // Lid hit bottom switch
 #endif
-    // <Solenoid assumed cleared>
-    solenoid_on();
     delay(250); // allow quarter of a second for solenoid to pull latch fully
     move_angle(10);     // move up a few degrees until we are clear of the latch mechanism
     solenoid_off();     // Turn solenoid off now that the lid has moved past it
