@@ -71,6 +71,7 @@
 #define LID_MOTOR_RANGE_DEG 100 // Max angle the lid motor can move
 #define PULSE_HIGH_MICROSECONDS 2
 #define MOTOR_STEP_DELAY 60   // microseconds
+#define MOTOR_RPM 75
 
 #if HW_VERSION <= 3
 #define LID_OPEN_SWITCH_PROBE_ANGLE 30
@@ -139,6 +140,7 @@ class Lid
     bool _set_current(uint8_t current_data);
     bool _i2c_write(byte address, byte value);
     void _motor_step(uint8_t dir);
+    uint16_t _motor_step_delay;
     void _update_status();
     byte _i2c_read();
     uint16_t _to_dac_out(float driver_vref);

@@ -182,7 +182,7 @@ void Lid::_motor_step(uint8_t dir)
   digitalWrite(PIN_STEPPER_STEP, HIGH);
   delayMicroseconds(PULSE_HIGH_MICROSECONDS);
   digitalWrite(PIN_STEPPER_STEP, LOW);
-  delayMicroseconds(MOTOR_STEP_DELAY);
+  delayMicroseconds(_motor_step_delay);
 }
 
 uint16_t Lid::_to_dac_out(float driver_vref)
@@ -372,6 +372,15 @@ bool Lid::setup()
 	motor_off();
   _set_current(CURRENT_SETTING);
   _save_current();
+  /* Calculating motor_step_delay when given x rpm
+   * rpsec = x/60
+   * step_angles per sec = 200 * x/60
+   * 32 microsteps per step_angle. => 32 * 200 * x/60  = 320x/3 microsteps per sec
+   * each microstep period = 1/(320x / 3) = 3/ 320x
+   * step_delay = (3/ 320x) sec - 2 * 10^-6 sec
+   * => (9375 / x) microseconds  - 2 microseconds
+   */
+  _motor_step_delay = 9375 / MOTOR_RPM - 2;
 #if DUMMY_BOARD
   pinMode(PIN_COVER_SWITCH, INPUT_PULLUP);
   pinMode(PIN_BOTTOM_SWITCH, INPUT_PULLUP);
