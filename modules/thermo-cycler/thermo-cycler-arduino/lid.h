@@ -67,10 +67,9 @@
 #define STEP_ANGLE  1.8
 #define MICRO_STEP  32
 #define MOTOR_REDUCTION_RATIO  99.5
-#define STEPS_PER_ANGLE  uint16_t((MICRO_STEP * MOTOR_REDUCTION_RATIO) / STEP_ANGLE)
+#define MICRO_STEPS_PER_ANGLE  uint16_t((MICRO_STEP * MOTOR_REDUCTION_RATIO) / STEP_ANGLE)
 #define LID_MOTOR_RANGE_DEG 100 // Max angle the lid motor can move
 #define PULSE_HIGH_MICROSECONDS 2
-#define MOTOR_STEP_DELAY 60   // microseconds
 #define MOTOR_RPM 75
 
 #if HW_VERSION <= 3
@@ -79,6 +78,7 @@
 #define LID_CLOSE_LAST_STEP_ANGLE 1.0
 #define LID_OPEN_DOWN_MOTION_ANGLE 3.25
 #endif
+#define LID_OPEN_EXTRA_ANGLE 15.25
 #define LID_CLOSE_BACKTRACK_ANGLE 3.0
 
 #define TO_INT(an_enum) static_cast<int>(an_enum)

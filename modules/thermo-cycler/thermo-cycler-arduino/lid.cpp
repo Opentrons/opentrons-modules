@@ -203,9 +203,9 @@ bool Lid::move_angle(float deg, bool ignore_switches=false)
 {
   uint8_t dir = DIRECTION_UP;
   if (deg < 0) dir = DIRECTION_DOWN;
-  unsigned long steps = abs(deg) * STEPS_PER_ANGLE;
+  unsigned long steps = abs(deg) * MICRO_STEPS_PER_ANGLE;
 
-  for (unsigned long i=0;i<steps;i++)
+  for (unsigned long i = 0; i < steps; i++)
   {
     _motor_step(dir);
     check_switches();
@@ -240,6 +240,7 @@ bool Lid::move_angle(float deg, bool ignore_switches=false)
  * 1. Move down to clear solenoid/latch
  * 2. Engage solenoid to open latch
  * 3. Move up past the latch
+ * 3a. If bottom_switch still shows closed, then repeat 1 & 3
  * 4. Disengage solenoid
  * 5. Keep moving up until cover_switch is engaged
  */
@@ -266,6 +267,17 @@ bool Lid::open_cover()
 #endif
     delay(250); // allow quarter of a second for solenoid to pull latch fully
     move_angle(10);     // move up a few degrees until we are clear of the latch mechanism
+    if (status() == Lid_status::closed)
+    {
+      /* Sometimes when lid is closed manually by force, the motor's gears get
+       * misaligned, creating a large backlash. In such situations the lid fails
+       * to move down enough during step 1 and gets stuck. To solve this issue,
+       * we'll monitor if the lid is able to move past the latch and if not,
+       * we will repeat step 1 with more travel distance, then move to step 3 */
+       move_angle(-LID_OPEN_EXTRA_ANGLE, true);
+       delay(250);
+       move_angle(10);
+    }
     solenoid_off();     // Turn solenoid off now that the lid has moved past it
     res = move_angle(LID_MOTOR_RANGE_DEG);  // move up until cover switch is pressed
 #if HW_VERSION < 4
@@ -374,10 +386,11 @@ bool Lid::setup()
   _save_current();
   /* Calculating motor_step_delay when given x rpm
    * rpsec = x/60
-   * step_angles per sec = 200 * x/60
+   * step angle = 1.8 | steps for 1 rev= 360/1.8 = 200
+   * steps per sec for x rev per sec = 200 * x/60
    * 32 microsteps per step_angle. => 32 * 200 * x/60  = 320x/3 microsteps per sec
    * each microstep period = 1/(320x / 3) = 3/ 320x
-   * step_delay = (3/ 320x) sec - 2 * 10^-6 sec
+   * step_delay = (3/ 320x) sec - 2 * 10^-6 sec (pulse is held high for 2 usec)
    * => (9375 / x) microseconds  - 2 microseconds
    */
   _motor_step_delay = 9375 / MOTOR_RPM - 2;
