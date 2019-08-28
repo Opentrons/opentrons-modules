@@ -5,15 +5,11 @@ TC_Timer tc_timer;
 GcodeHandler gcode;
 ThermistorsADC temp_probes;
 Lid lid;
+Lights light_strip;
 Peltiers peltiers;
 Fan cover_fan;
 Fan heatsink_fan;
 
-#if RGBW_NEO
-Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_GRBW);
-#else
-Adafruit_NeoPixel_ZeroDMA strip(NUM_PIXELS, NEO_PIN, NEO_GRB + NEO_KHZ800);
-#endif
 
 unsigned long timeStamp = 0;
 
@@ -441,6 +437,40 @@ void read_gcode()
             gcode.idle_temperature_response(current_temperature_plate);
           }
           break;
+        case Gcode::set_led:
+          if (gcode.pop_arg('C'))
+          {
+            light_strip.api_color = static_cast<Light_color>(gcode.popped_arg());
+          }
+          if (gcode.pop_arg('A'))
+          {
+            light_strip.api_action = static_cast<Light_action>(gcode.popped_arg());
+          }
+          break;
+        case Gcode::set_led_override:
+          if (gcode.pop_arg('C'))
+          {
+            if (gcode.popped_arg() == 1)
+            {
+              light_strip.color_override = true;
+            }
+            else if (gcode.popped_arg() == 0)
+            {
+              light_strip.color_override = false;
+            }
+          }
+          if (gcode.pop_arg('A'))
+          {
+            if (gcode.popped_arg() == 1)
+            {
+              light_strip.action_override = true;
+            }
+            else if (gcode.popped_arg() == 0)
+            {
+              light_strip.action_override = false;
+            }
+          }
+          break;
         case Gcode::set_ramp_rate:
           if(master_set_a_target)
           {
@@ -548,9 +578,39 @@ void read_gcode()
   }
 }
 
-/////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
+void update_light_strip()
+{
+  if (master_set_a_target)
+  {
+    if (is_target_hot())
+    {
+      if (is_at_target())
+      {
+        light_strip.set_lights(TC_status::at_hot_target);
+      }
+      else
+      {
+        light_strip.set_lights(TC_status::going_to_hot_target);
+      }
+    }
+    else
+    {
+      if (is_at_target())
+      {
+        light_strip.set_lights(TC_status::at_cold_target);
+      }
+      else
+      {
+        light_strip.set_lights(TC_status::going_to_cold_target);
+      }
+    }
+  }
+  else
+  {
+    light_strip.set_lights(TC_status::idle);
+  }
+  light_strip.update();
+}
 
 void front_button_callback()
 {
@@ -574,20 +634,6 @@ bool is_front_button_pressed()
   }
 #endif
   return false;
-}
-
-void set_leds_white()
-{
-  for(int i=0; i<strip.numPixels(); i++)
-  {
-  #if RGBW_NEO
-    strip.setPixelColor(i, 220, 220, 200, 0); // strip.setPixelColor(n, red, green, blue, white);
-  #else
-    strip.setPixelColor(i, 220, 220, 200);
-  #endif
-    strip.show();
-    delay(30);
-  }
 }
 
 void set_25ms_interrupt()
@@ -711,13 +757,7 @@ void setup()
   master_set_a_target = false;
   cover_should_be_hot = false;
 
-  pinMode(NEO_PWR, OUTPUT);
-  pinMode(NEO_PIN, OUTPUT);
-  digitalWrite(NEO_PWR, HIGH);
-  strip.begin();
-  strip.setBrightness(50);
-  strip.show();
-  set_leds_white();
+  light_strip.setup();
 
 #if HW_VERSION >= 3
   pinMode(PIN_FRONT_BUTTON_SW, INPUT);
@@ -868,4 +908,5 @@ void loop()
   timeStamp = micros() - timeStamp;
   /* Check if gcode(s) available on Serial */
   read_gcode();
+  update_light_strip();
 }
