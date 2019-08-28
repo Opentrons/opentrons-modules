@@ -4,7 +4,7 @@ import time
 import threading
 from argparse import ArgumentParser
 
-SLEEP_TIME = 17 #seconds
+SLEEP_TIME = 35 #seconds
 TEST_ROUNDS = 1000
 BAUDRATE = 115200
 SERIAL_ACK = '\r\n'
@@ -25,6 +25,8 @@ GCODES = {
 
 OPEN_CMD = '{}{}'.format(GCODES['OPEN_LID'], SERIAL_ACK)
 CLOSE_CMD = '{}{}'.format(GCODES['CLOSE_LID'], SERIAL_ACK)
+MAX_CONSECUTIVE_ERRORS = 4
+END_TEST_ERROR = False
 
 def build_arg_parser():
 	arg_parser = ArgumentParser(
@@ -34,7 +36,9 @@ def build_arg_parser():
 	return arg_parser
 
 def record_status(filename, ser, lock):
-	while True:
+	global END_TEST_ERROR
+	times_errored = 0
+	while not END_TEST_ERROR:
 		with lock:
 			serial_line = ser.readline()
 		if serial_line:
@@ -45,6 +49,12 @@ def record_status(filename, ser, lock):
 				if item.isdigit():
 					status_list[i] = int(item)
 			print("{}".format(status_list))
+			if status_list[1] != "open":
+				times_errored += 1
+			else:
+				times_errored = 0;
+			if times_errored >= MAX_CONSECUTIVE_ERRORS:
+				END_TEST_ERROR = True
 			with open('{}.csv'.format(filename), mode='a') as data_file:
 				data_writer = csv.writer(data_file, delimiter=',', quoting=csv.QUOTE_NONNUMERIC)
 				data_writer.writerow(status_list)
@@ -55,13 +65,17 @@ def _send(ser, lock, cmd):
 	ser.write(cmd.encode())
 
 def open_close_lid(ser, lock):
+	global END_TEST_ERROR
 	for i in range(TEST_ROUNDS):
+		if END_TEST_ERROR:
+			break
 		with lock:
 			_send(ser, lock, OPEN_CMD);
 			time.sleep(SLEEP_TIME);
 			_send(ser,lock, CLOSE_CMD);
 			time.sleep(SLEEP_TIME);
 		time.sleep(2)
+	print("Exceeded MAX_CONSECUTIVE_ERRORS. Exiting test")
 
 if __name__ == '__main__':
 	arg_parser = build_arg_parser()
@@ -71,8 +85,8 @@ if __name__ == '__main__':
 	time.sleep(1)
 	filename = args.csv_file_name
 	with open('{}.csv'.format(filename), mode='w') as data_file:
-	    data_writer = csv.writer(data_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
-	    data_writer.writerow(["Action", "End status", "Duration (msec)", "Action", "End status", "Duration (msec)"])
+		data_writer = csv.writer(data_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+		data_writer.writerow(["Action", "End status", "Duration (msec)", "Action", "End status", "Duration (msec)"])
 	lock = threading.Lock()
 	recorder = threading.Thread(target=record_status, args=(filename, ser, lock), daemon=True)
 	lid_tester = threading.Thread(target=open_close_lid, args=(ser, lock))
