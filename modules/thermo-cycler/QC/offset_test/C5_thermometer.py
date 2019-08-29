@@ -15,8 +15,8 @@ def millis():
 if __name__ == '__main__':
     #options to pick from
     parser = optparse.OptionParser(usage='usage: %prog [options] ')
-    parser.add_option("--time", dest = "time", type = "int",default = 20, help = "time to run")
-    parser.add_option("-t", "--temp", dest="temp", type = "str", default ="80", help ="target temp")
+    parser.add_option("--time", dest = "time", type = "int",default = 60, help = "time to run")
+    parser.add_option("--target", dest="target", type = float, default = 60, help ="target temp")
     parser.add_option("-p", "--port", dest = "port", type = "str", default = 'COM33', help = "Force Gauge Port")
     (options, args) = parser.parse_args(args = None, values = None)
 
@@ -26,21 +26,31 @@ if __name__ == '__main__':
     thermometer_C5.setup()
     #thermometer_C5.temp_read()
     #Open CSV file with corresponding headers
-    filename = "results/C5_thermometer_data_%s_%sC.csv"%(datetime.now().strftime("%m-%d-%y_%H-%M"), options.temp)
+    filename = "results/C5_thermometer_data_%s_target_%sC.csv"%(datetime.now().strftime("%m-%d-%y_%H-%M"), options.target)
     print(filename)
+    count = 0
     with open('{}.csv'.format(filename), 'w', newline='') as data_file:
-        test_data={'C5_Temp': None, 'time': None}
+        test_data={'C5_Temp': None, 'T.offset': None, 'time': None}
         log_file = csv.DictWriter(data_file, test_data)
         log_file.writeheader()
         try:
             start_time = datetime.now()
             print("start_time: ", start_time)
             while time.time() < t_end:
-                test_data['C5_Temp'] = thermometer_C5.temp_read()
-                test_data['time'] = millis()
-                log_file.writerow(test_data)
-                print(test_data)
-                data_file.flush()
+                C5_temp = thermometer_C5.temp_read()
+                test_data['C5_Temp'] = C5_temp
+                if count > 1:
+                    test_data['T.offset'] = options.target - float(C5_temp)
+                    test_data['time'] = millis()
+                    log_file.writerow(test_data)
+                    print(test_data)
+                    data_file.flush()
+                else:
+                    test_data['time'] = millis()
+                    log_file.writerow(test_data)
+                    print(test_data)
+                    data_file.flush()
+                count +=1
             data_file.close()
             #prompt User
             print("Test done")
@@ -51,4 +61,4 @@ if __name__ == '__main__':
         except Exception as e:
             print("ERROR OCCURED")
             test_data['Errors'] = e
-            raise print("Error {}".format(e))
+            raise e
