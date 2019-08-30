@@ -203,7 +203,7 @@ bool Lid::move_angle(float deg, bool ignore_switches=false)
 {
   uint8_t dir = DIRECTION_UP;
   if (deg < 0) dir = DIRECTION_DOWN;
-  unsigned long steps = abs(deg) * MICRO_STEPS_PER_ANGLE;
+  unsigned long steps = abs(deg) * FRACTIONAL_STEPS_PER_ANGLE;
 
   for (unsigned long i = 0; i < steps; i++)
   {
@@ -418,12 +418,12 @@ bool Lid::setup()
    * rpsec = x/60
    * step angle = 1.8 | steps for 1 rev= 360/1.8 = 200
    * steps per sec for x rev per sec = 200 * x/60
-   * 32 microsteps per step_angle. => 32 * 200 * x/60  = 320x/3 microsteps per sec
-   * each microstep period = 1/(320x / 3) = 3/ 320x
-   * step_delay = (3/ 320x) sec - 2 * 10^-6 sec (pulse is held high for 2 usec)
+   * y fractional steps per step_angle. => y * 200 * x/60  = 10xy/3 fractional steps per sec
+   * each fractional step period = 1/(10xy / 3) = 3/ 10xy
+   * step_delay = (3/ 10xy) sec - 2 * 10^-6 sec (pulse is held high for 2 usec)
    * => (9375 / x) microseconds  - 2 microseconds
    */
-  _motor_step_delay = 9375 / MOTOR_RPM - 2;
+  _motor_step_delay = (300000 / (STEP_FRACTION * MOTOR_RPM)) - 2;
 #if DUMMY_BOARD
   pinMode(PIN_COVER_SWITCH, INPUT_PULLUP);
   pinMode(PIN_BOTTOM_SWITCH, INPUT_PULLUP);
