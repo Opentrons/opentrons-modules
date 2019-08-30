@@ -316,6 +316,36 @@ bool Lid::close_cover()
     delay(500); // small time buffer to allow for the latch to release fully
     move_angle(LID_CLOSE_BACKTRACK_ANGLE);
   }
+#if HW_VERSION >= 4
+  if (status() != Lid_status::closed)
+  {
+    res = false;
+    /* [This is required by V4 HW that uses optical switch]
+     * When the lid is closing, it reaches the almost-bottom of the thermocycler
+     * with the gearbox trailing behind the actual lid/shaft position because of
+     * gravity, which creates a backlash. When there's a labware present, this
+     * backlash is overcome at the last step as the labware pushes against the lid/spring.
+     * Then, when the lid has to move -LID_CLOSE_LAST_STEP_ANGLE, it is able to do it.
+     * On the other hand, when the TC has no labware or has a very low profile labware,
+     * then this backlash still exists as it's trying to move the -LID_CLOSE_LAST_STEP_ANGLE.
+     * This results in the lid spending much of its LID_CLOSE_LAST_STEP_ANGLE in
+     * overcoming the backlash, and ultimately not moving down enough to pass
+     * the latch & hook onto it.
+     * In such a case, we'll check if it has indeed closed, and re-close it if
+     * it hasn't.
+    */
+    if (move_angle(-LID_MOTOR_RANGE_DEG))
+    {
+      move_angle(-LID_CLOSE_EXTRA_ANGLE, true);
+      delay(500); // small time buffer to allow for the latch to release fully
+      move_angle(LID_CLOSE_BACKTRACK_ANGLE);
+      if (status() == Lid_status::closed)
+      {
+        res = true;
+      }
+    }
+  }
+#endif
   motor_off();
   return res;
 }
