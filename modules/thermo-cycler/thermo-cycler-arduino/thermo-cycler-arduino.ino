@@ -9,7 +9,7 @@ Lights light_strip;
 Peltiers peltiers;
 Fan cover_fan;
 Fan heatsink_fan;
-
+Eeprom eeprom;
 
 unsigned long timeStamp = 0;
 
@@ -703,7 +703,10 @@ void TC4_Handler()
 void setup()
 {
   gcode.setup(BAUDRATE);
-  delay(1000);
+  delay(10000);
+  eeprom.setup();
+  device_serial = eeprom.read(MemOption::serial);
+  device_model = eeprom.read(MemOption::model);
   peltiers.setup();
 
   temp_probes.setup(THERMISTOR_VOLTAGE);

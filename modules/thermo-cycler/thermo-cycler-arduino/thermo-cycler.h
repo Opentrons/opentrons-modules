@@ -9,6 +9,7 @@
 #include "tc_timer.h"
 #include "fan.h"
 #include "lights.h"
+#include "eeprom.h"
 
 /********* Versions **********/
 /* Version guidelines: */
@@ -128,8 +129,8 @@ String device_version = "v1.0.1";
 
 /********* MISC GLOBALS *********/
 
-#define DEBUG_PRINT_INTERVAL 2000  // millisec
-#define ERROR_PRINT_INTERVAL  2000  //ms
+#define DEBUG_PRINT_INTERVAL 2000   // millisec
+#define ERROR_PRINT_INTERVAL 2000   // ms
 unsigned long last_error_print = 0;
 bool front_button_pressed = false;
 unsigned long front_button_pressed_at = 0;
