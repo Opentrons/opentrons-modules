@@ -49,5 +49,6 @@ char Eeprom::_read_char(uint8_t word_address)
 
 void Eeprom::setup()
 {
+  pinMode(WP_PIN, INPUT);   // Tristate so WP = Vcc
   Wire.begin();
 }

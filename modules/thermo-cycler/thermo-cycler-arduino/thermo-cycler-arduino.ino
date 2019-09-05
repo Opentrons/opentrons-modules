@@ -120,7 +120,7 @@ bool is_target_hot()
 
 bool is_target_cold()
 {
-  return target_temperature_plate < TEMPERATURE_ROOM;
+  return target_temperature_plate <= TEMPERATURE_ROOM;
 }
 
 bool is_moving_up(Peltier pel_n = Peltier::no_peltier)
@@ -703,7 +703,7 @@ void TC4_Handler()
 void setup()
 {
   gcode.setup(BAUDRATE);
-  delay(10000);
+  // delay(10000);
   eeprom.setup();
   device_serial = eeprom.read(MemOption::serial);
   device_model = eeprom.read(MemOption::model);

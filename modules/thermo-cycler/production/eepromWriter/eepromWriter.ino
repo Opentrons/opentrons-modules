@@ -1,6 +1,6 @@
 #include <Wire.h>
 
-#define EEPROM_ADDR 0x50 // TODO: make this 0x52 for thermocycler
+#define EEPROM_ADDR 0x52 // TODO: make this 0x52 for thermocycler
 #define SERIAL_LOC  10
 #define MAX_SER_NUM_LEN 20 //TCV0120190903Annnn
 #define MODEL_LOC   (SERIAL_LOC+MAX_SER_NUM_LEN+10)
@@ -10,6 +10,12 @@
 #define WP_PIN  5  // TODO: check this pin setup in bootloader
 
 #define MAX_MODEL_NUM_LEN 8 //vxx.yy.zz // Includes '.'
+
+#define PIN_FAN_SINK_CTRL           A4   // uses PWM frequency generator
+#define PIN_FAN_SINK_ENABLE         2    // Heat sink fan
+#define PIN_FRONT_BUTTON_LED        24
+#define PIN_PELTIER_ENABLE          7
+#define PIN_MOTOR_CURRENT_VREF      A0
 
 enum class MemOption
 {
@@ -24,6 +30,7 @@ enum class MemOption
 MemOption input_option = MemOption::none;
 String serial_num;
 String model_num;
+bool options_onscreen;
 
 bool eeprom_write_char(byte word_address, byte value)
 {
@@ -54,15 +61,6 @@ char eeprom_read_char(byte word_address)
     }
   }
   return '~';
-}
-
-void setup()
-{
-  pinMode(WP_PIN, OUTPUT);
-  digitalWrite(WP_PIN, LOW);  // Disables write protect
-  Serial.begin(115200);
-  delay(10);
-  Wire.begin();
 }
 
 bool write_to_eeprom(MemOption option)
@@ -120,18 +118,36 @@ bool read_from_eeprom(MemOption option)
   {
     the_number += eeprom_read_char(addr++);
   }
-  // char c;
-  // do
-  // {
-  //   c = eeprom_read_char(addr);
-  //   the_number += c;
-  //   addr++;
-  // }
-  // while(c != '\0');
   Serial.println(the_number);
 }
 
-////////////////////////////////////////////
+bool erase_eeprom_section(MemOption option)
+{
+  uint8_t addr;
+  if (option == MemOption::write_serial)
+  {
+    addr = SERIAL_LOC;
+  }
+  else if (option == MemOption::write_model)
+  {
+    addr = MODEL_LOC;
+  }
+  else
+  {
+    return 0;
+  }
+  Serial.println("erasing section..");
+  for (uint8_t i = 0; i < MAX_SER_NUM_LEN; i++)
+  {
+    if(!eeprom_write_char(byte(addr+i), byte(0xff)))  // erasing = writing 0xffh
+    {
+      Serial.println("\nfailed");
+      return 0;
+    }
+  }
+  Serial.println("\ndone!");
+  return true;
+}
 
 void read_input()
 {
@@ -142,9 +158,9 @@ void read_input()
     in_option.trim();
     in_option.toLowerCase();
     Serial.println(in_option);
-
     if (in_option == "serial" || in_option == "model")
     {
+      options_onscreen = false;
       String option = in_option;
       Serial.println("W(write) or R(read)?");
       while(!Serial.available());
@@ -197,7 +213,7 @@ void read_input()
     }
     else
     {
-      send_ack();
+      Serial.println("Invalid option");
     }
   }
 }
@@ -208,30 +224,50 @@ void send_ack()
   Serial.println("ok");
 }
 
+void show_options()
+{
+  if (!options_onscreen)
+  {
+    Serial.println("(S)erial or (M)odel?");
+    options_onscreen = true;
+  }
+}
+
+void setup_tc_peripherals()
+{
+  pinMode(PIN_FAN_SINK_ENABLE, OUTPUT);
+  digitalWrite(PIN_FAN_SINK_ENABLE, LOW);
+  pinMode(PIN_PELTIER_ENABLE, OUTPUT);
+  digitalWrite(PIN_PELTIER_ENABLE, LOW);
+  analogWrite(PIN_MOTOR_CURRENT_VREF, 0);
+}
+
+void setup()
+{
+  // pin initializations for thermocycler peripherals
+  setup_tc_peripherals();
+  pinMode(WP_PIN, OUTPUT);
+  digitalWrite(WP_PIN, LOW);  // Disables write protect
+  Serial.begin(115200);
+  delay(10);
+  Wire.begin();
+}
+
 void loop()
 {
-  // Serial.println(".");
-  delay(500);
-  // report_input();
+  show_options();
   read_input();
   switch (input_option)
   {
     case MemOption::write_serial:
-      // TODO: erase section before writing
-      write_to_eeprom(MemOption::write_serial);
-      input_option = MemOption::none;
-      break;
     case MemOption::write_model:
-      // TODO: erase section before writing
-      write_to_eeprom(MemOption::write_model);
+      erase_eeprom_section(input_option);
+      write_to_eeprom(input_option);
       input_option = MemOption::none;
       break;
     case MemOption::read_serial:
-      read_from_eeprom(MemOption::read_serial);
-      input_option = MemOption::none;
-      break;
     case MemOption::read_model:
-      read_from_eeprom(MemOption::read_model);
+      read_from_eeprom(input_option);
       input_option = MemOption::none;
       break;
     case MemOption::none:
