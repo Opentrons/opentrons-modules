@@ -1,35 +1,22 @@
 #include <Wire.h>
 
-#define EEPROM_ADDR 0x52 // TODO: make this 0x52 for thermocycler
-#define SERIAL_LOC  10
-#define MAX_SER_NUM_LEN 20 //TCV0120190903Annnn
-#define MODEL_LOC   (SERIAL_LOC+MAX_SER_NUM_LEN+10)
-#define CONFIG_LOC  MODEL_LOC + 50
-#define WR_TIME     5 //ms
+#define EEPROM_ADDR       0x52
 
-#define WP_PIN  5  // TODO: check this pin setup in bootloader
+#define MAX_IN_NUM_LEN    17  // max serial = 17 (TCV0120190903Annn) | max model = 3 //vnn
+#define SERIAL_LOC        10
+#define BUFFER_BYTES      10
+#define MODEL_LOC         SERIAL_LOC + MAX_IN_NUM_LEN + BUFFER_BYTES
+#define VER_NUM_INDEX     3
+#define VER_NUM_LEN       2
+#define WR_TIME           5 //ms
 
-#define MAX_MODEL_NUM_LEN 8 //vxx.yy.zz // Includes '.'
+#define WP_PIN                  26
+#define PIN_FAN_SINK_CTRL       A4   // uses PWM frequency generator
+#define PIN_FAN_SINK_ENABLE     2    // Heat sink fan
+#define PIN_FRONT_BUTTON_LED    24
+#define PIN_PELTIER_ENABLE      7
+#define PIN_MOTOR_CURRENT_VREF  A0
 
-#define PIN_FAN_SINK_CTRL           A4   // uses PWM frequency generator
-#define PIN_FAN_SINK_ENABLE         2    // Heat sink fan
-#define PIN_FRONT_BUTTON_LED        24
-#define PIN_PELTIER_ENABLE          7
-#define PIN_MOTOR_CURRENT_VREF      A0
-
-enum class MemOption
-{
-  none,
-  read_serial,
-  write_serial,
-  read_model,
-  write_model,
-};
-
-
-MemOption input_option = MemOption::none;
-String serial_num;
-String model_num;
 bool options_onscreen;
 
 bool eeprom_write_char(byte word_address, byte value)
@@ -63,89 +50,80 @@ char eeprom_read_char(byte word_address)
   return '~';
 }
 
-bool write_to_eeprom(MemOption option)
+bool write_to_eeprom(String serial_num)
 {
-  char the_number[MAX_SER_NUM_LEN];
+  char the_number[MAX_IN_NUM_LEN];
   uint8_t number_len;
-  uint8_t addr;
-  if (option == MemOption::write_serial)
-  {
-    addr = SERIAL_LOC;
-    serial_num.toCharArray(the_number, serial_num.length()+1);
-    number_len = serial_num.length()+1;
-  }
-  else if (option == MemOption::write_model)
-  {
-    addr = MODEL_LOC;
-    model_num.toCharArray(the_number, model_num.length()+1);
-    number_len = model_num.length()+1;
-  }
-  else
-  {
-    return 0;
-  }
-  Serial.println("writing to eeprom..");
+  serial_num.toCharArray(the_number, serial_num.length()+1);
+  number_len = serial_num.length()+1;
+
+  /********* Write Serial no. ***********/
+  erase_eeprom_section(SERIAL_LOC);
+  Serial.println("writing serial to eeprom..");
   for (uint8_t i = 0; i < number_len; i++)
   {
     Serial.print(the_number[i]);
-    if(!eeprom_write_char(byte(addr+i), byte(the_number[i])))
+    if(!eeprom_write_char(byte(SERIAL_LOC+i), byte(the_number[i])))
     {
       Serial.println("\nfailed");
       return 0;
     }
   }
-  Serial.println("\ndone!");
+  /********** Update Model no. **********/
+  erase_eeprom_section(MODEL_LOC);
+  Serial.println("\nupdating model number..");
+  char model_num[VER_NUM_LEN+2];
+  model_num[0] = 'v';
+  model_num[VER_NUM_LEN-1] = '\0';
+  for ( uint8_t i = 0; i < VER_NUM_LEN; i++)
+  {
+    model_num[i+1] = the_number[VER_NUM_INDEX+i];
+  }
+  for (uint8_t i = 0; i < VER_NUM_LEN+2; i++)
+  {
+    if(!eeprom_write_char(byte(MODEL_LOC+i), byte(model_num[i])))
+    {
+      Serial.println("failed");
+      return 0;
+    }
+  }
+  Serial.println("done!");
   return true;
 }
 
-bool read_from_eeprom(MemOption option)
+bool read_from_eeprom()
 {
   uint8_t addr;
-  if (option == MemOption::read_serial)
-  {
-    addr = SERIAL_LOC;
-  }
-  else if (option == MemOption::read_model)
-  {
-    addr = MODEL_LOC;
-  }
-  else
-  {
-    return 0;
-  }
-  String the_number;
+  String ser_num;
+  String model_num;
+  /********* Serial number **********/
+  addr = SERIAL_LOC;
   while (eeprom_read_char(addr) != '\0')
   {
-    the_number += eeprom_read_char(addr++);
+    ser_num += eeprom_read_char(addr++);
   }
-  Serial.println(the_number);
+
+  /********* Model number ***********/
+  addr = MODEL_LOC;
+  while (eeprom_read_char(addr) != '\0')
+  {
+    model_num += eeprom_read_char(addr++);
+  }
+  Serial.print("Serial:"); Serial.println(ser_num);
+  Serial.print("Model:"); Serial.println(model_num);
+  return true;
 }
 
-bool erase_eeprom_section(MemOption option)
+bool erase_eeprom_section(uint8_t addr)
 {
-  uint8_t addr;
-  if (option == MemOption::write_serial)
-  {
-    addr = SERIAL_LOC;
-  }
-  else if (option == MemOption::write_model)
-  {
-    addr = MODEL_LOC;
-  }
-  else
-  {
-    return 0;
-  }
-  Serial.println("erasing section..");
-  for (uint8_t i = 0; i < MAX_SER_NUM_LEN; i++)
+  for (uint8_t i = 0; i < MAX_IN_NUM_LEN+BUFFER_BYTES; i++)
   {
     if(!eeprom_write_char(byte(addr+i), byte(0xff)))  // erasing = writing 0xffh
     {
-      Serial.println("\nfailed");
+      Serial.println("\nfailed to erase section");
       return 0;
     }
   }
-  Serial.println("\ndone!");
   return true;
 }
 
@@ -153,67 +131,33 @@ void read_input()
 {
   if (Serial.available())
   {
-    String in_option;
-    in_option = Serial.readStringUntil('\n');
-    in_option.trim();
-    in_option.toLowerCase();
-    Serial.println(in_option);
-    if (in_option == "serial" || in_option == "model")
+    String mode = Serial.readStringUntil('\n');
+    mode.trim();
+    mode.toLowerCase();
+    if (mode == "w")
     {
       options_onscreen = false;
-      String option = in_option;
-      Serial.println("W(write) or R(read)?");
-      while(!Serial.available());
-      char mode = Serial.read();
+      while (Serial.available())
+      {
+        Serial.read();  // empty out the buffer for serial number
+      }
 
-      if (mode == 'W' or mode == 'w')
-      {
-        while (Serial.available())
-        {
-          Serial.read();  // empty out the buffer for serial number
-        }
-
-        Serial.println("Enter the number");
-        while (!Serial.available());
-        String in_string = Serial.readStringUntil('\n');
-        // Scanned/Input number is going to end with '\r\n'
-        in_string.trim();
-        Serial.print("Received:"); Serial.println(in_string);
-        if (option == "serial")
-        {
-          serial_num = in_string;
-          input_option = MemOption::write_serial;
-        }
-        else
-        {
-          model_num = in_string;
-          input_option = MemOption::write_model;
-        }
-      }
-      else if (mode == 'R' or mode == 'r')
-      {
-        while (Serial.available())
-        {
-          Serial.read();  // empty out the buffer for serial number
-        }
-        if (option == "serial")
-        {
-          input_option = MemOption::read_serial;
-        }
-        else
-        {
-          input_option = MemOption::read_model;
-        }
-      }
-      else
-      {
-        Serial.println("Invalid input");
-        input_option = MemOption::none;
-      }
+      Serial.println("Enter the number");
+      while (!Serial.available());
+      String in_string = Serial.readStringUntil('\n');
+      // Scanned/Input number is going to end with '\r\n'
+      in_string.trim();
+      write_to_eeprom(in_string);
+    }
+    else if (mode == "r")
+    {
+      options_onscreen = false;
+      read_from_eeprom();
     }
     else
     {
-      Serial.println("Invalid option");
+      Serial.println("Invalid input");
+      options_onscreen = false;
     }
   }
 }
@@ -228,7 +172,8 @@ void show_options()
 {
   if (!options_onscreen)
   {
-    Serial.println("(S)erial or (M)odel?");
+    Serial.println("--------------------------");
+    Serial.println("\nSerial W(rite) or R(ead)?");
     options_onscreen = true;
   }
 }
@@ -257,21 +202,4 @@ void loop()
 {
   show_options();
   read_input();
-  switch (input_option)
-  {
-    case MemOption::write_serial:
-    case MemOption::write_model:
-      erase_eeprom_section(input_option);
-      write_to_eeprom(input_option);
-      input_option = MemOption::none;
-      break;
-    case MemOption::read_serial:
-    case MemOption::read_model:
-      read_from_eeprom(input_option);
-      input_option = MemOption::none;
-      break;
-    case MemOption::none:
-    default:
-      break;
-  }
 }

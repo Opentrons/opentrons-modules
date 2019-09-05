@@ -703,7 +703,6 @@ void TC4_Handler()
 void setup()
 {
   gcode.setup(BAUDRATE);
-  // delay(10000);
   eeprom.setup();
   device_serial = eeprom.read(MemOption::serial);
   device_model = eeprom.read(MemOption::model);
