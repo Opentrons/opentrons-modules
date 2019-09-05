@@ -1,6 +1,6 @@
 #include <Wire.h>
 
-#define EEPROM_ADDR 0x50 // -> 0x52 thermocycler
+#define EEPROM_ADDR 0x50 // TODO: make this 0x52 for thermocycler
 #define SERIAL_LOC  10
 #define MAX_SER_NUM_LEN 20 //TCV0120190903Annnn
 #define MODEL_LOC   (SERIAL_LOC+MAX_SER_NUM_LEN+10)

@@ -24,7 +24,6 @@ String Eeprom::read(MemOption option)
   {
     the_number += _read_char(addr++);
   }
-  Serial.println(the_number);
   return the_number;
 #endif
 }
