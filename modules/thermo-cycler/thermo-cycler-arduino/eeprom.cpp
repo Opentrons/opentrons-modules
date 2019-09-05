@@ -23,6 +23,11 @@ String Eeprom::read(MemOption option)
   while (_read_char(addr) != '\0')
   {
     the_number += _read_char(addr++);
+    if (the_number.length() > MAX_IN_NUM_LEN+1)
+    { // Either the serial/model didn't finish writing correctly/ is invalid
+      // or there is no serial/model stored
+      return "~";
+    }
   }
   return the_number;
 #endif
