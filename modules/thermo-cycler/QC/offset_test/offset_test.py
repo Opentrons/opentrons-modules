@@ -27,13 +27,13 @@ def fan_power(duty_cycle):
 
 def single_thermocycle(ser):
     time.sleep(2)
-    ser._send(fan_power(0)) # Manual mode for fan control
-    print("Executing ")
+    ser._send(fan_power(options.fan)) # Manual mode for fan control
+    print("Executing fan power: ", options.fan)
     #initial pre heat for 3mins
-    ser._send(CYCLE_PROTOCOL_STEPS[0]) # set lid temp
+    #ser._send(CYCLE_PROTOCOL_STEPS[0]) # set lid temp
     ser._send(CYCLE_PROTOCOL_STEPS[1]) # HOLD TEMP
     #time.sleep(60*end_time + ramp_time)#Hold Temp 3 mins
-    time.sleep(60*60 + ramp_time)#Hold Temp 3 mins
+    time.sleep(options.time*60 + ramp_time)#Hold Temp 3 mins
     #ser._send(CYCLE_PROTOCOL_STEPS[2])
     #print("RAMP DOWN")
     #time.sleep(40)
@@ -101,12 +101,13 @@ def record_status(filename, ser):
 
 if __name__== '__main__':
     parser = optparse.OptionParser(usage='usage: %prog [options] ')
-    parser.add_option("-t", "--temperature", dest = "temperature",type = "str", default = "60C", help = "str Temperature")
-    parser.add_option("--target", dest = "target", type = int, default = 60, help = "target temperature")
-    parser.add_option("--hi_temp", dest = "hi_temp", type = float, default = 60, help = "Hi temperature")
+    parser.add_option("-t", "--temperature", dest = "temperature",type = "str", default = "50C", help = "str Temperature")
+    parser.add_option("--target", dest = "target", type = int, default = 50, help = "target temperature")
+    parser.add_option("--hi_temp", dest = "hi_temp", type = float, default = 50, help = "Hi temperature")
     parser.add_option("--lo_temp", dest = "lo_temp", type = float, default = 40, help = "lo temperature")
     parser.add_option("-p", "--pause_time", dest = "pause_time", type = float, default = 18, help = "pause_time ")
     parser.add_option("--time", dest = "time", type = float, default = 60, help = "run time for data collection")
+    parser.add_option("-f", "--fan", dest = "fan", type = float, default = 0.15, help ="fan power value")
     (options, args) = parser.parse_args(args = None, values = None)
 
     #---------------------------------------#
@@ -134,11 +135,11 @@ if __name__== '__main__':
     TOP_LID_TEMP = 105
     HI_TEMP_PLATE = options.hi_temp
     LO_TEMP_PLATE = options.lo_temp
-    HI_TEMP_TIME = 50
-    LO_TEMP_TIME = 50
+    HI_TEMP_TIME = 70
+    LO_TEMP_TIME = 70
     ramp_time = 12
-    PAUSE_TIME = ramp_time+ options.pause_time #40 is equal HI_TEMP_TIME/LO_TEMP_TIME
-    PRE_HOLD_TEMP = ramp_time + options.pause_time
+    PAUSE_TIME = ramp_time+ options.time #40 is equal HI_TEMP_TIME/LO_TEMP_TIME
+    PRE_HOLD_TEMP = ramp_time + options.time
     #---------------------------------------#
     CYCLE_PROTOCOL_STEPS = [
         '{} S{}{}'.format(GCODES['SET_LID_TEMP'], TOP_LID_TEMP, SERIAL_ACK),	#0 # SET TOP LID to 105C
@@ -153,7 +154,7 @@ if __name__== '__main__':
     DEACTIVATE = '{}{}'.format(GCODES['DEACTIVATE'], SERIAL_ACK)
     #---------------------------------------#
     #defined thermo-cycler
-    tc = TC_mini_driver.thermocycler(port = 'COM31', timeout=0.5)
+    tc = TC_mini_driver.thermocycler(port = 'COM3', timeout=0.5)
     tc._send(GCODE_DEBUG_PRINT_MODE)
     tc._send(CYCLE_PROTOCOL_STEPS[0])
     temperature = 0 # Create temp variable
@@ -161,18 +162,18 @@ if __name__== '__main__':
     while temperature < 100:
         temp_dict = tc.read_temp()
         temperature = temp_dict['T.Lid']
-        tc._send(fan_power(0.6)) #Fan duty cycle 60 %
+        #tc._send(fan_power(0.6)) #Fan duty cycle 60 %
         print("top lid temperature: ", temp_dict['T.Lid'])
         print("Waiting on temp lid to reach {}".format(CYCLE_PROTOCOL_STEPS[0]))
 
     file_name = "results/Temp_offset_%s_%sC.csv"%(datetime.now().strftime("%m-%d-%y_%H-%M"), options.target)
     print(file_name)
-    # #open subprocess for thermometers
+    #open subprocess for thermometers
     subprocess.Popen(['python',
-                    'H1_thermometer.py',' --target {0}'.format(options.target)],
-                    creationflags=subprocess.CREATE_NEW_CONSOLE )
-    subprocess.Popen(['python', 'C5_thermometer.py', ' --target {0}'.format(options.target)],
+                    'H1_thermometer.py'],
                     creationflags=subprocess.CREATE_NEW_CONSOLE)
+    # subprocess.Popen(['python', 'C5_thermometer.py'],
+    #                 creationflags=subprocess.CREATE_NEW_CONSOLE)
     # #pause till therometers are readings data
     time.sleep(6) #Manual time pause to sync subprocess with thermocycler thread
     with open('{}.csv'.format(file_name), 'w', newline='') as data_file:

@@ -26,11 +26,11 @@ if __name__ == '__main__':
     thermometer_C5.setup()
     #thermometer_C5.temp_read()
     #Open CSV file with corresponding headers
-    filename = "results/C5_thermometer_data_%s_target_%sC.csv"%(datetime.now().strftime("%m-%d-%y_%H-%M"), options.target)
+    filename = "results/B3_thermometer_data_%s_target_%sC.csv"%(datetime.now().strftime("%m-%d-%y_%H-%M"), options.target)
     print(filename)
     count = 0
     with open('{}.csv'.format(filename), 'w', newline='') as data_file:
-        test_data={'C5_Temp': None, 'T.offset': None, 'time': None}
+        test_data={'B3_Temp': None, 'T.offset': None, 'time': None}
         log_file = csv.DictWriter(data_file, test_data)
         log_file.writeheader()
         try:
@@ -38,7 +38,7 @@ if __name__ == '__main__':
             print("start_time: ", start_time)
             while time.time() < t_end:
                 C5_temp = thermometer_C5.temp_read()
-                test_data['C5_Temp'] = C5_temp
+                test_data['B3_Temp'] = C5_temp
                 if count > 1:
                     test_data['T.offset'] = options.target - float(C5_temp)
                     test_data['time'] = millis()
