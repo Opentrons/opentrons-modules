@@ -53,7 +53,7 @@
 #define PELTIER_SAFE_TEMP_LIMIT   105
 #define HEATSINK_SAFE_TEMP_LIMIT  80
 #define HEATSINK_FAN_LO_TEMP      38
-#define HEATSINK_FAN_HI_TEMP      55
+#define HEATSINK_FAN_HI_TEMP      75
 #define HEATSINK_FAN_OFF_TEMP     36
 #define MANUAL_MODE_HEATSINK_HI_TEMP 80
 
@@ -136,7 +136,7 @@ String device_version = "v1.0.1";
 
 /********* MISC GLOBALS *********/
 
-#define DEBUG_PRINT_INTERVAL 2000  // millisec
+#define DEBUG_PRINT_INTERVAL 500  // millisec
 #define ERROR_PRINT_INTERVAL  2000  //ms
 unsigned long last_error_print = 0;
 bool front_button_pressed = false;
