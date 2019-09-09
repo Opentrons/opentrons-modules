@@ -120,7 +120,7 @@ bool is_target_hot()
 
 bool is_target_cold()
 {
-  return target_temperature_plate < TEMPERATURE_ROOM;
+  return target_temperature_plate <= TEMPERATURE_ROOM;
 }
 
 bool is_moving_up(Peltier pel_n = Peltier::no_peltier)
