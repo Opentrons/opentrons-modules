@@ -79,10 +79,10 @@ build: build-magdeck build-tempdeck build-thermocycler
 
 DUMMY_BOARD ?= false
 USE_GCODES ?= true
-LID_WARNING ?= true
+LID_WARNING ?= false
 HFQ_PWM ?= false
 OLD_PID_INTERVAL ?= true
-HW_VERSION ?= 3
+HW_VERSION ?= 4
 LID_TESTING ?= false
 RGBW_NEO ?= true
 

@@ -2,7 +2,7 @@
 
 #define EEPROM_ADDR       0x52
 
-#define MAX_IN_NUM_LEN    17  // max serial = 17 (TCV0120190903Annn) | max model = 3 //vnn
+#define MAX_IN_NUM_LEN    17  // max serial = 17 (TCV01yyyymmddAnnn) | max model = 3 //vnn
 #define SERIAL_LOC        10
 #define BUFFER_BYTES      10
 #define MODEL_LOC         SERIAL_LOC + MAX_IN_NUM_LEN + BUFFER_BYTES
@@ -101,6 +101,11 @@ bool read_from_eeprom()
   while (eeprom_read_char(addr) != '\0')
   {
     ser_num += eeprom_read_char(addr++);
+    if (ser_num.length() > MAX_IN_NUM_LEN+1)
+    { // The serial didn't finish writing correctly/ is invalid/ is not stored
+      ser_num = "~";
+      break;
+    }
   }
 
   /********* Model number ***********/
@@ -108,6 +113,11 @@ bool read_from_eeprom()
   while (eeprom_read_char(addr) != '\0')
   {
     model_num += eeprom_read_char(addr++);
+    if (model_num.length() > MAX_IN_NUM_LEN+1)
+    { // The model didn't finish writing correctly/ is invalid/ is not stored
+      model_num = "~";
+      break;
+    }
   }
   Serial.print("Serial:"); Serial.println(ser_num);
   Serial.print("Model:"); Serial.println(model_num);
