@@ -45,31 +45,24 @@ char eeprom_read_char(byte word_address)
 
 bool write_to_eeprom()
 {
-  uint8_t serial_len = serial_num.length();
-  uint8_t model_len = model_num.length();
-  char serial_arr[serial_len];
-  serial_num.toCharArray(serial_arr, serial_len+1);
-  char model_arr[model_len];
-  model_num.toCharArray(model_arr, model_len+1);
-
   /********* Write Serial no. ***********/
   erase_eeprom_section(OT_SERIAL_LOC, OT_MAX_SERIAL_LEN);
-  for (uint8_t i = 0; i < serial_len+1; i++)
+  for (uint8_t i = 0; i < OT_MAX_SERIAL_LEN; i++)
   {
-    if(!eeprom_write_char(byte(OT_SERIAL_LOC+i), byte(serial_arr[i])))
+    if(!eeprom_write_char(byte(OT_SERIAL_LOC+i), byte(serial_num.charAt(i))))
     {
       Serial.println("\nfailed");
-      return 0;
+      return false;
     }
   }
   /********** Write Model no. **********/
   erase_eeprom_section(OT_MODEL_LOC, OT_MAX_MODEL_LEN);
-  for (uint8_t i = 0; i < model_len+1; i++)
+  for (uint8_t i = 0; i < OT_MAX_MODEL_LEN; i++)
   {
-    if(!eeprom_write_char(byte(OT_MODEL_LOC+i), byte(model_arr[i])))
+    if(!eeprom_write_char(byte(OT_MODEL_LOC+i), byte(model_num.charAt(i))))
     {
       Serial.println("failed");
-      return 0;
+      return false;
     }
   }
   return true;
@@ -118,7 +111,7 @@ bool erase_eeprom_section(uint8_t addr, uint8_t sec_len)
     if(!eeprom_write_char(byte(addr+i), byte(0xff)))  // erasing = writing 0xffh
     {
       Serial.println("\nfailed to erase section");
-      return 0;
+      return false;
     }
   }
   return true;

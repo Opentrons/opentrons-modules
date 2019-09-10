@@ -63,8 +63,8 @@ char Eeprom::_read_char(uint8_t word_address)
       return Wire.read(); // receive a byte as character
     }
   }
-  return '~';
 #endif
+  return '~';
 }
 
 void Eeprom::setup()
