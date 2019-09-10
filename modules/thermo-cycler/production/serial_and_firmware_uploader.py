@@ -24,7 +24,7 @@ from argparse import ArgumentParser
 FIRMWARE_FILE_PATH = "firmware/thermo-cycler-arduino.ino.bin"
 EEPROM_WRITER_PATH = "firmware/eepromWriter.ino.bin"
 OPENTRONS_VID = 1240
-MAX_SERIAL_LEN = 17
+MAX_SERIAL_LEN = 16
 BAD_BARCODE_MESSAGE = 'Serial longer than expected -> {}'
 WRITE_FAIL_MESSAGE = 'Data not saved'
 
@@ -81,7 +81,7 @@ def _user_submitted_barcode(max_length):
     print('-----------------')
     print('-----------------')
     print('\n\nScan the barcode\n\n')
-    barcode = input('\tSCAN: ').strip()
+    barcode = input('\tSCAN: ').strip() # remove all whitespace
     print('\n\n-----------------')
     print('-----------------')
     print('-----------------')
@@ -107,21 +107,15 @@ def _get_info(module):
     info = (None, None)
     # Empty out existing input buffer
     module.reset_input_buffer()
-    module.write(b'r\r\n')  # read stored data
-    serial = module.read_until(b'\r\n').decode().strip().split(':')
-    model = module.read_until(b'\r\n').decode().strip().split(':')
+    module.write(b'&')  # read stored data
+    # ignoring errors caused by spurious 0xff
+    serial = module.read_until(b'\r\n').decode(errors="ignore").strip().split(':')
+    model = module.read_until(b'\r\n').decode(errors="ignore").strip().split(':')
     return (serial[1], model[1])
 
 
-def write_identifiers(module, new_serial):
-    module.write(b'w\r\n')
-    res = ""
-    while module.in_waiting:
-        res += module.read().decode()
-    if "Invalid" in res:
-        print("Something went wrong. Please start over")
-        return
-    to_write = '{}\r\n'.format(new_serial)
+def write_identifiers(module, new_serial, model):
+    to_write = '{}:{}'.format(new_serial, model)
     module.write(to_write.encode())
     time.sleep(2)
     serial, model = _get_info(module)
@@ -138,6 +132,7 @@ def _assert_the_same(a, b):
         raise Exception(WRITE_FAIL_MESSAGE + ' ({0} != {1})'.format(a, b))
 
 def assert_id_and_model(port, serial, model):
+    print("asserting id & model..")
     msg = 'M115\r\n'.encode()
     port.reset_input_buffer()
     port.write(msg)
@@ -147,8 +142,8 @@ def assert_id_and_model(port, serial, model):
         r.split(':')[0]: r.split(':')[1]
         for r in res.split(' ')
     }
-    assert device_info.get('serial') == serial
-    assert device_info.get('model') == model
+    assert device_info.get('serial') == serial, "Device serial does not match"
+    assert device_info.get('model') == model, "Device model does not match"
 
 def main():
     print('\n')
@@ -164,7 +159,7 @@ def main():
         print('\nConnecting to device and writing..')
         connected_port = connect_to_module(find_opentrons_port())
         check_previous_data(connected_port)
-        write_identifiers(connected_port, barcode)
+        write_identifiers(connected_port, barcode, model)
         connected_port.close()
         print('\nTriggering Bootloader..')
         trigger_bootloader(find_opentrons_port())

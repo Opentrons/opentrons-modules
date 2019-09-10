@@ -1,0 +1,9 @@
+#define OT_EEPROM_ADDR    0x52
+#define OT_SERIAL_LOC     10
+#define OT_MAX_SERIAL_LEN 16 //TCV0120190910A12
+#define OT_MODEL_LOC      30
+#define OT_MAX_MODEL_LEN  3  // v01
+#define OT_WR_TIME  5     //ms
+#define OT_MAX_IN_NUM_LEN (OT_MAX_SERIAL_LEN > OT_MAX_MODEL_LEN, OT_MAX_SERIAL_LEN, OT_MAX_MODEL_LEN)
+
+static_assert(OT_SERIAL_LOC + OT_MAX_IN_NUM_LEN < OT_MODEL_LOC, "EEPROM address overlap");

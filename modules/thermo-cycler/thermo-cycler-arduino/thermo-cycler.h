@@ -115,8 +115,8 @@ bool cover_should_be_hot = false;
 
 /********* DEVICE INFO **********/
 
-String device_serial = "dummySerial";  // TODO: remove stub, later leave empty, this value is read from eeprom during setup()
-String device_model = "dummyModel";   // TODO: remove stub, later leave empty, this value is read from eeprom during setup()
+String device_serial;
+String device_model;
 String device_version = "v1.0.1";
 
 /********* Front Switch *********/
