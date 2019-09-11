@@ -9,6 +9,7 @@
 #include "tc_timer.h"
 #include "fan.h"
 #include "lights.h"
+#include "eeprom.h"
 
 /********* Versions **********/
 /* Version guidelines: */
@@ -114,8 +115,8 @@ bool cover_should_be_hot = false;
 
 /********* DEVICE INFO **********/
 
-String device_serial = "dummySerial";  // TODO: remove stub, later leave empty, this value is read from eeprom during setup()
-String device_model = "dummyModel";   // TODO: remove stub, later leave empty, this value is read from eeprom during setup()
+String device_serial;
+String device_model;
 String device_version = "v1.0.1";
 
 /********* Front Switch *********/
@@ -128,8 +129,8 @@ String device_version = "v1.0.1";
 
 /********* MISC GLOBALS *********/
 
-#define DEBUG_PRINT_INTERVAL 2000  // millisec
-#define ERROR_PRINT_INTERVAL  2000  //ms
+#define DEBUG_PRINT_INTERVAL 2000   // millisec
+#define ERROR_PRINT_INTERVAL 2000   // ms
 unsigned long last_error_print = 0;
 bool front_button_pressed = false;
 unsigned long front_button_pressed_at = 0;

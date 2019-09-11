@@ -12,7 +12,7 @@ INO_DIR := $(HOME)/arduino_ide
 ARDUINO_VERSION ?= 1.8.5
 ARDUINO_SAMD_VER ?= 1.6.20
 OPENTRONS_BOARDS_VER ?= 1.2.0
-OPENTRONS_SAMD_BOARDS_VER ?= 1.0.2
+OPENTRONS_SAMD_BOARDS_VER ?= 1.0.3
 
 OPENTRONS_BOARD_URL := https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json
 
@@ -79,10 +79,10 @@ build: build-magdeck build-tempdeck build-thermocycler
 
 DUMMY_BOARD ?= false
 USE_GCODES ?= true
-LID_WARNING ?= true
+LID_WARNING ?= false
 HFQ_PWM ?= false
 OLD_PID_INTERVAL ?= true
-HW_VERSION ?= 3
+HW_VERSION ?= 4
 LID_TESTING ?= false
 RGBW_NEO ?= true
 
