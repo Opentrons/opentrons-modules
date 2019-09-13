@@ -1,4 +1,4 @@
-language: c
+language: python
 
 cache:
   directories:
@@ -9,6 +9,17 @@ install:
 
 script:
   - make build
+
+deploy:
+  provider: s3
+  access_key_id: $AWS_ACCESS_KEY_ID
+  secret_access_key: $AWS_SECRET_ACCESS_KEY
+  bucket: opentrons-modules-builds
+  skip_cleanup: true
+  local_dir: build/thermo-cycler
+  upload-dir: thermocycler
+  on:
+    branch: repo_CI-and-deployment
 
 notifications:
   email:

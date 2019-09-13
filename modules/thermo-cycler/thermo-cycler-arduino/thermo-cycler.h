@@ -11,8 +11,13 @@
 #include "lights.h"
 #include "eeprom.h"
 
-/********* Version **********/
-#define FW_VERSION "v1.0.2"
+/********* Versions **********/
+/* Version guidelines: */
+#ifdef TC_FW_VERSION
+  #define FW_VERSION String(TC_FW_VERSION)
+#else
+  #define FW_VERSION "v1.0.3-beta"
+#endif
 
 /********* GCODE *********/
 #define BAUDRATE 115200

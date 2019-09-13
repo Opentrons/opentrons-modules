@@ -5,6 +5,11 @@ SHELL := /bin/bash
 
 CI_SYSTEM ?= $(shell uname)
 
+# this may be set as an environment variable to select the version of
+# python to run if pyenv is not available. it should always be set to
+# point to a python3.6.
+OT_PYTHON ?= python
+
 LIBRARIES_DIR := libraries
 MODULES_DIR := modules
 INO_DIR := $(HOME)/arduino_ide
@@ -75,8 +80,12 @@ setup:
 	$(if $(NO_OPENTRONS_BOARDS), $(ARDUINO) --install-boards Opentrons:avr, @echo "Opentrons boards already installed")
 
 .PHONY: build
-build: build-magdeck build-tempdeck build-thermocycler
+build: build-magdeck build-tempdeck build-thermocycler build-tc-eeprom
 
+TC_DIR := $(MODULES_DIR)/thermo-cycler
+TC_BUILD_DIR := $(BUILDS_DIR)/thermo-cycler
+TC_FW_VERSION ?= 1.0.3
+TC_FW_FILENAME := thermo-cycler-v$(TC_FW_VERSION).uf2
 DUMMY_BOARD ?= false
 USE_GCODES ?= true
 LID_WARNING ?= false
@@ -100,11 +109,29 @@ build-tempdeck:
 
 .PHONY: build-thermocycler
 build-thermocycler:
-	echo "compiler.cpp.extra_flags=-DDUMMY_BOARD=$(DUMMY_BOARD) -DUSE_GCODES=$(USE_GCODES) -DLID_WARNING=$(LID_WARNING) -DHFQ_PWM=$(HFQ_PWM) -DOLD_PID_INTERVAL=$(OLD_PID_INTERVAL) -DHW_VERSION=$(HW_VERSION) -DLID_TESTING=$(LID_TESTING) -DRGBW_NEO=$(RGBW_NEO)" \
+	echo "compiler.cpp.extra_flags=-DDUMMY_BOARD=$(DUMMY_BOARD) \
+	-DUSE_GCODES=$(USE_GCODES) -DLID_WARNING=$(LID_WARNING) \
+	-DHFQ_PWM=$(HFQ_PWM) -DOLD_PID_INTERVAL=$(OLD_PID_INTERVAL) \
+	-DHW_VERSION=$(HW_VERSION) -DLID_TESTING=$(LID_TESTING) \
+	-DRGBW_NEO=$(RGBW_NEO) -DTC_FW_VERSION=\"$(TC_FW_VERSION)\"" \
 	> $(ARDUINO15_LOC)/packages/Opentrons/hardware/samd/$(OPENTRONS_SAMD_BOARDS_VER)/platform.local.txt
-	$(ARDUINO) --verify --board Opentrons:samd:thermocycler_m0 $(MODULES_DIR)/thermo-cycler/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
-	mkdir -p $(BUILDS_DIR)/thermo-cycler
-	cp $(BUILDS_DIR)/tmp/thermo-cycler-arduino.ino.bin $(BUILDS_DIR)/thermo-cycler/
+	$(ARDUINO) --verify --board Opentrons:samd:thermocycler_m0 $(TC_DIR)/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
+	mkdir -p $(TC_BUILD_DIR)
+	mkdir -p $(TC_BUILD_DIR)/firmware
+	$(OT_PYTHON) $(TC_DIR)/production/uf2conv.py \
+		$(BUILDS_DIR)/tmp/thermo-cycler-arduino.ino.bin -c -f SAMD21 -o $(TC_BUILD_DIR)/firmware/$(TC_FW_FILENAME)
+	cp -r $(TC_DIR)/thermo-cycler-arduino $(TC_BUILD_DIR)
+	cp $(TC_DIR)/production/serial_and_firmware_uploader.py $(TC_BUILD_DIR)
+	cp $(TC_DIR)/production/firmware_uploader.py $(TC_BUILD_DIR)
+	cp $(TC_DIR)/production/uf2conv.py $(TC_BUILD_DIR)
+
+.PHONY: build-tc-eeprom
+build-tc-eeprom:
+	$(ARDUINO) --verify --board Opentrons:samd:thermocycler_m0 $(MODULES_DIR)/thermo-cycler/production/eepromWriter/eepromWriter.ino --verbose-build
+	mkdir -p $(TC_BUILD_DIR)
+	mkdir -p $(TC_BUILD_DIR)/firmware
+	$(OT_PYTHON) $(TC_DIR)/production/uf2conv.py \
+		$(BUILDS_DIR)/tmp/eepromWriter.ino.bin -c -f SAMD21 -o $(TC_BUILD_DIR)/firmware/eepromWriter.uf2
 
 .PHONY: teardown
 teardown:
