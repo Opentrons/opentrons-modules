@@ -11,9 +11,8 @@
 #include "lights.h"
 #include "eeprom.h"
 
-/********* Versions **********/
-/* Version guidelines: */
-#define FW_VERSION "Beta3.0"
+/********* Version **********/
+#define FW_VERSION "v1.0.2"
 
 /********* GCODE *********/
 #define BAUDRATE 115200
@@ -117,7 +116,6 @@ bool cover_should_be_hot = false;
 
 String device_serial;
 String device_model;
-String device_version = "v1.0.1";
 
 /********* Front Switch *********/
 

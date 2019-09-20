@@ -94,7 +94,7 @@ void Lights::_set_strip_color(uint32_t color)
   {
     strip.setPixelColor(i, color); // strip.setPixelColor(n, [white, red, green, blue]);
     strip.show();
-    delay(1);
+    delayMicroseconds(10);
   }
 }
 
@@ -148,48 +148,50 @@ void Lights::_pulse_leds(Light_color color)
   static float brightness = 0;
   static float rad = 0;
   static unsigned long last_update = 0;
+  if (millis() - last_update >= PULSE_UPDATE_INTERVAL)
+  {
+    if (rad >= 3.14)
+    {
+      rad = 0;
+    }
 
-  if (rad >= 3.14)
-  {
-    rad = 0;
-  }
+    uint32_t color32 = COLOR_CODES[COLOR_INDEX(color)];
+    uint8_t w = ((color32 & 0xff000000) >> 24);
+    uint8_t r = ((color32 & 0x00ff0000) >> 16);
+    uint8_t g = ((color32 & 0x0000ff00) >> 8);
+    uint8_t b = ((color32 & 0x000000ff) >> 0);
+    if (r)
+    {
+      brightness = sin(rad) * r;
+      r = uint8_t(brightness);
+    }
+    if (g)
+    {
+      brightness = sin(rad) * g;
+      g = uint8_t(brightness);
+    }
+    if (b)
+    {
+      brightness = sin(rad) * b;
+      b = uint8_t(brightness);
+    }
+    if (w)
+    {
+      brightness = sin(rad) * w;
+      w = uint8_t(brightness);
+    }
 
-  uint32_t color32 = COLOR_CODES[COLOR_INDEX(color)];
-  uint8_t w = ((color32 & 0xff000000) >> 24);
-  uint8_t r = ((color32 & 0x00ff0000) >> 16);
-  uint8_t g = ((color32 & 0x0000ff00) >> 8);
-  uint8_t b = ((color32 & 0x000000ff) >> 0);
-  if (r)
-  {
-    brightness = sin(rad) * r;
-    r = uint8_t(brightness);
-  }
-  if (g)
-  {
-    brightness = sin(rad) * g;
-    g = uint8_t(brightness);
-  }
-  if (b)
-  {
-    brightness = sin(rad) * b;
-    b = uint8_t(brightness);
-  }
-  if (w)
-  {
-    brightness = sin(rad) * w;
-    w = uint8_t(brightness);
-  }
-
-  uint32_t new_shade = (uint32_t(w) << 24) | (uint32_t(r) << 16) | (uint32_t(g) << 8) | (uint32_t(b) << 0);
-  _set_strip_color(new_shade);
-  delayMicroseconds(50);
-  last_update = millis();
-  if (rad > 1.57)
-  {
-    rad += 0.06;
-  }
-  else
-  {
-    rad += 0.04;
+    uint32_t new_shade = (uint32_t(w) << 24) | (uint32_t(r) << 16) | (uint32_t(g) << 8) | (uint32_t(b) << 0);
+    _set_strip_color(new_shade);
+    delayMicroseconds(10);
+    last_update = millis();
+    if (rad > 1.57)
+    {
+      rad += 0.06;
+    }
+    else
+    {
+      rad += 0.04;
+    }
   }
 }
