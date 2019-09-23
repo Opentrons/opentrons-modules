@@ -9,6 +9,7 @@
 #define NEO_PIN     A5
 #define NUM_PIXELS  16
 #define WIPE_SPEED_DELAY 50
+#define PULSE_UPDATE_INTERVAL 13 //millis
 
 enum class TC_status
 {

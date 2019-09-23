@@ -528,7 +528,7 @@ void read_gcode()
           deactivate_all();
           break;
         case Gcode::get_device_info:
-          gcode.device_info_response(device_serial, device_model, device_version);
+          gcode.device_info_response(device_serial, device_model, FW_VERSION);
           break;
         case Gcode::dfu:
           break;
@@ -907,8 +907,8 @@ void loop()
       gcode.response("Error", "Lid_status: unknown");
     }
   }
+  update_light_strip();
   timeStamp = micros() - timeStamp;
   /* Check if gcode(s) available on Serial */
   read_gcode();
-  update_light_strip();
 }
