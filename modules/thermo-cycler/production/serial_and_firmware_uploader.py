@@ -70,9 +70,12 @@ def find_bootloader_drive():
 def upload_sketch(sketch_file, drive):
     with open(sketch_file, mode='rb') as f:
         inpbuf = f.read()
-    outbuf = uf2conv.convert_to_uf2(inpbuf)
-    print("Converting to uf2, output size: %d, start address: 0x%x" %
-          (len(outbuf), uf2conv.appstartaddr))
+    if uf2conv.is_uf2(inpbuf):
+        outbuf = inpbuf
+    else:
+        outbuf = uf2conv.convert_to_uf2(inpbuf)
+        print("Converting to uf2, output size: %d, start address: 0x%x" %
+              (len(outbuf), uf2conv.appstartaddr))
     print("Flashing %s (%s)" % (drive, uf2conv.board_id(drive)))
     uf2conv.write_file(drive + "/NEW.UF2", outbuf)
 
