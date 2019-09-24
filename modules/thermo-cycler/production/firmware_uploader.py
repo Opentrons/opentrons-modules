@@ -16,14 +16,16 @@ from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-DEFUALT_FW_FILE_PATH = os.path.join(THIS_DIR, "firmware", "thermo-cycler-arduino.ino.bin")
+DEFAULT_FW_FILE_PATH = os.path.join(THIS_DIR, "firmware", "thermo-cycler-arduino.ino.bin")
 OPENTRONS_VID = 1240
 MAX_SERIAL_LEN = 16
 
 def build_arg_parser():
     arg_parser = ArgumentParser(
         description="Thermocycler firmware uploader")
-    arg_parser.add_argument("-F", "--fw_file", required=False)
+    arg_parser.add_argument("-F", "--fw_file", required=False,
+                            default=DEFAULT_FW_FILE_PATH,
+                            help='Firmware file (default: ..production/firmware/thermo-cycler-arduino.ino.bin)')
     return arg_parser
 
 def find_opentrons_port():
@@ -79,7 +81,7 @@ def upload_sketch(sketch_file, drive):
 def main():
     arg_parser = build_arg_parser()
     args = arg_parser.parse_args()
-    firmware_file = args.fw_file or DEFUALT_FW_FILE_PATH
+    firmware_file = args.fw_file
     print('\n')
     connected_port = None
     try:
