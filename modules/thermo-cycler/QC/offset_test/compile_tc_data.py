@@ -8,7 +8,7 @@ import math
 import itertools
 import csv
 #load the example datasheet
-df = pd.read_csv('F10_09-04_T70C.csv') #Change this file name to original
+df = pd.read_csv('results/F10_fans_15_thermometer_data_09-10-19_15-37_target_95C.csv') #Change this file name to original
 header = df.head(0)
 header_list = []
 csv_header = {}
@@ -42,6 +42,7 @@ for the heatsink
 for index, row in df.iterrows():
     if index > 6848:
         break
+    #print(f10_well[index+1])
     next_cell = truncate(f10_well[index+1],2)
     current_cell = truncate(row['Offset'], 2)
     delta = round(next_cell - current_cell, 3)
@@ -77,7 +78,7 @@ except Exception as e:
     pass
     #time.sleep(0.1)
 #-----------------------------------------------------------------------
-file_name = 'new_file.csv' #Change this to name your new file
+file_name = 'Filtered_95C_fan_A09_file.csv' #Change this to name your new file
 with open(file_name, 'w', newline='') as f:
     test_data = csv_header
     log_file = csv.DictWriter(f, test_data)
