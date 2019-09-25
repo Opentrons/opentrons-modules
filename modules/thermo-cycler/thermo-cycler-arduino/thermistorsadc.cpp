@@ -84,35 +84,35 @@ float ThermistorsADC::right_pair_temperature() {
 }
 
 float ThermistorsADC::front_left_temperature() {
-  return probe_temps[ADC_INDEX_PLATE_FRONT_LEFT];
+  return probe_temps[ADC_INDEX_PLATE_FRONT_LEFT] + plate_temp_offset;
 }
 
 float ThermistorsADC::front_center_temperature() {
-  return probe_temps[ADC_INDEX_PLATE_FRONT_CENTER];
+  return probe_temps[ADC_INDEX_PLATE_FRONT_CENTER] + plate_temp_offset;
 }
 
 float ThermistorsADC::front_right_temperature() {
-  return probe_temps[ADC_INDEX_PLATE_FRONT_RIGHT];
+  return probe_temps[ADC_INDEX_PLATE_FRONT_RIGHT] + plate_temp_offset;
 }
 
 float ThermistorsADC::back_left_temperature() {
-  return probe_temps[ADC_INDEX_PLATE_BACK_LEFT];
+  return probe_temps[ADC_INDEX_PLATE_BACK_LEFT] + plate_temp_offset;
 }
 
 float ThermistorsADC::back_center_temperature() {
-  return probe_temps[ADC_INDEX_PLATE_BACK_CENTER];
+  return probe_temps[ADC_INDEX_PLATE_BACK_CENTER] + plate_temp_offset;
 }
 
 float ThermistorsADC::back_right_temperature() {
-  return probe_temps[ADC_INDEX_PLATE_BACK_RIGHT];
+  return probe_temps[ADC_INDEX_PLATE_BACK_RIGHT] + plate_temp_offset;
 }
 
 float ThermistorsADC::cover_temperature() {
-  return probe_temps[ADC_INDEX_COVER];
+  return probe_temps[ADC_INDEX_COVER];  // No offset
 }
 
 float ThermistorsADC::heat_sink_temperature() {
-  return probe_temps[ADC_INDEX_HEAT_SINK];
+  return probe_temps[ADC_INDEX_HEAT_SINK];  // No offset
 }
 
 

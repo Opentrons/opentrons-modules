@@ -26,6 +26,8 @@
   GCODE_DEF(pause, M76),            \
   GCODE_DEF(deactivate_all, M18),   \
   GCODE_DEF(get_device_info, M115), \
+  GCODE_DEF(set_offset_constants, M116), \
+  GCODE_DEF(get_offset_constants, M117), \
   GCODE_DEF(heatsink_fan_pwr_manual, M106), \
   GCODE_DEF(heatsink_fan_auto_on, M107),  \
   GCODE_DEF(dfu, dfu),              \

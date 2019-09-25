@@ -70,7 +70,7 @@ setup:
 	echo -n "Arduino SAMD: "
 	$(if $(NO_ARDUINO_SAMD), $(ARDUINO) --install-boards arduino:samd:$(ARDUINO_SAMD_VER), @echo "Arduino SAMD already installed")
 	echo -n "Opentrons SAMD: "
-	$(if $(NO_OPENTRONS_SAMD_BOARDS), $(ARDUINO) --install-boards Opentrons:samd, @echo "Opentrons SAMD already installed")
+	$(if $(NO_OPENTRONS_SAMD_BOARDS), $(ARDUINO) --install-boards Opentrons:samd:$(OPENTRONS_SAMD_BOARDS_VER), @echo "Opentrons SAMD already installed")
 	echo -n "Opentrons modules: "
 	$(if $(NO_OPENTRONS_BOARDS), $(ARDUINO) --install-boards Opentrons:avr, @echo "Opentrons boards already installed")
 

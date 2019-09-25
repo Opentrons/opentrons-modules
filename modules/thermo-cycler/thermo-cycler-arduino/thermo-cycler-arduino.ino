@@ -245,12 +245,14 @@ void update_cover_from_pid()
 void update_fans_from_state()
 {
   static unsigned long last_checked = 0;
+  static bool cooling_from_68 = false;
+  static bool cooling_from_75 = false;
 
   if (millis() - last_checked > 100)
   {
     if (!auto_fan)
     { // Heatsink safety threshold overrides manual operation
-      if (temp_probes.heat_sink_temperature() > HEATSINK_FAN_HI_TEMP)
+      if (temp_probes.heat_sink_temperature() > HEATSINK_SAFE_TEMP_LIMIT)
       {
         // Fan speed proportional to temperature
         float pwr = HEATSINK_P_CONSTANT * temp_probes.heat_sink_temperature() / 100.0;
@@ -265,31 +267,67 @@ void update_fans_from_state()
       if (is_target_cold())
       {
         heatsink_fan.set_percentage(FAN_PWR_COLD_TARGET);
-        return;
       }
       else if (is_ramping_down())
       {
         heatsink_fan.set_percentage(FAN_PWR_RAMPING_DOWN);
-        return;
       }
-      // else if (is_ramping_up())
-      // {
-      //   heatsink_fan.set_percentage(0.2);
-      //   return;
-      // }
+      else if (temp_probes.heat_sink_temperature() > HEATSINK_FAN_HI_TEMP_3)
+      {
+        heatsink_fan.set_percentage(FAN_POWER_HIGH_1);
+        cooling_from_75 = true;
+      }
+      else if (temp_probes.heat_sink_temperature() > target_temperature_plate - PELTIER_TEMP_DELTA
+                || temp_probes.plate_temp_offset < 0)
+      {
+        heatsink_fan.set_percentage(FAN_POWER_MED_2);
+      }
+      else if (temp_probes.heat_sink_temperature() > HEATSINK_FAN_HI_TEMP_2 && !cooling_from_75)
+      {
+        heatsink_fan.set_percentage(FAN_POWER_MED_1);
+        cooling_from_68 = true;
+      }
       else if (temp_probes.heat_sink_temperature() > HEATSINK_FAN_LO_TEMP)
       {
+        if (cooling_from_68)
+        {
+          if (temp_probes.heat_sink_temperature() >= HEATSINK_FAN_HI_TEMP_1)
+          { // Stay at med power until heat_sink_temperature() < HEATSINK_FAN_HI_TEMP_1
+            heatsink_fan.set_percentage(FAN_POWER_MED_1);
+          }
+          else
+          {
+            cooling_from_68 = false;
+          }
+          return;
+        }
+        else if (cooling_from_75)
+        {
+          if (temp_probes.heat_sink_temperature() > HEATSINK_FAN_HI_TEMP_2)
+          {// Stay at high_1 power until heat_sink_temperature() < HEATSINK_FAN_HI_TEMP_2
+            heatsink_fan.set_percentage(FAN_POWER_HIGH_1);
+          }
+          else
+          {
+            cooling_from_75 = false;
+          }
+          return;
+        }
         heatsink_fan.set_percentage(FAN_POWER_LOW);
       }
     }
-    if (temp_probes.heat_sink_temperature() > HEATSINK_FAN_HI_TEMP)
+    else
     {
-      // Fan speed proportional to temperature
-      heatsink_fan.set_percentage(HEATSINK_P_CONSTANT * temp_probes.heat_sink_temperature() / 100.0);
-    }
-    else if(temp_probes.heat_sink_temperature() < HEATSINK_FAN_OFF_TEMP)
-    {
-      heatsink_fan.disable();
+      // Should only get here if no master set
+      if (temp_probes.heat_sink_temperature() > HEATSINK_FAN_HI_TEMP_2)
+      {
+        // Fan speed proportional to temperature
+        heatsink_fan.set_percentage(HEATSINK_P_CONSTANT * temp_probes.heat_sink_temperature() / 100.0);
+      }
+      else if(temp_probes.heat_sink_temperature() < HEATSINK_FAN_OFF_TEMP)
+      {
+        heatsink_fan.disable();
+      }
     }
   }
 }
@@ -332,6 +370,7 @@ void debug_status_prints()
   gcode.add_debug_response("T5", temp_probes.back_center_temperature());
   gcode.add_debug_response("T6", temp_probes.back_right_temperature());
   gcode.add_debug_response("T.sink", temp_probes.heat_sink_temperature());
+  gcode.add_debug_response("T.offset", temp_probes.plate_temp_offset);
   gcode.add_debug_response("loop_time", float(timeStamp)/1000);
   // Fan power:
   gcode.add_debug_response("Fan", heatsink_fan.current_power);
@@ -530,6 +569,37 @@ void read_gcode()
         case Gcode::get_device_info:
           gcode.device_info_response(device_serial, device_model, FW_VERSION);
           break;
+        case Gcode::set_offset_constants:
+          /**** Save offsets to EEPROM & update the current constants *****/
+          if (gcode.pop_arg('A'))
+          {
+            if (!eeprom.set_offset(OffsetConst::A, gcode.popped_arg()))
+            {
+              gcode.response("EEPROM ERROR","offset A not saved");
+            }
+          }
+          if (gcode.pop_arg('B'))
+          {
+            if (!eeprom.set_offset(OffsetConst::B, gcode.popped_arg()))
+            {
+              gcode.response("EEPROM ERROR","offset B not saved");
+            }
+          }
+          if (gcode.pop_arg('C'))
+          {
+            if (!eeprom.set_offset(OffsetConst::C, gcode.popped_arg()))
+            {
+              gcode.response("EEPROM ERROR","offset C not saved");
+            }
+          }
+          update_offset_constants();
+          break;
+        case Gcode::get_offset_constants:
+          /**** Get current constants ****/
+          gcode.response("a", String(const_a, 4));
+          gcode.response("b", String(const_b, 4));
+          gcode.response("c", String(const_c, 4));
+          break;
         case Gcode::dfu:
           break;
         case Gcode::debug_mode:
@@ -696,6 +766,28 @@ void TC4_Handler()
   }
 }
 
+void check_saved_offsets()
+{
+  if (isnan(eeprom.get_offset(OffsetConst::A)))
+  {
+    eeprom.set_offset(OffsetConst::A, CONST_A_DEFAULT);
+  }
+  if (isnan(eeprom.get_offset(OffsetConst::B)))
+  {
+    eeprom.set_offset(OffsetConst::B, CONST_B_DEFAULT);
+  }
+  if (isnan(eeprom.get_offset(OffsetConst::C)))
+  {
+    eeprom.set_offset(OffsetConst::C, CONST_C_DEFAULT);
+  }
+}
+
+void update_offset_constants()
+{ // Should be called every time after updating EEPROM values
+  const_a = eeprom.get_offset(OffsetConst::A);
+  const_b = eeprom.get_offset(OffsetConst::B);
+  const_c = eeprom.get_offset(OffsetConst::C);
+}
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
@@ -707,6 +799,9 @@ void setup()
   device_serial = eeprom.read(MemOption::serial);
   device_model = eeprom.read(MemOption::model);
   peltiers.setup();
+
+  check_saved_offsets();
+  update_offset_constants();
 
   temp_probes.setup(THERMISTOR_VOLTAGE);
   temp_probes.update(ThermistorPair::right);
@@ -808,7 +903,22 @@ void temp_plot()
   Serial.print(temp_probes.back_right_temperature()); Serial.print("\t");
   Serial.print(temp_probes.heat_sink_temperature()); Serial.print("\t");
   Serial.print(temp_probes.cover_temperature()); Serial.print("\t");
+  Serial.print(temp_probes.plate_temp_offset);
   Serial.println();
+}
+
+/* Calculated thermistors offset */
+float thermistor_offset()
+{
+  if (target_temperature_plate > TEMPERATURE_ROOM)
+  {
+    return (const_a * temp_probes.heat_sink_temperature()) +
+            (const_b * target_temperature_plate) + const_c;
+  }
+  else
+  {
+    return 0.0;
+  }
 }
 
 /* **** therm_pid_peltier_update ******
@@ -847,6 +957,7 @@ void therm_pid_peltier_update()
       case 4:
         temp_probes.update(ThermistorPair::cover_n_heatsink);
         current_temperature_cover = temp_probes.cover_temperature();
+        temp_probes.plate_temp_offset = thermistor_offset();
         break;
     }
     current_temperature_plate = temp_probes.average_plate_temperature();
