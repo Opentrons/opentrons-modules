@@ -12,8 +12,6 @@
 #include "eeprom.h"
 
 /********* Version **********/
-/********* Versions **********/
-/* Version guidelines: */
 #ifdef TC_FW_VERSION
   #define FW_VERSION String(TC_FW_VERSION)
 #else
@@ -27,6 +25,22 @@
 
 #define THERMISTOR_VOLTAGE 1.5
 
+/* Thermistor offset values */
+/* y = ax1 + bx2 + c
+ * y: offset to plate temp
+ * a, b, c: constants
+ * x1: current heatsink temp
+ * x2: target plate temp
+ */
+#define CONST_A_DEFAULT -0.026
+#define CONST_B_DEFAULT 0.0231
+#define CONST_C_DEFAULT 0.15
+
+float const_a;
+float const_b;
+float const_c;
+
+bool use_offset;
 /********** HEAT PAD **********/
 
 #if HW_VERSION >= 3
@@ -39,21 +53,42 @@
 #define PIN_FAN_COVER               A2
 #define PIN_FAN_SINK_CTRL           A4   // uses PWM frequency generator
 #define PIN_FAN_SINK_ENABLE         2    // Heat sink fan
-#define FAN_POWER_HIGH              0.8
-#define FAN_POWER_LOW               0.2
+#define FAN_POWER_HIGH_2            0.8
+#define FAN_POWER_HIGH_1            0.5
+#define FAN_POWER_MED_1             0.3
+#define FAN_POWER_MED_2             0.35
+#define FAN_POWER_LOW               0.15
 #define FAN_PWR_COLD_TARGET         0.7
 #define FAN_PWR_RAMPING_DOWN        0.55
 #define HEATSINK_P_CONSTANT         1.0
+
+/****** FAN PID vars & constants ******/
+
+double fan_pid_out = 0;
+double heatsink_setpoint;
+double current_heatsink_temp;
+
+#define FAN_COLD_KP  0.2
+#define FAN_COLD_KI  0.01
+#define FAN_COLD_KD  0.05
+
+#define FAN_HOT_KP  0.2
+#define FAN_HOT_KI  0.0
+#define FAN_HOT_KD  0.05
 
 /********* TEMPERATURE PREDEFS *********/
 
 #define TEMPERATURE_ROOM          23
 #define TEMPERATURE_COVER_HOT     105
 #define PELTIER_SAFE_TEMP_LIMIT   105
-#define HEATSINK_SAFE_TEMP_LIMIT  75
-#define HEATSINK_FAN_LO_TEMP      38
-#define HEATSINK_FAN_HI_TEMP      55
+#define HEATSINK_SAFE_TEMP_LIMIT  85
+#define HEATSINK_FAN_LO_TEMP      TEMPERATURE_ROOM
+#define HEATSINK_FAN_MED_TEMP     31
+#define HEATSINK_FAN_HI_TEMP_1    60
+#define HEATSINK_FAN_HI_TEMP_2    68
+#define HEATSINK_FAN_HI_TEMP_3    75
 #define HEATSINK_FAN_OFF_TEMP     36
+#define PELTIER_TEMP_DELTA        2
 
 /********* PID: PLATE PELTIERS *********/
 // NOTE: temp_probes.update takes 136-137ms while rest of the loop takes 0-1ms.
@@ -82,9 +117,14 @@
 #define PID_KI_PLATE_DOWN PID_KI_PLATE_UP
 #define PID_KD_PLATE_DOWN PID_KD_PLATE_UP
 
-#define PID_STABILIZING_THRESH 5
-#define PID_FAR_AWAY_THRESH 10
-#define TARGET_TEMP_TOLERANCE 1.5   // Degree Celsius
+#define PID_STABILIZING_THRESH  5
+#define PID_FAR_AWAY_THRESH     10
+#define TARGET_TEMP_TOLERANCE   1.5   // Degree Celsius
+
+// TODO: remove once vol<->overshoot table is finalized
+#define PLATE_OVERSHOOT_50uL    1.8   // Degree Celsius
+#define PLATE_UNDERSHOOT_50uL   1.6   // Degree Celsius
+#define OVERSHOOT_DURATION      10000  // millisec
 
 double current_plate_kp = PID_KP_PLATE_UP;
 double current_plate_ki = PID_KI_PLATE_UP;
@@ -94,6 +134,7 @@ bool master_set_a_target = false;
 bool auto_fan = true;
 bool just_changed_temp = false;
 
+double this_step_target_temp = TEMPERATURE_ROOM;
 double temperature_swing_plate = 0.5;
 double target_temperature_plate = TEMPERATURE_ROOM;
 double current_temperature_plate = TEMPERATURE_ROOM;
@@ -115,7 +156,6 @@ double temperature_swing_right_pel = 0.5;
 double temperature_swing_cover = 0.5;
 double target_temperature_cover = TEMPERATURE_ROOM;
 double current_temperature_cover = TEMPERATURE_ROOM;
-
 bool cover_should_be_hot = false;
 
 /********* DEVICE INFO **********/
@@ -133,6 +173,8 @@ String device_model;
 
 /********* MISC GLOBALS *********/
 
+bool timer_started = false;
+unsigned long overshoot_start_timestamp = 0;
 #define DEBUG_PRINT_INTERVAL 2000   // millisec
 #define ERROR_PRINT_INTERVAL 2000   // ms
 unsigned long last_error_print = 0;
