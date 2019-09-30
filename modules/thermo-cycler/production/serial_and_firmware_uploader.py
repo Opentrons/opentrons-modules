@@ -21,8 +21,9 @@ import time
 from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 
-FIRMWARE_FILE_PATH = "firmware/thermo-cycler-arduino.ino.bin"
-EEPROM_WRITER_PATH = "firmware/eepromWriter.ino.bin"
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+FIRMWARE_FILE_PATH = os.path.join(THIS_DIR, "firmware", "thermo-cycler-arduino.ino.bin")
+EEPROM_WRITER_PATH = os.path.join(THIS_DIR, "firmware", "eepromWriter.ino.bin")
 OPENTRONS_VID = 1240
 MAX_SERIAL_LEN = 16
 BAD_BARCODE_MESSAGE = 'Serial longer than expected -> {}'
