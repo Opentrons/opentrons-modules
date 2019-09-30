@@ -172,7 +172,7 @@ def get_drives():
     if sys.platform == "win32":
         r = subprocess.check_output(["wmic", "PATH", "Win32_LogicalDisk",
                                      "get", "DeviceID,", "VolumeName,",
-                                     "FileSystem,", "DriveType"])
+                                     "FileSystem,", "DriveType"]).decode()
         for line in r.split('\n'):
             words = re.split('\s+', line)
             if len(words) >= 3 and words[1] == "2" and words[2] == "FAT":

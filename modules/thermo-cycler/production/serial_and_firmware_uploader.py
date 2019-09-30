@@ -14,7 +14,7 @@
 
 # python uf2conv.py ../../../build/thermo-cycler/thermo-cycler-arduino.ino.bin
 # -f SAMD21 -d /Volumes/TCBOOT
-
+import os
 import uf2conv
 import serial
 import time
@@ -58,9 +58,11 @@ def find_bootloader_drive():
     retries = 7
     while retries:
         for d in uf2conv.get_drives():
-            if "TCBOOT" in d:
-                print("Bootloader Volume found")
-                return d
+            with open(os.path.join(d + '/INFO_UF2.TXT'), mode='r') as f:
+                drive_info = f.read()
+                if 'Opentrons Thermocycler M0' in drive_info:
+                    print("Bootloader Volume found")
+                    return d
         print("Searching bootloader...")
         retries -= 1
         time.sleep(1)

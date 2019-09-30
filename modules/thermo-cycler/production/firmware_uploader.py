@@ -56,11 +56,13 @@ def find_bootloader_drive():
     # takes around 4 seconds for TCBOOT to register in /Volumes
     retries = 7
     while retries:
-        for d in uf2conv.get_drives():
-            if "TCBOOT" in d:
-                print("Bootloader Volume found")
-                return d
         print("Searching bootloader...")
+        for d in uf2conv.get_drives():
+            with open(os.path.join(d + '/INFO_UF2.TXT'), mode='r') as f:
+                drive_info = f.read()
+                if 'Opentrons Thermocycler M0' in drive_info:
+                    print("Bootloader Volume found")
+                    return d
         retries -= 1
         time.sleep(1)
     raise Exception ('Bootloader volume not found')
