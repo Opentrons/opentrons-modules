@@ -167,7 +167,7 @@ def convert_from_hex_to_uf2(buf):
         resfile += blocks[i].encode(i, numblocks)
     return resfile
 
-def get_drives():
+def get_tc_drives():
     drives = []
     if sys.platform == "win32":
         r = subprocess.check_output(["wmic", "PATH", "Win32_LogicalDisk",
@@ -191,7 +191,10 @@ def get_drives():
 
     def has_info(d):
         try:
-            return os.path.isfile(d + INFO_FILE)
+            if os.path.isfile(d + INFO_FILE):
+                with open(d + INFO_FILE, mode='r') as f:
+                    drive_info = f.read()
+                    return 'Opentrons Thermocycler M0' in drive_info
         except:
             return False
 
