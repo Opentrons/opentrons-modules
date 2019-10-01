@@ -12,7 +12,7 @@
 #include "eeprom.h"
 
 /********* Version **********/
-#define FW_VERSION "v1.0.2"
+#define FW_VERSION "v1.0.2-offset-profiling"
 
 /********* GCODE *********/
 #define BAUDRATE 115200
@@ -127,7 +127,7 @@ String device_model;
 
 /********* MISC GLOBALS *********/
 
-#define DEBUG_PRINT_INTERVAL 2000   // millisec
+#define DEBUG_PRINT_INTERVAL 500   // millisec
 #define ERROR_PRINT_INTERVAL 2000   // ms
 unsigned long last_error_print = 0;
 bool front_button_pressed = false;
