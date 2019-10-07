@@ -17,6 +17,7 @@ from argparse import ArgumentParser
 FIRMWARE_FILE_PATH = "firmware/thermo-cycler-arduino.ino.bin"
 EEPROM_WRITER_PATH = "firmware/eepromWriter.ino.bin"
 OPENTRONS_VID = 1240
+TC_BOOTLOADER_PID = 0xED12
 MAX_SERIAL_LEN = 16
 BAD_BARCODE_MESSAGE = 'Serial longer than expected -> {}'
 WRITE_FAIL_MESSAGE = 'Data not saved'
@@ -26,6 +27,9 @@ def find_opentrons_port():
     while retries:
         for p in comports():
             if p.vid == OPENTRONS_VID:
+                if bootloader:
+                    if p.pid != TC_BOOTLOADER_PID:
+                        continue
                 print("Port found:{}".format(p.device))
                 time.sleep(1)
                 return p.device

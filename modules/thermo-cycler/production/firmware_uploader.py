@@ -22,6 +22,7 @@ from argparse import ArgumentParser
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_FW_FILE_PATH = os.path.join(THIS_DIR, "firmware", "thermo-cycler-arduino.ino.bin")
 OPENTRONS_VID = 1240
+TC_BOOTLOADER_PID = 0xED12
 MAX_SERIAL_LEN = 16
 
 def build_arg_parser():
@@ -32,11 +33,14 @@ def build_arg_parser():
                             help='Firmware file (default: ..production/firmware/thermo-cycler-arduino.ino.bin)')
     return arg_parser
 
-def find_opentrons_port():
+def find_opentrons_port(bootloader=False):
     retries = 5
     while retries:
         for p in comports():
             if p.vid == OPENTRONS_VID:
+                if bootloader:
+                    if p.pid != TC_BOOTLOADER_PID:
+                        continue
                 print("Port found:{}".format(p.device))
                 time.sleep(1)
                 return p.device
@@ -111,7 +115,7 @@ def main():
                 fw_uploaded = upload_sketch(firmware_file, find_bootloader_drive())
             else:
                 print("Binary file. Flashing using bossac")
-                fw_uploaded = upload_using_bossa(firmware_file, find_opentrons_port())
+                fw_uploaded = upload_using_bossa(firmware_file, find_opentrons_port(bootloader=True))
         print('\n\n-----------------')
         print('-----------------')
         print('-----------------')
