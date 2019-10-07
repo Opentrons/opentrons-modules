@@ -15,7 +15,6 @@ import uf2conv
 import serial
 import time
 import subprocess
-import asyncio
 from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 

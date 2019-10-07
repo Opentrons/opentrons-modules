@@ -3,11 +3,11 @@
 # - Write Serial number from scanner onto TC
 # - Verify written Serial number
 # - Upload production TC firmware
-
+# NOT Compatible with UF2
+#
 # BOSSA: bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 thermo-cycler-arduino.ino.bin
-# UF2: python uf2conv.py ../../../build/thermo-cycler/thermo-cycler-arduino.ino.bin
-# -f SAMD21 -d /Volumes/TCBOOT
-
+import sys
+import subprocess
 import uf2conv
 import serial
 import time
@@ -22,7 +22,7 @@ MAX_SERIAL_LEN = 16
 BAD_BARCODE_MESSAGE = 'Serial longer than expected -> {}'
 WRITE_FAIL_MESSAGE = 'Data not saved'
 
-def find_opentrons_port():
+def find_opentrons_port(bootloader=False):
     retries = 5
     while retries:
         for p in comports():
@@ -75,6 +75,23 @@ def upload_sketch(sketch_file, drive):
               (len(outbuf), uf2conv.appstartaddr))
     print("Flashing %s (%s)" % (drive, uf2conv.board_id(drive)))
     uf2conv.write_file(drive + "/NEW.UF2", outbuf)
+
+def upload_using_bossa(bin_file, port):
+    # bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 modules/thermo-cycler/production/firmware/thermo-cycler-arduino.ino.bin
+    if sys.platform == "linux" or sys.platform == "linux2":
+        bossa_cmd = './bossac'
+    else:
+        bossa_cmd = 'bossac'
+    bossa_args = [bossa_cmd, '-p{}'.format(port), '-e', '-w', '-v', '-R', '--offset=0x2000', '{}'.format(bin_file)]
+    proc = subprocess.run(bossa_args, timeout=60, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE)
+    res = proc.stdout.decode()
+    print(res)
+    if "Verify successful" in res:
+        return True
+    elif proc.stderr:
+        print(proc.stderr)
+        return False
 
 def _user_submitted_barcode(max_length):
     print('\n\n-----------------')
@@ -152,7 +169,7 @@ def main():
         print('\nTrigerring Bootloader..')
         trigger_bootloader(find_opentrons_port())
         print('\nUploading EEPROM sketch..')
-        upload_sketch(EEPROM_WRITER_PATH, find_bootloader_drive())
+        upload_using_bossa(EEPROM_WRITER_PATH, find_opentrons_port(bootloader=True))
         print('\nAsking for barcode..')
         barcode = _user_submitted_barcode(MAX_SERIAL_LEN)
         model = _parse_model_from_barcode(barcode)
@@ -164,7 +181,7 @@ def main():
         print('\nTriggering Bootloader..')
         trigger_bootloader(find_opentrons_port())
         print('\nUploading application..')
-        upload_sketch(FIRMWARE_FILE_PATH, find_bootloader_drive())
+        upload_using_bossa(FIRMWARE_FILE_PATH, find_opentrons_port(bootloader=True))
         print('\nConnecting to device and testing..')
         time.sleep(5)  # wait for it to boot up
         connected_port = connect_to_module(find_opentrons_port())
