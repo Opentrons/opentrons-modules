@@ -4,15 +4,8 @@
 # - Verify written Serial number
 # - Upload production TC firmware
 
-
-# 1. Upload firmware:
-# -
-# - Open and close serial at 1200 baud
-# - Search /Volumes for TCBOOT
-# - Once found, Convert bin to uf2 (import uf2conv.py and use)
-# and flash uf2 file to TCBOOT
-
-# python uf2conv.py ../../../build/thermo-cycler/thermo-cycler-arduino.ino.bin
+# BOSSA: bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 thermo-cycler-arduino.ino.bin
+# UF2: python uf2conv.py ../../../build/thermo-cycler/thermo-cycler-arduino.ino.bin
 # -f SAMD21 -d /Volumes/TCBOOT
 
 import uf2conv

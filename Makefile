@@ -10,9 +10,9 @@ MODULES_DIR := modules
 INO_DIR := $(HOME)/arduino_ide
 
 ARDUINO_VERSION ?= 1.8.5
-ARDUINO_SAMD_VER ?= 1.6.20
+ARDUINO_SAMD_VER ?= 1.6.21
 OPENTRONS_BOARDS_VER ?= 1.2.0
-OPENTRONS_SAMD_BOARDS_VER ?= 1.0.3
+OPENTRONS_SAMD_BOARDS_VER ?= 1.1.0
 
 OPENTRONS_BOARD_URL := https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json
 
@@ -68,7 +68,7 @@ setup:
 	# Install all required boards
 	echo -n "Installing board packages.."
 	echo -n "Arduino SAMD: "
-	$(if $(NO_ARDUINO_SAMD), $(ARDUINO) --install-boards arduino:samd, @echo "Arduino SAMD already installed")
+	$(if $(NO_ARDUINO_SAMD), $(ARDUINO) --install-boards arduino:samd@$(ARDUINO_SAMD_VER), @echo "Arduino SAMD already installed")
 	echo -n "Opentrons SAMD: "
 	$(if $(NO_OPENTRONS_SAMD_BOARDS), $(ARDUINO) --install-boards Opentrons:samd, @echo "Opentrons SAMD already installed")
 	echo -n "Opentrons modules: "
