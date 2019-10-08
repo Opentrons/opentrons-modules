@@ -6,6 +6,7 @@
 # NOT Compatible with UF2
 #
 # BOSSA: bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 thermo-cycler-arduino.ino.bin
+import os
 import sys
 import subprocess
 import uf2conv
@@ -14,13 +15,22 @@ import time
 from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 
-FIRMWARE_FILE_PATH = "firmware/thermo-cycler-arduino.ino.bin"
-EEPROM_WRITER_PATH = "firmware/eepromWriter.ino.bin"
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_FW_FILE_PATH = os.path.join(THIS_DIR, "firmware", "thermo-cycler-arduino.ino.bin")
+EEPROM_WRITER_PATH = os.path.join(THIS_DIR, "firmware", "eepromWriter.ino.bin")
 OPENTRONS_VID = 1240
 TC_BOOTLOADER_PID = 0xED12
 MAX_SERIAL_LEN = 16
 BAD_BARCODE_MESSAGE = 'Serial longer than expected -> {}'
 WRITE_FAIL_MESSAGE = 'Data not saved'
+
+def build_arg_parser():
+    arg_parser = ArgumentParser(
+        description="Thermocycler serial & firmware uploader")
+    arg_parser.add_argument("-F", "--fw_file", required=False,
+                            default=DEFAULT_FW_FILE_PATH,
+                            help='Firmware file (default: ..production/firmware/thermo-cycler-arduino.ino.bin)')
+    return arg_parser
 
 def find_opentrons_port(bootloader=False):
     retries = 5
@@ -48,33 +58,6 @@ def trigger_bootloader(port_name):
     time.sleep(0.005)
     port.close()
     return port
-
-
-def find_bootloader_drive():
-    # takes around 4 seconds for TCBOOT to register in /Volumes
-    retries = 7
-    while retries:
-        for d in uf2conv.get_drives():
-            if "TCBOOT" in d:
-                print("Bootloader Volume found")
-                return d
-        print("Searching bootloader...")
-        retries -= 1
-        time.sleep(1)
-    raise Exception ('Bootloader volume not found')
-
-
-def upload_sketch(sketch_file, drive):
-    with open(sketch_file, mode='rb') as f:
-        inpbuf = f.read()
-    if uf2conv.is_uf2(inpbuf):
-        outbuf = inpbuf
-    else:
-        outbuf = uf2conv.convert_to_uf2(inpbuf)
-        print("Converting to uf2, output size: %d, start address: 0x%x" %
-              (len(outbuf), uf2conv.appstartaddr))
-    print("Flashing %s (%s)" % (drive, uf2conv.board_id(drive)))
-    uf2conv.write_file(drive + "/NEW.UF2", outbuf)
 
 def upload_using_bossa(bin_file, port):
     # bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 modules/thermo-cycler/production/firmware/thermo-cycler-arduino.ino.bin
@@ -163,6 +146,9 @@ def assert_id_and_model(port, serial, model):
     assert device_info.get('model') == model, "Device model does not match"
 
 def main():
+    arg_parser = build_arg_parser()
+    args = arg_parser.parse_args()
+    firmware_file = args.fw_file
     print('\n')
     connected_port = None
     try:
@@ -181,7 +167,7 @@ def main():
         print('\nTriggering Bootloader..')
         trigger_bootloader(find_opentrons_port())
         print('\nUploading application..')
-        upload_using_bossa(FIRMWARE_FILE_PATH, find_opentrons_port(bootloader=True))
+        upload_using_bossa(firmware_file, find_opentrons_port(bootloader=True))
         print('\nConnecting to device and testing..')
         time.sleep(5)  # wait for it to boot up
         connected_port = connect_to_module(find_opentrons_port())
