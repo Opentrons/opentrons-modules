@@ -37,6 +37,7 @@ def find_opentrons_port(bootloader=False):
     while retries:
         for p in comports():
             if p.vid == OPENTRONS_VID:
+                print("Available: {}->\t(pid:{})\t(vid:{})".format(p.device, p.pid, p.vid))
                 if bootloader:
                     if p.pid != TC_BOOTLOADER_PID:
                         continue
@@ -73,8 +74,7 @@ def upload_using_bossa(bin_file, port):
     if "Verify successful" in res:
         return True
     elif proc.stderr:
-        print(proc.stderr)
-        return False
+        raise Exception("BOSSA error:{}".format(proc.stderr.decode()))
 
 def _user_submitted_barcode(max_length):
     print('\n\n-----------------')

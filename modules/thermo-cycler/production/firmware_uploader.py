@@ -36,6 +36,7 @@ def find_opentrons_port(bootloader=False):
     retries = 5
     while retries:
         for p in comports():
+            print("Available: {}->\t(pid:{})\t(vid:{})".format(p.device, p.pid, p.vid))
             if p.vid == OPENTRONS_VID:
                 if bootloader:
                     if p.pid != TC_BOOTLOADER_PID:
@@ -94,8 +95,7 @@ def upload_using_bossa(bin_file, port):
     if "Verify successful" in res:
         return True
     elif proc.stderr:
-        print(proc.stderr)
-        return False
+        raise Exception("BOSSA error:{}".format(proc.stderr.decode()))
 
 def main():
     arg_parser = build_arg_parser()
