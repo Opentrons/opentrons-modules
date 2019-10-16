@@ -3,36 +3,44 @@
 # - Write Serial number from scanner onto TC
 # - Verify written Serial number
 # - Upload production TC firmware
-
-
-# 1. Upload firmware:
-# -
-# - Open and close serial at 1200 baud
-# - Search /Volumes for TCBOOT
-# - Once found, Convert bin to uf2 (import uf2conv.py and use)
-# and flash uf2 file to TCBOOT
-
-# python uf2conv.py ../../../build/thermo-cycler/thermo-cycler-arduino.ino.bin
-# -f SAMD21 -d /Volumes/TCBOOT
-
+# NOT Compatible with UF2
+#
+# BOSSA: bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 thermo-cycler-arduino.ino.bin
+import os
+import sys
+import subprocess
 import uf2conv
 import serial
 import time
 from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 
-FIRMWARE_FILE_PATH = "firmware/thermo-cycler-arduino.ino.bin"
-EEPROM_WRITER_PATH = "firmware/eepromWriter.ino.bin"
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_FW_FILE_PATH = os.path.join(THIS_DIR, "firmware", "thermo-cycler-arduino.ino.bin")
+EEPROM_WRITER_PATH = os.path.join(THIS_DIR, "firmware", "eepromWriter.ino.bin")
 OPENTRONS_VID = 1240
+TC_BOOTLOADER_PID = 0xED12
 MAX_SERIAL_LEN = 16
 BAD_BARCODE_MESSAGE = 'Serial longer than expected -> {}'
 WRITE_FAIL_MESSAGE = 'Data not saved'
 
-def find_opentrons_port():
+def build_arg_parser():
+    arg_parser = ArgumentParser(
+        description="Thermocycler serial & firmware uploader")
+    arg_parser.add_argument("-F", "--fw_file", required=False,
+                            default=DEFAULT_FW_FILE_PATH,
+                            help='Firmware file (default: ..production/firmware/thermo-cycler-arduino.ino.bin)')
+    return arg_parser
+
+def find_opentrons_port(bootloader=False):
     retries = 5
     while retries:
         for p in comports():
             if p.vid == OPENTRONS_VID:
+                print("Available: {}->\t(pid:{})\t(vid:{})".format(p.device, p.pid, p.vid))
+                if bootloader:
+                    if p.pid != TC_BOOTLOADER_PID:
+                        continue
                 print("Port found:{}".format(p.device))
                 time.sleep(1)
                 return p.device
@@ -52,32 +60,21 @@ def trigger_bootloader(port_name):
     port.close()
     return port
 
-
-def find_bootloader_drive():
-    # takes around 4 seconds for TCBOOT to register in /Volumes
-    retries = 7
-    while retries:
-        for d in uf2conv.get_drives():
-            if "TCBOOT" in d:
-                print("Bootloader Volume found")
-                return d
-        print("Searching bootloader...")
-        retries -= 1
-        time.sleep(1)
-    raise Exception ('Bootloader volume not found')
-
-
-def upload_sketch(sketch_file, drive):
-    with open(sketch_file, mode='rb') as f:
-        inpbuf = f.read()
-    if uf2conv.is_uf2(inpbuf):
-        outbuf = inpbuf
+def upload_using_bossa(bin_file, port):
+    # bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 modules/thermo-cycler/production/firmware/thermo-cycler-arduino.ino.bin
+    if sys.platform == "linux" or sys.platform == "linux2":
+        bossa_cmd = './bossac'
     else:
-        outbuf = uf2conv.convert_to_uf2(inpbuf)
-        print("Converting to uf2, output size: %d, start address: 0x%x" %
-              (len(outbuf), uf2conv.appstartaddr))
-    print("Flashing %s (%s)" % (drive, uf2conv.board_id(drive)))
-    uf2conv.write_file(drive + "/NEW.UF2", outbuf)
+        bossa_cmd = 'bossac'
+    bossa_args = [bossa_cmd, '-p{}'.format(port), '-e', '-w', '-v', '-R', '--offset=0x2000', '{}'.format(bin_file)]
+    proc = subprocess.run(bossa_args, timeout=60, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE)
+    res = proc.stdout.decode()
+    print(res)
+    if "Verify successful" in res:
+        return True
+    elif proc.stderr:
+        raise Exception("BOSSA error:{}".format(proc.stderr.decode()))
 
 def _user_submitted_barcode(max_length):
     print('\n\n-----------------')
@@ -149,13 +146,16 @@ def assert_id_and_model(port, serial, model):
     assert device_info.get('model') == model, "Device model does not match"
 
 def main():
+    arg_parser = build_arg_parser()
+    args = arg_parser.parse_args()
+    firmware_file = args.fw_file
     print('\n')
     connected_port = None
     try:
         print('\nTrigerring Bootloader..')
         trigger_bootloader(find_opentrons_port())
         print('\nUploading EEPROM sketch..')
-        upload_sketch(EEPROM_WRITER_PATH, find_bootloader_drive())
+        upload_using_bossa(EEPROM_WRITER_PATH, find_opentrons_port(bootloader=True))
         print('\nAsking for barcode..')
         barcode = _user_submitted_barcode(MAX_SERIAL_LEN)
         model = _parse_model_from_barcode(barcode)
@@ -167,7 +167,7 @@ def main():
         print('\nTriggering Bootloader..')
         trigger_bootloader(find_opentrons_port())
         print('\nUploading application..')
-        upload_sketch(FIRMWARE_FILE_PATH, find_bootloader_drive())
+        upload_using_bossa(firmware_file, find_opentrons_port(bootloader=True))
         print('\nConnecting to device and testing..')
         time.sleep(5)  # wait for it to boot up
         connected_port = connect_to_module(find_opentrons_port())

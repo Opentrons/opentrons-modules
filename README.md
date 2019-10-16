@@ -43,9 +43,9 @@ This should implement the following:
 `https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json`
    - Go to _Tools->Boards_ and select _'Board Manager..'_. Search for and install the
    latest versions of the following:
-     - Arduino SAMD Boards
-     - Opentrons SAMD Boards
-     - Opentrons Modules Boards
+     - Arduino SAMD Boards version 1.6.21
+     - Opentrons SAMD Boards (Latest)
+     - Opentrons Modules Boards (Latest)
 3. Set up preferences:
 Go to _File->Preferences_ and change _'Sketchbook Location'_ to your `opentrons-modules` repository path
 

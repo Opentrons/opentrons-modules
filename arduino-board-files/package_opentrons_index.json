@@ -209,6 +209,51 @@
             }
           ],
           "name": "Opentrons Modules SAMD Boards"
+        },
+        {
+          "boards": [
+            {
+              "name": "Thermocycler"
+            }
+          ],
+          "category": "Opentrons",
+          "help": {
+            "online": "https://support.opentrons.com/ot-2"
+          },
+          "url": "https://s3.us-east-2.amazonaws.com/opentrons-modules/opentrons-samd-1.1.0.tar.bz2",
+          "checksum": "SHA-256:0198a3e56d00c5106002f2004be7318626f251a4567a80564ed438d23c09d6db",
+          "version": "1.1.0",
+          "size": "1112758",
+          "architecture": "samd",
+          "archiveFileName": "opentrons-samd-1.1.0.tar.bz2",
+          "toolsDependencies": [
+            {
+              "packager": "arduino",
+              "name": "arm-none-eabi-gcc",
+              "version": "4.8.3-2014q1"
+            },
+            {
+              "packager": "arduino",
+              "name": "bossac",
+              "version": "1.8.0-48-gb176eee"
+            },
+            {
+              "packager": "arduino",
+              "name": "openocd",
+              "version": "0.9.0-arduino"
+            },
+            {
+              "packager": "arduino",
+              "name": "CMSIS",
+              "version": "4.5.0"
+            },
+            {
+              "packager": "arduino",
+              "name": "CMSIS-Atmel",
+              "version": "1.2.0"
+            }
+          ],
+          "name": "Opentrons Modules SAMD Boards"
         }
       ],
       "tools": [

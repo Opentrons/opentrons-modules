@@ -1,1 +1,0 @@
-compiler.cpp.extra_flags=-DDUMMY_BOARD=false -DUSE_GCODES=true -DLID_WARNING=false -DHFQ_PWM=false -DOLD_PID_INTERVAL=true -DHW_VERSION=3 -DLID_TESTING=false -DRGBW_NEO=true
