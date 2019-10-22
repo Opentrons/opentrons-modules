@@ -342,6 +342,13 @@ void deactivate_all()
   tc_timer.reset();
 }
 
+void deactivate_plate()
+{
+  peltiers.disable();
+  target_temperature_plate = TEMPERATURE_ROOM;
+  master_set_a_target = false;
+  tc_timer.reset();
+}
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
@@ -520,6 +527,11 @@ void read_gcode()
             // This should calculate and change PID sample time and Ki
           }
           break;
+        case Gcode::get_pid_params:
+          gcode.response("P (left)", String(PID_left_pel.GetKp()));
+          gcode.response("I (left)", String(PID_left_pel.GetKi()));
+          gcode.response("D (left)", String(PID_left_pel.GetKd()));
+          break;
         case Gcode::edit_pid_params:
           if(master_set_a_target)
           {
@@ -540,6 +552,9 @@ void read_gcode()
             {
               current_plate_kd = gcode.popped_arg();
             }
+            PID_left_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
+            PID_center_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
+            PID_right_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
           }
           break;
         case Gcode::heatsink_fan_pwr_manual:
@@ -565,6 +580,9 @@ void read_gcode()
           break;
         case Gcode::deactivate_all:
           deactivate_all();
+          break;
+        case Gcode::deactivate_plate:
+          deactivate_plate();
           break;
         case Gcode::get_device_info:
           gcode.device_info_response(device_serial, device_model, FW_VERSION);
@@ -599,6 +617,19 @@ void read_gcode()
           gcode.response("a", String(const_a, 4));
           gcode.response("b", String(const_b, 4));
           gcode.response("c", String(const_c, 4));
+          break;
+        case Gcode::set_offset:
+          if (gcode.pop_arg('S'))
+          {
+            if (gcode.popped_arg() == 0)
+            {
+              use_offset = false;
+            }
+            else
+            {
+              use_offset = true;
+            }
+          }
           break;
         case Gcode::dfu:
           break;
@@ -802,7 +833,7 @@ void setup()
 
   check_saved_offsets();
   update_offset_constants();
-
+  use_offset = true;
   temp_probes.setup(THERMISTOR_VOLTAGE);
   temp_probes.update(ThermistorPair::right);
   temp_probes.update(ThermistorPair::center);
@@ -910,7 +941,7 @@ void temp_plot()
 /* Calculated thermistors offset */
 float thermistor_offset()
 {
-  if (target_temperature_plate > TEMPERATURE_ROOM)
+  if (use_offset && target_temperature_plate > TEMPERATURE_ROOM)
   {
     return (const_a * temp_probes.heat_sink_temperature()) +
             (const_b * target_temperature_plate) + const_c;

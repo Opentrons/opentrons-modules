@@ -36,6 +36,7 @@ float const_a;
 float const_b;
 float const_c;
 
+bool use_offset;
 /********** HEAT PAD **********/
 
 #if HW_VERSION >= 3

@@ -19,15 +19,18 @@
   GCODE_DEF(deactivate_lid_heating, M108),  \
   GCODE_DEF(set_plate_temp, M104),  \
   GCODE_DEF(get_plate_temp, M105),  \
+  GCODE_DEF(deactivate_plate, M14), \
   GCODE_DEF(set_led_override, M200),\
   GCODE_DEF(set_led, M210),         \
   GCODE_DEF(set_ramp_rate, M566),   \
+  GCODE_DEF(get_pid_params, M300),  \
   GCODE_DEF(edit_pid_params, M301), \
   GCODE_DEF(pause, M76),            \
   GCODE_DEF(deactivate_all, M18),   \
   GCODE_DEF(get_device_info, M115), \
   GCODE_DEF(set_offset_constants, M116), \
   GCODE_DEF(get_offset_constants, M117), \
+  GCODE_DEF(set_offset, M20), \
   GCODE_DEF(heatsink_fan_pwr_manual, M106), \
   GCODE_DEF(heatsink_fan_auto_on, M107),  \
   GCODE_DEF(dfu, dfu),              \
