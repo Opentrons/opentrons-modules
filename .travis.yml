@@ -8,7 +8,19 @@ install:
   - make setup
 
 script:
-  - make build
+  - make build TC_FW_VERSION=$TRAVIS_TAG
+
+deploy:
+  - provider: s3
+    access_key_id: $AWS_ACCESS_KEY_ID
+    secret_access_key: $AWS_SECRET_ACCESS_KEY
+    bucket: opentrons-modules-builds
+    region: us-east-2
+    skip_cleanup: true
+    local_dir: build/thermo-cycler
+    upload-dir: thermocycler-$TRAVIS_TAG-$TRAVIS_COMMIT-$TRAVIS_BRANCH
+    on:
+      all_branches: true
 
 notifications:
   email:

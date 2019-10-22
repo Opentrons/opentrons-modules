@@ -1,11 +1,11 @@
 # This script searches for a thermocycler port and uploads the pre-built .bin
-# from `/production/firmware`, or, a .bin/.uf2 file provided, to the module
+# from `/production/bin`, or, a .bin/.uf2 file provided, to the module
 #
 # Usage: `python firmware_uploader.py` or
 #        `python firmware_uploader.py -F my_firmware_file.bin`
 # Requires:
 #   - Thermocycler Sam-ba or uf2 bootloader for thermocycler
-#   - Firmware binary in `production/firmware/`
+#   - Firmware binary in `production/bin/`
 #     or path to binary/uf2 file added as argument `-F`
 #   - BOSSA cmdline tool- https://github.com/shumatech/BOSSA/releases (Tested with 1.9.1)
 
@@ -19,7 +19,7 @@ from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_FW_FILE_PATH = os.path.join(THIS_DIR, "firmware", "thermo-cycler-arduino.ino.bin")
+DEFAULT_FW_FILE_PATH = os.path.join(THIS_DIR, "bin", "thermo-cycler-arduino.ino.bin")
 OPENTRONS_VID = 1240
 TC_BOOTLOADER_PID = 0xED12
 MAX_SERIAL_LEN = 16
@@ -29,7 +29,7 @@ def build_arg_parser():
         description="Thermocycler firmware uploader")
     arg_parser.add_argument("-F", "--fw_file", required=False,
                             default=DEFAULT_FW_FILE_PATH,
-                            help='Firmware file (default: ..production/firmware/thermo-cycler-arduino.ino.bin)')
+                            help='Firmware file (default: ..production/bin/thermo-cycler-arduino.ino.bin)')
     return arg_parser
 
 def find_opentrons_port(bootloader=False):
@@ -82,9 +82,9 @@ def upload_uf2(uf2_file, drive):
     return True
 
 def upload_using_bossa(bin_file, port):
-    # bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 modules/thermo-cycler/production/firmware/thermo-cycler-arduino.ino.bin
+    # bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 modules/thermo-cycler/production/bin/thermo-cycler-arduino.ino.bin
     if sys.platform == "linux" or sys.platform == "linux2":
-        bossa_cmd = './bossac'
+        bossa_cmd = 'bossac'
     else:
         bossa_cmd = 'bossac'
     bossa_args = [bossa_cmd, '-p{}'.format(port), '-e', '-w', '-v', '-R', '--offset=0x2000', '{}'.format(bin_file)]
