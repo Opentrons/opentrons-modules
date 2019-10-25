@@ -19,7 +19,7 @@ PID PID_left_pel(
   &temperature_swing_left_pel,
   &target_temperature_plate,
   current_plate_kp, current_plate_ki, current_plate_kd,
-  P_ON_M,
+  P_ON_E,
   DIRECT
 );
 
@@ -29,7 +29,7 @@ PID PID_center_pel(
   &temperature_swing_center_pel,
   &target_temperature_plate,
   current_plate_kp, current_plate_ki, current_plate_kd,
-  P_ON_M,
+  P_ON_E,
   DIRECT
 );
 
@@ -39,7 +39,7 @@ PID PID_right_pel(
   &temperature_swing_right_pel,
   &target_temperature_plate,
   current_plate_kp, current_plate_ki, current_plate_kd,
-  P_ON_M,
+  P_ON_E,
   DIRECT
 );
 
@@ -528,9 +528,9 @@ void read_gcode()
           }
           break;
         case Gcode::get_pid_params:
-          gcode.response("P (left)", String(PID_left_pel.GetKp()));
-          gcode.response("I (left)", String(PID_left_pel.GetKi()));
-          gcode.response("D (left)", String(PID_left_pel.GetKd()));
+          gcode.response("P (left)", String(PID_left_pel.GetKp(), 4));
+          gcode.response("I (left)", String(PID_left_pel.GetKi(), 4));
+          gcode.response("D (left)", String(PID_left_pel.GetKd(), 4));
           break;
         case Gcode::edit_pid_params:
           if(master_set_a_target)
@@ -552,9 +552,9 @@ void read_gcode()
             {
               current_plate_kd = gcode.popped_arg();
             }
-            PID_left_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
-            PID_center_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
-            PID_right_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
+            PID_left_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_E);
+            PID_center_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_E);
+            PID_right_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_E);
           }
           break;
         case Gcode::heatsink_fan_pwr_manual:
@@ -860,15 +860,15 @@ void setup()
   heat_pad_off();
 
   PID_left_pel.SetSamplingMode(MANUAL);
-  PID_left_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
+  PID_left_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_E);
   PID_left_pel.SetMode(AUTOMATIC);
   PID_left_pel.SetOutputLimits(-1.0, 1.0);
   PID_center_pel.SetSamplingMode(MANUAL);
-  PID_center_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
+  PID_center_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_E);
   PID_center_pel.SetMode(AUTOMATIC);
   PID_center_pel.SetOutputLimits(-1.0, 1.0);
   PID_right_pel.SetSamplingMode(MANUAL);
-  PID_right_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_M);
+  PID_right_pel.SetTunings(current_plate_kp, current_plate_ki, current_plate_kd, P_ON_E);
   PID_right_pel.SetMode(AUTOMATIC);
   PID_right_pel.SetOutputLimits(-1.0, 1.0);
 
@@ -934,6 +934,8 @@ void temp_plot()
   Serial.print(temp_probes.back_right_temperature()); Serial.print("\t");
   Serial.print(temp_probes.heat_sink_temperature()); Serial.print("\t");
   Serial.print(temp_probes.cover_temperature()); Serial.print("\t");
+  // Serial.print(peltiers.pel[Peltier::pel_1].prev_val_a ); Serial.print("\t");
+  // Serial.print(peltiers.pel[Peltier::pel_1].prev_val_b ); Serial.print("\t");
   Serial.print(temp_probes.plate_temp_offset);
   Serial.println();
 }
