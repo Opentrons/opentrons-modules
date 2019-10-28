@@ -75,7 +75,7 @@ setup:
 	$(if $(NO_OPENTRONS_BOARDS), $(ARDUINO) --install-boards Opentrons:avr, @echo "Opentrons boards already installed")
 
 .PHONY: build
-build: build-magdeck build-tempdeck build-thermocycler build-tc-eeprom
+build: build-magdeck build-tempdeck build-thermocycler build-tc-eeprom clean
 
 TC_DIR := $(MODULES_DIR)/thermo-cycler
 TC_BUILD_DIR := $(BUILDS_DIR)/thermo-cycler
@@ -110,17 +110,20 @@ build-thermocycler:
 	-DRGBW_NEO=$(RGBW_NEO) -DTC_FW_VERSION=\"$(TC_FW_VERSION)\"" \
 	> $(ARDUINO15_LOC)/packages/Opentrons/hardware/samd/$(OPENTRONS_SAMD_BOARDS_VER)/platform.local.txt
 	$(ARDUINO) --verify --board Opentrons:samd:thermocycler_m0 $(TC_DIR)/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
-	mkdir -p $(TC_BUILD_DIR)/bin
-	cp $(BUILDS_DIR)/tmp/thermo-cycler-arduino.ino.bin $(TC_BUILD_DIR)/bin/
+	mkdir -p $(TC_BUILD_DIR)
+	cp $(BUILDS_DIR)/tmp/thermo-cycler-arduino.ino.bin $(TC_BUILD_DIR)
 	cp $(TC_DIR)/production/firmware_uploader.py $(TC_BUILD_DIR)
 
 .PHONY: build-tc-eeprom
 build-tc-eeprom:
 	$(ARDUINO) --verify --board Opentrons:samd:thermocycler_m0 $(TC_DIR)/production/eepromWriter/eepromWriter.ino --verbose-build
-	mkdir -p $(TC_BUILD_DIR)
-	mkdir -p $(TC_BUILD_DIR)/bin
-	cp $(BUILDS_DIR)/tmp/eepromWriter.ino.bin $(TC_BUILD_DIR)/bin/
-	cp $(TC_DIR)/production/serial_and_firmware_uploader.py $(TC_BUILD_DIR)
+	mkdir -p $(BUILDS_DIR)/tc_eeprom_writer/
+	cp $(BUILDS_DIR)/tmp/eepromWriter.ino.bin $(BUILDS_DIR)/tc_eeprom_writer/
+	cp $(TC_DIR)/production/serial_and_firmware_uploader.py $(BUILDS_DIR)/tc_eeprom_writer
+
+.PHONY: clean
+clean:
+	rm -rf $(BUILDS_DIR)/tmp
 
 .PHONY: teardown
 teardown:
