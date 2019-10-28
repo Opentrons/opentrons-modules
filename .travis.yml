@@ -5,7 +5,7 @@ cache:
     - ~/arduino_ide
 
 env:
-  - THIS_BUILD_TAG= `git describe --tag`
+  - THIS_BUILD_TAG=$(git describe --tags)
 
 install:
   - make setup
