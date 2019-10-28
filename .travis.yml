@@ -24,7 +24,7 @@ deploy:
     region: us-east-2
     skip_cleanup: true
     local_dir: build/
-    upload-dir: modules-$THIS_BUILD_TAG
+    upload-dir: modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
     on:
       all_branches: true
 
