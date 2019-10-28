@@ -1,11 +1,14 @@
 language: c
 
+git:
+  depth: false
+
 cache:
   directories:
     - ~/arduino_ide
 
 env:
-  - THIS_BUILD_TAG=$(git describe --tags)
+  - THIS_BUILD_TAG=`git describe --tags`
 
 install:
   - make setup
@@ -21,7 +24,7 @@ deploy:
     region: us-east-2
     skip_cleanup: true
     local_dir: build/
-    upload-dir: modules-$ARTIFACT_NAME
+    upload-dir: modules-$THIS_BUILD_TAG
     on:
       all_branches: true
 
