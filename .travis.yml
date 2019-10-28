@@ -4,14 +4,14 @@ cache:
   directories:
     - ~/arduino_ide
 
+env:
+  - THIS_BUILD_TAG= `git describe --tag`
+
 install:
   - make setup
 
 script:
-  - make build TC_FW_VERSION=$TRAVIS_TAG
-
-env:
-  - ARTIFACT_NAME= git describe --tag
+  - make build TC_FW_VERSION=$THIS_BUILD_TAG
 
 deploy:
   - provider: s3
