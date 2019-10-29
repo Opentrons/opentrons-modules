@@ -6,18 +6,17 @@
 # NOT Compatible with UF2
 #
 # BOSSA: bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 thermo-cycler-arduino.ino.bin
-import os
+from pathlib import Path
 import sys
 import subprocess
-import uf2conv
 import serial
 import time
 from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_FW_FILE_PATH = os.path.join(THIS_DIR, "bin", "thermo-cycler-arduino.ino.bin")
-EEPROM_WRITER_PATH = os.path.join(THIS_DIR, "bin", "eepromWriter.ino.bin")
+THIS_DIR = Path.cwd()
+DEFAULT_FW_FILE_PATH = THIS_DIR.resolve().parent.joinpath('thermo-cycler', 'thermo-cycler-arduino.ino.bin')
+EEPROM_WRITER_PATH = THIS_DIR.joinpath('eepromWriter.ino.bin')
 OPENTRONS_VID = 1240
 TC_BOOTLOADER_PID = 0xED12
 MAX_SERIAL_LEN = 16

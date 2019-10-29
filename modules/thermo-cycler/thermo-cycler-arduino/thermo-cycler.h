@@ -17,7 +17,7 @@
 #ifdef TC_FW_VERSION
   #define FW_VERSION String(TC_FW_VERSION)
 #else
-  #define FW_VERSION "v1.0.3-beta"
+  #define FW_VERSION "unknown"
 #endif
 
 /********* GCODE *********/
