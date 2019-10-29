@@ -6,18 +6,17 @@
 # NOT Compatible with UF2
 #
 # BOSSA: bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 thermo-cycler-arduino.ino.bin
-import os
+from pathlib import Path
 import sys
 import subprocess
-import uf2conv
 import serial
 import time
 from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_FW_FILE_PATH = os.path.join(THIS_DIR, "firmware", "thermo-cycler-arduino.ino.bin")
-EEPROM_WRITER_PATH = os.path.join(THIS_DIR, "firmware", "eepromWriter.ino.bin")
+THIS_DIR = Path.cwd()
+DEFAULT_FW_FILE_PATH = THIS_DIR.resolve().parent.joinpath('thermo-cycler', 'thermo-cycler-arduino.ino.bin')
+EEPROM_WRITER_PATH = THIS_DIR.joinpath('eepromWriter.ino.bin')
 OPENTRONS_VID = 1240
 TC_BOOTLOADER_PID = 0xED12
 MAX_SERIAL_LEN = 16
@@ -29,7 +28,7 @@ def build_arg_parser():
         description="Thermocycler serial & firmware uploader")
     arg_parser.add_argument("-F", "--fw_file", required=False,
                             default=DEFAULT_FW_FILE_PATH,
-                            help='Firmware file (default: ..production/firmware/thermo-cycler-arduino.ino.bin)')
+                            help='Firmware file (default: ..production/bin/thermo-cycler-arduino.ino.bin)')
     return arg_parser
 
 def find_opentrons_port(bootloader=False):
@@ -61,7 +60,7 @@ def trigger_bootloader(port_name):
     return port
 
 def upload_using_bossa(bin_file, port):
-    # bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 modules/thermo-cycler/production/firmware/thermo-cycler-arduino.ino.bin
+    # bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 modules/thermo-cycler/production/bin/thermo-cycler-arduino.ino.bin
     if sys.platform == "linux" or sys.platform == "linux2":
         bossa_cmd = './bossac'
     else:

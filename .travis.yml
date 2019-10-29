@@ -1,14 +1,32 @@
 language: c
 
+git:
+  depth: false
+
 cache:
   directories:
     - ~/arduino_ide
+
+env:
+  - THIS_BUILD_TAG=`git describe --tags`
 
 install:
   - make setup
 
 script:
-  - make build
+  - make build TC_FW_VERSION=$THIS_BUILD_TAG
+
+deploy:
+  - provider: s3
+    access_key_id: $AWS_ACCESS_KEY_ID
+    secret_access_key: $AWS_SECRET_ACCESS_KEY
+    bucket: opentrons-modules-builds
+    region: us-east-2
+    skip_cleanup: true
+    local_dir: build/
+    upload-dir: modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
+    on:
+      all_branches: true
 
 notifications:
   email:
