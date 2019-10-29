@@ -324,7 +324,7 @@ void update_fans_from_state()
         // Fan speed proportional to temperature
         heatsink_fan.set_percentage(HEATSINK_P_CONSTANT * temp_probes.heat_sink_temperature() / 100.0);
       }
-      else if(temp_probes.heat_sink_temperature() < HEATSINK_FAN_OFF_TEMP)
+      else
       {
         heatsink_fan.disable();
       }
