@@ -34,7 +34,7 @@ This should implement the following:
 
 **Windows setup:**
 
-(Windows setup is not implement in `make` yet. So we will have to install the required files manually)
+(Windows setup is not implemented in `make` yet. So we will have to install the required files manually)
 
 1. Install Arduino IDE (v1.8.5) from https://www.arduino.cc/en/Main/OldSoftwareReleases#previous
 2. Install board files:
@@ -60,12 +60,13 @@ eg., `make build-tempdeck` for tempdeck, `make build-thermocycler` for thermocyc
 The latest build files would be saved in `/opentrons-modules/build/tmp`.
 Also, latest .hex/.bin files for the last build of a particular board will be saved
 in the build directory under its module name eg. `../build/thermo-cycler/thermo-cycler-arduino.ino.bin`.
+For thermocycler binaries, a firmware uploader script will also be copied to the directory for easy upload of the binary.
 
 **Windows:**
 Use Arduino IDE to compile:
 Select the correct board file for your project from _Tools->board_ (Opentrons Thermocycler M0/ Opentrons Magdeck/ Opentrons Tempdeck)
 
-* NOTE: For Opentrons Thermocycler M0, you will have to set the appropriate flags in the `platform.local.txt` file: Find this file in your Arduino15 folder at `../packages/Opentrons/hardware/samd/1.0.1`. Paste this line in the file above: `compiler.cpp.extra_flags=-DLID_WARNING=false -DHFQ_PWM=false -DOLD_PID_INTERVAL=true -DHW_VERSION=3 -DLID_TESTING=false -DRGBW_NEO=true` (set appropriate flag values)
+* NOTE: For Opentrons Thermocycler M0, you will have to set the appropriate flags in the `platform.local.txt` file: Find this file in your Arduino15 folder- a hidden folder usually located in C://Users/username/appData/Local on Windows. You will find the preferences file in `..Arduino15/packages/Opentrons/hardware/samd/1.0.1`. Paste this line in the file above: `compiler.cpp.extra_flags=-DLID_WARNING=false -DHFQ_PWM=false -DOLD_PID_INTERVAL=true -DHW_VERSION=4 -DLID_TESTING=false -DRGBW_NEO=true` (set appropriate flag values)
 
 Then select _Sketch->Compile_.
 
@@ -80,3 +81,5 @@ Use the Arduino IDE installed to upload the firmware file:
 
 Open the `/modules/.../<file_name>.ino` file in Arduino, select the appropriate board from _Tools->board_,
  select the correct port from _Tools->Port_. Select Upload or _Sketch->Upload_
+
+* NOTE: For Thermocycler, you can also use the `firmware_uploader.py` script in thermo-cycler/production to upload the binary.
