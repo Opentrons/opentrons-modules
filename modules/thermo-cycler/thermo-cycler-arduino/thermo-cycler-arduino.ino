@@ -1012,7 +1012,7 @@ void loop()
     deactivate_all();
   }
   temp_safety_check();
-  // temp_plot();
+  temp_plot();
   lid.check_switches();
   #if LID_WARNING
   // TODO: Confirm if lid warning is required at all
