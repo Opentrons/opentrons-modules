@@ -15,7 +15,7 @@ if __name__ == '__main__':
     parser = optparse.OptionParser(usage='usage: %prog [options] ')
     parser.add_option("--time", dest = "time", type = "int",default = 15, help = "time to run")
     parser.add_option("--target", dest="target", type = float, default = 0, help ="target temp")
-    parser.add_option("-p", "--port", dest = "port", type = "str", default = 'COM9', help = "thermometer port")
+    parser.add_option("-p", "--port", dest = "port", type = "str", default = 'COM11', help = "thermometer port")
     (options, args) = parser.parse_args(args = None, values = None)
 
     #Establish  thermometers
@@ -24,7 +24,7 @@ if __name__ == '__main__':
     thermometer_H1.setup()
     #thermometer_H1.temp_read()
     #Open CSV file with corresponding
-    filename = "results/GeneAmp_PCR_40C_to60C_%s_target_%sC.csv"%(datetime.now().strftime("%m-%d-%y_%H-%M"), 'VOL50uL')
+    filename = "results/OT_PCR_70C-to-72C_P30I20D0_%s_target_%sC.csv"%(datetime.now().strftime("%m-%d-%y_%H-%M"), 'VOL50uL')
     print(filename)
     count = 0
     with open('{}.csv'.format(filename), 'w', newline='') as data_file:
