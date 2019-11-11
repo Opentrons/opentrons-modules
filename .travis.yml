@@ -16,6 +16,13 @@ install:
 script:
   - make build TC_FW_VERSION=$THIS_BUILD_TAG
 
+before_deploy:
+  - make clean
+  - mkdir modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
+  - cp -r ./build modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
+  - zip -r modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH.zip modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
+  - rm -rf modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
+
 deploy:
   - provider: s3
     access_key_id: $AWS_ACCESS_KEY_ID
@@ -23,8 +30,7 @@ deploy:
     bucket: opentrons-modules-builds
     region: us-east-2
     skip_cleanup: true
-    local_dir: build/
-    upload-dir: modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
+    file: modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH.zip
     on:
       all_branches: true
 

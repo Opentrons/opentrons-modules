@@ -17,8 +17,10 @@ from argparse import ArgumentParser
 THIS_DIR = Path.cwd()
 DEFAULT_FW_FILE_PATH = THIS_DIR.resolve().parent.joinpath('thermo-cycler', 'thermo-cycler-arduino.ino.bin')
 EEPROM_WRITER_PATH = THIS_DIR.joinpath('eepromWriter.ino.bin')
-OPENTRONS_VID = 1240
-TC_BOOTLOADER_PID = 0xED12
+OPENTRONS_VID       = 1240  # 0x04D8
+ADAFRUIT_VID        = 9114  # 0x239A
+TC_BOOTLOADER_PID   = 60690 # 0xED12
+ADAFRUIT_BOOTLD_PID = 11    # 0x000B
 MAX_SERIAL_LEN = 16
 BAD_BARCODE_MESSAGE = 'Serial longer than expected -> {}'
 WRITE_FAIL_MESSAGE = 'Data not saved'

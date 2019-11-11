@@ -9,7 +9,7 @@ LIBRARIES_DIR := libraries
 MODULES_DIR := modules
 INO_DIR := $(HOME)/arduino_ide
 
-ARDUINO_VERSION ?= 1.8.5
+ARDUINO_VERSION ?= 1.8.10
 ARDUINO_SAMD_VER ?= 1.6.21
 OPENTRONS_BOARDS_VER ?= 1.2.0
 OPENTRONS_SAMD_BOARDS_VER ?= 1.1.0
@@ -70,17 +70,17 @@ setup:
 	echo -n "Arduino SAMD: "
 	$(if $(NO_ARDUINO_SAMD), $(ARDUINO) --install-boards arduino:samd:$(ARDUINO_SAMD_VER), @echo "Arduino SAMD already installed")
 	echo -n "Opentrons SAMD: "
-	$(if $(NO_OPENTRONS_SAMD_BOARDS), $(ARDUINO) --install-boards Opentrons:samd, @echo "Opentrons SAMD already installed")
+	$(if $(NO_OPENTRONS_SAMD_BOARDS), $(ARDUINO) --install-boards Opentrons:samd:$(OPENTRONS_SAMD_BOARDS_VER), @echo "Opentrons SAMD already installed")
 	echo -n "Opentrons modules: "
 	$(if $(NO_OPENTRONS_BOARDS), $(ARDUINO) --install-boards Opentrons:avr, @echo "Opentrons boards already installed")
 
 .PHONY: build
-build: build-magdeck build-tempdeck build-thermocycler build-tc-eeprom clean
+build: build-magdeck build-tempdeck build-thermocycler build-tc-eeprom
 
-MAGDECK_BUILD_DIR := $(BUILDS_DIR)/mag-deck/
-TEMPDECK_BUILD_DIR := $(BUILDS_DIR)/temp-deck/
+MAGDECK_BUILD_DIR := $(BUILDS_DIR)/mag-deck
+TEMPDECK_BUILD_DIR := $(BUILDS_DIR)/temp-deck
 TC_BUILD_DIR := $(BUILDS_DIR)/thermo-cycler
-TC_EEPROM_WR_BUILD_DIR := $(BUILDS_DIR)/tc-eeprom-writer/
+TC_EEPROM_WR_BUILD_DIR := $(BUILDS_DIR)/tc-eeprom-writer
 
 TC_FW_VERSION ?= unknown
 DUMMY_BOARD ?= false

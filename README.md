@@ -36,7 +36,7 @@ This should implement the following:
 
 (Windows setup is not implemented in `make` yet. So we will have to install the required files manually)
 
-1. Install Arduino IDE (v1.8.5) from https://www.arduino.cc/en/Main/OldSoftwareReleases#previous
+1. Install Arduino IDE (v1.8.10) from https://www.arduino.cc/en/Main/Software
 2. Install board files:
    - Go to _File->Preferences_ and in _'Additional Boards Manager URLs'_ paste this
    url (if you already have other boards' urls then separate these with commas):
