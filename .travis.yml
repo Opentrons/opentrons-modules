@@ -22,6 +22,8 @@ before_deploy:
   - cp -r ./build modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
   - zip -r modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH.zip modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
   - rm -rf modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
+  - mkdir dist
+  - mv modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH.zip ./dist
 
 deploy:
   - provider: s3
@@ -30,7 +32,8 @@ deploy:
     bucket: opentrons-modules-builds
     region: us-east-2
     skip_cleanup: true
-    file: modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH.zip
+    local_dir: ./dist
+    upload_dir: modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
     on:
       all_branches: true
 
