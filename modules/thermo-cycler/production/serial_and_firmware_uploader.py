@@ -6,7 +6,7 @@
 # NOT Compatible with UF2
 #
 # BOSSA: bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 thermo-cycler-arduino.ino.bin
-from pathlib import Path
+from pathlib import PurePath
 import sys
 import subprocess
 import serial
@@ -14,8 +14,8 @@ import time
 from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 
-THIS_DIR = Path.cwd()
-DEFAULT_FW_FILE_PATH = THIS_DIR.resolve().parent.joinpath('thermo-cycler', 'thermo-cycler-arduino.ino.bin')
+THIS_DIR = PurePath(__file__).parent
+DEFAULT_FW_FILE_PATH = THIS_DIR.parent.joinpath('thermo-cycler', 'thermo-cycler-arduino.ino.bin')
 EEPROM_WRITER_PATH = THIS_DIR.joinpath('eepromWriter.ino.bin')
 OPENTRONS_VID       = 1240  # 0x04D8
 ADAFRUIT_VID        = 9114  # 0x239A
@@ -30,7 +30,7 @@ def build_arg_parser():
         description="Thermocycler serial & firmware uploader")
     arg_parser.add_argument("-F", "--fw_file", required=False,
                             default=DEFAULT_FW_FILE_PATH,
-                            help='Firmware file (default: ..production/bin/thermo-cycler-arduino.ino.bin)')
+                            help='Firmware file (default: ../thermo-cycler/thermo-cycler-arduino.ino.bin)')
     return arg_parser
 
 def find_opentrons_port(bootloader=False):
@@ -151,6 +151,8 @@ def main():
     args = arg_parser.parse_args()
     firmware_file = args.fw_file
     print('\n')
+    print("Firmware file: {}".format(firmware_file))
+    print("Eeprom writer file: {}".format(EEPROM_WRITER_PATH))
     connected_port = None
     try:
         print('\nTrigerring Bootloader..')
