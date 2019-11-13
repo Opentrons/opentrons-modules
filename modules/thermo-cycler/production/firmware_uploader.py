@@ -19,10 +19,10 @@ from argparse import ArgumentParser
 
 THIS_DIR = PurePath(__file__).parent
 DEFAULT_FW_FILE_PATH = THIS_DIR.joinpath('thermo-cycler-arduino.ino.bin')
-OPENTRONS_VID       = 1240  # 0x04D8
-ADAFRUIT_VID        = 9114  # 0x239A
-TC_BOOTLOADER_PID   = 60690 # 0xED12
-ADAFRUIT_BOOTLD_PID = 11    # 0x000B
+OPENTRONS_VID       = 0x04d8
+ADAFRUIT_VID        = 0x239a
+TC_BOOTLOADER_PID   = 0xed12
+ADAFRUIT_BOOTLD_PID = 0x000b
 MAX_SERIAL_LEN = 16
 
 def build_arg_parser():
@@ -38,10 +38,10 @@ def find_opentrons_port(bootloader=False):
     retries = 5
     while retries:
         for p in comports():
-            if p.vid == OPENTRONS_VID or p.vid == ADAFRUIT_VID:
-                print("Available: {}->\t(pid:{})\t(vid:{})".format(p.device, p.pid, p.vid))
+            if p.vid in (OPENTRONS_VID, ADAFRUIT_VID):
+                print("Available: {0}->\t(pid:{1:#x})\t(vid:{2:#x})".format(p.device, p.pid, p.vid))
                 if bootloader:
-                    if p.pid != TC_BOOTLOADER_PID and p.pid != ADAFRUIT_BOOTLD_PID:
+                    if p.pid not in (TC_BOOTLOADER_PID, ADAFRUIT_BOOTLD_PID):
                         continue
                 print("Port found:{}".format(p.device))
                 if p.pid == ADAFRUIT_BOOTLD_PID:
