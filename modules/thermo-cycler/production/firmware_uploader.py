@@ -9,7 +9,7 @@
 #     or path to binary/uf2 file added as argument `-F`
 #   - BOSSA cmdline tool- https://github.com/shumatech/BOSSA/releases (Tested with 1.9.1)
 
-from pathlib import Path
+from pathlib import PurePath
 import sys
 import serial
 import time
@@ -17,10 +17,12 @@ import subprocess
 from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 
-THIS_DIR = Path.cwd()
+THIS_DIR = PurePath(__file__).parent
 DEFAULT_FW_FILE_PATH = THIS_DIR.joinpath('thermo-cycler-arduino.ino.bin')
-OPENTRONS_VID = 1240
-TC_BOOTLOADER_PID = 0xED12
+OPENTRONS_VID       = 0x04d8
+ADAFRUIT_VID        = 0x239a
+TC_BOOTLOADER_PID   = 0xed12
+ADAFRUIT_BOOTLD_PID = 0x000b
 MAX_SERIAL_LEN = 16
 
 def build_arg_parser():
@@ -28,19 +30,23 @@ def build_arg_parser():
         description="Thermocycler firmware uploader")
     arg_parser.add_argument("-F", "--fw_file", required=False,
                             default=DEFAULT_FW_FILE_PATH,
-                            help='Firmware file (default: ..production/bin/thermo-cycler-arduino.ino.bin)')
+                            help='Firmware file (default: thermo-cycler-arduino.ino.bin '
+                                 'located in same dir as uploader)')
     return arg_parser
 
 def find_opentrons_port(bootloader=False):
     retries = 5
     while retries:
         for p in comports():
-            print("Available: {}->\t(pid:{})\t(vid:{})".format(p.device, p.pid, p.vid))
-            if p.vid == OPENTRONS_VID:
+            if p.vid in (OPENTRONS_VID, ADAFRUIT_VID):
+                print("Available: {0}->\t(pid:{1:#x})\t(vid:{2:#x})".format(p.device, p.pid, p.vid))
                 if bootloader:
-                    if p.pid != TC_BOOTLOADER_PID:
+                    if p.pid not in (TC_BOOTLOADER_PID, ADAFRUIT_BOOTLD_PID):
                         continue
                 print("Port found:{}".format(p.device))
+                if p.pid == ADAFRUIT_BOOTLD_PID:
+                    print("--- WARNING!! : Uploading with Adafruit bootloader."
+                          " Please update to TC bootloader ---")
                 time.sleep(1)
                 return p.device
         retries -= 1
@@ -80,6 +86,7 @@ def main():
     args = arg_parser.parse_args()
     firmware_file = args.fw_file
     print('\n')
+    print("FW file: {}".format(firmware_file))
     connected_port = None
     try:
         print('\nTrigerring Bootloader..')

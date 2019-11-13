@@ -6,7 +6,7 @@
 # NOT Compatible with UF2
 #
 # BOSSA: bossac -p/dev/cu.usbmodem14101 -e -w -v -R --offset=0x2000 thermo-cycler-arduino.ino.bin
-from pathlib import Path
+from pathlib import PurePath
 import sys
 import subprocess
 import serial
@@ -14,11 +14,13 @@ import time
 from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 
-THIS_DIR = Path.cwd()
-DEFAULT_FW_FILE_PATH = THIS_DIR.resolve().parent.joinpath('thermo-cycler', 'thermo-cycler-arduino.ino.bin')
+THIS_DIR = PurePath(__file__).parent
+DEFAULT_FW_FILE_PATH = THIS_DIR.parent.joinpath('thermo-cycler', 'thermo-cycler-arduino.ino.bin')
 EEPROM_WRITER_PATH = THIS_DIR.joinpath('eepromWriter.ino.bin')
-OPENTRONS_VID = 1240
-TC_BOOTLOADER_PID = 0xED12
+OPENTRONS_VID       = 0x04d8
+ADAFRUIT_VID        = 0x239a
+TC_BOOTLOADER_PID   = 0xed12
+ADAFRUIT_BOOTLD_PID = 0x000b
 MAX_SERIAL_LEN = 16
 BAD_BARCODE_MESSAGE = 'Serial longer than expected -> {}'
 WRITE_FAIL_MESSAGE = 'Data not saved'
@@ -28,7 +30,7 @@ def build_arg_parser():
         description="Thermocycler serial & firmware uploader")
     arg_parser.add_argument("-F", "--fw_file", required=False,
                             default=DEFAULT_FW_FILE_PATH,
-                            help='Firmware file (default: ..production/bin/thermo-cycler-arduino.ino.bin)')
+                            help='Firmware file (default: ../thermo-cycler/thermo-cycler-arduino.ino.bin)')
     return arg_parser
 
 def find_opentrons_port(bootloader=False):
@@ -36,7 +38,7 @@ def find_opentrons_port(bootloader=False):
     while retries:
         for p in comports():
             if p.vid == OPENTRONS_VID:
-                print("Available: {}->\t(pid:{})\t(vid:{})".format(p.device, p.pid, p.vid))
+                print("Available: {0}->\t(pid:{1:#x})\t(vid:{2:#x})".format(p.device, p.pid, p.vid))
                 if bootloader:
                     if p.pid != TC_BOOTLOADER_PID:
                         continue
@@ -149,6 +151,8 @@ def main():
     args = arg_parser.parse_args()
     firmware_file = args.fw_file
     print('\n')
+    print("Firmware file: {}".format(firmware_file))
+    print("Eeprom writer file: {}".format(EEPROM_WRITER_PATH))
     connected_port = None
     try:
         print('\nTrigerring Bootloader..')
