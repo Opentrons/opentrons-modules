@@ -121,11 +121,8 @@ double current_heatsink_temp;
 #define PID_FAR_AWAY_THRESH     10
 #define TARGET_TEMP_TOLERANCE   1.5   // Degree Celsius
 
-// TODO: remove once vol<->overshoot table is finalized
-#define PLATE_OVERSHOOT_50uL    1.8   // Degree Celsius
-#define PLATE_UNDERSHOOT_50uL   1.6   // Degree Celsius
 #define OVERSHOOT_DURATION      10000  // millisec
-
+#define DEFAULT_VOLUME          25     // uL
 double current_plate_kp = PID_KP_PLATE_UP;
 double current_plate_ki = PID_KI_PLATE_UP;
 double current_plate_kd = PID_KD_PLATE_UP;
@@ -138,6 +135,7 @@ double this_step_target_temp = TEMPERATURE_ROOM;
 double temperature_swing_plate = 0.5;
 double target_temperature_plate = TEMPERATURE_ROOM;
 double current_temperature_plate = TEMPERATURE_ROOM;
+uint16_t current_volume = DEFAULT_VOLUME;
 
 double testing_offset_temp = target_temperature_plate;
 double current_left_pel_temp = TEMPERATURE_ROOM;

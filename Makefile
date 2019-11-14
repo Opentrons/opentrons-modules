@@ -91,6 +91,7 @@ OLD_PID_INTERVAL ?= true
 HW_VERSION ?= 4
 LID_TESTING ?= false
 RGBW_NEO ?= true
+VOLUME_DEPENDENCY ?= true
 
 .PHONY: build-magdeck
 build-magdeck:
@@ -110,7 +111,8 @@ build-thermocycler:
 	-DUSE_GCODES=$(USE_GCODES) -DLID_WARNING=$(LID_WARNING) \
 	-DHFQ_PWM=$(HFQ_PWM) -DOLD_PID_INTERVAL=$(OLD_PID_INTERVAL) \
 	-DHW_VERSION=$(HW_VERSION) -DLID_TESTING=$(LID_TESTING) \
-	-DRGBW_NEO=$(RGBW_NEO) -DTC_FW_VERSION=\"$(TC_FW_VERSION)\"" \
+	-DRGBW_NEO=$(RGBW_NEO) -DVOLUME_DEPENDENCY=$(VOLUME_DEPENDENCY) \
+	-DTC_FW_VERSION=\"$(TC_FW_VERSION)\"" \
 	> $(ARDUINO15_LOC)/packages/Opentrons/hardware/samd/$(OPENTRONS_SAMD_BOARDS_VER)/platform.local.txt
 	$(ARDUINO) --verify --board Opentrons:samd:thermocycler_m0 $(MODULES_DIR)/thermo-cycler/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
 	mkdir -p $(TC_BUILD_DIR)

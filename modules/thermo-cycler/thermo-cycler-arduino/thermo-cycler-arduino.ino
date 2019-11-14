@@ -543,16 +543,17 @@ void read_gcode()
             gcode.response("ERROR", "Arg error");
             break;
           }
-        #if VOLUME == 50
+        #if VOLUME_DEPENDENCY
           this_step_target_temp = gcode.popped_arg();
-          if (this_step_target_temp >= current_temperature_plate)
+          if (gcode.pop_arg('V'))
           {
-            target_temperature_plate = this_step_target_temp + PLATE_OVERSHOOT_50uL;
+            current_volume = gcode.popped_arg();
           }
           else
           {
-            target_temperature_plate = this_step_target_temp - PLATE_UNDERSHOOT_50uL;
+            current_volume = DEFAULT_VOLUME;
           }
+          target_temperature_plate = this_step_target_temp + plate_overshoot();
         #else
           target_temperature_plate = gcode.popped_arg();
         #endif
@@ -1114,6 +1115,18 @@ bool crossed_true_target()
   }
 }
 
+double plate_overshoot()
+{
+  if (this_step_target_temp >= current_temperature_plate)
+  {
+    return (0.0105 * current_volume + 1.0869);
+  }
+  else
+  {
+    return -1 * (0.0133 * current_volume + 0.4302);
+  }
+}
+
 void adjust_target_for_volume()
 {
   if (just_changed_temp)
@@ -1146,7 +1159,7 @@ void adjust_target_for_volume()
 void loop()
 {
   timeStamp = micros();
-#if VOLUME == 50
+#if VOLUME_DEPENDENCY
   adjust_target_for_volume();
 #endif
   therm_pid_peltier_update();
