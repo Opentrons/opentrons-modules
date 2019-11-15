@@ -544,6 +544,7 @@ void read_gcode()
             break;
           }
         #if VOLUME_DEPENDENCY
+          // `this_step_target_temp`: The target temperature set by user
           this_step_target_temp = gcode.popped_arg();
           if (gcode.pop_arg('V'))
           {
@@ -553,6 +554,12 @@ void read_gcode()
           {
             current_volume = DEFAULT_VOLUME;
           }
+          // `target_temperature_plate`: The target temperature the plate will
+          //  go to in order to compensate for thermal lag. This will basically
+          //  amount to inflated targets (overshoots) for a Kt amount of time after
+          //  the target is set.
+          //  It will return to `this_step_target_temp` after Kt seconds or
+          //  once the well temperatures catch up with the peltiers
           target_temperature_plate = this_step_target_temp + plate_overshoot();
         #else
           target_temperature_plate = gcode.popped_arg();
@@ -569,7 +576,7 @@ void read_gcode()
         case Gcode::get_plate_temp:
           if(master_set_a_target)
           {
-            gcode.targetting_temperature_response(target_temperature_plate,
+            gcode.targetting_temperature_response(this_step_target_temp,
             current_temperature_plate, tc_timer.time_left());
           }
           else
@@ -1174,7 +1181,7 @@ void loop()
     deactivate_all();
   }
   temp_safety_check();
-  temp_plot();
+  // temp_plot();
   lid.check_switches();
   #if LID_WARNING
   // TODO: Confirm if lid warning is required at all
@@ -1192,7 +1199,10 @@ void loop()
 
   if (master_set_a_target && tc_timer.status() == Timer_status::idle && is_at_target())
   {
-    tc_timer.start();
+    if (!just_changed_temp)
+    {
+      tc_timer.start();
+    }
   }
   tc_timer.update();
   update_cover_from_pid();
