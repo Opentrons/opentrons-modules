@@ -116,6 +116,7 @@ bool Eeprom::set_offset_constant(OffsetConst constant, float val)
     {
       Serial.print("\nError: Failed to write to address:");
       Serial.println(byte(addr+i));
+      pinMode(WP_PIN, INPUT);
       return false; // failed
     }
   }
