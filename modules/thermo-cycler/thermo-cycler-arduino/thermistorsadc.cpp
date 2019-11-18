@@ -1,6 +1,8 @@
 #include "thermistorsadc.h"
 
-ThermistorsADC::ThermistorsADC() {}
+ThermistorsADC::ThermistorsADC() {
+  plate_temp_offset = 0;
+}
 
 void ThermistorsADC::setup(float voltage) {
   adc_a = new Adafruit_ADS1115(ADDRESS_A);

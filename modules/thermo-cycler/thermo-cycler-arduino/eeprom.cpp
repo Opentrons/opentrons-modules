@@ -105,12 +105,17 @@ bool Eeprom::set_offset_constant(OffsetConst constant, float val)
     case OffsetConst::C:
       addr = C_LOC;
       break;
+    default:
+      Serial.println("\nError: No constant name provided");
+      return false;
   }
   _erase_eeprom_section(addr, uint8_t(sizeof(this_const.f_val)));
   for (uint8_t i = 0; i < sizeof(this_const.f_val); i++)
   {
     if(!_write_char(byte(addr+i), byte(this_const.b_val[i])))
     {
+      Serial.print("\nError: Failed to write to address:");
+      Serial.println(byte(addr+i));
       return false; // failed
     }
   }
@@ -123,7 +128,8 @@ bool Eeprom::_erase_eeprom_section(uint8_t addr, uint8_t sec_len)
   {
     if(!_write_char(byte(addr+i), byte(0xff)))  // erasing = writing 0xffh
     {
-      Serial.println("\nfailed to erase section");
+      Serial.print("\nError: Failed to erase at address:");
+      Serial.println(byte(addr+i));
       return false;
     }
   }
@@ -145,6 +151,9 @@ float Eeprom::get_offset_constant(OffsetConst constant)
     case OffsetConst::C:
       addr = C_LOC;
       break;
+    default:
+      Serial.println("\nError: No constant name provided");
+      return false;
   }
   for (uint8_t i = 0; i < sizeof(this_const.f_val); i++)
   {

@@ -26,9 +26,9 @@
 #define THERMISTOR_VOLTAGE 1.5
 
 /* Thermistor offset values */
-/* y = ax1 + bx2 + c
+/* y = Ax1 + Bx2 + C
  * y: offset to plate temp
- * a, b, c: constants
+ * A, B, C: constants
  * x1: current heatsink temp
  * x2: target plate temp
  */
@@ -89,6 +89,18 @@ double current_heatsink_temp;
 #define HEATSINK_FAN_HI_TEMP_3    75
 #define HEATSINK_FAN_OFF_TEMP     36
 #define PELTIER_TEMP_DELTA        2
+
+/****** OVERSHOOT EQUATION ******/
+// y = mx + c
+// y : overshoot
+// m : constant (slope)
+// x : volume (uL)
+// c : constant
+ 
+#define POS_OVERSHOOT_M 0.0105
+#define POS_OVERSHOOT_C 1.0869
+#define NEG_OVERSHOOT_M 0.0133
+#define NEG_OVERSHOOT_C 0.4302
 
 /********* PID: PLATE PELTIERS *********/
 // NOTE: temp_probes.update takes 136-137ms while rest of the loop takes 0-1ms.

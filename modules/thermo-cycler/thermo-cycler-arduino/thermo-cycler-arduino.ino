@@ -258,14 +258,17 @@ void update_cover_from_pid()
  *  We switch between constant fan power and PID controlled power based on certain conditions:
  *  1. When ramping down to target temp that's less than current temp, always
  *     turn fan ON at FAN_PWR_RAMPING_DOWN power (regardless of target temp)
- *  2. When not ramping dwn, if target_temp < room temp, enable PID control to
+ *  2. fans_for_cold_target:
+ *     When not ramping dwn, if target_temp < room temp, enable PID control to
  *     Keep heatsink_temp < HEATSINK_FAN_HI_TEMP_1. Use Kp, Ki, Kd to achieve this.
- *  3. When not ramping dwn, if target_temp > HEATSINK_FAN_MED_TEMP:
+ *  3. fans_for_hot_target:
+ *     When not ramping dwn, if target_temp > HEATSINK_FAN_MED_TEMP:
  *     - if heatsink_temp is 2 degrees less than target then set fan to FAN_POWER_LOW.
  *     - else, use PID to bring heatsink to above^ state while keeping fan
  *       as close to 30% as possible. This is necessary since fan > 30% disrupts
  *       uniformity of the plate beyond our specs. Use Kp & Kd to achieve this.
- *  4. When not ramping dwn, if room_temp < target_temp <= HEATSINK_FAN_MED_TEMP:
+ *  4. fans_for_warm_target:
+ *     When not ramping dwn, if room_temp < target_temp <= HEATSINK_FAN_MED_TEMP:
  *     - if heatsink_temp is 2 degrees less than target then set fan to FAN_POWER_LOW.
  *     - else, use PID to bring heatsink to above^ state while keeping fan
  *       as close to 35% as possible. This is necessary since fan > 35% disrupts
@@ -285,125 +288,148 @@ void update_fans_from_state()
 {
   static unsigned long last_checked = 0;
 
-  if (millis() - last_checked > 100)
+  if (millis() - last_checked <= 100)
   {
-    if (!auto_fan)
-    { // Heatsink safety threshold overrides manual operation
-      if (current_heatsink_temp > HEATSINK_SAFE_TEMP_LIMIT)
-      {
-        // Fan speed proportional to temperature
-        float pwr = HEATSINK_P_CONSTANT * current_heatsink_temp / 100.0;
-        pwr = max(pwr, heatsink_fan.manual_power);
-        PID_fan.SetMode(MANUAL);
-        heatsink_fan.set_percentage(pwr);
-      }
-      return;
-    }
-    last_checked = millis();
-    if (master_set_a_target)
+    return;
+  }
+  last_checked = millis();
+  if (!auto_fan)
+  { // Heatsink safety threshold overrides manual operation
+    if (current_heatsink_temp > HEATSINK_SAFE_TEMP_LIMIT)
     {
-      if (is_target_cold())
-      {
-        if (is_ramping_down())
-        {
-          PID_fan.SetMode(MANUAL);
-          heatsink_fan.set_percentage(FAN_PWR_COLD_TARGET);
-        }
-        else
-        { // use PID to compute fan speed
-          int heatsink_soft_max = HEATSINK_FAN_HI_TEMP_1;
-          if (PID_fan.GetMode() == MANUAL || heatsink_setpoint != heatsink_soft_max)
-          {
-            heatsink_setpoint = heatsink_soft_max;
-            PID_fan.SetTunings(FAN_COLD_KP, FAN_COLD_KI, FAN_COLD_KD);
-            PID_fan.SetOutputLimits(FAN_POWER_MED_2, FAN_PWR_COLD_TARGET);
-            PID_fan.SetMode(AUTOMATIC);
-          }
-          else
-          {
-            if (PID_fan.Compute())
-            {
-              heatsink_fan.set_percentage(fan_pid_out);
-            }
-          }
-        }
-      }
-      else if (is_ramping_down())
-      {
-        PID_fan.SetMode(MANUAL);
-        heatsink_fan.set_percentage(FAN_PWR_RAMPING_DOWN);
-      }
-      else if (target_temperature_plate > HEATSINK_FAN_MED_TEMP)
-      {
-        int heatsink_soft_max = min(target_temperature_plate - PELTIER_TEMP_DELTA, 70);
-        if (current_heatsink_temp < heatsink_soft_max)
-        {
-          PID_fan.SetMode(MANUAL);
-          heatsink_fan.set_percentage(FAN_POWER_LOW);
-        }
-        else
-        { // use PID to compute fan speed
-          if (PID_fan.GetMode() == MANUAL || heatsink_setpoint != heatsink_soft_max)
-          {
-            heatsink_setpoint = heatsink_soft_max;
-            PID_fan.SetTunings(FAN_HOT_KP, FAN_HOT_KI, FAN_HOT_KD);
-            PID_fan.SetOutputLimits(FAN_POWER_MED_1, FAN_PWR_RAMPING_DOWN);
-            PID_fan.SetMode(AUTOMATIC);
-          }
-          else
-          {
-            if (PID_fan.Compute())
-            {
-              heatsink_fan.set_percentage(fan_pid_out);
-            }
-          }
-        }
-      }
-      else if (target_temperature_plate > TEMPERATURE_ROOM)
-      {
-        if (current_heatsink_temp < target_temperature_plate - PELTIER_TEMP_DELTA)
-        {
-          PID_fan.SetMode(MANUAL);
-          heatsink_fan.set_percentage(FAN_POWER_LOW);
-        }
-        else
-        { // use PID to compute fan speed
-          if (PID_fan.GetMode() == MANUAL || heatsink_setpoint != target_temperature_plate)
-          {
-            heatsink_setpoint = target_temperature_plate;
-            PID_fan.SetTunings(FAN_HOT_KP, FAN_HOT_KI, FAN_HOT_KD);
-            PID_fan.SetOutputLimits(FAN_POWER_MED_2, FAN_PWR_RAMPING_DOWN);
-            PID_fan.SetMode(AUTOMATIC);
-          }
-          else
-          {
-            if (PID_fan.Compute())
-            {
-              heatsink_fan.set_percentage(fan_pid_out);
-            }
-          }
-        }
-      }
-      // A safety check for all conditions. A final attempt at curbing heatsink temp
-      // before the heatsink overheats and we deactivate TC
-      if (current_heatsink_temp > HEATSINK_FAN_HI_TEMP_3)
-      {
-        PID_fan.SetMode(MANUAL);
-        heatsink_fan.set_percentage(FAN_POWER_HIGH_2);
-      }
+      // Fan speed proportional to temperature
+      float pwr = HEATSINK_P_CONSTANT * current_heatsink_temp / 100.0;
+      pwr = max(pwr, heatsink_fan.manual_power);
+      PID_fan.SetMode(MANUAL);
+      heatsink_fan.set_percentage(pwr);
+    }
+    return;
+  }
+
+  if (master_set_a_target)
+  {
+    auto_fans_for_active_thermocycler();
+  }
+  else
+  {
+    PID_fan.SetMode(MANUAL);
+    // Should only get here if no master set in auto mode
+    if (current_heatsink_temp > HEATSINK_FAN_HI_TEMP_2)
+    {
+      // Fan speed proportional to temperature
+      heatsink_fan.set_percentage(HEATSINK_P_CONSTANT * current_heatsink_temp / 100.0);
     }
     else
     {
-      PID_fan.SetMode(MANUAL);
-      // Should only get here if no master set in auto mode
-      if (current_heatsink_temp > HEATSINK_FAN_HI_TEMP_2)
+      heatsink_fan.disable();
+    }
+  }
+
+}
+
+void auto_fans_for_active_thermocycler()
+{
+  if (is_target_cold())
+  {
+    fans_for_cold_target();
+  }
+  else if (is_ramping_down())
+  {
+    PID_fan.SetMode(MANUAL);
+    heatsink_fan.set_percentage(FAN_PWR_RAMPING_DOWN);
+  }
+  else if (target_temperature_plate > HEATSINK_FAN_MED_TEMP)
+  {
+    fans_for_hot_target();
+  }
+  else if (target_temperature_plate > TEMPERATURE_ROOM)
+  {
+    fans_for_warm_target();
+  }
+  // A safety check for all conditions. A final attempt at curbing heatsink temp
+  // before the heatsink overheats and we deactivate TC
+  if (current_heatsink_temp > HEATSINK_FAN_HI_TEMP_3)
+  {
+    PID_fan.SetMode(MANUAL);
+    heatsink_fan.set_percentage(FAN_POWER_HIGH_2);
+  }
+}
+
+void fans_for_cold_target()
+{
+  if (is_ramping_down())
+  {
+    PID_fan.SetMode(MANUAL);
+    heatsink_fan.set_percentage(FAN_PWR_COLD_TARGET);
+  }
+  else
+  { // use PID to compute fan speed
+    int heatsink_soft_max = HEATSINK_FAN_HI_TEMP_1;
+    if (PID_fan.GetMode() == MANUAL || heatsink_setpoint != heatsink_soft_max)
+    {
+      heatsink_setpoint = heatsink_soft_max;
+      PID_fan.SetTunings(FAN_COLD_KP, FAN_COLD_KI, FAN_COLD_KD);
+      PID_fan.SetOutputLimits(FAN_POWER_MED_2, FAN_PWR_COLD_TARGET);
+      PID_fan.SetMode(AUTOMATIC);
+    }
+    else
+    {
+      if (PID_fan.Compute())
       {
-        // Fan speed proportional to temperature
-        heatsink_fan.set_percentage(HEATSINK_P_CONSTANT * current_heatsink_temp / 100.0);
+        heatsink_fan.set_percentage(fan_pid_out);
       }
-      else
+    }
+  }
+}
+
+void fans_for_hot_target()
+{
+  int heatsink_soft_max = min(target_temperature_plate - PELTIER_TEMP_DELTA, 70);
+  if (current_heatsink_temp < heatsink_soft_max)
+  {
+    PID_fan.SetMode(MANUAL);
+    heatsink_fan.set_percentage(FAN_POWER_LOW);
+  }
+  else
+  { // use PID to compute fan speed
+    if (PID_fan.GetMode() == MANUAL || heatsink_setpoint != heatsink_soft_max)
+    {
+      heatsink_setpoint = heatsink_soft_max;
+      PID_fan.SetTunings(FAN_HOT_KP, FAN_HOT_KI, FAN_HOT_KD);
+      PID_fan.SetOutputLimits(FAN_POWER_MED_1, FAN_PWR_RAMPING_DOWN);
+      PID_fan.SetMode(AUTOMATIC);
+    }
+    else
+    {
+      if (PID_fan.Compute())
       {
-        heatsink_fan.disable();
+        heatsink_fan.set_percentage(fan_pid_out);
+      }
+    }
+  }
+}
+
+void fans_for_warm_target()
+{
+  if (current_heatsink_temp < target_temperature_plate - PELTIER_TEMP_DELTA)
+  {
+    PID_fan.SetMode(MANUAL);
+    heatsink_fan.set_percentage(FAN_POWER_LOW);
+  }
+  else
+  { // use PID to compute fan speed
+    if (PID_fan.GetMode() == MANUAL || heatsink_setpoint != target_temperature_plate)
+    {
+      heatsink_setpoint = target_temperature_plate;
+      PID_fan.SetTunings(FAN_HOT_KP, FAN_HOT_KI, FAN_HOT_KD);
+      PID_fan.SetOutputLimits(FAN_POWER_MED_2, FAN_PWR_RAMPING_DOWN);
+      PID_fan.SetMode(AUTOMATIC);
+    }
+    else
+    {
+      if (PID_fan.Compute())
+      {
+        heatsink_fan.set_percentage(fan_pid_out);
       }
     }
   }
@@ -716,9 +742,9 @@ void read_gcode()
           break;
         case Gcode::get_offset_constants:
           /**** Get current constants ****/
-          gcode.response("a", String(const_a, 4));
-          gcode.response("b", String(const_b, 4));
-          gcode.response("c", String(const_c, 4));
+          gcode.response("A", String(const_a, 4));
+          gcode.response("B", String(const_b, 4));
+          gcode.response("C", String(const_c, 4));
           break;
         case Gcode::set_offset:
           if (gcode.pop_arg('S'))
@@ -1126,11 +1152,11 @@ double plate_overshoot()
 {
   if (this_step_target_temp >= current_temperature_plate)
   {
-    return (0.0105 * current_volume + 1.0869);
+    return (POS_OVERSHOOT_M * current_volume + POS_OVERSHOOT_C);
   }
   else
   {
-    return -1 * (0.0133 * current_volume + 0.4302);
+    return -1 * (NEG_OVERSHOOT_M * current_volume + NEG_OVERSHOOT_C);
   }
 }
 
@@ -1140,7 +1166,6 @@ void adjust_target_for_volume()
   {
     if (!timer_started && crossed_true_target())
     {
-      // Serial.println("started timer");
       overshoot_start_timestamp = millis();
       timer_started = true;
     }
@@ -1149,7 +1174,6 @@ void adjust_target_for_volume()
       // reached overshoot temp
       if (millis() - overshoot_start_timestamp >= OVERSHOOT_DURATION)
       { // stayed at overshoot temp long enough. Go to real target temp
-        // Serial.println("Done with overshoot. Going back to real target");
         just_changed_temp = false;
         overshoot_start_timestamp = 0;
         timer_started = 0;
@@ -1157,7 +1181,6 @@ void adjust_target_for_volume()
       }
       else
       { // need to stay at overshoot temp for longer
-        // Serial.println("staying at overshoot");
       }
     }
   }
