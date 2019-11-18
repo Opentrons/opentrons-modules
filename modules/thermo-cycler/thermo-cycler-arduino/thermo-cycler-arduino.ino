@@ -927,15 +927,19 @@ void TC4_Handler()
 
 void check_saved_offsets()
 { // If erroneous value or no offsets saved in EEPROM, then save the defaults to EEPROM
-  if (isnan(eeprom.get_offset_constant(OffsetConst::A)))
+  // Our offsets have values in range (-1, 1)
+  float temp_a = eeprom.get_offset_constant(OffsetConst::A);
+  float temp_b = eeprom.get_offset_constant(OffsetConst::B);
+  float temp_c = eeprom.get_offset_constant(OffsetConst::C);
+  if (isnan(temp_a) || abs(temp_a) >= 1)
   {
     eeprom.set_offset_constant(OffsetConst::A, CONST_A_DEFAULT);
   }
-  if (isnan(eeprom.get_offset_constant(OffsetConst::B)))
+  if (isnan(temp_b) || abs(temp_b) >= 1)
   {
     eeprom.set_offset_constant(OffsetConst::B, CONST_B_DEFAULT);
   }
-  if (isnan(eeprom.get_offset_constant(OffsetConst::C)))
+  if (isnan(temp_c) || abs(temp_c) >= 1)
   {
     eeprom.set_offset_constant(OffsetConst::C, CONST_C_DEFAULT);
   }
