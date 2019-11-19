@@ -276,7 +276,7 @@ void update_led_display(boolean debounce=true){
   if (!MASTER_SET_A_TARGET) {
     lights.set_color_bar(0, 0, 0, 1);  // white
   }
-  else if (TARGET_TEMPERATURE < TEMPERATURE_ROOM) {
+  else if (TARGET_TEMPERATURE <= TEMPERATURE_ROOM) {
     lights.set_color_bar(0, 0, 1, 0);  // blue
   }
   else {
@@ -415,9 +415,9 @@ void setup() {
   bool is_blue_pin_5;
   if (model_version == 3 || model_version == 4)
   {
-    is_v3_v4_fan = true;
     if (model_version == 3)
     {
+      is_v3_v4_fan = true;
       // V3 tempdecks produced after Oct 15 have different LED pin configuration
       // serial number has the production date. eg. TDV03P*20181008*A01
       const uint8_t date_length = 4;  // MMDD
@@ -432,6 +432,17 @@ void setup() {
     else
     {
       is_blue_pin_5 = true;
+      // TODO: Change this to reflect the tempdecks that really got the new fans
+      //       .. not all B versions have the new fans
+      char ab_version = device_serial.charAt(14);
+      if (ab_version == "A")
+      {
+        is_v3_v4_fan = true;
+      }
+      else
+      {
+        is_v3_v4_fan = false;
+      }
     }
   }
   else
