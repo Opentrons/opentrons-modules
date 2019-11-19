@@ -31,7 +31,7 @@ class Lights{
   public:
 
     Lights();
-    void setup_lights(bool blue_is_pin_5);
+    void setup_lights(bool is_blue_pin_5);
     void startup_animation(int target_number, int transition_time);
     void display_number(int number, bool debounce=true);
     void set_color_bar(float red, float green, float blue, float white);

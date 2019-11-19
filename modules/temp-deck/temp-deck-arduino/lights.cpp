@@ -7,6 +7,10 @@ Lights::Lights(){
   https://github.com/adafruit/Adafruit-PWM-Servo-Driver-Library
 */
   pwm = Adafruit_PWMServoDriver();
+
+  // Default led pins
+  blue_led = 6;
+  red_led = 5;
 }
 
 void Lights::set_pwm_pin(int pin, float val) {
