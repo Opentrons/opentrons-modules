@@ -104,17 +104,8 @@ double current_heatsink_temp;
 #define NEG_OVERSHOOT_C 0.4302
 
 /********* PID: PLATE PELTIERS *********/
-// NOTE: temp_probes.update takes 136-137ms while rest of the loop takes 0-1ms.
-//       Using 135ms sample time guarantees that the PID value is computed every
-//       137ms with a very minute error in computation due to 1-2ms difference.
-//       If <135ms, PID computation error will increase
-//       If >=137ms, the compute will miss the window before temp_probes.update
-//       is called again; which makes the next PID compute 2*137ms away
-#if OLD_PID_INTERVAL
-  #define DEFAULT_PLATE_PID_TIME 100
-#else
-  #define DEFAULT_PLATE_PID_TIME 135
-#endif
+
+#define DEFAULT_PLATE_PID_TIME 100
 
 #if HFQ_PWM
   #define PID_KP_PLATE_UP 0.1   //0.11 dampens the first spike but takes slightly longer to stabilize

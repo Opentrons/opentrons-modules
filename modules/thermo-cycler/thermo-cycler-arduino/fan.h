@@ -5,6 +5,12 @@
 
 #define ENABLE_DEFAULT_ACTIVE_HIGH  true
 
+enum class Fan_ramping
+{
+  On,
+  Off
+};
+
 /* This class is used to control the two fans in the thermocycler:
  *  - Cover heatpad fan: Digital control (ON/OFF only)
  *  - Heatsink fan: PWM control + ON/OFF control */
@@ -13,6 +19,7 @@ class Fan
   public:
     Fan();
     void set_percentage(float p);
+    void set_percentage(float p, Fan_ramping r);
     void setup_pwm_pin(uint8_t pwm_pin);
     void setup_enable_pin(uint8_t enable_pin, bool active_high);
     void enable();

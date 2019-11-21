@@ -84,10 +84,8 @@ TC_EEPROM_WR_BUILD_DIR := $(BUILDS_DIR)/tc-eeprom-writer
 
 TC_FW_VERSION ?= unknown
 DUMMY_BOARD ?= false
-USE_GCODES ?= true
 LID_WARNING ?= false
 HFQ_PWM ?= false
-OLD_PID_INTERVAL ?= true
 HW_VERSION ?= 4
 LID_TESTING ?= false
 RGBW_NEO ?= true
@@ -108,8 +106,7 @@ build-tempdeck:
 .PHONY: build-thermocycler
 build-thermocycler:
 	echo "compiler.cpp.extra_flags=-DDUMMY_BOARD=$(DUMMY_BOARD) \
-	-DUSE_GCODES=$(USE_GCODES) -DLID_WARNING=$(LID_WARNING) \
-	-DHFQ_PWM=$(HFQ_PWM) -DOLD_PID_INTERVAL=$(OLD_PID_INTERVAL) \
+	-DLID_WARNING=$(LID_WARNING) -DHFQ_PWM=$(HFQ_PWM) \
 	-DHW_VERSION=$(HW_VERSION) -DLID_TESTING=$(LID_TESTING) \
 	-DRGBW_NEO=$(RGBW_NEO) -DVOLUME_DEPENDENCY=$(VOLUME_DEPENDENCY) \
 	-DTC_FW_VERSION=\"$(TC_FW_VERSION)\"" \

@@ -317,7 +317,7 @@ void update_fans_from_state()
     if (current_heatsink_temp > HEATSINK_FAN_HI_TEMP_2)
     {
       // Fan speed proportional to temperature
-      heatsink_fan.set_percentage(HEATSINK_P_CONSTANT * current_heatsink_temp / 100.0);
+      heatsink_fan.set_percentage(HEATSINK_P_CONSTANT * current_heatsink_temp / 100.0, Fan_ramping::On);
     }
     else
     {
@@ -336,7 +336,7 @@ void auto_fans_for_active_thermocycler()
   else if (is_ramping_down())
   {
     PID_fan.SetMode(MANUAL);
-    heatsink_fan.set_percentage(FAN_PWR_RAMPING_DOWN);
+    heatsink_fan.set_percentage(FAN_PWR_RAMPING_DOWN, Fan_ramping::On);
   }
   else if (target_temperature_plate > HEATSINK_FAN_MED_TEMP)
   {
@@ -351,7 +351,7 @@ void auto_fans_for_active_thermocycler()
   if (current_heatsink_temp > HEATSINK_FAN_HI_TEMP_3)
   {
     PID_fan.SetMode(MANUAL);
-    heatsink_fan.set_percentage(FAN_POWER_HIGH_2);
+    heatsink_fan.set_percentage(FAN_POWER_HIGH_2, Fan_ramping::On);
   }
 }
 
@@ -360,7 +360,7 @@ void fans_for_cold_target()
   if (is_ramping_down())
   {
     PID_fan.SetMode(MANUAL);
-    heatsink_fan.set_percentage(FAN_PWR_COLD_TARGET);
+    heatsink_fan.set_percentage(FAN_PWR_COLD_TARGET, Fan_ramping::On);
   }
   else
   { // use PID to compute fan speed
@@ -1052,7 +1052,11 @@ void temp_safety_check()
     gcode.response("System too hot! Deactivating.");
     deactivate_all();
   }
-  if (temp_probes.hottest_plate_therm_temp() - temp_probes.coolest_plate_therm_temp() > ACCEPTABLE_THERM_DIFF)
+  // When peltiers are stable, check if all thermistors give approximately
+  // the same reading. If they are not same, then there might be a problem with
+  // some/ one of the thermistors and might need to be replaced.
+  if (!just_changed_temp &&
+      temp_probes.hottest_plate_therm_temp() - temp_probes.coolest_plate_therm_temp() > ACCEPTABLE_THERM_DIFF)
   {
     gcode.response("Plate temperature not uniform. Deactivating.");
     deactivate_all();
