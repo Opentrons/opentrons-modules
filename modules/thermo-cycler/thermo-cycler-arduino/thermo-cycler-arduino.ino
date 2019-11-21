@@ -582,10 +582,10 @@ void read_gcode()
           }
           // `target_temperature_plate`: The target temperature the plate will
           //  go to in order to compensate for thermal lag. This will basically
-          //  amount to inflated targets (overshoots) for a Kt amount of time after
-          //  the target is set.
-          //  It will return to `this_step_target_temp` after Kt seconds or
-          //  once the well temperatures catch up with the peltiers
+          //  amount to inflated targets (overshoots) for a OVERSHOOT_DURATION
+          //  amount of time after the target is set.
+          //  It will return to `this_step_target_temp` after the above set time
+          //  or once the well temperatures catch up with the peltiers
           target_temperature_plate = this_step_target_temp + plate_overshoot();
         #else
           target_temperature_plate = gcode.popped_arg();
@@ -1034,6 +1034,7 @@ void setup()
 
 void temp_safety_check()
 {
+
   if (!master_set_a_target)
   {
     return;
@@ -1049,6 +1050,11 @@ void temp_safety_check()
       )
   {
     gcode.response("System too hot! Deactivating.");
+    deactivate_all();
+  }
+  if (temp_probes.hottest_plate_therm_temp() - temp_probes.coolest_plate_therm_temp() > ACCEPTABLE_THERM_DIFF)
+  {
+    gcode.response("Plate temperature not uniform. Deactivating.");
     deactivate_all();
   }
 }
@@ -1154,13 +1160,17 @@ bool crossed_true_target()
 
 double plate_overshoot()
 {
-  if (this_step_target_temp >= current_temperature_plate)
+  if (this_step_target_temp - current_temperature_plate >= 0.5)
   {
     return (POS_OVERSHOOT_M * current_volume + POS_OVERSHOOT_C);
   }
-  else
+  else if (this_step_target_temp - current_temperature_plate <= 0.5)
   {
     return -1 * (NEG_OVERSHOOT_M * current_volume + NEG_OVERSHOOT_C);
+  }
+  else
+  { // the new target is less than 0.5C away. No overshoot
+    return 0;
   }
 }
 
