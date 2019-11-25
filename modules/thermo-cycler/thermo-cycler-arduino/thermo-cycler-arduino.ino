@@ -1049,7 +1049,7 @@ void temp_safety_check()
         )
       )
   {
-    gcode.response("System too hot! Deactivating.");
+    gcode.response("ERROR", "System too hot! Deactivating.");
     deactivate_all();
   }
   // When peltiers are stable, check if all thermistors give approximately
@@ -1058,7 +1058,7 @@ void temp_safety_check()
   if (!just_changed_temp &&
       temp_probes.hottest_plate_therm_temp() - temp_probes.coolest_plate_therm_temp() > ACCEPTABLE_THERM_DIFF)
   {
-    gcode.response("Plate temperature not uniform. Deactivating.");
+    gcode.response("ERROR", "Plate temperature not uniform. Deactivating.");
     deactivate_all();
   }
 }
@@ -1168,7 +1168,7 @@ double plate_overshoot()
   {
     return (POS_OVERSHOOT_M * current_volume + POS_OVERSHOOT_C);
   }
-  else if (this_step_target_temp - current_temperature_plate <= 0.5)
+  else if (this_step_target_temp - current_temperature_plate <= -0.5)
   {
     return -1 * (NEG_OVERSHOOT_M * current_volume + NEG_OVERSHOOT_C);
   }
