@@ -61,9 +61,15 @@ float _offset_temp_diff = 0.0;
 #define FAN_LOW 0.3
 #define FAN_OFF 0.0
 
-// model versions 3.0+ & 4.0+ have a different fan that requires on/off cycles (not PWM)
-#define MAX_FAN_OFF_TIME 2000
-#define FAN_V3_V4_LOW 0.95
+// some model versions 3.0+ & 4.0+ have a different fan that requires on/off cycles (not PWM)
+#define MAX_FAN_OFF_TIME    4000
+#define FAN_V3_V4_LOW_ON_PC 0.75
+
+// some model v4 fans are indeed PWM. We need to keep their power low enough while
+// pulsing so they are able to turn off momentarily.
+#define FAN_V3_V4_LOW_PWR   100   // PWM value (= 39%)
+#define FAN_V3_V4_HI_PWR    214   // PWM value (= 85%)
+
 unsigned long fan_on_time = 0;
 unsigned long fan_off_time = MAX_FAN_OFF_TIME;
 unsigned long fan_timestamp = 0;

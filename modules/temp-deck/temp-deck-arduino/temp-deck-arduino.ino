@@ -133,12 +133,21 @@ void set_fan_power(float percentage){
 }
 
 void fan_v3_v4_on() {
-  digitalWrite(PIN_FAN, HIGH);
+  if (is_fan_on_high())
+  {
+    analogWrite(PIN_FAN, FAN_V3_V4_HI_PWR);
+  }
+  else
+  { // If it's a PWM fan, it'll be powered down to the low power value.
+    // If it's not a PWM fan, low pwm will still turn its driver ON as long as
+    // it's above a threshold.
+    analogWrite(PIN_FAN, FAN_V3_V4_LOW_PWR);
+  }
   is_fan_on = true;
 }
 
 void fan_v3_v4_off() {
-  digitalWrite(PIN_FAN, LOW);
+  analogWrite(PIN_FAN, LOW);
   is_fan_on = false;
 }
 
@@ -237,7 +246,7 @@ void stabilize_to_target_temp(bool set_fan=true){
     set_fan_power(FAN_HIGH);
   }
   else {
-    if (is_v3_v4_fan) set_fan_power(FAN_V3_V4_LOW);
+    if (is_v3_v4_fan) set_fan_power(FAN_V3_V4_LOW_ON_PC); // more like set fan ON time
     else set_fan_power(FAN_LOW);
   }
 
@@ -428,21 +437,15 @@ void setup() {
       {
         is_blue_pin_5 = true;
       }
+      else
+      {
+        is_blue_pin_5 = false;
+      }
     }
     else
     {
       is_blue_pin_5 = true;
-      // TODO: Change this to reflect the tempdecks that really got the new fans
-      //       .. not all B versions have the new fans
-      char ab_version = device_serial.charAt(14);
-      if (ab_version == "A")
-      {
-        is_v3_v4_fan = true;
-      }
-      else
-      {
-        is_v3_v4_fan = false;
-      }
+      is_v3_v4_fan = true;
     }
   }
   else
