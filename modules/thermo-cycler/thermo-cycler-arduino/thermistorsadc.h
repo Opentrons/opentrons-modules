@@ -83,6 +83,8 @@ class ThermistorsADC{
             float back_center_temperature();
             float back_right_temperature();
             float cover_temperature();
+            float hottest_plate_therm_temp();
+            float coolest_plate_therm_temp();
             float heat_sink_temperature();
             float plate_temp_offset;
             bool detected_invalid_val;

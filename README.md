@@ -66,7 +66,7 @@ For thermocycler binaries, a firmware uploader script will also be copied to the
 Use Arduino IDE to compile:
 Select the correct board file for your project from _Tools->board_ (Opentrons Thermocycler M0/ Opentrons Magdeck/ Opentrons Tempdeck)
 
-* NOTE: For Opentrons Thermocycler M0, you will have to set the appropriate flags in the `platform.local.txt` file: Find this file in your Arduino15 folder- a hidden folder usually located in C://Users/username/appData/Local on Windows. You will find the preferences file in `..Arduino15/packages/Opentrons/hardware/samd/1.0.1`. Paste this line in the file above: `compiler.cpp.extra_flags=-DLID_WARNING=false -DHFQ_PWM=false -DOLD_PID_INTERVAL=true -DHW_VERSION=4 -DLID_TESTING=false -DRGBW_NEO=true` (set appropriate flag values)
+* NOTE: For Opentrons Thermocycler M0, you will have to set the appropriate flags in the `platform.local.txt` file: Find this file in your Arduino15 folder- a hidden folder usually located in C://Users/username/appData/Local on Windows. You will find the preferences file in `..Arduino15/packages/Opentrons/hardware/samd/1.0.1`. Paste this line in the file above: `compiler.cpp.extra_flags=-DLID_WARNING=false -DHFQ_PWM=false -DHW_VERSION=4 -DLID_TESTING=false -DRGBW_NEO=true -DVOLUME_DEPENDENCY=true -DTC_FW_VERSION="<YOUR_FW_VERSION_STRING>"` (set appropriate flag values)
 
 Then select _Sketch->Compile_.
 

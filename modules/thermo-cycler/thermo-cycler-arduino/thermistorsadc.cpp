@@ -117,6 +117,65 @@ float ThermistorsADC::heat_sink_temperature() {
   return probe_temps[ADC_INDEX_HEAT_SINK];  // No offset
 }
 
+float ThermistorsADC::hottest_plate_therm_temp()
+{
+  float hottest_temp = -99.0;
+  if (back_left_temperature() > hottest_temp)
+  {
+    hottest_temp = back_left_temperature();
+  }
+  if (back_center_temperature() > hottest_temp)
+  {
+    hottest_temp = back_center_temperature();
+  }
+  if (back_right_temperature() > hottest_temp)
+  {
+    hottest_temp = back_right_temperature();
+  }
+  if (front_left_temperature() > hottest_temp)
+  {
+    hottest_temp = front_left_temperature();
+  }
+  if (front_center_temperature() > hottest_temp)
+  {
+    hottest_temp = front_center_temperature();
+  }
+  if (front_right_temperature() > hottest_temp)
+  {
+    hottest_temp = front_right_temperature();
+  }
+  return hottest_temp;
+}
+
+float ThermistorsADC::coolest_plate_therm_temp()
+{
+  float coolest_temp = 999.0;
+  if (back_left_temperature() < coolest_temp)
+  {
+    coolest_temp = back_left_temperature();
+  }
+  if (back_center_temperature() < coolest_temp)
+  {
+    coolest_temp = back_center_temperature();
+  }
+  if (back_right_temperature() < coolest_temp)
+  {
+    coolest_temp = back_right_temperature();
+  }
+  if (front_left_temperature() < coolest_temp)
+  {
+    coolest_temp = front_left_temperature();
+  }
+  if (front_center_temperature() < coolest_temp)
+  {
+    coolest_temp = front_center_temperature();
+  }
+  if (front_right_temperature() < coolest_temp)
+  {
+    coolest_temp = front_right_temperature();
+  }
+  return coolest_temp;
+}
 
 uint16_t ThermistorsADC::_read_adc(int index) {
   int res = 0;

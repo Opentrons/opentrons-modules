@@ -317,7 +317,7 @@ void update_fans_from_state()
     if (current_heatsink_temp > HEATSINK_FAN_HI_TEMP_2)
     {
       // Fan speed proportional to temperature
-      heatsink_fan.set_percentage(HEATSINK_P_CONSTANT * current_heatsink_temp / 100.0);
+      heatsink_fan.set_percentage(HEATSINK_P_CONSTANT * current_heatsink_temp / 100.0, Fan_ramping::On);
     }
     else
     {
@@ -336,7 +336,7 @@ void auto_fans_for_active_thermocycler()
   else if (is_ramping_down())
   {
     PID_fan.SetMode(MANUAL);
-    heatsink_fan.set_percentage(FAN_PWR_RAMPING_DOWN);
+    heatsink_fan.set_percentage(FAN_PWR_RAMPING_DOWN, Fan_ramping::On);
   }
   else if (target_temperature_plate > HEATSINK_FAN_MED_TEMP)
   {
@@ -351,7 +351,7 @@ void auto_fans_for_active_thermocycler()
   if (current_heatsink_temp > HEATSINK_FAN_HI_TEMP_3)
   {
     PID_fan.SetMode(MANUAL);
-    heatsink_fan.set_percentage(FAN_POWER_HIGH_2);
+    heatsink_fan.set_percentage(FAN_POWER_HIGH_2, Fan_ramping::On);
   }
 }
 
@@ -360,7 +360,7 @@ void fans_for_cold_target()
   if (is_ramping_down())
   {
     PID_fan.SetMode(MANUAL);
-    heatsink_fan.set_percentage(FAN_PWR_COLD_TARGET);
+    heatsink_fan.set_percentage(FAN_PWR_COLD_TARGET, Fan_ramping::On);
   }
   else
   { // use PID to compute fan speed
@@ -582,10 +582,10 @@ void read_gcode()
           }
           // `target_temperature_plate`: The target temperature the plate will
           //  go to in order to compensate for thermal lag. This will basically
-          //  amount to inflated targets (overshoots) for a Kt amount of time after
-          //  the target is set.
-          //  It will return to `this_step_target_temp` after Kt seconds or
-          //  once the well temperatures catch up with the peltiers
+          //  amount to inflated targets (overshoots) for a OVERSHOOT_DURATION
+          //  amount of time after the target is set.
+          //  It will return to `this_step_target_temp` after the above set time
+          //  or once the well temperatures catch up with the peltiers
           target_temperature_plate = this_step_target_temp + plate_overshoot();
         #else
           target_temperature_plate = gcode.popped_arg();
@@ -1034,6 +1034,7 @@ void setup()
 
 void temp_safety_check()
 {
+
   if (!master_set_a_target)
   {
     return;
@@ -1048,7 +1049,16 @@ void temp_safety_check()
         )
       )
   {
-    gcode.response("System too hot! Deactivating.");
+    gcode.response("ERROR", "System too hot! Deactivating.");
+    deactivate_all();
+  }
+  // When peltiers are stable, check if all thermistors give approximately
+  // the same reading. If they are not same, then there might be a problem with
+  // some/ one of the thermistors and might need to be replaced.
+  if (!just_changed_temp &&
+      temp_probes.hottest_plate_therm_temp() - temp_probes.coolest_plate_therm_temp() > ACCEPTABLE_THERM_DIFF)
+  {
+    gcode.response("ERROR", "Plate temperature not uniform. Deactivating.");
     deactivate_all();
   }
 }
@@ -1154,13 +1164,17 @@ bool crossed_true_target()
 
 double plate_overshoot()
 {
-  if (this_step_target_temp >= current_temperature_plate)
+  if (this_step_target_temp - current_temperature_plate >= 0.5)
   {
     return (POS_OVERSHOOT_M * current_volume + POS_OVERSHOOT_C);
   }
-  else
+  else if (this_step_target_temp - current_temperature_plate <= -0.5)
   {
     return -1 * (NEG_OVERSHOOT_M * current_volume + NEG_OVERSHOOT_C);
+  }
+  else
+  { // the new target is less than 0.5C away. No overshoot
+    return 0;
   }
 }
 
