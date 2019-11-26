@@ -14,9 +14,6 @@
 */
 #include <Adafruit_PWMServoDriver.h>
 
-#define red_led 5
-#define blue_led 6
-
 #define NUM_DIGITS 2
 #define NUM_SEGMENTS 7
 
@@ -34,7 +31,7 @@ class Lights{
   public:
 
     Lights();
-    void setup_lights();
+    void setup_lights(bool is_blue_pin_5);
     void startup_animation(int target_number, int transition_time);
     void display_number(int number, bool debounce=true);
     void set_color_bar(float red, float green, float blue, float white);
@@ -44,7 +41,7 @@ class Lights{
     void flash_off();
 
   private:
-
+    uint8_t red_led, blue_led;
     Adafruit_PWMServoDriver pwm;
     const uint8_t segments_pin_mapping[NUM_DIGITS][NUM_SEGMENTS] = {
       {10, 11, 4, 5, 6, 9, 8},

@@ -76,14 +76,12 @@ bool Gcode::read_number(char key) {
         break;
       }
     }
-    if (number_string) {
+    if (number_string.length() > 0) {
       parsed_number = number_string.toFloat();
       return true;
     }
-    else {
-      return false;
-    }
   }
+  return false;
 }
 
 void Gcode::print_device_info(String serial, String model, String version) {

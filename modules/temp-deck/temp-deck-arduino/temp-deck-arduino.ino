@@ -2,138 +2,18 @@
 /////////////////////////////////
 /////////////////////////////////
 
-#include <Arduino.h>
-#include <avr/wdt.h>
+#include "temp-deck.h"
 
-/*
-  PID library written by github user br3ttb:
-  can be found at:
-  https://github.com/br3ttb/Arduino-PID-Library
-*/
-#include <PID_v1.h>
+PID myPID(
+  &CURRENT_TEMPERATURE,
+  &TEMPERATURE_SWING,
+  &TARGET_TEMPERATURE,
+  DOWN_PID_KP, DOWN_PID_KI, DEFAULT_PID_KD,
+  P_ON_M,
+  DIRECT);
 
-/*
-  the below "lights.h" class uses Adafruit's 16-channel PWM I2C driver library
-  can be found at:
-  https://github.com/adafruit/Adafruit-PWM-Servo-Driver-Library
-*/
-#include "lights.h"
-
-// load in some custom classes for this device
-#include "memory.h"
-#include "peltiers.h"
-#include "thermistor.h"
-#include "gcode.h"
-
-#define device_version "v1.2.0"
-
-#define PIN_BUZZER 11  // a piezo buzzer we can use tone() with
-#define PIN_FAN 9      // blower-fan controlled by simple PWM analogWrite()
-
-// the maximum temperatures the device can target
-// this is limitted mostly by the 2-digit temperature display
-#define TEMPERATURE_MAX 99
-#define TEMPERATURE_MIN -9
-
-// some temperature zones to help decide on states
-#define TEMPERATURE_FAN_CUTOFF_COLD 15
-#define TEMPERATURE_FAN_CUTOFF_HOT 35
-#define TEMPERATURE_ROOM 23
-
-#define TEMPERATURE_BURN 55
-#define STABILIZING_ZONE 0.5
-
-// values used to scale the thermistors temperature
-// to more accurately reflect the temperature of the top-plate
-#define THERMISTOR_OFFSET_LOW_TEMP 5.25
-#define THERMISTOR_OFFSET_LOW_VALUE -0.1
-#define THERMISTOR_OFFSET_HIGH_TEMP 95
-#define THERMISTOR_OFFSET_HIGH_VALUE -1.4
-const float THERMISTOR_OFFSET_HIGH_TEMP_DIFF = THERMISTOR_OFFSET_HIGH_TEMP - TEMPERATURE_ROOM;
-const float THERMISTOR_OFFSET_LOW_TEMP_DIFF = TEMPERATURE_ROOM - THERMISTOR_OFFSET_LOW_TEMP;
-float _offset_temp_diff = 0.0;
-
-// the intensities of the fan (0.0-1.0)
-#define FAN_HIGH 1.0
-#define FAN_LOW 0.4
-#define FAN_OFF 0.0
-
-// model version 3.0 has differents fans, and requires on/off cycles (not PWM)
-#define MAX_FAN_OFF_TIME 2000
-#define FAN_V3_0_LOW 0.95
-unsigned long fan_on_time = 0;
-unsigned long fan_off_time = MAX_FAN_OFF_TIME;
-unsigned long fan_timestamp = 0;
-bool is_fan_on = false;
-bool is_v3_0_fan = false;
-
-// model version 3.1 has same fans as v3.0, but pcb uses mosfet to PWM fan power
-#define FAN_V4_0_LOW 0.1
-bool is_v4_0_fan = false;
-
-// the "Kd" of the PID never changes in our setup
-// (works according to testing so far...)
-#define DEFAULT_PID_KD 0.0
-
-// the "Kp" and "Ki" value for whenever the target is BELOW current temperature
-// stays constant for all target temperature
-// (works according to testing so far...)
-#define DOWN_PID_KP 0.38
-#define DOWN_PID_KI 0.0275
-
-// the "Kp" and "Ki" value for whenever the target is ABOVE current temperature
-// linear interpolation between LOW and HIGH target values
-// (works according to testing so far...)
-#define UP_PID_LOW_TEMP 40
-#define UP_PID_HIGH_TEMP 100
-#define UP_PID_KP_AT_LOW_TEMP 0.17    // "Kp" when target is UP_PID_LOW_TEMP
-#define UP_PID_KP_AT_HIGH_TEMP 0.26   // "Kp" when target is UP_PID_HIGH_TEMP
-#define UP_PID_KI_AT_LOW_TEMP 0.012   // "Ki" when target is UP_PID_LOW_TEMP
-#define UP_PID_KI_AT_HIGH_TEMP 0.0225 // "Ki" when target is UP_PID_HIGH_TEMP
-
-// the "Kp" and "Ki" value for whenever the target is ABOVE current temperature
-// BUT also in the cold zone (<15deg)
-#define UP_PID_KP_IN_COLD_ZONE 0.21
-#define UP_PID_KI_IN_COLD_ZONE 0.015
-
-// to use with the Arduino IDE's "Serial Plotter" graphing tool
-// (very, very useful when testing PID tuning values)
-// uncomment below line to print temperature and PID information
-
-//#define DEBUG_PLOTTER_ENABLED
-
-#ifdef DEBUG_PLOTTER_ENABLED
-#define DEBUG_PLOTTER_INTERVAL 250
-unsigned long debug_plotter_timestamp = 0;
-#endif
-
-// when a new target-temperature is set, and the peltiers need to shift directions suddenly
-// that is the moment when they draw the most current (4.3 amps). If the fan is on HIGH
-// at the same time (>2.0 amps) then we are over-working our 6.1 amp power supply.
-// So, these variables are used whenever a NEW target temperature is set. They do the following:
-//    1) turn off both the peltiers and fan, and wait until the fan has completely shut down (do nothing until then)
-//    3) once fan is off, turn on the peltiers to the correct state (potentially drawing 4.3 amps!)
-//    4) after the the peltiers' current has dropping some, turn the fan back on
-
-// uncomment to turn off system after setting the temperature
-#define CONSERVE_POWER_ON_SET_TARGET
-
-#ifdef CONSERVE_POWER_ON_SET_TARGET
-unsigned long SET_TEMPERATURE_TIMESTAMP = 0;
-#define millis_till_fan_turns_off 2000 // how long to wait before #1 and #2 from the list above
-#define millis_till_peltiers_drop_current 2000 // how long to wait before #2 and #3 from the list above
-#endif
-
-// -1.0 is full cold peltiers, +1.0 is full hot peltiers, can be between the two
-double TEMPERATURE_SWING;
-double TARGET_TEMPERATURE = TEMPERATURE_ROOM;
-double CURRENT_TEMPERATURE = TEMPERATURE_ROOM;
-bool MASTER_SET_A_TARGET = false;
-
-PID myPID(&CURRENT_TEMPERATURE, &TEMPERATURE_SWING, &TARGET_TEMPERATURE, DOWN_PID_KP, DOWN_PID_KI, DEFAULT_PID_KD, P_ON_M, DIRECT);
-
-String device_serial = "";  // leave empty, this value is read from eeprom during setup()
-String device_model = "";   // leave empty, this value is read from eeprom during setup()
+String device_serial;  // this value is read from eeprom during setup()
+String device_model;   // this value is read from eeprom during setup()
 
 Lights lights = Lights();  // controls 2-digit 7-segment numbers, and the RGBW color bar
 Peltiers peltiers = Peltiers();  // 2 peltiers wired in series (-1.0<->1.0 controls polarity and intensity)
@@ -141,15 +21,12 @@ Thermistor thermistor = Thermistor();  // uses thermistor to read calculate the 
 Gcode gcode = Gcode();  // reads in serial data to parse command and issue reponses
 Memory memory = Memory();  // reads from EEPROM to find device's unique serial, and model number
 
-unsigned long start_bootloader_timestamp = 0;
-const int start_bootloader_timeout = 1000;
-
 /////////////////////////////////
 /////////////////////////////////
 /////////////////////////////////
 
 bool is_stabilizing() {
-  return abs(TARGET_TEMPERATURE - CURRENT_TEMPERATURE) < STABILIZING_ZONE;
+  return abs(TARGET_TEMPERATURE - CURRENT_TEMPERATURE) <= STABILIZING_ZONE;
 }
 
 bool is_moving_down() {
@@ -165,23 +42,28 @@ bool is_burning_hot() {
 }
 
 bool is_cold_zone() {
-  return CURRENT_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_COLD;
+  return CURRENT_TEMPERATURE <= TEMPERATURE_FAN_CUTOFF_COLD;
 }
 
 bool is_middle_zone() {
-  return CURRENT_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_COLD && CURRENT_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_HOT;
+  return CURRENT_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_COLD && CURRENT_TEMPERATURE <= TEMPERATURE_FAN_CUTOFF_HOT;
 }
 
 bool is_hot_zone() {
   return CURRENT_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_HOT;
 }
 
+bool is_unsafe_temp()
+{
+  return CURRENT_TEMPERATURE > TEMPERATURE_MAX;
+}
+
 bool is_targeting_cold_zone() {
-  return TARGET_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_COLD;
+  return TARGET_TEMPERATURE <= TEMPERATURE_FAN_CUTOFF_COLD;
 }
 
 bool is_targeting_middle_zone() {
-  return TARGET_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_COLD && TARGET_TEMPERATURE < TEMPERATURE_FAN_CUTOFF_HOT;
+  return TARGET_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_COLD && TARGET_TEMPERATURE <= TEMPERATURE_FAN_CUTOFF_HOT;
 }
 
 bool is_targeting_hot_zone() {
@@ -189,7 +71,7 @@ bool is_targeting_hot_zone() {
 }
 
 bool is_fan_on_high() {
-  return is_targeting_cold_zone() || (is_targeting_middle_zone() && is_moving_down());
+  return is_targeting_cold_zone() || is_moving_down();
 }
 
 /////////////////////////////////
@@ -241,7 +123,7 @@ void turn_off_target() {
 
 void set_fan_power(float percentage){
   percentage = constrain(percentage, 0.0, 1.0);
-  if (is_v3_0_fan) {
+  if (is_v3_v4_fan) {
     fan_on_time = percentage * MAX_FAN_OFF_TIME;
     fan_off_time = MAX_FAN_OFF_TIME - fan_on_time;
   }
@@ -250,29 +132,38 @@ void set_fan_power(float percentage){
   }
 }
 
-void fan_v3_0_on() {
-  digitalWrite(PIN_FAN, HIGH);
+void fan_v3_v4_on() {
+  if (is_fan_on_high())
+  {
+    analogWrite(PIN_FAN, FAN_V3_V4_HI_PWR);
+  }
+  else
+  { // If it's a PWM fan, it'll be powered down to the low power value.
+    // If it's not a PWM fan, low pwm will still turn its driver ON as long as
+    // it's above a threshold.
+    analogWrite(PIN_FAN, FAN_V3_V4_LOW_PWR);
+  }
   is_fan_on = true;
 }
 
-void fan_v3_0_off() {
-  digitalWrite(PIN_FAN, LOW);
+void fan_v3_v4_off() {
+  analogWrite(PIN_FAN, LOW);
   is_fan_on = false;
 }
 
-void adjust_v3_0_fan_state() {
-  if (fan_on_time == 0) fan_v3_0_off();
-  else if (fan_off_time == 0) fan_v3_0_on();
+void adjust_v3_v4_fan_state() {
+  if (fan_on_time == 0) fan_v3_v4_off();
+  else if (fan_off_time == 0) fan_v3_v4_on();
   else {
     if (is_fan_on) {
       if (millis() - fan_timestamp > fan_on_time) {
         fan_timestamp = millis();
-        fan_v3_0_off();
+        fan_v3_v4_off();
       }
     }
     else if (millis() - fan_timestamp > fan_off_time) {
       fan_timestamp = millis();
-      fan_v3_0_on();
+      fan_v3_v4_on();
     }
   }
 }
@@ -355,8 +246,7 @@ void stabilize_to_target_temp(bool set_fan=true){
     set_fan_power(FAN_HIGH);
   }
   else {
-    if (is_v3_0_fan) set_fan_power(FAN_V3_0_LOW);
-    else if (is_v4_0_fan) set_fan_power(FAN_V4_0_LOW);
+    if (is_v3_v4_fan) set_fan_power(FAN_V3_V4_LOW_ON_PC); // more like set fan ON time
     else set_fan_power(FAN_LOW);
   }
 
@@ -365,15 +255,11 @@ void stabilize_to_target_temp(bool set_fan=true){
 }
 
 void stabilize_to_room_temp(bool set_fan=true) {
-  if (is_burning_hot()) {
+  if (is_burning_hot() && !is_unsafe_temp()) {
     set_peltiers_from_pid();
-    if (set_fan) {
-      if (is_v3_0_fan) set_fan_power(FAN_V3_0_LOW);
-      else if (is_v4_0_fan) set_fan_power(FAN_V4_0_LOW);
-      else set_fan_power(FAN_LOW);
-    }
+    set_fan_power(FAN_HIGH);
   }
-  else {
+  else if (!is_burning_hot()) {
     peltiers.disable_peltiers();
     set_fan_power(FAN_OFF);
   }
@@ -399,7 +285,7 @@ void update_led_display(boolean debounce=true){
   if (!MASTER_SET_A_TARGET) {
     lights.set_color_bar(0, 0, 0, 1);  // white
   }
-  else if (TARGET_TEMPERATURE < TEMPERATURE_ROOM) {
+  else if (TARGET_TEMPERATURE <= TEMPERATURE_ROOM) {
     lights.set_color_bar(0, 0, 1, 0);  // blue
   }
   else {
@@ -530,11 +416,44 @@ void setup() {
 
   memory.read_serial(device_serial);
   memory.read_model(device_model);
+  String ver = device_model.substring(MODEL_VER_TEMPLATE_LEN);
+  int model_version = ver.toInt();
 
-  if (device_model.indexOf("v3.0") > 0) is_v3_0_fan = true;
-  else if (device_model.indexOf("v4.0") > 0) is_v4_0_fan = true;
-
-  lights.setup_lights();
+  // LED pins for model versions 3 (post 2018.10.15) & 4: red = 6, blue = 5
+  // LED pins for model versions < 3 & 3.0 (pre- 2018.10.15) : red = 5, blue = 6
+  bool is_blue_pin_5;
+  if (model_version == 3 || model_version == 4)
+  {
+    if (model_version == 3)
+    {
+      is_v3_v4_fan = true;
+      // V3 tempdecks produced after Oct 15 have different LED pin configuration
+      // serial number has the production date. eg. TDV03P*20181008*A01
+      const uint8_t date_length = 4;  // MMDD
+      String serial_date = device_serial.substring(
+        SERIAL_VER_TEMPLATE_LEN, SERIAL_VER_TEMPLATE_LEN + date_length);
+      int v3_date = serial_date.toInt();
+      if (v3_date > 1015)
+      {
+        is_blue_pin_5 = true;
+      }
+      else
+      {
+        is_blue_pin_5 = false;
+      }
+    }
+    else
+    {
+      is_blue_pin_5 = true;
+      is_v3_v4_fan = true;
+    }
+  }
+  else
+  {
+    is_v3_v4_fan = false;
+    is_blue_pin_5 = false;
+  }
+  lights.setup_lights(is_blue_pin_5);
   lights.set_numbers_brightness(0.25);
   lights.set_color_bar_brightness(0.5);
 
@@ -554,8 +473,19 @@ void setup() {
   lights.startup_animation(CURRENT_TEMPERATURE, 2000);
 }
 
-void loop(){
+void temp_safety_check()
+{
+  if (is_unsafe_temp())
+  {
+    gcode.print_warning(F("Temperature module overheated! Deactivating."));
+    turn_off_target();
+    peltiers.disable_peltiers();
+    set_fan_power(FAN_HIGH);
+  }
+}
 
+void loop(){
+  temp_safety_check();
   turn_off_serial_lights();
 
 #ifdef DEBUG_PLOTTER_ENABLED
@@ -576,7 +506,7 @@ void loop(){
 
   read_thermistor_and_apply_offset();
 
-  if (is_v3_0_fan) adjust_v3_0_fan_state();
+  if (is_v3_v4_fan) adjust_v3_v4_fan_state();
 
   // update the temperature display, and color-bar
   update_led_display(true);  // debounce enabled
