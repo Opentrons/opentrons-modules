@@ -442,6 +442,7 @@ void deactivate_all()
   peltiers.disable();
   target_temperature_plate = TEMPERATURE_ROOM;
   master_set_a_target = false;
+  just_changed_temp = false;
   tc_timer.reset();
 }
 
@@ -564,6 +565,11 @@ void read_gcode()
           heat_pad_off();
           break;
         case Gcode::set_plate_temp:
+          if (system_errors)
+          {
+            gcode.response("Error", "Cannot set temperature when system is in error");
+            break;
+          }
           if (!gcode.pop_arg('S'))
           {
             gcode.response("ERROR", "Arg error");
@@ -809,7 +815,11 @@ void read_gcode()
 
 void update_light_strip()
 {
-  if (master_set_a_target)
+  if (system_errors)
+  { // Any error will trigger errored led lights
+    light_strip.set_lights(TC_status::errored);
+  }
+  else if (master_set_a_target)
   {
     if (is_target_hot())
     {
@@ -1034,32 +1044,39 @@ void setup()
 
 void temp_safety_check()
 {
-
-  if (!master_set_a_target)
+  // If a thermistor or a thermistor connection is damaged
+  if (temp_probes.detected_invalid_val)
   {
-    return;
+    gcode.response("ERROR", "Invalid thermistor value");
+    deactivate_all();
+    system_errors |= ERROR_MASK(Error::invalid_thermistor_value);
   }
-  if (current_heatsink_temp >= HEATSINK_SAFE_TEMP_LIMIT
-      || (temp_probes.back_left_temperature() > PELTIER_SAFE_TEMP_LIMIT
+
+  if (master_set_a_target
+      && (current_heatsink_temp >= HEATSINK_SAFE_TEMP_LIMIT
+        || (temp_probes.back_left_temperature() > PELTIER_SAFE_TEMP_LIMIT
           || temp_probes.back_center_temperature() > PELTIER_SAFE_TEMP_LIMIT
           || temp_probes.back_right_temperature() > PELTIER_SAFE_TEMP_LIMIT
           || temp_probes.front_left_temperature() > PELTIER_SAFE_TEMP_LIMIT
           || temp_probes.front_center_temperature() > PELTIER_SAFE_TEMP_LIMIT
           || temp_probes.front_right_temperature() > PELTIER_SAFE_TEMP_LIMIT
+          )
         )
       )
   {
     gcode.response("ERROR", "System too hot! Deactivating.");
     deactivate_all();
+    system_errors |= ERROR_MASK(Error::system_too_hot);
   }
   // When peltiers are stable, check if all thermistors give approximately
   // the same reading. If they are not same, then there might be a problem with
   // some/ one of the thermistors and might need to be replaced.
-  if (!just_changed_temp &&
+  if (master_set_a_target && !just_changed_temp &&
       temp_probes.hottest_plate_therm_temp() - temp_probes.coolest_plate_therm_temp() > ACCEPTABLE_THERM_DIFF)
   {
     gcode.response("ERROR", "Plate temperature not uniform. Deactivating.");
     deactivate_all();
+    system_errors |= ERROR_MASK(Error::plate_temperature_not_uniform);
   }
 }
 
@@ -1204,6 +1221,28 @@ void adjust_target_for_volume()
   }
 }
 
+void print_errors_if_any()
+{
+  static unsigned long last_error_print = 0;
+  if (millis() - last_error_print < ERROR_PRINT_INTERVAL)
+  {
+    return;
+  }
+  if (system_errors & ERROR_MASK(Error::system_too_hot))
+  {
+    gcode.response("Error", "System too hot");
+  }
+  if (system_errors & ERROR_MASK(Error::invalid_thermistor_value))
+  {
+    gcode.response("Error", "Found an invalid thermistor value");
+  }
+  if (system_errors & ERROR_MASK(Error::plate_temperature_not_uniform))
+  {
+    gcode.response("Error", "Plate temperature is not uniform");
+  }
+  last_error_print = millis();
+}
+
 void loop()
 {
   timeStamp = micros();
@@ -1211,21 +1250,13 @@ void loop()
   adjust_target_for_volume();
 #endif
   therm_pid_peltier_update();
-
-  if (temp_probes.detected_invalid_val)
-  {
-    if (millis() - last_error_print > ERROR_PRINT_INTERVAL)
-    {
-      gcode.response("ERROR", "Invalid thermistor value");
-      last_error_print = millis();
-    }
-    deactivate_all();
-  }
   temp_safety_check();
+  print_errors_if_any();
   // temp_plot();
   lid.check_switches();
   #if LID_WARNING
   // TODO: Confirm if lid warning is required at all
+    static unsigned long last_error_print = 0;
     if (master_set_a_target && lid.status() != Lid_status::closed)
     {
       if (millis() - last_error_print > ERROR_PRINT_INTERVAL)
