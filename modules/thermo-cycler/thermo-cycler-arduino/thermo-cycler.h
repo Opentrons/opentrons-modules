@@ -89,7 +89,7 @@ double current_heatsink_temp;
 #define HEATSINK_FAN_HI_TEMP_3    75
 #define HEATSINK_FAN_OFF_TEMP     36
 #define PELTIER_TEMP_DELTA        2
-#define ACCEPTABLE_THERM_DIFF     2 // Difference allowed between any 2 plate thermistors (Celsius)
+#define ACCEPTABLE_THERM_DIFF     4 // Difference allowed between any 2 plate thermistors (Celsius)
 
 /****** OVERSHOOT EQUATION ******/
 // y = mx + c
