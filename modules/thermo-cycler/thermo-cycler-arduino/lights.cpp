@@ -40,6 +40,9 @@ void Lights::update()
     case Light_action::wipe:
       _color_wipe(_color);
       break;
+    case Light_action::flashing:
+      _flash_on_off(_color);
+      break;
     case Light_action::all_off:
     default:
       _set_strip_color(COLOR_CODES[COLOR_INDEX(Light_color::none)]);
@@ -57,6 +60,10 @@ void Lights::set_lights(TC_status tc_status)
     case TC_status::idle:
       _action = (action_override ? api_action : Light_action::solid);
       _color = (color_override ? api_color : Light_color::white);
+      break;
+    case TC_status::errored:
+      _action = Light_action::flashing;
+      _color = Light_color::orange;
       break;
     case TC_status::going_to_hot_target:
       _action = (action_override ? api_action : Light_action::pulsing);
@@ -194,4 +201,19 @@ void Lights::_pulse_leds(Light_color color)
       rad += 0.04;
     }
   }
+}
+
+void Lights::_flash_on_off(Light_color color)
+{
+  static unsigned long last_update = 0;
+  static bool led_toggle_state = 0;
+  if (millis() - last_update < FLASHING_INTERVAL)
+  {
+    return;
+  }
+  led_toggle_state ?
+    _set_strip_color(COLOR_CODES[COLOR_INDEX(_color)]) :
+    _set_strip_color(COLOR_CODES[COLOR_INDEX(Light_color::none)]);
+  led_toggle_state = !led_toggle_state;
+  last_update = millis();
 }

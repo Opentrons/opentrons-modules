@@ -9,11 +9,13 @@
 #define NEO_PIN     A5
 #define NUM_PIXELS  16
 #define WIPE_SPEED_DELAY 50
-#define PULSE_UPDATE_INTERVAL 13 //millis
+#define PULSE_UPDATE_INTERVAL 13  // millis
+#define FLASHING_INTERVAL     500 // millis
 
 enum class TC_status
 {
   idle,
+  errored,
   going_to_hot_target,
   going_to_cold_target,
   at_hot_target,
@@ -28,7 +30,7 @@ enum class TC_status
   COLOR_DEF(red, 0x00500000),        \
   COLOR_DEF(green, 0x0000ee00),      \
   COLOR_DEF(blue, 0x000000ff),       \
-  COLOR_DEF(orange, 0x00ff8300),     \
+  COLOR_DEF(orange, 0x00ff5300),     \
   COLOR_DEF(none, 0x00000000)
 
 #define COLOR_DEF(color_name, _) color_name
@@ -38,7 +40,8 @@ enum class Light_action
   all_off=0,
   solid,
   pulsing,
-  wipe
+  wipe,
+  flashing
 };
 
 enum class Light_color
@@ -65,6 +68,7 @@ class Lights
     void _color_wipe(Light_color color);
     void _set_pixel(int Pixel, Light_color color);
     void _pulse_leds(Light_color color);
+    void _flash_on_off(Light_color color);
 };
 
 #endif

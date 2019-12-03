@@ -174,12 +174,21 @@ String device_model;
 #endif
 
 /********* MISC GLOBALS *********/
+enum class Error
+{
+  no_error                      = (0 << 0),
+  system_too_hot                = (1 << 0),
+  invalid_thermistor_value      = (1 << 1),
+  plate_temperature_not_uniform = (1 << 2)
+};
 
+#define ERROR_MASK(error) static_cast<uint8_t>(error)
+
+uint8_t system_errors = ERROR_MASK(Error::no_error);
 bool timer_started = false;
 unsigned long overshoot_start_timestamp = 0;
 #define DEBUG_PRINT_INTERVAL 2000   // millisec
 #define ERROR_PRINT_INTERVAL 2000   // ms
-unsigned long last_error_print = 0;
 bool front_button_pressed = false;
 unsigned long front_button_pressed_at = 0;
 bool timer_interrupted = false;
