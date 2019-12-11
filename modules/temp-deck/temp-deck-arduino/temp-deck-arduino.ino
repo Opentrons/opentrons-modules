@@ -55,7 +55,7 @@ bool is_hot_zone() {
 
 bool is_unsafe_temp()
 {
-  return CURRENT_TEMPERATURE > TEMPERATURE_MAX;
+  return (CURRENT_TEMPERATURE > TEMPERATURE_MAX) || unable_to_cool;
 }
 
 bool is_targeting_cold_zone() {
@@ -123,50 +123,52 @@ void turn_off_target() {
 
 void set_fan_power(float percentage){
   percentage = constrain(percentage, 0.0, 1.0);
-  if (is_v3_v4_fan) {
-    fan_on_time = percentage * MAX_FAN_OFF_TIME;
-    fan_off_time = MAX_FAN_OFF_TIME - fan_on_time;
-  }
-  else {
-    analogWrite(PIN_FAN, int(percentage * 255.0));
-  }
+  // if (is_v3_v4_fan) {
+  //   fan_on_time = percentage * MAX_FAN_OFF_TIME;
+  //   fan_off_time = MAX_FAN_OFF_TIME - fan_on_time;
+  // }
+  // else {
+  //   analogWrite(PIN_FAN, int(percentage * 255.0));
+  // }
+  analogWrite(PIN_FAN, int(percentage * 255.0));
+  // Serial.println(int(percentage * 255.0));
 }
-
-void fan_v3_v4_on() {
-  if (is_fan_on_high())
-  {
-    analogWrite(PIN_FAN, FAN_V3_V4_HI_PWR);
-  }
-  else
-  { // If it's a PWM fan, it'll be powered down to the low power value.
-    // If it's not a PWM fan, low pwm will still turn its driver ON as long as
-    // it's above a threshold.
-    analogWrite(PIN_FAN, FAN_V3_V4_LOW_PWR);
-  }
-  is_fan_on = true;
-}
-
-void fan_v3_v4_off() {
-  analogWrite(PIN_FAN, LOW);
-  is_fan_on = false;
-}
-
-void adjust_v3_v4_fan_state() {
-  if (fan_on_time == 0) fan_v3_v4_off();
-  else if (fan_off_time == 0) fan_v3_v4_on();
-  else {
-    if (is_fan_on) {
-      if (millis() - fan_timestamp > fan_on_time) {
-        fan_timestamp = millis();
-        fan_v3_v4_off();
-      }
-    }
-    else if (millis() - fan_timestamp > fan_off_time) {
-      fan_timestamp = millis();
-      fan_v3_v4_on();
-    }
-  }
-}
+//
+// void fan_v3_v4_on() {
+//   if (is_fan_on_high())
+//   {
+//     analogWrite(PIN_FAN, FAN_V3_V4_HI_PWR);
+//   }
+//   else
+//   { // If it's a PWM fan, it'll be powered down to the low power value.
+//     // If it's not a PWM fan, low pwm will still turn its driver ON as long as
+//     // it's above a threshold.
+//     analogWrite(PIN_FAN, FAN_V3_V4_LOW_PWR);
+//   }
+//   is_fan_on = true;
+// }
+//
+// void fan_v3_v4_off() {
+//   analogWrite(PIN_FAN, LOW);
+//   is_fan_on = false;
+// }
+//
+// void adjust_v3_v4_fan_state() {
+//   if (fan_on_time == 0) fan_v3_v4_off();
+//   else if (fan_off_time == 0) fan_v3_v4_on();
+//   else {
+//     if (is_fan_on) {
+//       if (millis() - fan_timestamp > fan_on_time) {
+//         fan_timestamp = millis();
+//         fan_v3_v4_off();
+//       }
+//     }
+//     else if (millis() - fan_timestamp > fan_off_time) {
+//       fan_timestamp = millis();
+//       fan_v3_v4_on();
+//     }
+//   }
+// }
 
 /////////////////////////////////
 /////////////////////////////////
@@ -197,7 +199,7 @@ void adjust_pid_on_new_target() {
         DEFAULT_PID_KD,
         P_ON_M);
     }
-    else if (TARGET_TEMPERATURE >= UP_PID_HIGH_TEMP) {
+    else if (TARGET_TEMPERATURE > UP_PID_LOW_TEMP) {
       myPID.SetTunings(
         UP_PID_KP_AT_HIGH_TEMP,
         UP_PID_KI_AT_HIGH_TEMP,
@@ -243,10 +245,11 @@ void stabilize_to_target_temp(bool set_fan=true){
     set_fan_power(FAN_OFF);
   }
   else if (is_fan_on_high()) {
-    set_fan_power(FAN_HIGH);
+    if (is_v3_v4_fan) set_fan_power(FAN_V3_V4_HI_PWR);
+    else set_fan_power(FAN_HIGH);
   }
   else {
-    if (is_v3_v4_fan) set_fan_power(FAN_V3_V4_LOW_ON_PC); // more like set fan ON time
+    if (is_v3_v4_fan) set_fan_power(FAN_V3_V4_LOW_PWR); // more like set fan ON time
     else set_fan_power(FAN_LOW);
   }
 
@@ -398,6 +401,7 @@ void turn_off_serial_lights() {
 
 void setup() {
 
+  // delay(10000);
   turn_off_serial_lights();
 
   wdt_disable();          /* Disable watchdog if enabled by bootloader/fuses */
@@ -422,36 +426,37 @@ void setup() {
   // LED pins for model versions 3 (post 2018.10.15) & 4: red = 6, blue = 5
   // LED pins for model versions < 3 & 3.0 (pre- 2018.10.15) : red = 5, blue = 6
   bool is_blue_pin_5;
-  if (model_version == 3 || model_version == 4)
+
+  if (model_version >= 3)
   {
     if (model_version == 3)
     {
       is_v3_v4_fan = true;
+
       // V3 tempdecks produced after Oct 15 have different LED pin configuration
       // serial number has the production date. eg. TDV03P*20181008*A01
-      const uint8_t date_length = 4;  // MMDD
+      const uint8_t date_length = 4;  // YYMMDD
       String serial_date = device_serial.substring(
         SERIAL_VER_TEMPLATE_LEN, SERIAL_VER_TEMPLATE_LEN + date_length);
-      int v3_date = serial_date.toInt();
-      if (v3_date > 1015)
-      {
-        is_blue_pin_5 = true;
-      }
-      else
-      {
-        is_blue_pin_5 = false;
-      }
+      int16_t td_date = serial_date.toInt();
+      Serial.println(td_date);
+      is_blue_pin_5 = (td_date > 1015 ? true : false);
+    }
+    else if (model_version == 4)
+    {
+      is_v3_v4_fan = true;
+      is_blue_pin_5 = true;
     }
     else
     {
+      is_v3_v4_fan = false;
       is_blue_pin_5 = true;
-      is_v3_v4_fan = true;
     }
   }
   else
   {
-    is_v3_v4_fan = false;
     is_blue_pin_5 = false;
+    is_v3_v4_fan = false;
   }
   lights.setup_lights(is_blue_pin_5);
   lights.set_numbers_brightness(0.25);
@@ -473,8 +478,43 @@ void setup() {
   lights.startup_animation(CURRENT_TEMPERATURE, 2000);
 }
 
+void check_if()
+{
+  // Check if we are moving away from target.
+  // Sample temp change over every second & perform checks over 10 seconds of data
+  static int temp_to_target[10] = {0};  // FIFO array
+  static unsigned long last_check = millis();
+  if (millis() - last_check >= SAFETY_CHECK_INTERVAL)
+  {
+    // Move 1 position down int the array (Pushes out the oldest value)
+    for (uint8_t i = 9; i > 0; i--)
+    {
+      temp_to_target[i] = temp_to_target[i-1];
+    }
+    // Push in the newest value
+    temp_to_target[0] = TARGET_TEMPERATURE - CURRENT_TEMPERATURE;
+    for (uint8_t i = 9; i > 0; i--)
+    {
+      if (temp_to_target[i] < temp_to_target[i-1])
+      {
+        if (i -1 == 0)
+        {
+          gcode.print_warning(F("Eror: Temperature module unable to cool. Deactivating"));
+          unable_to_cool = true;
+        }
+        continue;
+      }
+      else
+      {
+        break;
+      }
+    }
+    last_check = millis();
+  }
+}
 void temp_safety_check()
 {
+
   if (is_unsafe_temp())
   {
     gcode.print_warning(F("Temperature module overheated! Deactivating."));
@@ -485,6 +525,8 @@ void temp_safety_check()
 }
 
 void loop(){
+  // static unsigned long loopTime;
+  // loopTime = millis();
   temp_safety_check();
   turn_off_serial_lights();
 
@@ -506,7 +548,7 @@ void loop(){
 
   read_thermistor_and_apply_offset();
 
-  if (is_v3_v4_fan) adjust_v3_v4_fan_state();
+  // if (is_v3_v4_fan) adjust_v3_v4_fan_state();
 
   // update the temperature display, and color-bar
   update_led_display(true);  // debounce enabled
@@ -519,6 +561,8 @@ void loop(){
       stabilize_to_room_temp();
     }
   }
+  // loopTime = millis() - loopTime;
+  // Serial.println(loopTime);
 }
 
 /////////////////////////////////

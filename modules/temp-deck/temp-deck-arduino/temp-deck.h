@@ -57,8 +57,8 @@ const float THERMISTOR_OFFSET_LOW_TEMP_DIFF = TEMPERATURE_ROOM - THERMISTOR_OFFS
 float _offset_temp_diff = 0.0;
 
 // the intensities of the fan (0.0-1.0)
-#define FAN_HIGH 1.0
-#define FAN_LOW 0.3
+#define FAN_HIGH 0.9
+#define FAN_LOW 0.35
 #define FAN_OFF 0.0
 
 // some model versions 3.0+ & 4.0+ have a different fan that requires on/off cycles (not PWM)
@@ -67,8 +67,8 @@ float _offset_temp_diff = 0.0;
 
 // some model v4 fans are indeed PWM. We need to keep their power low enough while
 // pulsing so they are able to turn off momentarily.
-#define FAN_V3_V4_LOW_PWR   100   // PWM value (= 39%)
-#define FAN_V3_V4_HI_PWR    214   // PWM value (= 85%)
+#define FAN_V3_V4_LOW_PWR   0.48   // PWM value (= 39%)
+#define FAN_V3_V4_HI_PWR    0.9   // PWM value (= 85%)
 
 unsigned long fan_on_time = 0;
 unsigned long fan_off_time = MAX_FAN_OFF_TIME;
@@ -92,20 +92,22 @@ bool is_v3_v4_fan = false;
 #define UP_PID_LOW_TEMP 40
 #define UP_PID_HIGH_TEMP 100
 #define UP_PID_KP_AT_LOW_TEMP 0.17    // "Kp" when target is UP_PID_LOW_TEMP
-#define UP_PID_KP_AT_HIGH_TEMP 0.26   // "Kp" when target is UP_PID_HIGH_TEMP
+#define UP_PID_KP_AT_HIGH_TEMP 0.12   // "Kp" when target is UP_PID_HIGH_TEMP
 #define UP_PID_KI_AT_LOW_TEMP 0.012   // "Ki" when target is UP_PID_LOW_TEMP
-#define UP_PID_KI_AT_HIGH_TEMP 0.0225 // "Ki" when target is UP_PID_HIGH_TEMP
+#define UP_PID_KI_AT_HIGH_TEMP 0.017 // "Ki" when target is UP_PID_HIGH_TEMP
 
 // the "Kp" and "Ki" value for whenever the target is ABOVE current temperature
 // BUT also in the cold zone (<15deg)
 #define UP_PID_KP_IN_COLD_ZONE 0.21
 #define UP_PID_KI_IN_COLD_ZONE 0.015
 
+#define SAFETY_CHECK_INTERVAL 1000 // millis
+bool unable_to_cool = false;
 // to use with the Arduino IDE's "Serial Plotter" graphing tool
 // (very, very useful when testing PID tuning values)
 // uncomment below line to print temperature and PID information
 
-//#define DEBUG_PLOTTER_ENABLED
+#define DEBUG_PLOTTER_ENABLED
 
 #ifdef DEBUG_PLOTTER_ENABLED
 #define DEBUG_PLOTTER_INTERVAL 250
