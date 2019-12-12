@@ -126,7 +126,7 @@ double current_heatsink_temp;
 #define TARGET_TEMP_TOLERANCE   1.5   // Degree Celsius
 
 #define OVERSHOOT_DURATION      10000  // millisec
-#define DEFAULT_VOLUME          25     // uL
+#define DEFAULT_VOLUME          100     // uL
 double current_plate_kp = PID_KP_PLATE_UP;
 double current_plate_ki = PID_KI_PLATE_UP;
 double current_plate_kd = PID_KD_PLATE_UP;

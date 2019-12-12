@@ -336,7 +336,7 @@ void auto_fans_for_active_thermocycler()
   else if (is_ramping_down())
   {
     PID_fan.SetMode(MANUAL);
-    heatsink_fan.set_percentage(FAN_PWR_RAMPING_DOWN);
+    heatsink_fan.set_percentage(FAN_PWR_RAMPING_DOWN, Fan_ramping::On);
   }
   else if (target_temperature_plate > HEATSINK_FAN_MED_TEMP)
   {
