@@ -1107,7 +1107,7 @@ void temp_plot()
 /* Calculate thermistors offset */
 float thermistor_offset()
 {
-  if (use_offset && target_temperature_plate > TEMPERATURE_ROOM)
+  if (use_offset)
   {
     return (const_a * current_heatsink_temp) +
             (const_b * target_temperature_plate) + const_c;

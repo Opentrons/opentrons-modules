@@ -82,7 +82,9 @@ TEMPDECK_BUILD_DIR := $(BUILDS_DIR)/temp-deck
 TC_BUILD_DIR := $(BUILDS_DIR)/thermo-cycler
 TC_EEPROM_WR_BUILD_DIR := $(BUILDS_DIR)/tc-eeprom-writer
 
-TC_FW_VERSION ?= unknown
+TC_FW_VERSION ?= thermocycler@unknown
+FW_VERSION := "$(shell cut -d'@' -f2 <<<'$(TC_FW_VERSION)')"
+
 DUMMY_BOARD ?= false
 LID_WARNING ?= false
 HFQ_PWM ?= false
@@ -109,7 +111,7 @@ build-thermocycler:
 	-DLID_WARNING=$(LID_WARNING) -DHFQ_PWM=$(HFQ_PWM) \
 	-DHW_VERSION=$(HW_VERSION) -DLID_TESTING=$(LID_TESTING) \
 	-DRGBW_NEO=$(RGBW_NEO) -DVOLUME_DEPENDENCY=$(VOLUME_DEPENDENCY) \
-	-DTC_FW_VERSION=\"$(TC_FW_VERSION)\"" \
+	-DTC_FW_VERSION=\"$(FW_VERSION)\"" \
 	> $(ARDUINO15_LOC)/packages/Opentrons/hardware/samd/$(OPENTRONS_SAMD_BOARDS_VER)/platform.local.txt
 	$(ARDUINO) --verify --board Opentrons:samd:thermocycler_m0 $(MODULES_DIR)/thermo-cycler/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
 	mkdir -p $(TC_BUILD_DIR)
