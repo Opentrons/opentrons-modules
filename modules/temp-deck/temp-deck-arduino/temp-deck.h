@@ -24,7 +24,13 @@
 #include "thermistor.h"
 #include "gcode.h"
 
-#define device_version "v2.0.0"
+/********* Version **********/
+#ifdef TD_FW_VERSION
+  #define FW_VERSION String(TD_FW_VERSION)
+#else
+  #error "No firmware version provided"
+#endif
+
 #define MODEL_VER_TEMPLATE "temp_deck_v"
 #define MODEL_VER_TEMPLATE_LEN sizeof(MODEL_VER_TEMPLATE) - 1
 #define SERIAL_VER_TEMPLATE "TDV03P2018"

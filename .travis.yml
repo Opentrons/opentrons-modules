@@ -7,23 +7,39 @@ cache:
   directories:
     - ~/arduino_ide
 
-env:
-  - THIS_BUILD_TAG=`git describe --tags`
-
 install:
   - make setup
 
+env:
+  global:
+    - THIS_BUILD_TAG=`git describe --tags`
+    - MD_TAG=`git describe --tags --match "magdeck*"`
+    - TD_TAG=`git describe --tags --match "tempdeck*"`
+    - TC_TAG=`git describe --tags --match "thermocycler*"`
+
+jobs:
+  include:
+    - stage: deploy1
+      name: Branch build
+      env: BRANCH_NAME=$TRAVIS_BRANCH
+      if: tag IS blank
+
+    - stage: deploy2
+      name: Release build
+      env: BRANCH_NAME=release
+      if: tag IS present
+
 script:
-  - make build TC_FW_VERSION=$THIS_BUILD_TAG
+  - make build MD_TAG=$MD_TAG TD_TAG=$TD_TAG TC_TAG=$TC_TAG
 
 before_deploy:
   - make clean
-  - mkdir modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
-  - cp -r ./build modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
-  - zip -r modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH.zip modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
-  - rm -rf modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
+  - mkdir modules-$THIS_BUILD_TAG-$BRANCH_NAME
+  - cp -r ./build modules-$THIS_BUILD_TAG-$BRANCH_NAME
+  - zip -r modules-$THIS_BUILD_TAG-$BRANCH_NAME.zip modules-$THIS_BUILD_TAG-$BRANCH_NAME
+  - rm -rf modules-$THIS_BUILD_TAG-$BRANCH_NAME
   - mkdir dist
-  - mv modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH.zip ./dist
+  - mv modules-$THIS_BUILD_TAG-$BRANCH_NAME.zip ./dist
 
 deploy:
   - provider: s3
@@ -34,7 +50,7 @@ deploy:
     skip_cleanup: true
     local_dir: ./dist
     acl: public_read
-    upload_dir: modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
+    upload_dir: modules-$THIS_BUILD_TAG-$BRANCH_NAME
     on:
       all_branches: true
 

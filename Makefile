@@ -82,8 +82,17 @@ TEMPDECK_BUILD_DIR := $(BUILDS_DIR)/temp-deck
 TC_BUILD_DIR := $(BUILDS_DIR)/thermo-cycler
 TC_EEPROM_WR_BUILD_DIR := $(BUILDS_DIR)/tc-eeprom-writer
 
-TC_FW_VERSION ?= thermocycler@unknown
-FW_VERSION := "$(shell cut -d'@' -f2 <<<'$(TC_FW_VERSION)')"
+# Magdeck flags
+MD_TAG ?= magdeck@unknown
+MD_FW_VERSION := "$(shell cut -d'@' -f2 <<<"$(MD_TAG)")"
+
+# Tempdeck flags
+TD_TAG ?= tempdeck@unknown
+TD_FW_VERSION := "$(shell cut -d'@' -f2 <<<"$(TD_TAG)")"
+
+# Thermocycler flags
+TC_TAG ?= thermocycler@unknown
+TC_FW_VERSION := "$(shell cut -d'@' -f2 <<<"$(TC_TAG)")"
 
 DUMMY_BOARD ?= false
 LID_WARNING ?= false
@@ -95,12 +104,14 @@ VOLUME_DEPENDENCY ?= true
 
 .PHONY: build-magdeck
 build-magdeck:
+	echo "compiler.cpp.extra_flags=-DMD_FW_VERSION=\"$(MD_FW_VERSION)\"" > $(ARDUINO15_LOC)/packages/Opentrons/hardware/avr/$(OPENTRONS_BOARDS_VER)/platform.local.txt
 	$(ARDUINO) --verify --board Opentrons:avr:magdeck32u4cat $(MODULES_DIR)/mag-deck/mag-deck-arduino/mag-deck-arduino.ino --verbose-build
 	mkdir -p $(MAGDECK_BUILD_DIR)
 	cp $(BUILDS_DIR)/tmp/mag-deck-arduino.ino.hex $(MAGDECK_BUILD_DIR)
 
 .PHONY: build-tempdeck
 build-tempdeck:
+	echo "compiler.cpp.extra_flags=-DTD_FW_VERSION=\"$(TD_FW_VERSION)\"" > $(ARDUINO15_LOC)/packages/Opentrons/hardware/avr/$(OPENTRONS_BOARDS_VER)/platform.local.txt
 	$(ARDUINO) --verify --board Opentrons:avr:tempdeck32u4cat $(MODULES_DIR)/temp-deck/temp-deck-arduino/temp-deck-arduino.ino --verbose-build
 	mkdir -p $(TEMPDECK_BUILD_DIR)
 	cp $(BUILDS_DIR)/tmp/temp-deck-arduino.ino.hex $(TEMPDECK_BUILD_DIR)
@@ -111,7 +122,7 @@ build-thermocycler:
 	-DLID_WARNING=$(LID_WARNING) -DHFQ_PWM=$(HFQ_PWM) \
 	-DHW_VERSION=$(HW_VERSION) -DLID_TESTING=$(LID_TESTING) \
 	-DRGBW_NEO=$(RGBW_NEO) -DVOLUME_DEPENDENCY=$(VOLUME_DEPENDENCY) \
-	-DTC_FW_VERSION=\"$(FW_VERSION)\"" \
+	-DTC_FW_VERSION=\"$(TC_FW_VERSION)\"" \
 	> $(ARDUINO15_LOC)/packages/Opentrons/hardware/samd/$(OPENTRONS_SAMD_BOARDS_VER)/platform.local.txt
 	$(ARDUINO) --verify --board Opentrons:samd:thermocycler_m0 $(MODULES_DIR)/thermo-cycler/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
 	mkdir -p $(TC_BUILD_DIR)
