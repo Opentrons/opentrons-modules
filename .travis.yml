@@ -31,15 +31,10 @@ jobs:
 
 script:
   - make build MD_TAG=$MD_TAG TD_TAG=$TD_TAG TC_TAG=$TC_TAG
+  - make zip-all
 
 before_deploy:
   - make clean
-  - mkdir modules-$THIS_BUILD_TAG-$BRANCH_NAME
-  - cp -r ./build modules-$THIS_BUILD_TAG-$BRANCH_NAME
-  - zip -r modules-$THIS_BUILD_TAG-$BRANCH_NAME.zip modules-$THIS_BUILD_TAG-$BRANCH_NAME
-  - rm -rf modules-$THIS_BUILD_TAG-$BRANCH_NAME
-  - mkdir dist
-  - mv modules-$THIS_BUILD_TAG-$BRANCH_NAME.zip ./dist
 
 deploy:
   - provider: s3
@@ -48,7 +43,7 @@ deploy:
     bucket: opentrons-modules-builds
     region: us-east-2
     skip_cleanup: true
-    local_dir: ./dist
+    local_dir: ./build
     acl: public_read
     upload_dir: modules-$THIS_BUILD_TAG-$BRANCH_NAME
     on:
