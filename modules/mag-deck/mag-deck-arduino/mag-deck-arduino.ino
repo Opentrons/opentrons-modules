@@ -14,9 +14,15 @@
 #include "memory.h"
 #include "gcodemagdeck.h"
 
+/********* Version **********/
+#ifdef MD_FW_VERSION
+  #define FW_VERSION String(MD_FW_VERSION)
+#else
+  #error "No firmware version provided"
+#endif
+
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
-String device_version = "v1.0.1";
 
 GcodeMagDeck gcode = GcodeMagDeck();  // reads in serial data to parse command and issue reponses
 Memory memory = Memory();  // reads from EEPROM to find device's unique serial, and model number
@@ -350,7 +356,7 @@ void loop() {
           gcode.print_current_position(CURRENT_POSITION_MM);
           break;
         case GCODE_DEVICE_INFO:
-          gcode.print_device_info(device_serial, device_model, device_version);
+          gcode.print_device_info(device_serial, device_model, FW_VERSION);
           break;
         case GCODE_DFU:
           gcode.send_ack(); // Send ack here since we not reaching the end of the loop

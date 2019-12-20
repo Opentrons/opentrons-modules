@@ -77,13 +77,22 @@ setup:
 .PHONY: build
 build: build-magdeck build-tempdeck build-thermocycler build-tc-eeprom
 
-MAGDECK_BUILD_DIR := $(BUILDS_DIR)/mag-deck
-TEMPDECK_BUILD_DIR := $(BUILDS_DIR)/temp-deck
-TC_BUILD_DIR := $(BUILDS_DIR)/thermo-cycler
-TC_EEPROM_WR_BUILD_DIR := $(BUILDS_DIR)/tc-eeprom-writer
+# Magdeck flags
+MD_TAG ?= magdeck@unknown
+MD_FW_VERSION := $(shell cut -d'@' -f2 <<<"$(MD_TAG)")
 
-TC_FW_VERSION ?= thermocycler@unknown
-FW_VERSION := "$(shell cut -d'@' -f2 <<<'$(TC_FW_VERSION)')"
+# Tempdeck flags
+TD_TAG ?= tempdeck@unknown
+TD_FW_VERSION := $(shell cut -d'@' -f2 <<<"$(TD_TAG)")
+
+# Thermocycler flags
+TC_TAG ?= thermocycler@unknown
+TC_FW_VERSION := $(shell cut -d'@' -f2 <<<"$(TC_TAG)")
+
+MAGDECK_BUILD_DIR := $(BUILDS_DIR)/mag-deck-$(MD_FW_VERSION)
+TEMPDECK_BUILD_DIR := $(BUILDS_DIR)/temp-deck-$(TD_FW_VERSION)
+TC_BUILD_DIR := $(BUILDS_DIR)/thermo-cycler-$(TC_FW_VERSION)
+TC_EEPROM_WR_BUILD_DIR := $(BUILDS_DIR)/tc-eeprom-writer-$(TC_FW_VERSION)
 
 DUMMY_BOARD ?= false
 LID_WARNING ?= false
@@ -95,12 +104,14 @@ VOLUME_DEPENDENCY ?= true
 
 .PHONY: build-magdeck
 build-magdeck:
+	echo "compiler.cpp.extra_flags=-DMD_FW_VERSION=\"$(MD_FW_VERSION)\"" > $(ARDUINO15_LOC)/packages/Opentrons/hardware/avr/$(OPENTRONS_BOARDS_VER)/platform.local.txt
 	$(ARDUINO) --verify --board Opentrons:avr:magdeck32u4cat $(MODULES_DIR)/mag-deck/mag-deck-arduino/mag-deck-arduino.ino --verbose-build
 	mkdir -p $(MAGDECK_BUILD_DIR)
 	cp $(BUILDS_DIR)/tmp/mag-deck-arduino.ino.hex $(MAGDECK_BUILD_DIR)
 
 .PHONY: build-tempdeck
 build-tempdeck:
+	echo "compiler.cpp.extra_flags=-DTD_FW_VERSION=\"$(TD_FW_VERSION)\"" > $(ARDUINO15_LOC)/packages/Opentrons/hardware/avr/$(OPENTRONS_BOARDS_VER)/platform.local.txt
 	$(ARDUINO) --verify --board Opentrons:avr:tempdeck32u4cat $(MODULES_DIR)/temp-deck/temp-deck-arduino/temp-deck-arduino.ino --verbose-build
 	mkdir -p $(TEMPDECK_BUILD_DIR)
 	cp $(BUILDS_DIR)/tmp/temp-deck-arduino.ino.hex $(TEMPDECK_BUILD_DIR)
@@ -111,11 +122,13 @@ build-thermocycler:
 	-DLID_WARNING=$(LID_WARNING) -DHFQ_PWM=$(HFQ_PWM) \
 	-DHW_VERSION=$(HW_VERSION) -DLID_TESTING=$(LID_TESTING) \
 	-DRGBW_NEO=$(RGBW_NEO) -DVOLUME_DEPENDENCY=$(VOLUME_DEPENDENCY) \
-	-DTC_FW_VERSION=\"$(FW_VERSION)\"" \
+	-DTC_FW_VERSION=\"$(TC_FW_VERSION)\"" \
 	> $(ARDUINO15_LOC)/packages/Opentrons/hardware/samd/$(OPENTRONS_SAMD_BOARDS_VER)/platform.local.txt
 	$(ARDUINO) --verify --board Opentrons:samd:thermocycler_m0 $(MODULES_DIR)/thermo-cycler/thermo-cycler-arduino/thermo-cycler-arduino.ino --verbose-build
 	mkdir -p $(TC_BUILD_DIR)
+	mkdir -p $(TC_EEPROM_WR_BUILD_DIR)
 	cp $(BUILDS_DIR)/tmp/thermo-cycler-arduino.ino.bin $(TC_BUILD_DIR)
+	cp $(BUILDS_DIR)/tmp/thermo-cycler-arduino.ino.bin $(TC_EEPROM_WR_BUILD_DIR) # tc eepromWriter needs the same firmware file
 	cp $(MODULES_DIR)/thermo-cycler/production/firmware_uploader.py $(TC_BUILD_DIR)
 
 .PHONY: build-tc-eeprom
@@ -125,9 +138,20 @@ build-tc-eeprom:
 	cp $(BUILDS_DIR)/tmp/eepromWriter.ino.bin $(TC_EEPROM_WR_BUILD_DIR)
 	cp $(MODULES_DIR)/thermo-cycler/production/serial_and_firmware_uploader.py $(TC_EEPROM_WR_BUILD_DIR)
 
+.PHONY: zip-all
+zip-all:
+	cd $(BUILDS_DIR) && zip -r mag-deck-$(MD_FW_VERSION).zip mag-deck-$(MD_FW_VERSION) \
+	&& zip -r temp-deck-$(TD_FW_VERSION).zip temp-deck-$(TD_FW_VERSION) \
+	&& zip -r thermo-cycler-$(TC_FW_VERSION).zip thermo-cycler-$(TC_FW_VERSION) \
+	&& zip -r tc-eeprom-writer-$(TC_FW_VERSION).zip tc-eeprom-writer-$(TC_FW_VERSION)
+
 .PHONY: clean
 clean:
 	rm -rf $(BUILDS_DIR)/tmp
+	rm -rf $(MAGDECK_BUILD_DIR)
+	rm -rf $(TEMPDECK_BUILD_DIR)
+	rm -rf $(TC_BUILD_DIR)
+	rm -rf $(TC_EEPROM_WR_BUILD_DIR)
 
 .PHONY: teardown
 teardown:

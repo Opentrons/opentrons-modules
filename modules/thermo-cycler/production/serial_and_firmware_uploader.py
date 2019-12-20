@@ -15,7 +15,7 @@ from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 
 THIS_DIR = PurePath(__file__).parent
-DEFAULT_FW_FILE_PATH = THIS_DIR.parent.joinpath('thermo-cycler', 'thermo-cycler-arduino.ino.bin')
+DEFAULT_FW_FILE_PATH = THIS_DIR.joinpath('thermo-cycler-arduino.ino.bin')
 EEPROM_WRITER_PATH = THIS_DIR.joinpath('eepromWriter.ino.bin')
 OPENTRONS_VID       = 0x04d8
 ADAFRUIT_VID        = 0x239a
