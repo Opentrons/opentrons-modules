@@ -51,6 +51,8 @@
 
 #define TEMPERATURE_BURN 55
 #define STABILIZING_ZONE 0.5
+#define ERROR_PRINT_INTERVAL 2000 // millis
+bool reached_unsafe_temp = false;
 
 // values used to scale the thermistors temperature
 // to more accurately reflect the temperature of the top-plate
@@ -74,7 +76,7 @@ float _offset_temp_diff = 0.0;
 // some model v4 fans are indeed PWM. We need to keep their power low enough while
 // pulsing so they are able to turn off momentarily.
 #define FAN_V3_V4_LOW_PWR   100   // PWM value (= 39%)
-#define FAN_V3_V4_HI_PWR    214   // PWM value (= 85%)
+#define FAN_V3_V4_HI_PWR    214   // PWM value (214 = 85%)
 
 unsigned long fan_on_time = 0;
 unsigned long fan_off_time = MAX_FAN_OFF_TIME;

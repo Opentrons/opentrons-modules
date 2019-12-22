@@ -8,6 +8,7 @@ CI_SYSTEM ?= $(shell uname)
 LIBRARIES_DIR := libraries
 MODULES_DIR := modules
 INO_DIR := $(HOME)/arduino_ide
+EEPROM_DIR := eepromWriter
 
 ARDUINO_VERSION ?= 1.8.10
 ARDUINO_SAMD_VER ?= 1.6.21
@@ -115,6 +116,9 @@ build-tempdeck:
 	$(ARDUINO) --verify --board Opentrons:avr:tempdeck32u4cat $(MODULES_DIR)/temp-deck/temp-deck-arduino/temp-deck-arduino.ino --verbose-build
 	mkdir -p $(TEMPDECK_BUILD_DIR)
 	cp $(BUILDS_DIR)/tmp/temp-deck-arduino.ino.hex $(TEMPDECK_BUILD_DIR)
+	cp $(EEPROM_DIR)/eepromWriter.hex $(TEMPDECK_BUILD_DIR)
+	cp $(EEPROM_DIR)/avrdude.conf $(TEMPDECK_BUILD_DIR)
+	cp $(EEPROM_DIR)/write_module_memory.py $(TEMPDECK_BUILD_DIR)
 
 .PHONY: build-thermocycler
 build-thermocycler:

@@ -53,11 +53,6 @@ bool is_hot_zone() {
   return CURRENT_TEMPERATURE > TEMPERATURE_FAN_CUTOFF_HOT;
 }
 
-bool is_unsafe_temp()
-{
-  return CURRENT_TEMPERATURE > TEMPERATURE_MAX;
-}
-
 bool is_targeting_cold_zone() {
   return TARGET_TEMPERATURE <= TEMPERATURE_FAN_CUTOFF_COLD;
 }
@@ -255,7 +250,14 @@ void stabilize_to_target_temp(bool set_fan=true){
 }
 
 void stabilize_to_room_temp(bool set_fan=true) {
-  if (is_burning_hot() && !is_unsafe_temp()) {
+
+  if (is_burning_hot && reached_unsafe_temp)
+  { // the peltiers have probably run away so disable them
+    peltiers.disable_peltiers();
+    set_fan_power(FAN_HIGH);
+  }
+  else if (is_burning_hot()) {
+    // turn ON peltiers to cool to < TEMPERATURE_BURN
     set_peltiers_from_pid();
     set_fan_power(FAN_HIGH);
   }
@@ -422,7 +424,7 @@ void setup() {
   // LED pins for model versions 3 (post 2018.10.15) & 4: red = 6, blue = 5
   // LED pins for model versions < 3 & 3.0 (pre- 2018.10.15) : red = 5, blue = 6
   bool is_blue_pin_5;
-  if (model_version == 3 || model_version == 4)
+  if (model_version > 3)
   {
     if (model_version == 3)
     {
@@ -442,10 +444,15 @@ void setup() {
         is_blue_pin_5 = false;
       }
     }
-    else
+    else if (model_version == 4)
     {
       is_blue_pin_5 = true;
       is_v3_v4_fan = true;
+    }
+    else
+    {
+      is_blue_pin_5 = true;
+      is_v3_v4_fan = false;
     }
   }
   else
@@ -475,17 +482,26 @@ void setup() {
 
 void temp_safety_check()
 {
-  if (is_unsafe_temp())
-  {
-    gcode.print_warning(F("Temperature module overheated! Deactivating."));
-    turn_off_target();
-    peltiers.disable_peltiers();
-    set_fan_power(FAN_HIGH);
+  if (CURRENT_TEMPERATURE > TEMPERATURE_MAX)
+  { // Once this boolean is set, it will not reset unless device is power cycled
+    reached_unsafe_temp = true;
   }
 }
 
 void loop(){
   temp_safety_check();
+  static unsigned long last_print = millis();
+  if (millis() - last_print >= ERROR_PRINT_INTERVAL)
+  {
+    last_print = millis();
+    if (reached_unsafe_temp)
+    {
+      gcode.print_warning(F("Temperature module overheated! Deactivating."));
+      turn_off_target();
+      peltiers.disable_peltiers();
+      set_fan_power(FAN_HIGH);
+    }
+  }
   turn_off_serial_lights();
 
 #ifdef DEBUG_PLOTTER_ENABLED
