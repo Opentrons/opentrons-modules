@@ -27,14 +27,15 @@ MODELS = {
     'TDV01': 'temp_deck_v1.1',  # make sure to skip v2 if model updates
     'TDV03': 'temp_deck_v3.0',  # this model has the new fans with pcb fan_v4
     'TDV04': 'temp_deck_v4.0',  # this model has the new fans with pcb fan_v4.1
+    'TDV15': 'temp_deck_v15',   # koozie + pwm fans
     'MDV01': 'mag_deck_v1.1'
 }
 
 DIR_NAME = os.path.dirname(os.path.realpath(__file__))
 AVR_CONFIG_FILE = os.path.join(DIR_NAME, 'avrdude.conf')
 FIRMWARE_DIR = os.path.join(DIR_NAME, 'firmware')
-EEPROM_FIRMARE_PATH = os.path.join(FIRMWARE_DIR, 'eepromWriter.hex')
-TEMP_DECK_FIRMARE_PATH = os.path.join(FIRMWARE_DIR, 'temp-deck-arduino.ino.tempdeck32u4.hex')
+EEPROM_FIRMARE_PATH = os.path.join('eepromWriter.hex')
+TEMP_DECK_FIRMARE_PATH = os.path.join('temp-deck-arduino.ino.hex')
 MAG_DECK_FIRMARE_PATH = os.path.join(FIRMWARE_DIR, 'mag-deck-arduino.ino.magdeck32u4.hex')
 
 AVR_COMMAND = 'avrdude -C {config} -v -patmega32u4 -cavr109 -P {port} -b 57600 -D -U flash:w:{firmware}:i'  # NOQA
