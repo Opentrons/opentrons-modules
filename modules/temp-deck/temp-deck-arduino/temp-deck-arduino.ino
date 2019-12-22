@@ -251,7 +251,13 @@ void stabilize_to_target_temp(bool set_fan=true){
 
 void stabilize_to_room_temp(bool set_fan=true) {
 
-  if (is_burning_hot() && !reached_unsafe_temp) {
+  if (is_burning_hot && reached_unsafe_temp)
+  { // the peltiers have probably run away so disable them
+    peltiers.disable_peltiers();
+    set_fan_power(FAN_HIGH);
+  }
+  else if (is_burning_hot()) {
+    // turn ON peltiers to cool to < TEMPERATURE_BURN
     set_peltiers_from_pid();
     set_fan_power(FAN_HIGH);
   }
