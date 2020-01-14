@@ -10,44 +10,33 @@ cache:
 install:
   - make setup
 
-env:
-  global:
-    - THIS_BUILD_TAG=`git describe --tags`
-    - MD_TAG=`git describe --tags --match "magdeck*"`
-    - TD_TAG=`git describe --tags --match "tempdeck*"`
-    - TC_TAG=`git describe --tags --match "thermocycler*"`
+# base configs
+_deploy_s3: &deploy_s3
+  provider: s3
+  skip_cleanup: true
+  access_key_id: $AWS_ACCESS_KEY_ID
+  secret_access_key: $AWS_SECRET_ACCESS_KEY
+  region: us-east-2
+  acl: public_read
+  bucket: opentrons-modules-builds
+  dot_match: true
+  on:
+    all_branches: true
 
 jobs:
   include:
-    - stage: deploy1
-      name: Branch build
-      env: BRANCH_NAME=$TRAVIS_BRANCH
-      if: tag IS blank
-
-    - stage: deploy2
-      name: Release build
-      env: BRANCH_NAME=release
-      if: tag IS present
-
-script:
-  - make build MD_TAG=$MD_TAG TD_TAG=$TD_TAG TC_TAG=$TC_TAG
-  - make zip-all
-
-before_deploy:
-  - make clean
-
-deploy:
-  - provider: s3
-    access_key_id: $AWS_ACCESS_KEY_ID
-    secret_access_key: $AWS_SECRET_ACCESS_KEY
-    bucket: opentrons-modules-builds
-    region: us-east-2
-    skip_cleanup: true
-    local_dir: ./build
-    acl: public_read
-    upload_dir: modules-$THIS_BUILD_TAG-$BRANCH_NAME
-    on:
-      all_branches: true
+    - stage: deploy
+      name: deploy build
+      script:
+        - make build
+        - make zip-all
+      before_deploy:
+        - source ./scripts/set_build_vars.sh
+      deploy:
+        - # upload module release artifacts to S3
+          <<: *deploy_s3
+          local_dir: $RELEASE_LOCAL_DIR
+          upload_dir: $RELEASE_UPLOAD_DIR
 
 notifications:
   email:
