@@ -17,7 +17,7 @@ case $TRAVIS_TAG in
     ;;
 
   thermocycler@v*)
-    export RELEASE_LOCAL_DIR="${BUILDS_DIR}/thermocycler"
+    export RELEASE_LOCAL_DIR="${BUILDS_DIR}/thermo-cycler"
     export RELEASE_UPLOAD_DIR="thermocycler/${RELEASE_VERSION}"
     ;;
 
