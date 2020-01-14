@@ -49,7 +49,7 @@ jobs:
       script:
         - make build
       before_deploy:
-        - source set_release_vars.sh
+        - source ./scripts/set_release_vars.sh
       deploy:
         - # upload module release artifacts to S3
           <<: *deploy_s3
