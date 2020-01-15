@@ -72,6 +72,7 @@ def get_device_info(port, lock):
     port.reset_input_buffer()
     info = send_tc(port, lock, GCODES['DEVICE_INFO'], get_response=True)
     port.reset_input_buffer()
+
     return info
 
 
@@ -204,7 +205,7 @@ def eutech_temp_stability_check(target=None, tolerance=0.2):
     if target is None:
         prev_temp = EUTECH_TEMPERATURE
         for i in range(10):
-            if abs(prev_temp - EUTECH_TEMPERATURE) > 0.015:
+            if abs(prev_temp - EUTECH_TEMPERATURE) > 0.003:
                 return False
             prev_temp = EUTECH_TEMPERATURE
             time.sleep(2)
@@ -357,6 +358,8 @@ if __name__ == '__main__':
                                 EUTECH_BAUDRATE,
                                 timeout=1)
     lock = threading.Lock()
+    # Disable continuous debug stat if in debug mode
+    send_tc(tc_port, lock, GCODES['PRINT_DEBUG_STAT'])
     log.info("Connected to thermocycler")
     print("-------------------")
     log.info("Device info:{}".format(get_device_info(tc_port, lock)))
