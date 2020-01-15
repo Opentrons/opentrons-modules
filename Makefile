@@ -87,9 +87,9 @@ TD_FW_VERSION := $(shell git describe --tags --match "tempdeck*" | cut -d'@' -f2
 # Thermocycler flags
 TC_FW_VERSION := $(shell git describe --tags --match "thermocycler*" | cut -d'@' -f2)
 
-MAGDECK_BUILD_DIR := $(BUILDS_DIR)/magnetic-module
-TEMPDECK_BUILD_DIR := $(BUILDS_DIR)/temperature-module
-TC_BUILD_DIR := $(BUILDS_DIR)/thermocycler
+MAGDECK_BUILD_DIR := $(BUILDS_DIR)/mag-deck
+TEMPDECK_BUILD_DIR := $(BUILDS_DIR)/temp-deck
+TC_BUILD_DIR := $(BUILDS_DIR)/thermo-cycler
 
 DUMMY_BOARD ?= false
 LID_WARNING ?= false
