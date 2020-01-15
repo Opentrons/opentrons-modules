@@ -22,7 +22,7 @@ case $TRAVIS_TAG in
     ;;
 
   *)
-    echo "no tagged module to prepare for release"
+    echo "No tagged module to prepare for release"
     ;;
 
 esac
