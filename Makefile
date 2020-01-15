@@ -138,9 +138,9 @@ build-thermocycler:
 
 .PHONY: zip-all
 zip-all:
-	cd $(BUILDS_DIR) && zip -r mag-deck-$(MD_FW_VERSION).zip mag-deck-$(MD_FW_VERSION) \
-	&& zip -r temp-deck-$(TD_FW_VERSION).zip temp-deck-$(TD_FW_VERSION) \
-	&& zip -r thermo-cycler-$(TC_FW_VERSION).zip thermo-cycler-$(TC_FW_VERSION) \
+	cd $(BUILDS_DIR) && zip -r mag-deck-$(MD_FW_VERSION).zip mag-deck \
+	&& zip -r temp-deck-$(TD_FW_VERSION).zip temp-deck \
+	&& zip -r thermo-cycler-$(TC_FW_VERSION).zip thermo-cycler \
 
 .PHONY: clean
 clean:
