@@ -1,4 +1,6 @@
 import serial
+import csv
+from datetime import datetime
 import time
 import threading
 import logging
@@ -218,6 +220,9 @@ def eutech_temp_stability_check(target=None, tolerance=0.2):
 
 
 def offset_tuning(tc_port, lock):
+    global record_vals
+    record_vals = []
+
     log.info("###### STARTING OFFSET TUNER ######")
     while EUTECH_TEMPERATURE is None or TC_STATUS == {}:
         time.sleep(0.4)
@@ -262,6 +267,7 @@ def offset_tuning(tc_port, lock):
         c_offset = offset_dict['C']
         c_offset += round((EUTECH_TEMPERATURE - TC_STATUS['Plt_current']), 3)
         log.info("Setting C offset to {}".format(c_offset))
+        record_vals.append(['C', c_offset])
         send_tc(tc_port, lock,
                 '{} C{}'.format(GCODES['SET_OFFSET_CONSTANTS'], c_offset))
         time.sleep(4)
@@ -274,6 +280,7 @@ def offset_tuning(tc_port, lock):
                 raise Exception("Unable to tune offset at 70")
     print("\n-------------------")
     print("Offset tuning at 70 passed")
+    record_vals.append([70, EUTECH_TEMPERATURE])
     print("-------------------")
 
     # 4. Check tuning at 72C
@@ -317,6 +324,7 @@ def tuning_readjustments(temp):
         c_offset = offset_dict['C']
         c_offset += round((EUTECH_TEMPERATURE - TC_STATUS['Plt_current']), 3)
         log.info("Setting C offset to {}".format(c_offset))
+        record_vals.append(['C', c_offset])
         send_tc(tc_port, lock,
                 '{} C{}'.format(GCODES['SET_OFFSET_CONSTANTS'], c_offset))
         time.sleep(4)
@@ -329,8 +337,38 @@ def tuning_readjustments(temp):
                 raise Exception("Unable to tune offset at {}C".format(temp))
     print("\n-------------------")
     print("Offset tuning at {}C passed".format(temp))
+    record_vals.append([temp, EUTECH_TEMPERATURE])
     print("-------------------")
     return True
+
+
+def write_summary(record_vals):
+    info = get_device_info(tc_port, lock)
+
+    start = info.find('TC')
+    end = info.find(' model')
+    tc_serial = info[start:end]
+
+    print('record_vals = ', record_vals)
+    f_name = "tc-tuning_{}.csv".format(tc_serial)
+
+    with open(f_name, 'w', newline='') as f:
+        writer = csv.writer(f)
+        test = {'target_temp': None, 'experimental_temp': None}
+        log_file = csv.DictWriter(f, test)
+        log_file.writeheader() # writes header to csv
+
+        for item in record_vals:
+            write_csv(log_file, test, item)
+
+        writer.writerow({'{}'.format(datetime.now().strftime("%m-%d-%y_%H:%M_%p"))})
+        f.flush()
+
+
+def write_csv(log_file, test, record_vals):
+    test['target_temp'] = record_vals[0]
+    test['experimental_temp'] = record_vals[1]
+    log_file.writerow(test)
 
 
 def build_arg_parser():
@@ -354,7 +392,7 @@ if __name__ == '__main__':
     tc_port = serial.Serial(find_port(OPENTRONS_VID),
                             TC_BAUDRATE,
                             timeout=1)
-    eutech_port = serial.Serial(find_port(EUTECH_VID),
+    eutech_port = serial.Serial('COM26',
                                 EUTECH_BAUDRATE,
                                 timeout=1)
     lock = threading.Lock()
@@ -390,6 +428,9 @@ if __name__ == '__main__':
     eutech_temp_fetcher.start()
     tc_status_fetcher.start()
     OFFSET_TUNER.join()
+
+    write_summary(record_vals)
+
     log.info("Deactivating thermocycler.")
     send_tc(tc_port, lock, GCODES['DEACTIVATE'])
     log.info("Disabling continuous status.")
