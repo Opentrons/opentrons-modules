@@ -34,9 +34,6 @@ jobs:
       if: tag IS blank
       script:
         - make build
-        - make zip-all
-      before_deploy:
-        - make clean
       deploy:
         - # upload all branch artifacts to S3
           <<: *deploy_s3
