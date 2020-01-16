@@ -10,10 +10,6 @@ cache:
 install:
   - make setup
 
-env:
-  global:
-    - THIS_BUILD_TAG=`git describe --tags`
-
 # base configs
 _deploy_s3: &deploy_s3
   provider: s3
@@ -30,23 +26,12 @@ _deploy_s3: &deploy_s3
 jobs:
   include:
     - stage: deploy
-      name: Branch build
-      if: tag IS blank
+      name: deploy build
       script:
         - make build
-      deploy:
-        - # upload all branch artifacts to S3
-          <<: *deploy_s3
-          local_dir: ./build
-          upload_dir: modules-$THIS_BUILD_TAG-$TRAVIS_BRANCH
-
-    - stage: deploy
-      name: Release build
-      if: tag IS present
-      script:
-        - make build
+        - make zip-all
       before_deploy:
-        - source ./scripts/set_release_vars.sh
+        - source ./scripts/set_build_vars.sh
       deploy:
         - # upload module release artifacts to S3
           <<: *deploy_s3

@@ -105,7 +105,6 @@ build-magdeck:
 	$(ARDUINO) --verify --board Opentrons:avr:magdeck32u4cat $(MODULES_DIR)/mag-deck/mag-deck-arduino/mag-deck-arduino.ino --verbose-build
 	mkdir -p $(MAGDECK_BUILD_DIR)
 	cp $(BUILDS_DIR)/tmp/mag-deck-arduino.ino.hex $(MAGDECK_BUILD_DIR)
-	zip -r $(MAGDECK_BUILD_DIR)/mag-deck-$(MD_FW_VERSION).zip $(MAGDECK_BUILD_DIR)/*
 	rm -rf $(BUILDS_DIR)/tmp
 
 .PHONY: build-tempdeck
@@ -117,7 +116,6 @@ build-tempdeck:
 	cp $(EEPROM_DIR)/eepromWriter.hex $(TEMPDECK_BUILD_DIR)
 	cp $(EEPROM_DIR)/avrdude.conf $(TEMPDECK_BUILD_DIR)
 	cp $(EEPROM_DIR)/write_module_memory.py $(TEMPDECK_BUILD_DIR)
-	zip -r $(TEMPDECK_BUILD_DIR)/temp-deck-$(TD_FW_VERSION).zip $(TEMPDECK_BUILD_DIR)/*
 	rm -rf $(BUILDS_DIR)/tmp
 
 .PHONY: build-thermocycler
@@ -139,8 +137,19 @@ build-thermocycler:
 	$(ARDUINO) --verify --board Opentrons:samd:thermocycler_m0 $(MODULES_DIR)/thermo-cycler/production/eepromWriter/eepromWriter.ino --verbose-build
 	cp $(BUILDS_DIR)/tmp/eepromWriter.ino.bin $(TC_BUILD_DIR)
 	cp $(MODULES_DIR)/thermo-cycler/production/serial_and_firmware_uploader.py $(TC_BUILD_DIR)
-	zip -r $(TC_BUILD_DIR)/thermo-cycler-$(TC_FW_VERSION).zip $(TC_BUILD_DIR)/*
 	rm -rf $(BUILDS_DIR)/tmp
+
+.PHONY: zip-all
+zip-all:
+	cp -a $(MAGDECK_BUILD_DIR) $(BUILDS_DIR)/mag-deck-$(MD_FW_VERSION)
+	cp -a $(TEMPDECK_BUILD_DIR) $(BUILDS_DIR)/temp-deck-$(TD_FW_VERSION)
+	cp -a $(TC_BUILD_DIR) $(BUILDS_DIR)/thermo-cycler-$(TC_FW_VERSION)
+	cd $(BUILDS_DIR) && zip -r mag-deck/mag-deck-$(MD_FW_VERSION).zip mag-deck-$(MD_FW_VERSION) \
+	&& zip -r temp-deck/temp-deck-$(TD_FW_VERSION).zip temp-deck-$(TD_FW_VERSION) \
+	&& zip -r thermo-cycler/thermo-cycler-$(TC_FW_VERSION).zip thermo-cycler-$(TC_FW_VERSION)
+	rm -rf $(BUILDS_DIR)/mag-deck-$(MD_FW_VERSION)
+	rm -rf $(BUILDS_DIR)/temp-deck-$(TD_FW_VERSION)
+	rm -rf $(BUILDS_DIR)/thermo-cycler-$(TC_FW_VERSION)
 
 .PHONY: teardown
 teardown:

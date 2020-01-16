@@ -3,6 +3,7 @@
 BUILDS_DIR="./build"
 
 RELEASE_VERSION=$(cut -d'@' -f2 <<< $TRAVIS_TAG)
+THIS_BUILD_TAG=$(git describe --tags)
 
 case $TRAVIS_TAG in
 
@@ -22,7 +23,8 @@ case $TRAVIS_TAG in
     ;;
 
   *)
-    echo "No tagged module to prepare for release"
+    export RELEASE_LOCAL_DIR=$BUILDS_DIR
+    export RELEASE_UPLOAD_DIR="modules-${THIS_BUILD_TAG}-${TRAVIS_BRANCH}"
     ;;
 
 esac
