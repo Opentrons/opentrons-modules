@@ -38,7 +38,10 @@ GCODES = {
     'GET_OFFSET_CONSTANTS': 'M117',
     'DEBUG_MODE': 'M111',
     'PRINT_DEBUG_STAT': 'stat',
-    'CONTINUOUS_DEBUG_STAT': 'cont'
+    'CONTINUOUS_DEBUG_STAT': 'cont',
+    'SET_FAN_SPEED': 'M106',
+    'AUTO_FAN': 'M107'
+
 }
 
 TC_GCODE_ROUNDING_PRECISION = 2
@@ -167,7 +170,7 @@ def get_tc_stats(port, lock):
                 if k in PRINTY_STAT_KEYS:
                     print("{}: {} \t".format(k, v), end=" ")
                 if k not in PRINTY_STAT_KEYS:
-                    log.debug("{}: {}".format(k, v), end=" ")
+                    log.debug("{}: {}".format(k, v))
             print()
             t = time.time()
         time.sleep(0.1)
@@ -253,10 +256,22 @@ def offset_tuning(tc_port, lock):
     while not eutech_temp_stability_check():
         time.sleep(0.5)
     log.info(" ---- EUTECH probe temp stabilized ---- ")
+
     # Make sure heatsink is around 53C
     while abs(53 - TC_STATUS['T.sink']) > 2:
         time.sleep(0.5)
+        # increase fan speed to cool faster 
+        send_tc(tc_port, lock, '{} S{}'.format(GCODES['SET_FAN_SPEED'], 0.25)) # increase fan speed to cool heatsink
+    send_tc(tc_port, lock, '{}'.format(GCODES['AUTO_FAN']))
     log.info(" ---- Heatsink is approx. 53C ---- ")
+
+    # After heatsink cooled, wait until temperature stabilizes again
+    while not tc_temp_stability_check(70):
+        time.sleep(0.5)
+    log.info(" ---- TC Temperature stabilized ----")
+    while not eutech_temp_stability_check():
+        time.sleep(0.5)
+    log.info(" ---- EUTECH probe temp stabilized ---- ")
 
     # Tune the offset at 70
     if abs(EUTECH_TEMPERATURE - TC_STATUS['Plt_current']) > 0.009:
@@ -267,7 +282,6 @@ def offset_tuning(tc_port, lock):
         c_offset = offset_dict['C']
         c_offset += round((EUTECH_TEMPERATURE - TC_STATUS['Plt_current']), 3)
         log.info("Setting C offset to {}".format(c_offset))
-        record_vals.append(['C', c_offset])
         send_tc(tc_port, lock,
                 '{} C{}'.format(GCODES['SET_OFFSET_CONSTANTS'], c_offset))
         time.sleep(4)
@@ -278,25 +292,32 @@ def offset_tuning(tc_port, lock):
             time.sleep(5)
             if retries == 0:
                 raise Exception("Unable to tune offset at 70")
+
+
+    # Record starting c_offset value for summary csv
+    serial_line = send_tc(tc_port, lock, GCODES['GET_OFFSET_CONSTANTS'],
+                          get_response=True)
+    offset_dict = tc_response_to_dict(serial_line, '\n')
+    c_offset = offset_dict['C']
+    record_vals.append(['c_offset', c_offset])
+
     print("\n-------------------")
     print("Offset tuning at 70 passed")
     record_vals.append([70, EUTECH_TEMPERATURE])
     print("-------------------")
 
-    # 4. Check tuning at 72C
-    tuning_readjustments(72)
+    # Test whether TC can reach multiple targets at a single c_offset
+    targets = [70, 72, 94, 70, 40, 70]
 
-    # 5. Check tuning at 94C
-    tuning_readjustments(94)
-
-    # 6. Re-check at 70C
-    tuning_readjustments(70)
-
-    # 7. Re-check at 40C
-    tuning_readjustments(40)
-
-    # 8. Re-re-check at 70C
-    tuning_readjustments(70)
+    i=1 # start at 72C
+    while i < len(targets):
+        tuning_readjustments(targets[i])
+        if c_changed == True:
+            i = 0 # if c_offset was changed, start at the first target temperatures (70C)
+            log.info("C offset changed, go back to first target temp")
+        else:
+            i+=1 # if c_offset did not change, go to next target temperature
+            log.info("C offset unchanged, go to next target temp")
 
     print("\n-------------------")
     print("Offset tuning with Eutechnics probe 1 passed")
@@ -304,7 +325,10 @@ def offset_tuning(tc_port, lock):
 
 
 def tuning_readjustments(temp):
-    # 4. Check tuning at given temp
+    global c_changed
+    c_changed = False
+
+    # Check tuning at given temp
     log.info(" ---- Set plate to {}C and adjust tuning ---- ".format(temp))
     send_tc(tc_port, lock, '{} S{}'.format(GCODES['SET_PLATE_TEMP'], temp))
     # Wait until temperature stabilizes
@@ -315,6 +339,25 @@ def tuning_readjustments(temp):
         time.sleep(0.5)
     log.info(" ---- EUTECH probe temp stabilized ---- ")
 
+    # If target temperature is 70C, make sure heatsink around 53C
+    if temp == 70:
+        while abs(53 - TC_STATUS['T.sink']) > 2:
+            time.sleep(0.5)
+            send_tc(tc_port, lock, '{} S{}'.format(GCODES['SET_FAN_SPEED'], 0.25)) # increase fan speed to cool heatsink
+        send_tc(tc_port, lock, '{}'.format(GCODES['AUTO_FAN']))
+        log.info(" ---- Heatsink is approx. 53C ---- ")
+
+        # Wait until temperature stabilizes when heatsink at proper temp
+        while not tc_temp_stability_check(temp):
+            time.sleep(0.5)
+        log.info(" ---- TC Temperature stabilized ----")
+        while not eutech_temp_stability_check():
+            time.sleep(0.5)
+        log.info(" ---- EUTECH probe temp stabilized ---- ")
+
+    # Record experimental temperature before adjusted c_offset
+    record_vals.append([temp, EUTECH_TEMPERATURE])
+
     # Tune the offset at tempC
     if abs(EUTECH_TEMPERATURE - TC_STATUS['Plt_current']) > 0.1:
         log.info(" ====> Temperatures not equal. Updating offset ====> ")
@@ -324,7 +367,8 @@ def tuning_readjustments(temp):
         c_offset = offset_dict['C']
         c_offset += round((EUTECH_TEMPERATURE - TC_STATUS['Plt_current']), 3)
         log.info("Setting C offset to {}".format(c_offset))
-        record_vals.append(['C', c_offset])
+        c_changed = True # change marker to show that c was changed
+        record_vals.append(['c_offset', c_offset]) # record the new C value to add to summary csv
         send_tc(tc_port, lock,
                 '{} C{}'.format(GCODES['SET_OFFSET_CONSTANTS'], c_offset))
         time.sleep(4)
@@ -335,12 +379,13 @@ def tuning_readjustments(temp):
             time.sleep(5)
             if retries == 0:
                 raise Exception("Unable to tune offset at {}C".format(temp))
+
+    if c_changed == True:
+        record_vals.append([temp, EUTECH_TEMPERATURE])
+
     print("\n-------------------")
     print("Offset tuning at {}C passed".format(temp))
-    record_vals.append([temp, EUTECH_TEMPERATURE])
     print("-------------------")
-    return True
-
 
 def write_summary(record_vals):
     info = get_device_info(tc_port, lock)
@@ -392,7 +437,7 @@ if __name__ == '__main__':
     tc_port = serial.Serial(find_port(OPENTRONS_VID),
                             TC_BAUDRATE,
                             timeout=1)
-    eutech_port = serial.Serial('COM26',
+    eutech_port = serial.Serial('COM13',
                                 EUTECH_BAUDRATE,
                                 timeout=1)
     lock = threading.Lock()
