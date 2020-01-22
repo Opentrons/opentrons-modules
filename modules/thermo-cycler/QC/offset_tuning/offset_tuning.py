@@ -339,22 +339,6 @@ def tuning_readjustments(temp):
         time.sleep(0.5)
     log.info(" ---- EUTECH probe temp stabilized ---- ")
 
-    # If target temperature is 70C, make sure heatsink around 53C
-    if temp == 70:
-        while abs(53 - TC_STATUS['T.sink']) > 2:
-            time.sleep(0.5)
-            send_tc(tc_port, lock, '{} S{}'.format(GCODES['SET_FAN_SPEED'], 0.25)) # increase fan speed to cool heatsink
-        send_tc(tc_port, lock, '{}'.format(GCODES['AUTO_FAN']))
-        log.info(" ---- Heatsink is approx. 53C ---- ")
-
-        # Wait until temperature stabilizes when heatsink at proper temp
-        while not tc_temp_stability_check(temp):
-            time.sleep(0.5)
-        log.info(" ---- TC Temperature stabilized ----")
-        while not eutech_temp_stability_check():
-            time.sleep(0.5)
-        log.info(" ---- EUTECH probe temp stabilized ---- ")
-
     # Record experimental temperature before adjusted c_offset
     record_vals.append([temp, EUTECH_TEMPERATURE])
 
