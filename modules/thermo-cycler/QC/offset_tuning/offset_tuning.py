@@ -197,7 +197,7 @@ def get_eutech_temp(port):
 def tc_temp_stability_check(target, tolerance=0.2):
     # Compares sensor_op & target values over 10 seconds
     # Returns true if sensor_op is within allowed range of target throughout
-    for i in range(10):
+    for i in range(1-):
         if abs(target - TC_STATUS['Plt_current']) > 0.2:
             return False
         time.sleep(2)
@@ -260,8 +260,9 @@ def offset_tuning(tc_port, lock):
     # Make sure heatsink is around 53C
     while abs(53 - TC_STATUS['T.sink']) > 2:
         time.sleep(0.5)
-        # increase fan speed to cool faster 
-        send_tc(tc_port, lock, '{} S{}'.format(GCODES['SET_FAN_SPEED'], 0.25)) # increase fan speed to cool heatsink
+        # if heatsink overheated, increase fan speed to cool faster 
+        if (TC_STATUS['T.sink'] - 53) > 2:
+            send_tc(tc_port, lock, '{} S{}'.format(GCODES['SET_FAN_SPEED'], 0.25)) # increase fan speed to cool heatsink
     send_tc(tc_port, lock, '{}'.format(GCODES['AUTO_FAN']))
     log.info(" ---- Heatsink is approx. 53C ---- ")
 
@@ -284,7 +285,23 @@ def offset_tuning(tc_port, lock):
         log.info("Setting C offset to {}".format(c_offset))
         send_tc(tc_port, lock,
                 '{} C{}'.format(GCODES['SET_OFFSET_CONSTANTS'], c_offset))
+
         time.sleep(4)
+
+        # Make sure heatsink is around 53C
+        while abs(53 - TC_STATUS['T.sink']) > 2:
+            time.sleep(0.5)
+            # if heatsink overheated, increase fan speed to cool faster 
+            if (TC_STATUS['T.sink'] - 53) > 2:
+                send_tc(tc_port, lock, '{} S{}'.format(GCODES['SET_FAN_SPEED'], 0.25)) # increase fan speed to cool heatsink
+        send_tc(tc_port, lock, '{}'.format(GCODES['AUTO_FAN']))
+        log.info(" ---- Heatsink is approx. 53C ---- ")
+
+        # After heatsink cooled, wait until temperature stabilizes again
+        while not tc_temp_stability_check(70):
+            time.sleep(0.5)
+        log.info(" ---- TC Temperature stabilized ----")
+
         retries = 10
         while not eutech_temp_stability_check(70, tolerance=0.009):
             print("Temp probe not yet stable. Retry#{}".format(retries))
@@ -292,6 +309,7 @@ def offset_tuning(tc_port, lock):
             time.sleep(5)
             if retries == 0:
                 raise Exception("Unable to tune offset at 70")
+        log.info(" ---- EUTECH probe temp stabilized ---- ")
 
 
     # Record starting c_offset value for summary csv
@@ -300,6 +318,7 @@ def offset_tuning(tc_port, lock):
     offset_dict = tc_response_to_dict(serial_line, '\n')
     c_offset = offset_dict['C']
     record_vals.append(['c_offset', c_offset])
+    print('record_vals = ', record_vals)
 
     print("\n-------------------")
     print("Offset tuning at 70 passed")
@@ -329,7 +348,7 @@ def tuning_readjustments(temp):
     c_changed = False
 
     # Check tuning at given temp
-    log.info(" ---- Set plate to {}C and adjust tuning ---- ".format(temp))
+    log.info(" ---- Set plate to {}C and check if tuning adjustment required ---- ".format(temp))
     send_tc(tc_port, lock, '{} S{}'.format(GCODES['SET_PLATE_TEMP'], temp))
     # Wait until temperature stabilizes
     while not tc_temp_stability_check(temp):
@@ -349,10 +368,19 @@ def tuning_readjustments(temp):
                               get_response=True)
         offset_dict = tc_response_to_dict(serial_line, '\n')
         c_offset = offset_dict['C']
-        c_offset += round((EUTECH_TEMPERATURE - TC_STATUS['Plt_current']), 3)
+
+        # Determine whether EUTECH_TEMP is too low or too high
+        # allow up to +-0.1C deviation from Plt_current
+        difference = round((EUTECH_TEMPERATURE - TC_STATUS['Plt_current']), 3)
+        acceptable_tolerance = 0.1
+        if difference > 0:
+            acceptable_tolerance = -0.1
+        c_offset += (difference + acceptable_tolerance)
+
         log.info("Setting C offset to {}".format(c_offset))
         c_changed = True # change marker to show that c was changed
         record_vals.append(['c_offset', c_offset]) # record the new C value to add to summary csv
+        print('record_vals = ', record_vals)
         send_tc(tc_port, lock,
                 '{} C{}'.format(GCODES['SET_OFFSET_CONSTANTS'], c_offset))
         time.sleep(4)
