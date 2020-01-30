@@ -460,13 +460,6 @@ void deactivate_plate()
 
 void debug_status_prints()
 {
-  static unsigned long lastPrint = 0;
-
-  if (millis() - lastPrint < DEBUG_PRINT_INTERVAL)
-  {
-    return;
-  }
-  lastPrint = millis();
   // Target
   gcode.add_debug_response("Plt_Target", target_temperature_plate);
   gcode.add_debug_response("Cov_Target", target_temperature_cover);
@@ -809,6 +802,13 @@ void read_gcode()
   }
   if (continuous_debug_stat_mode)
   {
+    static unsigned long lastPrint = 0;
+
+    if (millis() - lastPrint < DEBUG_PRINT_INTERVAL)
+    {
+      return;
+    }
+    lastPrint = millis();
     debug_status_prints();
   }
 }
