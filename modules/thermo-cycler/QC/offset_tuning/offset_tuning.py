@@ -4,8 +4,8 @@ from datetime import datetime
 import time
 import threading
 import logging
+import serial_comm
 from pathlib import PurePath
-from serial.tools.list_ports import comports
 from argparse import ArgumentParser
 
 
@@ -18,6 +18,8 @@ EUTECH_BAUDRATE = 9600
 EUTECH_TEMPERATURE = None
 TC_STATUS = {}
 TUNING_OVER = False
+tc = None
+
 log = logging.getLogger(__name__)
 PRINTY_STAT_KEYS = ['Plt_Target', 'Plt_current', 'Cov_Target', 'T.Lid',
                     'T.sink', 'T.offset', 'Fan', 'millis']
@@ -51,52 +53,9 @@ LID_TEMP = 105
 TUNING_TEMPS = (70, 72, 94, 70, 40)
 
 
-def find_port(vid):
-    retries = 5
-    while retries:
-        for p in comports():
-            if p.vid == vid:
-                print("Available: {0}->\t(pid:{1:#x})\t(vid:{2:#x})".format(
-                        p.device, p.pid, p.vid))
-                print("Port found:{}".format(p.device))
-                time.sleep(1)
-                return p.device
-        retries -= 1
-        time.sleep(0.5)
-    raise RuntimeError('Could not find Opentrons Thermocycler'
-                       'connected over USB')
-
-
-def connect_to_module(port_name):
-    print('Connecting to module...')
-    port = serial.Serial(port_name, 115200, timeout=1)
-    print('Connected.')
-    return port
-
-
-def get_device_info(port, lock):
-    port.reset_input_buffer()
-    info = send_and_get_response(port, lock, GCODES['DEVICE_INFO'])
-    port.reset_input_buffer()
-
+def get_device_info():
+    info = tc.send_and_get_response(GCODES['DEVICE_INFO'])
     return info
-
-
-def send_and_get_response(tc_port, lock, cmd):
-    with lock:
-        response_str = ''
-        cmd += SERIAL_ACK
-        log.debug("Sending: {}".format(cmd))
-        tc_port.write(cmd.encode())
-        raw_response = bytearray(b'')
-        time.sleep(0.1)
-        while True:
-            raw_response.extend(tc_port.readline())
-            if not tc_port.in_waiting:
-                break
-        response_str = raw_response.decode().replace('ok', '').strip()
-        log.debug("Received:{}".format(response_str))
-        return response_str
 
 
 def parse_number_from_substring(substring, rounding_val):
@@ -147,18 +106,19 @@ def tc_response_to_dict(response_string, separator):
     return res_dict
 
 
-def get_tc_stats(port, lock, over):
+def get_tc_stats():
     global TC_STATUS
     _tc_status = {}
-    send_and_get_response(port, lock, GCODES['DEBUG_MODE'])
-    port.reset_input_buffer()
+    tc.send_and_get_response(GCODES['DEBUG_MODE'])
+    # port.reset_input_buffer()
     t = 0
-    while not over:
+    while not TUNING_OVER:
         # Get debug status
-        status_res = send_and_get_response(port, lock,
-                                           GCODES['PRINT_DEBUG_STAT'])
+        status_res = tc.send_and_get_response(GCODES['PRINT_DEBUG_STAT'])
         _tc_status = tc_response_to_dict(status_res, '\t')
-        temp_res = send_and_get_response(port, lock, GCODES['GET_PLATE_TEMP'])
+        if not _tc_status:
+            continue
+        temp_res = tc.send_and_get_response(GCODES['GET_PLATE_TEMP'])
 
         # Get current plate temp
         if temp_res:
@@ -179,12 +139,12 @@ def get_tc_stats(port, lock, over):
         time.sleep(1)
 
 
-def get_eutech_temp(port, over):
+def get_eutech_temp(port):
     global EUTECH_TEMPERATURE
     port.write('T\r\n'.encode())
     time.sleep(10)  # takes a long time to start getting any data
     t = 0
-    while not over:
+    while not TUNING_OVER:
         temp = port.readline().decode().strip()
         if temp:
             try:
@@ -225,23 +185,31 @@ def eutech_temp_stability_check(tolerance, target=None):
     return True
 
 
-def offset_tuning(tc_port, lock):
+def offset_tuning():
     global record_vals
     record_vals = []
-    time.sleep(100)
+
+    log.info("###### STARTING OFFSET TUNER ######")
+    while EUTECH_TEMPERATURE is None or TC_STATUS == {}:
+        time.sleep(0.4)
+        log.info("Waiting for temp statuses from both thermometer & TC")
+
     # # Heat lid:
-    send_and_get_response(tc_port, lock, GCODES['SET_LID_TEMP'])
-    # Heat up heatsink:
-    send_and_get_response(tc_port, lock,
-                          '{} S10'.format(GCODES['SET_PLATE_TEMP']))
-    while TC_STATUS['T.sink'] < 58:
+    tc.send_and_get_response(GCODES['SET_LID_TEMP'])
+    while TC_STATUS['T.Lid'] < 105:
         pass
+    # Heat up heatsink:
+    tc.send_and_get_response('{} S10'.format(GCODES['SET_PLATE_TEMP']))
+    set_fan(False, 0)
+    while TC_STATUS['T.sink'] < 57:
+        pass
+    set_fan(True)
     tuning_done = False
     # Thermocycler prepped. Start tuning:
     while not tuning_done:
-        c_adjustment(TUNING_TEMPS[0], t_sink=53, temp_tolerance=0.009)
-        for temp in TUNING_TEMPS:
-            log.info("==== Tuning for {}C ====".format(temp))
+        c_adjustment(TUNING_TEMPS[0],
+                     t_sink=53, temp_tolerance=0.009)
+        for temp in TUNING_TEMPS[1:]:
             if c_adjustment(temp) == 'adjusted':
                 # Start over
                 tuning_done = False
@@ -251,104 +219,67 @@ def offset_tuning(tc_port, lock):
                 continue
 
 
-def c_adjustment(temp, t_sink=None, temp_tolerance=0.1):
-    send_and_get_response(tc_port, lock,
-                          '{} S{}'.format(GCODES['SET_PLATE_TEMP'], temp))
+def stabilize_everything(temp, t_sink=None):
     log.info(" ---- Waiting for thermocycler to stabilize ----")
     while not tc_temp_stability_check(temp):
         time.sleep(0.5)
     log.info(" ---- TC Temperature stabilized ----")
     log.info(" ---- Waiting for Eutech probe to stabilize ---")
-    while not eutech_temp_stability_check(tolerance=0.03):
+    while not eutech_temp_stability_check(tolerance=0.019):
         time.sleep(0.5)
     log.info(" ---- EUTECH probe temp stabilized ---- ")
-    log.info(" ---- Waiting for heatsink to reach ~53C ----")
-    if TC_STATUS['T.sink'] > 55:
-        set_fan(0.4)
-    elif TC_STATUS['T.sink'] < 51:
-        set_fan(0)
-    while abs(TC_STATUS['T.sink'] - 53) > 2:
-        pass
-    # turn auto fan on
+    if t_sink:
+        log.info(" --- Waiting for heatsink to reach ~{}C ---".format(t_sink))
+        while abs(TC_STATUS['T.sink'] - t_sink) > 2:
+            pass
+        log.info(" --- Heatsink stabilized ---")
 
 
-def set_fan(speed):
-    send_and_get_response(tc_port, lock,
-            '{} {}'.format(GCODES['SET_FAN_SPEED']), speed)
-
-# def tuning_readjustments(temp, t_sink=None, temp_tolerance=0.1):
-#     global c_changed
-#     c_changed = False
-#
-#     # Check tuning at given temp
-#     log.info(" ---- Set plate to {}C and check if"
-#              " tuning adjustment required ---- ".format(temp))
-#     send_and_get_response(tc_port, lock,
-#                           '{} S{}'.format(GCODES['SET_PLATE_TEMP'], temp))
-#     # Wait until temperature stabilizes
-#     while not tc_temp_stability_check(temp):
-#         time.sleep(0.5)
-#     log.info(" ---- TC Temperature stabilized ----")
-#     while not eutech_temp_stability_check():
-#         time.sleep(0.5)
-#     log.info(" ---- EUTECH probe temp stabilized ---- ")
-#
-#     # Record experimental temperature before adjusted c_offset
-#     record_vals.append([temp, EUTECH_TEMPERATURE])
-#
-#     # Tune the offset at tempC
-#     if abs(EUTECH_TEMPERATURE - TC_STATUS['Plt_current']) > 0.1:
-#         log.info(" ====> Temperatures not equal. Updating offset ====> ")
-#         serial_line = send_and_get_response(tc_port,
-#                                              lock,
-#                                              GCODES['GET_OFFSET_CONSTANTS'])
-#         offset_dict = tc_response_to_dict(serial_line, '\n')
-#         c_offset = offset_dict['C']
-#
-#         # Determine whether EUTECH_TEMP is too low or too high
-#         # allow up to +-0.1C deviation from Plt_current
-#         difference = round((EUTECH_TEMPERATURE - TC_STATUS['Plt_current']),
-#                        3)
-#         acceptable_tolerance = 0.1
-#         if difference > 0:
-#             acceptable_tolerance = -0.1
-#         c_offset += (difference + acceptable_tolerance)
-#         log.info("Setting C offset to {}".format(c_offset))
-#         c_changed = True    # change marker to show that c was changed
-#         # record the new C value to add to summary csv
-#         record_vals.append(['c_offset', c_offset])
-#         print('record_vals = ', record_vals)
-#         send_and_get_response(tc_port, lock,
-#                               '{} C{}'.format(GCODES['SET_OFFSET_CONSTANTS'],
-#                                               c_offset))
-#         time.sleep(4)
-#         retries = 10
-#         while not eutech_temp_stability_check(temp, tolerance=0.1):
-#             print("Temp probe not yet stable. Retry#{}".format(retries))
-#             retries -= 1
-#             time.sleep(5)
-#             if retries == 0:
-#                 raise Exception("Unable to tune offset at {}C".format(temp))
-#
-#     if c_changed is True:
-#         record_vals.append([temp, EUTECH_TEMPERATURE])
-#
-#     print("\n-------------------")
-#     print("Offset tuning at {}C passed".format(temp))
-#     print("-------------------")
+def get_c():
+    res = tc.send_and_get_response(GCODES['GET_OFFSET_CONSTANTS'])
+    offsets = tc_response_to_dict(res, '\n')
+    return offsets['C']
 
 
-def cooldown_tc(tc_port, lock):
-    send_and_get_response(tc_port, lock,
-                          '{} S{}'.format(GCODES['SET_FAN_SPEED'], 0.6))
-    send_and_get_response(tc_port, lock, GCODES['OPEN_LID'])
+def set_c(c):
+    tc.send_and_get_response('{} C{}'.format(GCODES['SET_OFFSET_CONSTANTS'],
+                                             c))
+
+
+def c_adjustment(temp, t_sink=None, temp_tolerance=0.1):
+    log.info("==== Tuning for {}C ====".format(temp))
+    tc.send_and_get_response('{} S{}'.format(GCODES['SET_PLATE_TEMP'], temp))
+    stabilize_everything(temp, t_sink)
+    if abs(EUTECH_TEMPERATURE - TC_STATUS['Plt_current']) > temp_tolerance:
+        log.info("Temperatures unequal. Tuning c..")
+        c = get_c()
+        log.info("Current c is {}".format(c))
+        new_c = c + round(EUTECH_TEMPERATURE - TC_STATUS['Plt_current'], 3)
+        log.info("New c is {}".format(new_c))
+        set_c(new_c)
+        return 'adjusted'
+    else:
+        return 'not adjusted'
+
+
+def set_fan(auto, speed=None):
+    if not auto:
+        tc.send_and_get_response(
+            '{} {}'.format(GCODES['SET_FAN_SPEED'], speed))
+    else:
+        tc.send_and_get_response(GCODES['AUTO_FAN'])
+
+
+def cooldown_tc():
+    tc.send_and_get_response('{} S{}'.format(GCODES['SET_FAN_SPEED'], 0.6))
+    tc.send_and_get_response(GCODES['OPEN_LID'])
     while TC_STATUS['T.sink'] > 30:
         time.sleep(1)
-    send_and_get_response(tc_port, lock, GCODES['AUTO_FAN'])
+    tc.send_and_get_response(GCODES['AUTO_FAN'])
 
 
 def write_summary(record_vals):
-    info = get_device_info(tc_port, lock)
+    info = get_device_info()
     start = info.find('TC')
     end = info.find(' model')
     tc_serial = info[start:end]
@@ -373,14 +304,13 @@ def write_csv(log_file, test, record_vals):
     log_file.writerow(test)
 
 
-def end_tuning(lock, tc_port):
+def end_tuning():
     write_summary(record_vals)
     log.info("Deactivating thermocycler.")
-    send_and_get_response(tc_port, lock, GCODES['DEACTIVATE'])
+    tc.send_and_get_response(GCODES['DEACTIVATE'])
+    cooldown_tc()
     log.info("Disabling debug mode.")
-    send_and_get_response(tc_port, lock,
-                          '{} S0'.format(GCODES['DEBUG_MODE']))
-    cooldown_tc(tc_port, lock)
+    tc.send_and_get_response('{} S0'.format(GCODES['DEBUG_MODE']))
 
 
 def build_arg_parser():
@@ -395,25 +325,23 @@ if __name__ == '__main__':
     # Logging stuff
     arg_parser = build_arg_parser()
     args = arg_parser.parse_args()
-    numeric_level = getattr(logging, args.loglevel.upper(), None)
-    if not isinstance(numeric_level, int):
+    log_level = getattr(logging, args.loglevel.upper(), None)
+    if not isinstance(log_level, int):
         raise ValueError('Invalid log level: %s' % args.loglevel)
-    logging.basicConfig(level=numeric_level)
+    logging.basicConfig(level=log_level)
 
     # Connections
     print("Searching for connected devices..")
-    tc_port = serial.Serial(find_port(OPENTRONS_VID),
-                            TC_BAUDRATE,
-                            timeout=60)
+    tc_port = serial_comm.find_port(OPENTRONS_VID)
+    tc = serial_comm.SerialComm(tc_port, log_level)
     eutech_port = serial.Serial(args.eutech_port_name,
                                 EUTECH_BAUDRATE,
                                 timeout=1)
-    lock = threading.Lock()
     # Disable continuous debug stat if in debug mode
-    send_and_get_response(tc_port, lock, GCODES['PRINT_DEBUG_STAT'])
+    tc.send_and_get_response(GCODES['PRINT_DEBUG_STAT'])
     log.info("Connected to thermocycler")
     print("-------------------")
-    log.info("Device info:{}".format(get_device_info(tc_port, lock)))
+    log.info("Device info:{}".format(get_device_info()))
     print("-------------------")
     time.sleep(1)
     print("Please record the serial & model number in spreadsheet. Find the "
@@ -421,25 +349,23 @@ if __name__ == '__main__':
     input("When you are ready to resume with offset tuning, press ENTER")
 
     # Close lid if open:
-    lid_status = send_and_get_response(tc_port, lock, GCODES['GET_LID_STATUS'])
+    lid_status = tc.send_and_get_response(GCODES['GET_LID_STATUS'])
     if lid_status != "Lid:closed":
         log.error("LID IS NOT CLOSED !!!")
         if input("To close lid, enter Y").upper() != 'Y':
             raise RuntimeError("Cannot proceed tuning with lid open. Exiting")
-        send_and_get_response(tc_port, lock, GCODES['CLOSE_LID'])
+        tc.send_and_get_response(GCODES['CLOSE_LID'])
         print("Done.")
-        tc_port.reset_input_buffer()
 
     # Threads
-    tc_status_fetcher = threading.Thread(target=get_tc_stats,
-                                         args=(tc_port, lock, TUNING_OVER))
+    tc_status_fetcher = threading.Thread(target=get_tc_stats)
     eutech_temp_fetcher = threading.Thread(target=get_eutech_temp,
-                                           args=(eutech_port, TUNING_OVER))
-    OFFSET_TUNER = threading.Thread(target=offset_tuning, args=(tc_port, lock))
+                                           args=(eutech_port,))
+    OFFSET_TUNER = threading.Thread(target=offset_tuning)
     OFFSET_TUNER.start()
     eutech_temp_fetcher.start()
     tc_status_fetcher.start()
     OFFSET_TUNER.join()
 
     end_tuning()
-    TUNING_OVER = True  # TODO: Test this. It's probably wrong
+    TUNING_OVER = True
