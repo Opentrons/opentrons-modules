@@ -17,7 +17,7 @@ EUTECH_BAUDRATE = 9600
 
 EUTECH_TEMPERATURE = None
 TC_STATUS = {}
-OFFSET_TUNER = None
+TUNING_OVER = False
 log = logging.getLogger(__name__)
 PRINTY_STAT_KEYS = ['Plt_Target', 'Plt_current', 'Cov_Target', 'T.Lid',
                     'T.sink', 'T.offset', 'Fan', 'millis']
@@ -147,13 +147,13 @@ def tc_response_to_dict(response_string, separator):
     return res_dict
 
 
-def get_tc_stats(port, lock):
+def get_tc_stats(port, lock, over):
     global TC_STATUS
     _tc_status = {}
     send_and_get_response(port, lock, GCODES['DEBUG_MODE'])
     port.reset_input_buffer()
     t = 0
-    while OFFSET_TUNER.is_alive():
+    while not over:
         # Get debug status
         status_res = send_and_get_response(port, lock,
                                            GCODES['PRINT_DEBUG_STAT'])
@@ -179,12 +179,12 @@ def get_tc_stats(port, lock):
         time.sleep(1)
 
 
-def get_eutech_temp(port):
+def get_eutech_temp(port, over):
     global EUTECH_TEMPERATURE
     port.write('T\r\n'.encode())
     time.sleep(10)  # takes a long time to start getting any data
     t = 0
-    while OFFSET_TUNER.is_alive():
+    while not over:
         temp = port.readline().decode().strip()
         if temp:
             try:
@@ -197,7 +197,7 @@ def get_eutech_temp(port):
         time.sleep(0.01)
 
 
-def tc_temp_stability_check(target, tolerance=0.2):
+def tc_temp_stability_check(target, tolerance=0.02):
     # Compares sensor_op & target values over 10 seconds
     # Returns true if sensor_op is within allowed range of target throughout
     for i in range(10):
@@ -207,13 +207,13 @@ def tc_temp_stability_check(target, tolerance=0.2):
     return True
 
 
-def eutech_temp_stability_check(target=None, tolerance=0.2):
+def eutech_temp_stability_check(tolerance, target=None):
     # Compares sensor_op & target values over 10 seconds
     # Returns true if sensor_op is within allowed range of target throughout
     if target is None:
         prev_temp = EUTECH_TEMPERATURE
         for i in range(10):
-            if abs(prev_temp - EUTECH_TEMPERATURE) > 0.003:
+            if abs(prev_temp - EUTECH_TEMPERATURE) > tolerance:
                 return False
             prev_temp = EUTECH_TEMPERATURE
             time.sleep(2)
@@ -230,38 +230,51 @@ def offset_tuning(tc_port, lock):
     record_vals = []
     time.sleep(100)
     # # Heat lid:
-    # send_and_get_response(tc_port, lock, GCODES['SET_LID_TEMP'])
-    # # Heat up heatsink:
-    # send_and_get_response(tc_port, lock,
-    #                       '{} S10'.format(GCODES['SET_PLATE_TEMP']))
-    # while TC_STATUS['T.sink'] < 58:
-    #     pass
-    #
-    # tuning_done = False
-    # # Thermocycler prepped. Start tuning:
-    # while not tuning_done:
-    #     c_adjustment(TUNING_TEMPS[0], t_sink=53, temp_tolerance=0.009)
-    #     for temp in TUNING_TEMPS:
-    #         log.info("==== Tuning for {}C ====".format(temp))
-    #         if c_adjustment(temp) == 'adjusted':
-    #             tuning_done = False
-    #             break
-    #         else:
-    #             tuning_done = True
+    send_and_get_response(tc_port, lock, GCODES['SET_LID_TEMP'])
+    # Heat up heatsink:
+    send_and_get_response(tc_port, lock,
+                          '{} S10'.format(GCODES['SET_PLATE_TEMP']))
+    while TC_STATUS['T.sink'] < 58:
+        pass
+    tuning_done = False
+    # Thermocycler prepped. Start tuning:
+    while not tuning_done:
+        c_adjustment(TUNING_TEMPS[0], t_sink=53, temp_tolerance=0.009)
+        for temp in TUNING_TEMPS:
+            log.info("==== Tuning for {}C ====".format(temp))
+            if c_adjustment(temp) == 'adjusted':
+                # Start over
+                tuning_done = False
+                break
+            else:
+                tuning_done = True
+                continue
 
 
-# def c_adjustment(temp, t_sink=None, temp_tolerance=0.1):
-#     send_and_get_response(tc_port, lock,
-#                           '{} S{}'.format(GCODES['SET_PLATE_TEMP'], temp))
-#     # Wait until temperature stabilizes
-#     while not tc_temp_stability_check(temp):
-#         time.sleep(0.5)
-#     log.info(" ---- TC Temperature stabilized ----")
-#     while not eutech_temp_stability_check():
-#         time.sleep(0.5)
-#     log.info(" ---- EUTECH probe temp stabilized ---- ")
-#     pass
+def c_adjustment(temp, t_sink=None, temp_tolerance=0.1):
+    send_and_get_response(tc_port, lock,
+                          '{} S{}'.format(GCODES['SET_PLATE_TEMP'], temp))
+    log.info(" ---- Waiting for thermocycler to stabilize ----")
+    while not tc_temp_stability_check(temp):
+        time.sleep(0.5)
+    log.info(" ---- TC Temperature stabilized ----")
+    log.info(" ---- Waiting for Eutech probe to stabilize ---")
+    while not eutech_temp_stability_check(tolerance=0.03):
+        time.sleep(0.5)
+    log.info(" ---- EUTECH probe temp stabilized ---- ")
+    log.info(" ---- Waiting for heatsink to reach ~53C ----")
+    if TC_STATUS['T.sink'] > 55:
+        set_fan(0.4)
+    elif TC_STATUS['T.sink'] < 51:
+        set_fan(0)
+    while abs(TC_STATUS['T.sink'] - 53) > 2:
+        pass
+    # turn auto fan on
 
+
+def set_fan(speed):
+    send_and_get_response(tc_port, lock,
+            '{} {}'.format(GCODES['SET_FAN_SPEED']), speed)
 
 # def tuning_readjustments(temp, t_sink=None, temp_tolerance=0.1):
 #     global c_changed
@@ -419,9 +432,9 @@ if __name__ == '__main__':
 
     # Threads
     tc_status_fetcher = threading.Thread(target=get_tc_stats,
-                                         args=(tc_port, lock))
+                                         args=(tc_port, lock, TUNING_OVER))
     eutech_temp_fetcher = threading.Thread(target=get_eutech_temp,
-                                           args=(eutech_port,))
+                                           args=(eutech_port, TUNING_OVER))
     OFFSET_TUNER = threading.Thread(target=offset_tuning, args=(tc_port, lock))
     OFFSET_TUNER.start()
     eutech_temp_fetcher.start()
@@ -429,3 +442,4 @@ if __name__ == '__main__':
     OFFSET_TUNER.join()
 
     end_tuning()
+    TUNING_OVER = True  # TODO: Test this. It's probably wrong
