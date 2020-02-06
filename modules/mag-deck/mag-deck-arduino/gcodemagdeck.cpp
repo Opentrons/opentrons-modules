@@ -84,6 +84,10 @@ bool GcodeMagDeck::read_number(char key) {
       return false;
     }
   }
+  else
+  {
+    return false;
+  }
 }
 
 void GcodeMagDeck::print_device_info(String serial, String model, String version) {
