@@ -5,6 +5,7 @@ import time
 import threading
 import logging
 import serial_comm
+import numpy
 from pathlib import PurePath
 from argparse import ArgumentParser
 
@@ -205,7 +206,13 @@ def offset_tuning():
         pass
     set_fan(True)
     tuning_done = False
-    # Thermocycler prepped. Start tuning:
+
+    # Initial adjustments:
+    c_adjustment(TUNING_TEMPS[0],
+                 t_sink=53, temp_tolerance=0.009)
+    b_adjustment()
+
+    # Thermocycler prepped. Start c tuning:
     while not tuning_done:
         c_adjustment(TUNING_TEMPS[0],
                      t_sink=53, temp_tolerance=0.009)
@@ -235,15 +242,23 @@ def stabilize_everything(temp, t_sink=None):
         log.info(" --- Heatsink stabilized ---")
 
 
+def set_fan(auto, speed=None):
+    if not auto:
+        tc.send_and_get_response(
+            '{} {}'.format(GCODES['SET_FAN_SPEED'], speed))
+    else:
+        tc.send_and_get_response(GCODES['AUTO_FAN'])
+
+
 def get_c():
     res = tc.send_and_get_response(GCODES['GET_OFFSET_CONSTANTS'])
     offsets = tc_response_to_dict(res, '\n')
     return offsets['C']
 
 
-def set_c(c):
-    tc.send_and_get_response('{} C{}'.format(GCODES['SET_OFFSET_CONSTANTS'],
-                                             c))
+def set_offset(param, val):
+    tc.send_and_get_response('{} {}{}'.format(GCODES['SET_OFFSET_CONSTANTS'],
+                                              param, val))
 
 
 def c_adjustment(temp, t_sink=None, temp_tolerance=0.1):
@@ -256,18 +271,56 @@ def c_adjustment(temp, t_sink=None, temp_tolerance=0.1):
         log.info("Current c is {}".format(c))
         new_c = c + round(EUTECH_TEMPERATURE - TC_STATUS['Plt_current'], 3)
         log.info("New c is {}".format(new_c))
-        set_c(new_c)
+        set_offset("C", new_c)
         return 'adjusted'
     else:
         return 'not adjusted'
 
 
-def set_fan(auto, speed=None):
-    if not auto:
-        tc.send_and_get_response(
-            '{} {}'.format(GCODES['SET_FAN_SPEED'], speed))
-    else:
-        tc.send_and_get_response(GCODES['AUTO_FAN'])
+def b_adjustment():
+    log.info(" --- Adjusting B offset --- ")
+    # Eq: y = mx + k
+    # y = Difference in temperatures
+    # x = b_offset
+    # Solve for m & k using observed datapoints
+    # Then find b_offset for ideal condition of y =  94C - 40C
+    b_vals = (0.005, 0.05)
+    ideal_temps = (70, 94, 70, 40)
+    observed_temps = {}
+    for val in b_vals:
+        log.info("Temps for B={}".format(val))
+        set_offset("B", val)
+        b_temps = []
+        for temp in ideal_temps:
+            tc.send_and_get_response('{} S{}'.format(GCODES['SET_PLATE_TEMP'],
+                                                     temp))
+            while not eutech_temp_stability_check(tolerance=0.09):
+                time.sleep(0.5)
+            b_temps.append(EUTECH_TEMPERATURE)
+            observed_temps[str(val)] = b_temps
+            log.info(" {} -> {}".format(temp, EUTECH_TEMPERATURE))
+    log.info("observed values = {}".format(observed_temps))
+    x1 = b_vals[0]
+    # observed for 94 - observed for 40
+    y1 = observed_temps[str(x1)][1] - observed_temps[str(x1)][3]
+
+    x2 = b_vals[1]
+    # observed for 94 - observed for 40
+    y2 = observed_temps[str(x2)][1] - observed_temps[str(x2)][3]
+    [k, m] = get_eq_constants(x1, y1, x2, y2)
+    new_b = (54 - k) / m
+    set_offset("B", new_b)
+
+
+def get_eq_constants(x1, y1, x2, y2):
+    # Eq: y = mx + k
+    # or: k + xm = y
+    # Solve for k & m
+    # Hence, coefficient arrays are
+    m = numpy.array([[1, x1], [1, x2]])
+    n = numpy.array([y1, y2])
+    result_array = numpy.linalg.solve(m, n)
+    return result_array
 
 
 def cooldown_tc():
