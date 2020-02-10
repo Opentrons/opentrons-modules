@@ -1,6 +1,4 @@
 import serial
-import csv
-from datetime import datetime
 import time
 import threading
 import logging
@@ -19,9 +17,12 @@ EUTECH_BAUDRATE = 9600
 EUTECH_TEMPERATURE = None
 TC_STATUS = {}
 TUNING_OVER = False
-tc = None
+# tc = None
+TC_SERIAL = None
 
-log = logging.getLogger(__name__)
+
+log = logging.getLogger()
+
 PRINTY_STAT_KEYS = ['Plt_Target', 'Plt_current', 'Cov_Target', 'T.Lid',
                     'T.sink', 'T.offset', 'Fan', 'millis']
 GCODES = {
@@ -47,7 +48,7 @@ GCODES = {
 
 }
 
-TC_GCODE_ROUNDING_PRECISION = 2
+TC_GCODE_ROUNDING_PRECISION = 4
 SERIAL_ACK = '\r\n'
 
 LID_TEMP = 105
@@ -91,6 +92,20 @@ def parse_key_from_substring(substring) -> str:
                         ' {}'.format(substring))
 
 
+def tc_info_to_dict(response_string):
+    res_dict = {}
+    serial_list = response_string.split(" ")
+    serial_list = list(map(lambda x: x.strip(), serial_list))
+    log.debug("Serial list:{}".format(serial_list))
+    for item in serial_list:
+        if item == '':
+            continue
+        key = item.split(':')[0]
+        value = item.split(':')[1]
+        res_dict[key] = value
+    return res_dict
+
+
 def tc_response_to_dict(response_string, separator):
     res_dict = {}
     serial_list = response_string.split(separator)
@@ -129,15 +144,26 @@ def get_tc_stats():
 
         # Print status every 2 seconds
         if time.time() - t >= 2:
-            print("TC status:", end=" ")
+            print("TC status: {}".format(short_status()), end=" ")
             for (k, v) in TC_STATUS.items():
-                if k in PRINTY_STAT_KEYS:
-                    print("{}: {} \t".format(k, v), end=" ")
                 if k not in PRINTY_STAT_KEYS:
                     log.debug("{}: {}".format(k, v))
             print()
             t = time.time()
         time.sleep(1)
+
+
+def short_status():
+    sh_st = {}
+    for (k, v) in TC_STATUS.items():
+        if k in PRINTY_STAT_KEYS:
+            sh_st[k] = v
+    return sh_st
+
+
+def log_status():
+    log.info("TC_status: {}".format(short_status()))
+    log.info("Eutech Temp: {}".format(EUTECH_TEMPERATURE))
 
 
 def get_eutech_temp(port):
@@ -190,10 +216,10 @@ def offset_tuning():
     global record_vals
     record_vals = []
 
-    log.info("###### STARTING OFFSET TUNER ######")
+    log.info("STARTING OFFSET TUNER..")
     while EUTECH_TEMPERATURE is None or TC_STATUS == {}:
         time.sleep(0.4)
-        log.info("Waiting for temp statuses from both thermometer & TC")
+        log.debug("Waiting for temp statuses from both thermometer & TC")
 
     # # Heat lid:
     tc.send_and_get_response(GCODES['SET_LID_TEMP'])
@@ -224,22 +250,26 @@ def offset_tuning():
             else:
                 tuning_done = True
                 continue
+    log.info("=====> TUNING DONE <=====")
 
 
 def stabilize_everything(temp, t_sink=None):
-    log.info(" ---- Waiting for thermocycler to stabilize ----")
+    log.info("Waiting for thermocycler to stabilize...")
     while not tc_temp_stability_check(temp):
         time.sleep(0.5)
-    log.info(" ---- TC Temperature stabilized ----")
-    log.info(" ---- Waiting for Eutech probe to stabilize ---")
+    log.info("TC Temperature stabilized.")
+    log_status()
+    log.info("Waiting for Eutech probe to stabilize...")
     while not eutech_temp_stability_check(tolerance=0.019):
         time.sleep(0.5)
-    log.info(" ---- EUTECH probe temp stabilized ---- ")
+    log.info("EUTECH probe temp stabilized.")
+    log_status()
     if t_sink:
-        log.info(" --- Waiting for heatsink to reach ~{}C ---".format(t_sink))
+        log.info("Waiting for heatsink to reach 51-55 C...".format(t_sink))
         while abs(TC_STATUS['T.sink'] - t_sink) > 2:
             pass
-        log.info(" --- Heatsink stabilized ---")
+        log.info("Heatsink temperature achieved.")
+        log_status()
 
 
 def set_fan(auto, speed=None):
@@ -250,52 +280,58 @@ def set_fan(auto, speed=None):
         tc.send_and_get_response(GCODES['AUTO_FAN'])
 
 
-def get_c():
+def get_offset(param):
     res = tc.send_and_get_response(GCODES['GET_OFFSET_CONSTANTS'])
     offsets = tc_response_to_dict(res, '\n')
-    return offsets['C']
+    val = offsets[param]
+    log.info("=======================")
+    log.info("Current {} is {}".format(param, val))
+    log.info("=======================")
+    return val
 
 
 def set_offset(param, val):
+    val = round(val, TC_GCODE_ROUNDING_PRECISION)
+    log.info("=======================")
+    log.info("Setting offset {} to {}".format(param, val))
+    log.info("=======================")
     tc.send_and_get_response('{} {}{}'.format(GCODES['SET_OFFSET_CONSTANTS'],
                                               param, val))
 
 
 def c_adjustment(temp, t_sink=None, temp_tolerance=0.1):
-    log.info("==== Tuning for {}C ====".format(temp))
+    log.info("TUNING FOR {}C ====>".format(temp))
     tc.send_and_get_response('{} S{}'.format(GCODES['SET_PLATE_TEMP'], temp))
     stabilize_everything(temp, t_sink)
     if abs(EUTECH_TEMPERATURE - TC_STATUS['Plt_current']) > temp_tolerance:
         log.info("Temperatures unequal. Tuning c..")
-        c = get_c()
-        log.info("Current c is {}".format(c))
-        new_c = c + round(EUTECH_TEMPERATURE - TC_STATUS['Plt_current'], 3)
-        log.info("New c is {}".format(new_c))
-        set_offset("C", new_c)
+        c = get_offset('C')
+        new_c = c + EUTECH_TEMPERATURE - TC_STATUS['Plt_current']
+        set_offset('C', new_c)
         return 'adjusted'
     else:
         return 'not adjusted'
 
 
 def b_adjustment():
-    log.info(" --- Adjusting B offset --- ")
+    log.info("ADJUSTING B OFFSET ====>")
     # Eq: y = mx + k
     # y = Difference in temperatures
     # x = b_offset
     # Solve for m & k using observed datapoints
     # Then find b_offset for ideal condition of y =  94C - 40C
+    get_offset('B')     # Just for comparison & documentation purposes
     b_vals = (0.005, 0.05)
     ideal_temps = (70, 94, 70, 40)
     observed_temps = {}
     for val in b_vals:
-        log.info("Temps for B={}".format(val))
+        log.info("Temps for B = {}".format(val))
         set_offset("B", val)
         b_temps = []
         for temp in ideal_temps:
             tc.send_and_get_response('{} S{}'.format(GCODES['SET_PLATE_TEMP'],
                                                      temp))
-            while not eutech_temp_stability_check(tolerance=0.09):
-                time.sleep(0.5)
+            stabilize_everything(temp)
             b_temps.append(EUTECH_TEMPERATURE)
             observed_temps[str(val)] = b_temps
             log.info(" {} -> {}".format(temp, EUTECH_TEMPERATURE))
@@ -328,37 +364,12 @@ def cooldown_tc():
     tc.send_and_get_response(GCODES['OPEN_LID'])
     while TC_STATUS['T.sink'] > 30:
         time.sleep(1)
+    log.info("Cooldown done.")
     tc.send_and_get_response(GCODES['AUTO_FAN'])
 
 
-def write_summary(record_vals):
-    info = get_device_info()
-    start = info.find('TC')
-    end = info.find(' model')
-    tc_serial = info[start:end]
-    print('record_vals = ', record_vals)
-    f_name = "tc-tuning_{}.csv".format(tc_serial)
-
-    with open(f_name, 'w', newline='') as f:
-        writer = csv.writer(f)
-        test = {'target_temp': None, 'experimental_temp': None}
-        log_file = csv.DictWriter(f, test)
-        log_file.writeheader()  # writes header to csv
-        for item in record_vals:
-            write_csv(log_file, test, item)
-        writer.writerow({'{}'.format(
-                        datetime.now().strftime("%m-%d-%y_%H:%M_%p"))})
-        f.flush()
-
-
-def write_csv(log_file, test, record_vals):
-    test['target_temp'] = record_vals[0]
-    test['experimental_temp'] = record_vals[1]
-    log_file.writerow(test)
-
-
 def end_tuning():
-    write_summary(record_vals)
+    # write_summary(record_vals)
     log.info("Deactivating thermocycler.")
     tc.send_and_get_response(GCODES['DEACTIVATE'])
     cooldown_tc()
@@ -381,7 +392,6 @@ if __name__ == '__main__':
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
         raise ValueError('Invalid log level: %s' % args.loglevel)
-    logging.basicConfig(level=log_level)
 
     # Connections
     print("Searching for connected devices..")
@@ -392,10 +402,22 @@ if __name__ == '__main__':
                                 timeout=1)
     # Disable continuous debug stat if in debug mode
     tc.send_and_get_response(GCODES['PRINT_DEBUG_STAT'])
+    tc_info = get_device_info()
+    TC_SERIAL = tc_info_to_dict(tc_info)['serial']
+
+    # Configure logging
+    logging.root.handlers = []
+    logging.basicConfig(
+                level=log_level,
+                format="%(asctime)s [%(levelname) - 5.5s] %(message)s",
+                handlers=[
+                    logging.FileHandler("{}.log".format(TC_SERIAL)),
+                    logging.StreamHandler()])
+
     log.info("Connected to thermocycler")
-    print("-------------------")
-    log.info("Device info:{}".format(get_device_info()))
-    print("-------------------")
+    print("================")
+    log.info("[ Device info ] {}".format(tc_info))
+    print("================")
     time.sleep(1)
     print("Please record the serial & model number in spreadsheet. Find the "
           "average well from QC sheet and attach thermometer probe to it")
