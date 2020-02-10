@@ -259,23 +259,27 @@ def stabilize_everything(temp, t_sink=None):
         time.sleep(0.5)
     log.info("TC Temperature stabilized.")
     log_status()
+    if t_sink:
+        log.info("Waiting for heatsink to reach 51-55 C...".format(t_sink))
+        if TC_STATUS['T.sink'] - t_sink > 2:
+            set_fan(False, 0.25) # increase fan speed to cool heatsink
+        while abs(TC_STATUS['T.sink'] - t_sink) > 2:
+            time.sleep(0.1)
+        set_fan(True)
+        log.info("Heatsink temperature achieved.")
+        log_status()
+
     log.info("Waiting for Eutech probe to stabilize...")
     while not eutech_temp_stability_check(tolerance=0.019):
         time.sleep(0.5)
     log.info("EUTECH probe temp stabilized.")
     log_status()
-    if t_sink:
-        log.info("Waiting for heatsink to reach 51-55 C...".format(t_sink))
-        while abs(TC_STATUS['T.sink'] - t_sink) > 2:
-            pass
-        log.info("Heatsink temperature achieved.")
-        log_status()
 
 
 def set_fan(auto, speed=None):
     if not auto:
         tc.send_and_get_response(
-            '{} {}'.format(GCODES['SET_FAN_SPEED'], speed))
+            '{} S{}'.format(GCODES['SET_FAN_SPEED'], speed))
     else:
         tc.send_and_get_response(GCODES['AUTO_FAN'])
 
