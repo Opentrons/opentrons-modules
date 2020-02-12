@@ -211,7 +211,7 @@ void GcodeHandler::add_debug_response(String param, float val)
 {
   Serial.print(param);
   Serial.print(F(": "));
-  Serial.print(val);
+  Serial.print(val, 4);
   Serial.print(F("\t"));
 }
 
