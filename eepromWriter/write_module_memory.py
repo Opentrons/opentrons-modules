@@ -33,10 +33,9 @@ MODELS = {
 
 DIR_NAME = os.path.dirname(os.path.realpath(__file__))
 AVR_CONFIG_FILE = os.path.join(DIR_NAME, 'avrdude.conf')
-FIRMWARE_DIR = os.path.join(DIR_NAME, 'firmware')
 EEPROM_FIRMARE_PATH = os.path.join('eepromWriter.hex')
 TEMP_DECK_FIRMARE_PATH = os.path.join('temp-deck-arduino.ino.hex')
-MAG_DECK_FIRMARE_PATH = os.path.join(FIRMWARE_DIR, 'mag-deck-arduino.ino.magdeck32u4.hex')
+MAG_DECK_FIRMARE_PATH = os.path.join('mag-deck-arduino.ino.hex')
 
 AVR_COMMAND = 'avrdude -C {config} -v -patmega32u4 -cavr109 -P {port} -b 57600 -D -U flash:w:{firmware}:i'  # NOQA
 

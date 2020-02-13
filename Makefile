@@ -105,6 +105,9 @@ build-magdeck:
 	$(ARDUINO) --verify --board Opentrons:avr:magdeck32u4cat $(MODULES_DIR)/mag-deck/mag-deck-arduino/mag-deck-arduino.ino --verbose-build
 	mkdir -p $(MAGDECK_BUILD_DIR)
 	cp $(BUILDS_DIR)/tmp/mag-deck-arduino.ino.hex $(MAGDECK_BUILD_DIR)
+	cp $(EEPROM_DIR)/eepromWriter.hex $(MAGDECK_BUILD_DIR)
+	cp $(EEPROM_DIR)/avrdude.conf $(MAGDECK_BUILD_DIR)
+	cp $(EEPROM_DIR)/write_module_memory.py $(MAGDECK_BUILD_DIR)
 	rm -rf $(BUILDS_DIR)/tmp
 
 .PHONY: build-tempdeck
