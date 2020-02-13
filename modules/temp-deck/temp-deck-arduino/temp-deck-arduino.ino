@@ -424,7 +424,7 @@ void setup() {
   // LED pins for model versions 3 (post 2018.10.15) & 4: red = 6, blue = 5
   // LED pins for model versions < 3 & 3.0 (pre- 2018.10.15) : red = 5, blue = 6
   bool is_blue_pin_5;
-  if (model_version > 3)
+  if (model_version >= 3)
   {
     if (model_version == 3)
     {
