@@ -1071,7 +1071,7 @@ void temp_safety_check()
   // When peltiers are stable, check if all thermistors give approximately
   // the same reading. If they are not same, then there might be a problem with
   // some/ one of the thermistors and might need to be replaced.
-  if (master_set_a_target && !just_changed_temp &&
+  if (master_set_a_target && !just_changed_temp && !has_stale_therm_reading &&
       temp_probes.hottest_plate_therm_temp() - temp_probes.coolest_plate_therm_temp() > ACCEPTABLE_THERM_DIFF)
   {
     gcode.response("ERROR", "Plate temperature not uniform. Deactivating.");
@@ -1132,6 +1132,10 @@ float thermistor_offset()
  */
 void therm_pid_peltier_update()
 {
+  static unsigned long pel1_update_timestamp = 0;
+  static unsigned long pel2_update_timestamp = 0;
+  static unsigned long pel3_update_timestamp = 0;
+
   if (timer_interrupted)
   {
     switch(therm_read_state)
@@ -1140,16 +1144,19 @@ void therm_pid_peltier_update()
         temp_probes.update(ThermistorPair::right);
         current_right_pel_temp = temp_probes.right_pair_temperature();
         update_peltiers_from_pid(Peltier::pel_1);
+        pel1_update_timestamp = millis();
         break;
       case 2:
         temp_probes.update(ThermistorPair::center);
         current_center_pel_temp = temp_probes.center_pair_temperature();
         update_peltiers_from_pid(Peltier::pel_2);
+        pel2_update_timestamp = millis();
         break;
       case 3:
         temp_probes.update(ThermistorPair::left);
         current_left_pel_temp = temp_probes.left_pair_temperature();
         update_peltiers_from_pid(Peltier::pel_3);
+        pel3_update_timestamp = millis();
         break;
       case 4:
         temp_probes.update(ThermistorPair::cover_n_heatsink);
@@ -1160,6 +1167,16 @@ void therm_pid_peltier_update()
     }
     current_temperature_plate = temp_probes.average_plate_temperature();
     timer_interrupted = false;
+  }
+  if (abs(long(pel2_update_timestamp) - long(pel1_update_timestamp)) > 100 ||
+      abs(long(pel3_update_timestamp) - long(pel2_update_timestamp)) > 100 ||
+      abs(long(pel1_update_timestamp) - long(pel3_update_timestamp)) > 100)
+  {
+    has_stale_therm_reading = true;
+  }
+  else
+  {
+    has_stale_therm_reading = false;
   }
 }
 

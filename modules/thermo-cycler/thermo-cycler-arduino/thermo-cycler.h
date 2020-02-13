@@ -192,6 +192,7 @@ unsigned long overshoot_start_timestamp = 0;
 bool front_button_pressed = false;
 unsigned long front_button_pressed_at = 0;
 bool timer_interrupted = false;
+bool has_stale_therm_reading = false;
 uint8_t therm_read_state = 0;
 bool gcode_debug_mode = false;
 bool continuous_debug_stat_mode = false; // continuous_debug_stat_mode is not compatible with API
