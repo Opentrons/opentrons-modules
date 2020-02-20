@@ -29,9 +29,9 @@ MODELS = {
     'TDV04': 'temp_deck_v4.0',  # this model has the new fans with pcb fan_v4.1
     'TDV15': 'temp_deck_v15',   # koozie + pwm fans
     'TDV20': 'temp_deck_v20',  # koozie + fans + actual rebranding
-    'MDV01': 'mag_deck_v1.1'
     'MDV01': 'mag_deck_v1.1',
-    'MDV20': 'mag_deck_v20'
+    'MDV01': 'mag_deck_v1.1',
+    'MDV20': 'mag_deck_v20',
 }
 
 DIR_NAME = os.path.dirname(os.path.realpath(__file__))
