@@ -233,24 +233,33 @@ def offset_tuning():
     set_fan(True)
     tuning_done = False
 
-    # Initial adjustments:
-    c_adjustment(TUNING_TEMPS[0],
-                 t_sink=53, temp_tolerance=0.009)
-    b_adjustment()
+    #Initial adjustments:
+    c_adjustment(TUNING_TEMPS[0], t_sink=53, temp_tolerance=0.009)
+    if args.b == True:
+        b_adjustment()
 
     # Thermocycler prepped. Start c tuning:
+    attempts = 3
     while not tuning_done:
-        c_adjustment(TUNING_TEMPS[0],
-                     t_sink=53, temp_tolerance=0.009)
+        if attempts != 3:
+            c_adjustment(TUNING_TEMPS[0],
+                         t_sink=53, temp_tolerance=0.2)
         for temp in TUNING_TEMPS[1:]:
             if c_adjustment(temp) == 'adjusted':
                 # Start over
                 tuning_done = False
+                attempts -= 1
                 break
             else:
                 tuning_done = True
                 continue
-    log.info("=====> TUNING DONE <=====")
+        if attempts == 0:
+            tuning_done = True
+
+    if attempts == 0:
+        log.info("=====> NO ATTEMPTS REMAINING! TUNING FAILED <=====")
+    else:
+        log.info("=====> TUNING DONE <=====")
 
 
 def stabilize_everything(temp, t_sink=None):
@@ -297,13 +306,13 @@ def get_offset(param):
 def set_offset(param, val):
     val = round(val, TC_GCODE_ROUNDING_PRECISION)
     log.info("=======================")
-    log.info("Setting offset {} to {}".format(param, val))
+    log.info("Setting offset {} to {}".format(param, val)) 
     log.info("=======================")
     tc.send_and_get_response('{} {}{}'.format(GCODES['SET_OFFSET_CONSTANTS'],
                                               param, val))
 
 
-def c_adjustment(temp, t_sink=None, temp_tolerance=0.1):
+def c_adjustment(temp, t_sink=None, temp_tolerance=0.2):
     log.info("TUNING FOR {}C ====>".format(temp))
     tc.send_and_get_response('{} S{}'.format(GCODES['SET_PLATE_TEMP'], temp))
     stabilize_everything(temp, t_sink)
@@ -311,11 +320,20 @@ def c_adjustment(temp, t_sink=None, temp_tolerance=0.1):
         log.info("Temperatures unequal. Tuning c..")
         c = get_offset('C')
         new_c = c + EUTECH_TEMPERATURE - TC_STATUS['Plt_current']
+        if temp_tolerance >= 0.05:
+            buffer_tolerance = temp_tolerance - 0.04
+            # allow up to buffer_tolerance deviation from Plt_current
+            difference = round((EUTECH_TEMPERATURE - TC_STATUS['Plt_current']), 3)
+            if difference > 0:
+                buffer_tolerance = buffer_tolerance*(-1) 
+            new_c = c + (difference + buffer_tolerance)
         set_offset('C', new_c)
         return 'adjusted'
+        time.sleep(5)
     else:
         return 'not adjusted'
-
+    time.sleep(3)
+    stabilize_everything(temp, t_sink)
 
 def b_adjustment():
     log.info("ADJUSTING B OFFSET ====>")
@@ -386,6 +404,7 @@ def build_arg_parser():
     arg_parser.add_argument("-L", "--loglevel", required=False,
                             default='INFO')
     arg_parser.add_argument("-p", "--eutech_port_name", required=True)
+    arg_parser.add_argument("-b", action = "store_true")
     return arg_parser
 
 
