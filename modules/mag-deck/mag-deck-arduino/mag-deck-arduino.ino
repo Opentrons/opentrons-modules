@@ -24,6 +24,9 @@
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
 
+#define MODEL_VER_TEMPLATE "mag_deck_v"
+#define MODEL_VER_TEMPLATE_LEN sizeof(MODEL_VER_TEMPLATE) - 1
+
 GcodeMagDeck gcode = GcodeMagDeck();  // reads in serial data to parse command and issue reponses
 Memory memory = Memory();  // reads from EEPROM to find device's unique serial, and model number
 
@@ -45,8 +48,11 @@ Memory memory = Memory();  // reads from EEPROM to find device's unique serial, 
 
 #define CURRENT_TO_BYTES_FACTOR 114
 
-#define STEPS_PER_MM 50  // full-stepping
-unsigned long STEP_DELAY_MICROSECONDS = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
+// #define steps_per_mm 50  // full-stepping
+// unsigned long step_delay_microseconds = 1000000 / (steps_per_mm * 10);  // default 10mm/sec
+
+int steps_per_mm = 50;  // full-stepping for GEN1
+unsigned long step_delay_microseconds = 1000000 / (steps_per_mm * 10);  // default 10mm/sec
 
 #define MAX_TRAVEL_DISTANCE_MM 40
 float FOUND_HEIGHT = MAX_TRAVEL_DISTANCE_MM - 15;
@@ -94,7 +100,7 @@ unsigned long number_of_acceleration_steps = 0;
 
 void acceleration_reset(float factor=1.0) {
   acceleration_factor = factor;
-  ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS - STEP_DELAY_MICROSECONDS;
+  ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS - step_delay_microseconds;
   ACCELERATION_DELAY_FEEDBACK = DEFAULT_ACCELERATION_DELAY_FEEDBACK / factor;
   accelerate_direction = ACCELERATE_UP;
   number_of_acceleration_steps = 0;
@@ -111,8 +117,8 @@ int get_next_acceleration_delay() {
   }
   else if (accelerate_direction == ACCELERATE_DOWN){
     ACCELERATION_DELAY_MICROSECONDS *= 1.0 + (1.0 - ACCELERATION_DELAY_FEEDBACK);
-    if(ACCELERATION_DELAY_MICROSECONDS > ACCELERATION_STARTING_DELAY_MICROSECONDS - STEP_DELAY_MICROSECONDS) {
-      ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS - STEP_DELAY_MICROSECONDS;
+    if(ACCELERATION_DELAY_MICROSECONDS > ACCELERATION_STARTING_DELAY_MICROSECONDS - step_delay_microseconds) {
+      ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS - step_delay_microseconds;
       accelerate_direction = ACCELERATE_OFF;
     }
   }
@@ -141,9 +147,9 @@ void motor_step(uint8_t dir, int speed_delay) {
   delayMicroseconds(PULSE_HIGH_MICROSECONDS);
   digitalWrite(MOTOR_STEP_PIN, LOW);
   delayMicroseconds(speed_delay);  // this sets the speed!!
-  delayMicroseconds(STEP_DELAY_MICROSECONDS % 1000);
-  if (STEP_DELAY_MICROSECONDS >= 1000) {
-    delay(STEP_DELAY_MICROSECONDS / 1000);
+  delayMicroseconds(step_delay_microseconds % 1000);
+  if (step_delay_microseconds >= 1000) {
+    delay(step_delay_microseconds / 1000);
   }
 }
 
@@ -151,8 +157,8 @@ void motor_step(uint8_t dir, int speed_delay) {
 void set_speed(float mm_per_sec) {
 //  Serial.print("\tSpeed: ");Serial.println(mm_per_sec);
   MM_PER_SEC = mm_per_sec;
-  STEP_DELAY_MICROSECONDS = 1000000 / (STEPS_PER_MM * MM_PER_SEC);
-  STEP_DELAY_MICROSECONDS -= PULSE_HIGH_MICROSECONDS;
+  step_delay_microseconds = 1000000 / (steps_per_mm * MM_PER_SEC);
+  step_delay_microseconds -= PULSE_HIGH_MICROSECONDS;
 }
 
 void set_current(float current) {
@@ -174,9 +180,9 @@ float find_endstop(){
     steps_taken++;
   }
   CURRENT_POSITION_MM = 0.0;
-  float mm = steps_taken / STEPS_PER_MM;
-  float remainder = steps_taken % STEPS_PER_MM;
-  return mm + (remainder / float(STEPS_PER_MM));
+  float mm = steps_taken / steps_per_mm;
+  float remainder = steps_taken % steps_per_mm;
+  return mm + (remainder / float(steps_per_mm));
 }
 
 float home_motor(bool save_distance=false);
@@ -187,7 +193,7 @@ void move_millimeters(float mm, boolean limit_switch, float accel_factor=1.0){
   if (mm < 0) {
     dir = DIRECTION_DOWN;
   }
-  unsigned long steps = abs(mm) * float(STEPS_PER_MM);
+  unsigned long steps = abs(mm) * float(steps_per_mm);
   acceleration_reset(accel_factor);
   boolean hit_endstop = false;
   enable_motor();
@@ -305,6 +311,15 @@ void activate_bootloader(){
 }
 
 void setup() {
+  memory.read_serial(device_serial);
+  memory.read_model(device_model);
+
+  int model_version = device_model.substring(MODEL_VER_TEMPLATE_LEN).toInt();
+  if (model_version >= 20) {  // Update steps_per_mm for GEN2 or later
+    steps_per_mm = 100;
+    step_delay_microseconds = 100000 / (steps_per_mm * 10);
+  }
+
   setup_pins();
   setup_digipot();
   set_current(CURRENT_HIGH);
@@ -312,8 +327,6 @@ void setup() {
   disable_motor();
 
   gcode.setup(115200);
-  memory.read_serial(device_serial);
-  memory.read_model(device_model);
 
   delay(1000);
   home_motor();
