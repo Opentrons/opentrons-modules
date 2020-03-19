@@ -48,10 +48,7 @@ Memory memory = Memory();  // reads from EEPROM to find device's unique serial, 
 
 #define CURRENT_TO_BYTES_FACTOR 114
 
-// #define steps_per_mm 50  // full-stepping
-// unsigned long step_delay_microseconds = 1000000 / (steps_per_mm * 10);  // default 10mm/sec
-
-int steps_per_mm = 50;  // full-stepping for GEN1
+unsigned int steps_per_mm = 50;  // full-stepping for GEN1
 unsigned long step_delay_microseconds = 1000000 / (steps_per_mm * 10);  // default 10mm/sec
 
 #define MAX_TRAVEL_DISTANCE_MM 40
