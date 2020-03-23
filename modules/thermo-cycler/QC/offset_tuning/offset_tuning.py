@@ -279,7 +279,7 @@ def stabilize_everything(temp, t_sink=None):
         log_status()
 
     log.info("Waiting for Eutech probe to stabilize...")
-    while not eutech_temp_stability_check(tolerance=0.019):
+    while not eutech_temp_stability_check(tolerance=0.01):
         time.sleep(0.5)
     log.info("EUTECH probe temp stabilized.")
     log_status()
@@ -404,6 +404,7 @@ def build_arg_parser():
     arg_parser.add_argument("-L", "--loglevel", required=False,
                             default='INFO')
     arg_parser.add_argument("-p", "--eutech_port_name", required=True)
+    arg_parser.add_argument("-m", "--tc_port_name", required=True)
     arg_parser.add_argument("-b", action = "store_true")
     return arg_parser
 
@@ -418,8 +419,8 @@ if __name__ == '__main__':
 
     # Connections
     print("Searching for connected devices..")
-    tc_port = serial_comm.find_port(OPENTRONS_VID)
-    tc = serial_comm.SerialComm(tc_port, log_level)
+    # tc_port = serial_comm.find_port(OPENTRONS_VID)
+    tc = serial_comm.SerialComm(args.tc_port_name, log_level)
     eutech_port = serial.Serial(args.eutech_port_name,
                                 EUTECH_BAUDRATE,
                                 timeout=1)
