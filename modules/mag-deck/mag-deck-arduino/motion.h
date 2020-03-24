@@ -1,8 +1,6 @@
 #ifndef Motion_h
 #define Motion_h
 
-#define MAX_TRAVEL_DISTANCE_MM 40
-
 #define CURRENT_HIGH 0.4
 #define CURRENT_LOW 0.04
 #define SET_CURRENT_DELAY_MS 20
@@ -23,6 +21,8 @@
 struct MotionParams {
   MotionParams(unsigned int model_version);
   MotionParams();
+
+  float max_travel_distance_mm;
 
   unsigned int steps_per_mm;
   unsigned long step_delay_microseconds;
@@ -85,6 +85,7 @@ struct MotionParams {
 };
 
 MotionParams::MotionParams(unsigned int model_version) :
+  max_travel_distance_mm(model_version < 20 ? 40 : 22),
   steps_per_mm(model_version < 20 ? 50 : 100),
   step_delay_microseconds(1000000 / (steps_per_mm * 10)),
   speed_high(model_version < 20 ? 50 : 25),
@@ -95,7 +96,7 @@ MotionParams::MotionParams(unsigned int model_version) :
   acceleration_delay_microseconds(ACCELERATION_STARTING_DELAY_MICROSECONDS),
   current_position_mm(0),
   saved_position_offset(0),
-  found_height(MAX_TRAVEL_DISTANCE_MM - 15),
+  found_height(max_travel_distance_mm - 15),
   accelerate_direction(ACCELERATE_OFF),
   acceleration_factor(1),
   number_of_acceleration_steps(0)

@@ -243,7 +243,7 @@ void loop() {
           else set_current(CURRENT_LOW);
           if (gcode.read_number('F')) motion.set_speed(gcode.parsed_number);
           else motion.set_speed(motion.speed_probe);
-          move_to_position(MAX_TRAVEL_DISTANCE_MM, false, 2.0);  // 2x slower acceleration
+          move_to_position(motion.max_travel_distance_mm, false, 2.0);  // 2x slower acceleration
           motion.found_height = home_motor();
           break;
         case GCODE_GET_PROBED_DISTANCE:
