@@ -11,69 +11,19 @@
 #include <Wire.h>
 
 // load in some custom classes for this device
+#include "magdeck.h"
 #include "memory.h"
+#include "motion.h"
 #include "gcodemagdeck.h"
-
-/********* Version **********/
-#ifdef MD_FW_VERSION
-  #define FW_VERSION String(MD_FW_VERSION)
-#else
-  #error "No firmware version provided"
-#endif
 
 String device_serial = "";  // leave empty, this value is read from eeprom during setup()
 String device_model = "";   // leave empty, this value is read from eeprom during setup()
 
+unsigned int model_version;
+
 GcodeMagDeck gcode = GcodeMagDeck();  // reads in serial data to parse command and issue reponses
 Memory memory = Memory();  // reads from EEPROM to find device's unique serial, and model number
-
-#define ADDRESS_DIGIPOT 0x2D  // 7-bit address
-
-#define MOTOR_ENGAGE_PIN 10
-#define MOTOR_DIRECTION_PIN 9
-#define MOTOR_STEP_PIN 6
-#define LED_UP_PIN 13
-#define LED_DOWN_PIN 5
-#define ENDSTOP_PIN A5
-#define ENDSTOP_PIN_TOP A4
-#define TONE_PIN 11
-
-#define DIRECTION_DOWN HIGH
-#define DIRECTION_UP LOW
-
-#define ENDSTOP_TRIGGERED_STATE LOW
-
-#define CURRENT_TO_BYTES_FACTOR 114
-
-#define STEPS_PER_MM 50  // full-stepping
-unsigned long STEP_DELAY_MICROSECONDS = 1000000 / (STEPS_PER_MM * 10);  // default 10mm/sec
-
-#define MAX_TRAVEL_DISTANCE_MM 40
-float FOUND_HEIGHT = MAX_TRAVEL_DISTANCE_MM - 15;
-
-#define CURRENT_HIGH 0.4
-#define CURRENT_LOW 0.04
-#define SET_CURRENT_DELAY_MS 20
-#define ENABLE_DELAY_MS 20
-
-#define HOMING_RETRACT 2
-
-#define SPEED_HIGH 50
-#define SPEED_LOW 15
-#define SPEED_PROBE 10
-
-float CURRENT_POSITION_MM = 0.0;
-float SAVED_POSITION_OFFSET = 0.0;
-
-float MM_PER_SEC = SPEED_LOW;
-
-#define ACCELERATION_STARTING_DELAY_MICROSECONDS 2000
-#define DEFAULT_ACCELERATION_DELAY_FEEDBACK 0.992  // smaller number means faster acceleration
-#define PULSE_HIGH_MICROSECONDS 2
-
-float ACCELERATION_DELAY_FEEDBACK = DEFAULT_ACCELERATION_DELAY_FEEDBACK;
-float ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS;
-const int steps_per_acceleration_cycle = ACCELERATION_STARTING_DELAY_MICROSECONDS / ACCELERATION_DELAY_FEEDBACK;
+MotionParams motion = MotionParams();
 
 void i2c_write(byte address, byte value) {
   Wire.beginTransmission(ADDRESS_DIGIPOT);
@@ -82,46 +32,6 @@ void i2c_write(byte address, byte value) {
   byte error = Wire.endTransmission();
   if (error) {
     Serial.print("Digipot I2C Error: "); Serial.println(error);
-  }
-}
-
-#define ACCELERATE_OFF 0
-#define ACCELERATE_DOWN 1
-#define ACCELERATE_UP 2
-uint8_t accelerate_direction = ACCELERATE_OFF;
-float acceleration_factor = 1.0;
-unsigned long number_of_acceleration_steps = 0;
-
-void acceleration_reset(float factor=1.0) {
-  acceleration_factor = factor;
-  ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS - STEP_DELAY_MICROSECONDS;
-  ACCELERATION_DELAY_FEEDBACK = DEFAULT_ACCELERATION_DELAY_FEEDBACK / factor;
-  accelerate_direction = ACCELERATE_UP;
-  number_of_acceleration_steps = 0;
-}
-
-int get_next_acceleration_delay() {
-  if (accelerate_direction == ACCELERATE_UP) {
-    ACCELERATION_DELAY_MICROSECONDS *= ACCELERATION_DELAY_FEEDBACK;
-    number_of_acceleration_steps += 1;
-    if(ACCELERATION_DELAY_MICROSECONDS < 0) {
-      ACCELERATION_DELAY_MICROSECONDS = 0;
-      accelerate_direction = ACCELERATE_OFF;
-    }
-  }
-  else if (accelerate_direction == ACCELERATE_DOWN){
-    ACCELERATION_DELAY_MICROSECONDS *= 1.0 + (1.0 - ACCELERATION_DELAY_FEEDBACK);
-    if(ACCELERATION_DELAY_MICROSECONDS > ACCELERATION_STARTING_DELAY_MICROSECONDS - STEP_DELAY_MICROSECONDS) {
-      ACCELERATION_DELAY_MICROSECONDS = ACCELERATION_STARTING_DELAY_MICROSECONDS - STEP_DELAY_MICROSECONDS;
-      accelerate_direction = ACCELERATE_OFF;
-    }
-  }
-  return ACCELERATION_DELAY_MICROSECONDS;
-}
-
-void enable_deceleration_if_needed(int current_step, int total_steps) {
-  if (total_steps - current_step <= number_of_acceleration_steps) {
-    accelerate_direction = ACCELERATE_DOWN;
   }
 }
 
@@ -141,18 +51,10 @@ void motor_step(uint8_t dir, int speed_delay) {
   delayMicroseconds(PULSE_HIGH_MICROSECONDS);
   digitalWrite(MOTOR_STEP_PIN, LOW);
   delayMicroseconds(speed_delay);  // this sets the speed!!
-  delayMicroseconds(STEP_DELAY_MICROSECONDS % 1000);
-  if (STEP_DELAY_MICROSECONDS >= 1000) {
-    delay(STEP_DELAY_MICROSECONDS / 1000);
+  delayMicroseconds(motion.step_delay_microseconds % 1000);
+  if (motion.step_delay_microseconds >= 1000) {
+    delay(motion.step_delay_microseconds / 1000);
   }
-}
-
-
-void set_speed(float mm_per_sec) {
-//  Serial.print("\tSpeed: ");Serial.println(mm_per_sec);
-  MM_PER_SEC = mm_per_sec;
-  STEP_DELAY_MICROSECONDS = 1000000 / (STEPS_PER_MM * MM_PER_SEC);
-  STEP_DELAY_MICROSECONDS -= PULSE_HIGH_MICROSECONDS;
 }
 
 void set_current(float current) {
@@ -167,16 +69,16 @@ void set_current(float current) {
 
 float find_endstop(){
   unsigned long steps_taken = 0;
-  acceleration_reset();
+  motion.acceleration_reset();
   enable_motor();
   while (digitalRead(ENDSTOP_PIN) != ENDSTOP_TRIGGERED_STATE) {
-    motor_step(DIRECTION_DOWN, get_next_acceleration_delay());
+    motor_step(DIRECTION_DOWN, motion.get_next_acceleration_delay());
     steps_taken++;
   }
-  CURRENT_POSITION_MM = 0.0;
-  float mm = steps_taken / STEPS_PER_MM;
-  float remainder = steps_taken % STEPS_PER_MM;
-  return mm + (remainder / float(STEPS_PER_MM));
+  motion.current_position_mm = 0.0;
+  float mm = steps_taken / motion.steps_per_mm;
+  float remainder = steps_taken % motion.steps_per_mm;
+  return mm + (remainder / float(motion.steps_per_mm));
 }
 
 float home_motor(bool save_distance=false);
@@ -187,13 +89,13 @@ void move_millimeters(float mm, boolean limit_switch, float accel_factor=1.0){
   if (mm < 0) {
     dir = DIRECTION_DOWN;
   }
-  unsigned long steps = abs(mm) * float(STEPS_PER_MM);
-  acceleration_reset(accel_factor);
+  unsigned long steps = abs(mm) * float(motion.steps_per_mm);
+  motion.acceleration_reset(accel_factor);
   boolean hit_endstop = false;
   enable_motor();
   for (unsigned long i=0;i<steps;i++) {
-    enable_deceleration_if_needed(i, steps);
-    motor_step(dir, get_next_acceleration_delay());
+    motion.enable_deceleration_if_needed(i, steps);
+    motor_step(dir, motion.get_next_acceleration_delay());
     if (limit_switch && digitalRead(ENDSTOP_PIN) == ENDSTOP_TRIGGERED_STATE) {
       hit_endstop = true;
       break;
@@ -203,7 +105,7 @@ void move_millimeters(float mm, boolean limit_switch, float accel_factor=1.0){
     home_motor();
   }
   else {
-    CURRENT_POSITION_MM += mm;
+    motion.current_position_mm += mm;
     disable_motor();
   }
 }
@@ -212,10 +114,10 @@ float home_motor(bool save_distance=false) {
 //  Serial.println("HOMING");
   set_lights_down();
   set_current(CURRENT_HIGH);
-  set_speed(SPEED_LOW);
+  motion.set_speed(motion.speed_low);
   float f = find_endstop();
   move_millimeters(HOMING_RETRACT, false);
-  CURRENT_POSITION_MM = 0;
+  motion.current_position_mm = 0;
   disable_motor();
   set_lights_down();
   return f - HOMING_RETRACT;
@@ -231,14 +133,14 @@ void enable_motor() {
 }
 
 void move_to_position(float mm, bool limit_switch=true, float accel_factory=1.0) {
-  if (mm < CURRENT_POSITION_MM) {
+  if (mm < motion.current_position_mm) {
     set_lights_down();
   }
   else {
     set_lights_up();
   }
-  move_millimeters(mm - CURRENT_POSITION_MM, limit_switch, accel_factory);
-  if (int(CURRENT_POSITION_MM) < 1) {
+  move_millimeters(mm - motion.current_position_mm, limit_switch, accel_factory);
+  if (int(motion.current_position_mm) < 1) {
     set_lights_down();
   }
   else {
@@ -248,13 +150,13 @@ void move_to_position(float mm, bool limit_switch=true, float accel_factory=1.0)
 
 void move_to_top(){
   set_current(CURRENT_HIGH);
-  set_speed(SPEED_HIGH);
-  move_to_position(FOUND_HEIGHT);
+  motion.set_speed(motion.speed_high);
+  move_to_position(motion.found_height);
 }
 
 void move_to_bottom(){
   set_current(CURRENT_HIGH);
-  set_speed(SPEED_HIGH);
+  motion.set_speed(motion.speed_high);
   move_to_position(HOMING_RETRACT);
   home_motor();
 }
@@ -305,15 +207,19 @@ void activate_bootloader(){
 }
 
 void setup() {
+  memory.read_serial(device_serial);
+  memory.read_model(device_model);
+
+  model_version = device_model.substring(MODEL_VER_TEMPLATE_LEN).toInt();
+  motion = MotionParams(model_version);
+
   setup_pins();
   setup_digipot();
   set_current(CURRENT_HIGH);
-  set_speed(SPEED_LOW);
+  motion.set_speed(motion.speed_low);
   disable_motor();
 
   gcode.setup(115200);
-  memory.read_serial(device_serial);
-  memory.read_model(device_model);
 
   delay(1000);
   home_motor();
@@ -335,25 +241,25 @@ void loop() {
         case GCODE_PROBE:
           if (gcode.read_number('C')) set_current(gcode.parsed_number);
           else set_current(CURRENT_LOW);
-          if (gcode.read_number('F')) set_speed(gcode.parsed_number);
-          else set_speed(SPEED_PROBE);
-          move_to_position(MAX_TRAVEL_DISTANCE_MM, false, 2.0);  // 2x slower acceleration
-          FOUND_HEIGHT = home_motor();
+          if (gcode.read_number('F')) motion.set_speed(gcode.parsed_number);
+          else motion.set_speed(motion.speed_probe);
+          move_to_position(motion.max_travel_distance_mm, false, 2.0);  // 2x slower acceleration
+          motion.found_height = home_motor();
           break;
         case GCODE_GET_PROBED_DISTANCE:
-          gcode.print_probed_distance(FOUND_HEIGHT);
+          gcode.print_probed_distance(motion.found_height);
           break;
         case GCODE_MOVE:
           if (gcode.read_number('C')) set_current(gcode.parsed_number);
           else set_current(CURRENT_HIGH);
-          if (gcode.read_number('F')) set_speed(gcode.parsed_number);
-          else set_speed(SPEED_HIGH);
+          if (gcode.read_number('F')) motion.set_speed(gcode.parsed_number);
+          else motion.set_speed(motion.speed_high);
           if (gcode.read_number('Z')) {
             move_to_position(gcode.parsed_number);
           }
           break;
         case GCODE_GET_POSITION:
-          gcode.print_current_position(CURRENT_POSITION_MM);
+          gcode.print_current_position(motion.current_position_mm);
           break;
         case GCODE_DEVICE_INFO:
           gcode.print_device_info(device_serial, device_model, FW_VERSION);
