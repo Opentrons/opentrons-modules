@@ -17,8 +17,8 @@ EUTECH_BAUDRATE = 9600
 EUTECH_TEMPERATURE = None
 TC_STATUS = {}
 TUNING_OVER = False
-# tc = None
 TC_SERIAL = None
+all_c_offsets = []
 
 
 log = logging.getLogger()
@@ -213,9 +213,7 @@ def eutech_temp_stability_check(tolerance, target=None):
 
 
 def offset_tuning():
-    global record_vals
-    record_vals = []
-
+    global all_c_offsets
     log.info("STARTING OFFSET TUNER..")
     while EUTECH_TEMPERATURE is None or TC_STATUS == {}:
         time.sleep(0.4)
@@ -257,8 +255,10 @@ def offset_tuning():
             tuning_done = True
 
     if attempts == 0:
+        all_c_offsets.append('FAIL')
         log.info("=====> NO ATTEMPTS REMAINING! TUNING FAILED <=====")
     else:
+        all_c_offsets.append(get_offset('C'))
         log.info("=====> TUNING DONE <=====")
 
 
@@ -307,7 +307,6 @@ def set_offset(param, val):
     val = round(val, TC_GCODE_ROUNDING_PRECISION)
     log.info("=======================")
     log.info("Setting offset {} to {}".format(param, val)) 
-    log.info("=======================")
     tc.send_and_get_response('{} {}{}'.format(GCODES['SET_OFFSET_CONSTANTS'],
                                               param, val))
 
@@ -382,19 +381,18 @@ def get_eq_constants(x1, y1, x2, y2):
 
 
 def cooldown_tc():
+    log.info("Deactivating thermocycler.")
+    tc.send_and_get_response(GCODES['DEACTIVATE'])
     tc.send_and_get_response('{} S{}'.format(GCODES['SET_FAN_SPEED'], 0.6))
-    tc.send_and_get_response(GCODES['OPEN_LID'])
     while TC_STATUS['T.sink'] > 30:
         time.sleep(1)
+    time.sleep(60)
     log.info("Cooldown done.")
     tc.send_and_get_response(GCODES['AUTO_FAN'])
 
 
 def end_tuning():
-    # write_summary(record_vals)
-    log.info("Deactivating thermocycler.")
-    tc.send_and_get_response(GCODES['DEACTIVATE'])
-    cooldown_tc()
+    tc.send_and_get_response(GCODES['OPEN_LID'])
     log.info("Disabling debug mode.")
     tc.send_and_get_response('{} S0'.format(GCODES['DEBUG_MODE']))
 
@@ -405,8 +403,69 @@ def build_arg_parser():
                             default='INFO')
     arg_parser.add_argument("-p", "--eutech_port_name", required=True)
     arg_parser.add_argument("-m", "--tc_port_name", required=True)
-    arg_parser.add_argument("-b", action = "store_true")
+    arg_parser.add_argument("-b", action = "store_true") # flag for adjusting b_offset in offset function
+    arg_parser.add_argument("-f", action = "store_true") # flag to run offset tuning 3 times and calculate an appropriate c_offset
     return arg_parser
+
+
+def calc_final_c_offset(record_vals):
+    # Calculate and set the final c_offset
+    print('all c_offsets = ', record_vals)
+    final_c = None
+
+    # If none of the tuning attempt failed
+    if 'FAIL' not in record_vals:
+        log.info("============ TUNING SUCCESSFUL ===========")
+        if record_vals[0] == record_vals[1]:
+            final_c = (record_vals[1]+record_vals[2])/2
+            log.info("Trial 1 and trial 2 equal. Averaging trial 1/2 c_offsets to get final c_offset.")
+        elif record_vals[2] == record_vals[1]:
+            final_c = record_vals[2]
+            log.info("Trial 2 and trial 3 equal. Selecting trial 3 c_offset to get final c_offset.")
+        elif (record_vals[2] > record_vals[1] and record_vals[2] < record_vals[0]) or (record_vals[2] > record_vals[0] and record_vals[2] < record_vals[1]):
+            final_c = record_vals[2]
+            log.info("Trial 3 in between Trial 1 and 2. Selecting trial 3 c_offset to get final c_offset.")
+        elif record_vals[2] < record_vals[0] and record_vals[2] < record_vals[1]:
+            final_c = (record_vals[1]+record_vals[2])/2
+            log.info("All trials decreasing. Averaging trial 1/2 c_offsets to get final c_offset.")
+        else:
+            log.info("============ ERROR: UNACCOUNTED FOR C_OFFSET TREND ===========")
+            log.info("Selecting trial 3 c_offset to get final c_offset.")
+            final_c = record_vals[2]
+
+    # if at least one tuning attempt failed
+    else:
+        fail_count = 0 
+        log.info("============ ERROR: TUNING FAILURE REPORTED ===========")
+        log.info("Please check logs to determine whether it is OK to pass this unit.")
+
+        # count total number of failures
+        for i in range(len(record_vals)):
+            if record_vals[i] == 'FAIL':
+                fail_count += 1
+
+        if fail_count > 1:
+            log.info("Not enough successful tunes. Returning c_offset to default of 0.15.")
+            final_c = 0.15
+        else:
+            if record_vals[0] == 'FAIL': # if first attempt fails, take average of attempt 2/3
+                final_c = (record_vals[1]+record_vals[2])/2
+                log.info("Trial 1 failed. Averaging trial 1/2 c_offsets to get final c_offset.")
+            elif record_vals[1] == 'FAIL': # if second attempt fails, take last c_offset
+                final_c = record_vals[2]
+                log.info("Trial 2 failed. Selecting trial 3 c_offset to get final c_offset.")
+            elif record_vals[2] == 'FAIL': # if third attempt fails, take 2nd c_offset
+                final_c = record_vals[1]
+                log.info("Trial 3 failed. Selecting trial 2 c_offset to get final c_offset.")
+            else:
+                log.info("============ ERROR: UNACCOUNTED FOR C_OFFSET TREND ===========")
+                final_c = record_vals[2]
+
+    if final_c != None:
+        set_offset('C', final_c)
+        log.info("============ ^^ FINAL C_OFFSET ^^ ===========")
+    else:
+        log.info("============ No c_offset established ===========")
 
 
 if __name__ == '__main__':
@@ -456,15 +515,37 @@ if __name__ == '__main__':
         tc.send_and_get_response(GCODES['CLOSE_LID'])
         print("Done.")
 
+    cycles = 1
+
+    # if flag included, run entire tuning procedure 3 times
+    if args.f == True:
+        cycles = 3
+        log.info("Flag for complete tuning, running {} cycles of tuning".format(cycles))
+
     # Threads
-    tc_status_fetcher = threading.Thread(target=get_tc_stats)
+    tc_status_fetcher = threading.Thread(target=get_tc_stats, daemon=True)
     eutech_temp_fetcher = threading.Thread(target=get_eutech_temp,
-                                           args=(eutech_port,))
-    OFFSET_TUNER = threading.Thread(target=offset_tuning)
-    OFFSET_TUNER.start()
+                                               args=(eutech_port,), daemon=True)
+
+    # Start threads
     eutech_temp_fetcher.start()
     tc_status_fetcher.start()
-    OFFSET_TUNER.join()
 
-    end_tuning()
+    for c in range(cycles):
+        OFFSET_TUNER = threading.Thread(target=offset_tuning)
+        OFFSET_TUNER.start()
+        OFFSET_TUNER.join()
+        cooldown_tc()
+
+        # If first 2 tuning attempts fail, go not continue tuning
+        if len(all_c_offsets) > 1:
+            if all_c_offsets[0] == 'FAIL' and all_c_offsets[1] == 'FAIL':
+                log.info("First 2 tuning attempts failed. Ending tuning")
+                break
+
     TUNING_OVER = True
+    end_tuning()
+
+    # If flag included, calculate and set final c_offset using data from all 3 tuning cycles
+    if args.f == True:
+        calc_final_c_offset(all_c_offsets)
