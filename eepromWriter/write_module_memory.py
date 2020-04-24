@@ -1,10 +1,10 @@
 '''
 This script takes in 2 args: `--write_serial` & `--module`
-    i) if `write_serial` is true: Upload Serial & model of a temp/mag-deck &
+    i) if `write_serial` is True: Upload Serial & model of a temp/mag-deck &
                                   upload the application firmware.
     ii) if `write_serial` is false: only upload the application firmware
 `--module`: specifies whether we're uploading to a 'tempdeck' or 'magdeck'.
-            Is needed only when `write_serial` is false.
+            Is needed only when `write_serial` is False or not specified.
 
 What the script does:
     1) discover port name
@@ -193,8 +193,12 @@ def _parse_model_from_barcode(barcode):
 def build_arg_parser():
     arg_parser = ArgumentParser(
         description="Firmware & serial uploader for Opentrons modules")
-    arg_parser.add_argument("--write_serial", required=True)
-    arg_parser.add_argument("--module", required=False)
+    arg_parser.add_argument("--write_serial",
+                            action='store_true',
+                            help='Specify whether to scan & store '
+                                 'serial(True/False)')
+    arg_parser.add_argument("--module",
+                            help='Specify whether a magdeck or tempdeck')
     return arg_parser
 
 
@@ -203,10 +207,8 @@ def main():
     connected_port = None
     arg_parser = build_arg_parser()
     args = arg_parser.parse_args()
-    if args.module:
-        model = args.module.lower()
     try:
-        if args.write_serial.lower() == 'true':
+        if args.write_serial is True:
             print('\nTriggering Bootloader')
             trigger_bootloader(find_opentrons_port())
             print('\nUploading EEPROM sketch')
@@ -219,11 +221,15 @@ def main():
             check_previous_data(connected_port)
             write_identifiers(connected_port, barcode, model)
             connected_port.close()
+        else:
+            if args.module is None:
+                raise Exception('No module name specified. See --help')
+            model = args.module.lower()
         print('\nTriggering Bootloader')
         trigger_bootloader(find_opentrons_port())
         print('\nUploading application')
         upload_application_firmware(find_bootloader_port(), model)
-        if args.write_serial.lower() == 'true':
+        if args.write_serial is True:
             print('\nConnecting to device and testing')
             time.sleep(5)  # wait for it to boot up
             connected_port = connect_to_module(find_opentrons_port())
