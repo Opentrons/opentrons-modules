@@ -1,20 +1,31 @@
 '''
+This script takes in 2 args: `--write_serial` & `--module`
+    i) if `write_serial` is true: Upload Serial & model of a temp/mag-deck &
+                                  upload the application firmware.
+    ii) if `write_serial` is false: only upload the application firmware
+`--module`: specifies whether we're uploading to a 'tempdeck' or 'magdeck'.
+            Is needed only when `write_serial` is false.
+
+What the script does:
     1) discover port name
-    2) open/close port at 1200bps to reset into bootloader
-    3) Run AVR commnad to upload eeprom writing sketch
-    4) Save ID and model from barcode
+    if uploading serial number:
+        2) open/close port at 1200bps to reset into bootloader
+        3) Run AVR commnad to upload eeprom writing sketch
+        4) Save ID and model from barcode
     5) open/close port at 1200bps to reset into bootloader
     6) Run AVR commnad to upload application firmware
-    7) Check to make sure it return the correct information (M115)
+    if uploading serial number:
+        7) Check to make sure it returns the updated device information (M115)
+
+NOTE: Requires avrdude v6.3+ to be in system path.
 '''
 
-import os
 import subprocess
-import sys
 import time
-
+from argparse import ArgumentParser
 from serial import Serial
 from serial.tools.list_ports import comports
+from pathlib import PurePath
 
 
 OPENTRONS_VID = 1240
@@ -30,15 +41,14 @@ MODELS = {
     'TDV15': 'temp_deck_v15',   # koozie + pwm fans
     'TDV20': 'temp_deck_v20',  # koozie + fans + actual rebranding
     'MDV01': 'mag_deck_v1.1',
-    'MDV01': 'mag_deck_v1.1',
     'MDV20': 'mag_deck_v20',
 }
 
-DIR_NAME = os.path.dirname(os.path.realpath(__file__))
-AVR_CONFIG_FILE = os.path.join(DIR_NAME, 'avrdude.conf')
-EEPROM_FIRMARE_PATH = os.path.join('eepromWriter.hex')
-TEMP_DECK_FIRMARE_PATH = os.path.join('temp-deck-arduino.ino.hex')
-MAG_DECK_FIRMARE_PATH = os.path.join('mag-deck-arduino.ino.hex')
+THIS_DIR = PurePath(__file__).parent
+AVR_CONFIG_FILE = THIS_DIR.joinpath('avrdude.conf')
+EEPROM_FIRMARE_PATH = THIS_DIR.joinpath('eepromWriter.hex')
+TEMP_DECK_FIRMARE_PATH = THIS_DIR.joinpath('temp-deck-arduino.ino.hex')
+MAG_DECK_FIRMARE_PATH = THIS_DIR.joinpath('mag-deck-arduino.ino.hex')
 
 AVR_COMMAND = 'avrdude -C {config} -v -patmega32u4 -cavr109 -P {port} -b 57600 -D -U flash:w:{firmware}:i'  # NOQA
 
@@ -55,6 +65,7 @@ def find_opentrons_port():
                 return p.device
         time.sleep(0.5)
     raise RuntimeError('Could not find Opentrons Model connected over USB')
+
 
 def find_bootloader_port():
     for i in range(5 * 2):
@@ -141,7 +152,6 @@ def check_previous_data(module):
 
 
 def _get_info(module):
-    info = (None, None)
     module.write(b'&')  # special character to retrive old data
     res = module.read_until(b'\r\n').decode().strip()
     return tuple(res.split(':'))
@@ -180,37 +190,55 @@ def _parse_model_from_barcode(barcode):
     raise Exception(BAD_BARCODE_MESSAGE.format(barcode))
 
 
+def build_arg_parser():
+    arg_parser = ArgumentParser(
+        description="Firmware & serial uploader for Opentrons modules")
+    arg_parser.add_argument("--write_serial", required=True)
+    arg_parser.add_argument("--module", required=False)
+    return arg_parser
+
+
 def main():
     print('\n')
     connected_port = None
+    arg_parser = build_arg_parser()
+    args = arg_parser.parse_args()
+    if args.module:
+        model = args.module.lower()
     try:
-        print('\nTriggering Bootloader')
-        trigger_bootloader(find_opentrons_port())
-        print('\nUploading EEPROM sketch')
-        upload_eeprom_sketch(find_bootloader_port())
-        print('\nAsking for barcode')
-        barcode = _user_submitted_barcode(32)
-        model = _parse_model_from_barcode(barcode)
-        print('\nConnecting to device and writing')
-        connected_port = connect_to_module(find_opentrons_port())
-        check_previous_data(connected_port)
-        write_identifiers(connected_port, barcode, model)
-        connected_port.close()
+        if args.write_serial.lower() == 'true':
+            print('\nTriggering Bootloader')
+            trigger_bootloader(find_opentrons_port())
+            print('\nUploading EEPROM sketch')
+            upload_eeprom_sketch(find_bootloader_port())
+            print('\nAsking for barcode')
+            barcode = _user_submitted_barcode(32)
+            model = _parse_model_from_barcode(barcode)
+            print('\nConnecting to device and writing')
+            connected_port = connect_to_module(find_opentrons_port())
+            check_previous_data(connected_port)
+            write_identifiers(connected_port, barcode, model)
+            connected_port.close()
         print('\nTriggering Bootloader')
         trigger_bootloader(find_opentrons_port())
         print('\nUploading application')
         upload_application_firmware(find_bootloader_port(), model)
-        print('\nConnecting to device and testing')
-        time.sleep(5)  # wait for it to boot up
-        connected_port = connect_to_module(find_opentrons_port())
-        assert_id_and_model(connected_port, barcode, model)
-        print('\n\n-----------------')
-        print('-----------------')
-        print('-----------------')
-        print('\n\nPASS: Saved -> {0} (model {1})'.format(barcode, model))
-        print('\n\n-----------------')
-        print('-----------------')
-        print('-----------------')
+        if args.write_serial.lower() == 'true':
+            print('\nConnecting to device and testing')
+            time.sleep(5)  # wait for it to boot up
+            connected_port = connect_to_module(find_opentrons_port())
+            assert_id_and_model(connected_port, barcode, model)
+            print('\n\n-----------------')
+            print('-----------------')
+            print('-----------------')
+            print('\n\nPASS: Saved -> {0} (model {1})'.format(barcode, model))
+            print('\n\n-----------------')
+            print('-----------------')
+            print('-----------------')
+        else:
+            print('\n\n-----------------')
+            print('\n\n Fimware upload DONE!')
+            print('\n\n-----------------')
     except KeyboardInterrupt:
         exit()
     except Exception as e:
