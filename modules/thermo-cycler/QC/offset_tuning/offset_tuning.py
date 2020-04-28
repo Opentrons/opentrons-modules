@@ -18,6 +18,7 @@ EUTECH_TEMPERATURE = None
 TC_STATUS = {}
 TUNING_OVER = False
 TC_SERIAL = None
+default_c = 0.15
 all_c_offsets = []
 
 
@@ -445,8 +446,8 @@ def calc_final_c_offset(record_vals):
                 fail_count += 1
 
         if fail_count > 1:
-            log.info("Not enough successful tunes. Returning c_offset to default of 0.15.")
-            final_c = 0.15
+            log.info("Not enough successful tunes. Returning c_offset to default of {}.".format(default_c))
+            final_c = default_c
         else:
             if record_vals[0] == 'FAIL': # if first attempt fails, take average of attempt 2/3
                 final_c = (record_vals[1]+record_vals[2])/2
@@ -520,7 +521,8 @@ if __name__ == '__main__':
     # if flag included, run entire tuning procedure 3 times
     if args.f == True:
         cycles = 3
-        log.info("Flag for complete tuning, running {} cycles of tuning".format(cycles))
+        set_offset('C', default_c)
+        log.info("Flag for complete tuning, running {} cycles of tuning. Starting c_offset at default {}".format(cycles, default_c))
 
     # Threads
     tc_status_fetcher = threading.Thread(target=get_tc_stats, daemon=True)
