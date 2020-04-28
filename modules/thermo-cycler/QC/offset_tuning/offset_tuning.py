@@ -521,8 +521,10 @@ if __name__ == '__main__':
     # if flag included, run entire tuning procedure 3 times
     if args.f == True:
         cycles = 3
+        log.info("Flag for complete tuning, running {} cycles of tuning.".format(cycles))
+        get_offset('C')
         set_offset('C', default_c)
-        log.info("Flag for complete tuning, running {} cycles of tuning. Starting c_offset at default {}".format(cycles, default_c))
+        log.info("For complete tune, starting c_offset at default of {}".format(default_c))
 
     # Threads
     tc_status_fetcher = threading.Thread(target=get_tc_stats, daemon=True)
