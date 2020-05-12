@@ -328,12 +328,11 @@ def c_adjustment(temp, t_sink=None, temp_tolerance=0.2):
                 buffer_tolerance = buffer_tolerance*(-1) 
             new_c = c + (difference + buffer_tolerance)
         set_offset('C', new_c)
-        return 'adjusted'
         time.sleep(5)
+        stabilize_everything(temp, t_sink)
+        return 'adjusted'
     else:
         return 'not adjusted'
-    time.sleep(3)
-    stabilize_everything(temp, t_sink)
 
 def b_adjustment():
     log.info("ADJUSTING B OFFSET ====>")
@@ -343,7 +342,7 @@ def b_adjustment():
     # Solve for m & k using observed datapoints
     # Then find b_offset for ideal condition of y =  94C - 40C
     get_offset('B')     # Just for comparison & documentation purposes
-    b_vals = (0.005, 0.05)
+    b_vals = (0.005, 0.06)
     ideal_temps = (70, 94, 70, 40)
     observed_temps = {}
     for val in b_vals:
