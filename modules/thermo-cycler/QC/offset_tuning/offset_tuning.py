@@ -236,6 +236,7 @@ def offset_tuning():
     c_adjustment(TUNING_TEMPS[0], t_sink=53, temp_tolerance=0.009)
     if args.b == True:
         b_adjustment()
+        c_adjustment(TUNING_TEMPS[0], t_sink=53, temp_tolerance=0.009)
 
     # Thermocycler prepped. Start c tuning:
     attempts = 3
@@ -330,6 +331,7 @@ def c_adjustment(temp, t_sink=None, temp_tolerance=0.2):
         set_offset('C', new_c)
         time.sleep(5)
         stabilize_everything(temp, t_sink)
+        log_status()
         return 'adjusted'
     else:
         return 'not adjusted'
