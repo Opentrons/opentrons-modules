@@ -518,12 +518,12 @@ if __name__ == '__main__':
         print("Done.")
 
     cycles = 1
+    get_offset('B')  # print b_offset at start of test
+    get_offset('C')  # print c_offset at start of test
 
-    # if flag included, run entire tuning procedure 3 times
-    if args.f == True:
+    if args.f == True:  # if flag included, run entire tuning procedure 3 times
         cycles = 3
         log.info("Flag for complete tuning, running {} cycles of tuning.".format(cycles))
-        get_offset('C')
         set_offset('C', default_c)
         log.info("For complete tune, starting c_offset at default of {}".format(default_c))
 
