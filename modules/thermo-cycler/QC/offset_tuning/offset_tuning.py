@@ -317,7 +317,9 @@ def c_adjustment(temp, t_sink=None, temp_tolerance=0.2):
     log.info("TUNING FOR {}C ====>".format(temp))
     tc.send_and_get_response('{} S{}'.format(GCODES['SET_PLATE_TEMP'], temp))
     stabilize_everything(temp, t_sink)
-    if abs(EUTECH_TEMPERATURE - TC_STATUS['Plt_current']) > temp_tolerance:
+    adjust_count = 0
+    while abs(EUTECH_TEMPERATURE - TC_STATUS['Plt_current']) > temp_tolerance:
+        adjust_count += 1
         log.info("Temperatures unequal. Tuning c..")
         c = get_offset('C')
         new_c = c + EUTECH_TEMPERATURE - TC_STATUS['Plt_current']
@@ -331,10 +333,12 @@ def c_adjustment(temp, t_sink=None, temp_tolerance=0.2):
         set_offset('C', new_c)
         time.sleep(5)
         stabilize_everything(temp, t_sink)
-        log_status()
-        return 'adjusted'
-    else:
+
+    if adjust_count == 0:
         return 'not adjusted'
+    else:
+        return 'adjusted'
+
 
 def b_adjustment():
     log.info("ADJUSTING B OFFSET ====>")
@@ -420,7 +424,7 @@ def calc_final_c_offset(record_vals):
         log.info("============ TUNING SUCCESSFUL ===========")
         if record_vals[0] == record_vals[1]:
             final_c = (record_vals[1]+record_vals[2])/2
-            log.info("Trial 1 and trial 2 equal. Averaging trial 1/2 c_offsets to get final c_offset.")
+            log.info("Trial 1 and trial 2 equal. Averaging trial 2/3 c_offsets to get final c_offset.")
         elif record_vals[2] == record_vals[1]:
             final_c = record_vals[2]
             log.info("Trial 2 and trial 3 equal. Selecting trial 3 c_offset to get final c_offset.")
@@ -429,7 +433,7 @@ def calc_final_c_offset(record_vals):
             log.info("Trial 3 in between Trial 1 and 2. Selecting trial 3 c_offset to get final c_offset.")
         elif record_vals[2] < record_vals[0] and record_vals[2] < record_vals[1]:
             final_c = (record_vals[1]+record_vals[2])/2
-            log.info("All trials decreasing. Averaging trial 1/2 c_offsets to get final c_offset.")
+            log.info("All trials decreasing. Averaging trial 2/3 c_offsets to get final c_offset.")
         else:
             log.info("============ ERROR: UNACCOUNTED FOR C_OFFSET TREND ===========")
             log.info("Selecting trial 3 c_offset to get final c_offset.")
@@ -452,7 +456,7 @@ def calc_final_c_offset(record_vals):
         else:
             if record_vals[0] == 'FAIL': # if first attempt fails, take average of attempt 2/3
                 final_c = (record_vals[1]+record_vals[2])/2
-                log.info("Trial 1 failed. Averaging trial 1/2 c_offsets to get final c_offset.")
+                log.info("Trial 1 failed. Averaging trial 2/3 c_offsets to get final c_offset.")
             elif record_vals[1] == 'FAIL': # if second attempt fails, take last c_offset
                 final_c = record_vals[2]
                 log.info("Trial 2 failed. Selecting trial 3 c_offset to get final c_offset.")
