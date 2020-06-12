@@ -311,6 +311,16 @@ void read_thermistor_and_apply_offset() {
     else {
       CURRENT_TEMPERATURE += (abs(_offset_temp_diff) / THERMISTOR_OFFSET_LOW_TEMP_DIFF) * THERMISTOR_OFFSET_LOW_VALUE;
     }
+    if (use_target_dependent_offset && MASTER_SET_A_TARGET) {
+      float new_offset = CONST_M_DEFAULT * TARGET_TEMPERATURE + CONST_B_DEFAULT;
+      float _old_temp = CURRENT_TEMPERATURE;
+      CURRENT_TEMPERATURE += new_offset;
+    #if ENABLE_DEBUG_PRINTS
+      Serial.print(F("Current temp:  w/o new offset: ")); Serial.print(_old_temp);
+      Serial.print(F("\t  w/ new offset: ")); Serial.print(CURRENT_TEMPERATURE);
+      Serial.print(F("\t offset: ")); Serial.println(new_offset);
+    #endif
+    }
   }
 }
 
@@ -460,6 +470,7 @@ void setup() {
     is_v3_v4_fan = false;
     is_blue_pin_5 = false;
   }
+  use_target_dependent_offset = model_version >= 21;
   lights.setup_lights(is_blue_pin_5);
   lights.set_numbers_brightness(0.25);
   lights.set_color_bar_brightness(0.5);

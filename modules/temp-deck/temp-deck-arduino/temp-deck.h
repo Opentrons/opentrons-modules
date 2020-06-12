@@ -31,6 +31,8 @@
   #error "No firmware version provided"
 #endif
 
+#define ENABLE_DEBUG_PRINTS true
+
 #define MODEL_VER_TEMPLATE "temp_deck_v"
 #define MODEL_VER_TEMPLATE_LEN sizeof(MODEL_VER_TEMPLATE) - 1
 #define SERIAL_VER_TEMPLATE "TDV03P2018"
@@ -108,6 +110,17 @@ bool is_v3_v4_fan = false;
 // BUT also in the cold zone (<15deg)
 #define UP_PID_KP_IN_COLD_ZONE 0.21
 #define UP_PID_KI_IN_COLD_ZONE 0.015
+
+/* Thermistor offset values */
+/* y = mx + b
+ * y: offset to plate temp
+ * m, b: constants
+ * x: target temp
+ */
+#define CONST_M_DEFAULT 0.01535
+#define CONST_B_DEFAULT -0.34
+
+bool use_target_dependent_offset = false;
 
 // to use with the Arduino IDE's "Serial Plotter" graphing tool
 // (very, very useful when testing PID tuning values)
