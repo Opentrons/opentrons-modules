@@ -301,26 +301,28 @@ void update_led_display(boolean debounce=true){
 
 void read_thermistor_and_apply_offset() {
   if (thermistor.update()) {
-    CURRENT_TEMPERATURE = thermistor.temperature();
+    double _current_temp;
+    _current_temp = thermistor.temperature();
     // apply a small offset to the temperature
     // depending on how far below/above room temperature we currently are
-    _offset_temp_diff = CURRENT_TEMPERATURE - TEMPERATURE_ROOM;
+    _offset_temp_diff = _current_temp - TEMPERATURE_ROOM;
     if (_offset_temp_diff > 0) {
-      CURRENT_TEMPERATURE += (_offset_temp_diff / THERMISTOR_OFFSET_HIGH_TEMP_DIFF) * THERMISTOR_OFFSET_HIGH_VALUE;
+      _current_temp += (_offset_temp_diff / THERMISTOR_OFFSET_HIGH_TEMP_DIFF) * THERMISTOR_OFFSET_HIGH_VALUE;
     }
     else {
-      CURRENT_TEMPERATURE += (abs(_offset_temp_diff) / THERMISTOR_OFFSET_LOW_TEMP_DIFF) * THERMISTOR_OFFSET_LOW_VALUE;
+      _current_temp += (abs(_offset_temp_diff) / THERMISTOR_OFFSET_LOW_TEMP_DIFF) * THERMISTOR_OFFSET_LOW_VALUE;
     }
     if (use_target_dependent_offset && MASTER_SET_A_TARGET) {
       float new_offset = CONST_M_DEFAULT * TARGET_TEMPERATURE + CONST_B_DEFAULT;
-      float _old_temp = CURRENT_TEMPERATURE;
-      CURRENT_TEMPERATURE += new_offset;
+      float _old_temp = _current_temp;
+      _current_temp -= new_offset;
     #if ENABLE_DEBUG_PRINTS
       Serial.print(F("Current temp:  w/o new offset: ")); Serial.print(_old_temp);
-      Serial.print(F("\t  w/ new offset: ")); Serial.print(CURRENT_TEMPERATURE);
+      Serial.print(F("\t  w/ new offset: ")); Serial.print(_current_temp);
       Serial.print(F("\t offset: ")); Serial.println(new_offset);
     #endif
     }
+    CURRENT_TEMPERATURE = _current_temp;
   }
 }
 
