@@ -31,8 +31,6 @@
   #error "No firmware version provided"
 #endif
 
-#define ENABLE_DEBUG_PRINTS true
-
 #define MODEL_VER_TEMPLATE "temp_deck_v"
 #define MODEL_VER_TEMPLATE_LEN sizeof(MODEL_VER_TEMPLATE) - 1
 #define SERIAL_VER_TEMPLATE "TDV03P2018"

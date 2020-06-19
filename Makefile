@@ -112,7 +112,7 @@ build-magdeck:
 
 .PHONY: build-tempdeck
 build-tempdeck:
-	echo "compiler.cpp.extra_flags=-DTD_FW_VERSION=\"NEW_OFFSET_TEST_VER-2\"" > $(ARDUINO15_LOC)/packages/Opentrons/hardware/avr/$(OPENTRONS_BOARDS_VER)/platform.local.txt
+	echo "compiler.cpp.extra_flags=-DTD_FW_VERSION=\"$(TD_FW_VERSION)\"" > $(ARDUINO15_LOC)/packages/Opentrons/hardware/avr/$(OPENTRONS_BOARDS_VER)/platform.local.txt
 	$(ARDUINO) --verify --board Opentrons:avr:tempdeck32u4cat $(MODULES_DIR)/temp-deck/temp-deck-arduino/temp-deck-arduino.ino --verbose-build
 	mkdir -p $(TEMPDECK_BUILD_DIR)
 	cp $(BUILDS_DIR)/tmp/temp-deck-arduino.ino.hex $(TEMPDECK_BUILD_DIR)
