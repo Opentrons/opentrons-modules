@@ -194,16 +194,16 @@ const USB_Descriptor_String_t ProductString =
 	.Header                 = {.Size = USB_STRING_LEN(20), .Type = DTYPE_String},
 
 	#if DEVICE_PID == 0xEE5A
-	.UnicodeString			= L"OT Module Bootloader"
+	.UnicodeString			= L"OT Magdeck Bootloader"
 	#else
 	.UnicodeString			= L"USB IO board    "
 	#endif
 };
 
-const USB_Descriptor_String_t ManufNameString = 
+const USB_Descriptor_String_t ManufNameString =
 {
 	.Header					= {.Size = USB_STRING_LEN(25), .Type = DTYPE_String},
-	
+
 	#if DEVICE_VID == 0x04D8
 	.UnicodeString			= L"Microchip Technology Inc."
 	#else
@@ -243,7 +243,7 @@ uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,
 				Address = &LanguageString;
 				Size    = LanguageString.Header.Size;
 			}
-			else if (DescriptorNumber == DeviceDescriptor.ProductStrIndex) 
+			else if (DescriptorNumber == DeviceDescriptor.ProductStrIndex)
 			{
 				Address = &ProductString;
 				Size    = ProductString.Header.Size;
@@ -259,4 +259,3 @@ uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,
 	*DescriptorAddress = Address;
 	return Size;
 }
-

@@ -1,6 +1,6 @@
 # Hey Emacs, this is a -*- makefile -*-
 #----------------------------------------------------------------------------
-# WinAVR Makefile Template written by Eric B. Weddington, Jörg Wunsch, et al.
+# WinAVR Makefile Template written by Eric B. Weddington, Jï¿½rg Wunsch, et al.
 #  >> Modified for use with the LUFA project. <<
 #
 # Released to the Public Domain
@@ -23,9 +23,10 @@
 # [Check the <Bootloader>.txt file for the tools needed to build this project]
 #
 # - Uncomment the PID for the product you want to use (if multiple are listed)
+# - If building for magdeck, uncomment OT_MAGDECK_ONLY flag def on line 221
 # - Set the LUFA_PATH to the LUFA directory on your machine (relative path)
 # - Uncomment the TARGET (file name) you would be using (if multiple are listed)
-# - Make project using "make all". This will create the .hex bootloader file 
+# - Make project using "make all". This will create the .hex bootloader file
 #   (If one already exists for the selected board, the new file will replace old)
 # - Clean the project ("make clean")
 #
@@ -61,9 +62,11 @@
 # Opentrons Labworks Sublicense
 VID = 0x04D8
 
+
 # USB product ID (PID)
 # Opentrons module bootloader
 PID = 0xEE5A
+
 
 # MCU name
 MCU = atmega32u4
@@ -123,7 +126,7 @@ FORMAT = ihex
 SOURCE = Caterina
 # Target file name (without extension).
 # Opentrons Modules
-TARGET = Caterina-opentrons
+TARGET = Caterina-opentrons-magdeck
 
 # Object files directory
 #     To put object files in current directory, use a dot (.), do NOT make
@@ -214,6 +217,7 @@ CDEFS += -DBOOT_START_ADDR=$(BOOT_START)UL
 CDEFS += -DDEVICE_VID=$(VID)UL
 CDEFS += -DDEVICE_PID=$(PID)UL
 CDEFS += $(LUFA_OPTS)
+CDEFS += -DOT_MAGDECK_ONLY		# Uncomment for magdeck
 
 
 # Place -D or -U options here for ASM sources
@@ -719,7 +723,7 @@ checksource:
 			echo "Found Source File: $$f" ; \
 		else \
 			echo "Source File Not Found: $$f" ; \
-		fi; done 
+		fi; done
 
 
 # Create object files directory
@@ -734,4 +738,3 @@ $(shell mkdir $(OBJDIR) 2>/dev/null)
 .PHONY : all begin finish end sizebefore sizeafter gccversion \
 build elf hex eep lss sym coff extcoff doxygen clean          \
 clean_list clean_doxygen program debug gdb-config checksource
-
