@@ -301,23 +301,22 @@ void update_led_display(boolean debounce=true){
 
 void read_thermistor_and_apply_offset() {
   if (thermistor.update()) {
-    double _current_temp;
-    _current_temp = thermistor.temperature();
+    double current_temp = thermistor.temperature();
     // apply a small offset to the temperature
     // depending on how far below/above room temperature we currently are
-    _offset_temp_diff = _current_temp - TEMPERATURE_ROOM;
-    if (_offset_temp_diff > 0) {
-      _current_temp += (_offset_temp_diff / THERMISTOR_OFFSET_HIGH_TEMP_DIFF) * THERMISTOR_OFFSET_HIGH_VALUE;
+    float offset_temp_diff = current_temp - TEMPERATURE_ROOM;
+    if (offset_temp_diff > 0) {
+      current_temp += (offset_temp_diff / THERMISTOR_OFFSET_HIGH_TEMP_DIFF) * THERMISTOR_OFFSET_HIGH_VALUE;
     }
     else {
-      _current_temp += (abs(_offset_temp_diff) / THERMISTOR_OFFSET_LOW_TEMP_DIFF) * THERMISTOR_OFFSET_LOW_VALUE;
+      current_temp += (abs(offset_temp_diff) / THERMISTOR_OFFSET_LOW_TEMP_DIFF) * THERMISTOR_OFFSET_LOW_VALUE;
     }
-    
+
     if (use_target_dependent_offset && MASTER_SET_A_TARGET) {
       float new_offset = CONST_M_DEFAULT * TARGET_TEMPERATURE + CONST_B_DEFAULT;
-      _current_temp -= new_offset;
+      current_temp -= new_offset;
     }
-    CURRENT_TEMPERATURE = _current_temp;
+    CURRENT_TEMPERATURE = current_temp;
   }
 }
 

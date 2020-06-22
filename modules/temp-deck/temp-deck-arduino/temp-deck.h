@@ -62,7 +62,6 @@ bool reached_unsafe_temp = false;
 #define THERMISTOR_OFFSET_HIGH_VALUE -1.4
 const float THERMISTOR_OFFSET_HIGH_TEMP_DIFF = THERMISTOR_OFFSET_HIGH_TEMP - TEMPERATURE_ROOM;
 const float THERMISTOR_OFFSET_LOW_TEMP_DIFF = TEMPERATURE_ROOM - THERMISTOR_OFFSET_LOW_TEMP;
-float _offset_temp_diff = 0.0;
 
 // the intensities of the fan (0.0-1.0)
 #define FAN_HIGH 1.0
