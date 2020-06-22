@@ -191,10 +191,14 @@ const USB_Descriptor_String_t LanguageString =
  */
 const USB_Descriptor_String_t ProductString =
 {
-	.Header                 = {.Size = USB_STRING_LEN(20), .Type = DTYPE_String},
+	.Header                 = {.Size = USB_STRING_LEN(21), .Type = DTYPE_String},
 
 	#if DEVICE_PID == 0xEE5A
-	.UnicodeString			= L"OT Magdeck Bootloader"
+		#if defined(OT_MAGDECK_ONLY)
+		.UnicodeString			= L"OT Magdeck Bootloader"
+		#else
+		.UnicodeString			= L"OT Module Bootloader"
+		#endif
 	#else
 	.UnicodeString			= L"USB IO board    "
 	#endif
