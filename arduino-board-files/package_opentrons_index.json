@@ -76,6 +76,39 @@
           "name": "Opentrons Modules Boards"
         },
         {
+          "category": "Opentrons",
+          "help": {
+            "online": "https://support.opentrons.com/ot-2"
+          },
+          "url": "https://s3.us-east-2.amazonaws.com/opentrons-modules/opentrons-1.3.0.tar.bz2",
+          "checksum": "SHA-256:c969515bb0c473d75acffa852d1765129f08d679cd3303df71953debe5612cba",
+          "version": "1.3.0",
+          "architecture": "avr",
+          "archiveFileName": "opentrons-1.3.0.tar.bz2",
+          "boards": [
+            {
+              "name": "TempDeck"
+            },
+            {
+              "name": "MagDeck"
+            }
+          ],
+          "size": "34952",
+          "toolsDependencies": [
+            {
+              "packager": "arduino",
+              "version": "4.8.1-arduino5",
+              "name": "avr-gcc"
+            },
+            {
+              "packager": "arduino",
+              "version": "6.0.1-arduino5",
+              "name": "avrdude"
+            }
+          ],
+          "name": "Opentrons Modules Boards"
+        },
+        {
           "boards": [
             {
               "name": "Thermocycler"

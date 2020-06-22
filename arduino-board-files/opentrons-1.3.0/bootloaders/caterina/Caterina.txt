@@ -8,3 +8,9 @@ Thread model: single
 Configured with: ../configure —prefix=/usr/local/CrossPack-AVR-20100115 —disable-dependency-tracking —disable-nls —disable-werror —target=avr —enable-languages=c,c++ —disable-nls —disable-libssp —with-dwarf2
 avr-libc version 1.6.7
 binutils version 2.19
+
+Opentrons build settings for v1.3.0 Magdeck bootloader:
+LUFA version 111009
+make version 3.81
+avr-gcc (GCC) 7.3.0
+avrdude version 6.3

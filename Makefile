@@ -12,7 +12,7 @@ EEPROM_DIR := eepromWriter
 
 ARDUINO_VERSION ?= 1.8.10
 ARDUINO_SAMD_VER ?= 1.6.21
-OPENTRONS_BOARDS_VER ?= 1.2.0
+OPENTRONS_BOARDS_VER ?= 1.3.0
 OPENTRONS_SAMD_BOARDS_VER ?= 1.1.0
 
 OPENTRONS_BOARD_URL := https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json
