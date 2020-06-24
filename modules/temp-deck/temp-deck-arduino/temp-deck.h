@@ -62,7 +62,6 @@ bool reached_unsafe_temp = false;
 #define THERMISTOR_OFFSET_HIGH_VALUE -1.4
 const float THERMISTOR_OFFSET_HIGH_TEMP_DIFF = THERMISTOR_OFFSET_HIGH_TEMP - TEMPERATURE_ROOM;
 const float THERMISTOR_OFFSET_LOW_TEMP_DIFF = TEMPERATURE_ROOM - THERMISTOR_OFFSET_LOW_TEMP;
-float _offset_temp_diff = 0.0;
 
 // the intensities of the fan (0.0-1.0)
 #define FAN_HIGH 1.0
@@ -108,6 +107,17 @@ bool is_v3_v4_fan = false;
 // BUT also in the cold zone (<15deg)
 #define UP_PID_KP_IN_COLD_ZONE 0.21
 #define UP_PID_KI_IN_COLD_ZONE 0.015
+
+/* Thermistor offset values */
+/* y = mx + b
+ * y: offset to plate temp
+ * m, b: constants
+ * x: target temp
+ */
+#define CONST_M_DEFAULT 0.01535
+#define CONST_B_DEFAULT -0.34
+
+bool use_target_dependent_offset = false;
 
 // to use with the Arduino IDE's "Serial Plotter" graphing tool
 // (very, very useful when testing PID tuning values)

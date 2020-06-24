@@ -301,16 +301,22 @@ void update_led_display(boolean debounce=true){
 
 void read_thermistor_and_apply_offset() {
   if (thermistor.update()) {
-    CURRENT_TEMPERATURE = thermistor.temperature();
+    double current_temp = thermistor.temperature();
     // apply a small offset to the temperature
     // depending on how far below/above room temperature we currently are
-    _offset_temp_diff = CURRENT_TEMPERATURE - TEMPERATURE_ROOM;
-    if (_offset_temp_diff > 0) {
-      CURRENT_TEMPERATURE += (_offset_temp_diff / THERMISTOR_OFFSET_HIGH_TEMP_DIFF) * THERMISTOR_OFFSET_HIGH_VALUE;
+    float offset_temp_diff = current_temp - TEMPERATURE_ROOM;
+    if (offset_temp_diff > 0) {
+      current_temp += (offset_temp_diff / THERMISTOR_OFFSET_HIGH_TEMP_DIFF) * THERMISTOR_OFFSET_HIGH_VALUE;
     }
     else {
-      CURRENT_TEMPERATURE += (abs(_offset_temp_diff) / THERMISTOR_OFFSET_LOW_TEMP_DIFF) * THERMISTOR_OFFSET_LOW_VALUE;
+      current_temp += (abs(offset_temp_diff) / THERMISTOR_OFFSET_LOW_TEMP_DIFF) * THERMISTOR_OFFSET_LOW_VALUE;
     }
+
+    if (use_target_dependent_offset && MASTER_SET_A_TARGET) {
+      float new_offset = CONST_M_DEFAULT * TARGET_TEMPERATURE + CONST_B_DEFAULT;
+      current_temp -= new_offset;
+    }
+    CURRENT_TEMPERATURE = current_temp;
   }
 }
 
@@ -460,6 +466,7 @@ void setup() {
     is_v3_v4_fan = false;
     is_blue_pin_5 = false;
   }
+  use_target_dependent_offset = model_version >= 21;
   lights.setup_lights(is_blue_pin_5);
   lights.set_numbers_brightness(0.25);
   lights.set_color_bar_brightness(0.5);
