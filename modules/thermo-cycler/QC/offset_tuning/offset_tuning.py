@@ -316,6 +316,7 @@ def set_offset(param, val):
 def c_adjustment(temp, t_sink=None, temp_tolerance=0.2):
     log.info("TUNING FOR {}C ====>".format(temp))
     tc.send_and_get_response('{} S{}'.format(GCODES['SET_PLATE_TEMP'], temp))
+    time.sleep(60)  # allow unit to ramp before checking stability
     stabilize_everything(temp, t_sink)
     adjust_count = 0
     while abs(EUTECH_TEMPERATURE - TC_STATUS['Plt_current']) > temp_tolerance:
@@ -331,7 +332,7 @@ def c_adjustment(temp, t_sink=None, temp_tolerance=0.2):
                 buffer_tolerance = buffer_tolerance*(-1) 
             new_c = c + (difference + buffer_tolerance)
         set_offset('C', new_c)
-        time.sleep(5)
+        time.sleep(30)
         stabilize_everything(temp, t_sink)
 
     if adjust_count == 0:
@@ -416,7 +417,7 @@ def build_arg_parser():
 
 def calc_final_c_offset(record_vals):
     # Calculate and set the final c_offset
-    print('all c_offsets = ', record_vals)
+    log.info("all c_offsets = {}".format(record_vals))
     final_c = None
 
     # If none of the tuning attempt failed
@@ -434,6 +435,9 @@ def calc_final_c_offset(record_vals):
         elif record_vals[2] < record_vals[0] and record_vals[2] < record_vals[1]:
             final_c = (record_vals[1]+record_vals[2])/2
             log.info("All trials decreasing. Averaging trial 2/3 c_offsets to get final c_offset.")
+        elif record_vals[2] == max(record_vals):
+            final_c = (record_vals[1]+record_vals[2])/2
+            log.info("Trial 3 has highest c_offset. Averaging trial 2/3 c_offsets to get final c_offset.")
         else:
             log.info("============ ERROR: UNACCOUNTED FOR C_OFFSET TREND ===========")
             log.info("Selecting trial 3 c_offset to get final c_offset.")
