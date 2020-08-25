@@ -1,12 +1,14 @@
 import os
 from datetime import datetime
+import subprocess
 import sys
 import time
+import traceback
 
 import serial
 from serial.tools.list_ports import comports
 
-from opentrons import robot
+from opentrons.drivers.rpi_drivers.gpio import GPIOCharDev
 
 
 PID_MAGDECK = 61072
@@ -63,22 +65,6 @@ def send_command(port, data):
     res = port.read_until(ack.encode()).decode()
     res = res.replace(ack, '')
     return res
-
-
-def wait_for_button_click():
-    if not os.environ.get('RUNNING_ON_PI'):
-        return
-    while robot._driver.read_button():
-        pass
-    while not robot._driver.read_button():
-        pass
-    while robot._driver.read_button():
-        pass
-
-
-def check_if_exit_button():
-    if os.environ.get('RUNNING_ON_PI') and robot._driver.read_button():
-        raise Exception('Exit button pressed')
 
 
 def assert_magdeck_has_serial(port):
@@ -142,7 +128,7 @@ def write_line_to_file(data_line, end='\r\n'):
         f.write(data_line + end)
 
 
-def main(magdeck, cycles):
+def main(magdeck, cycles, should_exit):
 
     write_line_to_file('\n\nStarting test, homing...\n')
     home(magdeck)
@@ -154,43 +140,71 @@ def main(magdeck, cycles):
         cycles_ran += 1
         write_line_to_file('  {0}/{1}: '.format(i + 1, TEST_CYCLES), end='')
         time.sleep(MOVE_DELAY_SECONDS)
-        check_if_exit_button()
+        should_exit()
         move(magdeck, FIRMWARE_MAX_TRAVEL_DISTANCE)
         assert position(magdeck) == FIRMWARE_MAX_TRAVEL_DISTANCE
         time.sleep(MOVE_DELAY_SECONDS)
-        check_if_exit_button()
+        should_exit()
         move(magdeck, TEST_BOTTOM_POS)
         assert position(magdeck) == TEST_BOTTOM_POS
-        check_if_exit_button()
+        should_exit()
         test_for_skipping(magdeck)
         write_line_to_file('PASS')
 
     write_line_to_file('\n\nPASSED\n\n')
 
 
-if __name__ == '__main__':
-    robot._driver.turn_off_button_light()
-    while True:
-        if os.environ.get('RUNNING_ON_PI'):
+def setup():
+    if os.environ.get('RUNNING_ON_PI'):
+        subprocess.check_call(['systemctl', 'stop', 'opentrons-robot-server'])
+        gpio = GPIOCharDev('gpiochip0')
+        gpio.config_by_board_rev()
+        gpio.set_button_light()
+
+        def wait_for_ready_to_run():
             print('Press the BUTTON to start...')
-            wait_for_button_click()
-        else:
+            while gpio.read_button():
+                pass
+            while not gpio.read_button():
+                pass
+            while gpio.read_button():
+                pass
+
+        def _exit_check():
+            if gpio.read_button():
+                raise Exception('Exit button pressed')
+
+        return wait_for_ready_to_run, gpio.set_button_light, _exit_check
+
+    else:
+        def wait_for_ready_to_run():
             input('Press ENTER when ready to run...')
+
+        return wait_for_ready_to_run, _set_light_dummy, lambda: None
+
+
+if __name__ == '__main__':
+
+    wait_for_ready, set_light, exit_check = setup()
+
+    while True:
+        wait_for_ready()
         magdeck = None
         data_file_created = False
         try:
-            robot._driver._set_button_light(blue=True)
+            set_light(blue=True)
             magdeck = connect_to_mag_deck()
             magdeck.reset_input_buffer()
             serial_number = assert_magdeck_has_serial(magdeck)
             create_data_file(serial_number)
             data_file_created = True
-            main(magdeck, TEST_CYCLES)
-            robot._driver._set_button_light(green=True)
+            main(magdeck, TEST_CYCLES, exit_check)
+            set_light(green=True)
         except Exception as e:
+            traceback.print_exc()
             print(str(e))
             if magdeck:
                 magdeck.close()
             if data_file_created:
                 write_line_to_file(str(e))
-            robot._driver._set_button_light(red=True)
+            set_light(red=True)
