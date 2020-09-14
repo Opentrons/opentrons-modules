@@ -72,8 +72,9 @@ class GcodeHandler
       bool buffer_empty();
       void device_info_response(String serial, String model, String version);
       void targetting_temperature_response(float target_temp, float current_temp);
-      void targetting_temperature_response(float target_temp,
-                                           float current_temp, float time_left);
+      void targetting_temperature_response(float target_temp, float current_temp,
+                                           float time_left, float total_hold_time,
+                                           bool at_target);
       void idle_temperature_response(float current_temp);
       void idle_lid_temperature_response(float current_temp);
       float popped_arg();

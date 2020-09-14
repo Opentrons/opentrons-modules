@@ -161,15 +161,20 @@ void GcodeHandler::device_info_response(String serial, String model, String vers
   Serial.println();
 }
 
-void GcodeHandler::targetting_temperature_response(float target_temp,
-                                    float current_temp, float time_remaining)
+void GcodeHandler::targetting_temperature_response(float target_temp, float current_temp,
+                                                   float time_remaining,  float total_hold_time,
+                                                   bool at_target)
 {
   Serial.print(F("T:"));
   Serial.print(target_temp, SERIAL_DIGITS_IN_RESPONSE);
   Serial.print(F(" C:"));
   Serial.print(current_temp, SERIAL_DIGITS_IN_RESPONSE);
   Serial.print(F(" H:"));
-  Serial.println((unsigned int)time_remaining);
+  Serial.print((unsigned int)time_remaining);
+  Serial.print(F(" Total_H:"));
+  Serial.print((unsigned int)total_hold_time);
+  Serial.print(F(" At_target?:"));
+  Serial.println(at_target);
 }
 
 void GcodeHandler::targetting_temperature_response(float target_temp,
@@ -195,6 +200,7 @@ void GcodeHandler::idle_lid_temperature_response(float current_temp)
   Serial.print(F(" C:"));
   Serial.println(current_temp, SERIAL_DIGITS_IN_RESPONSE);
 }
+
 void GcodeHandler::response(String param, String msg)
 {
   Serial.print(param);
@@ -211,7 +217,7 @@ void GcodeHandler::add_debug_response(String param, float val)
 {
   Serial.print(param);
   Serial.print(F(": "));
-  Serial.print(val);
+  Serial.print(val, 4);
   Serial.print(F("\t"));
 }
 

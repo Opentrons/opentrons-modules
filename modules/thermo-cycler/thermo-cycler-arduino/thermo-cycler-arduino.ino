@@ -457,16 +457,18 @@ void deactivate_plate()
 /////////////////////////////////
 /////////////////////////////////
 
+void plate_thermistors_status_prints()
+{
+  gcode.add_debug_response("T1", temp_probes.front_left_temperature());
+  gcode.add_debug_response("T2", temp_probes.front_center_temperature());
+  gcode.add_debug_response("T3", temp_probes.front_right_temperature());
+  gcode.add_debug_response("T4", temp_probes.back_left_temperature());
+  gcode.add_debug_response("T5", temp_probes.back_center_temperature());
+  gcode.add_debug_response("T6", temp_probes.back_right_temperature());
+}
 
 void debug_status_prints()
 {
-  static unsigned long lastPrint = 0;
-
-  if (millis() - lastPrint < DEBUG_PRINT_INTERVAL)
-  {
-    return;
-  }
-  lastPrint = millis();
   // Target
   gcode.add_debug_response("Plt_Target", target_temperature_plate);
   gcode.add_debug_response("Cov_Target", target_temperature_cover);
@@ -480,12 +482,7 @@ void debug_status_prints()
   gcode.add_debug_response("Fan auto?", auto_fan);
 
   // Thermistors:
-  gcode.add_debug_response("T1", temp_probes.front_left_temperature());
-  gcode.add_debug_response("T2", temp_probes.front_center_temperature());
-  gcode.add_debug_response("T3", temp_probes.front_right_temperature());
-  gcode.add_debug_response("T4", temp_probes.back_left_temperature());
-  gcode.add_debug_response("T5", temp_probes.back_center_temperature());
-  gcode.add_debug_response("T6", temp_probes.back_right_temperature());
+  plate_thermistors_status_prints();
 
   // Cover temperature:
   gcode.add_debug_response("T.Lid", temp_probes.cover_temperature());
@@ -608,8 +605,12 @@ void read_gcode()
         case Gcode::get_plate_temp:
           if(master_set_a_target)
           {
-            gcode.targetting_temperature_response(this_step_target_temp,
-            current_temperature_plate, tc_timer.time_left());
+            gcode.targetting_temperature_response(
+              this_step_target_temp,
+              current_temperature_plate,
+              tc_timer.time_left(),
+              tc_timer.total_hold_time,
+              !just_changed_temp && is_at_target());
           }
           else
           {
@@ -773,6 +774,7 @@ void read_gcode()
             if(gcode.popped_arg() == 0)
             {
               gcode_debug_mode = false;
+              continuous_debug_stat_mode = false;
               break;
             }
           }
@@ -809,6 +811,12 @@ void read_gcode()
   }
   if (continuous_debug_stat_mode)
   {
+    static unsigned long lastPrint = 0;
+    if (millis() - lastPrint < DEBUG_PRINT_INTERVAL)
+    {
+      return;
+    }
+    lastPrint = millis();
     debug_status_prints();
   }
 }
@@ -1042,12 +1050,21 @@ void setup()
   set_25ms_interrupt();
 }
 
+void print_all_thermistor_values()
+{
+  plate_thermistors_status_prints();  // Plate Thermistors
+  gcode.add_debug_response("T.Lid", temp_probes.cover_temperature()); // Cover
+  gcode.add_debug_response("T.sink", current_heatsink_temp); // Heatsink
+  // Thermistor error status:
+  gcode.add_debug_response("T_error", int(temp_probes.detected_invalid_val));
+  gcode.response(""); // CR+LF
+}
+
 void temp_safety_check()
 {
   // If a thermistor or a thermistor connection is damaged
   if (temp_probes.detected_invalid_val)
   {
-    gcode.response("ERROR", "Invalid thermistor value");
     deactivate_all();
     system_errors |= ERROR_MASK(Error::invalid_thermistor_value);
   }
@@ -1064,7 +1081,6 @@ void temp_safety_check()
         )
       )
   {
-    gcode.response("ERROR", "System too hot! Deactivating.");
     deactivate_all();
     system_errors |= ERROR_MASK(Error::system_too_hot);
   }
@@ -1074,7 +1090,6 @@ void temp_safety_check()
   if (master_set_a_target && !just_changed_temp &&
       temp_probes.hottest_plate_therm_temp() - temp_probes.coolest_plate_therm_temp() > ACCEPTABLE_THERM_DIFF)
   {
-    gcode.response("ERROR", "Plate temperature not uniform. Deactivating.");
     deactivate_all();
     system_errors |= ERROR_MASK(Error::plate_temperature_not_uniform);
   }
@@ -1228,17 +1243,22 @@ void print_errors_if_any()
   {
     return;
   }
-  if (system_errors & ERROR_MASK(Error::system_too_hot))
+
+  if (system_errors)
   {
-    gcode.response("Error", "System too hot");
-  }
-  if (system_errors & ERROR_MASK(Error::invalid_thermistor_value))
-  {
-    gcode.response("Error", "Found an invalid thermistor value");
-  }
-  if (system_errors & ERROR_MASK(Error::plate_temperature_not_uniform))
-  {
-    gcode.response("Error", "Plate temperature is not uniform");
+    if (system_errors & ERROR_MASK(Error::system_too_hot))
+    {
+      gcode.response("Error", "System too hot");
+    }
+    if (system_errors & ERROR_MASK(Error::invalid_thermistor_value))
+    {
+      gcode.response("Error", "Found an invalid thermistor value");
+    }
+    if (system_errors & ERROR_MASK(Error::plate_temperature_not_uniform))
+    {
+      gcode.response("Error", "Plate temperature is not uniform");
+    }
+    print_all_thermistor_values();
   }
   last_error_print = millis();
 }
