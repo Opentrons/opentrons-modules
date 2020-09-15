@@ -1055,7 +1055,6 @@ void print_all_thermistor_values()
   plate_thermistors_status_prints();  // Plate Thermistors
   gcode.add_debug_response("T.Lid", temp_probes.cover_temperature()); // Cover
   gcode.add_debug_response("T.sink", current_heatsink_temp); // Heatsink
-  // Thermistor error status:
   gcode.add_debug_response("T_error", int(temp_probes.detected_invalid_val));
   gcode.response(""); // CR+LF
 }
@@ -1248,15 +1247,15 @@ void print_errors_if_any()
   {
     if (system_errors & ERROR_MASK(Error::system_too_hot))
     {
-      gcode.response("Error", "System too hot");
+      gcode.system_error_message("System too hot.");
     }
     if (system_errors & ERROR_MASK(Error::invalid_thermistor_value))
     {
-      gcode.response("Error", "Found an invalid thermistor value");
+      gcode.system_error_message("Found an invalid thermistor value.");
     }
     if (system_errors & ERROR_MASK(Error::plate_temperature_not_uniform))
     {
-      gcode.response("Error", "Plate temperature is not uniform");
+      gcode.system_error_message("Plate temperature is not uniform.");
     }
     print_all_thermistor_values();
   }

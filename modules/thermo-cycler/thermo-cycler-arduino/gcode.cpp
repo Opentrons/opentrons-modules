@@ -217,8 +217,14 @@ void GcodeHandler::add_debug_response(String param, float val)
 {
   Serial.print(param);
   Serial.print(F(": "));
-  Serial.print(val, 4);
+  Serial.print(val, DIGITS_IN_DEBUG_RESPONSE);
   Serial.print(F("\t"));
+}
+
+void GcodeHandler::system_error_message(String message)
+{
+  Serial.print(F("Error:"));
+  Serial.print(message + " ");
 }
 
 void GcodeHandler::add_debug_timestamp()

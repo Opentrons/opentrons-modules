@@ -8,6 +8,7 @@
 #define MAX_SERIAL_BUFFER_LENGTH    100
 #define MAX_SERIAL_DIGITS_IN_NUMBER 7
 #define SERIAL_DIGITS_IN_RESPONSE   3
+#define DIGITS_IN_DEBUG_RESPONSE    4
 
 #define GCODES_TABLE  \
   GCODE_DEF(no_code, -),            \
@@ -81,6 +82,7 @@ class GcodeHandler
       bool pop_arg(char key);
       void response(String msg);
       void response(String param, String msg);
+      void system_error_message(String msg);
       void add_debug_response(String param, float val);
       void add_debug_timestamp();
 
