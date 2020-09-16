@@ -191,7 +191,9 @@ void GcodeHandler::idle_temperature_response(float current_temp)
   Serial.print(F("T:none"));
   Serial.print(F(" C:"));
   Serial.print(current_temp, SERIAL_DIGITS_IN_RESPONSE);
-  Serial.println(F(" H:none"));
+  Serial.print(F(" H:none"));
+  Serial.print(F(" Total_H:none"));
+  Serial.println(F(" At_target?:0"));
 }
 
 void GcodeHandler::idle_lid_temperature_response(float current_temp)
