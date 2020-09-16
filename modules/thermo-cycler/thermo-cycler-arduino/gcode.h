@@ -8,6 +8,7 @@
 #define MAX_SERIAL_BUFFER_LENGTH    100
 #define MAX_SERIAL_DIGITS_IN_NUMBER 7
 #define SERIAL_DIGITS_IN_RESPONSE   3
+#define DIGITS_IN_DEBUG_RESPONSE    4
 
 #define GCODES_TABLE  \
   GCODE_DEF(no_code, -),            \
@@ -72,14 +73,16 @@ class GcodeHandler
       bool buffer_empty();
       void device_info_response(String serial, String model, String version);
       void targetting_temperature_response(float target_temp, float current_temp);
-      void targetting_temperature_response(float target_temp,
-                                           float current_temp, float time_left);
+      void targetting_temperature_response(float target_temp, float current_temp,
+                                           float time_left, float total_hold_time,
+                                           bool at_target);
       void idle_temperature_response(float current_temp);
       void idle_lid_temperature_response(float current_temp);
       float popped_arg();
       bool pop_arg(char key);
       void response(String msg);
       void response(String param, String msg);
+      void system_error_message(String msg);
       void add_debug_response(String param, float val);
       void add_debug_timestamp();
 
