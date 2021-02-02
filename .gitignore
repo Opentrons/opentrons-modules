@@ -117,3 +117,9 @@ ENV/
 node_modules
 
 releases
+
+CMakeFiles
+
+cmake_install.cmake
+
+arduino_ide
