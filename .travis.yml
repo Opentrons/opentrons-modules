@@ -37,9 +37,9 @@ jobs:
       script:
         # https://travis-ci.community/t/install-cmake-using-apt-again/4062 is why this uses
         # /usr/local/bin explicitly
-        - /usr/local/bin/cmake --preset=arduino .
-        - /usr/local/bin/cmake --build ./build --target zip-all
-        - /usr/local/bin/cmake --install ./build
+        - /usr/bin/cmake --preset=arduino .
+        - /usr/bin/cmake --build ./build --target zip-all
+        - /usr/bin/cmake --install ./build
       before_deploy:
         - source ./scripts/set_build_vars.sh
       deploy:
