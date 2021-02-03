@@ -9,7 +9,7 @@ project("OpentronsModules"
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
 # These subdirectories contain the code for these modules and the
-# CMakeLists for them
+# CMakeLists for them. The MODULE_TYPE variable is set in the arduino preset.
 if (${MODULE_TYPE} STREQUAL "arduino")
   add_subdirectory(arduino-modules)
 endif()
