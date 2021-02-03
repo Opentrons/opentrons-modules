@@ -20,7 +20,7 @@ git clone git@github.com:Opentrons/opentrons-modules.git
 cd opentrons-modules
 ```
 
-Then, run `cmake . --preset=arduino` to set your build step up to build the Arduino-based modules
+Then, run `cmake --preset=arduino .` to set your build step up to build the Arduino-based modules
 (Magnetic Module, Temperature Module, Thermocycler). This should download the Arduino IDE to the
 git-ignored `arduino_ide` directory in the repo's working tree. It will also set up a build system
 in `./builds`.
@@ -43,3 +43,7 @@ Open the `/modules/.../<file_name>.ino` file in Arduino, select the appropriate 
  select the correct port from _Tools->Port_. Select Upload or _Sketch->Upload_
 
 * NOTE: For Thermocycler, you can also use the `firmware_uploader.py` script in thermo-cycler/production to upload the binary.
+
+## Contributing
+
+When writing or changing the cmake build system, please follow 
