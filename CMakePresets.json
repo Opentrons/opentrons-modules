@@ -24,7 +24,10 @@
         "TC_HFQ_PWM": false,
         "TC_HW_VERSION": "4",
         "TC_RGBW_NEO": true,
-        "TC_VOLUME_DEPENDENCY": true
+        "TC_VOLUME_DEPENDENCY": true,
+        "TC_LID_TESTING": false,
+        "MODULE_TYPE": "arduino",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/dist"
       }
     }
   ]

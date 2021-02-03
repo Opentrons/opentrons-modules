@@ -36,15 +36,6 @@ macro(FIND_ARDUINO REQUIRED)
     HINTS ${ARDUINO_IDE_DIR}/${CMAKE_HOST_SYSTEM_NAME}
     ${REQUIRED}
     )
-  find_program(
-    ARDUINO_BUILD_EXECUTABLE
-    arduino-builder
-    PATH_SUFFIXES Contents/MacOS
-    DOC "Location of the arduino-builder utility"
-    PATHS ${ARDUINO_IDE_DIR}
-    HINTS ${ARDUINO_IDE_DIR}/${CMAKE_HOST_SYSTEM_NAME}
-    ${REQUIRED}
-    )
 endmacro()
 
 find_arduino("")
@@ -55,8 +46,7 @@ if(${ARDUINO_EXECUTABLE} STREQUAL "ARDUINO_EXECUTABLE-NOTFOUND")
   find_arduino("")
 
   execute_process(
-    COMMAND ${ARDUINO_EXECUTABLE} --pref "sketchbook.path=${CMAKE_CURRENT_LIST_DIR}/../" --save-prefs
-    COMMAND ${ARDUINO_EXECUTABLE} --pref "build.path=${CMAKE_CURRENT_LIST_DIR}/build/tmp" --save-prefs
+    COMMAND ${ARDUINO_EXECUTABLE} --pref "sketchbook.path=${CMAKE_CURRENT_LIST_DIR}/../arduino-modules" --save-prefs
     COMMAND ${ARDUINO_EXECUTABLE} --pref "boardsmanager.additional.urls=https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json" --save-prefs
     COMMAND ${ARDUINO_EXECUTABLE} --install-boards "Opentrons:samd:${OPENTRONS_SAMD_BOARDS_VERSION}"
     COMMAND ${ARDUINO_EXECUTABLE} --install-boards "arduino:samd:${ARDUINO_SAMD_VERSION}"
@@ -65,9 +55,9 @@ if(${ARDUINO_EXECUTABLE} STREQUAL "ARDUINO_EXECUTABLE-NOTFOUND")
 
 endif()
 
+message(STATUS "current list dir is ${CMAKE_CURRENT_LIST_DIR}")
 find_arduino(REQUIRED)
 
 set(CMAKE_SYSTEM_NAME "Generic")
 set(CMAKE_SYSTEM_VERSION 0)
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
-#set(CMAKE_CXX_COMPILER ${ARDUINO_BUILD_EXECUTABLE})

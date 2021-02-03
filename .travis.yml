@@ -5,10 +5,10 @@ git:
 
 cache:
   directories:
-    - ~/arduino_ide
+    - ./arduino_ide
 
 install:
-  - make setup
+  - cmake --preset=arduino .
 
 # base configs
 _deploy_s3: &deploy_s3
@@ -28,8 +28,8 @@ jobs:
     - stage: deploy
       name: deploy build
       script:
-        - make build
-        - make zip-all
+        - cmake --build ./build --target zip-all
+        - cmake --install ./build
       before_deploy:
         - source ./scripts/set_build_vars.sh
       deploy:

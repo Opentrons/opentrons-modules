@@ -10,6 +10,6 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
 # These subdirectories contain the code for these modules and the
 # CMakeLists for them
-add_subdirectory(modules/mag-deck)
-#add_subdirectory(modules/temp-deck)
-#add_subdirectory(modules/thermo-cycler)
+if (${MODULE_TYPE} STREQUAL "arduino")
+  add_subdirectory(arduino-modules)
+endif()
