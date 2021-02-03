@@ -35,6 +35,7 @@ jobs:
     - stage: deploy
       name: deploy build
       script:
+        - which cmake && cmake --version
         - cmake --preset=arduino .
         - cmake --build ./build --target zip-all
         - cmake --install ./build
