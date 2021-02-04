@@ -66,23 +66,20 @@ if(${ARDUINO_EXECUTABLE} STREQUAL "ARDUINO_EXECUTABLE-NOTFOUND")
   message(STATUS "Didn't find arduino, downloading")
   # Actually download the IDE
   FetchContent_Populate(ARDUINO_IDE)
-
-  # Second find: actually find the executable so we can configure it
-  find_arduino("")
-
-  # Run some configurations that make the IDE available
-  execute_process(
-    COMMAND ${ARDUINO_EXECUTABLE} --pref "sketchbook.path=${CMAKE_CURRENT_LIST_DIR}/../arduino-modules" --save-prefs
-    COMMAND ${ARDUINO_EXECUTABLE} --pref "boardsmanager.additional.urls=https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json" --save-prefs
-    COMMAND ${ARDUINO_EXECUTABLE} --install-boards "Opentrons:samd:${OPENTRONS_SAMD_BOARDS_VERSION}"
-    COMMAND ${ARDUINO_EXECUTABLE} --install-boards "arduino:samd:${ARDUINO_SAMD_VERSION}"
-    COMMAND ${ARDUINO_EXECUTABLE} --install-boards "Opentrons:avr"
-    )
-
 endif()
 
-# Third (or second, depending how it went) find: throw an error if something failed
+# Second find: throw an error if something failed
 find_arduino(REQUIRED)
+
+# Run some configurations that make the IDE available
+execute_process(
+  COMMAND ${ARDUINO_EXECUTABLE} --pref "sketchbook.path=${CMAKE_CURRENT_LIST_DIR}/../arduino-modules" --save-prefs
+  COMMAND ${ARDUINO_EXECUTABLE} --pref "boardsmanager.additional.urls=https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json" --save-prefs
+  COMMAND ${ARDUINO_EXECUTABLE} --install-boards "Opentrons:samd:${OPENTRONS_SAMD_BOARDS_VERSION}"
+  COMMAND ${ARDUINO_EXECUTABLE} --install-boards "arduino:samd:${ARDUINO_SAMD_VERSION}"
+  COMMAND ${ARDUINO_EXECUTABLE} --install-boards "Opentrons:avr"
+)
+
 
 # Cross-compile setup. Typically you'd set CMAKE_CXX_COMPILER here, but that would cause cmake to try and
 # run something with try_compile, and that would fail since the arduino_ide isn't actually a CXX compiler.
