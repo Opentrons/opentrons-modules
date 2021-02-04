@@ -6,6 +6,7 @@ git:
 cache:
   directories:
     - ./arduino_ide
+    - ~/.arduino15
 
 dist: bionic
 
