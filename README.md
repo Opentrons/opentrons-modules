@@ -31,8 +31,9 @@ To build a module firmware, run `cmake --build ./build --target <module-name>`, 
 `cmake --build ./build --target magdeck`. This will build the sketch and put the sketch and some supporting
 files (like a python-based uploader and a hex for writing the eeprom) in `./builds/<module-name>`.
 
-If you run `cmake --install`, all the module firmwares will be built and zipped up with their supporting
-files and put in the `dist` directory.
+The special target `zip-all` will build zip files of all module firmwares and support files (e.g. eeprom writing):
+`cmake --build ./build-arduino --target zip-all`. You can then run `cmake --install ./build` and those zip files
+will be put in the `dist/` directory; this is used in ci.
 
 ## upload
 
