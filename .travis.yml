@@ -5,10 +5,18 @@ git:
 
 cache:
   directories:
-    - ~/arduino_ide
+    - ./arduino_ide
+    - ~/.arduino15
 
-install:
-  - make setup
+dist: bionic
+
+addons:
+  apt:
+    sources:
+      - sourceline: 'deb https://apt.kitware.com/ubuntu/ bionic main'
+        key_url: 'https://apt.kitware.com/keys/kitware-archive-latest.asc'
+    packages:
+      - cmake
 
 # base configs
 _deploy_s3: &deploy_s3
@@ -28,8 +36,11 @@ jobs:
     - stage: deploy
       name: deploy build
       script:
-        - make build
-        - make zip-all
+        # https://travis-ci.community/t/install-cmake-using-apt-again/4062 is why this uses
+        # /usr/local/bin explicitly
+        - /usr/bin/cmake --preset=arduino .
+        - /usr/bin/cmake --build ./build --target zip-all
+        - /usr/bin/cmake --install ./build
       before_deploy:
         - source ./scripts/set_build_vars.sh
       deploy:
@@ -37,8 +48,3 @@ jobs:
           <<: *deploy_s3
           local_dir: $RELEASE_LOCAL_DIR
           upload_dir: $RELEASE_UPLOAD_DIR
-
-notifications:
-  email:
-    on_success: change
-    on_failure: change

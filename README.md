@@ -9,6 +9,10 @@ Magnetic Module (Magdeck) and Thermocycler.
 
 ## setup
 
+This repo uses [CMake](https://cmake.org) as a configuration and build management tool. It requires
+CMake 3.19 since it uses [presets](https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html)
+to manage cross-compilation and project configuration options.
+
 First, clone the repository and change into the directory:
 
 ```
@@ -16,70 +20,31 @@ git clone git@github.com:Opentrons/opentrons-modules.git
 cd opentrons-modules
 ```
 
-Follow the steps below based on your OS..
-
-**MacOS/ Linux setup:**
-
-**_WARNING: If you already have an Arduino IDE installed, please make sure to close it before
-running this step._**
-
-To install Arduino IDE and the required library & board files, open a terminal,
-cd into `opentrons-modules/` and simply enter `make setup`
-This should implement the following:
-- Installing Arduino IDE at `$HOME/arduino_ide`
-- Installing board definition files required by all the modules (Opentrons Magdeck,
-  Opentrons Tempdeck, Opentrons SAMD, Arduino SAMD)
-- Setting up the sketchbook/ library path
-- Adding build path at `/opentrons-modules/build` to save the builds
-
-**Windows setup:**
-
-(Windows setup is not implemented in `make` yet. So we will have to install the required files manually)
-
-1. Install Arduino IDE (v1.8.10) from https://www.arduino.cc/en/Main/Software
-2. Install board files:
-   - Go to _File->Preferences_ and in _'Additional Boards Manager URLs'_ paste this
-   url (if you already have other boards' urls then separate these with commas):
-`https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json`
-   - Go to _Tools->Boards_ and select _'Board Manager..'_. Search for and install the
-   latest versions of the following:
-     - Arduino SAMD Boards version 1.6.21
-     - Opentrons SAMD Boards (Latest)
-     - Opentrons Modules Boards (Latest)
-3. Set up preferences:
-Go to _File->Preferences_ and change _'Sketchbook Location'_ to your `opentrons-modules` repository path
+Then, run `cmake --preset=arduino .` to set your build step up to build the Arduino-based modules
+(Magnetic Module, Temperature Module, Thermocycler). This should download the Arduino IDE to the
+git-ignored `arduino_ide` directory in the repo's working tree. It will also set up a build system
+in `./builds`.
 
 ## build
 
-**MacOS/ Linux:**
-To build a module firmware, run `make build-<module_name>`.
-eg., `make build-tempdeck` for tempdeck, `make build-thermocycler` for thermocycler.
+To build a module firmware, run `cmake --build ./build --target <module-name>`, e.g.
+`cmake --build ./build --target magdeck`. This will build the sketch and put the sketch and some supporting
+files (like a python-based uploader and a hex for writing the eeprom) in `./builds/<module-name>`.
 
-`make build` builds all the modules
-
-The latest build files would be saved in `/opentrons-modules/build/tmp`.
-Also, latest .hex/.bin files for the last build of a particular board will be saved
-in the build directory under its module name eg. `../build/thermo-cycler/thermo-cycler-arduino.ino.bin`.
-For thermocycler binaries, a firmware uploader script will also be copied to the directory for easy upload of the binary.
-
-**Windows:**
-Use Arduino IDE to compile:
-Select the correct board file for your project from _Tools->board_ (Opentrons Thermocycler M0/ Opentrons Magdeck/ Opentrons Tempdeck)
-
-* NOTE: For Opentrons Thermocycler M0, you will have to set the appropriate flags in the `platform.local.txt` file: Find this file in your Arduino15 folder- a hidden folder usually located in C://Users/username/appData/Local on Windows. You will find the preferences file in `..Arduino15/packages/Opentrons/hardware/samd/1.0.1`. Paste this line in the file above: `compiler.cpp.extra_flags=-DLID_WARNING=false -DHFQ_PWM=false -DHW_VERSION=4 -DLID_TESTING=false -DRGBW_NEO=true -DVOLUME_DEPENDENCY=true -DTC_FW_VERSION="<YOUR_FW_VERSION_STRING>"` (set appropriate flag values)
-
-Then select _Sketch->Compile_.
-
-The build will be saved in a windows temp directory. You can check verbose compilation
-output for the temp directory path. To turn ON verbose mode, go to _File->Preferences_
-and select _compilation_ option for _'Show verbose output during'_
+The special target `zip-all` will build zip files of all module firmwares and support files (e.g. eeprom writing):
+`cmake --build ./build-arduino --target zip-all`. You can then run `cmake --install ./build` and those zip files
+will be put in the `dist/` directory; this is used in ci.
 
 ## upload
 
-Not implemented in make.
+Not implemented in cmake.
 Use the Arduino IDE installed to upload the firmware file:
 
 Open the `/modules/.../<file_name>.ino` file in Arduino, select the appropriate board from _Tools->board_,
  select the correct port from _Tools->Port_. Select Upload or _Sketch->Upload_
 
 * NOTE: For Thermocycler, you can also use the `firmware_uploader.py` script in thermo-cycler/production to upload the binary.
+
+## Contributing
+
+When writing or changing the cmake build system, please follow 
