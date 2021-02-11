@@ -33,7 +33,7 @@ _deploy_s3: &deploy_s3
 
 jobs:
   include:
-    - stage: deploy
+    - stage: deploy-arduino
       name: deploy build
       script:
         # https://travis-ci.community/t/install-cmake-using-apt-again/4062 is why this uses
@@ -48,3 +48,8 @@ jobs:
           <<: *deploy_s3
           local_dir: $RELEASE_LOCAL_DIR
           upload_dir: $RELEASE_UPLOAD_DIR
+    - stage: build-stm32-cross
+      name: build STM32 module firmware
+      script:
+        - /usr/bin/cmake --preset=stm32-cross .
+        - /usr/bin/cmake --build ./build-stm32-cross

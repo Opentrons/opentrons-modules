@@ -11,7 +11,7 @@
       "displayName": "Arduino modules",
       "description": "Build modules firmwares that use Arduino compilers (tempdeck, magdeck, thermocycler)",
       "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build/",
+      "binaryDir": "${sourceDir}/build-arduino/",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/ArduinoToolchain.cmake",
         "ARDUINO_IDE_VERSION": "1.8.10",
@@ -28,6 +28,29 @@
         "TC_LID_TESTING": false,
         "MODULE_TYPE": "arduino",
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/dist"
+      }
+    },
+    {
+      "name": "stm32-cross",
+      "displayName": "STM32 module cross-compilation",
+      "description": "Build module application firmware for modules that use STM32, for flashing onto boards",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-stm32-cross",
+      "cacheVariables": {
+        "MODULE_TYPE": "stm32",
+        "CMAKE_FIND_APPBUNDLE": "NEVER",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/STM32GCCCrossToolchain.cmake"
+      }
+    },
+    {
+      "name": "stm32-host",
+      "displayName": "STM32 module host compilation for tests",
+      "description": "Build module libraries and test executables for modules that use STM32",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-stm32-host",
+      "cacheVariables": {
+        "MODULE_TYPE": "stm32",
+        "CMAKE_FIND_APPBUNDLE": "NEVER"
       }
     }
   ]
