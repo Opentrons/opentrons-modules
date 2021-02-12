@@ -5,9 +5,12 @@ find_package(STM32F303BSP)
 
 add_executable(heater-shaker
   main.cpp
+  system_stm32f3xx.c
   startup_stm32f303xe.s)
 target_link_options(heater-shaker
-  PRIVATE "-T${CMAKE_CURRENT_SOURCE_DIR}/STM32F303RETx_FLASH.ld")
+  PRIVATE
+  "LINKER:-T,${CMAKE_CURRENT_SOURCE_DIR}/STM32F303RETx_FLASH.ld"
+  "LINKER:--error-unresolved-symbols")
 
 target_link_libraries(heater-shaker STM32F303BSP)
 

@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 project("OpentronsModules"
-  LANGUAGES CXX C
+  LANGUAGES CXX C ASM
   DESCRIPTION "Firmware for Opentrons modules")
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
