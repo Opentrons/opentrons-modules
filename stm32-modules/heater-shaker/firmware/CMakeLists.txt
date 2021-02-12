@@ -3,9 +3,15 @@
 
 find_package(STM32F303BSP)
 
-add_executable(heater-shaker-main
-  main.cpp)
-target_link_libraries(heater-shaker-main STM32F303BSP)
+add_executable(heater-shaker
+  main.cpp
+  startup_stm32f303xe.s)
+target_link_options(heater-shaker
+  PRIVATE "-T${CMAKE_CURRENT_SOURCE_DIR}/STM32F303RETx_FLASH.ld")
+
+target_link_libraries(heater-shaker STM32F303BSP)
+
+
 target_include_directories(STM32F303BSP
   PUBLIC .)
 target_compile_definitions(STM32F303BSP
