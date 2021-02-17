@@ -287,25 +287,20 @@ void SystemCoreClockUpdate (void)
   * @}
   */
 
-volatile int in_which_handler = 0;
 void HardFault_Handler(void) {
-  in_which_handler |= 0x2;
-  while (1) { in_which_handler ^= 0x1; }
+  while (1);
 }
 
 void MemManage_Handler(void) {
-  in_which_handler |= 0x4;
-  while(1) { in_which_handler ^= 0x1;}
+  while(1);
 }
 
 void BusFault_Handler(void) {
-  in_which_handler |= 0x8;
-  while(1) { in_which_handler ^= 0x1;}
+  while(1);
 }
 
 void UsageFault_Handler(void) {
-  in_which_handler |= 0x10;
-  while(1) { in_which_handler ^= 0x1;}
+  while(1);
 }
 
 

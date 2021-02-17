@@ -1,7 +1,7 @@
 
 volatile bool loopy = false;
 
-int main(int argc, char *argv[]) {
+int main(void) {
 
     while(true) {
         loopy = !loopy;

@@ -49,8 +49,7 @@ Open the `/modules/.../<file_name>.ino` file in Arduino, select the appropriate 
 
 * NOTE: For Thermocycler, you can also use the `firmware_uploader.py` script in thermo-cycler/production to upload the binary.
 
-The stm32 modules have debug harnessing built in; running `cmake --build ./build-stm32-cross --target heater-shaker-debug` will build the firmware and spin up the cross gdb, automatically trying to connect to a gdb server connected to the device. To get this to work, you should make sure you install the [st-link](https://github.com/stlink-org/stlink) software for your os, and run `st-util` in the background. Once the debugger is connected, you can run whatever's on the device by continuing, or load the new firmware with `load`.
-
+The stm32 modules have debug harnessing built in; for instance, running `cmake --build ./build-stm32-cross --target heater-shaker-debug` will build the firmware and spin up the cross gdb and openocd. This target by default (because of commands in the gdbinit) will reset the board and upload the built firmware; if you want to use the firmware currently flashed to the board, run everything manually.
 
 ## Contributing
 

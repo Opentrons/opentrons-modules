@@ -34,9 +34,10 @@ ENTRY(Reset_Handler)
 
 /* Highest address of the user mode stack */
 _estack = 0x20010000;    /* end of RAM */
+__stack = _estack;
 /* Generate a link error if heap and stack don't fit into RAM */
-_Min_Heap_Size = 0x200;;      /* required amount of heap  */
-_Min_Stack_Size = 0x400;; /* required amount of stack */
+_Min_Heap_Size = 0x200;      /* required amount of heap  */
+_Min_Stack_Size = 0x400; /* required amount of stack */
 
 /* Specify the memory areas */
 MEMORY
@@ -66,7 +67,8 @@ SECTIONS
     *(.glue_7)         /* glue arm to thumb code */
     *(.glue_7t)        /* glue thumb to arm code */
     *(.eh_frame)
-
+    *(.got)
+    *(.got*)
     KEEP (*(.init))
     KEEP (*(.fini))
 
@@ -161,6 +163,8 @@ SECTIONS
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
   } >RAM
+
+
 
   /* User_heap_stack section, used to check that there is enough RAM left */
   ._user_heap_stack :

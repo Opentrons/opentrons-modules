@@ -37,6 +37,7 @@
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build-stm32-cross",
       "cacheVariables": {
+        "CMAKE_MODULE_PATH": "${sourceDir}/cmake",
         "MODULE_TYPE": "stm32",
         "CMAKE_FIND_APPBUNDLE": "NEVER",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/STM32GCCCrossToolchain.cmake"

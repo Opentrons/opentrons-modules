@@ -60,7 +60,7 @@ defined in linker script */
 	.weak	Reset_Handler
 	.type	Reset_Handler, %function
 Reset_Handler:
-  ldr   sp, =_estack    /* Atollic update: set stack pointer */
+  ldr   sp, =_estack     /*Atollic update: set stack pointer */
 
 /* Copy the data segment initializers from flash to SRAM */
   movs	r1, #0
@@ -95,7 +95,7 @@ LoopFillZerobss:
 /* Call static constructors */
     bl __libc_init_array
 /* Call the application's entry point.*/
-	bl	main
+	bl	_start
 
 LoopForever:
     b LoopForever
