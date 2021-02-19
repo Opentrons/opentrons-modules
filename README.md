@@ -31,7 +31,7 @@ Since all these configuration steps use separate build dirs (BINARY_DIRS in cmak
 
 Each build dir should have a reasonable `all` target (invokable by running `cmake --build <build-dir>`) and individual targets for each module firmware. For instance, the arduino modules have `<module-name>` set up as individual build targets. 
 
-You always have to specify the build dir to run in with `cmake --build`; that can be run from the root of the repo (e.g. by calling `cmake --build ./stm32-cross` or `cmake --build ./build`) or as `.` if you navigate into the right build directory first.
+You always have to specify the build dir to run in with `cmake --build`; that can be run from the root of the repo (e.g. by calling `cmake --build ./build-stm32-cross` or `cmake --build ./build`) or as `.` if you navigate into the right build directory first.
 
 To build a specific target, use the `--target` flag: `cmake --build ./build --target magdeck`.
 
@@ -54,4 +54,3 @@ The stm32 modules have debug harnessing built in; for instance, running `cmake -
 ## Contributing
 
 When writing or changing the cmake build system, please follow [modern CMake](https://cliutils.gitlab.io/modern-cmake) practices. Use targets; use generator expressions to set properties on those targets rather than setting ``CMAKE_DEBUG_FLAGS``; write CMake like the programming language it is.
-
