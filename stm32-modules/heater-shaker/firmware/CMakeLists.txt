@@ -5,10 +5,20 @@ find_package(STM32F303BSP)
 find_package(CrossGCC)
 find_package(OpenOCD)
 
+# Add source files that should be checked by clang-tidy here
+set(HS_FW_LINTABLE_SRCS
+  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
+
+# Add source files that should NOT be checked by clang-tidy here
+set(HS_FW_NONLINTABLE_SRCS
+  ${CMAKE_CURRENT_SOURCE_DIR}/system_stm32f3xx.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/startup_stm32f303xe.s)
+
 add_executable(heater-shaker
-  main.cpp
-  system_stm32f3xx.c
-  startup_stm32f303xe.s)
+  ${HS_FW_LINTABLE_SRCS}
+  ${HS_FW_NONLINTABLE_SRCS}
+  )
+
 target_link_options(heater-shaker
   PRIVATE
   "LINKER:-T,${CMAKE_CURRENT_SOURCE_DIR}/STM32F303RETx_FLASH.ld"
@@ -43,9 +53,20 @@ find_program(ARM_GDB
 set_target_properties(heater-shaker
   PROPERTIES
   CROSSCOMPILING_EMULATOR
-     "${ARM_GDB};--command=${CMAKE_CURRENT_BINARY_DIR}/gdbinit")
+  "${ARM_GDB};--command=${CMAKE_CURRENT_BINARY_DIR}/gdbinit")
 
+find_package(Clang)
 
+# runs clang-tidy https://releases.llvm.org/11.0.1/tools/clang/tools/extra/docs/clang-tidy/index.html
+# which is a catch-all static analyzer/linter
+# the empty --config= tells clang-tidy to use the .clang-tidy file in the top level
+# An odd thing about this target is that it requires the existance of a compiledb, which
+# is produced when you build, and may change if you change compilation options, so in a way
+# it depends on a build. But we also want to be able to run this when there wasn't a successful
+# build, so there's no explicit dependency set.
+add_custom_target(heater-shaker-lint
+  ALL
+  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} -p ${CMAKE_BINARY_DIR} ${HS_FW_LINTABLE_SRCS} --config=)
 
 # Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an
 # arguable misuse of the concept) to the appropriate cross-gdb with
