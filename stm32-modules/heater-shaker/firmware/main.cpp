@@ -1,7 +1,7 @@
 
 volatile bool loopy = false;
 
-int main(void) {
+auto main() -> int {
     while (true) {
         loopy = !loopy;
     }
