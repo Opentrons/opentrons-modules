@@ -31,6 +31,26 @@ set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/main.cpp
   PROPERTIES
   OBJECT_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/STM32F303RETx_FLASH.ld")
 
+set_target_properties(heater-shaker
+  PROPERTIES
+  CXX_STANDARD 20
+  CXX_STANDARD_REQUIRED TRUE
+  C_STANDARD 11
+  C_STANDARD_REQUIRED TRUE
+  )
+
+target_compile_options(heater-shaker
+  PUBLIC
+  -Wall
+  -Werror
+  $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wctor-dtor-privacy>
+  $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+  )
+
 
 target_link_libraries(heater-shaker STM32F303BSP)
 

@@ -57,3 +57,7 @@ target_include_directories(
 
 set(STM32F303BSP_FOUND ${bsp_populated} PARENT_SCOPE)
 set(STM32F303BSP_DIR ${bsp_source} PARENT_SCOPE)
+set_target_properties(STM32F303BSP
+  PROPERTIES
+  C_STANDARD 11
+  C_STANDARD_REQUIRED TRUE)
