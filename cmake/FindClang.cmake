@@ -32,6 +32,7 @@ Provides the variables
 include(FetchContent)
 
 set(LOCALINSTALL_CLANG_DIR "${CMAKE_SOURCE_DIR}/stm32-tools/clang")
+message(STATUS "local install clang dir: ${LOCALINSTALL_CLANG_DIR}")
 
 set(DL_CLANG_VERSION "11.0.0")
 
@@ -52,16 +53,17 @@ FetchContent_Declare(CLANG_LOCALINSTALL
 find_program(Clang_EXECUTABLE
   clang
   PATHS "${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}"
-  SUFFIXES bin)
+  PATH_SUFFIXES bin)
 
 find_program(Clang_CLANGFORMAT_EXECUTABLE
   clang-format
   PATHS "${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}"
-  SUFFIXES bin)
+  PATH_SUFFIXES bin)
 
 find_program(Clang_CLANGTIDY_EXECUTABLE
   clang-tidy
-  PATHS ${CMAKE_SOURCE_DIR}/stm32-tools/clang/${CMAKE_HOST_SYSTEM_NAME})
+  PATHS ${CMAKE_SOURCE_DIR}/stm32-tools/clang/${CMAKE_HOST_SYSTEM_NAME}
+  PATH_SUFFXIES bin)
 
 find_program(Clang_CODECHECKER_EXECUTABLE
   CodeChecker
@@ -71,7 +73,7 @@ if (Clang_CODECHECKER_EXECUTABLE STREQUAL "Clang_CODECHECKER_EXECUTABLE_NOTFOUND
   message(WARNING "Could not find codechecker, which is system-dependent. See https://codechecker.readthedocs.io/en/latest/#install-guide")
 endif()
 
-if(NOT Clang_EXECUTABLE STREQUAL "Clang_EXECUTABLE_NOTFOUND")
+if(NOT Clang_EXECUTABLE STREQUAL "Clang_EXECUTABLE-NOTFOUND")
   execute_process(
     COMMAND clang --version
     OUTPUT_VARIABLE INSTALLED_CLANG_VERSION_BLOB)
@@ -80,15 +82,19 @@ if(NOT Clang_EXECUTABLE STREQUAL "Clang_EXECUTABLE_NOTFOUND")
   # cmake uses temporarily-valid globals for regex subexpression matching for some reason
   # so we use that instead of the output variable from string()
   set(INSTALLED_CLANG_VERSION ${CMAKE_MATCH_1})
+  message(STATUS "Found installed clang with version: ${INSTALLED_CLANG_VERSION}")
 else()
+  message(STATUS "Couldn't find installed clang")
   set(INSTALLED_CLANG_VERSION "0.0.0")
 endif()
 
 if (${INSTALLED_CLANG_VERSION} VERSION_LESS ${DL_CLANG_VERSION})
+  message(STATUS "Installed clang out of date/not found: version ${INSTALLED_CLANG_VERSION}")
   FetchContent_GetProperties(CLANG_LOCALINSTALL
     POPULATED CLANG_LOCALINSTALL_POPULATED)
   if(NOT CLANG_LOCALINSTALL_POPULATED)
     FetchContent_Populate(CLANG_LOCALINSTALL)
+    message(STATUS "Downloaded new clang")
   endif()
 
   if(${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Windows")
@@ -103,23 +109,32 @@ if (${INSTALLED_CLANG_VERSION} VERSION_LESS ${DL_CLANG_VERSION})
       clang-format
       REQUIRED)
   else()
+    unset(Clang_EXECUTABLE CACHE)
     find_program(Clang_EXECUTABLE clang
       PATHS "${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}"
-      SUFFIXES bin
+      PATH_SUFFIXES bin
       NO_DEFAULT_PATH
+      NO_CMAKE_FIND_ROOT_PATH
       REQUIRED)
+    unset(Clang_CLANGTIDY_EXECUTABLE CACHE)
     find_program(Clang_CLANGTIDY_EXECUTABLE
       clang-tidy
       PATHS "${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}"
-      SUFFIXES bin
+      PATH_SUFFIXES bin
       NO_DEFAULT_PATH
+      NO_CMAKE_FIND_ROOT_PATH
       REQUIRED)
+    unset(Clang_CLANGFORMAT_EXECUTABLE CACHE)
     find_program(Clang_CLANGFORMAT_EXECUTABLE
       clang-format
       PATHS "${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}"
-      SUFFIXES bin
+      PATH_SUFFIXES bin
       NO_DEFAULT_PATH
+      NO_CMAKE_FIND_ROOT_PATH
       REQUIRED)
+    message(STATUS "Found downloaded clang-format: ${Clang_CLANGFORMAT_EXECUTABLE}")
   endif()
 endif()
 
+message(STATUS "Found clang-tidy at: ${Clang_CLANGTIDY_EXECUTABLE}")
+message(STATUS "Found clang-format at ${Clang_CLANGFORMAT_EXECUTABLE}")
