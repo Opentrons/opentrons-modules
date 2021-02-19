@@ -54,3 +54,4 @@ jobs:
       script:
         - /usr/bin/cmake --preset=stm32-cross . -DCMAKE_BUILD_TYPE=MinSizeRel
         - /usr/bin/cmake --build ./build-stm32-cross --target heater-shaker
+        - /usr/bin/cmake --build ./build-stm32-cross --target heater-shaker-format-ci
