@@ -123,3 +123,5 @@ CMakeFiles
 cmake_install.cmake
 
 arduino_ide
+build-stm32-cross/
+stm32-tools/
