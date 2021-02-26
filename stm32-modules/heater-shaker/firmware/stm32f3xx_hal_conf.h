@@ -36,7 +36,7 @@ extern "C" {
 #define HAL_ADC_MODULE_ENABLED
 #define HAL_CAN_MODULE_ENABLED
 /* #define HAL_CAN_LEGACY_MODULE_ENABLED */
-#define HAL_CEC_MODULE_ENABLED
+/* #define HAL_CEC_MODULE_ENABLED */
 #define HAL_COMP_MODULE_ENABLED
 #define HAL_CORTEX_MODULE_ENABLED
 #define HAL_CRC_MODULE_ENABLED
@@ -49,7 +49,7 @@ extern "C" {
 #define HAL_PCCARD_MODULE_ENABLED
 #define HAL_GPIO_MODULE_ENABLED
 #define HAL_EXTI_MODULE_ENABLED
-#define HAL_HRTIM_MODULE_ENABLED
+/* #define HAL_HRTIM_MODULE_ENABLED */
 #define HAL_I2C_MODULE_ENABLED
 #define HAL_I2S_MODULE_ENABLED
 #define HAL_IRDA_MODULE_ENABLED
@@ -59,7 +59,7 @@ extern "C" {
 #define HAL_PWR_MODULE_ENABLED
 #define HAL_RCC_MODULE_ENABLED
 #define HAL_RTC_MODULE_ENABLED
-#define HAL_SDADC_MODULE_ENABLED
+/* #define HAL_SDADC_MODULE_ENABLED */
 #define HAL_SMARTCARD_MODULE_ENABLED
 #define HAL_SMBUS_MODULE_ENABLED
 #define HAL_SPI_MODULE_ENABLED
@@ -215,7 +215,7 @@ extern "C" {
  * @brief Uncomment the line below to expanse the "assert_param" macro in the
  *        HAL drivers code
  */
-/*#define USE_FULL_ASSERT    1U*/
+/*#define USE_FULL_ASSERT    1*/
 
 /* Includes ------------------------------------------------------------------*/
 /**
@@ -366,7 +366,7 @@ extern "C" {
 #ifdef USE_FULL_ASSERT
 /**
  * @brief  The assert_param macro is used for function's parameters check.
- * @param  expr If expr is false, it calls assert_failed function
+ * @param  expr: If expr is false, it calls assert_failed function
  *         which reports the name of the source file and the source
  *         line number of the call that failed.
  *         If expr is true, it returns no value.

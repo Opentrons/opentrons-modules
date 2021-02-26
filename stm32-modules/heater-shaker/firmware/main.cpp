@@ -1,11 +1,15 @@
+#include "FreeRTOS.h"
 
-volatile bool
-    loopy =  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
-    false;
+#include "firmware/heater_control_task.hpp"
+#include "firmware/host_comms_control_task.hpp"
+#include "firmware/motor_control_task.hpp"
+#include "firmware/ui_control_task.hpp"
 
 auto main() -> int {
-    while (true) {
-        loopy = !loopy;
-    }
+    ui_control_task::start();
+    heater_control_task::start();
+    motor_control_task::start();
+    host_comms_control_task::start();
+    vTaskStartScheduler();
     return 0;
 }

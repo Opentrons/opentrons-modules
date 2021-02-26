@@ -42,9 +42,15 @@ FetchContent_GetProperties(STM32_F303_BSP_SOURCE
   )
 
 file(GLOB_RECURSE hal_driver_sources ${bsp_source}/Drivers/STM32F3xx_HAL_Driver/Src/*.c)
+set(freertos_source ${bsp_source}/Middlewares/Third_Party/FreeRTOS/Source)
+set(freertos_port_source ${freertos_source}/portable/GCC/ARM_CM4F)
+file(GLOB freertos_common_sources ${freertos_source}/*.c)
 
 add_library(STM32F303BSP STATIC
-  ${hal_driver_sources})
+  ${hal_driver_sources}
+  ${freertos_common_sources}
+  ${freertos_port_source}/port.c
+  $<IF:$<BOOL:$<TARGET_PROPERTY:FREERTOS_HEAP_IMPLEMENTATION>>,${freertos_source}/portable/MemMang/$<TARGET_PROPERTY:FREERTOS_HEAP_IMPLEMENTATION>.c,"">)
 
 
 target_include_directories(
@@ -53,6 +59,8 @@ target_include_directories(
          ${bsp_source}/Drivers/STM32F3xx_HAL_Driver/Inc/Legacy
          ${bsp_source}/Drivers/CMSIS/Device/ST/STM32F3xx/Include
          ${bsp_source}/Drivers/CMSIS/Core/Include
+         ${freertos_source}/include
+         ${freertos_port_source}
   )
 
 set(STM32F303BSP_FOUND ${bsp_populated} PARENT_SCOPE)
