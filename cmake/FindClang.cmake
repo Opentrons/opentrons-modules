@@ -49,6 +49,12 @@ FetchContent_Declare(CLANG_LOCALINSTALL
   DOWNLOAD_DIR "${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}"
   URL "https://github.com/llvm/llvm-project/releases/download/llvmorg-${DL_CLANG_VERSION}/clang+llvm-${DL_CLANG_VERSION}-${CLANG_ARCHIVE}")
 
+FetchContent_GetProperties(CLANG_LOCALINSTALL
+  POPULATED CLANG_LOCALINSTALL_POPULATED)
+if(NOT CLANG_LOCALINSTALL_POPULATED)
+  FetchContent_Populate(CLANG_LOCALINSTALL)
+  message(STATUS "Downloaded new clang")
+endif()
 
 find_program(Clang_EXECUTABLE
   clang
@@ -63,7 +69,7 @@ find_program(Clang_CLANGFORMAT_EXECUTABLE
 find_program(Clang_CLANGTIDY_EXECUTABLE
   clang-tidy
   PATHS ${CMAKE_SOURCE_DIR}/stm32-tools/clang/${CMAKE_HOST_SYSTEM_NAME}
-  PATH_SUFFXIES bin)
+  PATH_SUFFIXES bin)
 
 find_program(Clang_CODECHECKER_EXECUTABLE
   CodeChecker
@@ -89,15 +95,7 @@ else()
 endif()
 
 if (${INSTALLED_CLANG_VERSION} VERSION_LESS ${DL_CLANG_VERSION})
-  message(STATUS "Installed clang out of date/not found: version ${INSTALLED_CLANG_VERSION}")
-  FetchContent_GetProperties(CLANG_LOCALINSTALL
-    POPULATED CLANG_LOCALINSTALL_POPULATED)
-  if(NOT CLANG_LOCALINSTALL_POPULATED)
-    FetchContent_Populate(CLANG_LOCALINSTALL)
-    message(STATUS "Downloaded new clang")
-  endif()
-
-  if(${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Windows")
+    if(${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Windows")
     execute_process("${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}/clang+llvm-${DL_CLANG_VERSION}-${CLANG_ARCHIVE}")
     find_program(Clang_EXECUTABLE
       clang
