@@ -1,5 +1,4 @@
 #include "FreeRTOS.h"
-
 #include "firmware/heater_control_task.hpp"
 #include "firmware/host_comms_control_task.hpp"
 #include "firmware/motor_control_task.hpp"
