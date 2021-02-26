@@ -7,11 +7,17 @@ find_package(OpenOCD)
 
 # Add source files that should be checked by clang-tidy here
 set(HS_FW_LINTABLE_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
+  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/heater_control_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/motor_control_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ui_control_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/host_comms_control_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_idle_timer_task.cpp)
 
 # Add source files that should NOT be checked by clang-tidy here
 set(HS_FW_NONLINTABLE_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/system_stm32f3xx.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/stm32f3xx_it.c
   ${CMAKE_CURRENT_SOURCE_DIR}/startup_stm32f303xe.s)
 
 add_executable(heater-shaker
@@ -39,6 +45,8 @@ set_target_properties(heater-shaker
   C_STANDARD_REQUIRED TRUE
   )
 
+target_include_directories(heater-shaker PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+
 target_compile_options(heater-shaker
   PUBLIC
   -Wall
@@ -58,6 +66,9 @@ target_include_directories(STM32F303BSP
   PUBLIC .)
 target_compile_definitions(STM32F303BSP
   PUBLIC STM32F303xE)
+set_target_properties(STM32F303BSP
+  PROPERTIES
+  FREERTOS_HEAP_IMPLEMENTATION "heap_5")
 
 # Fills in the template with values specified by the find_package(OpenOCD) call above
 configure_file(./gdbinit.template ./gdbinit)
