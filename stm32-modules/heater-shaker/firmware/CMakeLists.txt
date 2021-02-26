@@ -84,9 +84,15 @@ find_package(Clang)
 # is produced when you build, and may change if you change compilation options, so in a way
 # it depends on a build. But we also want to be able to run this when there wasn't a successful
 # build, so there's no explicit dependency set.
+# This awful transform is required because the implicit includes that gcc knows how to find (e.g. its
+# own implementation of the STL) don't get added to the compile db that clang-tidy uses to figure out
+# include directories. So we can use the actually fairly cool transform command to turn them all into
+# extra-arg invocations and it'll figure it out.
+set(CLANG_EXTRA_ARGS ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
 add_custom_target(heater-shaker-lint
   ALL
-  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} -p ${CMAKE_BINARY_DIR} ${HS_FW_LINTABLE_SRCS} --config=)
+  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${HS_FW_LINTABLE_SRCS} --config=)
 
 # Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an
 # arguable misuse of the concept) to the appropriate cross-gdb with

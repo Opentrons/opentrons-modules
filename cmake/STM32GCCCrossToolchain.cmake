@@ -15,19 +15,18 @@ find_package(CrossGCC)
 
 set(CMAKE_SYSTEM_NAME "Generic")
 set(CMAKE_FIND_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../vendor")
-set(CMAKE_SYSROOT "${CROSS_GCC_BINDIR}/${GCC_CROSS_TRIPLE}")
-set(CMAKE_C_COMPILER "${CROSS_GCC_BINDIR}/${GCC_CROSS_TRIPLE}-gcc")
-set(CMAKE_ASM_COMPILER "${CROSS_GCC_BINDIR}/${GCC_CROSS_TRIPLE}-gcc")
-set(CMAKE_CXX_COMPILER "${CROSS_GCC_BINDIR}/${GCC_CROSS_TRIPLE}-g++")
+set(CMAKE_SYSROOT "${CrossGCC_DIR}/${CrossGCC_TRIPLE}")
+set(CMAKE_C_COMPILER "${CrossGCC_BINDIR}/${CrossGCC_TRIPLE}-gcc")
+set(CMAKE_ASM_COMPILER "${CrossGCC_BINDIR}/${CrossGCC_TRIPLE}-gcc")
+set(CMAKE_CXX_COMPILER "${CrossGCC_BINDIR}/${CrossGCC_TRIPLE}-g++")
 
 set(GCC_CROSS_BASE_FLAGS
-  "-mthumb -mcpu=cortex-m4 -mfloat-abi=soft -specs=nosys.specs -specs=nano.specs -fpic -ffunction-sections -fdata-sections -fno-lto")
+  "-mthumb -mcpu=cortex-m4 -mfloat-abi=hard -specs=nosys.specs -specs=nano.specs -fpic -ffunction-sections -fdata-sections -fno-lto")
 set(CMAKE_C_COMPILER_TARGET thumbv7m-unknown-none-eabi)
 set(CMAKE_CXX_COMPILER_TARGET thumbv7m-unknown-none-eabi)
 set(CMAKE_C_FLAGS ${GCC_CROSS_BASE_FLAGS})
 set(CMAKE_CXX_FLAGS ${GCC_CROSS_BASE_FLAGS})
 set(CMAKE_ASM_FLAGS ${GCC_CROSS_BASE_FLAGS})
 
-set(CMAKE_CROSSCOMPILING_EMULATOR "${CROSS_GCC_BINDIR}/${GCC_CROSS_TRIPLE}-gdb")
-
+set(CMAKE_CROSSCOMPILING_EMULATOR "${CrossGCC_BINDIR}/${CrossGCC_TRIPLE}-gdb")
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
