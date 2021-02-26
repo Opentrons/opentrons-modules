@@ -77,7 +77,7 @@ if(NOT Clang_EXECUTABLE STREQUAL "Clang_EXECUTABLE-NOTFOUND")
   execute_process(
     COMMAND clang --version
     OUTPUT_VARIABLE INSTALLED_CLANG_VERSION_BLOB)
-  string(REGEX MATCH "^clang version ([0-9]+\.[0-9]+\.[0-9]+)"
+  string(REGEX MATCH "clang version ([0-9]+\.[0-9]+\.[0-9]+)"
     CV_REGEX_OUTPUT ${INSTALLED_CLANG_VERSION_BLOB})
   # cmake uses temporarily-valid globals for regex subexpression matching for some reason
   # so we use that instead of the output variable from string()
