@@ -7,7 +7,10 @@ project("OpentronsModules"
   DESCRIPTION "Firmware for Opentrons modules")
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
-enable_testing()
+if (NOT ${CMAKE_CROSSCOMPILING})
+  enable_testing()
+  add_custom_target(check)
+endif()
 
 # These subdirectories contain the code for these modules and the
 # CMakeLists for them. The MODULE_TYPE variable is set in the arduino preset.
