@@ -21,7 +21,7 @@ set(CMAKE_ASM_COMPILER "${CROSS_GCC_BINDIR}/${GCC_CROSS_TRIPLE}-gcc")
 set(CMAKE_CXX_COMPILER "${CROSS_GCC_BINDIR}/${GCC_CROSS_TRIPLE}-g++")
 
 set(GCC_CROSS_BASE_FLAGS
-  "-mthumb -mcpu=cortex-m4 -mfloat-abi=soft -specs=nosys.specs -specs=nano.specs -fpic -ffunction-sections -fdata-sections -fno-lto")
+  "-mthumb -mcpu=cortex-m4 -mfloat-abi=hard -specs=nosys.specs -specs=nano.specs -fpic -ffunction-sections -fdata-sections -fno-lto")
 set(CMAKE_C_COMPILER_TARGET thumbv7m-unknown-none-eabi)
 set(CMAKE_CXX_COMPILER_TARGET thumbv7m-unknown-none-eabi)
 set(CMAKE_C_FLAGS ${GCC_CROSS_BASE_FLAGS})
