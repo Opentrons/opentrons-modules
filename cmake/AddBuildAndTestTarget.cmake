@@ -1,5 +1,5 @@
 #[=======================================================================[.rst:
-AddCheckTarget.cmake
+AddBuildAndTestTarget.cmake
 --------------------
 
 This module works around weirdnesses in cmake's test infrastructure.
@@ -20,7 +20,7 @@ do the workaround occasionally suggested to add a "test" that really builds
 the test executable (and this is fairly awful anyway, since you get the results
   of the build polluting your test log).
 
-The workaround done here is to add a custom target called ``-check`` which
+The workaround done here is to add a custom target called ``build-and-test`` which
 subprocesses cmake's test command and is a real target so it can depend on the
 build. If you want to run ``cmake --build --target test`` repeatedly, it won't
 rebuild anything.
@@ -28,11 +28,11 @@ rebuild anything.
 Since the macro this provides needs to know about names, it also actually does
 the test integration itself.
 
-ADD_CHECK_TARGET
+ADD_BUILD_AND_TEST_TARGET
 ^^^^^^^^^^^^^^^^
 
-``ADD_CHECK_TARGET`` provides infrastructure for tests to run on a specified
-target.
+``ADD_BUILD_AND_TEST_TARGET`` provides infrastructure for tests to run on a
+specified target.
 
 Input Variables
 +++++++++++++++
@@ -48,9 +48,9 @@ a dependency to the ``check`` target.
 #]=======================================================================]
 
 
-macro(ADD_CHECK_TARGET TEST_EXECUTABLE)
-  add_custom_target(${TEST_EXECUTABLE}-check
+macro(ADD_BUILD_AND_TEST_TARGET TEST_EXECUTABLE)
+  add_custom_target(${TEST_EXECUTABLE}-build-and-test
     COMMAND ${CMAKE_CTEST_COMMAND} -V
     DEPENDS ${TEST_EXECUTABLE})
-  add_dependencies(check ${TEST_EXECUTABLE}-check)
+  add_dependencies(build-and-test ${TEST_EXECUTABLE}-build-and-test)
 endmacro()
