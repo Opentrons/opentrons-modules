@@ -4,10 +4,10 @@ include(CTest)
 include(Catch)
 include(AddCheckTarget)
 
-add_executable(heater-shaker-tests
+add_executable(heater-shaker
   test_main.cpp)
 
-target_link_libraries(heater-shaker-tests Catch2::Catch2)
-catch_discover_tests(heater-shaker-tests)
+target_link_libraries(heater-shaker Catch2::Catch2)
+catch_discover_tests(heater-shaker)
 
-add_check_target(heater-shaker-tests)
+add_build_and_test_target(heater-shaker)

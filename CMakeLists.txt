@@ -9,7 +9,7 @@ project("OpentronsModules"
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 if (NOT ${CMAKE_CROSSCOMPILING})
   enable_testing()
-  add_custom_target(check)
+  add_custom_target(build-and-test)
 endif()
 
 # These subdirectories contain the code for these modules and the
