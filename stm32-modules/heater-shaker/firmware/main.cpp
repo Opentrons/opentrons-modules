@@ -1,9 +1,10 @@
 
-volatile bool loopy = false;
+volatile bool
+    loopy =  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+    false;
 
-int main(void) {
-
-    while(true) {
+auto main() -> int {
+    while (true) {
         loopy = !loopy;
     }
     return 0;

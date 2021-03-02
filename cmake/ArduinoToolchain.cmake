@@ -74,9 +74,17 @@ find_arduino(REQUIRED)
 # Run some configurations that make the IDE available
 execute_process(
   COMMAND ${ARDUINO_EXECUTABLE} --pref "sketchbook.path=${CMAKE_CURRENT_LIST_DIR}/../arduino-modules" --save-prefs
+)
+execute_process(
   COMMAND ${ARDUINO_EXECUTABLE} --pref "boardsmanager.additional.urls=https://s3.us-east-2.amazonaws.com/opentrons-modules/package_opentrons_index.json" --save-prefs
+)
+execute_process(
   COMMAND ${ARDUINO_EXECUTABLE} --install-boards "Opentrons:samd:${OPENTRONS_SAMD_BOARDS_VERSION}"
+)
+execute_process(
   COMMAND ${ARDUINO_EXECUTABLE} --install-boards "arduino:samd:${ARDUINO_SAMD_VERSION}"
+)
+execute_process(
   COMMAND ${ARDUINO_EXECUTABLE} --install-boards "Opentrons:avr"
 )
 
