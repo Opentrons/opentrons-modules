@@ -55,7 +55,7 @@ The stm32 modules have debug harnessing built in; for instance, running `cmake -
 
 This is not implemented for the arduino modules.
 
-For the STM32 modules, if you configure the host toolchain: `cmake --preset=stm32-host .`, you can then run the `check` target: `cmake --build ./build-stm32-host --target build-and-test`, which will build the tests and then run them. You can also use cmake's built-in `test` target: `cmake --build ./build-stm32-host --target test`, but this will not automatically actually build the tests.
+For the STM32 modules, if you configure the host toolchain: `cmake --preset=stm32-host .`, you can then run the `build-and-test` target: `cmake --build ./build-stm32-host --target build-and-test`, which will build the tests and then run them. You can also use cmake's built-in `test` target: `cmake --build ./build-stm32-host --target test`, but this will not automatically actually build the tests.
 
 Individual tests may set their own check targets; for instance, you can build and run only the heater-shaker tests by running `cmake --build ./build-stm32-host --target heater-shaker-build-and-test`.
 
