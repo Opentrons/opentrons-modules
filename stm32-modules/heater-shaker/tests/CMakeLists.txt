@@ -2,7 +2,7 @@
 find_package(Catch2 REQUIRED)
 include(CTest)
 include(Catch)
-include(AddCheckTarget)
+include(AddBuildAndTestTarget)
 
 add_executable(heater-shaker
   test_main.cpp)
