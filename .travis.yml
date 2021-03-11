@@ -16,8 +16,10 @@ addons:
     sources:
       - sourceline: 'deb https://apt.kitware.com/ubuntu/ focal main'
         key_url: 'https://apt.kitware.com/keys/kitware-archive-latest.asc'
+      - ubuntu-toolchain-r-test
     packages:
       - cmake
+      - g++-10
 
 # base configs
 _deploy_s3: &deploy_s3
