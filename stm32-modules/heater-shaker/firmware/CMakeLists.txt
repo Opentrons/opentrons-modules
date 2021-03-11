@@ -8,10 +8,10 @@ find_package(OpenOCD)
 # Add source files that should be checked by clang-tidy here
 set(HS_FW_LINTABLE_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/heater_control_task.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/motor_control_task.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ui_control_task.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/host_comms_control_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_heater_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_motor_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_ui_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_comms_task.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/freertos_idle_timer_task.cpp)
 
 # Add source files that should NOT be checked by clang-tidy here
