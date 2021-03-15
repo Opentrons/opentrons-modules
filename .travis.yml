@@ -18,7 +18,7 @@ addons:
         key_url: 'https://apt.kitware.com/keys/kitware-archive-latest.asc'
     packages:
       - cmake
-      - gcc-10
+      - g++-10
 
 # base configs
 _deploy_s3: &deploy_s3
