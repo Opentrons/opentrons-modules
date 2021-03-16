@@ -12,6 +12,7 @@ on:
     paths_ignore:
       - 'cmake/Arduino*'
   push:
+    paths:
       - 'stm32-modules/heater-shaker'
       - 'cmake/*'
       - 'CMakeLists.txt'
@@ -22,10 +23,10 @@ on:
       - '.github/workflows/heater-shaker.yaml'
     paths_ignore:
       - 'cmake/Arduino*'
-  branches:
-    - '*'
-  tags:
-    - 'heater-shaker@*'
+    branches:
+      - '*'
+    tags:
+      - 'heater-shaker@*'
   workflow_dispatch:
 
 

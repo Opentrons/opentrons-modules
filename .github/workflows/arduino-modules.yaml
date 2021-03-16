@@ -14,12 +14,12 @@ on:
       - 'CMakePresets.json'
       - '.github/workflows/arduino-modules.yaml'
       - 'scripts/set_build_vars.sh'
-  branches:
-    - '*'
-  tags:
-    - 'magdeck@*'
-    - 'tempdeck@*'
-    - 'thermocycler@*'
+    branches:
+      - '*'
+    tags:
+      - 'magdeck@*'
+      - 'tempdeck@*'
+      - 'thermocycler@*'
   workflow_dispatch:
 
 defaults:
