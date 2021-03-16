@@ -42,8 +42,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: 'actions/checkout@v2'
+        with:
+          fetch-depth: 0
       - uses: 'actions/cache@v2'
         with:
+          key: stm32-cross-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
+          restore-keys: stm32-cross-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
           path: './stm32-tools'
       - name: 'Configure'
         run: cmake --preset=stm32-cross .
@@ -59,11 +63,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: 'actions/checkout@v2'
+        with:
+          fetch-depth: 0
       - uses: 'actions/cache@v2'
         with:
           path: './stm32-tools'
-          key: stm32-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
-          restore-keys: stm32-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
+          key: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
+          restore-keys: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
       - name: 'Configure'
         run: cmake --preset=stm32-host .
       - name: 'Build'
