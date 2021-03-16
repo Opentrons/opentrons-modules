@@ -61,7 +61,13 @@ jobs:
     name: 'Host-Compile/Test'
     runs-on: 'ubuntu-20.04'
     timeout-minutes: 10
+    env:
+      CC: gcc-10
+      CXX: g++-10
     steps:
+      - run: |
+          sudo apt update
+          sudo apt install gcc-10 g++-10
       - uses: 'actions/checkout@v2'
         with:
           fetch-depth: 0

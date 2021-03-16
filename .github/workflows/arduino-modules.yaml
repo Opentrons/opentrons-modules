@@ -57,4 +57,4 @@ jobs:
           AWS_DEFAULT_REGION: us-east-2
         run: |
           . ./scripts/set_build_vars.sh
-          aws s3 sync --acl=public-read ./build-arduino/${RELEASE_LOCAL_DIR} s3://opentrons-modules-builds/${RELEASE_UPLOAD_DIR}
+          aws s3 sync --acl=public-read ${RELEASE_LOCAL_DIR} s3://opentrons-modules-builds/${RELEASE_UPLOAD_DIR}
