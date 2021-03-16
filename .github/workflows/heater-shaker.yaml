@@ -1,0 +1,69 @@
+name: 'Heater/shaker build/test'
+on:
+  pull_request:
+    paths:
+      - 'stm32-modules/heater-shaker'
+      - 'cmake/*'
+      - 'CMakeLists.txt'
+      - 'stm32-modules/CMakeLists.txt'
+      - 'CMakePresets.json'
+      - '.clang-format'
+      - '.clang-tidy'
+    paths_ignore:
+      - 'cmake/Arduino*'
+  push:
+      - 'stm32-modules/heater-shaker'
+      - 'cmake/*'
+      - 'CMakeLists.txt'
+      - 'stm32-modules/CMakeLists.txt'
+      - 'CMakePresets.json'
+      - '.clang-format'
+      - '.clang-tidy'
+      - '.github/workflows/heater-shaker.yaml'
+    paths_ignore:
+      - 'cmake/Arduino*'
+  branches:
+    - '*'
+  tags:
+    - 'heater-shaker@*'
+  workflow_dispatch:
+
+
+defaults:
+  run:
+    shell: bash
+
+
+jobs:
+  cross-compile-check:
+    name: 'Cross-Compile/Check'
+    runs-on: 'ubuntu-20.04'
+    timeout-minutes: 10
+    steps:
+      - uses: 'actions/checkout@v2'
+      - uses: 'actions/cache@v2'
+        with:
+          path: './stm32-tools'
+      - name: 'Configure'
+        run: cmake --preset=stm32-cross .
+      - name: 'Format'
+        run: cmake --build ./build-stm32-cross --target heater-shaker-format-ci
+      - name: 'Lint'
+        run: cmake --build ./build-stm32-cross --target heater-shaker-lint
+      - name: 'Build'
+        run: cmake --build ./build-stm32-cross --target heater-shaker
+  host-compile-test:
+    name: 'Host-Compile/Test'
+    runs-on: 'ubuntu-20.04'
+    timeout-minutes: 10
+    steps:
+      - uses: 'actions/checkout@v2'
+      - uses: 'actions/cache@v2'
+        with:
+          path: './stm32-tools'
+      - name: 'Configure'
+        run: cmake --preset=stm32-host .
+      - name: 'Build'
+        run: cmake --build ./build-stm32-host --target heater-shaker
+      - name: 'Test'
+        run: cmake --build ./build-stm32-host --target test

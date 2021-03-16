@@ -25,4 +25,5 @@ target_compile_options(heater-shaker
   -fno-rtti)
 target_link_libraries(heater-shaker Catch2::Catch2)
 
+catch_discover_tests(heater-shaker)
 add_build_and_test_target(heater-shaker)
