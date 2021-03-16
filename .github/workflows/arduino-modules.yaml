@@ -39,6 +39,8 @@ jobs:
             ./arduino_ide
             ${{ github.workspace }}/.arduino15
             ${{ github.workspace }}/Arduino
+          key: arduino-${{ secrets.MODULES_ARDUINO_CACHE_VERSION }}-${{ hashFiles('cmake/Arduino*') }}
+          restore-keys: arduino-${{ secrets.MODULES_ARDUINO_CACHE_VERSION }}-
       - name: 'CMake Configure'
         run: cmake --preset=arduino .
       - name: 'CMake Build'

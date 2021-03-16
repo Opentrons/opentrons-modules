@@ -62,6 +62,8 @@ jobs:
       - uses: 'actions/cache@v2'
         with:
           path: './stm32-tools'
+          key: stm32-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
+          restore-keys: stm32-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
       - name: 'Configure'
         run: cmake --preset=stm32-host .
       - name: 'Build'
