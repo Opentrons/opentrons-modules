@@ -1,7 +1,7 @@
 ---
-Checks:          'clang-diagnostic-*,clang-analyzer-*,-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,misc-*,modernize-*,readability-*,performance-*'
+Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,misc-*,modernize-*,readability-*,performance-*'
 WarningsAsErrors: '*'
-HeaderFilterRegex: ''
+HeaderFilterRegex: '.*/stm32-modules/.*hpp'
 AnalyzeTemporaryDtors: false
 FormatStyle:     none
 CheckOptions:

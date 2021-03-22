@@ -7,11 +7,17 @@ find_package(OpenOCD)
 
 # Add source files that should be checked by clang-tidy here
 set(HS_FW_LINTABLE_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
+  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_heater_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_motor_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_ui_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_comms_task.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_idle_timer_task.cpp)
 
 # Add source files that should NOT be checked by clang-tidy here
 set(HS_FW_NONLINTABLE_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/system_stm32f3xx.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/stm32f3xx_it.c
   ${CMAKE_CURRENT_SOURCE_DIR}/startup_stm32f303xe.s)
 
 add_executable(heater-shaker
@@ -39,6 +45,8 @@ set_target_properties(heater-shaker
   C_STANDARD_REQUIRED TRUE
   )
 
+target_include_directories(heater-shaker PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+
 target_compile_options(heater-shaker
   PUBLIC
   -Wall
@@ -58,6 +66,9 @@ target_include_directories(STM32F303BSP
   PUBLIC .)
 target_compile_definitions(STM32F303BSP
   PUBLIC STM32F303xE)
+set_target_properties(STM32F303BSP
+  PROPERTIES
+  FREERTOS_HEAP_IMPLEMENTATION "heap_5")
 
 # Fills in the template with values specified by the find_package(OpenOCD) call above
 configure_file(./gdbinit.template ./gdbinit)
@@ -84,9 +95,17 @@ find_package(Clang)
 # is produced when you build, and may change if you change compilation options, so in a way
 # it depends on a build. But we also want to be able to run this when there wasn't a successful
 # build, so there's no explicit dependency set.
+# This awful transform is required because the implicit includes that gcc knows how to find (e.g. its
+# own implementation of the STL) don't get added to the compile db that clang-tidy uses to figure out
+# include directories. So we can use the actually fairly cool transform command to turn them all into
+# extra-arg invocations and it'll figure it out.
+set(CLANG_EXTRA_ARGS ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
+# This helps with clang accepting what GCC accepts around the implementations of the message queue
+list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
 add_custom_target(heater-shaker-lint
   ALL
-  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} -p ${CMAKE_BINARY_DIR} ${HS_FW_LINTABLE_SRCS} --config=)
+  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${HS_FW_LINTABLE_SRCS} --config=)
 
 # Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an
 # arguable misuse of the concept) to the appropriate cross-gdb with

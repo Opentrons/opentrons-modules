@@ -1,0 +1,60 @@
+name: 'Arduino modules build/deploy'
+on:
+  pull_request:
+    paths:
+      - 'arduino-modules/**'
+      - 'cmake/Arduino*'
+      - 'CMakeLists.txt'
+  push:
+    paths:
+      - 'arduino-modules/**'
+      - 'cmake/Arduino*'
+      - 'cmake/VersionForProject.cmake'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - '.github/workflows/arduino-modules.yaml'
+      - 'scripts/set_build_vars.sh'
+    branches:
+      - '*'
+    tags:
+      - 'magdeck@*'
+      - 'tempdeck@*'
+      - 'thermocycler@*'
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-deploy-arduino:
+    name: 'arduino-modules configure'
+    runs-on: 'ubuntu-20.04'
+    timeout-minutes: 10
+    steps:
+      - uses: 'actions/checkout@v2'
+        with:
+          fetch-depth: 0
+      - uses: 'actions/cache@v2'
+        with:
+          path: |
+            ./arduino_ide
+            ${{ github.workspace }}/.arduino15
+            ${{ github.workspace }}/Arduino
+          key: arduino-${{ secrets.MODULES_ARDUINO_CACHE_VERSION }}-${{ hashFiles('cmake/Arduino*') }}
+          restore-keys: arduino-${{ secrets.MODULES_ARDUINO_CACHE_VERSION }}-
+      - name: 'CMake Configure'
+        run: cmake --preset=arduino .
+      - name: 'CMake Build'
+        run: cmake --build ./build-arduino --target zip-all
+      - name: 'Prep for install'
+        run: cmake --install ./build-arduino
+      - if: github.event_name != 'pull_request'
+        name: 'Deploy'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.S3_MODULES_DEPLOY_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_MODULES_DEPLOY_SECRET }}
+          AWS_DEFAULT_REGION: us-east-2
+        run: |
+          . ./scripts/set_build_vars.sh
+          aws s3 sync --acl=public-read ${RELEASE_LOCAL_DIR} s3://opentrons-modules-builds/${RELEASE_UPLOAD_DIR}
