@@ -18,7 +18,9 @@ set(HS_FW_LINTABLE_SRCS
 set(HS_FW_NONLINTABLE_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/system_stm32f3xx.c
   ${CMAKE_CURRENT_SOURCE_DIR}/stm32f3xx_it.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/startup_stm32f303xe.s)
+  ${CMAKE_CURRENT_SOURCE_DIR}/startup_stm32f303xe.s
+  ${CMAKE_CURRENT_SOURCE_DIR}/usbd_conf.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/usbd_desc.c)
 
 add_executable(heater-shaker
   ${HS_FW_LINTABLE_SRCS}

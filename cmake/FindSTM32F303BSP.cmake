@@ -46,10 +46,23 @@ set(freertos_source ${bsp_source}/Middlewares/Third_Party/FreeRTOS/Source)
 set(freertos_port_source ${freertos_source}/portable/GCC/ARM_CM4F)
 file(GLOB freertos_common_sources ${freertos_source}/*.c)
 
+set(usb_root ${bsp_source}/Middlewares/ST/STM32_USB_Device_Library/)
+set(usb_core_root ${usb_root}/Core)
+set(usb_cdc_root ${usb_root}/Class/CDC)
+set(usb_class_sources
+  ${usb_cdc_root}/Src/usbd_cdc.c)
+set(usb_core_sources
+  ${usb_core_root}/Src/usbd_core.c
+  ${usb_core_root}/Src/usbd_ctlreq.c
+  ${usb_core_root}/Src/usbd_ioreq.c)
+
+
 add_library(STM32F303BSP STATIC
   ${hal_driver_sources}
   ${freertos_common_sources}
   ${freertos_port_source}/port.c
+  ${usb_core_sources}
+  ${usb_class_sources}
   $<IF:$<BOOL:$<TARGET_PROPERTY:FREERTOS_HEAP_IMPLEMENTATION>>,${freertos_source}/portable/MemMang/$<TARGET_PROPERTY:FREERTOS_HEAP_IMPLEMENTATION>.c,"">)
 
 
@@ -59,6 +72,8 @@ target_include_directories(
          ${bsp_source}/Drivers/STM32F3xx_HAL_Driver/Inc/Legacy
          ${bsp_source}/Drivers/CMSIS/Device/ST/STM32F3xx/Include
          ${bsp_source}/Drivers/CMSIS/Core/Include
+         ${usb_core_root}/Inc
+         ${usb_cdc_root}/Inc
          ${freertos_source}/include
          ${freertos_port_source}
   )
