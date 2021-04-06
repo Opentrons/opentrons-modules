@@ -1,7 +1,8 @@
 # This CMakeLists.txt handles everything that is compiled only when
 # cross-compiling, like the board support packages and special options.
 
-find_package(STM32F303BSP)
+find_package(STM32F303BSP
+  COMPONENTS Drivers FreeRTOS USB)
 find_package(CrossGCC)
 find_package(OpenOCD)
 
@@ -24,8 +25,7 @@ set(HS_FW_NONLINTABLE_SRCS
 
 add_executable(heater-shaker
   ${HS_FW_LINTABLE_SRCS}
-  ${HS_FW_NONLINTABLE_SRCS}
-  )
+  ${HS_FW_NONLINTABLE_SRCS})
 
 target_link_options(heater-shaker
   PRIVATE
@@ -40,12 +40,10 @@ set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/main.cpp
   OBJECT_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/STM32F303RETx_FLASH.ld")
 
 set_target_properties(heater-shaker
-  PROPERTIES
-  CXX_STANDARD 20
-  CXX_STANDARD_REQUIRED TRUE
-  C_STANDARD 11
-  C_STANDARD_REQUIRED TRUE
-  )
+  PROPERTIES CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED TRUE
+             C_STANDARD 11
+             C_STANDARD_REQUIRED TRUE)
 
 target_include_directories(heater-shaker PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 
@@ -58,19 +56,30 @@ target_compile_options(heater-shaker
   $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
   $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>
   $<$<COMPILE_LANGUAGE:CXX>:-Wctor-dtor-privacy>
-  $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
-  )
+  $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>)
 
 
-target_link_libraries(heater-shaker STM32F303BSP)
+target_link_libraries(
+  heater-shaker
+  STM32F303BSP_Drivers STM32F303BSP_USB STM32F303BSP_FreeRTOS)
 
-target_include_directories(STM32F303BSP
+target_include_directories(STM32F303BSP_Drivers
   PUBLIC .)
-target_compile_definitions(STM32F303BSP
+target_include_directories(STM32F303BSP_USB
+  PUBLIC .)
+target_include_directories(STM32F303BSP_FreeRTOS
+  PUBLIC .)
+
+target_compile_definitions(STM32F303BSP_Drivers
   PUBLIC STM32F303xE)
-set_target_properties(STM32F303BSP
-  PROPERTIES
-  FREERTOS_HEAP_IMPLEMENTATION "heap_5")
+target_compile_definitions(STM32F303BSP_USB
+  PUBLIC STM32F303xE)
+target_compile_definitions(STM32F303BSP_FreeRTOS
+  PUBLIC STM32F303xE)
+
+set_target_properties(
+  STM32F303BSP_FreeRTOS
+  PROPERTIES FREERTOS_HEAP_IMPLEMENTATION "heap_5")
 
 # Fills in the template with values specified by the find_package(OpenOCD) call above
 configure_file(./gdbinit.template ./gdbinit)
