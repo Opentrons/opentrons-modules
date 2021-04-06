@@ -88,10 +88,11 @@ configure_file(./gdbinit.template ./gdbinit)
 
 
 find_program(ARM_GDB
-  arm-none-eabi-gdb
+  arm-none-eabi-gdb-py
   PATHS "${CrossGCC_BINDIR}"
   NO_DEFAULT_PATH
   REQUIRED)
+message(STATUS "Found svd exe at ${GDBSVDTools_gdbsvd_EXECUTABLE}")
 # Configure gdb (full path to cross-gdb set in the toolchain) to use the gdbinit in
 # this dir
 set_target_properties(heater-shaker
