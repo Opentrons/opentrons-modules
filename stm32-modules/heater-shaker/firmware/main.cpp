@@ -1,14 +1,12 @@
 
 
 #include "FreeRTOS.h"
-
 #include "firmware/freertos_comms_task.hpp"
 #include "firmware/freertos_heater_task.hpp"
 #include "firmware/freertos_message_queue.hpp"
 #include "firmware/freertos_motor_task.hpp"
 #include "firmware/freertos_ui_task.hpp"
 #include "heater-shaker/tasks.hpp"
-
 #include "system_stm32f3xx.h"
 
 auto main() -> int {
@@ -30,5 +28,3 @@ auto main() -> int {
     vTaskStartScheduler();
     return 0;
 }
-
-

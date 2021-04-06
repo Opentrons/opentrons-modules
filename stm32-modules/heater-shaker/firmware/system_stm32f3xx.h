@@ -7,7 +7,7 @@ extern "C" {
 void HardwareInit(void);
 
 #if defined(__cplusplus)
-} // extern "C"
+}  // extern "C"
 #endif
 
-#endif // __SYSTEM_STM32F3XX_H_
+#endif  // __SYSTEM_STM32F3XX_H_

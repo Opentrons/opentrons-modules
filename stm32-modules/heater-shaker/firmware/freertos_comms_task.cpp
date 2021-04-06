@@ -21,14 +21,12 @@
 #include "heater-shaker/host_comms_task.hpp"
 #include "heater-shaker/tasks.hpp"
 
-constexpr size_t MAX_USB_MESSAGE_SIZE_BYTES = 128;
-
 struct CommsTaskFreeRTOS {
     USBD_CDC_ItfTypeDef cdc_class_fops;
     USBD_HandleTypeDef usb_handle;
     USBD_CDC_LineCodingTypeDef linecoding;
-    std::array<uint8_t, MAX_USB_MESSAGE_SIZE_BYTES> rx_buf;
-    std::array<uint8_t, MAX_USB_MESSAGE_SIZE_BYTES> tx_buf;
+    std::array<uint8_t, CDC_DATA_HS_MAX_PACKET_SIZE * 4> rx_buf;
+    std::array<uint8_t, CDC_DATA_HS_MAX_PACKET_SIZE * 4> tx_buf;
 };
 
 static auto CDC_Init() -> int8_t;
@@ -87,7 +85,7 @@ static StaticTask_t
 
 // Actual function that runs in the task
 void run(void *param) {  // NOLINT(misc-unused-parameters)
-    static constexpr uint32_t delay_ticks = 100;
+    static constexpr uint32_t delay_ticks = 1;
     auto *task_pair = static_cast<decltype(_tasks) *>(param);
     auto *local_task = task_pair->second;
     USBD_Init(&local_task->usb_handle, &CDC_Desc, 0);
@@ -97,6 +95,7 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
     USBD_SetClassConfig(&local_task->usb_handle, 0);
     USBD_Start(&local_task->usb_handle);
     while (true) {
+        USBD_CDC_ReceivePacket(&local_task->usb_handle);
         vTaskDelay(delay_ticks);
     }
 }
@@ -115,8 +114,6 @@ auto start()
 
 static auto CDC_Init() -> int8_t {
     using namespace host_comms_control_task;
-    USBD_CDC_SetTxBuffer(&_local_task.usb_handle, _local_task.tx_buf.data(),
-                         _local_task.tx_buf.size());
     USBD_CDC_SetRxBuffer(&_local_task.usb_handle, _local_task.rx_buf.data());
     return (0);
 }
@@ -196,6 +193,9 @@ static auto CDC_Receive(uint8_t *Buf, uint32_t *Len) -> int8_t {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     std::copy(Buf, Buf + *Len,
               host_comms_control_task::_tasks.second->tx_buf.begin());
+    USBD_CDC_SetTxBuffer(&host_comms_control_task::_tasks.second->usb_handle,
+                         host_comms_control_task::_tasks.second->tx_buf.data(),
+                         *Len);
     return USBD_CDC_TransmitPacket(
         &host_comms_control_task::_tasks.second->usb_handle);
 }

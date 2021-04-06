@@ -115,7 +115,7 @@ void DebugMon_Handler(void)
  * SVC, PendSV, and SysTick are all handled by freertos
  */
 
-
+// USB handled by usbd_conf
 /**
   * @}
   */

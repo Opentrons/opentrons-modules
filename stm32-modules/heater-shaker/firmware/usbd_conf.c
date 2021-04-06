@@ -262,4 +262,8 @@ void USBD_LL_Delay(uint32_t Delay)
   vTaskDelay(Delay);
 }
 
+void USB_LP_CAN_RX0_IRQHandler(void) {
+  HAL_PCD_IRQHandler(&pcd_handle);
+}
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
