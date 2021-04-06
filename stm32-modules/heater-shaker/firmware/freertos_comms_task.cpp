@@ -92,11 +92,9 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
     auto *local_task = task_pair->second;
     USBD_Init(&local_task->usb_handle, &CDC_Desc, 0);
     USBD_RegisterClass(&local_task->usb_handle, USBD_CDC_CLASS);
-    USBD_CDC_SetTxBuffer(&local_task->usb_handle, local_task->tx_buf.data(),
-                         local_task->tx_buf.size());
-    USBD_CDC_SetRxBuffer(&local_task->usb_handle, local_task->rx_buf.data());
     USBD_CDC_RegisterInterface(&local_task->usb_handle,
                                &local_task->cdc_class_fops);
+    USBD_SetClassConfig(&local_task->usb_handle, 0);
     USBD_Start(&local_task->usb_handle);
     while (true) {
         vTaskDelay(delay_ticks);
@@ -116,9 +114,10 @@ auto start()
 }  // namespace host_comms_control_task
 
 static auto CDC_Init() -> int8_t {
-    /*
-       Add your initialization code here
-    */
+    using namespace host_comms_control_task;
+    USBD_CDC_SetTxBuffer(&_local_task.usb_handle, _local_task.tx_buf.data(),
+                         _local_task.tx_buf.size());
+    USBD_CDC_SetRxBuffer(&_local_task.usb_handle, _local_task.rx_buf.data());
     return (0);
 }
 

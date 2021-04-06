@@ -81,6 +81,8 @@ set_target_properties(
   STM32F303BSP_FreeRTOS
   PROPERTIES FREERTOS_HEAP_IMPLEMENTATION "heap_5")
 
+find_package(GDBSVDTools)
+
 # Fills in the template with values specified by the find_package(OpenOCD) call above
 configure_file(./gdbinit.template ./gdbinit)
 
