@@ -8,6 +8,7 @@ add_executable(heater-shaker
   task_builder.cpp
   test_gcode_parse.cpp
   test_gcodes.cpp
+  test_pid.cpp
   test_main.cpp)
 target_include_directories(heater-shaker PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 set_target_properties(heater-shaker
@@ -25,7 +26,7 @@ target_compile_options(heater-shaker
   -Wextra-semi
   -Wctor-dtor-privacy
   -fno-rtti)
-target_link_libraries(heater-shaker Catch2::Catch2)
+target_link_libraries(heater-shaker heater-shaker-core Catch2::Catch2)
 
 catch_discover_tests(heater-shaker)
 add_build_and_test_target(heater-shaker)
