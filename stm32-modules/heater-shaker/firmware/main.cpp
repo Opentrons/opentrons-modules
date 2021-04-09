@@ -1,3 +1,5 @@
+
+
 #include "FreeRTOS.h"
 #include "firmware/freertos_comms_task.hpp"
 #include "firmware/freertos_heater_task.hpp"
@@ -5,8 +7,10 @@
 #include "firmware/freertos_motor_task.hpp"
 #include "firmware/freertos_ui_task.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "system_stm32f3xx.h"
 
 auto main() -> int {
+    HardwareInit();
     auto ui = ui_control_task::start();
     auto heater = heater_control_task::start();
     auto motor = motor_control_task::start();

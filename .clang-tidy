@@ -1,5 +1,5 @@
 ---
-Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,misc-*,modernize-*,readability-*,performance-*'
+Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,misc-*,modernize-*,readability-*,-readability-magic-numbers,performance-*'
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*/stm32-modules/.*hpp'
 AnalyzeTemporaryDtors: false
@@ -80,7 +80,7 @@ CheckOptions:
   - key:             cppcoreguidelines-avoid-magic-numbers.IgnoredFloatingPointValues
     value:           '1.0;100.0;'
   - key:             cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues
-    value:           '1;2;3;4;'
+    value:           '1;2;3;4;8;16;24;32'
   - key:             cppcoreguidelines-explicit-virtual-functions.AllowOverrideAndFinal
     value:           '0'
   - key:             cppcoreguidelines-explicit-virtual-functions.FinalSpelling

@@ -1,4 +1,11 @@
-target extended-remote | ${OpenOCD_EXECUTABLE} -c "gdb_port pipe" -f ${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg
+python
+import os,sys
+sys.path.extend(["${GDBSVDTools_terminaltables_DIRECTORY}", "${GDBSVDTools_cmsissvd_DIRECTORY}", "${GDBSVDTools_six_DIRECTORY}"])
+end
+
+source ${GDBSVDTools_gdbsvd_EXECUTABLE}
+svd ${GDBSVDTools_cmsissvd_DIRECTORY}/cmsis_svd/data/STMicro/STM32F303xE.svd
+target extended-remote | ${OpenOCD_EXECUTABLE} -c "gdb_port pipe" -f ${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg 2>/dev/null
 set remote hardware-breakpoint-limit 6
 set remote hardware-watchpoint-limit 4
 mon reset
