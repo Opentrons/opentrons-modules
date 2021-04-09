@@ -6,6 +6,8 @@ include(AddBuildAndTestTarget)
 
 add_executable(heater-shaker
   task_builder.cpp
+  test_gcode_parse.cpp
+  test_gcodes.cpp
   test_main.cpp)
 target_include_directories(heater-shaker PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 set_target_properties(heater-shaker
