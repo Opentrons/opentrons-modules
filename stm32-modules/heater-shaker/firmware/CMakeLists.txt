@@ -61,7 +61,8 @@ target_compile_options(heater-shaker
 
 target_link_libraries(
   heater-shaker
-  STM32F303BSP_Drivers STM32F303BSP_USB STM32F303BSP_FreeRTOS)
+  STM32F303BSP_Drivers STM32F303BSP_USB STM32F303BSP_FreeRTOS heater-shaker-core)
+
 
 target_include_directories(STM32F303BSP_Drivers
   PUBLIC .)
@@ -117,9 +118,10 @@ set(CLANG_EXTRA_ARGS ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
 # This helps with clang accepting what GCC accepts around the implementations of the message queue
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
+get_target_property(core_sources heater-shaker-core SOURCES)
 add_custom_target(heater-shaker-lint
   ALL
-  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${HS_FW_LINTABLE_SRCS} --config=)
+  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${HS_FW_LINTABLE_SRCS} ${core_sources} --config=)
 
 # Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an
 # arguable misuse of the concept) to the appropriate cross-gdb with
