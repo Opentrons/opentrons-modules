@@ -1,0 +1,19 @@
+{
+    "version": 1,
+    "cmakeMinimumRequired": {
+      "major": 3,
+      "minor": 19,
+      "patch": 0
+    },
+    "configurePresets": [
+      {
+        "name": "stm32-host-gcc",
+        "inherits": "stm32-host",
+        "displayName": "STM32 module host builds forcing g++",
+        "cacheVariables": {
+            "CMAKE_C_COMPILER": "gcc-10",
+            "CMAKE_CXX_COMPILER": "g++-10"
+        }
+      }
+    ]
+}
