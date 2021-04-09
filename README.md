@@ -59,6 +59,16 @@ For the STM32 modules, if you configure the host toolchain: `cmake --preset=stm3
 
 Individual tests may set their own check targets; for instance, you can build and run only the heater-shaker tests by running `cmake --build ./build-stm32-host --target heater-shaker-build-and-test`.
 
+### Custom Configuration
+
+If you are running on macOS, you might run into this error: 
+
+```
+error: 'concepts' file not found
+```
+
+This means that the clang verison on your system does not support Concepts. You will need to do `brew install gcc@10` and copy the `examples/CMakeUserPresets.json` to the root directory. You can then specify this custom configration by using `cmake --preset=stm32-host-gcc`.
+
 ## Contributing
 
 When writing or changing the cmake build system, please follow [modern CMake](https://cliutils.gitlab.io/modern-cmake) practices. Use targets; use generator expressions to set properties on those targets rather than setting ``CMAKE_DEBUG_FLAGS``; write CMake like the programming language it is.
