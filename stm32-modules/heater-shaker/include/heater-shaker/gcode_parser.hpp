@@ -3,11 +3,10 @@
 */
 #pragma once
 
-#include <stdio.h>
-
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <cstdio>
 #include <iterator>
 #include <optional>
 #include <string>
@@ -24,7 +23,7 @@ namespace gcode {
 template <typename Input, typename Limit>
 requires std::forward_iterator<Input>&&
     std::sized_sentinel_for<Limit, Input> auto
-    gobble_whitespace(const Input& start_from, const Limit stop_at) -> Input {
+    gobble_whitespace(const Input& start_from, Limit stop_at) -> Input {
     // this has to be a lambda because std::isspace's prototype does not
     // interact well with template argument deduction, sadly
     return std::find_if_not(
@@ -42,7 +41,7 @@ template <typename Input, typename Limit, typename PrefixArray>
 requires std::forward_iterator<Input>&& std::sized_sentinel_for<Limit, Input>&&
     std::convertible_to<std::iter_value_t<Input>,
                         typename PrefixArray::value_type> auto
-    prefix_matches(const Input& start_from, const Limit stop_at,
+    prefix_matches(const Input& start_from, Limit stop_at,
                    const PrefixArray& prefix) -> Input {
     if (static_cast<size_t>(stop_at - start_from) <= prefix.size()) {
         return start_from;
@@ -73,7 +72,7 @@ template <typename ValueType, typename Input, typename Limit,
           size_t working_buf_size = 32>
 requires std::forward_iterator<Input>&& std::sized_sentinel_for<Limit, Input>&&
     std::integral<ValueType> auto
-    parse_value(const Input& start_from, const Limit stop_at)
+    parse_value(const Input& start_from, Limit stop_at)
         -> std::pair<std::optional<ValueType>, Input> {
     ValueType value = 0;
     Input working = start_from;
@@ -101,15 +100,16 @@ template <typename ValueType, typename Input, typename Limit,
           size_t working_buf_size = 32>
 requires std::forward_iterator<Input>&& std::sized_sentinel_for<Limit, Input>&&
     std::floating_point<ValueType> auto
-    parse_value(const Input& start_from, const Limit stop_at)
+    parse_value(const Input& start_from, Limit stop_at)
         -> std::pair<std::optional<ValueType>, Input> {
     ValueType value = 0;
-    std::array<std::iter_value_t<Input>, working_buf_size> buf;
+    std::array<std::iter_value_t<Input>, working_buf_size> buf{};
     std::copy(start_from, std::min(stop_at, start_from + working_buf_size),
               buf.begin());
     buf.at(std::min(buf.size() - 1,
                     static_cast<size_t>(stop_at - start_from))) = 0;
     int distance = 0;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
     int worked = sscanf(&(*start_from), "%f%n", &value, &distance);
     if (worked != 1) {
         return std::make_pair(std::optional<ValueType>(), start_from);
@@ -124,7 +124,8 @@ requires std::forward_iterator<Input>&& std::sized_sentinel_for<Limit, Input>&&
 template <typename... GCodes>
 class GroupParser {
   public:
-    using ParseResult = std::variant<std::monostate, GCodes...>;
+    struct ParseError {};
+    using ParseResult = std::variant<std::monostate, ParseError, GCodes...>;
 
     /*
      * gcode::parse_available is the main interface to the parser. It is capable
@@ -166,7 +167,7 @@ class GroupParser {
     template <typename Input, typename Limit>
     requires std::forward_iterator<Input>&&
         std::sized_sentinel_for<Limit, Input> auto
-        parse_available(Input start_from, const Limit stop_at)
+        parse_available(Input start_from, Limit stop_at)
             -> std::pair<ParseResult, Input> {
         // Take out all whitespace at the head of the string
         start_from = gobble_whitespace(start_from, stop_at);
@@ -212,17 +213,24 @@ class GroupParser {
             // After the fold completes, either result has not been filled in
             // and still holds the monostate it was created with, in which case
             // parsing has failed, which - given that this function requires a
-            // fully terminated string - means the string does not hold valid
-            // gcode and thus no further parsing should be done, so we can
-            // return the end iterator
-            return std::make_pair(result, stop_at);
-        } else {
-            // or result has been filled in, we have a gcode to return, and we
-            // need to use start_from, which has been modified by whichever
-            // lambda invocation it was that succeeded and now points to the
-            // location in the input at which the next parse run should start.
-            return std::make_pair(result, start_from);
+            // fully terminated string - means that either
+            // a) only whitespace was left between start_from and stop_at, in
+            // which case we're just done or b) things other than whitespace
+            // were between start_from and stop_at, in which case whatever was
+            // in there was invalid. Either way we're done and should return the
+            // end iterator, but we need to decide whether to return a monostate
+            // or an error gcode and thus no further parsing should be done, so
+            // we can return the end iterator
+            if (gobble_whitespace(start_from, stop_at) == stop_at) {
+                return std::make_pair(ParseResult(std::monostate()), stop_at);
+            }
+            return std::make_pair(ParseResult(ParseError()), stop_at);
         }
+        // or result has been filled in, we have a gcode to return, and we
+        // need to use start_from, which has been modified by whichever
+        // lambda invocation it was that succeeded and now points to the
+        // location in the input at which the next parse run should start.
+        return std::make_pair(result, start_from);
     }
 };
 }  // namespace gcode

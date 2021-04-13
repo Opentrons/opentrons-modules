@@ -151,9 +151,10 @@ SCENARIO("GroupParser handles gcodes", "[gcode]") {
                 auto begin = all_invalid.cbegin();
                 auto first_result =
                     parser.parse_available(begin, all_invalid.cend());
-                THEN("the result is empty and parsing is done") {
-                    REQUIRE(std::holds_alternative<std::monostate>(
-                        first_result.first));
+                THEN("the result is an error and parsing is done") {
+                    REQUIRE(
+                        std::holds_alternative<decltype(parser)::ParseError>(
+                            first_result.first));
                     REQUIRE(first_result.second == all_invalid.cend());
                 }
             }
