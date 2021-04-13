@@ -67,7 +67,7 @@ If you are running on macOS, you might run into this error:
 error: 'concepts' file not found
 ```
 
-This means that the clang verison on your system does not support Concepts. You will need to do `brew install gcc@10` and copy the `examples/CMakeUserPresets.json` to the root directory. You can then specify this custom configration by using `cmake --preset=stm32-host-gcc`.
+This means that the clang version on your system does not support Concepts. You will need to do `brew install gcc@10` and copy the `examples/CMakeUserPresets.json` to the root directory. You can then specify this custom configration by using `cmake --preset=stm32-host-gcc`.
 
 ## Contributing
 
