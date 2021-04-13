@@ -10,6 +10,7 @@ add_executable(heater-shaker
   test_gcodes.cpp
   test_pid.cpp
   test_double_buffer.cpp
+  test_ack_cache.cpp
   test_errors.cpp
   test_main.cpp)
 target_include_directories(heater-shaker PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
