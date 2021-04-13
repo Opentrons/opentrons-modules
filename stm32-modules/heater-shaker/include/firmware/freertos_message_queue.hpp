@@ -46,8 +46,23 @@ class FreeRTOSMessageQueue {
         }
         return sent;
     }
-    [[nodiscard]] auto try_recv(Message* message) -> bool {
-        return xQueueReceive(queue, message, 0) == pdTRUE;
+
+    [[nodiscard]] auto try_send_from_isr(const Message& message) -> bool {
+        BaseType_t higher_woken = pdFALSE;
+        auto sent = xQueueSendFromISR(queue, &message, &higher_woken);
+        portYIELD_FROM_ISR(  // NOLINT(cppcoreguidelines-pro-type-cstyle-cast)
+            higher_woken);
+        return sent;
+    }
+    [[nodiscard]] auto try_recv(Message* message, uint32_t timeout_ticks = 0)
+        -> bool {
+        return xQueueReceive(queue, message, timeout_ticks) == pdTRUE;
+    }
+    auto recv(Message* message) -> void {
+        BaseType_t got_message = pdFALSE;
+        while (got_message == pdFALSE) {
+            got_message = xQueueReceive(queue, message, portMAX_DELAY);
+        }
     }
     [[nodiscard]] auto has_message() const -> bool {
         return uxQueueMessagesWaiting(queue) != 0;

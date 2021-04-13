@@ -19,10 +19,17 @@ concept MessageQueue = requires(MQ mq, MessageType mt, const MQ cmq,
     ->std::same_as<bool>;
     { mq.try_send(cmt) }
     ->std::same_as<bool>;
+    // Queues must have a receive that takes a message instance by ptr
+    {mq.recv(&mt)};
     // Queues must have a try-receive that takes a message instance by ptr for
     // filling in.
     { mq.try_recv(&mt) }
     ->std::same_as<bool>;
+    // Queues must have a try-receive that takes a message instance by ptr for
+    // filling in, and takes a timeout
+    { mq.try_recv(&mt, 8) }
+    ->std::same_as<bool>;
+
     // Queues must have a const method to check whether there are messages.
     { cmq.has_message() }
     ->std::same_as<bool>;
