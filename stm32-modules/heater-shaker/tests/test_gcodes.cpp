@@ -124,6 +124,29 @@ SCENARIO("SetRPM parser works") {
             }
         }
     }
+
+    GIVEN("a response buffer large enough for the response") {
+        std::string response_buf(64, 'c');
+        WHEN("filling the response") {
+            auto written = gcode::SetRPM::write_response_into(
+                response_buf.data(), response_buf.size());
+            THEN("the response should be filled") {
+                REQUIRE_THAT(response_buf,
+                             Catch::Matchers::StartsWith("M3 OK\n"));
+                REQUIRE(written == 6);
+            }
+        }
+    }
+
+    GIVEN("a response buffer not large enough for the response") {
+        std::string response_buf(10, 'c');
+        auto written =
+            gcode::SetRPM::write_response_into(response_buf.data(), 3);
+        THEN("the response should be filled only up to its size") {
+            REQUIRE_THAT(response_buf, Catch::Matchers::Equals("M3 ccccccc"));
+            REQUIRE(written == 3);
+        }
+    }
 }
 
 SCENARIO("SetTemperature parser works") {
@@ -249,6 +272,30 @@ SCENARIO("SetTemperature parser works") {
             }
         }
     }
+
+    GIVEN("a response buffer large enough for the response") {
+        std::string buffer(64, 'c');
+        WHEN("filling response") {
+            auto written = gcode::SetTemperature::write_response_into(
+                buffer.data(), buffer.size());
+            THEN("the response should be written") {
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith("M104 OK\n"));
+                REQUIRE(written == 8);
+            }
+        }
+    }
+
+    GIVEN("a response buffer not large enough for the response") {
+        std::string buffer(10, 'c');
+        WHEN("filling response") {
+            auto written =
+                gcode::SetTemperature::write_response_into(buffer.data(), 5);
+            THEN("the response should be written only up to the size") {
+                REQUIRE_THAT(buffer, Catch::Matchers::Equals("M104 ccccc"));
+                REQUIRE(written == 5);
+            }
+        }
+    }
 }
 
 SCENARIO("GetTemperature parser works") {
@@ -302,6 +349,32 @@ SCENARIO("GetTemperature parser works") {
             }
         }
     }
+
+    GIVEN("a response buffer large enough for the formatted response") {
+        std::string buffer(64, 'c');
+        WHEN("filling response") {
+            auto written = gcode::GetTemperature::write_response_into(
+                buffer.data(), buffer.size(), 10, 25);
+            THEN("the response should be written in full") {
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::StartsWith("M105 C10 T25 OK\n"));
+                REQUIRE(written == 16);
+            }
+        }
+    }
+
+    GIVEN("a response buffer not large enough for the formatted response") {
+        std::string buffer(16, 'c');
+        WHEN("filling response") {
+            auto written = gcode::GetTemperature::write_response_into(
+                buffer.data(), 7, 10, 25);
+            THEN("the response should write only up to the available space") {
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::Equals("M105 Ccccccccccc"));
+                REQUIRE(written == 7);
+            }
+        }
+    }
 }
 
 SCENARIO("GetRPM parser works") {
@@ -352,6 +425,32 @@ SCENARIO("GetRPM parser works") {
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin() + 4);
+            }
+        }
+    }
+
+    GIVEN("a response buffer large enough for the formatted response") {
+        std::string buffer(64, 'c');
+        WHEN("filling response") {
+            auto written = gcode::GetRPM::write_response_into(
+                buffer.data(), buffer.size(), 10, 25);
+            THEN("the response should be written in full") {
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::StartsWith("M123 C10 T25 OK\n"));
+                REQUIRE(written == 16);
+            }
+        }
+    }
+
+    GIVEN("a response buffer not large enough for the formatted response") {
+        std::string buffer(16, 'c');
+        WHEN("filling response") {
+            auto written =
+                gcode::GetRPM::write_response_into(buffer.data(), 7, 10, 25);
+            THEN("the response should write only up to the available space") {
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::Equals("M123 Ccccccccccc"));
+                REQUIRE(written == 7);
             }
         }
     }
