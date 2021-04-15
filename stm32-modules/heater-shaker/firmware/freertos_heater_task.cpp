@@ -36,12 +36,10 @@ static FreeRTOSMessageQueue<heater_task::Message>
 static auto _task = heater_task::HeaterTask(_heater_queue);
 
 // Actual function that runs the task
-void run(void *param) {  // NOLINT(misc-unused-parameters)
-    static constexpr uint32_t delay_ticks = 100;
+void run(void *param) {
     auto *task_class = static_cast<decltype(_task) *>(param);
-    static_cast<void>(task_class);
     while (true) {
-        vTaskDelay(delay_ticks);
+        task_class->run_once();
     }
 }
 
