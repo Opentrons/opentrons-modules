@@ -142,16 +142,18 @@ auto start()
                                      &_tasks, 1, stack.data(), &data);
     _comms_queue.provide_handle(handle);
     return tasks::Task<TaskHandle_t, decltype(_top_task)>{.handle = handle,
-                                                          .task = _top_task};
+                                                          .task = &_top_task};
 }
 }  // namespace host_comms_control_task
 
 static auto CDC_Init() -> int8_t {
     using namespace host_comms_control_task;
+    _local_task.committed_rx_buf_ptr = _local_task.rx_buf.committed()->data();
     USBD_CDC_SetRxBuffer(
         &_local_task.usb_handle,
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-        reinterpret_cast<uint8_t *>(_local_task.rx_buf.committed()->data()));
+        reinterpret_cast<uint8_t *>(_local_task.committed_rx_buf_ptr));
+    USBD_CDC_ReceivePacket(&_local_task.usb_handle);
     return (0);
 }
 

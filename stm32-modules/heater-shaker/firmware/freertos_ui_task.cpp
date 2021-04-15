@@ -50,6 +50,6 @@ auto start()
                                      stack.data(), &data);
     _ui_queue.provide_handle(handle);
     return tasks::Task<TaskHandle_t, decltype(_task)>{.handle = handle,
-                                                      .task = _task};
+                                                      .task = &_task};
 }
 }  // namespace ui_control_task

@@ -54,7 +54,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     auto visit_message(const messages::SetRPMMessage& msg) -> void {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        static_cast<void>(task_registry->comms.get_message_queue().try_send(
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
 
@@ -65,7 +65,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
                 1050,  // NOLINT(cppcoreguidelines-avoid-magic-numbers)
             .setpoint_rpm =
                 3500};  // NOLINT(cppcoreguidelines-avoid-magic-numbers)
-        static_cast<void>(task_registry->comms.get_message_queue().try_send(
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
     Queue& message_queue;

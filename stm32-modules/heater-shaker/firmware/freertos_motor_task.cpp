@@ -50,7 +50,7 @@ auto start()
 
     _motor_queue.provide_handle(handle);
     return tasks::Task<TaskHandle_t, decltype(_task)>{.handle = handle,
-                                                      .task = _task};
+                                                      .task = &_task};
 }
 
 }  // namespace motor_control_task

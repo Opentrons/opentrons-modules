@@ -50,6 +50,6 @@ auto start() -> tasks::Task<TaskHandle_t,
                                      &_task, 1, _stack.data(), &_data);
     _heater_queue.provide_handle(handle);
     return tasks::Task<TaskHandle_t, decltype(_task)>{.handle = handle,
-                                                      .task = _task};
+                                                      .task = &_task};
 }
 }  // namespace heater_control_task

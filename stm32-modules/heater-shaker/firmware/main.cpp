@@ -9,22 +9,16 @@
 #include "heater-shaker/tasks.hpp"
 #include "system_stm32f3xx.h"
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+tasks::Tasks<FreeRTOSMessageQueue> tasks_aggregator;
+
 auto main() -> int {
     HardwareInit();
     auto ui = ui_control_task::start();
     auto heater = heater_control_task::start();
     auto motor = motor_control_task::start();
     auto comms = host_comms_control_task::start();
-    tasks::Tasks<FreeRTOSMessageQueue> tasks = {
-        .heater = heater.task,
-        .comms = comms.task,
-        .motor = motor.task,
-        .ui = ui.task,
-    };
-    tasks.heater.provide_tasks(&tasks);
-    tasks.comms.provide_tasks(&tasks);
-    tasks.motor.provide_tasks(&tasks);
-    tasks.ui.provide_tasks(&tasks);
+    tasks_aggregator.initialize(heater.task, comms.task, motor.task, ui.task);
     vTaskStartScheduler();
     return 0;
 }

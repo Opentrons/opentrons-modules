@@ -68,7 +68,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     auto visit_message(const messages::SetTemperatureMessage& msg) -> void {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        static_cast<void>(task_registry->comms.get_message_queue().try_send(
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
 
@@ -79,7 +79,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                 99,  // NOLINT(cppcoreguidelines-avoid-magic-numbers)
             .setpoint_temperature =
                 48};  // NOLINT(cppcoreguidelines-avoid-magic-numbers)
-        static_cast<void>(task_registry->comms.get_message_queue().try_send(
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
     Queue& message_queue;

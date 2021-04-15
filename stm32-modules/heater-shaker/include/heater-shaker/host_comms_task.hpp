@@ -279,7 +279,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
         }
         auto message =
             messages::SetRPMMessage{.id = id, .target_rpm = gcode.rpm};
-        if (!task_registry->motor.get_message_queue().try_send(
+        if (!task_registry->motor->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto written = errors::write_into<errors::InternalQueueFull>(
                 tx_into, tx_length_available);
@@ -298,7 +298,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
                                       tx_into, tx_length_available));
         }
         auto message = messages::GetRPMMessage{.id = id};
-        if (!task_registry->motor.get_message_queue().try_send(
+        if (!task_registry->motor->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto written = errors::write_into<errors::InternalQueueFull>(
                 tx_into, tx_length_available);
@@ -319,7 +319,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
         auto message = messages::SetTemperatureMessage{
             .id = id,
             .target_temperature = static_cast<uint32_t>(gcode.temperature)};
-        if (!task_registry->heater.get_message_queue().try_send(
+        if (!task_registry->heater->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto written = errors::write_into<errors::InternalQueueFull>(
                 tx_into, tx_length_available);
@@ -338,7 +338,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
                                       tx_into, tx_length_available));
         }
         auto message = messages::GetTemperatureMessage{.id = id};
-        if (!task_registry->heater.get_message_queue().try_send(
+        if (!task_registry->heater->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto written = errors::write_into<errors::InternalQueueFull>(
                 tx_into, tx_length_available);
