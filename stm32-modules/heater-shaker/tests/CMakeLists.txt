@@ -15,6 +15,7 @@ add_executable(heater-shaker
   test_motor_task.cpp
   test_ack_cache.cpp
   test_errors.cpp
+  test_message_passing.cpp
   test_main.cpp)
 target_include_directories(heater-shaker PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 set_target_properties(heater-shaker
