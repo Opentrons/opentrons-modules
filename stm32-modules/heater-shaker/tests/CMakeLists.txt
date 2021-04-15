@@ -11,6 +11,7 @@ add_executable(heater-shaker
   test_pid.cpp
   test_double_buffer.cpp
   test_host_comms_task.cpp
+  test_motor_task.cpp
   test_ack_cache.cpp
   test_errors.cpp
   test_main.cpp)

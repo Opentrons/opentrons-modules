@@ -35,10 +35,10 @@ StaticTask_t
     data;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 // Actual function that runs inside the task
-void run(void *param) {  // NOLINT(misc-unused-parameters)
-    static constexpr uint32_t delay_ticks = 100;
+void run(void *param) {
+    auto *task_class = static_cast<decltype(_task) *>(param);
     while (true) {
-        vTaskDelay(delay_ticks);
+        task_class->run_once();
     }
 }
 
