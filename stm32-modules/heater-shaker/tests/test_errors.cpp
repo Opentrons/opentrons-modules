@@ -8,15 +8,16 @@ SCENARIO("testing error writing") {
     GIVEN("a buffer long enough for an error") {
         auto buffer = std::string(64, 'c');
         WHEN("writing an error into it") {
-            auto written = errors::write_into<errors::USBTXBufOverrun>(
-                buffer.data(), buffer.size());
+            auto written =
+                errors::write_into(buffer.begin(), buffer.end(),
+                                   errors::ErrorCode::USB_TX_OVERRUN);
             THEN("the error is written into the buffer") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::StartsWith(
-                                 errors::USBTXBufOverrun::errorstring()));
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
+                                         "ERR001:tx buffer overrun\n"));
                 AND_THEN("the length was appropriately returned") {
                     REQUIRE(written ==
-                            strlen(errors::USBTXBufOverrun::errorstring()));
+                            buffer.begin() +
+                                strlen("ERR001:tx buffer overrun\n"));
                 }
             }
         }
@@ -24,14 +25,17 @@ SCENARIO("testing error writing") {
     GIVEN("a buffer too small for an error") {
         auto buffer = std::string(2, 'c');
         WHEN("trying to write an error into it") {
-            auto written = errors::write_into<errors::InternalQueueFull>(
-                buffer.data(), buffer.size());
+            auto written =
+                errors::write_into(buffer.begin(), buffer.end(),
+                                   errors::ErrorCode::INTERNAL_QUEUE_FULL);
             THEN(
                 "the error written into only the space available in the "
                 "buffer") {
                 REQUIRE_THAT(buffer,
                              Catch::Matchers::Equals(std::string("ER")));
-                AND_THEN("the amount written is 0") { REQUIRE(written == 2); }
+                AND_THEN("the amount written is 0") {
+                    REQUIRE(written == buffer.begin() + 2);
+                }
             }
         }
     }

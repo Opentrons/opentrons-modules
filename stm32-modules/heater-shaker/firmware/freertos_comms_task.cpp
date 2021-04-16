@@ -118,17 +118,17 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
     USBD_Start(&local_task->usb_handle);
     local_task->committed_rx_buf_ptr = local_task->rx_buf.committed()->data();
     while (true) {
-        auto length_to_xmit =
-            top_task->run_once(local_task->tx_buf.accessible()->data(),
-                               local_task->tx_buf.accessible()->size());
-        if (length_to_xmit != 0) {
+        char *tx_end =
+            top_task->run_once(local_task->tx_buf.accessible()->begin(),
+                               local_task->tx_buf.accessible()->end());
+        if (tx_end != local_task->tx_buf.accessible()->data()) {
             local_task->tx_buf.swap();
             USBD_CDC_SetTxBuffer(
                 &_local_task.usb_handle,
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
                 reinterpret_cast<uint8_t *>(
                     local_task->tx_buf.committed()->data()),
-                length_to_xmit);
+                tx_end - local_task->tx_buf.committed()->data());
             USBD_CDC_TransmitPacket(&_local_task.usb_handle);
         }
     }
@@ -256,6 +256,10 @@ static auto CDC_Control(uint8_t cmd, uint8_t *pbuf, uint16_t length) -> int8_t {
 **     - if, after the message we just received, there's enough space in the
 **       buffer, we don't swap the buffers, but advance our read pointer to just
 **       after the message we received
+**
+** Just about every line of this function has a NOLINT annotation. This is bad.
+** But the goal is that this is one of a very few functions like this, and
+** changes to this function require extra scrutiny and testing.
 */
 
 // NOLINTNEXTLINE(readability-non-const-parameter)
@@ -281,11 +285,10 @@ static auto CDC_Receive(uint8_t *Buf, uint32_t *Len) -> int8_t {
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
                 .buffer = reinterpret_cast<const char *>(
                     _local_task.rx_buf.committed()->data()),
-                .length = static_cast<size_t>(
-                    *Len +
-                    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-                    (Buf - reinterpret_cast<uint8_t *>(
-                               _local_task.rx_buf.committed()->data())))});
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+                .limit = reinterpret_cast<const char *>(
+                    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                    Buf + *Len)});
         static_cast<void>(
             _top_task.get_message_queue().try_send_from_isr(message));
         _local_task.rx_buf.swap();

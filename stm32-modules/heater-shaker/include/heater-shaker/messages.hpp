@@ -79,7 +79,7 @@ struct AcknowledgePrevious {
 
 struct IncomingMessageFromHost {
     const char* buffer;
-    size_t length;
+    const char* limit;
 };
 
 using HeaterMessage = ::std::variant<std::monostate, SetTemperatureMessage,

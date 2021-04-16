@@ -13,24 +13,24 @@ SCENARIO("usb message parsing") {
         WHEN("calling run_once() with nothing in the queue") {
             THEN("the task should call recv(), which should throw") {
                 REQUIRE_THROWS(tasks->get_host_comms_task().run_once(
-                    tx_buf.data(), tx_buf.size()));
+                    tx_buf.begin(), tx_buf.end()));
             }
         }
         WHEN("calling run_once() with an empty gcode message") {
             auto message_text = std::string("\n");
             auto message_obj =
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
-                    message_text.data(), message_text.size()));
+                    &*message_text.begin(), &*message_text.end()));
             tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
             THEN("the task should call recv() and get the message") {
                 REQUIRE_NOTHROW(tasks->get_host_comms_task().run_once(
-                    tx_buf.data(), tx_buf.size()));
+                    tx_buf.begin(), tx_buf.end()));
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
             }
             THEN("the task writes nothing to the transmit buffer") {
                 auto written = tasks->get_host_comms_task().run_once(
-                    tx_buf.data(), tx_buf.size());
-                REQUIRE(written == 0);
+                    tx_buf.begin(), tx_buf.end());
+                REQUIRE(written == tx_buf.begin());
                 REQUIRE_THAT(tx_buf,
                              Catch::Matchers::Equals(std::string(128, 'c')));
             }
@@ -41,30 +41,33 @@ SCENARIO("usb message parsing") {
             auto message_text = std::string("aslkdhasd\n");
             auto message_obj =
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
-                    message_text.data(), message_text.size()));
+                    &*message_text.begin(), &*message_text.end()));
             tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
-            std::string small_buf(errors::USBTXBufOverrun::errorstring());
+            std::string small_buf(64, 'c');
+            auto ends_at =
+                errors::write_into(small_buf.begin(), small_buf.end(),
+                                   errors::ErrorCode::USB_TX_OVERRUN);
+            small_buf.resize(ends_at - small_buf.begin() - 5);
             auto written = tasks->get_host_comms_task().run_once(
-                small_buf.data(), small_buf.size());
+                small_buf.begin(), small_buf.end());
             REQUIRE_THAT(small_buf,
-                         Catch::Matchers::Equals(
-                             errors::USBTXBufOverrun::errorstring()));
-            REQUIRE(written == strlen(errors::USBTXBufOverrun::errorstring()));
+                         Catch::Matchers::Equals("ERR001:tx buffer ove"));
+            REQUIRE(written ==
+                    small_buf.begin() + strlen("ERR001:tx buffer ove"));
         }
         WHEN("calling run_once() with a malformed gcode message") {
             auto message_text = std::string("aosjhdakljshd\n");
             auto message_obj =
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
-                    message_text.data(), message_text.size()));
+                    &*message_text.begin(), &*message_text.end()));
             tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
             THEN("the task writes an error to the transmit buffer") {
                 auto written = tasks->get_host_comms_task().run_once(
-                    tx_buf.data(), tx_buf.size());
+                    tx_buf.begin(), tx_buf.end());
+                REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
+                                         "ERR003:unhandled gcode\n"));
                 REQUIRE(written ==
-                        strlen(errors::UnhandledGCode::errorstring()));
-                REQUIRE_THAT(tx_buf,
-                             Catch::Matchers::StartsWith(
-                                 errors::UnhandledGCode::errorstring()));
+                        tx_buf.begin() + strlen("ERR003:unhandled gcode\n"));
             }
         }
     }
@@ -78,10 +81,10 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
             auto message_text = std::string("M104 S100\n");
             auto message_obj =
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
-                    message_text.data(), message_text.size()));
+                    &*message_text.begin(), &*message_text.end()));
             tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
             auto written_firstpass = tasks->get_host_comms_task().run_once(
-                tx_buf.data(), tx_buf.size());
+                tx_buf.begin(), tx_buf.end());
             THEN(
                 "the task should pass the message on to the heater and not "
                 "immediately ack") {
@@ -92,7 +95,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     std::get<messages::SetTemperatureMessage>(heater_message);
                 tasks->get_heater_queue().backing_deque.pop_front();
                 REQUIRE(set_temp_message.target_temperature == 100);
-                REQUIRE(written_firstpass == 0);
+                REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
                 AND_WHEN("sending a good response back to the comms task") {
                     auto response = messages::HostCommsMessage(
@@ -101,12 +104,13 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
-                        tasks->get_host_comms_task().run_once(tx_buf.data(),
-                                                              tx_buf.size());
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
                     THEN("the task should ack the previous message") {
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith("M104 OK\n"));
-                        REQUIRE(written_secondpass == 8);
+                        REQUIRE(written_secondpass ==
+                                tx_buf.begin() + strlen("M104 OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -118,11 +122,11 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
-                        tasks->get_host_comms_task().run_once(tx_buf.data(),
-                                                              tx_buf.size());
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
                     THEN(
                         "the task should pull the message and print an error") {
-                        REQUIRE(written_secondpass > 0);
+                        REQUIRE(written_secondpass > tx_buf.begin());
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
@@ -135,10 +139,10 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
             auto message_text = std::string("M3 S3000\n");
             auto message_obj =
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
-                    message_text.data(), message_text.size()));
+                    &*message_text.begin(), &*message_text.end()));
             tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
             auto written_firstpass = tasks->get_host_comms_task().run_once(
-                tx_buf.data(), tx_buf.size());
+                tx_buf.begin(), tx_buf.end());
             THEN(
                 "the task should pass the message on to the motor and not "
                 "immediately ack") {
@@ -149,7 +153,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     std::get<messages::SetRPMMessage>(motor_message);
                 tasks->get_motor_queue().backing_deque.pop_front();
                 REQUIRE(set_rpm_message.target_rpm == 3000);
-                REQUIRE(written_firstpass == 0);
+                REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
                 AND_WHEN("sending a good response back to the comms task") {
                     auto response = messages::HostCommsMessage(
@@ -158,12 +162,12 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
-                        tasks->get_host_comms_task().run_once(tx_buf.data(),
-                                                              tx_buf.size());
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
                     THEN("the task should ack the previous message") {
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith("M3 OK\n"));
-                        REQUIRE(written_secondpass == 6);
+                        REQUIRE(written_secondpass == tx_buf.begin() + 6);
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -175,11 +179,11 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
-                        tasks->get_host_comms_task().run_once(tx_buf.data(),
-                                                              tx_buf.size());
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
                     THEN(
                         "the task should pull the message and print an error") {
-                        REQUIRE(written_secondpass > 0);
+                        REQUIRE(written_secondpass > tx_buf.begin());
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
@@ -199,10 +203,10 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
             auto message_text = std::string("M105\n");
             auto message_obj =
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
-                    message_text.data(), message_text.size()));
+                    &*message_text.begin(), &*message_text.end()));
             tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
             auto written_firstpass = tasks->get_host_comms_task().run_once(
-                tx_buf.data(), tx_buf.size());
+                tx_buf.begin(), tx_buf.end());
             THEN(
                 "the task should pass the message on to the heater and not "
                 "immediately ack") {
@@ -214,7 +218,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 auto get_temp_message =
                     std::get<messages::GetTemperatureMessage>(heater_message);
                 tasks->get_heater_queue().backing_deque.pop_front();
-                REQUIRE(written_firstpass == 0);
+                REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
                 AND_WHEN("sending a good response back to the comms task") {
                     auto response = messages::HostCommsMessage(
@@ -225,12 +229,12 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
-                        tasks->get_host_comms_task().run_once(tx_buf.data(),
-                                                              tx_buf.size());
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
                     THEN("the task should respond to the get-temp message") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
                                                  "M105 C47 T0 OK\n"));
-                        REQUIRE(written_secondpass == 15);
+                        REQUIRE(written_secondpass == tx_buf.begin() + 15);
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -245,11 +249,11 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
-                        tasks->get_host_comms_task().run_once(tx_buf.data(),
-                                                              tx_buf.size());
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
                     THEN(
                         "the task should pull the message and print an error") {
-                        REQUIRE(written_secondpass > 0);
+                        REQUIRE(written_secondpass > tx_buf.begin());
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
@@ -265,11 +269,11 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
-                        tasks->get_host_comms_task().run_once(tx_buf.data(),
-                                                              tx_buf.size());
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
                     THEN(
                         "the task should pull the message and print an error") {
-                        REQUIRE(written_secondpass > 0);
+                        REQUIRE(written_secondpass > tx_buf.begin());
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
@@ -282,10 +286,10 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
             auto message_text = std::string("M123\n");
             auto message_obj =
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
-                    message_text.data(), message_text.size()));
+                    &*message_text.begin(), &*message_text.end()));
             tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
             auto written_firstpass = tasks->get_host_comms_task().run_once(
-                tx_buf.data(), tx_buf.size());
+                tx_buf.begin(), tx_buf.end());
             THEN(
                 "the task should pass the message on to the motor and not "
                 "immediately ack") {
@@ -297,7 +301,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 auto get_rpm_message =
                     std::get<messages::GetRPMMessage>(motor_message);
                 tasks->get_motor_queue().backing_deque.pop_front();
-                REQUIRE(written_firstpass == 0);
+                REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
                 AND_WHEN("sending a good response back to the comms task") {
                     auto response =
@@ -308,12 +312,12 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
-                        tasks->get_host_comms_task().run_once(tx_buf.data(),
-                                                              tx_buf.size());
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
                     THEN("the task should ack the previous message") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
                                                  "M123 C1500 T1750 OK\n"));
-                        REQUIRE(written_secondpass == 20);
+                        REQUIRE(written_secondpass == tx_buf.begin() + 20);
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -328,11 +332,11 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
-                        tasks->get_host_comms_task().run_once(tx_buf.data(),
-                                                              tx_buf.size());
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
                     THEN(
                         "the task should pull the message and print an error") {
-                        REQUIRE(written_secondpass > 0);
+                        REQUIRE(written_secondpass > tx_buf.begin());
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
@@ -348,11 +352,11 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
-                        tasks->get_host_comms_task().run_once(tx_buf.data(),
-                                                              tx_buf.size());
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
                     THEN(
                         "the task should pull the message and print an error") {
-                        REQUIRE(written_secondpass > 0);
+                        REQUIRE(written_secondpass > tx_buf.begin());
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()

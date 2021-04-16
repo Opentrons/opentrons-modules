@@ -1,56 +1,62 @@
 #pragma once
-#include <algorithm>
-#include <concepts>
-#include <cstring>
+#include <charconv>
+
+#include "heater-shaker/utility.hpp"
 
 namespace errors {
-template <typename ErrorType>
-concept Error = requires(ErrorType err) {
-    { err.errorstring() }
-    ->std::same_as<const char*>;
+
+enum class ErrorCode {
+    NO_ERROR = 0,
+    USB_TX_OVERRUN = 1,
+    INTERNAL_QUEUE_FULL = 2,
+    UNHANDLED_GCODE = 3,
+    GCODE_CACHE_FULL = 4,
+    BAD_MESSAGE_ACKNOWLEDGEMENT = 5,
 };
 
-template <typename ErrorType>
-requires Error<ErrorType> constexpr auto write_into(char* buf, size_t available)
-    -> size_t {
-    auto* wrote_to = std::copy(
-        ErrorType::errorstring(),
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        ErrorType::errorstring() +
-            std::min(strlen(ErrorType::errorstring()), available),
-        buf);
-    return &(*wrote_to) - buf;
+template <typename Input, typename Limit>
+requires std::forward_iterator<Input>&&
+    std::sized_sentinel_for<Limit, Input> constexpr auto
+    write_into(Input start, Limit end, ErrorCode code) -> Input {
+    switch (code) {
+        case ErrorCode::NO_ERROR:
+            return start;
+        case ErrorCode::USB_TX_OVERRUN: {
+            constexpr const char* errstring = "ERR001:tx buffer overrun\n";
+            return write_string_to_iterpair(start, end, errstring);
+        }
+        case ErrorCode::INTERNAL_QUEUE_FULL: {
+            constexpr const char* errstring = "ERR002:internal queue full\n";
+            return write_string_to_iterpair(start, end, errstring);
+        }
+        case ErrorCode::UNHANDLED_GCODE: {
+            constexpr const char* errstring = "ERR003:unhandled gcode\n";
+            return write_string_to_iterpair(start, end, errstring);
+        }
+        case ErrorCode::GCODE_CACHE_FULL: {
+            constexpr const char* errstring = "ERR004:gcode cache full\n";
+            return write_string_to_iterpair(start, end, errstring);
+        }
+        case ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT: {
+            constexpr const char* errstring =
+                "ERR005:bad message acknowledgement\n";
+            return write_string_to_iterpair(start, end, errstring);
+        }
+        default: {
+            constexpr const char* errprefix = "ERR-1:unknown error code:";
+            Input written_into =
+                write_string_to_iterpair(start, end, errprefix);
+            auto code_res = std::to_chars(&*written_into, &*end,
+                                          static_cast<uint32_t>(code));
+            if (code_res.ec != std::errc()) {
+                return end;
+            }
+            if (code_res.ptr != &*end) {
+                *code_res.ptr = '\n';
+            }
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            return start + (code_res.ptr + 1 - &*start);
+        }
+    }
 }
-struct USBTXBufOverrun {
-    static constexpr auto errorstring() -> const char* {
-        return "ERR001:tx buffer overrun\n";
-    }
-    static constexpr auto code() -> uint32_t { return 1; }
-};
-struct InternalQueueFull {
-    static constexpr auto errorstring() -> const char* {
-        return "ERR002:internal queue full\n";
-    }
-    static constexpr auto code() -> uint32_t { return 2; }
-};
-struct UnhandledGCode {
-    static constexpr auto errorstring() -> const char* {
-        return "ERR003:unhandled or unknown gcode\n";
-    }
-    static constexpr auto code() -> uint32_t { return 3; }
-};
-struct GCodeCacheFull {
-    static constexpr auto errorstring() -> const char* {
-        return "ERR004:gcode cache full\n";
-    }
-    static constexpr auto code() -> uint32_t { return 4; }
-};
-
-struct BadMessageAcknowledgement {
-    static constexpr auto errorstring() -> const char* {
-        return "ERR005:bad message ack\n";
-    }
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-    static constexpr auto code() -> uint32_t { return 5; }
-};
 };  // namespace errors

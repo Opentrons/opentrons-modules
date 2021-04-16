@@ -53,8 +53,8 @@ struct Tasks {
     Tasks(heater_task::HeaterTask<QueueImpl>* heater_in,
           host_comms_task::HostCommsTask<QueueImpl>* comms_in,
           motor_task::MotorTask<QueueImpl>* motor_in,
-          ui_task::UITask<QueueImpl>* ui_in):
-      heater(nullptr), comms(nullptr), motor(nullptr), ui(nullptr) {
+          ui_task::UITask<QueueImpl>* ui_in)
+        : heater(nullptr), comms(nullptr), motor(nullptr), ui(nullptr) {
         initialize(heater_in, comms_in, motor_in, ui_in);
     }
 

@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "heater-shaker/gcode_parser.hpp"
+#include "heater-shaker/utility.hpp"
 
 namespace gcode {
 
@@ -29,13 +30,12 @@ struct SetRPM {
     using ParseResult = std::optional<SetRPM>;
     uint32_t rpm;
 
-    static auto write_response_into(char* buf, size_t available) -> size_t {
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> static auto
+        write_response_into(InputIt buf, InputLimit limit) -> InputIt {
         static constexpr const char* response = "M3 OK\n";
-        return std::copy(
-                   response,
-                   // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                   response + std::min(strlen(response), available), buf) -
-               buf;
+        return write_string_to_iterpair(buf, limit, response);
     }
 
     template <typename InputIt, typename Limit>
@@ -71,13 +71,12 @@ struct SetTemperature {
     using ParseResult = std::optional<SetTemperature>;
     float temperature;
 
-    static auto write_response_into(char* buf, size_t available) -> size_t {
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InLimit, InputIt> static auto
+        write_response_into(InputIt buf, InLimit limit) -> InputIt {
         static constexpr const char* response = "M104 OK\n";
-        return std::copy(
-                   response,
-                   // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                   response + std::min(strlen(response), available), buf) -
-               buf;
+        return write_string_to_iterpair(buf, limit, response);
     }
 
     template <typename InputIt, typename Limit>
@@ -116,48 +115,37 @@ struct GetTemperature {
     */
     using ParseResult = std::optional<GetTemperature>;
 
-    static auto write_response_into(char* buf, size_t available,
-                                    uint32_t current_temperature,
-                                    uint32_t setpoint_temperature) -> size_t {
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputIt, InLimit> static auto
+        write_response_into(InputIt buf, InLimit limit,
+                            uint32_t current_temperature,
+                            uint32_t setpoint_temperature) -> InputIt {
         static constexpr const char* prefix = "M105 C";
-        auto* next = std::copy(
-            prefix,
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            prefix + std::min(strlen(prefix), available), buf);
+        char* char_next = &*buf;
+        char* char_limit = &*limit;
+        char_next = write_string_to_iterpair(char_next, char_limit, prefix);
 
         auto tochars_result =
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            std::to_chars(next, buf + available, current_temperature);
+            std::to_chars(char_next, char_limit, current_temperature);
         if (tochars_result.ec != std::errc()) {
-            return available;
+            return buf + (tochars_result.ptr - &*buf);
         }
-        next = tochars_result.ptr;
+        char_next = tochars_result.ptr;
 
         static constexpr const char* setpoint_prefix = " T";
-        next = std::copy(
-            setpoint_prefix,
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            setpoint_prefix +
-                std::min(
-                    strlen(setpoint_prefix),
-                    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                    available - (next - buf)),
-            next);
-
+        char_next =
+            write_string_to_iterpair(char_next, char_limit, setpoint_prefix);
         tochars_result =
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            std::to_chars(next, buf + available, setpoint_temperature);
+            std::to_chars(char_next, char_limit, setpoint_temperature);
         if (tochars_result.ec != std::errc()) {
-            return available;
+            return buf + (tochars_result.ptr - &*buf);
         }
-        next = tochars_result.ptr;
+        char_next = tochars_result.ptr;
 
         static constexpr const char* suffix = " OK\n";
-        next = std::copy(
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            suffix, suffix + std::min(strlen(suffix), available - (next - buf)),
-            next);
-        return next - buf;
+        char_next = write_string_to_iterpair(char_next, char_limit, suffix);
+        return buf + (char_next - &*buf);
     }
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt>&&
@@ -183,42 +171,36 @@ struct GetRPM {
     ** Example: M123
     */
 
-    static auto write_response_into(char* buf, size_t available,
-                                    uint32_t current_rpm, uint32_t setpoint_rpm)
-        -> size_t {
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InLimit, InputIt> static auto
+        write_response_into(InputIt buf, const InLimit limit,
+                            uint32_t current_rpm, uint32_t setpoint_rpm)
+            -> InputIt {
         static constexpr const char* prefix = "M123 C";
-        auto* next = std::copy(
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            prefix, prefix + std::min(strlen(prefix), available), buf);
+        char* char_next = &*buf;
+        char* const char_limit = &*limit;
+        char_next = write_string_to_iterpair(char_next, char_limit, prefix);
 
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        auto tochars_result = std::to_chars(next, buf + available, current_rpm);
+        auto tochars_result = std::to_chars(char_next, char_limit, current_rpm);
         if (tochars_result.ec != std::errc()) {
-            return available;
+            return buf + (tochars_result.ptr - &*buf);
         }
-        next = tochars_result.ptr;
+        char_next = tochars_result.ptr;
 
         static constexpr const char* setpoint_prefix = " T";
-        next = std::copy(
-            setpoint_prefix,
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            setpoint_prefix +
-                std::min(strlen(setpoint_prefix), available - (next - buf)),
-            next);
+        char_next =
+            write_string_to_iterpair(char_next, char_limit, setpoint_prefix);
 
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        tochars_result = std::to_chars(next, buf + available, setpoint_rpm);
+        tochars_result = std::to_chars(char_next, char_limit, setpoint_rpm);
         if (tochars_result.ec != std::errc()) {
-            return available;
+            return buf + (tochars_result.ptr - &*buf);
         }
-        next = tochars_result.ptr;
+        char_next = tochars_result.ptr;
 
         static constexpr const char* suffix = " OK\n";
-        next = std::copy(
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            suffix, suffix + std::min(strlen(suffix), available - (next - buf)),
-            next);
-        return next - buf;
+        char_next = write_string_to_iterpair(char_next, char_limit, suffix);
+        return buf + (char_next - &*buf);
     }
     using ParseResult = std::optional<GetRPM>;
     template <typename InputIt, typename Limit>
