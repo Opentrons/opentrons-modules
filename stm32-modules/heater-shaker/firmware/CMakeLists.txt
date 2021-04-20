@@ -6,22 +6,29 @@ find_package(STM32F303BSP
 find_package(CrossGCC)
 find_package(OpenOCD)
 
+set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
+set(HEATER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/heater_task")
+set(MOTOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/motor_task")
+set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui_task")
+set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
+
+
 # Add source files that should be checked by clang-tidy here
 set(HS_FW_LINTABLE_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_heater_task.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_motor_task.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_ui_task.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_comms_task.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_idle_timer_task.cpp)
+  ${SYSTEM_DIR}/main.cpp
+  ${HEATER_DIR}/freertos_heater_task.cpp
+  ${MOTOR_DIR}/freertos_motor_task.cpp
+  ${UI_DIR}/freertos_ui_task.cpp
+  ${COMMS_DIR}/freertos_comms_task.cpp
+  ${SYSTEM_DIR}/freertos_idle_timer_task.cpp)
 
 # Add source files that should NOT be checked by clang-tidy here
 set(HS_FW_NONLINTABLE_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/system_stm32f3xx.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/stm32f3xx_it.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/startup_stm32f303xe.s
-  ${CMAKE_CURRENT_SOURCE_DIR}/usbd_conf.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/usbd_desc.c)
+  ${SYSTEM_DIR}/system_stm32f3xx.c
+  ${SYSTEM_DIR}/stm32f3xx_it.c
+  ${SYSTEM_DIR}/startup_stm32f303xe.s
+  ${COMMS_DIR}/usbd_conf.c
+  ${COMMS_DIR}/usbd_desc.c)
 
 add_executable(heater-shaker
   ${HS_FW_LINTABLE_SRCS}
@@ -29,15 +36,15 @@ add_executable(heater-shaker
 
 target_link_options(heater-shaker
   PRIVATE
-  "LINKER:-T,${CMAKE_CURRENT_SOURCE_DIR}/STM32F303RETx_FLASH.ld"
+  "LINKER:-T,${SYSTEM_DIR}/STM32F303RETx_FLASH.ld"
   "LINKER:--print-memory-usage"
   "LINKER:--error-unresolved-symbols")
 
 # Incurs at least a relink when you change the linker file (and a recompile of main
 # but hopefully that's quick)
-set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/main.cpp
+set_source_files_properties(${SYSTEM_DIR}/main.cpp
   PROPERTIES
-  OBJECT_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/STM32F303RETx_FLASH.ld")
+  OBJECT_DEPENDS "${SYSTEM_DIR}/STM32F303RETx_FLASH.ld")
 
 set_target_properties(heater-shaker
   PROPERTIES CXX_STANDARD 20
@@ -65,11 +72,11 @@ target_link_libraries(
 
 
 target_include_directories(STM32F303BSP_Drivers
-  PUBLIC .)
+  PUBLIC ${SYSTEM_DIR})
 target_include_directories(STM32F303BSP_USB
-  PUBLIC .)
+  PUBLIC ${COMMS_DIR})
 target_include_directories(STM32F303BSP_FreeRTOS
-  PUBLIC .)
+  PUBLIC ${SYSTEM_DIR})
 
 target_compile_definitions(STM32F303BSP_Drivers
   PUBLIC STM32F303xE)
@@ -85,7 +92,7 @@ set_target_properties(
 find_package(GDBSVDTools)
 
 # Fills in the template with values specified by the find_package(OpenOCD) call above
-configure_file(./gdbinit.template ./gdbinit)
+configure_file(${SYSTEM_DIR}/gdbinit.template ./gdbinit)
 
 
 find_program(ARM_GDB
