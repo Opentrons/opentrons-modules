@@ -57,11 +57,13 @@
                                                  It can be either DEGREES_120 or
                                                  DEGREES_60 */
 
-#define HALL_PHASE_SHIFT        300 /*!< Define here in degrees
-                                                 the electrical phase shift between
-                                                 the low to high transition of
-                                                 signal H1 and the maximum of
-                                                 the Bemf induced on phase A */
+
+#define HALL_PHASE_SHIFT                                \
+    90 /*!< Define here in degrees                      \
+                     the electrical phase shift between \
+                     the low to high transition of      \
+                     signal H1 and the maximum of       \
+                     the Bemf induced on phase A */
 /*** Quadrature encoder ***/
 #define M1_ENCODER_PPR             400  /*!< Number of pulses per
                                             revolution */

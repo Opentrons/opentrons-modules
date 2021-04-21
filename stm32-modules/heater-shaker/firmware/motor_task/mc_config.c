@@ -22,19 +22,12 @@
 #include "mc_parameters.h"
 #include "mc_config.h"
 
-/* USER CODE BEGIN Additional include */
-
-/* USER CODE END Additional include */
-
 #define FREQ_RATIO 1                /* Dummy value for single drive */
 #define FREQ_RELATION HIGHEST_FREQ  /* Dummy value for single drive */
 
 #define OFFCALIBRWAIT_MS     0
 #define OFFCALIBRWAIT_MS2    0
 #include "pqd_motor_power_measurement.h"
-/* USER CODE BEGIN Additional define */
-
-/* USER CODE END Additional define */
 
 PQD_MotorPowMeas_Handle_t PQD_MotorPowMeasM1 =
 {
@@ -263,9 +256,4 @@ CircleLimitation_Handle_t CircleLimitationM1 =
   .Start_index        = START_INDEX,
 };
 
-/* USER CODE BEGIN Additional configuration */
-
-/* USER CODE END Additional configuration */
-
 /******************* (C) COPYRIGHT 2019 STMicroelectronics *****END OF FILE****/
-

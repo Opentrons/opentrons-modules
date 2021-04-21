@@ -12,6 +12,31 @@ set(MOTOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/motor_task")
 set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui_task")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 
+set(MCSDK_VERSION 5.4.4)
+set(MCSDK_LOCATION "${CMAKE_CURRENT_LIST_DIR}/motor_task/MCSDK_v${MCSDK_VERSION}/MotorControl")
+
+add_library(_mc_static STATIC IMPORTED)
+set_target_properties(_mc_static
+  PROPERTIES IMPORTED_LOCATION "${MCSDK_LOCATION}/lib/libmc-gcc_M4_NoCCMRAM.lib")
+
+file(GLOB _mcsdk_any_sources "${MCSDK_LOCATION}/MCSDK/MCLib/Any/Src/*.c")
+file(GLOB _mcsdk_f3xx_sources "${MCSDK_LOCATION}/MCSDK/MCLib/F3xx/Src/*.c")
+
+add_library(mc STATIC
+  ${_mcsdk_any_sources}
+  ${_mcsdk_f3xx_sources}
+  )
+set_target_properties(mc
+  PROPERTIES C_STANDARD 11
+             C_STANDARD_REQUIRED TRUE)
+
+target_include_directories(mc
+  PUBLIC "${MCSDK_LOCATION}/MCSDK/MCLib/Any/Inc"
+         "${MCSDK_LOCATION}/MCSDK/MCLib/F3xx/Inc"
+  PRIVATE "${CMAKE_CURRENT_LIST_DIR}/motor_task")
+target_link_libraries(mc PUBLIC _mc_static STM32F303BSP_Drivers)
+target_link_libraries(_mc_static INTERFACE mc)
+
 
 # Add source files that should be checked by clang-tidy here
 set(HS_FW_LINTABLE_SRCS
@@ -28,7 +53,16 @@ set(HS_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/stm32f3xx_it.c
   ${SYSTEM_DIR}/startup_stm32f303xe.s
   ${COMMS_DIR}/usbd_conf.c
-  ${COMMS_DIR}/usbd_desc.c)
+  ${COMMS_DIR}/usbd_desc.c
+  ${MOTOR_DIR}/hardware_setup.c
+  ${MOTOR_DIR}/mc_config.c
+  ${MOTOR_DIR}/mc_interface.c
+  ${MOTOR_DIR}/mc_math.c
+  ${MOTOR_DIR}/mc_parameters.c
+  ${MOTOR_DIR}/mc_tasks.c
+  ${MOTOR_DIR}/stm32f30x_mc_it.c
+  ${MOTOR_DIR}/regular_conversion_manager.c
+  )
 
 add_executable(heater-shaker
   ${HS_FW_LINTABLE_SRCS}
@@ -52,7 +86,9 @@ set_target_properties(heater-shaker
              C_STANDARD 11
              C_STANDARD_REQUIRED TRUE)
 
-target_include_directories(heater-shaker PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+  target_include_directories(heater-shaker
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    PRIVATE ${MOTOR_DIR})
 
 target_compile_options(heater-shaker
   PUBLIC
@@ -68,7 +104,7 @@ target_compile_options(heater-shaker
 
 target_link_libraries(
   heater-shaker
-  STM32F303BSP_Drivers STM32F303BSP_USB STM32F303BSP_FreeRTOS heater-shaker-core)
+  STM32F303BSP_Drivers STM32F303BSP_USB STM32F303BSP_FreeRTOS mc heater-shaker-core)
 
 
 target_include_directories(STM32F303BSP_Drivers

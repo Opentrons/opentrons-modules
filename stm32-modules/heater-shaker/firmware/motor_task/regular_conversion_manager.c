@@ -1,4 +1,3 @@
-
 /**
   ******************************************************************************
   * @file    regular_conversion_manager.c
@@ -27,6 +26,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include <stddef.h>
 #include "regular_conversion_manager.h"
 #include "mc_config.h"
 
@@ -349,4 +349,3 @@ RCM_UserConvState_t RCM_GetUserConvState(void)
   */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
-

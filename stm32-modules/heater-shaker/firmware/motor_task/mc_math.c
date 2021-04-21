@@ -22,18 +22,6 @@
 #include "mc_math.h"
 #include "mc_type.h"
 
-/** @addtogroup MCSDK
-  * @{
-  */
-
-/** @defgroup MC_Math Motor Control Math functions
-  * @brief Motor Control Mathematic functions of the Motor Control SDK
-  *
-  * @todo Document the Motor Control Math "module".
-  *
-  * @{
-  */
-
 /* Private macro -------------------------------------------------------------*/
 
 #define SIN_COS_TABLE {\
@@ -112,7 +100,7 @@ __attribute__( ( section ( ".ccmram" ) ) )
   * @param  Input: stator values a and b in ab_t format
   * @retval Stator values alpha and beta in alphabeta_t format
   */
-__weak alphabeta_t MCM_Clarke( ab_t Input  )
+alphabeta_t MCM_Clarke( ab_t Input  )
 {
   alphabeta_t Output;
 
@@ -181,7 +169,7 @@ __attribute__( ( section ( ".ccmram" ) ) )
   * @param  Theta: rotating frame angular position in q1.15 format
   * @retval Stator values q and d in qd_t format
   */
-__weak qd_t MCM_Park( alphabeta_t Input, int16_t Theta )
+qd_t MCM_Park( alphabeta_t Input, int16_t Theta )
 {
   qd_t Output;
   int32_t d_tmp_1, d_tmp_2, q_tmp_1, q_tmp_2;
@@ -285,7 +273,7 @@ __attribute__( ( section ( ".ccmram" ) ) )
   * @param  Theta: rotating frame angular position in q1.15 format
   * @retval Stator voltage Valpha and Vbeta in qd_t format
   */
-__weak alphabeta_t MCM_Rev_Park( qd_t Input, int16_t Theta )
+alphabeta_t MCM_Rev_Park( qd_t Input, int16_t Theta )
 {
   int32_t alpha_tmp1, alpha_tmp2, beta_tmp1, beta_tmp2;
   Trig_Components Local_Vector_Components;
@@ -335,7 +323,7 @@ __attribute__( ( section ( ".ccmram" ) ) )
   * @retval Sin(angle) and Cos(angle) in Trig_Components format
   */
 
-__weak Trig_Components MCM_Trig_Functions( int16_t hAngle )
+Trig_Components MCM_Trig_Functions( int16_t hAngle )
 {
 
   int32_t shindex;
@@ -388,7 +376,7 @@ __attribute__( ( section ( ".ccmram" ) ) )
   * @param  Input int32_t number
   * @retval int32_t Square root of Input (0 if Input<0)
   */
-__weak int32_t MCM_Sqrt( int32_t wInput )
+int32_t MCM_Sqrt( int32_t wInput )
 {
   int32_t wtemprootnew;
 
@@ -616,19 +604,11 @@ inline int16_t MCM_PhaseComputation( int32_t wBemf_alfa_est, int32_t wBemf_beta_
   * @param  float Floating point number to be coded.
   * @retval uint32_t Coded 32bit integer.
   */
-__weak uint32_t MCM_floatToIntBit( float x )
+uint32_t MCM_floatToIntBit( float x )
 {
   uint32_t * pInt;
   pInt = ( uint32_t * )( &x );
   return *pInt;
 }
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
 
 /******************* (C) COPYRIGHT 2019 STMicroelectronics *****END OF FILE****/

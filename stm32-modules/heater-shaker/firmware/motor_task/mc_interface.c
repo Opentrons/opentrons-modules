@@ -26,18 +26,6 @@
 
 #include "mc_interface.h"
 
-/** @addtogroup MCSDK
-  * @{
-  */
-
-/** @defgroup MCInterface Motor Control Interface
-  * @brief MC Interface component of the Motor Control SDK
-  *
-  * @todo Document the MC Interface "module".
-  *
-  * @{
-  */
-
 /* Private macros ------------------------------------------------------------*/
 /**
   * @brief This macro converts the exported enum from the state machine to the corresponding bit field.
@@ -57,7 +45,7 @@
   * @param  pFOCVars pointer to FOC vars to be used by MCI.
   * @retval none.
   */
-__weak void MCI_Init( MCI_Handle_t * pHandle, STM_Handle_t * pSTM, SpeednTorqCtrl_Handle_t * pSTC, pFOCVars_t pFOCVars )
+void MCI_Init( MCI_Handle_t * pHandle, STM_Handle_t * pSTM, SpeednTorqCtrl_Handle_t * pSTC, pFOCVars_t pFOCVars )
 {
   pHandle->pSTM = pSTM;
   pHandle->pSTC = pSTC;
@@ -84,7 +72,7 @@ __weak void MCI_Init( MCI_Handle_t * pHandle, STM_Handle_t * pSTM, SpeednTorqCtr
   *         value.
   * @retval none.
   */
-__weak void MCI_ExecSpeedRamp( MCI_Handle_t * pHandle,  int16_t hFinalSpeed, uint16_t hDurationms )
+void MCI_ExecSpeedRamp( MCI_Handle_t * pHandle,  int16_t hFinalSpeed, uint16_t hDurationms )
 {
   pHandle->lastCommand = MCI_EXECSPEEDRAMP;
   pHandle->hFinalSpeed = hFinalSpeed;
@@ -110,7 +98,7 @@ __weak void MCI_ExecSpeedRamp( MCI_Handle_t * pHandle,  int16_t hFinalSpeed, uin
   *         value.
   * @retval none.
   */
-__weak void MCI_ExecTorqueRamp( MCI_Handle_t * pHandle,  int16_t hFinalTorque, uint16_t hDurationms )
+void MCI_ExecTorqueRamp( MCI_Handle_t * pHandle,  int16_t hFinalTorque, uint16_t hDurationms )
 {
   pHandle->lastCommand = MCI_EXECTORQUERAMP;
   pHandle->hFinalTorque = hFinalTorque;
@@ -130,7 +118,7 @@ __weak void MCI_ExecTorqueRamp( MCI_Handle_t * pHandle,  int16_t hFinalTorque, u
   *         format.
   * @retval none.
   */
-__weak void MCI_SetCurrentReferences( MCI_Handle_t * pHandle, qd_t Iqdref )
+void MCI_SetCurrentReferences( MCI_Handle_t * pHandle, qd_t Iqdref )
 {
   pHandle->lastCommand = MCI_SETCURRENTREFERENCES;
   pHandle->Iqdref.q = Iqdref.q;
@@ -160,7 +148,7 @@ __weak void MCI_SetCurrentReferences( MCI_Handle_t * pHandle, qd_t Iqdref )
   * @retval bool It returns true if the command is successfully executed
   *         otherwise it return false.
   */
-__weak bool MCI_StartMotor( MCI_Handle_t * pHandle )
+bool MCI_StartMotor( MCI_Handle_t * pHandle )
 {
   bool RetVal = STM_NextState( pHandle->pSTM, IDLE_START );
 
@@ -187,7 +175,7 @@ __weak bool MCI_StartMotor( MCI_Handle_t * pHandle )
   * @retval bool It returns true if the command is successfully executed
   *         otherwise it return false.
   */
-__weak bool MCI_StopMotor( MCI_Handle_t * pHandle )
+bool MCI_StopMotor( MCI_Handle_t * pHandle )
 {
   return STM_NextState( pHandle->pSTM, ANY_STOP );
 }
@@ -201,7 +189,7 @@ __weak bool MCI_StopMotor( MCI_Handle_t * pHandle )
   * @retval bool It returns true if the command is successfully executed
   *         otherwise it return false.
   */
-__weak bool MCI_FaultAcknowledged( MCI_Handle_t * pHandle )
+bool MCI_FaultAcknowledged( MCI_Handle_t * pHandle )
 {
   return STM_FaultAcknowledged( pHandle->pSTM );
 }
@@ -221,7 +209,7 @@ __weak bool MCI_FaultAcknowledged( MCI_Handle_t * pHandle )
   * @retval bool It returns true if the command is successfully executed
   *         otherwise it return false.
   */
-__weak bool MCI_EncoderAlign( MCI_Handle_t * pHandle )
+bool MCI_EncoderAlign( MCI_Handle_t * pHandle )
 {
   return STM_NextState( pHandle->pSTM, IDLE_ALIGNMENT );
 }
@@ -234,7 +222,7 @@ __weak bool MCI_EncoderAlign( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval none.
   */
-__weak void MCI_ExecBufferedCommands( MCI_Handle_t * pHandle )
+void MCI_ExecBufferedCommands( MCI_Handle_t * pHandle )
 {
   if ( pHandle != MC_NULL )
   {
@@ -294,7 +282,7 @@ __weak void MCI_ExecBufferedCommands( MCI_Handle_t * pHandle )
   *         been executed unsuccessfully. In this case calling this function
   *         reset the command state to BC_BUFFER_EMPTY.
   */
-__weak MCI_CommandState_t  MCI_IsCommandAcknowledged( MCI_Handle_t * pHandle )
+MCI_CommandState_t  MCI_IsCommandAcknowledged( MCI_Handle_t * pHandle )
 {
   MCI_CommandState_t retVal = pHandle->CommandState;
 
@@ -311,7 +299,7 @@ __weak MCI_CommandState_t  MCI_IsCommandAcknowledged( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval State_t It returns the current state of the related pSTM object.
   */
-__weak State_t  MCI_GetSTMState( MCI_Handle_t * pHandle )
+State_t  MCI_GetSTMState( MCI_Handle_t * pHandle )
 {
   return STM_GetState( pHandle->pSTM );
 }
@@ -327,7 +315,7 @@ __weak State_t  MCI_GetSTMState( MCI_Handle_t * pHandle )
   *         FAULT_NOW state.
   * \n\link Fault_generation_error_codes Returned error codes are listed here \endlink
   */
-__weak uint16_t MCI_GetOccurredFaults( MCI_Handle_t * pHandle )
+uint16_t MCI_GetOccurredFaults( MCI_Handle_t * pHandle )
 {
   return ( uint16_t )( STM_GetFaultState( pHandle->pSTM ) );
 }
@@ -341,7 +329,7 @@ __weak uint16_t MCI_GetOccurredFaults( MCI_Handle_t * pHandle )
   *         present faults.
   * \n\link Fault_generation_error_codes Returned error codes are listed here \endlink
   */
-__weak uint16_t MCI_GetCurrentFaults( MCI_Handle_t * pHandle )
+uint16_t MCI_GetCurrentFaults( MCI_Handle_t * pHandle )
 {
   return ( uint16_t )( STM_GetFaultState( pHandle->pSTM ) >> 16 );
 }
@@ -352,7 +340,7 @@ __weak uint16_t MCI_GetCurrentFaults( MCI_Handle_t * pHandle )
   * @retval STC_Modality_t It returns the modality of STC. It can be one of
   *         these two values: STC_TORQUE_MODE or STC_SPEED_MODE.
   */
-__weak STC_Modality_t MCI_GetControlMode( MCI_Handle_t * pHandle )
+STC_Modality_t MCI_GetControlMode( MCI_Handle_t * pHandle )
 {
   return pHandle->LastModalitySetByUser;
 }
@@ -364,7 +352,7 @@ __weak STC_Modality_t MCI_GetControlMode( MCI_Handle_t * pHandle )
   * @retval int16_t It returns 1 or -1 according the sign of hFinalSpeed,
   *         hFinalTorque or Iqdref.q of the last command.
   */
-__weak int16_t MCI_GetImposedMotorDirection( MCI_Handle_t * pHandle )
+int16_t MCI_GetImposedMotorDirection( MCI_Handle_t * pHandle )
 {
   int16_t retVal = 1;
 
@@ -401,7 +389,7 @@ __weak int16_t MCI_GetImposedMotorDirection( MCI_Handle_t * pHandle )
   * @retval int16_t last ramp final speed sent by the user expressed in tehts
   *         of HZ.
   */
-__weak int16_t MCI_GetLastRampFinalSpeed( MCI_Handle_t * pHandle )
+int16_t MCI_GetLastRampFinalSpeed( MCI_Handle_t * pHandle )
 {
   int16_t hRetVal = 0;
 
@@ -418,7 +406,7 @@ __weak int16_t MCI_GetLastRampFinalSpeed( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval bool It returns true if the ramp is completed, false otherwise.
   */
-__weak bool MCI_RampCompleted( MCI_Handle_t * pHandle )
+bool MCI_RampCompleted( MCI_Handle_t * pHandle )
 {
   bool retVal = false;
 
@@ -435,7 +423,7 @@ __weak bool MCI_RampCompleted( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval bool It returns true if the command is executed, false otherwise.
   */
-__weak bool MCI_StopSpeedRamp( MCI_Handle_t * pHandle )
+bool MCI_StopSpeedRamp( MCI_Handle_t * pHandle )
 {
   return STC_StopSpeedRamp( pHandle->pSTC );
 }
@@ -444,7 +432,7 @@ __weak bool MCI_StopSpeedRamp( MCI_Handle_t * pHandle )
   * @brief  Stop the execution of ongoing ramp.
   * @param  pHandle Pointer on the component instance to work on.
   */
-__weak void MCI_StopRamp( MCI_Handle_t * pHandle)
+void MCI_StopRamp( MCI_Handle_t * pHandle)
 {
    STC_StopRamp( pHandle->pSTC );
 }
@@ -457,7 +445,7 @@ __weak void MCI_StopRamp( MCI_Handle_t * pHandle)
   *         frame transformation and (in speed control mode) for speed
   *         regulation is reliable, false otherwise
   */
-__weak bool MCI_GetSpdSensorReliability( MCI_Handle_t * pHandle )
+bool MCI_GetSpdSensorReliability( MCI_Handle_t * pHandle )
 {
   SpeednPosFdbk_Handle_t * SpeedSensor = STC_GetSpeedSensor( pHandle->pSTC );
 
@@ -470,7 +458,7 @@ __weak bool MCI_GetSpdSensorReliability( MCI_Handle_t * pHandle )
   *         used by FOC algorithm
   * @param  pHandle Pointer on the component instance to work on.
   */
-__weak int16_t MCI_GetAvrgMecSpeedUnit( MCI_Handle_t * pHandle )
+int16_t MCI_GetAvrgMecSpeedUnit( MCI_Handle_t * pHandle )
 {
   SpeednPosFdbk_Handle_t * SpeedSensor = STC_GetSpeedSensor( pHandle->pSTC );
 
@@ -483,7 +471,7 @@ __weak int16_t MCI_GetAvrgMecSpeedUnit( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   *
   */
-__weak int16_t MCI_GetMecSpeedRefUnit( MCI_Handle_t * pHandle )
+int16_t MCI_GetMecSpeedRefUnit( MCI_Handle_t * pHandle )
 {
   return ( STC_GetMecSpeedRefUnit( pHandle->pSTC ) );
 }
@@ -493,7 +481,7 @@ __weak int16_t MCI_GetMecSpeedRefUnit( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval ab_t Stator current Iab
   */
-__weak ab_t MCI_GetIab( MCI_Handle_t * pHandle )
+ab_t MCI_GetIab( MCI_Handle_t * pHandle )
 {
   return ( pHandle->pFOCVars->Iab );
 }
@@ -503,7 +491,7 @@ __weak ab_t MCI_GetIab( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval alphabeta_t Stator current Ialphabeta
   */
-__weak alphabeta_t MCI_GetIalphabeta( MCI_Handle_t * pHandle )
+alphabeta_t MCI_GetIalphabeta( MCI_Handle_t * pHandle )
 {
   return ( pHandle->pFOCVars->Ialphabeta );
 }
@@ -513,7 +501,7 @@ __weak alphabeta_t MCI_GetIalphabeta( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval qd_t Stator current Iqd
   */
-__weak qd_t MCI_GetIqd( MCI_Handle_t * pHandle )
+qd_t MCI_GetIqd( MCI_Handle_t * pHandle )
 {
   return ( pHandle->pFOCVars->Iqd );
 }
@@ -524,7 +512,7 @@ __weak qd_t MCI_GetIqd( MCI_Handle_t * pHandle )
   * @retval qd_t Stator current IqdHF if HFI is selected as main
   *         sensor. Otherwise it returns { 0, 0}.
   */
-__weak qd_t MCI_GetIqdHF( MCI_Handle_t * pHandle )
+qd_t MCI_GetIqdHF( MCI_Handle_t * pHandle )
 {
   return ( pHandle->pFOCVars->IqdHF );
 }
@@ -534,7 +522,7 @@ __weak qd_t MCI_GetIqdHF( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval qd_t Stator current Iqdref
   */
-__weak qd_t MCI_GetIqdref( MCI_Handle_t * pHandle )
+qd_t MCI_GetIqdref( MCI_Handle_t * pHandle )
 {
   return ( pHandle->pFOCVars->Iqdref );
 }
@@ -544,7 +532,7 @@ __weak qd_t MCI_GetIqdref( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval qd_t Stator current Vqd
   */
-__weak qd_t MCI_GetVqd( MCI_Handle_t * pHandle )
+qd_t MCI_GetVqd( MCI_Handle_t * pHandle )
 {
   return ( pHandle->pFOCVars->Vqd );
 }
@@ -554,7 +542,7 @@ __weak qd_t MCI_GetVqd( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval alphabeta_t Stator current Valphabeta
   */
-__weak alphabeta_t MCI_GetValphabeta( MCI_Handle_t * pHandle )
+alphabeta_t MCI_GetValphabeta( MCI_Handle_t * pHandle )
 {
   return ( pHandle->pFOCVars->Valphabeta );
 }
@@ -565,7 +553,7 @@ __weak alphabeta_t MCI_GetValphabeta( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval int16_t Rotor electrical angle in dpp format
   */
-__weak int16_t MCI_GetElAngledpp( MCI_Handle_t * pHandle )
+int16_t MCI_GetElAngledpp( MCI_Handle_t * pHandle )
 {
   return ( pHandle->pFOCVars->hElAngle );
 }
@@ -576,7 +564,7 @@ __weak int16_t MCI_GetElAngledpp( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval int16_t Teref
   */
-__weak int16_t MCI_GetTeref( MCI_Handle_t * pHandle )
+int16_t MCI_GetTeref( MCI_Handle_t * pHandle )
 {
   return ( pHandle->pFOCVars->hTeref );
 }
@@ -588,7 +576,7 @@ __weak int16_t MCI_GetTeref( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval int16_t Motor phase current (0-to-peak) in s16A
   */
-__weak int16_t MCI_GetPhaseCurrentAmplitude( MCI_Handle_t * pHandle )
+int16_t MCI_GetPhaseCurrentAmplitude( MCI_Handle_t * pHandle )
 {
   alphabeta_t Local_Curr;
   int32_t wAux1, wAux2;
@@ -615,7 +603,7 @@ __weak int16_t MCI_GetPhaseCurrentAmplitude( MCI_Handle_t * pHandle )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval int16_t Motor phase voltage (0-to-peak) in s16V
   */
-__weak int16_t MCI_GetPhaseVoltageAmplitude( MCI_Handle_t * pHandle )
+int16_t MCI_GetPhaseVoltageAmplitude( MCI_Handle_t * pHandle )
 {
   alphabeta_t Local_Voltage;
   int32_t wAux1, wAux2;
@@ -644,7 +632,7 @@ __weak int16_t MCI_GetPhaseVoltageAmplitude( MCI_Handle_t * pHandle )
   * @param  int16_t New target Id value
   * @retval none
   */
-__weak void MCI_SetIdref( MCI_Handle_t * pHandle, int16_t hNewIdref )
+void MCI_SetIdref( MCI_Handle_t * pHandle, int16_t hNewIdref )
 {
   pHandle->pFOCVars->Iqdref.d = hNewIdref;
   pHandle->pFOCVars->UserIdref = hNewIdref;
@@ -655,17 +643,9 @@ __weak void MCI_SetIdref( MCI_Handle_t * pHandle, int16_t hNewIdref )
   * @param  pHandle Pointer on the component instance to work on.
   * @retval none
   */
-__weak void MCI_Clear_Iqdref( MCI_Handle_t * pHandle )
+void MCI_Clear_Iqdref( MCI_Handle_t * pHandle )
 {
   pHandle->pFOCVars->Iqdref = STC_GetDefaultIqdref( pHandle->pSTC );
 }
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
 
 /************************ (C) COPYRIGHT 2019 STMicroelectronics *****END OF FILE****/

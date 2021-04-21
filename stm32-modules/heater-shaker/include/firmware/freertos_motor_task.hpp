@@ -10,6 +10,7 @@
 #include "task.h"
 
 namespace motor_control_task {
+
 // Function to call to start the task
 auto start()
     -> tasks::Task<TaskHandle_t, motor_task::MotorTask<FreeRTOSMessageQueue>>;
