@@ -1,5 +1,16 @@
 #include "stm32f3xx_hal.h"
+#include "parameters_conversion.h"
 #include "hardware_setup.h"
+#include "mc_tuning.h"
+#include "mc_interface.h"
+#include "mc_tasks.h"
+#include "mc_config.h"
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 
 ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
@@ -7,6 +18,11 @@ ADC_HandleTypeDef hadc2;
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 
+MCI_Handle_t* pMCI[NBR_OF_MOTORS];
+MCT_Handle_t* pMCT[NBR_OF_MOTORS];
+
+
+static void Error_Handler();
 
 static void MX_NVIC_Init(void)
 {
@@ -353,18 +369,9 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, M1_PWM_EN_U_Pin|M1_PWM_EN_V_Pin|M1_PWM_EN_W_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : M1_PWM_EN_U_Pin M1_PWM_EN_V_Pin M1_PWM_EN_W_Pin */
   GPIO_InitStruct.Pin = M1_PWM_EN_U_Pin|M1_PWM_EN_V_Pin|M1_PWM_EN_W_Pin;
@@ -373,16 +380,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-}
-
-void hardware_init() {
-  MX_GPIO_Init();
-  MX_ADC1_Init();
-  MX_ADC2_Init();
-  MX_TIM1_Init();
-  MX_TIM2_Init();
-  MX_MotorControl_Init();
-  MX_NVIC_Init();
 }
 
 
@@ -475,7 +472,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(M1_CURR_AMPL_W_GPIO_Port, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = M1_TEMPERATURE_Pin|M1_BUS_VOLTAGE_Pin;
+    GPIO_InitStruct.Pin = /*M1_TEMPERATURE_Pin|*/M1_BUS_VOLTAGE_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -551,7 +548,7 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     */
     HAL_GPIO_DeInit(M1_CURR_AMPL_W_GPIO_Port, M1_CURR_AMPL_W_Pin);
 
-    HAL_GPIO_DeInit(GPIOC, M1_TEMPERATURE_Pin|M1_BUS_VOLTAGE_Pin);
+    HAL_GPIO_DeInit(GPIOC, /*M1_TEMPERATURE_Pin|*/M1_BUS_VOLTAGE_Pin);
 
     HAL_GPIO_DeInit(M1_CURR_AMPL_V_GPIO_Port, M1_CURR_AMPL_V_Pin);
 
@@ -723,3 +720,23 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
   }
 
 }
+
+void motor_hardware_setup() {
+  MX_GPIO_Init();
+  MX_ADC1_Init();
+  MX_ADC2_Init();
+  MX_TIM1_Init();
+  MX_TIM2_Init();
+  MCboot(pMCI,pMCT);
+
+  /* Initialize interrupts */
+  MX_NVIC_Init();
+}
+
+void Error_Handler() {
+  while (true);
+}
+
+#ifdef __cplusplus
+} // extern "C"
+#endif // __cplusplus

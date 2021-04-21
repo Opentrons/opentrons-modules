@@ -23,9 +23,10 @@
 #include "hardware_setup.h"
 #include "mc_type.h"
 #include "mc_math.h"
-#include "motorcontrol.h"
+#include "hardware_setup.h"
 #include "regular_conversion_manager.h"
 #include "mc_interface.h"
+#include "mc_config.h"
 #include "mc_tuning.h"
 #include "digital_output.h"
 #include "state_machine.h"
@@ -187,8 +188,8 @@ __weak void MCboot( MCI_Handle_t* pMCIList[NBR_OF_MOTORS],MCT_Handle_t* pMCTList
   /*******************************************************/
   /*   Temperature measurement component initialization  */
   /*******************************************************/
-  NTC_Init(&TempSensorParamsM1);
-  pTemperatureSensor[M1] = &TempSensorParamsM1;
+  //NTC_Init(&TempSensorParamsM1);
+  //pTemperatureSensor[M1] = &TempSensorParamsM1;
 
   pREMNG[M1] = &RampExtMngrHFParamsM1;
   REMNG_Init(pREMNG[M1]);
@@ -213,7 +214,7 @@ __weak void MCboot( MCI_Handle_t* pMCIList[NBR_OF_MOTORS],MCT_Handle_t* pMCTList
   MCT[M1].pSpeedSensorVirtual = MC_NULL;
   MCT[M1].pSpeednTorqueCtrl = pSTC[M1];
   MCT[M1].pStateMachine = &STM[M1];
-  MCT[M1].pTemperatureSensor = (NTC_Handle_t *) pTemperatureSensor[M1];
+  MCT[M1].pTemperatureSensor = MC_NULL; //(NTC_Handle_t *) pTemperatureSensor[M1];
   MCT[M1].pBusVoltageSensor = &(pBusSensorM1->_Super);
   MCT[M1].pBrakeDigitalOutput = MC_NULL;   /* brake is defined, oBrakeM1*/
   MCT[M1].pNTCRelay = MC_NULL;             /* relay is defined, oRelayM1*/
@@ -705,7 +706,7 @@ __weak void TSK_SafetyTask_PWMOFF(uint8_t bMotor)
   uint16_t CodeReturn = MC_NO_ERROR;
   uint16_t errMask[NBR_OF_MOTORS] = {VBUS_TEMP_ERR_MASK};
 
-  CodeReturn |= errMask[bMotor] & NTC_CalcAvTemp(pTemperatureSensor[bMotor]); /* check for fault if FW protection is activated. It returns MC_OVER_TEMP or MC_NO_ERROR */
+  //CodeReturn |= errMask[bMotor] & NTC_CalcAvTemp(pTemperatureSensor[bMotor]); /* check for fault if FW protection is activated. It returns MC_OVER_TEMP or MC_NO_ERROR */
   CodeReturn |= PWMC_CheckOverCurrent(pwmcHandle[bMotor]);                    /* check for fault. It return MC_BREAK_IN or MC_NO_FAULTS
                                                                                  (for STM32F30x can return MC_OVER_VOLT in case of HW Overvoltage) */
   if(bMotor == M1)
@@ -793,27 +794,6 @@ __weak void TSK_HardwareFaultTask(void)
   /* USER CODE BEGIN TSK_HardwareFaultTask 1 */
 
   /* USER CODE END TSK_HardwareFaultTask 1 */
-}
- /**
-  * @brief  Locks GPIO pins used for Motor Control to prevent accidental reconfiguration
-  */
-__weak void mc_lock_pins (void)
-{
-LL_GPIO_LockPin(M1_BUS_VOLTAGE_GPIO_Port, M1_BUS_VOLTAGE_Pin);
-LL_GPIO_LockPin(M1_TEMPERATURE_GPIO_Port, M1_TEMPERATURE_Pin);
-LL_GPIO_LockPin(M1_CURR_AMPL_W_GPIO_Port, M1_CURR_AMPL_W_Pin);
-LL_GPIO_LockPin(M1_HALL_H2_GPIO_Port, M1_HALL_H2_Pin);
-LL_GPIO_LockPin(M1_HALL_H3_GPIO_Port, M1_HALL_H3_Pin);
-LL_GPIO_LockPin(M1_HALL_H1_GPIO_Port, M1_HALL_H1_Pin);
-LL_GPIO_LockPin(M1_PWM_UH_GPIO_Port, M1_PWM_UH_Pin);
-LL_GPIO_LockPin(M1_PWM_VH_GPIO_Port, M1_PWM_VH_Pin);
-LL_GPIO_LockPin(M1_OCP_GPIO_Port, M1_OCP_Pin);
-LL_GPIO_LockPin(M1_PWM_WH_GPIO_Port, M1_PWM_WH_Pin);
-LL_GPIO_LockPin(M1_PWM_EN_V_GPIO_Port, M1_PWM_EN_V_Pin);
-LL_GPIO_LockPin(M1_PWM_EN_U_GPIO_Port, M1_PWM_EN_U_Pin);
-LL_GPIO_LockPin(M1_PWM_EN_W_GPIO_Port, M1_PWM_EN_W_Pin);
-LL_GPIO_LockPin(M1_CURR_AMPL_U_GPIO_Port, M1_CURR_AMPL_U_Pin);
-LL_GPIO_LockPin(M1_CURR_AMPL_V_GPIO_Port, M1_CURR_AMPL_V_Pin);
 }
 
 /* USER CODE BEGIN mc_task 0 */

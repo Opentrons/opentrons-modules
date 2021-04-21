@@ -26,6 +26,10 @@
 #include "mc_tuning.h"
 #include "mc_interface.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 /** @addtogroup MCSDK
   * @{
   */
@@ -58,8 +62,6 @@ void TSK_DualDriveFIFOUpdate(uint8_t Motor);
 /* Puts the Motor Control subsystem in in safety conditions on a Hard Fault */
 void TSK_HardwareFaultTask(void);
 
- /* Locks GPIO pins used for Motor Control to prevent accidental reconfiguration */
-void mc_lock_pins (void);
 /**
   * @}
   */
@@ -68,6 +70,9 @@ void mc_lock_pins (void);
   * @}
   */
 
+#ifdef __cplusplus
+} // extern "C"
+#endif // __cplusplus
 #endif /* __MCTASKS_H */
 
 /******************* (C) COPYRIGHT 2019 STMicroelectronics *****END OF FILE****/

@@ -27,6 +27,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "mc_type.h"
 
+#ifdef __cplusplus
+extern "C"
+#endif  // __cplusplus
 /** @addtogroup MCSDK
   * @{
   */
@@ -136,5 +139,8 @@ uint32_t MCM_floatToIntBit( float x );
 /**
   * @}
   */
+#ifdef __cplusplus
+} // extern "C"
+#endif // __cplusplus
 #endif /* MC_MATH_H*/
 /******************* (C) COPYRIGHT 2019 STMicroelectronics *****END OF FILE****/

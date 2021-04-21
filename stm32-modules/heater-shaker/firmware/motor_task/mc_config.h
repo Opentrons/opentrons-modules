@@ -30,7 +30,6 @@
 #include "r_divider_bus_voltage_sensor.h"
 #include "virtual_bus_voltage_sensor.h"
 #include "pqd_motor_power_measurement.h"
- #include "user_interface.h"
 
 #include "r3_2_f30x_pwm_curr_fdbk.h"
 
@@ -39,6 +38,9 @@
 #include "circle_limitation.h"
 
 /* USER CODE BEGIN Additional include */
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 /* USER CODE END Additional include */
 extern PID_Handle_t PIDSpeedHandle_M1;
@@ -53,11 +55,14 @@ extern HALL_Handle_t HALL_M1;
 extern RDivider_Handle_t RealBusVoltageSensorParamsM1;
 extern CircleLimitation_Handle_t CircleLimitationM1;
 extern RampExtMngr_Handle_t RampExtMngrHFParamsM1;
-extern UI_Handle_t UI_Params;
 
 /* USER CODE BEGIN Additional extern */
 
 /* USER CODE END Additional extern */
 #define NBR_OF_MOTORS 1
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif // __cplusplus
 #endif /* __MC_CONFIG_H */
 /******************* (C) COPYRIGHT 2019 STMicroelectronics *****END OF FILE****/

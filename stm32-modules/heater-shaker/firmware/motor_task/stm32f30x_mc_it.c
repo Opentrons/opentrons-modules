@@ -24,10 +24,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "mc_type.h"
 #include "mc_tasks.h"
-#include "ui_task.h"
 #include "parameters_conversion.h"
-#include "motorcontrol.h"
+#include "hardware_setup.h"
 #include "stm32f3xx_it.h"
+#include "mc_config.h"
 
 /* USER CODE BEGIN Includes */
 
@@ -59,8 +59,6 @@ void ADC1_2_IRQHandler(void);
 void TIMx_UP_M1_IRQHandler(void);
 void TIMx_BRK_M1_IRQHandler(void);
 void SPD_TIM_M1_IRQHandler(void);
-void HardFault_Handler(void);
-void SysTick_Handler(void);
 
 #if defined (CCMRAM)
 #if defined (__ICCARM__)
@@ -178,52 +176,7 @@ void SPD_TIM_M1_IRQHandler(void)
   /* USER CODE END SPD_TIM_M1_IRQn 1 */
 }
 
-/**
-  * @brief  This function handles Hard Fault exception.
-  * @param  None
-  * @retval None
-  */
-void HardFault_Handler(void)
-{
- /* USER CODE BEGIN HardFault_IRQn 0 */
 
- /* USER CODE END HardFault_IRQn 0 */
-  TSK_HardwareFaultTask();
-
-  /* Go to infinite loop when Hard Fault exception occurs */
-  while (1)
-  {
-  }
- /* USER CODE BEGIN HardFault_IRQn 1 */
-
- /* USER CODE END HardFault_IRQn 1 */
-
-}
-
-void SysTick_Handler(void)
-{
-
-#ifdef MC_HAL_IS_USED
-static uint8_t SystickDividerCounter = SYSTICK_DIVIDER;
-  /* USER CODE BEGIN SysTick_IRQn 0 */
-
-  /* USER CODE END SysTick_IRQn 0 */
-  if (SystickDividerCounter == SYSTICK_DIVIDER)
-  {
-    HAL_IncTick();
-    HAL_SYSTICK_IRQHandler();
-    SystickDividerCounter = 0;
-  }
-  SystickDividerCounter ++;
-#endif /* MC_HAL_IS_USED */
-
-  /* USER CODE BEGIN SysTick_IRQn 1 */
-  /* USER CODE END SysTick_IRQn 1 */
-    MC_RunMotorControlTasks();
-
-  /* USER CODE BEGIN SysTick_IRQn 2 */
-  /* USER CODE END SysTick_IRQn 2 */
-}
 
 /* USER CODE BEGIN 1 */
 

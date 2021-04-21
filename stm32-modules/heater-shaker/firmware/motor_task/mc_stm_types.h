@@ -38,7 +38,9 @@
   #include "stm32f3xx_ll_dma.h"
   #include "stm32f3xx_ll_comp.h"
   #include "stm32f3xx_ll_opamp.h"
-  #include "stm32f3xx_ll_spi.h"
+#include "stm32f3xx_ll_spi.h"
+
+#define __weak __attribute__((weak))
 /**
  * @name Predefined Speed Units
  *
