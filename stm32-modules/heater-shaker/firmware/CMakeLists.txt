@@ -55,7 +55,6 @@ set(HS_FW_NONLINTABLE_SRCS
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
   ${MOTOR_DIR}/hardware_setup.c
-  ${MOTOR_DIR}/mc_api.c
   ${MOTOR_DIR}/mc_config.c
   ${MOTOR_DIR}/mc_interface.c
   ${MOTOR_DIR}/mc_math.c
