@@ -4,6 +4,7 @@
 #pragma once
 
 #include <variant>
+#include <concepts>
 
 #include "hal/message_queue.hpp"
 #include "heater-shaker/messages.hpp"
@@ -14,6 +15,34 @@ struct Tasks;
 };
 
 namespace motor_task {
+
+/*
+ * The MotorExecutionPolicy is how the portable task interacts
+ * with the hardware. It is defined as a concept so it can be
+ * passed as a reference paramter to run_once(), which means the
+ * type of policy in actual use does not have to be part of the class's
+ * type signature (which is used all over the place), just run_once's
+ * type signature, which is used just by the rtos task and the test
+ * harness.
+ *
+ * The policy exposes methods to get relevant data from the motor hardware
+ * and methods to change the state of the motor controller.
+ *
+ * The policy is not the only way in which the hardware may interact
+ * with the motor controller; it may also send messages. This should
+ * be the way that the hardware sends information to the motor task
+ * (as opposed to the motor task querying information from the hardware).
+ * For instance, an asynchronous error mechanism should inform the motor
+ * task of its event by sending a message.
+ */
+template<typename Policy>
+concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
+{ p.set_rpm(12000) };
+{ cp.get_current_rpm() } -> std::same_as<int16_t>;
+{ cp.get_target_rpm() } -> std::same_as<int16_t>;
+{ p.stop()};
+};
+
 constexpr size_t RESPONSE_LENGTH = 128;
 using Message = ::messages::MotorMessage;
 template <template <class> class QueueImpl>
