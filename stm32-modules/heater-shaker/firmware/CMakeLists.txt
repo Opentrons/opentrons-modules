@@ -43,6 +43,7 @@ set(HS_FW_LINTABLE_SRCS
   ${SYSTEM_DIR}/main.cpp
   ${HEATER_DIR}/freertos_heater_task.cpp
   ${MOTOR_DIR}/freertos_motor_task.cpp
+  ${MOTOR_DIR}/motor_policy.cpp
   ${UI_DIR}/freertos_ui_task.cpp
   ${COMMS_DIR}/freertos_comms_task.cpp
   ${SYSTEM_DIR}/freertos_idle_timer_task.cpp)
