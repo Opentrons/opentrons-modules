@@ -62,7 +62,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
         task_registry = other_tasks;
     }
 
-    auto run_once() -> void {
+        template<typename Policy>
+        requires MotorExecutionPolicy<Policy>
+    auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
 
         // This is the call down to the provided queue. It will block for
@@ -71,29 +73,33 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
 
         static_cast<void>(message_queue.try_recv(&message, WAIT_TIME_TICKS));
         std::visit(
-            [this](const auto& msg) -> void { this->visit_message(msg); },
+            [this, &policy](const auto& msg) -> void { this->visit_message(msg, policy); },
             message);
     }
 
-  private:
-    auto visit_message(const std::monostate& _ignore) -> void {
+    private:
+    template<typename Policy>
+    auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
         static_cast<void>(_ignore);
     }
 
-    auto visit_message(const messages::SetRPMMessage& msg) -> void {
+        template <typename Policy>
+        auto visit_message(const messages::SetRPMMessage& msg, Policy& policy) -> void {
+        policy.set_rpm(msg.target_rpm);
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
 
-    auto visit_message(const messages::GetRPMMessage& msg) -> void {
+    template <typename Policy>
+    auto visit_message(const messages::GetRPMMessage& msg, Policy& policy) -> void {
         auto response = messages::GetRPMResponse{
             .responding_to_id = msg.id,
             .current_rpm =
-                1050,  // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+                policy.get_current_rpm(),
             .setpoint_rpm =
-                3500};  // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+                policy.get_target_rpm()};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }

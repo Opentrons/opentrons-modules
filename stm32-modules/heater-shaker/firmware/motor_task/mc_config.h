@@ -29,10 +29,9 @@
 #include "pwm_curr_fdbk.h"
 #include "r_divider_bus_voltage_sensor.h"
 #include "virtual_bus_voltage_sensor.h"
+
 #include "pqd_motor_power_measurement.h"
-
 #include "r3_2_f30x_pwm_curr_fdbk.h"
-
 #include "hall_speed_pos_fdbk.h"
 #include "ramp_ext_mngr.h"
 #include "circle_limitation.h"

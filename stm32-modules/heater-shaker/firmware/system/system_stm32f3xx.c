@@ -225,12 +225,12 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
   HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
 
+
   /* Configures the USB clock */
   HAL_RCCEx_GetPeriphCLKConfig(&RCC_PeriphClkInit);
   RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_TIM1 | RCC_PERIPHCLK_TIM2;
   RCC_PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_PLLCLK;
   RCC_PeriphClkInit.Tim2ClockSelection = RCC_TIM2CLK_HCLK;
-
   RCC_PeriphClkInit.USBClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
   HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
 

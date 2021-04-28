@@ -13,6 +13,9 @@
 #pragma GCC diagnostic ignored "-Wregister"
 #include "stm32f3xx_hal.h"
 #include "mc_tasks.h"
+#include "mc_config.h"
+#include "mc_interface.h"
+#include "mc_tuning.h"
 #pragma GCC diagnostic pop
 
 #include "firmware/freertos_message_queue.hpp"
@@ -20,6 +23,7 @@
 #include "heater-shaker/tasks.hpp"
 
 #include "hardware_setup.h"
+#include "motor_policy.hpp"
 
 namespace motor_control_task {
 
@@ -27,6 +31,12 @@ struct MotorTaskFreeRTOS {
   TaskHandle_t main_task;
   TaskHandle_t control_task;
   TaskHandle_t safety_task;
+  ADC_HandleTypeDef hadc1;
+  ADC_HandleTypeDef hadc2;
+  TIM_HandleTypeDef htim1;
+  TIM_HandleTypeDef htim2;
+  MCI_Handle_t* pMCI[NBR_OF_MOTORS];
+  MCT_Handle_t* pMCT[NBR_OF_MOTORS];
 };
 
 enum class Notifications : uint8_t {
@@ -43,6 +53,8 @@ static auto _task = motor_task::MotorTask(_motor_queue);
 
 static constexpr uint32_t main_stack_size = 500;
 static constexpr uint32_t mc_stack_size = 128;
+
+
 std::array<StackType_t, mc_stack_size> control_task_stack;
 std::array<StackType_t, mc_stack_size> safety_task_stack;
 // Stack as a std::array because why not
@@ -55,22 +67,28 @@ StaticTask_t main_data;
 // NOLINTNEXLITN(cppcoreguidelines-avoid-non-const-global-variables)
 StaticTask_t control_task_data;
 // NOLINTNEXLITN(cppcoreguidelines-avoid-non-const-global-variables)
-  StaticTask_t safety_task_data;
+StaticTask_t safety_task_data;
 
 static MotorTaskFreeRTOS _local_task;
 
+
 // Actual function that runs inside the task
 void run(void *param) {
-    auto *task_class = static_cast<decltype(_task) *>(param);
-    while (true) {
-        task_class->run_once();
-    }
+  motor_hardware_setup(
+      &_local_task.hadc1, &_local_task.hadc2,
+      &_local_task.htim1, &_local_task.htim2,
+      _local_task.pMCI, _local_task.pMCT);
+
+  auto policy = MotorPolicy(_local_task.pMCI[0]);
+  while (true) {
+    _task.run_once(policy);
+  }
 }
 
   void run_control_task(void *param) {
     static_cast<void>(param);
     while (true) {
-      vTaskDelay(1);
+      vTaskDelay(10);
       MC_RunMotorControlTasks();
     }
   }
@@ -78,6 +96,7 @@ void run(void *param) {
   void run_safety_task(void *param) {
     static_cast<void>(param);
     while (true) {
+      vTaskDelay(10);
       TSK_SafetyTask();
     }
   }
@@ -86,7 +105,6 @@ void run(void *param) {
 auto start()
     -> tasks::Task<TaskHandle_t, motor_task::MotorTask<FreeRTOSMessageQueue>> {
 
-  motor_hardware_setup();
 
     auto *handle = xTaskCreateStatic(run, "MotorControl", stack.size(), &_task,
                                      1, stack.data(), &main_data);
@@ -96,9 +114,9 @@ auto start()
     auto *safety_task_handle = xTaskCreateStatic(
       run_safety_task, "MCSafety", safety_task_stack.size(),
       nullptr, 3, safety_task_stack.data(), &safety_task_data);
-    _local_task.main_task = handle;
     _local_task.control_task = control_task_handle;
     _local_task.safety_task = safety_task_handle;
+    _local_task.main_task = handle;
     _motor_queue.provide_handle(handle);
     return tasks::Task<TaskHandle_t, decltype(_task)>{.handle = handle,
                                                       .task = &_task};

@@ -4,8 +4,12 @@
 extern "C" {
 #endif // __cplusplus
 #include "stm32f3xx_hal.h"
+#include "mc_interface.h"
+#include "mc_tuning.h"
 
-void motor_hardware_setup();
+void motor_hardware_setup(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2,
+                          TIM_HandleTypeDef* tim1, TIM_HandleTypeDef* tim2,
+                          MCI_Handle_t* mci[], MCT_Handle_t* mct[]);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
