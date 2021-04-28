@@ -229,6 +229,9 @@ void HALL_SetMecAngle( HALL_Handle_t * pHandle, int16_t hMecAngle );
   */
 
 /** @} */
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif /*__HALL_SPEEDNPOSFDBK_H*/
 
