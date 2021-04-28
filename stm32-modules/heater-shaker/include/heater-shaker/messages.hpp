@@ -35,7 +35,7 @@ concept Response = requires(ResponseType rt) {
 */
 struct SetRPMMessage {
     uint32_t id;
-    uint32_t target_rpm;
+    int16_t target_rpm;
 };
 
 struct SetTemperatureMessage {
@@ -69,8 +69,8 @@ struct GetTemperatureResponse {
 
 struct GetRPMResponse {
     uint32_t responding_to_id;
-    uint32_t current_rpm;
-    uint32_t setpoint_rpm;
+    int16_t current_rpm;
+    int16_t setpoint_rpm;
 };
 
 struct AcknowledgePrevious {

@@ -21,6 +21,7 @@
 
 namespace gcode {
 
+
 struct SetRPM {
     /*
     ** Set RPM uses the spindle-speed code from standard gcode, M3 (CW)
@@ -28,7 +29,7 @@ struct SetRPM {
     ** Example: M3 S500 sets target rpm to 500
     */
     using ParseResult = std::optional<SetRPM>;
-    uint32_t rpm;
+    int16_t rpm;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt>&&
@@ -51,12 +52,12 @@ struct SetRPM {
             return std::make_pair(ParseResult(), input);
         }
 
-        auto value_res = parse_value<uint32_t>(working, limit);
+        auto value_res = parse_value<int16_t>(working, limit);
 
         if (!value_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        return std::make_pair(ParseResult(SetRPM{.rpm = static_cast<uint32_t>(
+        return std::make_pair(ParseResult(SetRPM{.rpm = static_cast<int16_t>(
                                                      value_res.first.value())}),
                               value_res.second);
     }
@@ -175,7 +176,7 @@ struct GetRPM {
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<InLimit, InputIt> static auto
         write_response_into(InputIt buf, const InLimit limit,
-                            uint32_t current_rpm, uint32_t setpoint_rpm)
+                            int16_t current_rpm, int16_t setpoint_rpm)
             -> InputIt {
         static constexpr const char* prefix = "M123 C";
         char* char_next = &*buf;
