@@ -88,7 +88,7 @@ void run(void *param) {
   void run_control_task(void *param) {
     static_cast<void>(param);
     while (true) {
-      vTaskDelay(10);
+      vTaskDelay(1);
       MC_RunMotorControlTasks();
     }
   }
@@ -96,7 +96,7 @@ void run(void *param) {
   void run_safety_task(void *param) {
     static_cast<void>(param);
     while (true) {
-      vTaskDelay(10);
+      vTaskDelay(1);
       TSK_SafetyTask();
     }
   }
