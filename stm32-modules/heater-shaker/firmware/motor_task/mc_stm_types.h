@@ -76,7 +76,7 @@
  *       of the symbols predefined for that purpose such as #_RPM, #_01HZ,... See @ref SpeedUnit for
  *       more details.
  */
-#define SPEED_UNIT _01HZ
+#define SPEED_UNIT _RPM
 
 /**
  * @brief use a circle limitation that privileges Vd component instead of Vdq angle (uses more MIPS)
