@@ -5,6 +5,7 @@
 #include "mc_interface.h"
 #include "mc_tasks.h"
 #include "mc_config.h"
+#include <string.h>  // for memset
 
 
 #ifdef __cplusplus
@@ -17,16 +18,16 @@ static void Error_Handler();
 static void MX_NVIC_Init(void)
 {
   /* TIM1_BRK_TIM15_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM1_BRK_TIM15_IRQn, 4, 1);
+  HAL_NVIC_SetPriority(TIM1_BRK_TIM15_IRQn, 9, 0);
   HAL_NVIC_EnableIRQ(TIM1_BRK_TIM15_IRQn);
   /* TIM1_UP_TIM16_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM1_UP_TIM16_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(TIM1_UP_TIM16_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(TIM1_UP_TIM16_IRQn);
   /* ADC1_2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(ADC1_2_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(ADC1_2_IRQn, 7, 0);
   HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
   /* TIM2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM2_IRQn, 3, 0);
+  HAL_NVIC_SetPriority(TIM2_IRQn, 8, 0);
   HAL_NVIC_EnableIRQ(TIM2_IRQn);
 }
 
@@ -357,26 +358,34 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, M1_PWM_EN_U_Pin|M1_PWM_EN_V_Pin|M1_PWM_EN_W_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(M1_PWM_EN_W_GPIO_Port,
+                    M1_PWM_EN_U_Pin|M1_PWM_EN_V_Pin|M1_PWM_EN_W_Pin,
+                    GPIO_PIN_RESET);
 
   /*Configure GPIO pins : M1_PWM_EN_U_Pin M1_PWM_EN_V_Pin M1_PWM_EN_W_Pin */
   GPIO_InitStruct.Pin = M1_PWM_EN_U_Pin|M1_PWM_EN_V_Pin|M1_PWM_EN_W_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(M1_PWM_EN_W_GPIO_Port, &GPIO_InitStruct);
 
+  memset(&GPIO_InitStruct, 0, sizeof(GPIO_InitStruct));
+  GPIO_InitStruct.Pin = DRIVER_NSLEEP_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  HAL_GPIO_Init(DRIVER_NSLEEP_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(DRIVER_NSLEEP_Port, DRIVER_NSLEEP_Pin, GPIO_PIN_SET);
 }
 
 
 /**
   * Initializes the Global MSP.
   */
-void HAL_MspInit(void)
+void Hal_MspInit(void)
 {
   /* USER CODE BEGIN MspInit 0 */
 
@@ -384,8 +393,6 @@ void HAL_MspInit(void)
 
   __HAL_RCC_SYSCFG_CLK_ENABLE();
   __HAL_RCC_PWR_CLK_ENABLE();
-
-  HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_3);
 
   /* System interrupt init*/
 
@@ -574,7 +581,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     /* Peripheral clock enable */
     __HAL_RCC_TIM1_CLK_ENABLE();
 
-    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
     /**TIM1 GPIO Configuration
     PA11     ------> TIM1_BKIN2
     */
@@ -582,7 +589,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF12_TIM1;
+    GPIO_InitStruct.Alternate = GPIO_AF6_TIM1;
     HAL_GPIO_Init(M1_OCP_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN TIM1_MspInit 1 */
@@ -599,25 +606,12 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
 
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
-    /**TIM2 GPIO Configuration
-    PB10     ------> TIM2_CH3
-    PA15     ------> TIM2_CH1
-    PB3     ------> TIM2_CH2
-    */
-    GPIO_InitStruct.Pin = M1_HALL_H3_Pin|M1_HALL_H2_Pin;
+    GPIO_InitStruct.Pin = M1_HALL_H3_Pin|M1_HALL_H2_Pin|M1_HALL_H1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = M1_HALL_H1_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
-    HAL_GPIO_Init(M1_HALL_H1_GPIO_Port, &GPIO_InitStruct);
-
+    GPIO_InitStruct.Alternate = GPIO_AF2_TIM2;
+    HAL_GPIO_Init(M1_HALL_H3_GPIO_Port, &GPIO_InitStruct);
   /* USER CODE BEGIN TIM2_MspInit 1 */
 
   /* USER CODE END TIM2_MspInit 1 */

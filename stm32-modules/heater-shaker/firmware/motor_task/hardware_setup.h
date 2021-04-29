@@ -52,6 +52,9 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 #define M1_HALL_H3_Pin GPIO_PIN_7
 #define M1_HALL_H3_GPIO_Port GPIOD
 
+#define DRIVER_NSLEEP_Port GPIOC
+#define DRIVER_NSLEEP_Pin GPIO_PIN_2
+
 
 #ifdef __cplusplus
 } // extern "C"
