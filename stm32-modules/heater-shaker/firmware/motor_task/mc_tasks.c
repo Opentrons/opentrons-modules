@@ -103,7 +103,7 @@ void TSK_SetChargeBootCapDelayM1(uint16_t hTickCount);
 bool TSK_ChargeBootCapDelayHasElapsedM1(void);
 void TSK_SetStopPermanencyTimeM1(uint16_t hTickCount);
 bool TSK_StopPermanencyTimeHasElapsedM1(void);
-void TSK_SafetyTask_PWMOFF(uint8_t motor);
+uint16_t TSK_SafetyTask_PWMOFF(uint8_t motor);
 
 /* USER CODE BEGIN Private Functions */
 
@@ -119,7 +119,7 @@ void TSK_SafetyTask_PWMOFF(uint8_t motor);
   *         number of motor drives.
   * @retval None
   */
-__weak void MCboot( MCI_Handle_t* pMCIList[NBR_OF_MOTORS],MCT_Handle_t* pMCTList[NBR_OF_MOTORS] )
+void MCboot( MCI_Handle_t* pMCIList[NBR_OF_MOTORS],MCT_Handle_t* pMCTList[NBR_OF_MOTORS] )
 {
   /* USER CODE BEGIN MCboot 0 */
 
@@ -249,7 +249,7 @@ __weak void MCboot( MCI_Handle_t* pMCIList[NBR_OF_MOTORS],MCT_Handle_t* pMCTList
  * - Power Factor Correction Task (if enabled)
  * - User Interface task.
  */
-__weak void MC_RunMotorControlTasks(void)
+uint16_t MC_RunMotorControlTasks(void)
 {
   if ( bMCBootCompleted ) {
     /* ** Medium Frequency Tasks ** */
@@ -257,8 +257,9 @@ __weak void MC_RunMotorControlTasks(void)
 
     /* Safety task is run after Medium Frequency task so that
      * it can overcome actions they initiated if needed. */
-    TSK_SafetyTask();
+    return TSK_SafetyTask();
   }
+  return 0;
 }
 
 /**
@@ -266,7 +267,7 @@ __weak void MC_RunMotorControlTasks(void)
  *
  * It is to be clocked at the Systick frequency.
  */
-__weak void MC_Scheduler(void)
+void MC_Scheduler(void)
 {
 /* USER CODE BEGIN MC_Scheduler 0 */
 
@@ -311,7 +312,7 @@ __weak void MC_Scheduler(void)
   * execution at a medium frequency rate (such as the speed controller for instance)
   * are executed here.
   */
-__weak void TSK_MediumFrequencyTaskM1(void)
+void TSK_MediumFrequencyTaskM1(void)
 {
   /* USER CODE BEGIN MediumFrequencyTask M1 0 */
 
@@ -446,7 +447,7 @@ __weak void TSK_MediumFrequencyTaskM1(void)
   * @param  bMotor related motor it can be M1 or M2
   * @retval none
   */
-__weak void FOC_Clear(uint8_t bMotor)
+void FOC_Clear(uint8_t bMotor)
 {
   /* USER CODE BEGIN FOC_Clear 0 */
 
@@ -482,7 +483,7 @@ __weak void FOC_Clear(uint8_t bMotor)
   * @param  bMotor related motor it can be M1 or M2
   * @retval none
   */
-__weak void FOC_InitAdditionalMethods(uint8_t bMotor)
+void FOC_InitAdditionalMethods(uint8_t bMotor)
 {
   /* USER CODE BEGIN FOC_InitAdditionalMethods 0 */
 
@@ -499,7 +500,7 @@ __weak void FOC_InitAdditionalMethods(uint8_t bMotor)
   * @param  bMotor related motor it can be M1 or M2
   * @retval none
   */
-__weak void FOC_CalcCurrRef(uint8_t bMotor)
+void FOC_CalcCurrRef(uint8_t bMotor)
 {
 
   /* USER CODE BEGIN FOC_CalcCurrRef 0 */
@@ -522,7 +523,7 @@ __weak void FOC_CalcCurrRef(uint8_t bMotor)
   * @param  hTickCount number of ticks to be counted
   * @retval void
   */
-__weak void TSK_SetChargeBootCapDelayM1(uint16_t hTickCount)
+void TSK_SetChargeBootCapDelayM1(uint16_t hTickCount)
 {
    hBootCapDelayCounterM1 = hTickCount;
 }
@@ -533,7 +534,7 @@ __weak void TSK_SetChargeBootCapDelayM1(uint16_t hTickCount)
   * @param  none
   * @retval bool true if time has elapsed, false otherwise
   */
-__weak bool TSK_ChargeBootCapDelayHasElapsedM1(void)
+bool TSK_ChargeBootCapDelayHasElapsedM1(void)
 {
   bool retVal = false;
   if (hBootCapDelayCounterM1 == 0)
@@ -549,7 +550,7 @@ __weak bool TSK_ChargeBootCapDelayHasElapsedM1(void)
   * @param  hTickCount number of ticks to be counted
   * @retval void
   */
-__weak void TSK_SetStopPermanencyTimeM1(uint16_t hTickCount)
+void TSK_SetStopPermanencyTimeM1(uint16_t hTickCount)
 {
   hStopPermanencyCounterM1 = hTickCount;
 }
@@ -560,7 +561,7 @@ __weak void TSK_SetStopPermanencyTimeM1(uint16_t hTickCount)
   * @param  none
   * @retval bool true if time is elapsed, false otherwise
   */
-__weak bool TSK_StopPermanencyTimeHasElapsedM1(void)
+bool TSK_StopPermanencyTimeHasElapsedM1(void)
 {
   bool retVal = false;
   if (hStopPermanencyCounterM1 == 0)
@@ -585,7 +586,7 @@ __attribute__((section (".ccmram")))
   *
   * @retval Number of the  motor instance which FOC loop was executed.
   */
-__weak uint8_t TSK_HighFrequencyTask(void)
+uint8_t TSK_HighFrequencyTask(void)
 {
   /* USER CODE BEGIN HighFrequencyTask 0 */
 
@@ -675,7 +676,7 @@ inline uint16_t FOC_CurrControllerM1(void)
   *
   * Faults flags are updated here.
   */
-__weak void TSK_SafetyTask(void)
+uint16_t TSK_SafetyTask(void)
 {
   /* USER CODE BEGIN TSK_SafetyTask 0 */
 
@@ -689,6 +690,7 @@ __weak void TSK_SafetyTask(void)
 
   /* USER CODE END TSK_SafetyTask 1 */
   }
+  return 0;
 }
 
 /**
@@ -697,7 +699,7 @@ __weak void TSK_SafetyTask(void)
   *         \link Motors_reference_number here \endlink
   * @retval None
   */
-__weak void TSK_SafetyTask_PWMOFF(uint8_t bMotor)
+uint16_t TSK_SafetyTask_PWMOFF(uint8_t bMotor)
 {
   /* USER CODE BEGIN TSK_SafetyTask_PWMOFF 0 */
 
@@ -734,9 +736,7 @@ __weak void TSK_SafetyTask_PWMOFF(uint8_t bMotor)
   default:
     break;
   }
-  /* USER CODE BEGIN TSK_SafetyTask_PWMOFF 3 */
-
-  /* USER CODE END TSK_SafetyTask_PWMOFF 3 */
+  return CodeReturn;
 }
 
 /**
@@ -748,7 +748,7 @@ __weak void TSK_SafetyTask_PWMOFF(uint8_t bMotor)
   *         Note: it can be MC_NULL if MCInterface of selected drive is not
   *         allocated.
   */
-__weak MCI_Handle_t * GetMCI(uint8_t bMotor)
+MCI_Handle_t * GetMCI(uint8_t bMotor)
 {
   MCI_Handle_t * retVal = MC_NULL;
   if (bMotor < NBR_OF_MOTORS)
@@ -767,7 +767,7 @@ __weak MCI_Handle_t * GetMCI(uint8_t bMotor)
   *         Note: it can be MC_NULL if MCInterface of selected drive is not
   *         allocated.
   */
-__weak MCT_Handle_t* GetMCT(uint8_t bMotor)
+MCT_Handle_t* GetMCT(uint8_t bMotor)
 {
   MCT_Handle_t* retVal = MC_NULL;
   if (bMotor < NBR_OF_MOTORS)
@@ -783,7 +783,7 @@ __weak MCT_Handle_t* GetMCT(uint8_t bMotor)
   *  This function is to be executed when a general hardware failure has been detected
   * by the microcontroller and is used to put the system in safety condition.
   */
-__weak void TSK_HardwareFaultTask(void)
+void TSK_HardwareFaultTask(void)
 {
   /* USER CODE BEGIN TSK_HardwareFaultTask 0 */
 

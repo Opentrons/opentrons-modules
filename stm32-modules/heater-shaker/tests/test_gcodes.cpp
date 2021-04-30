@@ -88,8 +88,9 @@ SCENARIO("SetRPM parser works") {
                 gcode::SetRPM::parse(to_parse.cbegin(), to_parse.cend());
 
             THEN("nothing should be parsed") {
-                REQUIRE(!result.first.has_value());
-                REQUIRE(result.second == to_parse.cbegin());
+                REQUIRE(result.first.has_value());
+                REQUIRE(result.first.value().rpm == -10);
+                REQUIRE(result.second == to_parse.cbegin() + 7);
             }
         }
     }

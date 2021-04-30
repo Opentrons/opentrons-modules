@@ -2,16 +2,16 @@
 #define __HARDWARE_SETUP_H
 #ifdef __cplusplus
 extern "C" {
-#endif // __cplusplus
-#include "stm32f3xx_hal.h"
+#endif  // __cplusplus
 #include "mc_interface.h"
 #include "mc_tuning.h"
+#include "stm32f3xx_hal.h"
 
 void motor_hardware_setup(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2,
                           TIM_HandleTypeDef* tim1, TIM_HandleTypeDef* tim2,
                           MCI_Handle_t* mci[], MCT_Handle_t* mct[]);
 
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 
 #define MC_HAL_IS_USED
 
@@ -55,8 +55,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 #define DRIVER_NSLEEP_Port GPIOC
 #define DRIVER_NSLEEP_Pin GPIO_PIN_2
 
-
 #ifdef __cplusplus
-} // extern "C"
-#endif // __cplusplus
-#endif // __HARDWARE_SETUP_H
+}  // extern "C"
+#endif  // __cplusplus
+#endif  // __HARDWARE_SETUP_H

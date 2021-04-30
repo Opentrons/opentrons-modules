@@ -8,6 +8,7 @@
 #include "heater-shaker/tasks.hpp"
 #include "heater-shaker/ui_task.hpp"
 #include "test/test_message_queue.hpp"
+#include "test/test_motor_policy.hpp"
 
 struct TaskBuilder {
     ~TaskBuilder() = default;
@@ -47,6 +48,7 @@ struct TaskBuilder {
     auto get_tasks_aggregator() -> tasks::Tasks<TestMessageQueue>& {
         return task_aggregator;
     }
+    auto get_motor_policy() -> TestMotorPolicy& { return motor_policy; }
 
   private:
     TaskBuilder();
@@ -59,4 +61,5 @@ struct TaskBuilder {
     TestMessageQueue<heater_task::Message> heater_queue;
     heater_task::HeaterTask<TestMessageQueue> heater_task;
     tasks::Tasks<TestMessageQueue> task_aggregator;
+    TestMotorPolicy motor_policy;
 };

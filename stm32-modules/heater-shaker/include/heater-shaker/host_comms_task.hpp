@@ -193,6 +193,14 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<InputLimit, InputIt> auto
+        visit_message(const messages::ErrorMessage& msg, InputIt tx_into,
+                      InputLimit tx_limit) -> InputIt {
+        return errors::write_into(tx_into, tx_limit, msg.code);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> auto
         visit_message(const std::monostate& ignore, InputIt tx_into,
                       InputLimit tx_limit) -> InputIt {
         static_cast<void>(ignore);
