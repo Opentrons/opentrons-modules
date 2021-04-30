@@ -1,5 +1,5 @@
 ---
-Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,misc-*,modernize-*,readability-*,-readability-magic-numbers,performance-*'
+Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,misc-*,modernize-*,-modernize-avoid-c-arrays,readability-*,-readability-magic-numbers,performance-*'
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*/stm32-modules/.*hpp'
 AnalyzeTemporaryDtors: false
