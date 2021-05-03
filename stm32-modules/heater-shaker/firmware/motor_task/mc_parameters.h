@@ -27,15 +27,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
-/* USER CODE BEGIN Additional include */
-
-/* USER CODE END Additional include */
 
 extern const R3_2_Params_t R3_2_ParamsM1;
 
-/* USER CODE BEGIN Additional extern */
-
-/* USER CODE END Additional extern */
 #ifdef __cplusplus
 }  // extern "c"
 #endif  // __cplusplus

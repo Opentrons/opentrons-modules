@@ -56,15 +56,13 @@ extern "C" {
                       0.1Hz resolution */
 #define HALL_MTPA false
 
-/* USER CODE BEGIN angle reconstruction M1 */
 #define REV_PARK_ANGLE_COMPENSATION_FACTOR 0
-/* USER CODE END angle reconstruction M1 */
 
 /**************************    DRIVE SETTINGS SECTION   **********************/
 /* PWM generation and current reading */
 
 // CHANGEME AAHHHHHHH WAS 30000
-#define PWM_FREQUENCY 10000
+#define PWM_FREQUENCY 0000
 #define PWM_FREQ_SCALING 1
 
 #define LOW_SIDE_SIGNALS_ENABLING ES_GPIO
@@ -109,9 +107,7 @@ extern "C" {
 #define SP_KIDIV_LOG LOG2(16384)
 #define SP_KDDIV_LOG LOG2(16)
 
-/* USER CODE BEGIN PID_SPEED_INTEGRAL_INIT_DIV */
 #define PID_SPEED_INTEGRAL_INIT_DIV 1 /*  */
-/* USER CODE END PID_SPEED_INTEGRAL_INIT_DIV */
 
 #define SPD_DIFFERENTIAL_TERM_ENABLING DISABLE
 #define IQMAX 14237
@@ -171,9 +167,6 @@ extern "C" {
 /**************************
  *** Control Parameters ***
  **************************/
-
-/* ##@@_USER_CODE_START_##@@ */
-/* ##@@_USER_CODE_END_##@@ */
 
 #ifdef __cplusplus
 }  // __cplusplus

@@ -62,8 +62,6 @@
 #define _001HZ 100
 /** @} */
 
-/* USER CODE BEGIN DEFINITIONS */
-/* Definitions placed here will not be erased by code generation */
 /**
  * @brief Rotation speed unit used at the interface with the application
  *
@@ -87,8 +85,6 @@
  * below (Beware: this uses more MIPS)
  */
 /*#define CIRCLE_LIMITATION_VD*/
-
-/* USER CODE END DEFINITIONS */
 
 #endif /* __MC_STM_TYPES_H */
 /******************* (C) COPYRIGHT 2019 STMicroelectronics *****END OF FILE****/

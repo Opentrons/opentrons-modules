@@ -26,9 +26,6 @@
 
 #include "r3_2_f30x_pwm_curr_fdbk.h"
 
-/* USER CODE BEGIN Additional include */
-
-/* USER CODE END Additional include */
 
 #define FREQ_RATIO 1                /* Dummy value for single drive */
 #define FREQ_RELATION HIGHEST_FREQ  /* Dummy value for single drive */
@@ -110,8 +107,5 @@ const R3_2_Params_t R3_2_ParamsM1 =
   .DAC_OVP_Threshold =  23830,
 };
 
-/* USER CODE BEGIN Additional parameters */
-
-/* USER CODE END Additional parameters */
 
 /******************* (C) COPYRIGHT 2019 STMicroelectronics *****END OF FILE****/

@@ -41,12 +41,10 @@ extern "C" {
 #include "virtual_bus_voltage_sensor.h"
 #include "virtual_speed_sensor.h"
 
-/* USER CODE BEGIN Additional include */
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
 
-/* USER CODE END Additional include */
 extern PID_Handle_t PIDSpeedHandle_M1;
 extern PID_Handle_t PIDIqHandle_M1;
 extern PID_Handle_t PIDIdHandle_M1;
@@ -60,9 +58,6 @@ extern RDivider_Handle_t RealBusVoltageSensorParamsM1;
 extern CircleLimitation_Handle_t CircleLimitationM1;
 extern RampExtMngr_Handle_t RampExtMngrHFParamsM1;
 
-/* USER CODE BEGIN Additional extern */
-
-/* USER CODE END Additional extern */
 #define NBR_OF_MOTORS 1
 
 #ifdef __cplusplus

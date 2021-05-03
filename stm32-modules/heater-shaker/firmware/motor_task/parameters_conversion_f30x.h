@@ -120,10 +120,6 @@
 #define COMP7_NonInvertingInput_PC1 LL_COMP_INPUT_PLUS_IO2
 #define COMP7_NonInvertingInput_PA0 LL_COMP_INPUT_PLUS_IO1
 
-/* USER CODE BEGIN Additional parameters */
-
-/* USER CODE END Additional parameters */
-
 #endif /*__PARAMETERS_CONVERSION_F30X_H*/
 
 /******************* (C) COPYRIGHT 2019 STMicroelectronics *****END OF FILE****/
