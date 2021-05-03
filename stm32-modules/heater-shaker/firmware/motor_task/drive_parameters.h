@@ -62,7 +62,7 @@ extern "C" {
 /* PWM generation and current reading */
 
 // CHANGEME AAHHHHHHH WAS 30000
-#define PWM_FREQUENCY 0000
+#define PWM_FREQUENCY 10000
 #define PWM_FREQ_SCALING 1
 
 #define LOW_SIDE_SIGNALS_ENABLING ES_GPIO
