@@ -60,7 +60,7 @@
                      DEGREES_60 */
 
 #define HALL_PHASE_SHIFT                                \
-    300 /*!< Define here in degrees                     \
+    90 /*!< Define here in degrees                     \
                      the electrical phase shift between \
                      the low to high transition of      \
                      signal H1 and the maximum of       \

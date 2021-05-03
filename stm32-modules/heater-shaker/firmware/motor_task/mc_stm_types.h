@@ -75,7 +75,7 @@
  * should be set to one of the symbols predefined for that purpose such as
  * #_RPM, #_01HZ,... See @ref SpeedUnit for more details.
  */
-#define SPEED_UNIT _RPM
+#define SPEED_UNIT _01HZ
 
 /**
  * @brief use a circle limitation that privileges Vd component instead of Vdq
