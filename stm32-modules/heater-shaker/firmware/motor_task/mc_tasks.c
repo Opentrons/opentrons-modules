@@ -679,18 +679,18 @@ inline uint16_t FOC_CurrControllerM1(void)
 uint16_t TSK_SafetyTask(void)
 {
   /* USER CODE BEGIN TSK_SafetyTask 0 */
-
+  uint16_t returncode = 0;
   /* USER CODE END TSK_SafetyTask 0 */
   if (bMCBootCompleted == 1)
   {
-    TSK_SafetyTask_PWMOFF(M1);
+    returncode = TSK_SafetyTask_PWMOFF(M1);
     /* User conversion execution */
     RCM_ExecUserConv ();
   /* USER CODE BEGIN TSK_SafetyTask 1 */
 
   /* USER CODE END TSK_SafetyTask 1 */
   }
-  return 0;
+  return returncode;
 }
 
 /**
