@@ -275,12 +275,14 @@ void MC_Scheduler(void)
 
   if (bMCBootCompleted == 1)
   {
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_11);
     if(hMFTaskCounterM1 > 0u)
     {
       hMFTaskCounterM1--;
     }
     else
     {
+      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_12);
       TSK_MediumFrequencyTaskM1();
       /* USER CODE BEGIN MC_Scheduler 1 */
 
@@ -686,9 +688,9 @@ uint16_t TSK_SafetyTask(void)
     returncode = TSK_SafetyTask_PWMOFF(M1);
     /* User conversion execution */
     RCM_ExecUserConv ();
-  /* USER CODE BEGIN TSK_SafetyTask 1 */
 
-  /* USER CODE END TSK_SafetyTask 1 */
+    returncode |= (uint16_t)(STM_GetFaultState(&STM[M1]) & 0xffff);
+    STM_FaultAcknowledged(&STM[M1]);
   }
   return returncode;
 }

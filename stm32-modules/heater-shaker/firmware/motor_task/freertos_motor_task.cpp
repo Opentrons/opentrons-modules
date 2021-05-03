@@ -29,7 +29,6 @@ namespace motor_control_task {
 struct MotorTaskFreeRTOS {
     TaskHandle_t main_task;
     TaskHandle_t control_task;
-    TaskHandle_t safety_task;
     ADC_HandleTypeDef hadc1;
     ADC_HandleTypeDef hadc2;
     TIM_HandleTypeDef htim1;
@@ -57,8 +56,6 @@ static constexpr uint32_t mc_stack_size = 128;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::array<StackType_t, mc_stack_size> control_task_stack;
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-std::array<StackType_t, mc_stack_size> safety_task_stack;
 // Stack as a std::array because why not
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::array<StackType_t, main_stack_size> stack;
@@ -68,8 +65,6 @@ std::array<StackType_t, main_stack_size> stack;
 StaticTask_t main_data;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 StaticTask_t control_task_data;
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-StaticTask_t safety_task_data;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 MotorTaskFreeRTOS _local_task;
@@ -102,19 +97,6 @@ void run_control_task(void *param) {
     }
 }
 
-void run_safety_task(void *param) {
-    static_cast<void>(param);
-    while (true) {
-        vTaskDelay(1);
-        uint16_t code = TSK_SafetyTask();
-        if (code != 0) {
-            auto &queue = _task.get_message_queue();
-            static_cast<void>(queue.try_send(messages::MotorMessage(
-                messages::MotorSystemErrorMessage{.errors = code})));
-        }
-    }
-}
-
 // Starter function that creates and spins off the task
 auto start()
     -> tasks::Task<TaskHandle_t, motor_task::MotorTask<FreeRTOSMessageQueue>> {
@@ -123,11 +105,7 @@ auto start()
     auto *control_task_handle = xTaskCreateStatic(
         run_control_task, "MCControl", control_task_stack.size(), nullptr, 2,
         control_task_stack.data(), &control_task_data);
-    auto *safety_task_handle = xTaskCreateStatic(
-        run_safety_task, "MCSafety", safety_task_stack.size(), nullptr, 3,
-        safety_task_stack.data(), &safety_task_data);
     _local_task.control_task = control_task_handle;
-    _local_task.safety_task = safety_task_handle;
     _local_task.main_task = handle;
     _motor_queue.provide_handle(handle);
     return tasks::Task<TaskHandle_t, decltype(_task)>{.handle = handle,
