@@ -128,12 +128,6 @@
 
 #define USART_IRQHandler USART2_IRQHandler
 
-/****** Prepares the UI configurations according the MCconfxx settings ********/
-#define COM_ENABLE
-
-#define DAC_ENABLE
-#define DAC_OP_ENABLE
-
 /* Motor 1 settings */
 #define FW_ENABLE
 
@@ -148,23 +142,6 @@
 #define PLLTUNING_ENABLE
 
 #define UI_CFGOPT_PFC_ENABLE
-
-/*******************************************************************************
-  * UI configurations settings. It can be manually overwritten if special
-  * configuartion is required.
-*******************************************************************************/
-
-/* Specific options of UI */
-#define UI_CONFIG_M1 ( UI_CFGOPT_NONE DAC_OP_ENABLE FW_ENABLE DIFFTERM_ENABLE \
-  | (MAIN_SCFG << MAIN_SCFG_POS) | (AUX_SCFG << AUX_SCFG_POS) | UI_CFGOPT_SETIDINSPDMODE PLLTUNING_ENABLE UI_CFGOPT_PFC_ENABLE | UI_CFGOPT_PLLTUNING)
-
-#define UI_CONFIG_M2
-
-#define DIN_ACTIVE_LOW Bit_RESET
-#define DIN_ACTIVE_HIGH Bit_SET
-
-#define DOUT_ACTIVE_HIGH   DOutputActiveHigh
-#define DOUT_ACTIVE_LOW    DOutputActiveLow
 
 /**********  AUXILIARY HALL TIMER MOTOR 1 *************/
 #define M1_HALL_TIM_PERIOD 65535
