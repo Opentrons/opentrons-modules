@@ -8,6 +8,7 @@ __pycache__/
 # C extensions
 *.so
 
+
 # Eagle backup files
 *.b#1
 *.b#2
@@ -38,6 +39,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!stm32-modules/heater-shaker/firmware/motor_task/MCSDK_v5.4.4/MotorControl/lib
 lib64/
 parts/
 sdist/
