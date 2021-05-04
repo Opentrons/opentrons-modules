@@ -11,18 +11,19 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
 #pragma GCC diagnostic ignored "-Wregister"
-#include "stm32f3xx_hal.h"
-#include "mc_tasks.h"
+extern "C" {
 #include "mc_config.h"
 #include "mc_interface.h"
+#include "mc_tasks.h"
 #include "mc_tuning.h"
+#include "stm32f3xx_hal.h"
+}
 #pragma GCC diagnostic pop
 
 #include "firmware/freertos_message_queue.hpp"
+#include "hardware_setup.h"
 #include "heater-shaker/motor_task.hpp"
 #include "heater-shaker/tasks.hpp"
-
-#include "hardware_setup.h"
 #include "motor_policy.hpp"
 
 namespace motor_control_task {
@@ -55,32 +56,34 @@ static auto _task = motor_task::MotorTask(_motor_queue);
 static constexpr uint32_t main_stack_size = 500;
 static constexpr uint32_t mc_stack_size = 128;
 
-
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::array<StackType_t, mc_stack_size> control_task_stack;
 // Stack as a std::array because why not
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::array<StackType_t, main_stack_size> stack;
 // Internal FreeRTOS data structure for the task
 
-// NOLINTNEXLITN(cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 StaticTask_t main_data;
-// NOLINTNEXLITN(cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 StaticTask_t control_task_data;
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static MotorTaskFreeRTOS _local_task;
-
 
 // Actual function that runs inside the task
 void run(void *param) {
-  motor_hardware_setup(
-      &_local_task.hadc1, &_local_task.hadc2,
-      &_local_task.htim1, &_local_task.htim2,
-      _local_task.pMCI, _local_task.pMCT);
+    static_cast<void>(param);
+    motor_hardware_setup(
+        &_local_task.hadc1, &_local_task.hadc2, &_local_task.htim1,
+        &_local_task.htim2,
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+        _local_task.pMCI, _local_task.pMCT);
 
-  auto policy = MotorPolicy(_local_task.pMCI[0]);
-  while (true) {
-    _task.run_once(policy);
-  }
+    auto policy = MotorPolicy(_local_task.pMCI[0]);
+    while (true) {
+        _task.run_once(policy);
+    }
 }
 
 void run_control_task(void *param) {
@@ -99,8 +102,6 @@ void run_control_task(void *param) {
 // Starter function that creates and spins off the task
 auto start()
     -> tasks::Task<TaskHandle_t, motor_task::MotorTask<FreeRTOSMessageQueue>> {
-
-
     auto *handle = xTaskCreateStatic(run, "MotorControl", stack.size(), &_task,
                                      1, stack.data(), &main_data);
     auto *control_task_handle = xTaskCreateStatic(
