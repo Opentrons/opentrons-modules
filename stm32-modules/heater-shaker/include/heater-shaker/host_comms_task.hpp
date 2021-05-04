@@ -178,12 +178,15 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
         auto cache_entry =
             ack_only_cache.remove_if_present(msg.responding_to_id);
         return std::visit(
-            [tx_into, tx_limit](auto cache_element) {
+            [tx_into, tx_limit, msg](auto cache_element) {
                 using T = std::decay_t<decltype(cache_element)>;
                 if constexpr (std::is_same_v<std::monostate, T>) {
                     return errors::write_into(
                         tx_into, tx_limit,
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else if (msg.with_error != errors::ErrorCode::NO_ERROR) {
+                    return errors::write_into(tx_into, tx_limit,
+                                              msg.with_error);
                 } else {
                     return cache_element.write_response_into(tx_into, tx_limit);
                 }

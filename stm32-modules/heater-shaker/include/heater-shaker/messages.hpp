@@ -93,6 +93,7 @@ struct GetRPMResponse {
 
 struct AcknowledgePrevious {
     uint32_t responding_to_id;
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
 struct IncomingMessageFromHost {
