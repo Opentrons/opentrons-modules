@@ -37,13 +37,15 @@ namespace motor_task {
  */
 template <typename Policy>
 concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
-    {p.set_rpm(static_cast<int16_t>(16))};
+    { p.set_rpm(static_cast<int16_t>(16)) }
+    ->std::same_as<errors::ErrorCode>;
     { cp.get_current_rpm() }
     ->std::same_as<int16_t>;
     { cp.get_target_rpm() }
     ->std::same_as<int16_t>;
     {p.stop()};
-    {p.set_ramp_rate(static_cast<int32_t>(8))};
+    { p.set_ramp_rate(static_cast<int32_t>(8)) }
+    ->std::same_as<errors::ErrorCode>;
 };
 
 constexpr size_t RESPONSE_LENGTH = 128;
@@ -92,9 +94,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::SetRPMMessage& msg, Policy& policy)
         -> void {
-        policy.set_rpm(msg.target_rpm);
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        auto error = policy.set_rpm(msg.target_rpm);
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id = msg.id, .with_error = error};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
@@ -102,9 +104,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::SetAccelerationMessage& msg,
                        Policy& policy) -> void {
-        policy.set_ramp_rate(msg.rpm_per_s);
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        auto error = policy.set_ramp_rate(msg.rpm_per_s);
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id = msg.id, .with_error = error};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }

@@ -1,4 +1,5 @@
 #include "catch2/catch.hpp"
+#include "heater-shaker/errors.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/motor_task.hpp"
 #include "test/task_builder.hpp"
@@ -186,6 +187,44 @@ SCENARIO("motor task error handling") {
                         std::get<messages::ErrorMessage>(spurious_msg).code ==
                         errors::ErrorCode::MOTOR_SPURIOUS_ERROR);
                 }
+            }
+        }
+    }
+}
+
+SCENARIO("motor task input error handling") {
+    GIVEN("a motor task") {
+        auto tasks = TaskBuilder::build();
+        WHEN("a command requests an invalid speed") {
+            tasks->get_motor_policy().test_set_rpm_return_code(
+                errors::ErrorCode::MOTOR_ILLEGAL_SPEED);
+            auto message =
+                messages::SetRPMMessage{.id = 123, .target_rpm = 9999};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the motor task should respond with an error") {
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                auto ack = std::get<messages::AcknowledgePrevious>(response);
+                REQUIRE(ack.with_error ==
+                        errors::ErrorCode::MOTOR_ILLEGAL_SPEED);
+            }
+        }
+        WHEN("a command requests an invalid ramp rate") {
+            tasks->get_motor_policy().test_set_ramp_rate_return_code(
+                errors::ErrorCode::MOTOR_ILLEGAL_RAMP_RATE);
+            auto message =
+                messages::SetAccelerationMessage{.id = 123, .rpm_per_s = 9999};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the motor task should respond with an error") {
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                auto ack = std::get<messages::AcknowledgePrevious>(response);
+                REQUIRE(ack.with_error ==
+                        errors::ErrorCode::MOTOR_ILLEGAL_RAMP_RATE);
             }
         }
     }

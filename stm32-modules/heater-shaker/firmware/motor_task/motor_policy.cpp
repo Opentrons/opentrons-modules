@@ -3,18 +3,25 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
 #pragma GCC diagnostic ignored "-Wregister"
+#include "drive_parameters.h"
 #include "mc_interface.h"
 #include "mc_stm_types.h"
 #pragma GCC diagnostic pop
 
+#include "heater-shaker/errors.hpp"
 #include "motor_policy.hpp"
+
+using namespace errors;
 
 MotorPolicy::MotorPolicy(MCI_Handle_t *handle) : motor_handle(handle) {}
 
-auto MotorPolicy::set_rpm(int16_t rpm) -> void {
+auto MotorPolicy::set_rpm(int16_t rpm) -> ErrorCode {
     if (rpm == 0) {
         stop();
-        return;
+        return ErrorCode::NO_ERROR;
+    }
+    if (rpm > MAX_APPLICATION_SPEED_RPM || rpm < MIN_APPLICATION_SPEED_RPM) {
+        return ErrorCode::MOTOR_ILLEGAL_SPEED;
     }
     int16_t current_speed = get_current_rpm();
     int16_t command_01hz = rpm * _01HZ / _RPM;
@@ -26,6 +33,7 @@ auto MotorPolicy::set_rpm(int16_t rpm) -> void {
     if (MCI_GetSTMState(motor_handle) == IDLE) {
         MCI_StartMotor(motor_handle);
     }
+    return ErrorCode::NO_ERROR;
 }
 
 auto MotorPolicy::stop() -> void { MCI_StopMotor(motor_handle); }
@@ -44,6 +52,11 @@ auto MotorPolicy::get_target_rpm() const -> int16_t {
     return 0;
 }
 
-auto MotorPolicy::set_ramp_rate(int32_t rpm_per_s) -> void {
+auto MotorPolicy::set_ramp_rate(int32_t rpm_per_s) -> ErrorCode {
+    if (rpm_per_s > MAX_RAMP_RATE_RPM_PER_S ||
+        rpm_per_s < MIN_RAMP_RATE_RPM_PER_S) {
+        return ErrorCode::MOTOR_ILLEGAL_RAMP_RATE;
+    }
     ramp_rate = rpm_per_s;
+    return ErrorCode::NO_ERROR;
 }

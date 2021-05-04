@@ -40,6 +40,8 @@ enum class ErrorCode {
     MOTOR_BLDC_DRIVER_ERROR = 108,
     MOTOR_SPURIOUS_ERROR = 109,
     MOTOR_UNKNOWN_ERROR = 110,
+    MOTOR_ILLEGAL_SPEED = 120,
+    MOTOR_ILLEGAL_RAMP_RATE = 121,
 };
 
 auto from_motor_error(uint16_t error_bitmap, MotorErrorOffset which)
