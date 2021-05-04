@@ -68,6 +68,32 @@ SCENARIO("motor task message passing") {
                 }
             }
         }
+
+        WHEN("sending a set-acceleration message") {
+            auto message =
+                messages::SetAccelerationMessage{.id = 123, .rpm_per_s = 9999};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_motor_queue().backing_deque.empty());
+                REQUIRE(tasks->get_motor_policy().test_get_ramp_rate() ==
+                        message.rpm_per_s);
+                AND_THEN("the task should respond to the message") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto ack =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(ack.responding_to_id == message.id);
+                }
+            }
+        }
     }
 }
 

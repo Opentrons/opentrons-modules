@@ -2,11 +2,14 @@
 
 #include <cstdint>
 
-TestMotorPolicy::TestMotorPolicy() : TestMotorPolicy(0, 0) {}
+TestMotorPolicy::TestMotorPolicy() : TestMotorPolicy(0, 0, 16) {}
 
 TestMotorPolicy::TestMotorPolicy(int16_t initial_rpm,
-                                 int16_t initial_target_rpm)
-    : target_rpm(initial_target_rpm), current_rpm(initial_rpm) {}
+                                 int16_t initial_target_rpm,
+                                 int32_t initial_ramp_rate)
+    : target_rpm(initial_target_rpm),
+      current_rpm(initial_rpm),
+      ramp_rate(initial_ramp_rate) {}
 
 auto TestMotorPolicy::set_rpm(int16_t rpm) -> void { target_rpm = rpm; }
 
@@ -22,3 +25,9 @@ auto TestMotorPolicy::stop() -> void {
 auto TestMotorPolicy::test_set_current_rpm(int16_t new_current_rpm) -> void {
     current_rpm = new_current_rpm;
 }
+
+auto TestMotorPolicy::set_ramp_rate(int32_t new_ramp_rate) -> void {
+    ramp_rate = new_ramp_rate;
+}
+
+auto TestMotorPolicy::test_get_ramp_rate() -> int32_t { return ramp_rate; }

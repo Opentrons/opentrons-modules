@@ -37,12 +37,13 @@ namespace motor_task {
  */
 template <typename Policy>
 concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
-    {p.set_rpm(12000)};  // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    {p.set_rpm(static_cast<int16_t>(16))};
     { cp.get_current_rpm() }
     ->std::same_as<int16_t>;
     { cp.get_target_rpm() }
     ->std::same_as<int16_t>;
     {p.stop()};
+    {p.set_ramp_rate(static_cast<int32_t>(8))};
 };
 
 constexpr size_t RESPONSE_LENGTH = 128;
@@ -92,6 +93,16 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     auto visit_message(const messages::SetRPMMessage& msg, Policy& policy)
         -> void {
         policy.set_rpm(msg.target_rpm);
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::SetAccelerationMessage& msg,
+                       Policy& policy) -> void {
+        policy.set_ramp_rate(msg.rpm_per_s);
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(

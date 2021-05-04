@@ -78,5 +78,23 @@ SCENARIO("testing full message passing integration") {
                              Catch::Matchers::StartsWith("M105 C99 T48 OK\n"));
             }
         }
+
+        WHEN("sending a set-accel message by string to the host comms task") {
+            std::string message_str = "M204 S9999\n";
+            tasks->get_host_comms_queue().backing_deque.push_back(
+                messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                    &*message_str.begin(), &*message_str.end())));
+            THEN("after spinning both tasks, we get a response") {
+                auto response_buffer = std::string(64, 'c');
+                auto written = tasks->get_host_comms_task().run_once(
+                    response_buffer.begin(), response_buffer.end());
+                REQUIRE(written == response_buffer.begin());
+                tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                written = tasks->get_host_comms_task().run_once(
+                    response_buffer.begin(), response_buffer.end());
+                REQUIRE_THAT(response_buffer,
+                             Catch::Matchers::StartsWith("M204 OK\n"));
+            }
+        }
     }
 }

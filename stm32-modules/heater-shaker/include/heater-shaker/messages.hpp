@@ -54,6 +54,11 @@ struct GetRPMMessage {
     uint32_t id;
 };
 
+struct SetAccelerationMessage {
+    uint32_t id;
+    int32_t rpm_per_s;
+};
+
 // Used internally to the motor task, communicates asynchronous errors to the
 // main controller task
 struct MotorSystemErrorMessage {
@@ -97,8 +102,9 @@ struct IncomingMessageFromHost {
 
 using HeaterMessage = ::std::variant<std::monostate, SetTemperatureMessage,
                                      GetTemperatureMessage>;
-using MotorMessage = ::std::variant<std::monostate, MotorSystemErrorMessage,
-                                    SetRPMMessage, GetRPMMessage>;
+using MotorMessage =
+    ::std::variant<std::monostate, MotorSystemErrorMessage, SetRPMMessage,
+                   GetRPMMessage, SetAccelerationMessage>;
 using UIMessage = ::std::variant<GetTemperatureResponse, GetRPMResponse>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
