@@ -1,7 +1,10 @@
 #pragma once
 #include <array>
 #include <concepts>
+#include <cstdint>
 #include <variant>
+
+#include "heater-shaker/errors.hpp"
 
 namespace messages {
 
@@ -51,6 +54,16 @@ struct GetRPMMessage {
     uint32_t id;
 };
 
+// Used internally to the motor task, communicates asynchronous errors to the
+// main controller task
+struct MotorSystemErrorMessage {
+    uint16_t errors;
+};
+
+struct ErrorMessage {
+    errors::ErrorCode code;
+};
+
 /*
 ** Response structs either confirm actions or fulfill actions. Because some
 *messages
@@ -84,10 +97,10 @@ struct IncomingMessageFromHost {
 
 using HeaterMessage = ::std::variant<std::monostate, SetTemperatureMessage,
                                      GetTemperatureMessage>;
-using MotorMessage =
-    ::std::variant<std::monostate, SetRPMMessage, GetRPMMessage>;
+using MotorMessage = ::std::variant<std::monostate, MotorSystemErrorMessage,
+                                    SetRPMMessage, GetRPMMessage>;
 using UIMessage = ::std::variant<GetTemperatureResponse, GetRPMResponse>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
-                   GetTemperatureResponse, GetRPMResponse>;
+                   ErrorMessage, GetTemperatureResponse, GetRPMResponse>;
 };  // namespace messages

@@ -21,7 +21,6 @@
 
 namespace gcode {
 
-
 struct SetRPM {
     /*
     ** Set RPM uses the spindle-speed code from standard gcode, M3 (CW)

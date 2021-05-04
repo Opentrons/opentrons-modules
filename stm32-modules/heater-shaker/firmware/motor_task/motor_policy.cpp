@@ -8,7 +8,7 @@
 
 #include "motor_policy.hpp"
 
-MotorPolicy::MotorPolicy(MCI_Handle_t *handle): motor_handle(handle) {}
+MotorPolicy::MotorPolicy(MCI_Handle_t *handle) : motor_handle(handle) {}
 
 auto MotorPolicy::set_rpm(int16_t rpm) -> void {
     int16_t current_speed = get_current_rpm();
@@ -21,9 +21,7 @@ auto MotorPolicy::set_rpm(int16_t rpm) -> void {
     }
 }
 
-auto MotorPolicy::stop() -> void {
-    MCI_StopMotor(motor_handle);
-}
+auto MotorPolicy::stop() -> void { MCI_StopMotor(motor_handle); }
 
 auto MotorPolicy::get_current_rpm() const -> int16_t {
     return MCI_GetAvrgMecSpeedUnit(motor_handle) * _RPM / _01HZ;

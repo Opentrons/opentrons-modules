@@ -4,6 +4,7 @@
 
 add_library(heater-shaker-core STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/pid.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/errors.cpp
   )
 
 set_target_properties(heater-shaker-core

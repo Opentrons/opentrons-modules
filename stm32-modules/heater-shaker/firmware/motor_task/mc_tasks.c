@@ -91,7 +91,7 @@ void TSK_SetChargeBootCapDelayM1(uint16_t hTickCount);
 bool TSK_ChargeBootCapDelayHasElapsedM1(void);
 void TSK_SetStopPermanencyTimeM1(uint16_t hTickCount);
 bool TSK_StopPermanencyTimeHasElapsedM1(void);
-void TSK_SafetyTask_PWMOFF(uint8_t motor);
+uint16_t TSK_SafetyTask_PWMOFF(uint8_t motor);
 
 /**
   * @brief  It initializes the whole MC core according to user defined
@@ -222,7 +222,7 @@ void MCboot( MCI_Handle_t* pMCIList[NBR_OF_MOTORS],MCT_Handle_t* pMCTList[NBR_OF
  * - Power Factor Correction Task (if enabled)
  * - User Interface task.
  */
-__weak void MC_RunMotorControlTasks(void)
+uint16_t MC_RunMotorControlTasks(void)
 {
   if ( bMCBootCompleted ) {
     /* ** Medium Frequency Tasks ** */
@@ -230,8 +230,9 @@ __weak void MC_RunMotorControlTasks(void)
 
     /* Safety task is run after Medium Frequency task so that
      * it can overcome actions they initiated if needed. */
-    TSK_SafetyTask();
+    return TSK_SafetyTask();
   }
+  return 0;
 }
 
 /**

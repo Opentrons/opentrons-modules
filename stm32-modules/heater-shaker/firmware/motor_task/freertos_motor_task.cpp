@@ -83,13 +83,18 @@ void run(void *param) {
   }
 }
 
-  void run_control_task(void *param) {
+void run_control_task(void *param) {
     static_cast<void>(param);
     while (true) {
-      vTaskDelay(1);
-      MC_RunMotorControlTasks();
+        vTaskDelay(1);
+        uint16_t code = MC_RunMotorControlTasks();
+        if (code != 0) {
+            auto &queue = _task.get_message_queue();
+            static_cast<void>(queue.try_send(messages::MotorMessage(
+                messages::MotorSystemErrorMessage{.errors = code})));
+        }
     }
-  }
+}
 
 // Starter function that creates and spins off the task
 auto start()

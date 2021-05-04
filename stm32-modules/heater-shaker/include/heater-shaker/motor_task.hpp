@@ -3,8 +3,8 @@
  */
 #pragma once
 
-#include <variant>
 #include <concepts>
+#include <variant>
 
 #include "hal/message_queue.hpp"
 #include "heater-shaker/messages.hpp"
@@ -35,12 +35,14 @@ namespace motor_task {
  * For instance, an asynchronous error mechanism should inform the motor
  * task of its event by sending a message.
  */
-template<typename Policy>
+template <typename Policy>
 concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
-{ p.set_rpm(12000) };
-{ cp.get_current_rpm() } -> std::same_as<int16_t>;
-{ cp.get_target_rpm() } -> std::same_as<int16_t>;
-{ p.stop()};
+    {p.set_rpm(12000)};  // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    { cp.get_current_rpm() }
+    ->std::same_as<int16_t>;
+    { cp.get_target_rpm() }
+    ->std::same_as<int16_t>;
+    {p.stop()};
 };
 
 constexpr size_t RESPONSE_LENGTH = 128;
@@ -62,9 +64,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
         task_registry = other_tasks;
     }
 
-        template<typename Policy>
-        requires MotorExecutionPolicy<Policy>
-    auto run_once(Policy& policy) -> void {
+    template <typename Policy>
+    requires MotorExecutionPolicy<Policy> auto run_once(Policy& policy)
+        -> void {
         auto message = Message(std::monostate());
 
         // This is the call down to the provided queue. It will block for
@@ -73,18 +75,22 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
 
         static_cast<void>(message_queue.try_recv(&message, WAIT_TIME_TICKS));
         std::visit(
-            [this, &policy](const auto& msg) -> void { this->visit_message(msg, policy); },
+            [this, &policy](const auto& msg) -> void {
+                this->visit_message(msg, policy);
+            },
             message);
     }
 
-    private:
-    template<typename Policy>
+  private:
+    template <typename Policy>
     auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
         static_cast<void>(_ignore);
+        static_cast<void>(policy);
     }
 
-        template <typename Policy>
-        auto visit_message(const messages::SetRPMMessage& msg, Policy& policy) -> void {
+    template <typename Policy>
+    auto visit_message(const messages::SetRPMMessage& msg, Policy& policy)
+        -> void {
         policy.set_rpm(msg.target_rpm);
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
@@ -93,15 +99,40 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     }
 
     template <typename Policy>
-    auto visit_message(const messages::GetRPMMessage& msg, Policy& policy) -> void {
-        auto response = messages::GetRPMResponse{
-            .responding_to_id = msg.id,
-            .current_rpm =
-                policy.get_current_rpm(),
-            .setpoint_rpm =
-                policy.get_target_rpm()};
+    auto visit_message(const messages::GetRPMMessage& msg, Policy& policy)
+        -> void {
+        auto response =
+            messages::GetRPMResponse{.responding_to_id = msg.id,
+                                     .current_rpm = policy.get_current_rpm(),
+                                     .setpoint_rpm = policy.get_target_rpm()};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::MotorSystemErrorMessage& msg,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        if (msg.errors == 0) {
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    messages::HostCommsMessage(messages::ErrorMessage{
+                        .code = errors::ErrorCode::MOTOR_SPURIOUS_ERROR})));
+            return;
+        }
+        for (auto offset =
+                 static_cast<uint8_t>(errors::MotorErrorOffset::FOC_DURATION);
+             offset <= static_cast<uint8_t>(errors::MotorErrorOffset::SW_ERROR);
+             offset++) {
+            auto code = errors::from_motor_error(
+                msg.errors, static_cast<errors::MotorErrorOffset>(offset));
+            if (code != errors::ErrorCode::NO_ERROR) {
+                static_cast<void>(
+                    task_registry->comms->get_message_queue().try_send(
+                        messages::HostCommsMessage(
+                            messages::ErrorMessage{.code = code})));
+            }
+        }
     }
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
