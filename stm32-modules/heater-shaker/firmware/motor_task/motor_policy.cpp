@@ -11,6 +11,10 @@
 MotorPolicy::MotorPolicy(MCI_Handle_t *handle) : motor_handle(handle) {}
 
 auto MotorPolicy::set_rpm(int16_t rpm) -> void {
+    if (rpm == 0) {
+        stop();
+        return;
+    }
     int16_t current_speed = get_current_rpm();
     int16_t command_01hz = rpm * _01HZ / _RPM;
     uint16_t ramp_time =
@@ -24,9 +28,15 @@ auto MotorPolicy::set_rpm(int16_t rpm) -> void {
 auto MotorPolicy::stop() -> void { MCI_StopMotor(motor_handle); }
 
 auto MotorPolicy::get_current_rpm() const -> int16_t {
-    return MCI_GetAvrgMecSpeedUnit(motor_handle) * _RPM / _01HZ;
+    if (IDLE != MCI_GetSTMState(motor_handle)) {
+        return MCI_GetAvrgMecSpeedUnit(motor_handle) * _RPM / _01HZ;
+    }
+    return 0;
 }
 
 auto MotorPolicy::get_target_rpm() const -> int16_t {
-    return MCI_GetMecSpeedRefUnit(motor_handle) * _RPM / _01HZ;
+    if (IDLE != MCI_GetSTMState(motor_handle)) {
+        return MCI_GetMecSpeedRefUnit(motor_handle) * _RPM / _01HZ;
+    }
+    return 0;
 }

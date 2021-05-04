@@ -587,6 +587,7 @@ uint16_t TSK_SafetyTask(void)
     returncode = TSK_SafetyTask_PWMOFF(M1);
     /* User conversion execution */
     RCM_ExecUserConv ();
+    STM_FaultAcknowledged(&STM[M1]);
   }
   return returncode;
 }
