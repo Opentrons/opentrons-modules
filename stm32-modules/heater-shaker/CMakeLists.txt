@@ -20,11 +20,13 @@ file(GLOB_RECURSE HS_SOURCES_FOR_FORMAT ./*.cpp ./*.hpp ./*.h)
 add_custom_target(
   heater-shaker-format
   ALL
+  COMMENT "Formatting code"
   COMMAND ${Clang_CLANGFORMAT_EXECUTABLE} -style=file -i ${HS_SOURCES_FOR_FORMAT}
   )
 
 # Target for use in ci - warnings are errors, doesn't edit files
 add_custom_target(
   heater-shaker-format-ci
+  COMMENT "Checking format"
   COMMAND ${Clang_CLANGFORMAT_EXECUTABLE} -style=file -Werror --ferror-limit=0 -n ${HS_SOURCES_FOR_FORMAT}
 )
