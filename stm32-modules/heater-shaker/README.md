@@ -10,6 +10,7 @@ When cross-compiling the firmware (using the `stm32-cross` cmake preset, running
 - Build the firmware, connect to a debugger, and upload it: `cmake --build ./build-stm32-cross --target heater-shaker-debug`
 - Lint the firmware: `cmake --build ./build-stm32-cross --target heater-shaker-lint`
 - Format the firmware: `cmake --build ./build-stm32-cross --target heater-shaker-format`
+- Flash the firmware to a board: `cmake --build ./build-stm32-cross --target heater-shaker-flash`
 
 ### Debugging
 There's a target called `heater-shaker-debug` that will build the firmware and then spin up a gdb, spin up an openocd, and connect the two; load some useful python scripts; connect to an st-link that should be already plugged in; automatically upload the firmware, and drop you at a breakpoint at boot time. This should all download itself and be ready as soon as `cmake --preset=stm32-cross .` completes, with one exception: Gdb python support is incredibly weird and will somehow always find your python2 that the system has, no matter how hard you try to avoid this. The scripts should work fine, but you have to install setuptools so `pkg_resources` is available, since this isn't really something we want to "install" by downloading it to some random directory and dropping it in gdb's embedded python interpreter's package path, so do the lovely
