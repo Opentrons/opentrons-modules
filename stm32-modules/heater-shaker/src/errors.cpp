@@ -9,8 +9,6 @@ const char* const UNHANDLED_GCODE = "ERR003:unhandled gcode\n";
 const char* const GCODE_CACHE_FULL = "ERR004:gcode cache full\n";
 const char* const BAD_MESSAGE_ACKNOWLEDGEMENT =
     "ERR005:bad message acknowledgement\n";
-const char* const MOTOR_REQUESTED_SPEED_INVALID =
-    "ERR100:main motor:requested rpm invalid\n";
 const char* const MOTOR_FOC_DURATION = "ERR101:main motor:FOC_DURATION\n";
 const char* const MOTOR_BLDC_OVERVOLT = "ERR102:main motor:overvolt\n";
 const char* const MOTOR_BLDC_UNDERVOLT = "ERR103:main motor:undervolt\n";
@@ -18,7 +16,7 @@ const char* const MOTOR_BLDC_OVERTEMP = "ERR104:main motor:overtemp\n";
 const char* const MOTOR_BLDC_STARTUP_FAILED =
     "ERR105:main motor:startup failed\n";
 const char* const MOTOR_BLDC_SPEEDSENSOR_FAILED =
-    "ERR106:main motor:startup failed\n";
+    "ERR106:main motor:speedsensor failed\n";
 const char* const MOTOR_BLDC_OVERCURRENT = "ERR107:main motor:overcurrent\n";
 const char* const MOTOR_BLDC_DRIVER_ERROR = "ERR108:main motor:driver error\n";
 const char* const MOTOR_SPURIOUS_ERROR = "ERR109:main motor:spurious error\n";
@@ -42,7 +40,6 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(UNHANDLED_GCODE);
         HANDLE_CASE(GCODE_CACHE_FULL);
         HANDLE_CASE(BAD_MESSAGE_ACKNOWLEDGEMENT);
-        HANDLE_CASE(MOTOR_REQUESTED_SPEED_INVALID);
         HANDLE_CASE(MOTOR_FOC_DURATION);
         HANDLE_CASE(MOTOR_BLDC_OVERVOLT);
         HANDLE_CASE(MOTOR_BLDC_UNDERVOLT);

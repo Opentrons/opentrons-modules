@@ -492,16 +492,14 @@ SCENARIO("message handling for other-task-initiated error communication") {
         auto tasks = TaskBuilder::build();
         std::string tx_buf(128, 'c');
         WHEN("sending an error as from the motor task") {
-            auto message_obj =
-                messages::HostCommsMessage(messages::ErrorMessage(
-                    errors::ErrorCode::MOTOR_REQUESTED_SPEED_INVALID));
+            auto message_obj = messages::HostCommsMessage(
+                messages::ErrorMessage(errors::ErrorCode::MOTOR_ILLEGAL_SPEED));
             tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
             auto written = tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                                  tx_buf.end());
             THEN("the task should write out the error") {
-                REQUIRE_THAT(tx_buf,
-                             Catch::Matchers::StartsWith(
-                                 "ERR100:main motor:requested rpm invalid\n"));
+                REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
+                                         "ERR120:main motor:illegal speed\n"));
                 REQUIRE(*written == 'c');
             }
         }
