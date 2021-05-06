@@ -51,6 +51,9 @@ Open the `/modules/.../<file_name>.ino` file in Arduino, select the appropriate 
 
 The stm32 modules have debug harnessing built in; for instance, running `cmake --build ./build-stm32-cross --target heater-shaker-debug` will build the firmware and spin up the cross gdb and openocd. This target by default (because of commands in the gdbinit) will reset the board and upload the built firmware; if you want to use the firmware currently flashed to the board, run everything manually.
 
+The stm32 modules also have flash targets for when you want to flash the board but not actually run a debugger; running `cmake --build ./build-stm32-cross --target heater-shaker-flash` will build the firmware and then use openocd to flash it to the target.
+
+
 ## test
 
 This is not implemented for the arduino modules.

@@ -120,6 +120,7 @@ list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
 get_target_property(core_sources heater-shaker-core SOURCES)
 add_custom_target(heater-shaker-lint
+  COMMENT "Linting"
   ALL
   COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${HS_FW_LINTABLE_SRCS} ${core_sources} --config=)
 
@@ -130,6 +131,14 @@ add_custom_target(heater-shaker-lint
 # should be running the entire time and that's tough to accomplish
 # in a custom command
 add_custom_target(heater-shaker-debug
+  COMMENT "Starting gdb and openocd"
   COMMAND heater-shaker
   USES_TERMINAL
   )
+
+# Runs openocd to flash the board (without using a debugger)
+add_custom_target(heater-shaker-flash
+  COMMAND "${OpenOCD_EXECUTABLE}" "-f" "${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg" "-c" "program $<TARGET_FILE:heater-shaker>;exit"
+  VERBATIM
+  COMMENT "Flashing board"
+  DEPENDS heater-shaker)
