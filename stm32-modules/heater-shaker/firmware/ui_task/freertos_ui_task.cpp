@@ -11,6 +11,11 @@
 #include "heater-shaker/ui_task.hpp"
 #include "task.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wvolatile"
+#include "ui_hardware.h"
+#pragma GCC diagnostic pop
+
 namespace ui_control_task {
 
 enum class Notifications : uint8_t {
@@ -37,6 +42,7 @@ static StaticTask_t
 // Actual function that runs inside the task, unused param because we don't get
 // to pick the function type
 static void run(void *param) {  // NOLINT(misc-unused-parameters)
+    ui_hardware_setup();
     static constexpr uint32_t delay_ticks = 100;
     while (true) {
         vTaskDelay(delay_ticks);

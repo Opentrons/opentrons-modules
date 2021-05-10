@@ -63,6 +63,7 @@ set(HS_FW_NONLINTABLE_SRCS
   ${MOTOR_DIR}/mc_tasks.c
   ${MOTOR_DIR}/stm32f30x_mc_it.c
   ${MOTOR_DIR}/regular_conversion_manager.c
+  ${UI_DIR}/ui_hardware.c
   )
 
 add_executable(heater-shaker
