@@ -28,7 +28,7 @@ struct SetRPM {
     ** Example: M3 S500 sets target rpm to 500
     */
     using ParseResult = std::optional<SetRPM>;
-    uint32_t rpm;
+    int16_t rpm;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt>&&
@@ -51,12 +51,12 @@ struct SetRPM {
             return std::make_pair(ParseResult(), input);
         }
 
-        auto value_res = parse_value<uint32_t>(working, limit);
+        auto value_res = parse_value<int16_t>(working, limit);
 
         if (!value_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        return std::make_pair(ParseResult(SetRPM{.rpm = static_cast<uint32_t>(
+        return std::make_pair(ParseResult(SetRPM{.rpm = static_cast<int16_t>(
                                                      value_res.first.value())}),
                               value_res.second);
     }
@@ -175,7 +175,7 @@ struct GetRPM {
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<InLimit, InputIt> static auto
         write_response_into(InputIt buf, const InLimit limit,
-                            uint32_t current_rpm, uint32_t setpoint_rpm)
+                            int16_t current_rpm, int16_t setpoint_rpm)
             -> InputIt {
         static constexpr const char* prefix = "M123 C";
         char* char_next = &*buf;
@@ -215,6 +215,57 @@ struct GetRPM {
             return std::make_pair(ParseResult(), input);
         }
         return std::make_pair(ParseResult(GetRPM()), working);
+    }
+};
+
+struct SetAcceleration {
+    /*
+    ** SetAcceleration uses M204 which is kind of the right thing. The
+    *acceleration is in
+    ** RPM/s.
+    **
+    ** Note: The spindle doesn't use linear acceleration all the time. This is
+    *the ramp rate
+    ** that will be followed for the majority of the time spent changing speeds.
+    *It may be
+    ** different when blending between ramp and constant speed control.
+    ** Format: M204 Sxxxx
+    ** Example: M204 S10000
+    */
+
+    using ParseResult = std::optional<SetAcceleration>;
+    int32_t rpm_per_s;
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> static auto
+        write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        static constexpr const char* response = "M204 OK\n";
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt>&&
+        std::sized_sentinel_for<Limit, InputIt> static auto
+        parse(const InputIt& input, Limit limit)
+            -> std::pair<ParseResult, InputIt> {
+        // minimal m3 command
+        constexpr auto prefix = std::array{'M', '2', '0', '4', ' ', 'S'};
+
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto value_res = parse_value<int32_t>(working, limit);
+
+        if (!value_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(
+            ParseResult(SetAcceleration{
+                .rpm_per_s = static_cast<int32_t>(value_res.first.value())}),
+            value_res.second);
     }
 };
 }  // namespace gcode

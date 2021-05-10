@@ -21,7 +21,7 @@ elseif (${MODULE_TYPE} STREQUAL "stm32")
   # From https://blog.kitware.com/cmake-and-the-default-build-type/
 
   # MinSizeRel is the default release type since the binary size is quite important.
-  set(default_build_type "Debug")
+  set(default_build_type "RelWithDebInfo")
   if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
     set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE

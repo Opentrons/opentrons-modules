@@ -6,6 +6,7 @@ include(AddBuildAndTestTarget)
 
 add_executable(heater-shaker
   task_builder.cpp
+  test_motor_policy.cpp
   test_gcode_parse.cpp
   test_gcodes.cpp
   test_pid.cpp

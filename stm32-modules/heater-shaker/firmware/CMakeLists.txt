@@ -6,22 +6,64 @@ find_package(STM32F303BSP
 find_package(CrossGCC)
 find_package(OpenOCD)
 
+set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
+set(HEATER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/heater_task")
+set(MOTOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/motor_task")
+set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui_task")
+set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
+
+set(MCSDK_VERSION 5.4.4)
+set(MCSDK_LOCATION "${CMAKE_CURRENT_LIST_DIR}/motor_task/MCSDK_v${MCSDK_VERSION}/MotorControl")
+
+add_library(_mc_static STATIC IMPORTED)
+set_target_properties(_mc_static
+  PROPERTIES IMPORTED_LOCATION "${MCSDK_LOCATION}/lib/libmc-gcc_M4_NoCCMRAM.lib")
+
+file(GLOB _mcsdk_any_sources "${MCSDK_LOCATION}/MCSDK/MCLib/Any/Src/*.c")
+file(GLOB _mcsdk_f3xx_sources "${MCSDK_LOCATION}/MCSDK/MCLib/F3xx/Src/*.c")
+
+add_library(mc STATIC
+  ${_mcsdk_any_sources}
+  ${_mcsdk_f3xx_sources}
+  )
+set_target_properties(mc
+  PROPERTIES C_STANDARD 11
+             C_STANDARD_REQUIRED TRUE)
+
+target_include_directories(mc
+  PUBLIC "${MCSDK_LOCATION}/MCSDK/MCLib/Any/Inc"
+         "${MCSDK_LOCATION}/MCSDK/MCLib/F3xx/Inc"
+  PRIVATE "${CMAKE_CURRENT_LIST_DIR}/motor_task")
+target_link_libraries(mc PUBLIC _mc_static STM32F303BSP_Drivers)
+target_link_libraries(_mc_static INTERFACE mc)
+
+
 # Add source files that should be checked by clang-tidy here
 set(HS_FW_LINTABLE_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_heater_task.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_motor_task.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_ui_task.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_comms_task.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/freertos_idle_timer_task.cpp)
+  ${SYSTEM_DIR}/main.cpp
+  ${HEATER_DIR}/freertos_heater_task.cpp
+  ${MOTOR_DIR}/freertos_motor_task.cpp
+  ${MOTOR_DIR}/motor_policy.cpp
+  ${UI_DIR}/freertos_ui_task.cpp
+  ${COMMS_DIR}/freertos_comms_task.cpp
+  ${SYSTEM_DIR}/freertos_idle_timer_task.cpp)
 
 # Add source files that should NOT be checked by clang-tidy here
 set(HS_FW_NONLINTABLE_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/system_stm32f3xx.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/stm32f3xx_it.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/startup_stm32f303xe.s
-  ${CMAKE_CURRENT_SOURCE_DIR}/usbd_conf.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/usbd_desc.c)
+  ${SYSTEM_DIR}/system_stm32f3xx.c
+  ${SYSTEM_DIR}/stm32f3xx_it.c
+  ${SYSTEM_DIR}/startup_stm32f303xe.s
+  ${COMMS_DIR}/usbd_conf.c
+  ${COMMS_DIR}/usbd_desc.c
+  ${MOTOR_DIR}/hardware_setup.c
+  ${MOTOR_DIR}/mc_config.c
+  ${MOTOR_DIR}/mc_interface.c
+  ${MOTOR_DIR}/mc_math.c
+  ${MOTOR_DIR}/mc_parameters.c
+  ${MOTOR_DIR}/mc_tasks.c
+  ${MOTOR_DIR}/stm32f30x_mc_it.c
+  ${MOTOR_DIR}/regular_conversion_manager.c
+  )
 
 add_executable(heater-shaker
   ${HS_FW_LINTABLE_SRCS}
@@ -29,15 +71,15 @@ add_executable(heater-shaker
 
 target_link_options(heater-shaker
   PRIVATE
-  "LINKER:-T,${CMAKE_CURRENT_SOURCE_DIR}/STM32F303RETx_FLASH.ld"
+  "LINKER:-T,${SYSTEM_DIR}/STM32F303RETx_FLASH.ld"
   "LINKER:--print-memory-usage"
   "LINKER:--error-unresolved-symbols")
 
 # Incurs at least a relink when you change the linker file (and a recompile of main
 # but hopefully that's quick)
-set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/main.cpp
+set_source_files_properties(${SYSTEM_DIR}/main.cpp
   PROPERTIES
-  OBJECT_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/STM32F303RETx_FLASH.ld")
+  OBJECT_DEPENDS "${SYSTEM_DIR}/STM32F303RETx_FLASH.ld")
 
 set_target_properties(heater-shaker
   PROPERTIES CXX_STANDARD 20
@@ -45,7 +87,9 @@ set_target_properties(heater-shaker
              C_STANDARD 11
              C_STANDARD_REQUIRED TRUE)
 
-target_include_directories(heater-shaker PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+  target_include_directories(heater-shaker
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    PRIVATE ${MOTOR_DIR})
 
 target_compile_options(heater-shaker
   PUBLIC
@@ -61,15 +105,15 @@ target_compile_options(heater-shaker
 
 target_link_libraries(
   heater-shaker
-  STM32F303BSP_Drivers STM32F303BSP_USB STM32F303BSP_FreeRTOS heater-shaker-core)
+  STM32F303BSP_Drivers STM32F303BSP_USB STM32F303BSP_FreeRTOS mc heater-shaker-core)
 
 
 target_include_directories(STM32F303BSP_Drivers
-  PUBLIC .)
+  PUBLIC ${SYSTEM_DIR})
 target_include_directories(STM32F303BSP_USB
-  PUBLIC .)
+  PUBLIC ${COMMS_DIR})
 target_include_directories(STM32F303BSP_FreeRTOS
-  PUBLIC .)
+  PUBLIC ${SYSTEM_DIR})
 
 target_compile_definitions(STM32F303BSP_Drivers
   PUBLIC STM32F303xE)
@@ -85,7 +129,7 @@ set_target_properties(
 find_package(GDBSVDTools)
 
 # Fills in the template with values specified by the find_package(OpenOCD) call above
-configure_file(./gdbinit.template ./gdbinit)
+configure_file(${SYSTEM_DIR}/gdbinit.template ./gdbinit)
 
 
 find_program(ARM_GDB

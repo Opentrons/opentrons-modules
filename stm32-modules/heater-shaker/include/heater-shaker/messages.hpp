@@ -1,7 +1,10 @@
 #pragma once
 #include <array>
 #include <concepts>
+#include <cstdint>
 #include <variant>
+
+#include "heater-shaker/errors.hpp"
 
 namespace messages {
 
@@ -35,7 +38,7 @@ concept Response = requires(ResponseType rt) {
 */
 struct SetRPMMessage {
     uint32_t id;
-    uint32_t target_rpm;
+    int16_t target_rpm;
 };
 
 struct SetTemperatureMessage {
@@ -49,6 +52,21 @@ struct GetTemperatureMessage {
 
 struct GetRPMMessage {
     uint32_t id;
+};
+
+struct SetAccelerationMessage {
+    uint32_t id;
+    int32_t rpm_per_s;
+};
+
+// Used internally to the motor task, communicates asynchronous errors to the
+// main controller task
+struct MotorSystemErrorMessage {
+    uint16_t errors;
+};
+
+struct ErrorMessage {
+    errors::ErrorCode code;
 };
 
 /*
@@ -69,12 +87,13 @@ struct GetTemperatureResponse {
 
 struct GetRPMResponse {
     uint32_t responding_to_id;
-    uint32_t current_rpm;
-    uint32_t setpoint_rpm;
+    int16_t current_rpm;
+    int16_t setpoint_rpm;
 };
 
 struct AcknowledgePrevious {
     uint32_t responding_to_id;
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
 struct IncomingMessageFromHost {
@@ -85,9 +104,10 @@ struct IncomingMessageFromHost {
 using HeaterMessage = ::std::variant<std::monostate, SetTemperatureMessage,
                                      GetTemperatureMessage>;
 using MotorMessage =
-    ::std::variant<std::monostate, SetRPMMessage, GetRPMMessage>;
+    ::std::variant<std::monostate, MotorSystemErrorMessage, SetRPMMessage,
+                   GetRPMMessage, SetAccelerationMessage>;
 using UIMessage = ::std::variant<GetTemperatureResponse, GetRPMResponse>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
-                   GetTemperatureResponse, GetRPMResponse>;
+                   ErrorMessage, GetTemperatureResponse, GetRPMResponse>;
 };  // namespace messages

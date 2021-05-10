@@ -34,8 +34,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     using Queue = QueueImpl<Message>;
     using GCodeParser =
         gcode::GroupParser<gcode::SetRPM, gcode::SetTemperature, gcode::GetRPM,
-                           gcode::GetTemperature>;
-    using AckOnlyCache = AckCache<8, gcode::SetRPM, gcode::SetTemperature>;
+                           gcode::GetTemperature, gcode::SetAcceleration>;
+    using AckOnlyCache = AckCache<8, gcode::SetRPM, gcode::SetTemperature,
+                                  gcode::SetAcceleration>;
     using GetTempCache = AckCache<8, gcode::GetTemperature>;
     using GetRPMCache = AckCache<8, gcode::GetRPM>;
 
@@ -177,17 +178,28 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
         auto cache_entry =
             ack_only_cache.remove_if_present(msg.responding_to_id);
         return std::visit(
-            [tx_into, tx_limit](auto cache_element) {
+            [tx_into, tx_limit, msg](auto cache_element) {
                 using T = std::decay_t<decltype(cache_element)>;
                 if constexpr (std::is_same_v<std::monostate, T>) {
                     return errors::write_into(
                         tx_into, tx_limit,
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else if (msg.with_error != errors::ErrorCode::NO_ERROR) {
+                    return errors::write_into(tx_into, tx_limit,
+                                              msg.with_error);
                 } else {
                     return cache_element.write_response_into(tx_into, tx_limit);
                 }
             },
             cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> auto
+        visit_message(const messages::ErrorMessage& msg, InputIt tx_into,
+                      InputLimit tx_limit) -> InputIt {
+        return errors::write_into(tx_into, tx_limit, msg.code);
     }
 
     template <typename InputIt, typename InputLimit>
@@ -278,6 +290,29 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
         }
         auto message =
             messages::SetRPMMessage{.id = id, .target_rpm = gcode.rpm};
+        if (!task_registry->motor->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> auto
+        visit_gcode(const gcode::SetAcceleration& gcode, InputIt tx_into,
+                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::SetAccelerationMessage{
+            .id = id, .rpm_per_s = gcode.rpm_per_s};
         if (!task_registry->motor->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(

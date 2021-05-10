@@ -209,16 +209,12 @@ void SystemClock_Config(void)
   /* Enable HSE Oscillator and activate PLL with HSE as source */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PREDIV = RCC_PREDIV_DIV1;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
   HAL_RCC_OscConfig(&RCC_OscInitStruct);
-
-  /* Configures the USB clock */
-  HAL_RCCEx_GetPeriphCLKConfig(&RCC_PeriphClkInit);
-  RCC_PeriphClkInit.USBClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
-  HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
 
   /* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2
   clocks dividers */
@@ -228,6 +224,15 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
   HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
+
+
+  /* Configures the USB clock */
+  HAL_RCCEx_GetPeriphCLKConfig(&RCC_PeriphClkInit);
+  RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_TIM1 | RCC_PERIPHCLK_TIM2;
+  RCC_PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_PLLCLK;
+  RCC_PeriphClkInit.Tim2ClockSelection = RCC_TIM2CLK_HCLK;
+  RCC_PeriphClkInit.USBClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
+  HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
 
 }
 
