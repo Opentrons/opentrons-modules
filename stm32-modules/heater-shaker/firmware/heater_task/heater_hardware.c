@@ -48,31 +48,14 @@ void adc_setup(ADC_HandleTypeDef* adc) {
     adc->Init.DataAlign = ADC_DATAALIGN_RIGHT;
     adc->Init.ScanConvMode = ADC_SCAN_DISABLE;
     adc->Init.ContinuousConvMode = DISABLE;
-    adc->Init.NbrOfConversion = 3; // pad a is channel 1, b is 2, onboard is 3
+    adc->Init.NbrOfConversion = 1;
     adc->Init.DiscontinuousConvMode = ENABLE;
     adc->Init.ExternalTrigConv = ADC_SOFTWARE_START;
     adc->Init.DMAContinuousRequests = DISABLE;
     if (HAL_OK != HAL_ADC_Init(adc)) {
         init_error();
     }
-    ADC_ChannelConfTypeDef channel_conf = {
-    .Channel = NTC_PAD_A,
-    .Rank = ADC_REGULAR_RANK_1,
-    .SamplingTime = ADC_SAMPLETIME_19CYCLES_5,
-    };
-    if (HAL_OK != HAL_ADC_ConfigChannel(adc, &channel_conf)) {
-        init_error();
-    }
-    channel_conf.Channel = NTC_PAD_B;
-    channel_conf.Rank = ADC_REGULAR_RANK_2;
-    if (HAL_OK != HAL_ADC_ConfigChannel(adc, &channel_conf)) {
-        init_error();
-    }
-    channel_conf.Channel = NTC_ONBOARD;
-    channel_conf.Rank = ADC_REGULAR_RANK_3;
-    if (HAL_OK != HAL_ADC_ConfigChannel(adc, &channel_conf)) {
-        init_error();
-    }
+
     HAL_ADCEx_Calibration_Start(adc, ADC_SINGLE_ENDED);
 }
 
@@ -97,6 +80,15 @@ void heater_hardware_teardown(heater_hardware* hardware) {
 }
 
 void heater_hardware_begin_conversions(heater_hardware* hardware) {
+    ADC_ChannelConfTypeDef channel_conf = {
+    .Channel = NTC_PAD_A,
+    .Rank = ADC_REGULAR_RANK_1,
+    .SamplingTime = ADC_SAMPLETIME_19CYCLES_5,
+    };
+    if (HAL_OK != HAL_ADC_ConfigChannel(&hardware->ntc_adc, &channel_conf)) {
+        init_error();
+    }
+
     HAL_ADC_Start_IT(&hardware->ntc_adc);
 }
 
@@ -125,19 +117,33 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     if (!HEATER_HW_HANDLE || !HEATER_HW_HANDLE->hardware_internal) {
         return;
     }
+    if (hadc != &HEATER_HW_HANDLE->ntc_adc) {
+        return;
+    }
+
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
     ntc_selection which = internal->reading_which;
     internal->reading_which = next_channel(which);
 
-    if (hadc != &HEATER_HW_HANDLE->ntc_adc) {
-        return;
-    }
+    ADC_ChannelConfTypeDef channel_conf = {
+      .Channel = internal->reading_which,
+      .Rank = ADC_REGULAR_RANK_1,
+      .SamplingTime = ADC_SAMPLETIME_19CYCLES_5,
+    };
     switch(which) {
         case NTC_PAD_A: {
             internal->results.pad_a_val = HAL_ADC_GetValue(&HEATER_HW_HANDLE->ntc_adc);
+            if (HAL_OK != HAL_ADC_ConfigChannel(&HEATER_HW_HANDLE->ntc_adc, &channel_conf)) {
+                init_error();
+            }
+            HAL_ADC_Start_IT(&HEATER_HW_HANDLE->ntc_adc);
             break;}
         case NTC_PAD_B: {
             internal->results.pad_b_val = HAL_ADC_GetValue(&HEATER_HW_HANDLE->ntc_adc);
+            if (HAL_OK != HAL_ADC_ConfigChannel(&HEATER_HW_HANDLE->ntc_adc, &channel_conf)) {
+                init_error();
+            }
+            HAL_ADC_Start_IT(&HEATER_HW_HANDLE->ntc_adc);
             break;}
         case NTC_ONBOARD: {
             internal->results.onboard_val = HAL_ADC_GetValue(&HEATER_HW_HANDLE->ntc_adc);
@@ -146,8 +152,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
             }
             break;}
     }
-
-
 }
 
 
