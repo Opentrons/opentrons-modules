@@ -24,6 +24,10 @@ const char* const MOTOR_UNKNOWN_ERROR = "ERR110:main motor:unknown error\n";
 const char* const MOTOR_ILLEGAL_SPEED = "ERR120:main motor:illegal speed\n";
 const char* const MOTOR_ILLEGAL_RAMP_RATE =
     "ERR121:main motor:illegal ramp rate\n";
+const char* const HEATER_THERMISTOR_OUT_OF_RANGE_LOW =
+    "ERR201:heater:thermistor out of range low\n";
+const char* const HEATER_THERMISTOR_OUT_OF_RANGE_HIGH =
+    "ERR201:heater:thermistor out of range high\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -52,6 +56,8 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(MOTOR_UNKNOWN_ERROR);
         HANDLE_CASE(MOTOR_ILLEGAL_SPEED);
         HANDLE_CASE(MOTOR_ILLEGAL_RAMP_RATE);
+        HANDLE_CASE(HEATER_THERMISTOR_OUT_OF_RANGE_LOW);
+        HANDLE_CASE(HEATER_THERMISTOR_OUT_OF_RANGE_HIGH);
     }
     return UNKNOWN_ERROR;
 }
