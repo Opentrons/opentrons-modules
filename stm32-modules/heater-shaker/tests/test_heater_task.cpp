@@ -3,20 +3,14 @@
 #include "heater-shaker/messages.hpp"
 #include "test/task_builder.hpp"
 
-SCENARIO("heater task basic functionality") {
-    GIVEN("a heater task") {
-        auto tasks = TaskBuilder::build();
-        WHEN("calling run_once() with no messages") {
-            THEN("the task should work fine") {
-                REQUIRE_NOTHROW(tasks->get_heater_task().run_once());
-            }
-        }
-    }
-}
-
 SCENARIO("heater task message passing") {
-    GIVEN("a heater task") {
+    GIVEN("a heater task with valid temps") {
         auto tasks = TaskBuilder::build();
+        auto read_message = messages::TemperatureConversionComplete{
+            .pad_a = (1U << 4), .pad_b = (1U << 4), .board = (1U << 4)};
+        tasks->get_heater_queue().backing_deque.push_back(
+            messages::HeaterMessage(read_message));
+        tasks->get_heater_task().run_once();
         WHEN("sending a set-temperature message") {
             auto message = messages::SetTemperatureMessage{
                 .id = 1231, .target_temperature = 45};
@@ -59,7 +53,7 @@ SCENARIO("heater task message passing") {
                         std::get<messages::GetTemperatureResponse>(response);
                     REQUIRE(gettemp.responding_to_id == message.id);
                     REQUIRE(gettemp.setpoint_temperature == 48);
-                    REQUIRE(gettemp.current_temperature == 99);
+                    REQUIRE(gettemp.current_temperature == 13);
                 }
             }
         }

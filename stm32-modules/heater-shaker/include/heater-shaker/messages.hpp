@@ -59,6 +59,12 @@ struct SetAccelerationMessage {
     int32_t rpm_per_s;
 };
 
+struct TemperatureConversionComplete {
+    uint16_t pad_a;
+    uint16_t pad_b;
+    uint16_t board;
+};
+
 // Used internally to the motor task, communicates asynchronous errors to the
 // main controller task
 struct MotorSystemErrorMessage {
@@ -81,7 +87,7 @@ struct ErrorMessage {
 */
 struct GetTemperatureResponse {
     uint32_t responding_to_id;
-    uint32_t current_temperature;
+    int16_t current_temperature;
     uint32_t setpoint_temperature;
 };
 
@@ -101,8 +107,9 @@ struct IncomingMessageFromHost {
     const char* limit;
 };
 
-using HeaterMessage = ::std::variant<std::monostate, SetTemperatureMessage,
-                                     GetTemperatureMessage>;
+using HeaterMessage =
+    ::std::variant<std::monostate, SetTemperatureMessage, GetTemperatureMessage,
+                   TemperatureConversionComplete>;
 using MotorMessage =
     ::std::variant<std::monostate, MotorSystemErrorMessage, SetRPMMessage,
                    GetRPMMessage, SetAccelerationMessage>;
