@@ -7,7 +7,7 @@ SCENARIO("heater task message passing") {
     GIVEN("a heater task with valid temps") {
         auto tasks = TaskBuilder::build();
         auto read_message = messages::TemperatureConversionComplete{
-            .pad_a = (1U << 4), .pad_b = (1U << 4), .board = (1U << 4)};
+            .pad_a = (1U << 9), .pad_b = (1U << 9), .board = (1U << 9)};
         tasks->get_heater_queue().backing_deque.push_back(
             messages::HeaterMessage(read_message));
         tasks->get_heater_task().run_once();
@@ -53,7 +53,7 @@ SCENARIO("heater task message passing") {
                         std::get<messages::GetTemperatureResponse>(response);
                     REQUIRE(gettemp.responding_to_id == message.id);
                     REQUIRE(gettemp.setpoint_temperature == 48);
-                    REQUIRE(gettemp.current_temperature == 13);
+                    REQUIRE(gettemp.current_temperature == 95);
                 }
             }
         }

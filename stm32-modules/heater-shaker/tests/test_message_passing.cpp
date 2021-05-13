@@ -9,7 +9,7 @@ SCENARIO("testing full message passing integration") {
         auto tasks = TaskBuilder::build();
         tasks->get_heater_queue().backing_deque.push_back(
             messages::HeaterMessage(messages::TemperatureConversionComplete{
-                .pad_a = (1U << 4), .pad_b = (1U << 4), .board = (1U << 4)}));
+                .pad_a = (1U << 9), .pad_b = (1U << 9), .board = (1U << 9)}));
         tasks->get_heater_task().run_once();
         WHEN("sending a set-rpm message by string to the host comms task") {
             std::string message_str = "M3 S2000\n";
@@ -79,7 +79,7 @@ SCENARIO("testing full message passing integration") {
                 written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE_THAT(response_buffer,
-                             Catch::Matchers::StartsWith("M105 C13 T48 OK\n"));
+                             Catch::Matchers::StartsWith("M105 C95 T48 OK\n"));
             }
         }
 
