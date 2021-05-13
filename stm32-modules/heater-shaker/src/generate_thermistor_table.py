@@ -19,7 +19,7 @@ class NTCG104ED104DTDSXGenerator:
         self._lines = [l for l in self._csv]
         self._extractor = {'nominal': self.Nom, 'min': self.Min, 'max': self.Max}[which_resistance]
         self._start_space = ' ' * at_space_depth
-        self._incremental_space = ' '*incremental_space_depth
+        self._incremental_space = ' ' * incremental_space_depth
 
     @staticmethod
     def Temp(elems) -> float:

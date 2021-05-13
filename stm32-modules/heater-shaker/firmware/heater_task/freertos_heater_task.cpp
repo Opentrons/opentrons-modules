@@ -23,7 +23,7 @@ enum class Notifications : uint8_t {
     INCOMING_MESSAGE = 1,
 };
 
-static void handle_conversion(conversion_results *results);
+static void handle_conversion(const conversion_results *results);
 
 static constexpr uint32_t _stack_size = 500;
 // Stack as an array because there's no added overhead and why not
@@ -57,7 +57,7 @@ struct HeaterTasks {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     TaskHandle_t hardware_task_handle;
     HeaterTasks(FreeRTOSMessageQueue<heater_task::Message> &queue,
-                void (*conversion_handler)(conversion_results *))
+                void (*conversion_handler)(const conversion_results *))
         : hardware{.conversions_complete = conversion_handler,
                    .hardware_internal = nullptr},
           heater_main_task(queue),
@@ -67,7 +67,7 @@ struct HeaterTasks {
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 HeaterTasks _heater_tasks(_heater_queue, handle_conversion);
 
-static void handle_conversion(conversion_results *results) {
+static void handle_conversion(const conversion_results *results) {
     if (results == nullptr) {
         return;
     }
@@ -87,6 +87,16 @@ void run(void *param) {
     }
 }
 
+/*
+** The heater hardware task exists to kick off ADC conversions by calling
+** begin_conversions() and, implicitly, to drive the timing of the heater
+** control loop. THe main heater task reacts to the message sent by
+** handle_conversion above containing readings; those readings are created
+** by this task calling heater_hardware_begin_conversions; and thus, the
+** conversions will happen at the rate of  this task. That's why it pokes
+** into the heater task to figure out how frequently it should run.
+**
+*/
 void run_hardware_task(void *param) {
     auto *local_tasks = static_cast<HeaterTasks *>(param);
     heater_hardware_setup(&local_tasks->hardware);
