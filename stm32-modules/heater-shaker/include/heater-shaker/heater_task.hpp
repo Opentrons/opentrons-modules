@@ -38,6 +38,8 @@ struct State {
 struct TemperatureSensor {
     // The last converted temperature (0 if it was not valid)
     double temp_c = 0;
+    // The last ADC conversion result
+    uint16_t last_adc = 0;
     // The current error
     errors::ErrorCode error = errors::ErrorCode::NO_ERROR;
     // These static values should be set when this struct is constructed to
@@ -171,6 +173,21 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             messages::HostCommsMessage(response)));
     }
 
+    auto visit_message(const messages::GetTemperatureDebugMessage& msg)
+        -> void {
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        auto response = messages::GetTemperatureDebugResponse{
+            .responding_to_id = msg.id,
+            .pad_a_temperature = pad_a.temp_c,
+            .pad_b_temperature = pad_b.temp_c,
+            .board_temperature = board.temp_c,
+            .pad_a_adc = pad_a.last_adc,
+            .pad_b_adc = pad_b.last_adc,
+            .board_adc = board.last_adc};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
     auto visit_message(const messages::TemperatureConversionComplete& msg)
         -> void {
         handle_temperature_conversion(msg.pad_a, pad_a);
@@ -184,6 +201,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             this->visit_conversion(val, sensor);
         };
         auto old_error = sensor.error;
+        sensor.last_adc = conversion_result;
         std::visit(visitor, sensor.conversion.convert(conversion_result));
         if (sensor.error != old_error) {
             // if the error state of the sensor changed...

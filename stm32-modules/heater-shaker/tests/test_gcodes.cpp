@@ -604,3 +604,86 @@ SCENARIO("SetAcceleration parser works") {
         }
     }
 }
+
+SCENARIO("GetTemperatureDebug parser works") {
+    GIVEN("an empty string") {
+        std::string to_parse = "";
+
+        WHEN("calling parse") {
+            auto result = gcode::GetTemperatureDebug::parse(to_parse.cbegin(),
+                                                            to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a fully non-matching string") {
+        std::string to_parse = "asdhalghasdasd ";
+
+        WHEN("calling parse") {
+            auto result = gcode::GetTemperatureDebug::parse(to_parse.cbegin(),
+                                                            to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a subprefix matching only") {
+        std::string to_parse = "M105asdlasfhalsd\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::GetTemperatureDebug::parse(to_parse.cbegin(),
+                                                            to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a good gcode") {
+        auto to_parse = std::string("M105.D\r\n");
+
+        WHEN("calling parse") {
+            auto result = gcode::GetTemperatureDebug::parse(to_parse.cbegin(),
+                                                            to_parse.cend());
+            THEN("a gcode should be parsed") {
+                REQUIRE(result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin() + 6);
+            }
+        }
+    }
+
+    GIVEN("a response buffer large enough for the formatted response") {
+        std::string buffer(64, 'c');
+        WHEN("filling response") {
+            auto written = gcode::GetTemperatureDebug::write_response_into(
+                buffer.begin(), buffer.end(), 10.25, 11.25, 12.25, 10, 11, 12);
+            THEN("the response should be written in full") {
+                REQUIRE_THAT(
+                    buffer,
+                    Catch::Matchers::StartsWith(
+                        "M105.D AT10.25 BT11.25 OT12.25 AD10 BD11 OD12 OK\n"));
+                REQUIRE(written != buffer.begin());
+            }
+        }
+    }
+
+    GIVEN("a response buffer not large enough for the formatted response") {
+        std::string buffer(16, 'c');
+        WHEN("filling response") {
+            auto written = gcode::GetTemperatureDebug::write_response_into(
+                buffer.begin(), buffer.begin() + 7, 10.01, 11.2, 41.2, 44, 10,
+                4);
+            THEN("the response should write only up to the available space") {
+                std::string response = "M105.Dcccccccccc";
+                response.at(6) = '\0';
+                REQUIRE_THAT(buffer, Catch::Matchers::Equals(response));
+                REQUIRE(written != buffer.begin());
+            }
+        }
+    }
+}

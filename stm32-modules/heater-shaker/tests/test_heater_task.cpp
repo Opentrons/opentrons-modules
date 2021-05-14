@@ -7,7 +7,7 @@ SCENARIO("heater task message passing") {
     GIVEN("a heater task with valid temps") {
         auto tasks = TaskBuilder::build();
         auto read_message = messages::TemperatureConversionComplete{
-            .pad_a = (1U << 9), .pad_b = (1U << 9), .board = (1U << 11)};
+            .pad_a = ((1U << 9) - 1), .pad_b = (1U << 9), .board = (1U << 11)};
         tasks->get_heater_queue().backing_deque.push_back(
             messages::HeaterMessage(read_message));
         tasks->get_heater_task().run_once();
@@ -54,7 +54,38 @@ SCENARIO("heater task message passing") {
                     REQUIRE(gettemp.responding_to_id == message.id);
                     REQUIRE(gettemp.setpoint_temperature == 48);
                     REQUIRE_THAT(gettemp.current_temperature,
-                                 Catch::Matchers::WithinAbs(95.2, .01));
+                                 Catch::Matchers::WithinAbs(95.23, .01));
+                }
+            }
+        }
+        WHEN("sending a get-temperature-debug message") {
+            auto message = messages::GetTemperatureDebugMessage{.id = 123};
+            tasks->get_heater_queue().backing_deque.push_back(
+                messages::HeaterMessage(message));
+            tasks->get_heater_task().run_once();
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_heater_queue().backing_deque.empty());
+                AND_THEN("the task should respond to the message") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(std::holds_alternative<
+                            messages::GetTemperatureDebugResponse>(response));
+                    auto gettemp =
+                        std::get<messages::GetTemperatureDebugResponse>(
+                            response);
+                    REQUIRE(gettemp.responding_to_id == message.id);
+                    REQUIRE_THAT(gettemp.pad_a_temperature,
+                                 Catch::Matchers::WithinAbs(95.23, 0.1));
+                    REQUIRE_THAT(gettemp.pad_b_temperature,
+                                 Catch::Matchers::WithinAbs(95.20, 0.1));
+                    REQUIRE_THAT(gettemp.board_temperature,
+                                 Catch::Matchers::WithinAbs(43.16, 0.2));
+                    REQUIRE(gettemp.pad_a_adc == (1U << 9) - 1);
+                    REQUIRE(gettemp.pad_b_adc == (1U << 9));
+                    REQUIRE(gettemp.board_adc == (1U << 11));
                 }
             }
         }

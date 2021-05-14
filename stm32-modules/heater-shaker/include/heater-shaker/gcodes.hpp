@@ -141,6 +141,9 @@ struct GetTemperature {
         if (working == input) {
             return std::make_pair(ParseResult(), input);
         }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
         return std::make_pair(ParseResult(GetTemperature()), working);
     }
 };
@@ -251,4 +254,50 @@ struct SetAcceleration {
             value_res.second);
     }
 };
+
+struct GetTemperatureDebug {
+    /**
+     * GetTemperatureDebug uses M105.D arbitrarily. It responds with
+     *
+     * - Pad A temperature (AT)
+     * - Pad B temperature (BT)
+     * - Board temperature (OT)
+     * - Pad A last ADC reading (AD)
+     * - Pad B last ADC reading (BD)
+     * - Board last ADC reading (OD)
+     * */
+    using ParseResult = std::optional<GetTemperatureDebug>;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputIt, InLimit> static auto
+        write_response_into(InputIt buf, InLimit limit, double pad_a_temp,
+                            double pad_b_temp, double board_temp,
+                            uint16_t pad_a_adc, uint16_t pad_b_adc,
+                            uint16_t board_adc) -> InputIt {
+        auto res = snprintf(
+            &*buf, (limit - buf),
+            "M105.D AT%0.2f BT%0.2f OT%0.2f AD%d BD%d OD%d OK\n",
+            static_cast<float>(pad_a_temp), static_cast<float>(pad_b_temp),
+            static_cast<float>(board_temp), pad_a_adc, pad_b_adc, board_adc);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<Limit, InputIt> static auto
+        parse(const InputIt& input, Limit limit)
+            -> std::pair<ParseResult, InputIt> {
+        constexpr auto prefix = std::array{'M', '1', '0', '5', '.', 'D'};
+
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetTemperatureDebug()), working);
+    }
+};
+
 }  // namespace gcode

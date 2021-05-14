@@ -422,6 +422,98 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 }
             }
         }
+
+        WHEN("sending a get-temp-debug") {
+            auto message_text = std::string("M105.D\n");
+            auto message_obj =
+                messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                    &*message_text.begin(), &*message_text.end()));
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            auto written_firstpass = tasks->get_host_comms_task().run_once(
+                tx_buf.begin(), tx_buf.end());
+            THEN(
+                "the task should pass the message on to the heater and not "
+                "immediately ack") {
+                REQUIRE(tasks->get_heater_queue().backing_deque.size() != 0);
+                auto heater_message =
+                    tasks->get_heater_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::GetTemperatureDebugMessage>(
+                    heater_message));
+                auto get_temp_message =
+                    std::get<messages::GetTemperatureDebugMessage>(heater_message);
+                tasks->get_heater_queue().backing_deque.pop_front();
+                REQUIRE(written_firstpass == tx_buf.begin());
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                AND_WHEN("sending a good response back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::GetTemperatureDebugResponse{
+                            .responding_to_id = get_temp_message.id,
+                            .pad_a_temperature = 100.0,
+                            .pad_b_temperature = 42.0,
+                            .board_temperature = 22,
+                            .pad_a_adc = 14420,
+                            .pad_b_adc = 0,
+                            .board_adc = 2220});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("the task should respond to the get-temp-debug message") {
+                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
+                                                 "M105.D AT100.00 BT42.00 OT22.00 AD14420 BD0 OD2220 OK\n"));
+                        REQUIRE(written_secondpass != tx_buf.begin());
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN(
+                    "sending a response with wrong id back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::GetTemperatureDebugResponse{
+                            .responding_to_id = get_temp_message.id + 1,
+                            .pad_a_temperature = 21,
+                            .pad_b_temperature = 19,
+                            .board_temperature = -1,
+                            .pad_a_adc = 22,
+                            .pad_b_adc = 45,
+                            .board_adc = 1231});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN(
+                        "the task should pull the message and print an error") {
+                        REQUIRE(written_secondpass > tx_buf.begin());
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN(
+                    "sending a response with wrong message type back to the "
+                    "comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{.responding_to_id =
+                                                          get_temp_message.id});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN(
+                        "the task should pull the message and print an error") {
+                        REQUIRE(written_secondpass > tx_buf.begin());
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+            }
+        }
         WHEN("sending a get-rpm") {
             auto message_text = std::string("M123\n");
             auto message_obj =

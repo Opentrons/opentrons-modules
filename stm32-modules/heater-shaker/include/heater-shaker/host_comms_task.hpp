@@ -34,10 +34,12 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     using Queue = QueueImpl<Message>;
     using GCodeParser =
         gcode::GroupParser<gcode::SetRPM, gcode::SetTemperature, gcode::GetRPM,
-                           gcode::GetTemperature, gcode::SetAcceleration>;
+                           gcode::GetTemperature, gcode::SetAcceleration,
+                           gcode::GetTemperatureDebug>;
     using AckOnlyCache = AckCache<8, gcode::SetRPM, gcode::SetTemperature,
                                   gcode::SetAcceleration>;
     using GetTempCache = AckCache<8, gcode::GetTemperature>;
+    using GetTempDebugCache = AckCache<8, gcode::GetTemperatureDebug>;
     using GetRPMCache = AckCache<8, gcode::GetRPM>;
 
   public:
@@ -45,12 +47,16 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     explicit HostCommsTask(Queue& q)
         : message_queue(q),
           task_registry(nullptr),
+          // These nolints are because if you don't have these inits, host builds
+          // complain
           // NOLINTNEXTLINE(readability-redundant-member-init)
           ack_only_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_temp_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          get_rpm_cache() {}
+          get_rpm_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_temp_debug_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -243,6 +249,31 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<InputLimit, InputIt> auto
+        visit_message(const messages::GetTemperatureDebugResponse& response,
+                      InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            get_temp_debug_cache.remove_if_present(response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.pad_a_temperature,
+                        response.pad_b_temperature, response.board_temperature,
+                        response.pad_a_adc, response.pad_b_adc,
+                        response.board_adc);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> auto
         visit_message(const messages::GetRPMResponse& response, InputIt tx_into,
                       InputLimit tx_limit) -> InputIt {
         auto cache_entry =
@@ -394,6 +425,30 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
         return std::make_pair(true, tx_into);
     }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> auto
+        visit_gcode(const gcode::GetTemperatureDebug& gcode, InputIt tx_into,
+                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_temp_debug_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetTemperatureDebugMessage{.id = id};
+        if (!task_registry->heater->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_temp_debug_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+
+
+        return std::make_pair(true, tx_into);
+    }
+
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt>&&
@@ -410,6 +465,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     AckOnlyCache ack_only_cache;
     GetTempCache get_temp_cache;
     GetRPMCache get_rpm_cache;
+    GetTempDebugCache get_temp_debug_cache;
 };
 
 };  // namespace host_comms_task

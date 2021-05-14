@@ -50,6 +50,10 @@ struct GetTemperatureMessage {
     uint32_t id;
 };
 
+struct GetTemperatureDebugMessage {
+    uint32_t id;
+};
+
 struct GetRPMMessage {
     uint32_t id;
 };
@@ -92,6 +96,16 @@ struct GetTemperatureResponse {
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
+struct GetTemperatureDebugResponse {
+    uint32_t responding_to_id;
+    double pad_a_temperature;
+    double pad_b_temperature;
+    double board_temperature;
+    uint16_t pad_a_adc;
+    uint16_t pad_b_adc;
+    uint16_t board_adc;
+};
+
 struct GetRPMResponse {
     uint32_t responding_to_id;
     int16_t current_rpm;
@@ -110,12 +124,13 @@ struct IncomingMessageFromHost {
 
 using HeaterMessage =
     ::std::variant<std::monostate, SetTemperatureMessage, GetTemperatureMessage,
-                   TemperatureConversionComplete>;
+                   TemperatureConversionComplete, GetTemperatureDebugMessage>;
 using MotorMessage =
     ::std::variant<std::monostate, MotorSystemErrorMessage, SetRPMMessage,
                    GetRPMMessage, SetAccelerationMessage>;
 using UIMessage = ::std::variant<GetTemperatureResponse, GetRPMResponse>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
-                   ErrorMessage, GetTemperatureResponse, GetRPMResponse>;
+                   ErrorMessage, GetTemperatureResponse, GetRPMResponse,
+                   GetTemperatureDebugResponse>;
 };  // namespace messages
