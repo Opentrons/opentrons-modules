@@ -355,11 +355,11 @@ SCENARIO("GetTemperature parser works") {
         std::string buffer(64, 'c');
         WHEN("filling response") {
             auto written = gcode::GetTemperature::write_response_into(
-                buffer.begin(), buffer.end(), 10, 25);
+                buffer.begin(), buffer.end(), 10.25, 25.001);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::StartsWith("M105 C10 T25 OK\n"));
-                REQUIRE(written == buffer.begin() + 16);
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
+                                         "M105 C10.25 T25.00 OK\n"));
+                REQUIRE(written == buffer.begin() + 22);
             }
         }
     }
@@ -370,9 +370,10 @@ SCENARIO("GetTemperature parser works") {
             auto written = gcode::GetTemperature::write_response_into(
                 buffer.begin(), buffer.begin() + 7, 10, 25);
             THEN("the response should write only up to the available space") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::Equals("M105 Ccccccccccc"));
-                REQUIRE(written == buffer.begin() + 7);
+                std::string response = "M105 Ccccccccccc";
+                response.at(6) = '\0';
+                REQUIRE_THAT(buffer, Catch::Matchers::Equals(response));
+                REQUIRE(written != buffer.begin());
             }
         }
     }

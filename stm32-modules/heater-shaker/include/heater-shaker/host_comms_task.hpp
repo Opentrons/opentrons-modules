@@ -361,8 +361,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
         auto message = messages::SetTemperatureMessage{
-            .id = id,
-            .target_temperature = static_cast<uint32_t>(gcode.temperature)};
+            .id = id, .target_temperature = gcode.temperature};
         if (!task_registry->heater->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(

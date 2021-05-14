@@ -11,6 +11,7 @@
 #include <charconv>
 #include <concepts>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <iterator>
 #include <optional>
@@ -69,7 +70,7 @@ struct SetTemperature {
     ** Example: M104 S25 sets target temperature to 25C
     */
     using ParseResult = std::optional<SetTemperature>;
-    float temperature;
+    double temperature;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt>&&
@@ -119,29 +120,33 @@ struct GetTemperature {
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<InputIt, InLimit> static auto
         write_response_into(InputIt buf, InLimit limit,
-                            uint32_t current_temperature,
-                            uint32_t setpoint_temperature) -> InputIt {
+                            double current_temperature,
+                            double setpoint_temperature) -> InputIt {
         static constexpr const char* prefix = "M105 C";
         char* char_next = &*buf;
         char* char_limit = &*limit;
         char_next = write_string_to_iterpair(char_next, char_limit, prefix);
 
-        auto tochars_result =
-            std::to_chars(char_next, char_limit, current_temperature);
-        if (tochars_result.ec != std::errc()) {
-            return buf + (tochars_result.ptr - &*buf);
+        auto res = snprintf(char_next, (char_limit - char_next), "%0.2f",
+                            static_cast<float>(current_temperature));
+        if (res <= 0) {
+            return buf + (char_next - &*buf) - 1;
         }
-        char_next = tochars_result.ptr;
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        char_next += std::min(static_cast<ptrdiff_t>(char_limit - char_next),
+                              static_cast<ptrdiff_t>(res));
 
         static constexpr const char* setpoint_prefix = " T";
         char_next =
             write_string_to_iterpair(char_next, char_limit, setpoint_prefix);
-        tochars_result =
-            std::to_chars(char_next, char_limit, setpoint_temperature);
-        if (tochars_result.ec != std::errc()) {
-            return buf + (tochars_result.ptr - &*buf);
+        res = snprintf(char_next, (char_limit - char_next), "%0.2f",
+                       static_cast<float>(setpoint_temperature));
+        if (res <= 0) {
+            return buf + (char_next - &*buf) - 1;
         }
-        char_next = tochars_result.ptr;
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        char_next += std::min(static_cast<ptrdiff_t>(char_limit - char_next),
+                              static_cast<ptrdiff_t>(res));
 
         static constexpr const char* suffix = " OK\n";
         char_next = write_string_to_iterpair(char_next, char_limit, suffix);
