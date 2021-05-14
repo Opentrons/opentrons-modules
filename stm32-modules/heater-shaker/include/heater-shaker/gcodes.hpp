@@ -122,7 +122,7 @@ struct GetTemperature {
         write_response_into(InputIt buf, InLimit limit,
                             double current_temperature,
                             double setpoint_temperature) -> InputIt {
-        auto res = snprintf(&*buf, (limit-buf), "M105 C%0.2f T%0.2f OK\n",
+        auto res = snprintf(&*buf, (limit - buf), "M105 C%0.2f T%0.2f OK\n",
                             static_cast<float>(current_temperature),
                             static_cast<float>(setpoint_temperature));
         if (res <= 0) {
