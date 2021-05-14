@@ -122,35 +122,13 @@ struct GetTemperature {
         write_response_into(InputIt buf, InLimit limit,
                             double current_temperature,
                             double setpoint_temperature) -> InputIt {
-        static constexpr const char* prefix = "M105 C";
-        char* char_next = &*buf;
-        char* char_limit = &*limit;
-        char_next = write_string_to_iterpair(char_next, char_limit, prefix);
-
-        auto res = snprintf(char_next, (char_limit - char_next), "%0.2f",
-                            static_cast<float>(current_temperature));
+        auto res = snprintf(&*buf, (limit-buf), "M105 C%0.2f T%0.2f OK\n",
+                            static_cast<float>(current_temperature),
+                            static_cast<float>(setpoint_temperature));
         if (res <= 0) {
-            return buf + (char_next - &*buf) - 1;
+            return buf;
         }
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        char_next += std::min(static_cast<ptrdiff_t>(char_limit - char_next),
-                              static_cast<ptrdiff_t>(res));
-
-        static constexpr const char* setpoint_prefix = " T";
-        char_next =
-            write_string_to_iterpair(char_next, char_limit, setpoint_prefix);
-        res = snprintf(char_next, (char_limit - char_next), "%0.2f",
-                       static_cast<float>(setpoint_temperature));
-        if (res <= 0) {
-            return buf + (char_next - &*buf) - 1;
-        }
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        char_next += std::min(static_cast<ptrdiff_t>(char_limit - char_next),
-                              static_cast<ptrdiff_t>(res));
-
-        static constexpr const char* suffix = " OK\n";
-        char_next = write_string_to_iterpair(char_next, char_limit, suffix);
-        return buf + (char_next - &*buf);
+        return buf + res;
     }
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt>&&
