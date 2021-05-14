@@ -75,7 +75,8 @@ target_link_options(heater-shaker
   PRIVATE
   "LINKER:-T,${SYSTEM_DIR}/STM32F303RETx_FLASH.ld"
   "LINKER:--print-memory-usage"
-  "LINKER:--error-unresolved-symbols")
+  "LINKER:--error-unresolved-symbols"
+  "LINKER:-u,_printf_float")
 
 # Incurs at least a relink when you change the linker file (and a recompile of main
 # but hopefully that's quick)
