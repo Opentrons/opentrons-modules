@@ -81,10 +81,12 @@ void heater_hardware_teardown(heater_hardware* hardware) {
 
 void heater_hardware_begin_conversions(heater_hardware* hardware) {
     ADC_ChannelConfTypeDef channel_conf = {
-    .Channel = NTC_PAD_A,
-    .Rank = ADC_REGULAR_RANK_1,
-    .SamplingTime = ADC_SAMPLETIME_19CYCLES_5,
+        .Channel = NTC_PAD_A,
+        .Rank = ADC_REGULAR_RANK_1,
+        .SamplingTime = ADC_SAMPLETIME_19CYCLES_5,
     };
+    hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
+    internal->reading_which = NTC_PAD_A;
     if (HAL_OK != HAL_ADC_ConfigChannel(&hardware->ntc_adc, &channel_conf)) {
         init_error();
     }
