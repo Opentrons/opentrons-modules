@@ -7,6 +7,7 @@
 #include "heater-shaker/motor_task.hpp"
 #include "heater-shaker/tasks.hpp"
 #include "heater-shaker/ui_task.hpp"
+#include "test/test_heater_policy.hpp"
 #include "test/test_message_queue.hpp"
 #include "test/test_motor_policy.hpp"
 
@@ -50,6 +51,10 @@ struct TaskBuilder {
     }
     auto get_motor_policy() -> TestMotorPolicy& { return motor_policy; }
 
+    auto get_heater_policy() -> TestHeaterPolicy& { return heater_policy; }
+
+    auto run_heater_task() -> void { heater_task.run_once(heater_policy); }
+
   private:
     TaskBuilder();
     TestMessageQueue<host_comms_task::Message> host_comms_queue;
@@ -62,4 +67,5 @@ struct TaskBuilder {
     heater_task::HeaterTask<TestMessageQueue> heater_task;
     tasks::Tasks<TestMessageQueue> task_aggregator;
     TestMotorPolicy motor_policy;
+    TestHeaterPolicy heater_policy;
 };

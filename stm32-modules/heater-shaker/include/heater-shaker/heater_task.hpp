@@ -3,6 +3,7 @@
  */
 #pragma once
 
+#include <concepts>
 #include <cstddef>
 #include <variant>
 
@@ -19,6 +20,18 @@ struct Tasks;
 };
 
 namespace heater_task {
+
+template <typename Policy>
+concept HeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
+    // Check if the hardware is ready (true) or if some errors is preventing
+    // power flowing to the heater pad drivers
+    { cp.power_good() }
+    ->std::same_as<bool>;
+    // Attempt to reset the heater error latch and check if it worked (true)
+    // or if the error condition is still present (false)
+    { p.try_reset_power_good() }
+    ->std::same_as<bool>;
+};
 
 struct State {
     enum Status {
@@ -119,8 +132,13 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
      *   - which may include altering its controller state
      *   - which may include sending a response
      * - Runs its controller
+     *
+     * The passed-in policy is the hardware interface and must fulfill the
+     * HeaterExecutionPolicy concept above.
      * */
-    auto run_once() -> void {
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy> auto run_once(Policy& policy)
+        -> void {
         auto message = Message(std::monostate());
 
         // This is the call down to the provided queue. It will block for
@@ -129,16 +147,23 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
 
         static_cast<void>(message_queue.recv(&message));
         std::visit(
-            [this](const auto& msg) -> void { this->visit_message(msg); },
+            [this, &policy](const auto& msg) -> void {
+                this->visit_message(msg, policy);
+            },
             message);
     }
 
   private:
-    auto visit_message(const std::monostate& _ignore) -> void {
+    template <typename Policy>
+    auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
+        static_cast<void>(policy);
         static_cast<void>(_ignore);
     }
 
-    auto visit_message(const messages::SetTemperatureMessage& msg) -> void {
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy> auto visit_message(
+        const messages::SetTemperatureMessage& msg, Policy& policy) -> void {
+        static_cast<void>(policy);
         if (state.system_status == State::ERROR) {
             // While in error state, we will refuse to set temperatures
             auto response = messages::AcknowledgePrevious{
@@ -157,7 +182,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
         }
     }
 
-    auto visit_message(const messages::GetTemperatureMessage& msg) -> void {
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy> auto visit_message(
+        const messages::GetTemperatureMessage& msg, Policy& policy) -> void {
+        static_cast<void>(policy);
         errors::ErrorCode code = pad_a.error != errors::ErrorCode::NO_ERROR
                                      ? pad_a.error
                                      : pad_b.error;
@@ -173,8 +201,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             messages::HostCommsMessage(response)));
     }
 
-    auto visit_message(const messages::GetTemperatureDebugMessage& msg)
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy> auto visit_message(
+        const messages::GetTemperatureDebugMessage& msg, Policy& policy)
         -> void {
+        static_cast<void>(policy);
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         auto response = messages::GetTemperatureDebugResponse{
             .responding_to_id = msg.id,
@@ -188,8 +219,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             messages::HostCommsMessage(response)));
     }
 
-    auto visit_message(const messages::TemperatureConversionComplete& msg)
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy> auto visit_message(
+        const messages::TemperatureConversionComplete& msg, Policy& policy)
         -> void {
+        static_cast<void>(policy);
         handle_temperature_conversion(msg.pad_a, pad_a);
         handle_temperature_conversion(msg.pad_b, pad_b);
         handle_temperature_conversion(msg.board, board);

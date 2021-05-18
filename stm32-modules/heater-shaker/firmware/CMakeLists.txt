@@ -42,6 +42,7 @@ target_link_libraries(_mc_static INTERFACE mc)
 set(HS_FW_LINTABLE_SRCS
   ${SYSTEM_DIR}/main.cpp
   ${HEATER_DIR}/freertos_heater_task.cpp
+  ${HEATER_DIR}/heater_policy.cpp
   ${MOTOR_DIR}/freertos_motor_task.cpp
   ${MOTOR_DIR}/motor_policy.cpp
   ${UI_DIR}/freertos_ui_task.cpp

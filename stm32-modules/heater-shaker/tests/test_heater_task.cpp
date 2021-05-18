@@ -10,13 +10,13 @@ SCENARIO("heater task message passing") {
             .pad_a = ((1U << 9) - 1), .pad_b = (1U << 9), .board = (1U << 11)};
         tasks->get_heater_queue().backing_deque.push_back(
             messages::HeaterMessage(read_message));
-        tasks->get_heater_task().run_once();
+        tasks->run_heater_task();
         WHEN("sending a set-temperature message") {
             auto message = messages::SetTemperatureMessage{
                 .id = 1231, .target_temperature = 45};
             tasks->get_heater_queue().backing_deque.push_back(
                 messages::HeaterMessage(message));
-            tasks->get_heater_task().run_once();
+            tasks->run_heater_task();
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_heater_queue().backing_deque.empty());
                 AND_THEN("the task should respond to the message") {
@@ -38,7 +38,7 @@ SCENARIO("heater task message passing") {
             auto message = messages::GetTemperatureMessage{.id = 999};
             tasks->get_heater_queue().backing_deque.push_back(
                 messages::HeaterMessage(message));
-            tasks->get_heater_task().run_once();
+            tasks->run_heater_task();
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_heater_queue().backing_deque.empty());
                 AND_THEN("the task should respond to the message") {
@@ -62,7 +62,7 @@ SCENARIO("heater task message passing") {
             auto message = messages::GetTemperatureDebugMessage{.id = 123};
             tasks->get_heater_queue().backing_deque.push_back(
                 messages::HeaterMessage(message));
-            tasks->get_heater_task().run_once();
+            tasks->run_heater_task();
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_heater_queue().backing_deque.empty());
                 AND_THEN("the task should respond to the message") {
@@ -95,7 +95,7 @@ SCENARIO("heater task message passing") {
                 .pad_a = (1U << 9), .pad_b = 0, .board = (1U << 11)};
             tasks->get_heater_queue().backing_deque.push_back(
                 messages::HeaterMessage(read_message));
-            tasks->get_heater_task().run_once();
+            tasks->run_heater_task();
             auto error_message =
                 tasks->get_host_comms_queue().backing_deque.front();
             tasks->get_host_comms_queue().backing_deque.pop_front();
@@ -107,7 +107,7 @@ SCENARIO("heater task message passing") {
             AND_WHEN("getting the same conversion again") {
                 tasks->get_heater_queue().backing_deque.push_back(
                     messages::HeaterMessage(read_message));
-                tasks->get_heater_task().run_once();
+                tasks->run_heater_task();
                 THEN("the task should not send another error message") {
                     REQUIRE(
                         tasks->get_host_comms_queue().backing_deque.empty());
@@ -119,8 +119,8 @@ SCENARIO("heater task message passing") {
                     messages::HeaterMessage(message));
                 tasks->get_heater_queue().backing_deque.push_back(
                     messages::HeaterMessage(message));
-                tasks->get_heater_task().run_once();
-                tasks->get_heater_task().run_once();
+                tasks->run_heater_task();
+                tasks->run_heater_task();
                 THEN("the task should return an error both times") {
                     auto first =
                         tasks->get_host_comms_queue().backing_deque.front();
@@ -144,13 +144,13 @@ SCENARIO("heater task message passing") {
                 read_message.pad_b = (1U << 9);
                 tasks->get_heater_queue().backing_deque.push_back(
                     messages::HeaterMessage(read_message));
-                tasks->get_heater_task().run_once();
+                tasks->run_heater_task();
                 CHECK(tasks->get_host_comms_queue().backing_deque.empty());
                 THEN("get-temp messages should return ok") {
                     auto message = messages::GetTemperatureMessage{.id = 999};
                     tasks->get_heater_queue().backing_deque.push_back(
                         messages::HeaterMessage(message));
-                    tasks->get_heater_task().run_once();
+                    tasks->run_heater_task();
                     auto resp =
                         tasks->get_host_comms_queue().backing_deque.front();
                     REQUIRE(std::get<messages::GetTemperatureResponse>(resp)
@@ -166,7 +166,7 @@ SCENARIO("heater task message passing") {
             .pad_a = (1U << 9), .pad_b = 0, .board = (1U << 11)};
         tasks->get_heater_queue().backing_deque.push_back(
             messages::HeaterMessage(read_message));
-        tasks->get_heater_task().run_once();
+        tasks->run_heater_task();
         CHECK(std::holds_alternative<messages::ErrorMessage>(
             tasks->get_host_comms_queue().backing_deque.front()));
         tasks->get_host_comms_queue().backing_deque.pop_front();
@@ -176,7 +176,7 @@ SCENARIO("heater task message passing") {
                 .id = 1231, .target_temperature = 60};
             tasks->get_heater_queue().backing_deque.push_back(
                 messages::HeaterMessage(message));
-            tasks->get_heater_task().run_once();
+            tasks->run_heater_task();
             THEN("the task should respond with an error") {
                 REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
                 auto response =
@@ -192,7 +192,7 @@ SCENARIO("heater task message passing") {
             auto message = messages::GetTemperatureMessage{.id = 2222};
             tasks->get_heater_queue().backing_deque.push_back(
                 messages::HeaterMessage(message));
-            tasks->get_heater_task().run_once();
+            tasks->run_heater_task();
             THEN("the task should respond with an error") {
                 REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
                 auto response =

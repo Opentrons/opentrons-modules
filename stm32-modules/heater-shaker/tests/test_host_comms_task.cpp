@@ -437,10 +437,11 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 REQUIRE(tasks->get_heater_queue().backing_deque.size() != 0);
                 auto heater_message =
                     tasks->get_heater_queue().backing_deque.front();
-                REQUIRE(std::holds_alternative<messages::GetTemperatureDebugMessage>(
-                    heater_message));
+                REQUIRE(std::holds_alternative<
+                        messages::GetTemperatureDebugMessage>(heater_message));
                 auto get_temp_message =
-                    std::get<messages::GetTemperatureDebugMessage>(heater_message);
+                    std::get<messages::GetTemperatureDebugMessage>(
+                        heater_message);
                 tasks->get_heater_queue().backing_deque.pop_front();
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
@@ -459,9 +460,13 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     auto written_secondpass =
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
-                    THEN("the task should respond to the get-temp-debug message") {
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "M105.D AT100.00 BT42.00 OT22.00 AD14420 BD0 OD2220 OK\n"));
+                    THEN(
+                        "the task should respond to the get-temp-debug "
+                        "message") {
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith(
+                                         "M105.D AT100.00 BT42.00 OT22.00 "
+                                         "AD14420 BD0 OD2220 OK\n"));
                         REQUIRE(written_secondpass != tx_buf.begin());
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
