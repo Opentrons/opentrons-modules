@@ -43,7 +43,7 @@ struct SetRPMMessage {
 
 struct SetTemperatureMessage {
     uint32_t id;
-    uint32_t target_temperature;
+    double target_temperature;
 };
 
 struct GetTemperatureMessage {
@@ -87,8 +87,8 @@ struct ErrorMessage {
 */
 struct GetTemperatureResponse {
     uint32_t responding_to_id;
-    int16_t current_temperature;
-    uint32_t setpoint_temperature;
+    double current_temperature;
+    double setpoint_temperature;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 

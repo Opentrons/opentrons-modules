@@ -78,8 +78,8 @@ SCENARIO("testing full message passing integration") {
                 tasks->get_heater_task().run_once();
                 written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
-                REQUIRE_THAT(response_buffer,
-                             Catch::Matchers::StartsWith("M105 C95 T48 OK\n"));
+                REQUIRE_THAT(response_buffer, Catch::Matchers::StartsWith(
+                                                  "M105 C95.20 T48.00 OK\n"));
             }
         }
 

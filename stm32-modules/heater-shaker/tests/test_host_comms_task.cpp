@@ -352,8 +352,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should respond to the get-temp message") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "M105 C47 T0 OK\n"));
-                        REQUIRE(written_secondpass == tx_buf.begin() + 15);
+                                                 "M105 C47.00 T0.00 OK\n"));
+                        REQUIRE(written_secondpass == tx_buf.begin() + 21);
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }

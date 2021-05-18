@@ -159,10 +159,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
         errors::ErrorCode code = pad_a.error != errors::ErrorCode::NO_ERROR
                                      ? pad_a.error
                                      : pad_b.error;
-        auto avg_temp =
-            static_cast<int16_t>((static_cast<int32_t>(pad_a.temp_c) +
-                                  static_cast<int32_t>(pad_b.temp_c)) /
-                                 2);
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        auto avg_temp = (pad_a.temp_c + pad_b.temp_c) / 2.0;
         auto response = messages::GetTemperatureResponse{
             .responding_to_id = msg.id,
             .current_temperature = avg_temp,
