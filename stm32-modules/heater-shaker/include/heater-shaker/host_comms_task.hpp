@@ -228,6 +228,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
                         tx_into, tx_limit,
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
                 } else {
+                    if (response.with_error != errors::ErrorCode::NO_ERROR) {
+                        return errors::write_into(tx_into, tx_limit,
+                                                  response.with_error);
+                    }
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.current_temperature,
                         response.setpoint_temperature);

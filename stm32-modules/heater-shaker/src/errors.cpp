@@ -24,10 +24,24 @@ const char* const MOTOR_UNKNOWN_ERROR = "ERR110:main motor:unknown error\n";
 const char* const MOTOR_ILLEGAL_SPEED = "ERR120:main motor:illegal speed\n";
 const char* const MOTOR_ILLEGAL_RAMP_RATE =
     "ERR121:main motor:illegal ramp rate\n";
-const char* const HEATER_THERMISTOR_OUT_OF_RANGE_LOW =
-    "ERR201:heater:thermistor out of range low\n";
-const char* const HEATER_THERMISTOR_OUT_OF_RANGE_HIGH =
-    "ERR201:heater:thermistor out of range high\n";
+const char* const HEATER_THERMISTOR_A_DISCONNECTED =
+    "ERR201:heater:thermistor a disconnected\n";
+const char* const HEATER_THERMISTOR_A_SHORT =
+    "ERR202:heater:thermistor a short\n";
+const char* const HEATER_THERMISTOR_A_OVERTEMP =
+    "ERR203:heater:thermistor a overtemp\n";
+const char* const HEATER_THERMISTOR_B_DISCONNECTED =
+    "ERR205:heater:thermistor b disconnected\n";
+const char* const HEATER_THERMISTOR_B_SHORT =
+    "ERR206:heater:thermistor b short\n";
+const char* const HEATER_THERMISTOR_B_OVERTEMP =
+    "ERR207:heater:thermistor b overtemp\n";
+const char* const HEATER_THERMISTOR_BOARD_SHORT =
+    "ERR208:heater:board thermistor short\n";
+const char* const HEATER_THERMISTOR_BOARD_OVERTEMP =
+    "ERR209:heater:board thermistor overtemp\n";
+const char* const HEATER_THERMISTOR_BOARD_DISCONNECTED =
+    "ERR210:heater:board thermistor disconnected\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -56,8 +70,15 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(MOTOR_UNKNOWN_ERROR);
         HANDLE_CASE(MOTOR_ILLEGAL_SPEED);
         HANDLE_CASE(MOTOR_ILLEGAL_RAMP_RATE);
-        HANDLE_CASE(HEATER_THERMISTOR_OUT_OF_RANGE_LOW);
-        HANDLE_CASE(HEATER_THERMISTOR_OUT_OF_RANGE_HIGH);
+        HANDLE_CASE(HEATER_THERMISTOR_A_DISCONNECTED);
+        HANDLE_CASE(HEATER_THERMISTOR_A_SHORT);
+        HANDLE_CASE(HEATER_THERMISTOR_A_OVERTEMP);
+        HANDLE_CASE(HEATER_THERMISTOR_B_DISCONNECTED);
+        HANDLE_CASE(HEATER_THERMISTOR_B_SHORT);
+        HANDLE_CASE(HEATER_THERMISTOR_B_OVERTEMP);
+        HANDLE_CASE(HEATER_THERMISTOR_BOARD_SHORT);
+        HANDLE_CASE(HEATER_THERMISTOR_BOARD_OVERTEMP);
+        HANDLE_CASE(HEATER_THERMISTOR_BOARD_DISCONNECTED);
     }
     return UNKNOWN_ERROR;
 }
