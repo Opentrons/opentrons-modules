@@ -399,6 +399,27 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                                     .backing_deque.empty());
                     }
                 }
+                AND_WHEN("sending a response with an error to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::GetTemperatureResponse{
+                            .responding_to_id = get_temp_message.id,
+                            .current_temperature = 99,
+                            .setpoint_temperature = 15,
+                            .with_error =
+                                errors::ErrorCode::HEATER_THERMISTOR_B_SHORT});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+
+                    tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                          tx_buf.end());
+                    THEN(
+                        "the task should write both the error and the "
+                        "response") {
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith(
+                                         "ERR206:heater:thermistor b short\n"));
+                    }
+                }
             }
         }
         WHEN("sending a get-rpm") {
