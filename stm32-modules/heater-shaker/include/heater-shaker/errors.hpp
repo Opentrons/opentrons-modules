@@ -41,6 +41,8 @@ enum class ErrorCode {
     MOTOR_UNKNOWN_ERROR = 110,
     MOTOR_ILLEGAL_SPEED = 120,
     MOTOR_ILLEGAL_RAMP_RATE = 121,
+    HEATER_THERMISTOR_OUT_OF_RANGE_LOW = 201,
+    HEATER_THERMISTOR_OUT_OF_RANGE_HIGH = 202,
 };
 
 auto from_motor_error(uint16_t error_bitmap, MotorErrorOffset which)

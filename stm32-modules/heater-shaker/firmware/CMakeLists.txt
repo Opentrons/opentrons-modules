@@ -64,6 +64,7 @@ set(HS_FW_NONLINTABLE_SRCS
   ${MOTOR_DIR}/stm32f30x_mc_it.c
   ${MOTOR_DIR}/regular_conversion_manager.c
   ${UI_DIR}/ui_hardware.c
+  ${HEATER_DIR}/heater_hardware.c
   )
 
 add_executable(heater-shaker
@@ -163,11 +164,10 @@ set(CLANG_EXTRA_ARGS ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
 # This helps with clang accepting what GCC accepts around the implementations of the message queue
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
-get_target_property(core_sources heater-shaker-core SOURCES)
 add_custom_target(heater-shaker-lint
   COMMENT "Linting"
   ALL
-  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${HS_FW_LINTABLE_SRCS} ${core_sources} --config=)
+  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${HS_FW_LINTABLE_SRCS} ${CORE_LINTABLE_SOURCES} --config=)
 
 # Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an
 # arguable misuse of the concept) to the appropriate cross-gdb with
