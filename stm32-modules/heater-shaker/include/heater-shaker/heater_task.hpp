@@ -46,6 +46,7 @@ struct State {
         PAD_A_SENSE_ERROR | PAD_B_SENSE_ERROR;
     static constexpr uint8_t BOARD_SENSE_ERROR = (1 << 2);
     static constexpr uint8_t SENSE_ERROR = PAD_SENSE_ERROR | BOARD_SENSE_ERROR;
+    static constexpr uint8_t POWER_GOOD_ERROR = (1 << 3);
 };
 
 struct TemperatureSensor {
@@ -163,9 +164,19 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     template <typename Policy>
     requires HeaterExecutionPolicy<Policy> auto visit_message(
         const messages::SetTemperatureMessage& msg, Policy& policy) -> void {
-        static_cast<void>(policy);
+        // While in error state, we will refuse to set temperatures
+        // But we can try and disarm the latch if that's the only problem
+        if (!policy.power_good() &&
+            ((state.error_bitmap & State::PAD_SENSE_ERROR) == 0)) {
+            if (policy.try_reset_power_good()) {
+                state.error_bitmap &= ~State::POWER_GOOD_ERROR;
+                state.system_status = State::IDLE;
+            } else {
+                state.error_bitmap |= State::POWER_GOOD_ERROR;
+                state.system_status = State::ERROR;
+            }
+        }
         if (state.system_status == State::ERROR) {
-            // While in error state, we will refuse to set temperatures
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = msg.id,
                 .with_error = most_relevant_error()};
@@ -205,7 +216,6 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     requires HeaterExecutionPolicy<Policy> auto visit_message(
         const messages::GetTemperatureDebugMessage& msg, Policy& policy)
         -> void {
-        static_cast<void>(policy);
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         auto response = messages::GetTemperatureDebugResponse{
             .responding_to_id = msg.id,
@@ -214,7 +224,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             .board_temperature = board.temp_c,
             .pad_a_adc = pad_a.last_adc,
             .pad_b_adc = pad_b.last_adc,
-            .board_adc = board.last_adc};
+            .board_adc = board.last_adc,
+            .power_good = policy.power_good()};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
@@ -223,10 +234,53 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     requires HeaterExecutionPolicy<Policy> auto visit_message(
         const messages::TemperatureConversionComplete& msg, Policy& policy)
         -> void {
-        static_cast<void>(policy);
+        auto old_error_bitmap = state.error_bitmap;
+        if (!policy.power_good()) {
+            state.error_bitmap |= State::POWER_GOOD_ERROR;
+        }
         handle_temperature_conversion(msg.pad_a, pad_a);
         handle_temperature_conversion(msg.pad_b, pad_b);
         handle_temperature_conversion(msg.board, board);
+        // The error handling wants to accomplish the following:
+        // - Only run if there were any changes in the error state for
+        //   the sensors or the heater pad power driver
+        // - If that change is that the detailed error responses from
+        //   the sensors are now gone, try and reset the power driver
+        // - If that fails, inform upstream
+        // - If the change was that the error latch fired even though it doesn't
+        //   seem like it should have, send that error
+        // - In any case, make sure the overall system state is correct
+
+        auto changes = old_error_bitmap ^ state.error_bitmap;
+        if ((changes & State::PAD_SENSE_ERROR) != 0) {
+            if ((state.error_bitmap & State::PAD_SENSE_ERROR) == 0) {
+                if (policy.try_reset_power_good()) {
+                    state.error_bitmap &= ~State::POWER_GOOD_ERROR;
+                    if (state.error_bitmap == 0) {
+                        state.system_status = State::IDLE;
+                    }
+                } else {
+                    auto error_message =
+                        messages::HostCommsMessage(messages::ErrorMessage{
+                            .code = errors::ErrorCode::
+                                HEATER_HARDWARE_ERROR_LATCH});
+                    static_cast<void>(
+                        task_registry->comms->get_message_queue().try_send(
+                            error_message));
+                    state.system_status = State::ERROR;
+                }
+            } else {
+                state.system_status = State::ERROR;
+            }
+        } else if ((changes & State::POWER_GOOD_ERROR) != 0) {
+            auto error_message =
+                messages::HostCommsMessage(messages::ErrorMessage{
+                    .code = errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH});
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    error_message));
+            state.system_status = State::ERROR;
+        }
     }
 
     auto handle_temperature_conversion(uint16_t conversion_result,
@@ -234,15 +288,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
         auto visitor = [this, &sensor](auto val) {
             this->visit_conversion(val, sensor);
         };
-        auto old_error = sensor.error;
         sensor.last_adc = conversion_result;
+        auto old_error = sensor.error;
         std::visit(visitor, sensor.conversion.convert(conversion_result));
         if (sensor.error != old_error) {
-            // if the error state of the sensor changed...
             if (sensor.error != errors::ErrorCode::NO_ERROR) {
-                // ...to an error, send it and set state to error and set our
-                // error bit
-                state.system_status = State::ERROR;
                 state.error_bitmap |= sensor.error_bit;
                 auto error_message = messages::HostCommsMessage(
                     messages::ErrorMessage{.code = sensor.error});
@@ -250,13 +300,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                     task_registry->comms->get_message_queue().try_send(
                         error_message));
             } else {
-                // ...to an ok state, clear our error bit in the task error map
-                // and maybe switch to ok state
                 state.error_bitmap &= ~sensor.error_bit;
-                sensor.error = errors::ErrorCode::NO_ERROR;
-                if (state.error_bitmap == 0) {
-                    state.system_status = State::IDLE;
-                }
             }
         }
     }
@@ -300,9 +344,15 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                 }
                 return pad_b.error;
             }
-            return board.error;
         }
-        return errors::ErrorCode::NO_ERROR;
+
+        // Return the heater pad error if everything is ok but the error latch
+        // is set, which signifies that the latch circuit is broken
+        if ((state.error_bitmap & State::POWER_GOOD_ERROR) != 0) {
+            return errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH;
+        }
+
+        return board.error;
     }
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;

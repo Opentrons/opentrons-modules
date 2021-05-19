@@ -104,6 +104,7 @@ struct GetTemperatureDebugResponse {
     uint16_t pad_a_adc;
     uint16_t pad_b_adc;
     uint16_t board_adc;
+    bool power_good;
 };
 
 struct GetRPMResponse {

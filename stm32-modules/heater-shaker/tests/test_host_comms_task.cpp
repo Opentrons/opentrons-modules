@@ -466,7 +466,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith(
                                          "M105.D AT100.00 BT42.00 OT22.00 "
-                                         "AD14420 BD0 OD2220 OK\n"));
+                                         "AD14420 BD0 OD2220 PG0 OK\n"));
                         REQUIRE(written_secondpass != tx_buf.begin());
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());

@@ -50,6 +50,7 @@ enum class ErrorCode {
     HEATER_THERMISTOR_BOARD_SHORT = 208,
     HEATER_THERMISTOR_BOARD_OVERTEMP = 209,
     HEATER_THERMISTOR_BOARD_DISCONNECTED = 210,
+    HEATER_HARDWARE_ERROR_LATCH = 211,
 };
 
 auto from_motor_error(uint16_t error_bitmap, MotorErrorOffset which)

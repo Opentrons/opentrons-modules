@@ -5,6 +5,7 @@
 extern "C" {
 #endif  // __cplusplus
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "stm32f3xx_hal.h"
@@ -30,6 +31,9 @@ typedef struct {
 void heater_hardware_setup(heater_hardware* hardware);
 void heater_hardware_teardown(heater_hardware* hardware);
 void heater_hardware_begin_conversions(heater_hardware* hardware);
+bool heater_hardware_sense_power_good();
+void heater_hardware_drive_pg_latch_low();
+void heater_hardware_release_pg_latch();
 
 #ifdef __cplusplus
 }  // extern "C"

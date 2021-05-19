@@ -89,75 +89,6 @@ SCENARIO("heater task message passing") {
                 }
             }
         }
-
-        WHEN("a temperature becomes invalid") {
-            read_message = messages::TemperatureConversionComplete{
-                .pad_a = (1U << 9), .pad_b = 0, .board = (1U << 11)};
-            tasks->get_heater_queue().backing_deque.push_back(
-                messages::HeaterMessage(read_message));
-            tasks->run_heater_task();
-            auto error_message =
-                tasks->get_host_comms_queue().backing_deque.front();
-            tasks->get_host_comms_queue().backing_deque.pop_front();
-            CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-            THEN("the task should send an error message the first spin") {
-                REQUIRE(std::get<messages::ErrorMessage>(error_message).code ==
-                        errors::ErrorCode::HEATER_THERMISTOR_B_DISCONNECTED);
-            }
-            AND_WHEN("getting the same conversion again") {
-                tasks->get_heater_queue().backing_deque.push_back(
-                    messages::HeaterMessage(read_message));
-                tasks->run_heater_task();
-                THEN("the task should not send another error message") {
-                    REQUIRE(
-                        tasks->get_host_comms_queue().backing_deque.empty());
-                }
-            }
-            AND_WHEN("sending get-temp messages") {
-                auto message = messages::GetTemperatureMessage{.id = 999};
-                tasks->get_heater_queue().backing_deque.push_back(
-                    messages::HeaterMessage(message));
-                tasks->get_heater_queue().backing_deque.push_back(
-                    messages::HeaterMessage(message));
-                tasks->run_heater_task();
-                tasks->run_heater_task();
-                THEN("the task should return an error both times") {
-                    auto first =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    auto second =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-                    REQUIRE(
-                        std::get<messages::GetTemperatureResponse>(first)
-                            .with_error ==
-                        errors::ErrorCode::HEATER_THERMISTOR_B_DISCONNECTED);
-                    REQUIRE(
-                        std::get<messages::GetTemperatureResponse>(second)
-                            .with_error ==
-                        errors::ErrorCode::HEATER_THERMISTOR_B_DISCONNECTED);
-                }
-            }
-            AND_WHEN(
-                "getting a subsequent conversion with valid temperatures") {
-                read_message.pad_b = (1U << 9);
-                tasks->get_heater_queue().backing_deque.push_back(
-                    messages::HeaterMessage(read_message));
-                tasks->run_heater_task();
-                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-                THEN("get-temp messages should return ok") {
-                    auto message = messages::GetTemperatureMessage{.id = 999};
-                    tasks->get_heater_queue().backing_deque.push_back(
-                        messages::HeaterMessage(message));
-                    tasks->run_heater_task();
-                    auto resp =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    REQUIRE(std::get<messages::GetTemperatureResponse>(resp)
-                                .with_error == errors::ErrorCode::NO_ERROR);
-                }
-            }
-        }
     }
 
     GIVEN("a heater task with an invalid out-of-range temp") {
@@ -202,6 +133,246 @@ SCENARIO("heater task message passing") {
                 REQUIRE(ack.responding_to_id == message.id);
                 REQUIRE(ack.with_error ==
                         errors::ErrorCode::HEATER_THERMISTOR_B_DISCONNECTED);
+            }
+        }
+    }
+}
+
+SCENARIO("heater task error handling") {
+    GIVEN("a heater task with no errors") {
+        auto tasks = TaskBuilder::build();
+        auto read_message = messages::TemperatureConversionComplete{
+            .pad_a = ((1U << 9) - 1), .pad_b = (1U << 9), .board = (1U << 11)};
+        tasks->get_heater_queue().backing_deque.push_back(
+            messages::HeaterMessage(read_message));
+        tasks->run_heater_task();
+        CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+        WHEN("setting thermistor a to an error state and setting the latch") {
+            auto one_error_message = messages::TemperatureConversionComplete{
+                .pad_a = 0, .pad_b = (1U << 9), .board = (1U << 11)};
+            tasks->get_heater_policy().set_power_good(false);
+            tasks->get_heater_queue().backing_deque.push_back(
+                messages::HeaterMessage(one_error_message));
+            tasks->run_heater_task();
+            THEN(
+                "one error message should be sent indicating the pad sense "
+                "error") {
+                CHECK(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto error_update =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                auto error = std::get<messages::ErrorMessage>(error_update);
+                REQUIRE(error.code ==
+                        errors::ErrorCode::HEATER_THERMISTOR_A_DISCONNECTED);
+            }
+        }
+        WHEN("setting thermistor b to an error state and setting the latch") {
+            auto one_error_message = messages::TemperatureConversionComplete{
+                .pad_a = ((1U << 9) - 1), .pad_b = 0, .board = (1U << 11)};
+            tasks->get_heater_policy().set_power_good(false);
+            tasks->get_heater_queue().backing_deque.push_back(
+                messages::HeaterMessage(one_error_message));
+            tasks->run_heater_task();
+            THEN(
+                "one error message should be sent indicating the pad sense "
+                "error") {
+                CHECK(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto error_update =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                auto error = std::get<messages::ErrorMessage>(error_update);
+                REQUIRE(error.code ==
+                        errors::ErrorCode::HEATER_THERMISTOR_B_DISCONNECTED);
+            }
+        }
+        WHEN(
+            "setting both thermistors to an error state and setting the "
+            "latch") {
+            auto one_error_message = messages::TemperatureConversionComplete{
+                .pad_a = 0, .pad_b = 65535, .board = (1U << 11)};
+            tasks->get_heater_policy().set_power_good(false);
+            tasks->get_heater_queue().backing_deque.push_back(
+                messages::HeaterMessage(one_error_message));
+            tasks->run_heater_task();
+            THEN("one error message should be sent for each pad sense error") {
+                CHECK(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto error_update =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                auto error = std::get<messages::ErrorMessage>(error_update);
+                REQUIRE(error.code ==
+                        errors::ErrorCode::HEATER_THERMISTOR_A_DISCONNECTED);
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                error_update =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                error = std::get<messages::ErrorMessage>(error_update);
+                REQUIRE(error.code ==
+                        errors::ErrorCode::HEATER_THERMISTOR_B_DISCONNECTED);
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+            }
+        }
+        WHEN(
+            "setting both thermistors to ok values but indicating a latched "
+            "error") {
+            tasks->get_heater_policy().set_power_good(false);
+            tasks->get_heater_policy().set_can_reset(false);
+            tasks->get_heater_policy().reset_try_reset_call_count();
+            tasks->get_heater_queue().backing_deque.push_back(
+                messages::HeaterMessage(read_message));
+            tasks->run_heater_task();
+            THEN(
+                "an error message should be sent and we should be in error "
+                "state") {
+                CHECK(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto error_update =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+                auto error = std::get<messages::ErrorMessage>(error_update);
+                REQUIRE(error.code ==
+                        errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH);
+                auto set_temp_message = messages::SetTemperatureMessage{
+                    .id = 24, .target_temperature = 29.2};
+                tasks->get_heater_queue().backing_deque.push_back(
+                    messages::HeaterMessage(set_temp_message));
+                tasks->run_heater_task();
+                CHECK(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .with_error ==
+                        errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH);
+                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+            }
+        }
+    }
+    GIVEN("a heater task with a thermistor reading something bad") {
+        auto tasks = TaskBuilder::build();
+        auto read_message = messages::TemperatureConversionComplete{
+            .pad_a = 0, .pad_b = (1U << 15), .board = (1U << 11)};
+        tasks->get_heater_queue().backing_deque.push_back(
+            messages::HeaterMessage(read_message));
+        tasks->get_heater_policy().set_power_good(false);
+        tasks->run_heater_task();
+        CHECK(!tasks->get_host_comms_queue().backing_deque.empty());
+        tasks->get_host_comms_queue().backing_deque.clear();
+        WHEN("the error goes away and the latch is allowed to be reset") {
+            read_message = messages::TemperatureConversionComplete{
+                .pad_a = ((1U << 9) - 1),
+                .pad_b = (1U << 9),
+                .board = (1U << 11)};
+            tasks->get_heater_queue().backing_deque.push_back(
+                messages::HeaterMessage(read_message));
+            tasks->run_heater_task();
+            THEN("there is no error and the heater task works normally") {
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                auto settemp = messages::SetTemperatureMessage{
+                    .id = 54, .target_temperature = 43};
+                tasks->get_heater_queue().backing_deque.push_back(settemp);
+                tasks->run_heater_task();
+                CHECK(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .with_error == errors::ErrorCode::NO_ERROR);
+            }
+        }
+        WHEN("the pad error goes away but the latch cannot reset") {
+            auto read_message = messages::TemperatureConversionComplete{
+                .pad_a = ((1U << 9) - 1),
+                .pad_b = (1U << 9),
+                .board = (1U << 11)};
+            tasks->get_heater_queue().backing_deque.push_back(
+                messages::HeaterMessage(read_message));
+            tasks->get_heater_policy().set_can_reset(false);
+            tasks->run_heater_task();
+            THEN("there is still an error and it is sent appropriately") {
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto pgood_error =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                REQUIRE(std::get<messages::ErrorMessage>(pgood_error).code ==
+                        errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH);
+                AND_WHEN("sending a set temp") {
+                    auto settemp = messages::SetTemperatureMessage{
+                        .id = 54, .target_temperature = 43};
+                    tasks->get_heater_queue().backing_deque.push_back(settemp);
+                    tasks->run_heater_task();
+                    THEN("there is an error response") {
+                        CHECK(!tasks->get_host_comms_queue()
+                                   .backing_deque.empty());
+                        auto response =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        tasks->get_host_comms_queue().backing_deque.pop_front();
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                        REQUIRE(
+                            std::get<messages::AcknowledgePrevious>(response)
+                                .with_error ==
+                            errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH);
+                    }
+                }
+            }
+        }
+    }
+
+    GIVEN("a heater task with thermistors reading ok but error latch set") {
+        auto tasks = TaskBuilder::build();
+        auto read_message = messages::TemperatureConversionComplete{
+            .pad_a = ((1U << 9) - 1), .pad_b = (1U << 9), .board = (1U << 11)};
+        tasks->get_heater_queue().backing_deque.push_back(
+            messages::HeaterMessage(read_message));
+        tasks->get_heater_policy().set_power_good(false);
+        tasks->get_heater_policy().set_can_reset(false);
+        tasks->run_heater_task();
+        tasks->get_host_comms_queue().backing_deque.clear();
+        WHEN("sending a set-temp with the latch allowed to reset") {
+            tasks->get_heater_policy().set_can_reset(true);
+            tasks->get_heater_policy().reset_try_reset_call_count();
+            auto settemp = messages::SetTemperatureMessage{
+                .id = 254, .target_temperature = 54};
+            tasks->get_heater_queue().backing_deque.push_back(
+                messages::HeaterMessage(settemp));
+            tasks->run_heater_task();
+            THEN("the set temp should reset the latch and succeed") {
+                REQUIRE(tasks->get_heater_policy().try_reset_call_count() == 1);
+                REQUIRE(tasks->get_heater_policy().power_good());
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .with_error == errors::ErrorCode::NO_ERROR);
+            }
+        }
+        WHEN("sending a set-temp with the latch not allowed to reset") {
+            tasks->get_heater_policy().set_can_reset(false);
+            tasks->get_heater_policy().reset_try_reset_call_count();
+            auto settemp = messages::SetTemperatureMessage{
+                .id = 254, .target_temperature = 54};
+            tasks->get_heater_queue().backing_deque.push_back(
+                messages::HeaterMessage(settemp));
+            tasks->run_heater_task();
+            THEN(
+                "the set temp should try and fail to reset the latch and send "
+                "an error") {
+                REQUIRE(tasks->get_heater_policy().try_reset_call_count() == 1);
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .with_error ==
+                        errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH);
             }
         }
     }

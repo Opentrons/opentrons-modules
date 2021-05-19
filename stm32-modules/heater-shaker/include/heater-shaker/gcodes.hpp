@@ -265,6 +265,7 @@ struct GetTemperatureDebug {
      * - Pad A last ADC reading (AD)
      * - Pad B last ADC reading (BD)
      * - Board last ADC reading (OD)
+     * - power good (PG)
      * */
     using ParseResult = std::optional<GetTemperatureDebug>;
 
@@ -274,12 +275,13 @@ struct GetTemperatureDebug {
         write_response_into(InputIt buf, InLimit limit, double pad_a_temp,
                             double pad_b_temp, double board_temp,
                             uint16_t pad_a_adc, uint16_t pad_b_adc,
-                            uint16_t board_adc) -> InputIt {
+                            uint16_t board_adc, bool power_good) -> InputIt {
         auto res = snprintf(
             &*buf, (limit - buf),
-            "M105.D AT%0.2f BT%0.2f OT%0.2f AD%d BD%d OD%d OK\n",
+            "M105.D AT%0.2f BT%0.2f OT%0.2f AD%d BD%d OD%d PG%d OK\n",
             static_cast<float>(pad_a_temp), static_cast<float>(pad_b_temp),
-            static_cast<float>(board_temp), pad_a_adc, pad_b_adc, board_adc);
+            static_cast<float>(board_temp), pad_a_adc, pad_b_adc, board_adc,
+            power_good ? 1 : 0);
         if (res <= 0) {
             return buf;
         }

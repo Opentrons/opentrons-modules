@@ -264,7 +264,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
                         tx_into, tx_limit, response.pad_a_temperature,
                         response.pad_b_temperature, response.board_temperature,
                         response.pad_a_adc, response.pad_b_adc,
-                        response.board_adc);
+                        response.board_adc, response.power_good);
                 }
             },
             cache_entry);
