@@ -29,7 +29,7 @@ auto MotorPolicy::set_rpm(int16_t rpm) -> ErrorCode {
         static_cast<uint16_t>(
             static_cast<int32_t>(std::abs(rpm - current_speed)) / ramp_rate),
         static_cast<uint16_t>(1));
-    MCI_ExecSpeedRamp(motor_handle, command_01hz, ramp_time);
+    MCI_ExecSpeedRamp(motor_handle, -command_01hz, ramp_time);
     if (MCI_GetSTMState(motor_handle) == IDLE) {
         MCI_StartMotor(motor_handle);
     }
@@ -40,14 +40,14 @@ auto MotorPolicy::stop() -> void { MCI_StopMotor(motor_handle); }
 
 auto MotorPolicy::get_current_rpm() const -> int16_t {
     if (IDLE != MCI_GetSTMState(motor_handle)) {
-        return MCI_GetAvrgMecSpeedUnit(motor_handle) * _RPM / _01HZ;
+        return -MCI_GetAvrgMecSpeedUnit(motor_handle) * _RPM / _01HZ;
     }
     return 0;
 }
 
 auto MotorPolicy::get_target_rpm() const -> int16_t {
     if (IDLE != MCI_GetSTMState(motor_handle)) {
-        return MCI_GetMecSpeedRefUnit(motor_handle) * _RPM / _01HZ;
+        return -MCI_GetMecSpeedRefUnit(motor_handle) * _RPM / _01HZ;
     }
     return 0;
 }

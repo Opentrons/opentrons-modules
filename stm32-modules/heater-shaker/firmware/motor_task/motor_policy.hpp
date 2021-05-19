@@ -9,7 +9,7 @@ class MotorPolicy {
   public:
     static constexpr int32_t DEFAULT_RAMP_RATE_RPM_PER_S = 1000;
     static constexpr int32_t MAX_RAMP_RATE_RPM_PER_S = 20000;
-    static constexpr int32_t MIN_RAMP_RATE_RPM_PER_S = 100;
+    static constexpr int32_t MIN_RAMP_RATE_RPM_PER_S = 1;
     MotorPolicy() = delete;
     explicit MotorPolicy(MCI_Handle_t *handle);
     auto set_rpm(int16_t rpm) -> errors::ErrorCode;
