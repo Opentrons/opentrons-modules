@@ -53,7 +53,7 @@ void gpio_setup(void) {
     // Power good latch pin GPIO output pullup to ensure
     // it doesn't affect the latch when not driven
     gpio_init.Pin = HEATER_PGOOD_LATCH_PIN;
-    gpio_init.Mode = GPIO_MODE_AF_PP;
+    gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
     gpio_init.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(HEATER_PGOOD_SENSE_PORT, &gpio_init);
     HAL_GPIO_WritePin(HEATER_PGOOD_LATCH_PORT,
