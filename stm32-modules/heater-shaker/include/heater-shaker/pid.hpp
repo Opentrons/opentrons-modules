@@ -3,25 +3,25 @@
 class PID {
   public:
     PID() = delete;
-    PID(float kp, float ki, float kd);
-    PID(float kp, float ki, float kd, float windup_limit_high,
-        float windup_limit_low);
-    auto compute(float error) -> float;
+    PID(double kp, double ki, double kd);
+    PID(double kp, double ki, double kd, double windup_limit_high,
+        double windup_limit_low);
+    auto compute(double error) -> double;
     auto reset() -> void;
-    [[nodiscard]] auto kp() const -> float;
-    [[nodiscard]] auto ki() const -> float;
-    [[nodiscard]] auto kd() const -> float;
-    [[nodiscard]] auto windup_limit_high() const -> float;
-    [[nodiscard]] auto windup_limit_low() const -> float;
-    [[nodiscard]] auto integrator() const -> float;
-    [[nodiscard]] auto last_error() const -> float;
+    [[nodiscard]] auto kp() const -> double;
+    [[nodiscard]] auto ki() const -> double;
+    [[nodiscard]] auto kd() const -> double;
+    [[nodiscard]] auto windup_limit_high() const -> double;
+    [[nodiscard]] auto windup_limit_low() const -> double;
+    [[nodiscard]] auto integrator() const -> double;
+    [[nodiscard]] auto last_error() const -> double;
 
   private:
-    const float _kp;
-    const float _ki;
-    const float _kd;
-    const float _windup_limit_high;
-    const float _windup_limit_low;
-    float _integrator;
-    float _last_error;
+    const double _kp;
+    const double _ki;
+    const double _kd;
+    const double _windup_limit_high;
+    const double _windup_limit_low;
+    double _integrator;
+    double _last_error;
 };
