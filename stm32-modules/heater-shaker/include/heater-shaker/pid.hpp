@@ -17,11 +17,11 @@ class PID {
     [[nodiscard]] auto last_error() const -> double;
 
   private:
-    const double _kp;
-    const double _ki;
-    const double _kd;
-    const double _windup_limit_high;
-    const double _windup_limit_low;
+    double _kp;
+    double _ki;
+    double _kd;
+    double _windup_limit_high;
+    double _windup_limit_low;
     double _integrator;
     double _last_error;
 };

@@ -1,6 +1,7 @@
 #include "catch2/catch.hpp"
 #include "heater-shaker/heater_task.hpp"
 #include "heater-shaker/messages.hpp"
+#include "heater-shaker/pid.hpp"
 #include "test/task_builder.hpp"
 
 SCENARIO("heater task message passing") {
@@ -11,6 +12,30 @@ SCENARIO("heater task message passing") {
         tasks->get_heater_queue().backing_deque.push_back(
             messages::HeaterMessage(read_message));
         tasks->run_heater_task();
+        WHEN("sending a valid set-pid-constant message") {
+            auto message = messages::SetPIDConstantsMessage{
+                .id = 122, .kp = 122.1, .ki = -12, .kd = 0.25};
+            tasks->get_heater_queue().backing_deque.push_back(
+                messages::HeaterMessage(message));
+            tasks->run_heater_task();
+            THEN("the constants are updated") {
+                REQUIRE_THAT(tasks->get_heater_task().get_pid().kp(),
+                             Catch::Matchers::WithinAbs(122.1, 0.01));
+                REQUIRE_THAT(tasks->get_heater_task().get_pid().ki(),
+                             Catch::Matchers::WithinAbs(-12, 0.1));
+                REQUIRE_THAT(tasks->get_heater_task().get_pid().kd(),
+                             Catch::Matchers::WithinAbs(0.25, .001));
+                AND_THEN("an acknowledge is sent") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto resp =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(std::get<messages::AcknowledgePrevious>(resp)
+                                .with_error == errors::ErrorCode::NO_ERROR);
+                }
+            }
+        }
         WHEN("sending a set-temperature message") {
             auto message = messages::SetTemperatureMessage{
                 .id = 1231, .target_temperature = 45};

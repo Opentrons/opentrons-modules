@@ -302,4 +302,71 @@ struct GetTemperatureDebug {
     }
 };
 
+struct SetHeaterPIDConstants {
+    /**
+     * SetHeaterPIDConstants uses M301 because smoothieware does. Parameters:
+     * Pxxx.xxx Ixxx.xxx Dxxx.xxx
+     *
+     * Example: M301 P1.02 I2.1 D1.0\r\n
+     * */
+    double kp;
+    double ki;
+    double kd;
+
+    using ParseResult = std::optional<SetHeaterPIDConstants>;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputIt, InLimit> static auto
+        write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        static constexpr const char* response = "M301 OK\n";
+        return write_string_to_iterpair(buf, limit, response);
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<Limit, InputIt> static auto
+        parse(const InputIt& input, Limit limit)
+            -> std::pair<ParseResult, InputIt> {
+        constexpr auto prefix = std::array{'M', '3', '0', '1', ' ', 'P'};
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto kp_res = parse_value<float>(working, limit);
+
+        if (!kp_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        constexpr auto i_pref = std::array{' ', 'I'};
+        working = prefix_matches(kp_res.second, limit, i_pref);
+        if (working == kp_res.second) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ki_res = parse_value<float>(working, limit);
+
+        if (!ki_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        constexpr auto kd_pref = std::array{' ', 'D'};
+        working = prefix_matches(ki_res.second, limit, kd_pref);
+        if (working == ki_res.second) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto kd_res = parse_value<float>(working, limit);
+        if (!kd_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        return std::make_pair(
+            ParseResult(SetHeaterPIDConstants{.kp = kp_res.first.value(),
+                                              .ki = ki_res.first.value(),
+                                              .kd = kd_res.first.value()}),
+            kd_res.second);
+    }
+};
+
 }  // namespace gcode

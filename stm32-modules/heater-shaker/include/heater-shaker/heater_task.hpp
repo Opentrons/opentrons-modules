@@ -93,6 +93,12 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     static constexpr double DEFAULT_KP = 1.0;
     static constexpr double DEFAULT_KD = 1.0;
     static constexpr double MAX_CONTROLLABLE_TEMPERATURE = 95.0;
+    static constexpr double KP_MIN = -200;
+    static constexpr double KP_MAX = 200;
+    static constexpr double KI_MIN = -200;
+    static constexpr double KI_MAX = 200;
+    static constexpr double KD_MIN = -200;
+    static constexpr double KD_MAX = 200;
 
     explicit HeaterTask(Queue& q)
         : message_queue(q),
@@ -171,6 +177,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             message);
     }
 
+    [[nodiscard]] auto get_pid() const -> const PID& { return pid; }
+
   private:
     template <typename Policy>
     auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
@@ -243,6 +251,23 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             .pad_b_adc = pad_b.last_adc,
             .board_adc = board.last_adc,
             .power_good = policy.power_good()};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy> auto visit_message(
+        const messages::SetPIDConstantsMessage& msg, Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if ((msg.kp < KP_MIN) || (msg.kp > KP_MAX) || (msg.ki < KI_MIN) ||
+            (msg.ki > KI_MAX) || (msg.kd < KD_MIN) || (msg.kd > KD_MAX)) {
+            response.with_error =
+                errors::ErrorCode::HEATER_CONSTANT_OUT_OF_RANGE;
+        } else {
+            policy.disable_power_output();
+            pid = PID(msg.kp, msg.ki, msg.kd, 1.0, -1.0);
+        }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
