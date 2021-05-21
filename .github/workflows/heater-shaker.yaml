@@ -56,7 +56,7 @@ jobs:
       - name: 'Lint'
         run: cmake --build ./build-stm32-cross --target heater-shaker-lint
       - name: 'Build'
-        run: cmake --build ./build-stm32-cross --target heater-shaker
+        run: cmake --build ./build-stm32-cross --target heater-shaker-hex
   host-compile-test:
     name: 'Host-Compile/Test'
     runs-on: 'ubuntu-20.04'

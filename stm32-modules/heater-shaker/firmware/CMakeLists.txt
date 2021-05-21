@@ -150,6 +150,17 @@ set_target_properties(heater-shaker
   CROSSCOMPILING_EMULATOR
   "${ARM_GDB};--command=${CMAKE_CURRENT_BINARY_DIR}/gdbinit")
 
+find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
+  PATHS "${CrossGCC_BINDIR}"
+  NO_DEFAULT_PATH
+  REQUIRED)
+add_custom_command(OUTPUT heater-shaker.hex
+  COMMAND ${CROSS_OBJCOPY} ARGS heater-shaker "-Oihex" heater-shaker.hex
+  DEPENDS heater-shaker
+  VERBATIM)
+add_custom_target(heater-shaker-hex ALL
+  DEPENDS heater-shaker.hex)
+
 find_package(Clang)
 
 # runs clang-tidy https://releases.llvm.org/11.0.1/tools/clang/tools/extra/docs/clang-tidy/index.html
