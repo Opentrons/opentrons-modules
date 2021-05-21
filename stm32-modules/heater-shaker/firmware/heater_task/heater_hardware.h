@@ -10,6 +10,22 @@ extern "C" {
 
 #include "stm32f3xx_hal.h"
 
+// These defines drive the math for setting the PWM clocking parameters.
+// The frequency will be respected as accurately as possible, and is in Hz.
+// Because we only have ints available, the requested granularity will be less
+// than or equal to whatever granularity we end up with - for instance, with
+// 15535 (uint16_t max) requested, the prescaler needs to be 4.6; we'll set it
+// to 4, and then the granularity will be 18000.
+#define HEATER_PAD_PWM_GRANULARITY_REQUESTED 15535uL
+#define HEATER_PAD_PWM_FREQ 1000uL
+#define HEATER_PAD_TIM_CLKDIV 1uL
+#define HEATER_PAD_INPUT_FREQ (72000000uL / HEATER_PAD_TIM_CLKDIV)
+#define HEATER_PAD_TIM_PRESCALER \
+    ((HEATER_PAD_INPUT_FREQ) /   \
+     (HEATER_PAD_PWM_FREQ * HEATER_PAD_PWM_GRANULARITY_REQUESTED))
+#define HEATER_PAD_PWM_GRANULARITY \
+    ((HEATER_PAD_INPUT_FREQ / HEATER_PAD_TIM_PRESCALER) / HEATER_PAD_PWM_FREQ)
+
 typedef enum {
     NTC_PAD_A = 1,
     NTC_PAD_B = 2,

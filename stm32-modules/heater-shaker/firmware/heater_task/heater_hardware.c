@@ -5,6 +5,7 @@
 #include "stm32f3xx_hal_adc_ex.h"
 #include "stm32f3xx_hal_gpio.h"
 #include "stm32f3xx_hal_cortex.h"
+#include "stm32f3xx_hal_tim.h"
 
 #include "heater_hardware.h"
 
@@ -12,11 +13,13 @@ static void init_error(void);
 static void adc_setup(ADC_HandleTypeDef* adc);
 static void gpio_setup(void);
 static ntc_selection next_channel(ntc_selection from_which);
+static void tim_setup(TIM_HandleTypeDef* tim);
 
 typedef struct {
     ntc_selection reading_which;
     conversion_results results;
     ADC_HandleTypeDef ntc_adc;
+    TIM_HandleTypeDef pad_tim;
 } hw_internal;
 
 hw_internal _internals;
@@ -33,6 +36,9 @@ heater_hardware *HEATER_HW_HANDLE = NULL;
 #define HEATER_PGOOD_SENSE_PIN (1<<12)
 #define HEATER_PGOOD_LATCH_PORT GPIOD
 #define HEATER_PGOOD_LATCH_PIN (1<<13)
+#define HEATER_PAD_ENABLE_PORT GPIOD
+#define HEATER_PAD_ENABLE_PIN (1<<14)
+#define HEATER_PAD_ENABLE_TIM_CHANNEL TIM_CHANNEL_4
 
 
 static void gpio_setup(void) {
@@ -61,6 +67,10 @@ static void gpio_setup(void) {
     HAL_GPIO_WritePin(HEATER_PGOOD_LATCH_PORT,
                       HEATER_PGOOD_LATCH_PIN,
                       GPIO_PIN_SET);
+    gpio_init.Pin = HEATER_PAD_ENABLE_PIN;
+    gpio_init.Mode = GPIO_MODE_AF_PP;
+    gpio_init.Alternate = GPIO_AF2_TIM4;
+    HAL_GPIO_Init(HEATER_PAD_ENABLE_PORT, &gpio_init);
 }
 
 static void adc_setup(ADC_HandleTypeDef* adc) {
@@ -81,6 +91,27 @@ static void adc_setup(ADC_HandleTypeDef* adc) {
     HAL_ADCEx_Calibration_Start(adc, ADC_SINGLE_ENDED);
 }
 
+static void tim_setup(TIM_HandleTypeDef* tim) {
+    tim->Instance = TIM4;
+    tim->Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    tim->Init.CounterMode = TIM_COUNTERMODE_UP;
+    tim->Init.Prescaler = HEATER_PAD_TIM_PRESCALER;
+    tim->Init.RepetitionCounter = 0;
+    tim->Init.AutoReloadPreload = HEATER_PAD_PWM_GRANULARITY;
+    TIM_OC_InitTypeDef channel_config = {
+        .OCMode = TIM_OCMODE_PWM1,
+        .Pulse = HEATER_PAD_PWM_GRANULARITY,
+        .OCPolarity = TIM_OCPOLARITY_HIGH,
+        .OCIdleState = TIM_OCIDLESTATE_RESET
+    };
+    if (HAL_OK != HAL_TIM_PWM_Init(tim)) {
+        init_error();
+    }
+    if (HAL_OK != HAL_TIM_PWM_ConfigChannel(tim, &channel_config, HEATER_PAD_ENABLE_TIM_CHANNEL)) {
+        init_error();
+    }
+}
+
 void heater_hardware_setup(heater_hardware* hardware) {
     HEATER_HW_HANDLE = hardware;
     hardware->hardware_internal = (void*)&_internals;
@@ -89,8 +120,10 @@ void heater_hardware_setup(heater_hardware* hardware) {
     __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOE_CLK_ENABLE();
     __HAL_RCC_ADC34_CLK_ENABLE();
+    __HAL_RCC_TIM4_CLK_ENABLE();
     gpio_setup();
     adc_setup(&_internals.ntc_adc);
+    tim_setup(&_internals.pad_tim);
     HAL_NVIC_SetPriority(ADC3_IRQn, 10, 0);
     HAL_NVIC_EnableIRQ(ADC3_IRQn);
     HAL_ADC_Start(&_internals.ntc_adc);
