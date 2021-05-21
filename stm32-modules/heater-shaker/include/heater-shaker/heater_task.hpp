@@ -31,6 +31,14 @@ concept HeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // or if the error condition is still present (false)
     { p.try_reset_power_good() }
     ->std::same_as<bool>;
+
+    // A set_power_output function with inputs between 0 and 1 sets the
+    // relative output of the heater pad
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    {p.set_power_output(0.5)};
+    // disable_power_output should fully turn off the driver (set_power_output
+    // will usually turn it on at least a little bit)
+    {p.disable_power_output()};
 };
 
 struct State {

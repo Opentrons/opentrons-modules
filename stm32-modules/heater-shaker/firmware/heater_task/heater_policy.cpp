@@ -31,3 +31,13 @@ HeaterPolicy::HeaterPolicy(heater_hardware* hardware)
     vTaskDelay(HEATER_LATCH_RELEASE_TO_SENSE_DELAY_TICKS);
     return power_good();
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-make-member-function-const)
+auto HeaterPolicy::set_power_output(double relative_power) -> void {
+    if (relative_power > 1.0 || relative_power < 0.0) {
+        return;
+    }
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-make-member-function-const)
+auto HeaterPolicy::disable_power_output() -> void {}

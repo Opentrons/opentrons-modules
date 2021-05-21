@@ -3,7 +3,11 @@
 #include <cstddef>
 
 TestHeaterPolicy::TestHeaterPolicy(bool pgood, bool can_reset)
-    : power_good_val(pgood), may_reset(can_reset), try_reset_calls(0) {}
+    : power_good_val(pgood),
+      may_reset(can_reset),
+      try_reset_calls(0),
+      power(0),
+      enabled(false) {}
 
 TestHeaterPolicy::TestHeaterPolicy() : TestHeaterPolicy(true, true) {}
 
@@ -34,3 +38,14 @@ auto TestHeaterPolicy::try_reset_call_count() const -> size_t {
 auto TestHeaterPolicy::reset_try_reset_call_count() -> void {
     try_reset_calls = 0;
 }
+
+auto TestHeaterPolicy::set_power_output(double output) -> void {
+    power = output;
+    enabled = true;
+}
+
+auto TestHeaterPolicy::disable_power_output() -> void { enabled = false; }
+
+auto TestHeaterPolicy::last_power_setting() const -> double { return power; }
+
+auto TestHeaterPolicy::last_enable_setting() const -> bool { return enabled; }
