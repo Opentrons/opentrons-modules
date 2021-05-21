@@ -16,6 +16,7 @@ static ntc_selection next_channel(ntc_selection from_which);
 typedef struct {
     ntc_selection reading_which;
     conversion_results results;
+    ADC_HandleTypeDef ntc_adc;
 } hw_internal;
 
 hw_internal _internals;
@@ -33,7 +34,8 @@ heater_hardware *HEATER_HW_HANDLE = NULL;
 #define HEATER_PGOOD_LATCH_PORT GPIOD
 #define HEATER_PGOOD_LATCH_PIN (1<<13)
 
-void gpio_setup(void) {
+
+static void gpio_setup(void) {
     // NTC sense pis all routed to the ADC
     GPIO_InitTypeDef gpio_init = {
     .Pin = (NTC_PAD_B_PIN | NTC_BOARD_PIN),
@@ -61,7 +63,7 @@ void gpio_setup(void) {
                       GPIO_PIN_SET);
 }
 
-void adc_setup(ADC_HandleTypeDef* adc) {
+static void adc_setup(ADC_HandleTypeDef* adc) {
     adc->Instance = ADC3;
     adc->Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV1;
     adc->Init.Resolution = ADC_RESOLUTION_12B;
@@ -88,15 +90,19 @@ void heater_hardware_setup(heater_hardware* hardware) {
     __HAL_RCC_GPIOE_CLK_ENABLE();
     __HAL_RCC_ADC34_CLK_ENABLE();
     gpio_setup();
-    adc_setup(&hardware->ntc_adc);
+    adc_setup(&_internals.ntc_adc);
     HAL_NVIC_SetPriority(ADC3_IRQn, 10, 0);
     HAL_NVIC_EnableIRQ(ADC3_IRQn);
-    HAL_ADC_Start(&hardware->ntc_adc);
+    HAL_ADC_Start(&_internals.ntc_adc);
 }
 
 void heater_hardware_teardown(heater_hardware* hardware) {
+    hw_internal* internal = (hw_internal*)hardware->hardware_internal;
+    if (!internal) {
+        return;
+    }
     HAL_NVIC_DisableIRQ(ADC3_IRQn);
-    HAL_ADC_Stop(&hardware->ntc_adc);
+    HAL_ADC_Stop(&internal->ntc_adc);
     __HAL_RCC_ADC34_CLK_DISABLE();
 }
 
@@ -106,13 +112,16 @@ void heater_hardware_begin_conversions(heater_hardware* hardware) {
         .Rank = ADC_REGULAR_RANK_1,
         .SamplingTime = ADC_SAMPLETIME_19CYCLES_5,
     };
-    hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
+    hw_internal* internal = (hw_internal*)hardware->hardware_internal;
+    if (!internal) {
+        init_error();
+    }
     internal->reading_which = NTC_PAD_A;
-    if (HAL_OK != HAL_ADC_ConfigChannel(&hardware->ntc_adc, &channel_conf)) {
+    if (HAL_OK != HAL_ADC_ConfigChannel(&internal->ntc_adc, &channel_conf)) {
         init_error();
     }
 
-    HAL_ADC_Start_IT(&hardware->ntc_adc);
+    HAL_ADC_Start_IT(&internal->ntc_adc);
 }
 
 bool heater_hardware_sense_power_good() {
@@ -135,12 +144,13 @@ void heater_hardware_release_pg_latch() {
 
 // Actual IRQ handler to call into the HAL IRQ handler
 void ADC3_IRQHandler(void) {
-    if (HEATER_HW_HANDLE) {
-        HAL_ADC_IRQHandler(&HEATER_HW_HANDLE->ntc_adc);
+    if (HEATER_HW_HANDLE && HEATER_HW_HANDLE->hardware_internal) {
+        hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
+        HAL_ADC_IRQHandler(&internal->ntc_adc);
     }
 }
 
-ntc_selection next_channel(ntc_selection from_which) {
+static ntc_selection next_channel(ntc_selection from_which) {
     switch (from_which) {
         case NTC_PAD_A:
             return NTC_PAD_B;
@@ -157,11 +167,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     if (!HEATER_HW_HANDLE || !HEATER_HW_HANDLE->hardware_internal) {
         return;
     }
-    if (hadc != &HEATER_HW_HANDLE->ntc_adc) {
+    hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
+    if (hadc != &internal->ntc_adc) {
         return;
     }
 
-    hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
     ntc_selection which = internal->reading_which;
     internal->reading_which = next_channel(which);
 
@@ -172,21 +182,21 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     };
     switch(which) {
         case NTC_PAD_A: {
-            internal->results.pad_a_val = HAL_ADC_GetValue(&HEATER_HW_HANDLE->ntc_adc);
-            if (HAL_OK != HAL_ADC_ConfigChannel(&HEATER_HW_HANDLE->ntc_adc, &channel_conf)) {
+            internal->results.pad_a_val = HAL_ADC_GetValue(&internal->ntc_adc);
+            if (HAL_OK != HAL_ADC_ConfigChannel(&internal->ntc_adc, &channel_conf)) {
                 init_error();
             }
-            HAL_ADC_Start_IT(&HEATER_HW_HANDLE->ntc_adc);
+            HAL_ADC_Start_IT(&internal->ntc_adc);
             break;}
         case NTC_PAD_B: {
-            internal->results.pad_b_val = HAL_ADC_GetValue(&HEATER_HW_HANDLE->ntc_adc);
-            if (HAL_OK != HAL_ADC_ConfigChannel(&HEATER_HW_HANDLE->ntc_adc, &channel_conf)) {
+            internal->results.pad_b_val = HAL_ADC_GetValue(&internal->ntc_adc);
+            if (HAL_OK != HAL_ADC_ConfigChannel(&internal->ntc_adc, &channel_conf)) {
                 init_error();
             }
-            HAL_ADC_Start_IT(&HEATER_HW_HANDLE->ntc_adc);
+            HAL_ADC_Start_IT(&internal->ntc_adc);
             break;}
         case NTC_ONBOARD: {
-            internal->results.onboard_val = HAL_ADC_GetValue(&HEATER_HW_HANDLE->ntc_adc);
+            internal->results.onboard_val = HAL_ADC_GetValue(&internal->ntc_adc);
             if (HEATER_HW_HANDLE->conversions_complete) {
                 HEATER_HW_HANDLE->conversions_complete(&internal->results);
             }

@@ -23,7 +23,6 @@ typedef struct {
 } conversion_results;
 
 typedef struct {
-    ADC_HandleTypeDef ntc_adc;
     void (*conversions_complete)(const conversion_results* results);
     void* hardware_internal;
 } heater_hardware;
