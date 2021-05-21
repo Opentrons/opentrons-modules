@@ -10,6 +10,7 @@
 #include "hal/message_queue.hpp"
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/messages.hpp"
+#include "heater-shaker/pid.hpp"
 #include "heater-shaker/tasks.hpp"
 #include "heater-shaker/thermistor_conversion.hpp"
 
@@ -88,6 +89,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     static constexpr uint8_t ADC_BIT_DEPTH = 12;
     static constexpr double HEATER_PAD_OVERTEMP_SAFETY_LIMIT_C = 100;
     static constexpr double BOARD_OVERTEMP_SAFETY_LIMIT_C = 60;
+    static constexpr double DEFAULT_KI = 1.0;
+    static constexpr double DEFAULT_KP = 1.0;
+    static constexpr double DEFAULT_KD = 1.0;
+    static constexpr double MAX_CONTROLLABLE_TEMPERATURE = 95.0;
+
     explicit HeaterTask(Queue& q)
         : message_queue(q),
           task_registry(nullptr),
@@ -122,7 +128,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                     thermistor_conversion::ThermistorType::NTCG104ED104DTDSX,
                     THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
                 .error_bit = State::BOARD_SENSE_ERROR},
-          state{.system_status = State::IDLE, .error_bitmap = 0} {}
+          state{.system_status = State::IDLE, .error_bitmap = 0},
+          pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, 1.0, -1.0),
+          setpoint(0),
+          controlling(false) {}
     HeaterTask(const HeaterTask& other) = delete;
     auto operator=(const HeaterTask& other) -> HeaterTask& = delete;
     HeaterTask(HeaterTask&& other) noexcept = delete;
@@ -276,9 +285,13 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                         task_registry->comms->get_message_queue().try_send(
                             error_message));
                     state.system_status = State::ERROR;
+                    controlling = false;
+                    setpoint = 0;
                 }
             } else {
                 state.system_status = State::ERROR;
+                controlling = false;
+                setpoint = 0;
             }
         } else if ((changes & State::POWER_GOOD_ERROR) != 0) {
             auto error_message =
@@ -288,6 +301,13 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                 task_registry->comms->get_message_queue().try_send(
                     error_message));
             state.system_status = State::ERROR;
+            controlling = false;
+            setpoint = 0;
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        double current_temp = (pad_a.temp_c + pad_b.temp_c) / 2.0;
+        if (controlling) {
+            policy.set_power_output(pid.compute(setpoint - current_temp));
         }
     }
 
@@ -368,6 +388,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     TemperatureSensor pad_b;
     TemperatureSensor board;
     State state;
+    PID pid;
+    double setpoint;
+    bool controlling;
 };
 
 };  // namespace heater_task
