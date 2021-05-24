@@ -39,8 +39,8 @@ auto HeaterPolicy::set_power_output(double relative_power) -> void {
     }
     heater_hardware_power_set(
         hardware_handle,
-        // The macro HEATER_PAD_PWM_GRANULARITY purposefully uses integer division since the
-        // end goal is in fact an integer
+        // The macro HEATER_PAD_PWM_GRANULARITY purposefully uses integer
+        // division since the end goal is in fact an integer
         // NOLINTNEXTLINE(bugprone-integer-division)
         static_cast<uint16_t>(static_cast<double>(HEATER_PAD_PWM_GRANULARITY) *
                               relative_power));
