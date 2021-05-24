@@ -1,7 +1,10 @@
 #include <array>
 
 #include "catch2/catch.hpp"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
 #include "heater-shaker/gcodes.hpp"
+#pragma GCC diagnostic pop
 
 SCENARIO("SetRPM parser works") {
     GIVEN("an empty string") {
