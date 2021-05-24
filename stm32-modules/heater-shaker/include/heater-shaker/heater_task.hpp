@@ -336,7 +336,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             response.with_error = most_relevant_error();
         } else {
             double power = std::clamp(msg.power, 0.0, 1.0);
-            policy.set_power_output(power);
+            if (power == 0.0) {
+                policy.disable_power_output();
+            } else {
+                policy.set_power_output(power);
+            }
             setpoint = power;
             state.system_status = State::POWER_TEST;
         }
