@@ -877,3 +877,106 @@ SCENARIO("SetHeaterPIDConstants parser works") {
         }
     }
 }
+
+SCENARIO("SetHeaterPowerTest parser works") {
+    GIVEN("an empty string") {
+        std::string to_parse = "";
+
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPowerTest::parse(to_parse.cbegin(),
+                                                           to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a fully non-matching string") {
+        std::string to_parse = "asdhalghasdasd ";
+
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPowerTest::parse(to_parse.cbegin(),
+                                                           to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with prefix only") {
+        std::string to_parse = "M104.D S\n";
+
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPowerTest::parse(to_parse.cbegin(),
+                                                           to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a subprefix matching only") {
+        std::string to_parse = "Masdlasfhalsd\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPowerTest::parse(to_parse.cbegin(),
+                                                           to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a prefix matching but bad data") {
+        std::string to_parse = "M104.D Salsjdhas\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPowerTest::parse(to_parse.cbegin(),
+                                                           to_parse.cend());
+
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with good data") {
+        std::string to_parse = "M104.D S0.5\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPowerTest::parse(to_parse.cbegin(),
+                                                           to_parse.cend());
+
+            THEN("the data should be parsed") {
+                REQUIRE(result.first.has_value());
+            }
+        }
+    }
+
+    GIVEN("a response buffer large enough for the response") {
+        std::string buffer(64, 'c');
+        WHEN("filling response") {
+            auto written = gcode::SetHeaterPowerTest::write_response_into(
+                buffer.begin(), buffer.end());
+            THEN("the response should be written") {
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::StartsWith("M104.D OK\n"));
+                REQUIRE(written == buffer.begin() + 10);
+            }
+        }
+    }
+
+    GIVEN("a response buffer not large enough for the response") {
+        std::string buffer(10, 'c');
+        WHEN("filling response") {
+            auto written = gcode::SetHeaterPowerTest::write_response_into(
+                buffer.begin(), buffer.begin() + 5);
+            THEN("the response should be written only up to the size") {
+                REQUIRE_THAT(buffer, Catch::Matchers::Equals("M104.ccccc"));
+                REQUIRE(written == buffer.begin() + 5);
+            }
+        }
+    }
+}

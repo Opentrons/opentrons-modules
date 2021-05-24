@@ -79,7 +79,7 @@ SCENARIO("testing full message passing integration") {
                 written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE_THAT(response_buffer, Catch::Matchers::StartsWith(
-                                                  "M105 C95.20 T48.00 OK\n"));
+                                                  "M105 C95.20 T0.00 OK\n"));
             }
         }
 

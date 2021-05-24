@@ -36,6 +36,43 @@ SCENARIO("heater task message passing") {
                 }
             }
         }
+        WHEN("sending a set-power message") {
+            auto message =
+                messages::SetPowerTestMessage{.id = 222, .power = 0.125};
+            tasks->get_heater_queue().backing_deque.push_back(message);
+            tasks->run_heater_task();
+            tasks->get_heater_policy().set_power_good(true);
+            tasks->get_heater_policy().set_can_reset(true);
+            THEN("the task should get the message, set power, and respond") {
+                REQUIRE(tasks->get_heater_queue().backing_deque.empty());
+                REQUIRE(tasks->get_heater_policy().last_power_setting() ==
+                        0.125);
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .with_error == errors::ErrorCode::NO_ERROR);
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .responding_to_id == message.id);
+                AND_WHEN("responding to a get-temp message") {
+                    auto query_message =
+                        messages::GetTemperatureMessage{.id = 14231};
+                    tasks->get_heater_queue().backing_deque.push_back(
+                        query_message);
+                    tasks->run_heater_task();
+                    THEN(
+                        "the task should use the direct power set as a "
+                        "setpoint response") {
+                        auto query_response =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        tasks->get_host_comms_queue().backing_deque.pop_front();
+                        REQUIRE(std::get<messages::GetTemperatureResponse>(
+                                    query_response)
+                                    .setpoint_temperature == 0.125);
+                    }
+                }
+            }
+        }
         WHEN("sending a set-temperature message") {
             auto message = messages::SetTemperatureMessage{
                 .id = 1231, .target_temperature = 45};
@@ -77,7 +114,7 @@ SCENARIO("heater task message passing") {
                     auto gettemp =
                         std::get<messages::GetTemperatureResponse>(response);
                     REQUIRE(gettemp.responding_to_id == message.id);
-                    REQUIRE(gettemp.setpoint_temperature == 48);
+                    REQUIRE(gettemp.setpoint_temperature == 0);
                     REQUIRE_THAT(gettemp.current_temperature,
                                  Catch::Matchers::WithinAbs(95.23, .01));
                 }
