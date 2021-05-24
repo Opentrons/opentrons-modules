@@ -46,6 +46,7 @@ struct State {
     enum Status {
         IDLE,
         ERROR,
+        CONTROLLING,
     };
     Status system_status;
     uint8_t error_bitmap;
@@ -136,8 +137,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                 .error_bit = State::BOARD_SENSE_ERROR},
           state{.system_status = State::IDLE, .error_bitmap = 0},
           pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, 1.0, -1.0),
-          setpoint(0),
-          controlling(false) {}
+          setpoint(0) {}
     HeaterTask(const HeaterTask& other) = delete;
     auto operator=(const HeaterTask& other) -> HeaterTask& = delete;
     HeaterTask(HeaterTask&& other) noexcept = delete;
@@ -310,12 +310,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                         task_registry->comms->get_message_queue().try_send(
                             error_message));
                     state.system_status = State::ERROR;
-                    controlling = false;
                     setpoint = 0;
                 }
             } else {
                 state.system_status = State::ERROR;
-                controlling = false;
                 setpoint = 0;
             }
         } else if ((changes & State::POWER_GOOD_ERROR) != 0) {
@@ -326,13 +324,13 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                 task_registry->comms->get_message_queue().try_send(
                     error_message));
             state.system_status = State::ERROR;
-            controlling = false;
             setpoint = 0;
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         double current_temp = (pad_a.temp_c + pad_b.temp_c) / 2.0;
-        if (controlling) {
+        if (state.system_status != State::ERROR) {
             policy.set_power_output(pid.compute(setpoint - current_temp));
+            state.system_status = State::CONTROLLING;
         }
     }
 
@@ -415,7 +413,6 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     State state;
     PID pid;
     double setpoint;
-    bool controlling;
 };
 
 };  // namespace heater_task
