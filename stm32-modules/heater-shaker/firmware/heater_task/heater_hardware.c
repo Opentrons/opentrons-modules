@@ -53,7 +53,7 @@ heater_hardware *HEATER_HW_HANDLE = NULL;
 #define HEATER_PGOOD_LATCH_PIN (1<<13)
 #define HEATER_PAD_ENABLE_PORT GPIOD
 #define HEATER_PAD_ENABLE_PIN (1<<14)
-#define HEATER_PAD_ENABLE_TIM_CHANNEL TIM_CHANNEL_4
+#define HEATER_PAD_ENABLE_TIM_CHANNEL TIM_CHANNEL_3
 
 
 static void gpio_setup(void) {
@@ -85,6 +85,7 @@ static void gpio_setup(void) {
     gpio_init.Pin = HEATER_PAD_ENABLE_PIN;
     gpio_init.Mode = GPIO_MODE_AF_PP;
     gpio_init.Alternate = GPIO_AF2_TIM4;
+    gpio_init.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(HEATER_PAD_ENABLE_PORT, &gpio_init);
 }
 
@@ -112,9 +113,10 @@ static void tim_setup(TIM_HandleTypeDef* tim) {
     tim->Init.CounterMode = TIM_COUNTERMODE_UP;
     tim->Init.Prescaler = HEATER_PAD_TIM_PRESCALER;
     tim->Init.RepetitionCounter = 0;
-    tim->Init.AutoReloadPreload = HEATER_PAD_PWM_GRANULARITY;
+    tim->Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+    tim->Init.Period = HEATER_PAD_PWM_GRANULARITY;
     TIM_OC_InitTypeDef channel_config = {
-        .OCMode = TIM_OCMODE_PWM1,
+        .OCMode = TIM_OCMODE_TIMING,
         .Pulse = HEATER_PAD_PWM_GRANULARITY,
         .OCPolarity = TIM_OCPOLARITY_HIGH,
         .OCIdleState = TIM_OCIDLESTATE_RESET
