@@ -10,7 +10,7 @@ SCENARIO("testing full message passing integration") {
         tasks->get_heater_queue().backing_deque.push_back(
             messages::HeaterMessage(messages::TemperatureConversionComplete{
                 .pad_a = (1U << 9), .pad_b = (1U << 9), .board = (1U << 11)}));
-        tasks->get_heater_task().run_once();
+        tasks->run_heater_task();
         WHEN("sending a set-rpm message by string to the host comms task") {
             std::string message_str = "M3 S2000\n";
             tasks->get_host_comms_queue().backing_deque.push_back(
@@ -57,7 +57,7 @@ SCENARIO("testing full message passing integration") {
                 auto written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE(written == response_buffer.begin());
-                tasks->get_heater_task().run_once();
+                tasks->run_heater_task();
                 written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE_THAT(response_buffer,
@@ -75,7 +75,7 @@ SCENARIO("testing full message passing integration") {
                 auto written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE(written == response_buffer.begin());
-                tasks->get_heater_task().run_once();
+                tasks->run_heater_task();
                 written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE_THAT(response_buffer, Catch::Matchers::StartsWith(

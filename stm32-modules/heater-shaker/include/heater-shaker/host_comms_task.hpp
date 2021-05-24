@@ -47,9 +47,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     explicit HostCommsTask(Queue& q)
         : message_queue(q),
           task_registry(nullptr),
-          // These nolints are because if you don't have these inits, host builds
-          // complain
-          // NOLINTNEXTLINE(readability-redundant-member-init)
+          // These nolints are because if you don't have these inits, host
+          // builds complain NOLINTNEXTLINE(readability-redundant-member-init)
           ack_only_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_temp_cache(),
@@ -265,7 +264,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
                         tx_into, tx_limit, response.pad_a_temperature,
                         response.pad_b_temperature, response.board_temperature,
                         response.pad_a_adc, response.pad_b_adc,
-                        response.board_adc);
+                        response.board_adc, response.power_good);
                 }
             },
             cache_entry);
@@ -444,7 +443,6 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
             get_temp_debug_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
-
 
         return std::make_pair(true, tx_into);
     }

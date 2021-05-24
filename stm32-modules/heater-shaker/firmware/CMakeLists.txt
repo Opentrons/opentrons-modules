@@ -42,6 +42,7 @@ target_link_libraries(_mc_static INTERFACE mc)
 set(HS_FW_LINTABLE_SRCS
   ${SYSTEM_DIR}/main.cpp
   ${HEATER_DIR}/freertos_heater_task.cpp
+  ${HEATER_DIR}/heater_policy.cpp
   ${MOTOR_DIR}/freertos_motor_task.cpp
   ${MOTOR_DIR}/motor_policy.cpp
   ${UI_DIR}/freertos_ui_task.cpp
@@ -76,7 +77,8 @@ target_link_options(heater-shaker
   "LINKER:-T,${SYSTEM_DIR}/STM32F303RETx_FLASH.ld"
   "LINKER:--print-memory-usage"
   "LINKER:--error-unresolved-symbols"
-  "LINKER:-u,_printf_float")
+  "LINKER:-u,_printf_float"
+  "LINKER:-u,_scanf_float")
 
 # Incurs at least a relink when you change the linker file (and a recompile of main
 # but hopefully that's quick)

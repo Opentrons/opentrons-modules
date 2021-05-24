@@ -10,8 +10,8 @@
 #include "firmware/freertos_message_queue.hpp"
 #include "heater-shaker/heater_task.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "heater_policy.hpp"
 #include "task.h"
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
 #include "heater_hardware.h"
@@ -56,12 +56,15 @@ struct HeaterTasks {
     heater_task::HeaterTask<FreeRTOSMessageQueue> heater_main_task;
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     TaskHandle_t hardware_task_handle;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    HeaterPolicy policy;
     HeaterTasks(FreeRTOSMessageQueue<heater_task::Message> &queue,
                 void (*conversion_handler)(const conversion_results *))
         : hardware{.conversions_complete = conversion_handler,
                    .hardware_internal = nullptr},
           heater_main_task(queue),
-          hardware_task_handle(nullptr) {}
+          hardware_task_handle(nullptr),
+          policy(&hardware) {}
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -82,8 +85,9 @@ static void handle_conversion(const conversion_results *results) {
 // Actual function that runs the task
 void run(void *param) {
     auto *local_tasks = static_cast<HeaterTasks *>(param);
+    static_cast<void>(local_tasks->policy.try_reset_power_good());
     while (true) {
-        local_tasks->heater_main_task.run_once();
+        local_tasks->heater_main_task.run_once(local_tasks->policy);
     }
 }
 

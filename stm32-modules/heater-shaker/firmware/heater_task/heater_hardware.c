@@ -28,8 +28,13 @@ heater_hardware *HEATER_HW_HANDLE = NULL;
 #define NTC_PAD_B_PORT GPIOE
 #define NTC_BOARD_PIN (1<<13)
 #define NTC_BOARD_PORT GPIOE
+#define HEATER_PGOOD_SENSE_PORT GPIOD
+#define HEATER_PGOOD_SENSE_PIN (1<<12)
+#define HEATER_PGOOD_LATCH_PORT GPIOD
+#define HEATER_PGOOD_LATCH_PIN (1<<13)
 
 void gpio_setup(void) {
+    // NTC sense pis all routed to the ADC
     GPIO_InitTypeDef gpio_init = {
     .Pin = (NTC_PAD_B_PIN | NTC_BOARD_PIN),
     .Mode = GPIO_MODE_ANALOG,
@@ -39,6 +44,21 @@ void gpio_setup(void) {
     HAL_GPIO_Init(NTC_PAD_B_PORT, &gpio_init);
     gpio_init.Pin = NTC_PAD_A_PIN;
     HAL_GPIO_Init(NTC_PAD_A_PORT, &gpio_init);
+
+    // Power good sense pin GPIO input nopull
+    gpio_init.Pin = HEATER_PGOOD_SENSE_PIN;
+    gpio_init.Mode = GPIO_MODE_INPUT;
+    HAL_GPIO_Init(HEATER_PGOOD_SENSE_PORT, &gpio_init);
+
+    // Power good latch pin GPIO output pullup to ensure
+    // it doesn't affect the latch when not driven
+    gpio_init.Pin = HEATER_PGOOD_LATCH_PIN;
+    gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
+    gpio_init.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(HEATER_PGOOD_SENSE_PORT, &gpio_init);
+    HAL_GPIO_WritePin(HEATER_PGOOD_LATCH_PORT,
+                      HEATER_PGOOD_LATCH_PIN,
+                      GPIO_PIN_SET);
 }
 
 void adc_setup(ADC_HandleTypeDef* adc) {
@@ -64,6 +84,7 @@ void heater_hardware_setup(heater_hardware* hardware) {
     hardware->hardware_internal = (void*)&_internals;
     _internals.reading_which = NTC_PAD_A;
     __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOE_CLK_ENABLE();
     __HAL_RCC_ADC34_CLK_ENABLE();
     gpio_setup();
@@ -92,6 +113,23 @@ void heater_hardware_begin_conversions(heater_hardware* hardware) {
     }
 
     HAL_ADC_Start_IT(&hardware->ntc_adc);
+}
+
+bool heater_hardware_sense_power_good() {
+    return (HAL_GPIO_ReadPin(HEATER_PGOOD_SENSE_PORT, HEATER_PGOOD_SENSE_PIN)
+            == GPIO_PIN_SET);
+}
+
+void heater_hardware_drive_pg_latch_low() {
+    HAL_GPIO_WritePin(HEATER_PGOOD_LATCH_PORT,
+                      HEATER_PGOOD_LATCH_PIN,
+                      GPIO_PIN_RESET);
+}
+
+void heater_hardware_release_pg_latch() {
+    HAL_GPIO_WritePin(HEATER_PGOOD_LATCH_PORT,
+                      HEATER_PGOOD_LATCH_PIN,
+                      GPIO_PIN_SET);
 }
 
 
@@ -155,7 +193,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
             break;}
     }
 }
-
 
 static void init_error(void) {
     while (1);
