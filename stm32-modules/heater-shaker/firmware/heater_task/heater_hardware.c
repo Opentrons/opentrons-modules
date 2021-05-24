@@ -20,9 +20,24 @@ typedef struct {
     conversion_results results;
     ADC_HandleTypeDef ntc_adc;
     TIM_HandleTypeDef pad_tim;
+    TIM_OC_InitTypeDef pwm_config;
 } hw_internal;
 
-hw_internal _internals;
+hw_internal _internals = {
+.reading_which = NTC_PAD_A,
+.results = {0, 0, 0},
+.ntc_adc = {},
+.pad_tim = {},
+.pwm_config = {
+.OCMode = TIM_OCMODE_PWM1,
+.Pulse = 0,
+.OCPolarity = TIM_OCPOLARITY_HIGH,
+.OCNPolarity = TIM_OCNPOLARITY_HIGH,
+.OCFastMode = TIM_OCFAST_DISABLE,
+.OCIdleState=TIM_OCIDLESTATE_RESET,
+.OCNIdleState=TIM_OCNIDLESTATE_RESET,
+    }
+};
 
 heater_hardware *HEATER_HW_HANDLE = NULL;
 
@@ -172,6 +187,26 @@ void heater_hardware_release_pg_latch() {
     HAL_GPIO_WritePin(HEATER_PGOOD_LATCH_PORT,
                       HEATER_PGOOD_LATCH_PIN,
                       GPIO_PIN_SET);
+}
+
+void heater_hardware_power_disable(heater_hardware* hardware) {
+    hw_internal* internal = (hw_internal*)hardware->hardware_internal;
+    if (!internal) {
+        init_error();
+    }
+    HAL_TIM_PWM_Stop(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
+}
+
+void heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
+    hw_internal* internal = (hw_internal*)hardware->hardware_internal;
+    if (!internal) {
+        init_error();
+    }
+    internal->pwm_config.Pulse = setting;
+    HAL_TIM_PWM_Stop(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
+    HAL_TIM_PWM_ConfigChannel(
+        &internal->pad_tim, &internal->pwm_config, HEATER_PAD_ENABLE_TIM_CHANNEL);
+    HAL_TIM_PWM_Start(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
 }
 
 

@@ -49,6 +49,8 @@ void heater_hardware_begin_conversions(heater_hardware* hardware);
 bool heater_hardware_sense_power_good();
 void heater_hardware_drive_pg_latch_low();
 void heater_hardware_release_pg_latch();
+void heater_hardware_power_disable(heater_hardware* hardware);
+void heater_hardware_power_set(heater_hardware* hardware, uint16_t setting);
 
 #ifdef __cplusplus
 }  // extern "C"

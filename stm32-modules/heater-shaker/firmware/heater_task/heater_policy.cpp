@@ -37,7 +37,16 @@ auto HeaterPolicy::set_power_output(double relative_power) -> void {
     if (relative_power > 1.0 || relative_power < 0.0) {
         return;
     }
+    heater_hardware_power_set(
+        hardware_handle,
+        // The macro HEATER_PAD_PWM_GRANULARITY purposefully uses integer division since the
+        // end goal is in fact an integer
+        // NOLINTNEXTLINE(bugprone-integer-division)
+        static_cast<uint16_t>(static_cast<double>(HEATER_PAD_PWM_GRANULARITY) *
+                              relative_power));
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-make-member-function-const)
-auto HeaterPolicy::disable_power_output() -> void {}
+auto HeaterPolicy::disable_power_output() -> void {
+    heater_hardware_power_disable(hardware_handle);
+}
