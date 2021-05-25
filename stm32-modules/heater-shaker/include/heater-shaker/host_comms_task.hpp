@@ -37,11 +37,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
                            gcode::GetTemperature, gcode::SetAcceleration,
                            gcode::GetTemperatureDebug,
                            gcode::SetHeaterPIDConstants,
-                           gcode::SetHeaterPowerTest>;
+                           gcode::SetHeaterPowerTest, gcode::EnterBootloader>;
     using AckOnlyCache =
         AckCache<8, gcode::SetRPM, gcode::SetTemperature,
                  gcode::SetAcceleration, gcode::SetHeaterPIDConstants,
-                 gcode::SetHeaterPowerTest>;
+                 gcode::SetHeaterPowerTest, gcode::EnterBootloader>;
     using GetTempCache = AckCache<8, gcode::GetTemperature>;
     using GetTempDebugCache = AckCache<8, gcode::GetTemperatureDebug>;
     using GetRPMCache = AckCache<8, gcode::GetRPM>;
@@ -297,6 +297,20 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
             cache_entry);
     }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> auto
+        visit_message(const messages::ForceUSBDisconnectMessage& response,
+                      InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        static_cast<void>(response);
+        static constexpr const char* notification = "goodbye\n";
+        auto ack_message =
+            messages::AcknowledgePrevious{.responding_to_id = response.id};
+        static_cast<void>(task_registry->system->get_message_queue().try_send(
+            ack_message, TICKS_TO_WAIT_ON_SEND));
+        return write_string_to_iterpair(tx_into, tx_limit, notification);
+    }
+
     /**
      * visit_gcode() is a set of member function overloads, each of which is
      * called when we parse the appropriate gcode out of the receive buffer.
@@ -462,6 +476,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
+
         auto message = messages::SetPIDConstantsMessage{
             .id = id, .kp = gcode.kp, .ki = gcode.ki, .kd = gcode.kd};
         if (!task_registry->heater->get_message_queue().try_send(
@@ -489,6 +504,31 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
         auto message =
             messages::SetPowerTestMessage{.id = id, .power = gcode.power};
         if (!task_registry->heater->get_message_queue().try_send(
+
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> auto
+        visit_gcode(const gcode::EnterBootloader& gcode, InputIt tx_into,
+                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+
+        auto message = messages::EnterBootloaderMessage{.id = id};
+        if (!task_registry->system->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);

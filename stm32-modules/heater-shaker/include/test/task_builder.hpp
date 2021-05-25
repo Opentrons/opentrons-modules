@@ -10,6 +10,7 @@
 #include "test/test_heater_policy.hpp"
 #include "test/test_message_queue.hpp"
 #include "test/test_motor_policy.hpp"
+#include "test/test_system_policy.hpp"
 
 struct TaskBuilder {
     ~TaskBuilder() = default;
@@ -57,6 +58,10 @@ struct TaskBuilder {
 
     auto run_heater_task() -> void { heater_task.run_once(heater_policy); }
 
+    auto get_system_policy() -> TestSystemPolicy& { return system_policy; }
+
+    auto run_system_task() -> void { system_task.run_once(system_policy); }
+
   private:
     TaskBuilder();
     TestMessageQueue<host_comms_task::Message> host_comms_queue;
@@ -70,4 +75,5 @@ struct TaskBuilder {
     tasks::Tasks<TestMessageQueue> task_aggregator;
     TestMotorPolicy motor_policy;
     TestHeaterPolicy heater_policy;
+    TestSystemPolicy system_policy;
 };

@@ -12,7 +12,8 @@ TaskBuilder::TaskBuilder()
       task_aggregator(&heater_task, &host_comms_task, &motor_task,
                       &system_task),
       motor_policy(),
-      heater_policy() {}
+      heater_policy(),
+      system_policy() {}
 
 auto TaskBuilder::build() -> std::shared_ptr<TaskBuilder> {
     return std::shared_ptr<TaskBuilder>(new TaskBuilder());

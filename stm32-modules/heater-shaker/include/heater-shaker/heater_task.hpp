@@ -194,17 +194,17 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
         // While in error state, we will refuse to set temperatures
         // But we can try and disarm the latch if that's the only problem
         try_latch_disarm(policy);
-        if (state.system_status == State::ERROR) {
-            auto response = messages::AcknowledgePrevious{
-                .responding_to_id = msg.id,
-                .with_error = most_relevant_error()};
-            static_cast<void>(
-                task_registry->comms->get_message_queue().try_send(
-                    messages::HostCommsMessage(response)));
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
 
+        if (state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+        }
+        if (msg.from_system) {
+            static_cast<void>(
+                task_registry->system->get_message_queue().try_send(
+                    messages::SystemMessage(response)));
         } else {
-            auto response =
-                messages::AcknowledgePrevious{.responding_to_id = msg.id};
             static_cast<void>(
                 task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));

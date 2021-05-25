@@ -9,6 +9,7 @@
 #include "firmware/freertos_message_queue.hpp"
 #include "heater-shaker/system_task.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "system_policy.hpp"
 #include "task.h"
 
 #pragma GCC diagnostic push
@@ -41,10 +42,14 @@ static StaticTask_t
 
 // Actual function that runs inside the task, unused param because we don't get
 // to pick the function type
-static void run(void *param) {  // NOLINT(misc-unused-parameters)
+static void run(void *param) {
     system_hardware_setup();
     static constexpr uint32_t delay_ticks = 100;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto *task = reinterpret_cast<decltype(_task) *>(param);
+    auto policy = SystemPolicy();
     while (true) {
+        task->run_once(policy);
         vTaskDelay(delay_ticks);
     }
 }

@@ -73,7 +73,7 @@ SCENARIO("heater task message passing") {
                 }
             }
         }
-        WHEN("sending a set-temperature message") {
+        WHEN("sending a set-temperature message as if from host comms") {
             auto message = messages::SetTemperatureMessage{
                 .id = 1231, .target_temperature = 45};
             tasks->get_heater_queue().backing_deque.push_back(
@@ -81,12 +81,38 @@ SCENARIO("heater task message passing") {
             tasks->run_heater_task();
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_heater_queue().backing_deque.empty());
-                AND_THEN("the task should respond to the message") {
+                AND_THEN(
+                    "the task should respond to the message to host comms") {
                     REQUIRE(
                         !tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(tasks->get_system_queue().backing_deque.empty());
                     auto response =
                         tasks->get_host_comms_queue().backing_deque.front();
                     tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto ack =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(ack.responding_to_id == message.id);
+                }
+            }
+        }
+        WHEN("sending a set-temperature message as if from system") {
+            auto message = messages::SetTemperatureMessage{
+                .id = 1231, .target_temperature = 45, .from_system = true};
+            tasks->get_heater_queue().backing_deque.push_back(
+                messages::HeaterMessage(message));
+            tasks->run_heater_task();
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_heater_queue().backing_deque.empty());
+                AND_THEN("the task should respond to the message to system") {
+                    REQUIRE(
+                        tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(!tasks->get_system_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_system_queue().backing_deque.front();
+                    tasks->get_system_queue().backing_deque.pop_front();
                     REQUIRE(
                         std::holds_alternative<messages::AcknowledgePrevious>(
                             response));

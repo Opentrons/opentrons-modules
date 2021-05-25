@@ -97,6 +97,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 REQUIRE(set_temp_message.target_temperature == 100);
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                REQUIRE(!set_temp_message.from_system);
                 AND_WHEN("sending a good response back to the comms task") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{.responding_to_id =
@@ -175,6 +176,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 REQUIRE(set_rpm_message.target_rpm == 3000);
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                REQUIRE(!set_rpm_message.from_system);
                 AND_WHEN("sending a good response back to the comms task") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{.responding_to_id =
@@ -605,7 +607,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
     }
 }
 
-SCENARIO("message handling for other-task-initiated error communication") {
+SCENARIO("message handling for other-task-initiated communication") {
     GIVEN("a host_comms task") {
         auto tasks = TaskBuilder::build();
         std::string tx_buf(128, 'c');
@@ -619,6 +621,22 @@ SCENARIO("message handling for other-task-initiated error communication") {
                 REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
                                          "ERR120:main motor:illegal speed\n"));
                 REQUIRE(*written == 'c');
+            }
+        }
+        WHEN("sending a force-disconnect") {
+            auto message_obj = messages::ForceUSBDisconnectMessage{.id = 222};
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            auto written = tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                                 tx_buf.end());
+            static_cast<void>(written);
+            THEN("the task should acknowledge") {
+                REQUIRE(!tasks->get_system_queue().backing_deque.empty());
+                REQUIRE(std::get<messages::AcknowledgePrevious>(
+                            tasks->get_system_queue().backing_deque.front())
+                            .responding_to_id == message_obj.id);
+            }
+            THEN("the task should write a nice lil message") {
+                REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith("goodbye"));
             }
         }
     }
