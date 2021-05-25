@@ -9,7 +9,6 @@ find_package(OpenOCD)
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(HEATER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/heater_task")
 set(MOTOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/motor_task")
-set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui_task")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 
 set(MCSDK_VERSION 5.4.4)
@@ -41,11 +40,11 @@ target_link_libraries(_mc_static INTERFACE mc)
 # Add source files that should be checked by clang-tidy here
 set(HS_FW_LINTABLE_SRCS
   ${SYSTEM_DIR}/main.cpp
+  ${SYSTEM_DIR}/system_task.cpp
   ${HEATER_DIR}/freertos_heater_task.cpp
   ${HEATER_DIR}/heater_policy.cpp
   ${MOTOR_DIR}/freertos_motor_task.cpp
   ${MOTOR_DIR}/motor_policy.cpp
-  ${UI_DIR}/freertos_ui_task.cpp
   ${COMMS_DIR}/freertos_comms_task.cpp
   ${SYSTEM_DIR}/freertos_idle_timer_task.cpp)
 
@@ -64,7 +63,7 @@ set(HS_FW_NONLINTABLE_SRCS
   ${MOTOR_DIR}/mc_tasks.c
   ${MOTOR_DIR}/stm32f30x_mc_it.c
   ${MOTOR_DIR}/regular_conversion_manager.c
-  ${UI_DIR}/ui_hardware.c
+  ${SYSTEM_DIR}/system_hardware.c
   ${HEATER_DIR}/heater_hardware.c
   )
 
