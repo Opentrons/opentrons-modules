@@ -10,7 +10,7 @@
 #include "host_comms_task.hpp"
 #include "messages.hpp"
 #include "motor_task.hpp"
-#include "ui_task.hpp"
+#include "system_task.hpp"
 
 namespace motor_task {
 template <template <class> class QueueImpl>
@@ -30,10 +30,10 @@ requires MessageQueue<QueueImpl<messages::HostCommsMessage>,
                       messages::HostCommsMessage> class HostCommsTask;
 }
 
-namespace ui_task {
+namespace system_task {
 template <template <class> class QueueImpl>
-requires MessageQueue<QueueImpl<messages::UIMessage>,
-                      messages::UIMessage> class UITask;
+requires MessageQueue<QueueImpl<messages::SystemMessage>,
+                      messages::SystemMessage> class SystemTask;
 }
 
 namespace tasks {
@@ -53,7 +53,7 @@ struct Tasks {
     Tasks(heater_task::HeaterTask<QueueImpl>* heater_in,
           host_comms_task::HostCommsTask<QueueImpl>* comms_in,
           motor_task::MotorTask<QueueImpl>* motor_in,
-          ui_task::UITask<QueueImpl>* ui_in)
+          system_task::SystemTask<QueueImpl>* ui_in)
         : heater(nullptr), comms(nullptr), motor(nullptr), ui(nullptr) {
         initialize(heater_in, comms_in, motor_in, ui_in);
     }
@@ -61,7 +61,7 @@ struct Tasks {
     auto initialize(heater_task::HeaterTask<QueueImpl>* heater_in,
                     host_comms_task::HostCommsTask<QueueImpl>* comms_in,
                     motor_task::MotorTask<QueueImpl>* motor_in,
-                    ui_task::UITask<QueueImpl>* ui_in) -> void {
+                    system_task::SystemTask<QueueImpl>* ui_in) -> void {
         heater = heater_in;
         comms = comms_in;
         motor = motor_in;
@@ -79,6 +79,6 @@ struct Tasks {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     motor_task::MotorTask<QueueImpl>* motor;
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    ui_task::UITask<QueueImpl>* ui;
+    system_task::SystemTask<QueueImpl>* ui;
 };
 }  // namespace tasks

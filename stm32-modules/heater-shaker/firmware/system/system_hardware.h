@@ -1,5 +1,5 @@
-#ifndef UI_HARDWARE_H__
-#define UI_HARDWARE_H__
+#ifndef SYSTEM_HARDWARE_H__
+#define SYSTEM_HARDWARE_H__
 #include "stm32f3xx_hal_gpio.h"
 #ifdef __cplusplus
 extern "C" {
@@ -9,9 +9,9 @@ extern "C" {
 #define SOFTPOWER_UNPLUG_SENSE_PIN GPIO_PIN_5
 #define SOFTPOWER_PORT GPIOB
 
-void ui_hardware_setup(void);
+void system_hardware_setup(void);
 
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
-#endif  // _HARDWARE_H__
+#endif  // _SYSTEM_HARDWARE_H__

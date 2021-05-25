@@ -1,7 +1,7 @@
 #include "stm32f3xx_hal.h"
-#include "ui_hardware.h"
+#include "system_hardware.h"
 
-void ui_hardware_setup(void) {
+void system_hardware_setup(void) {
     GPIO_InitTypeDef gpio_init = {
       .Pin = SOFTPOWER_BUTTON_SENSE_PIN | SOFTPOWER_UNPLUG_SENSE_PIN,
       .Mode = GPIO_MODE_INPUT,

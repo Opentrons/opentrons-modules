@@ -5,8 +5,8 @@
 #include "heater-shaker/heater_task.hpp"
 #include "heater-shaker/host_comms_task.hpp"
 #include "heater-shaker/motor_task.hpp"
+#include "heater-shaker/system_task.hpp"
 #include "heater-shaker/tasks.hpp"
-#include "heater-shaker/ui_task.hpp"
 #include "test/test_heater_policy.hpp"
 #include "test/test_message_queue.hpp"
 #include "test/test_motor_policy.hpp"
@@ -30,10 +30,12 @@ struct TaskBuilder {
         -> host_comms_task::HostCommsTask<TestMessageQueue>& {
         return host_comms_task;
     }
-    auto get_ui_queue() -> TestMessageQueue<ui_task::Message>& {
-        return ui_queue;
+    auto get_system_queue() -> TestMessageQueue<system_task::Message>& {
+        return system_queue;
     }
-    auto get_ui_task() -> ui_task::UITask<TestMessageQueue>& { return ui_task; }
+    auto get_system_task() -> system_task::SystemTask<TestMessageQueue>& {
+        return system_task;
+    }
     auto get_motor_queue() -> TestMessageQueue<motor_task::Message>& {
         return motor_queue;
     }
@@ -59,8 +61,8 @@ struct TaskBuilder {
     TaskBuilder();
     TestMessageQueue<host_comms_task::Message> host_comms_queue;
     host_comms_task::HostCommsTask<TestMessageQueue> host_comms_task;
-    TestMessageQueue<ui_task::Message> ui_queue;
-    ui_task::UITask<TestMessageQueue> ui_task;
+    TestMessageQueue<system_task::Message> system_queue;
+    system_task::SystemTask<TestMessageQueue> system_task;
     TestMessageQueue<motor_task::Message> motor_queue;
     motor_task::MotorTask<TestMessageQueue> motor_task;
     TestMessageQueue<heater_task::Message> heater_queue;

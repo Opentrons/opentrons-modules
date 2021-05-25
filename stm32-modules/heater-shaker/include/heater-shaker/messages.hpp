@@ -142,7 +142,7 @@ using HeaterMessage =
 using MotorMessage =
     ::std::variant<std::monostate, MotorSystemErrorMessage, SetRPMMessage,
                    GetRPMMessage, SetAccelerationMessage>;
-using UIMessage = ::std::variant<GetTemperatureResponse, GetRPMResponse>;
+using SystemMessage = ::std::variant<std::monostate>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,
