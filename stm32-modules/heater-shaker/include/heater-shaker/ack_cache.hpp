@@ -57,6 +57,13 @@ struct AckCache {
         }
     }
 
+    [[nodiscard]] auto empty() const -> bool {
+        return std::ranges::all_of(cache, [](const auto& cache_element) {
+            return std::holds_alternative<std::monostate>(
+                cache_element.contents);
+        });
+    }
+
   private:
     // Present only for testing; do not use
     friend class _AckCacheTestHook;
