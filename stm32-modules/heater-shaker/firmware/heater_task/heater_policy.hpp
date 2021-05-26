@@ -11,7 +11,8 @@ class HeaterPolicy {
     explicit HeaterPolicy(heater_hardware* hardware);
     [[nodiscard]] auto power_good() const -> bool;
     [[nodiscard]] auto try_reset_power_good() -> bool;
-
+    auto set_power_output(double relative_power) -> void;
+    auto disable_power_output() -> void;
     // The latch hardware requires some amount of time where the latch is held
     // low. That time isn't very long (it's ns, this is digital logic) but it is
     // non-zero, and this is how long we can delay without busy waiting

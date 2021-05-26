@@ -44,6 +44,8 @@ const char* const HEATER_THERMISTOR_BOARD_DISCONNECTED =
     "ERR210:heater:board thermistor disconnected\n";
 const char* const HEATER_HARDWARE_ERROR_LATCH =
     "ERR211:heater:hardware error latch set\n";
+const char* const HEATER_CONSTANT_OUT_OF_RANGE =
+    "ERR212:heater:control constant out of range\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -82,6 +84,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(HEATER_THERMISTOR_BOARD_OVERTEMP);
         HANDLE_CASE(HEATER_THERMISTOR_BOARD_DISCONNECTED);
         HANDLE_CASE(HEATER_HARDWARE_ERROR_LATCH);
+        HANDLE_CASE(HEATER_CONSTANT_OUT_OF_RANGE);
     }
     return UNKNOWN_ERROR;
 }

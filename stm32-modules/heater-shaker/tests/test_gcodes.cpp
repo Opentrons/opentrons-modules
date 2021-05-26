@@ -1,7 +1,10 @@
 #include <array>
 
 #include "catch2/catch.hpp"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
 #include "heater-shaker/gcodes.hpp"
+#pragma GCC diagnostic pop
 
 SCENARIO("SetRPM parser works") {
     GIVEN("an empty string") {
@@ -683,6 +686,296 @@ SCENARIO("GetTemperatureDebug parser works") {
                 response.at(6) = '\0';
                 REQUIRE_THAT(buffer, Catch::Matchers::Equals(response));
                 REQUIRE(written != buffer.begin());
+            }
+        }
+    }
+}
+
+SCENARIO("SetHeaterPIDConstants parser works") {
+    GIVEN("an empty string") {
+        std::string to_parse = "";
+
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPIDConstants::parse(to_parse.cbegin(),
+                                                              to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a fully non-matching string") {
+        std::string to_parse = "asdhalghasdasd ";
+
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPIDConstants::parse(to_parse.cbegin(),
+                                                              to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with prefix only") {
+        std::string to_parse = "M301 P\n";
+
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPIDConstants::parse(to_parse.cbegin(),
+                                                              to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a subprefix matching only") {
+        std::string to_parse = "Masdlasfhalsd\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPIDConstants::parse(to_parse.cbegin(),
+                                                              to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a prefix matching but bad data") {
+        std::string to_parse = "M301 Palsjdhas\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPIDConstants::parse(to_parse.cbegin(),
+                                                              to_parse.cend());
+
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with p ok and no i or d") {
+        std::string to_parse = "M301 P22.1\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPIDConstants::parse(to_parse.cbegin(),
+                                                              to_parse.cend());
+
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with p ok and i prefix only") {
+        std::string to_parse = "M301 P22.1 I\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPIDConstants::parse(to_parse.cbegin(),
+                                                              to_parse.cend());
+
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with p ok and i bad data") {
+        std::string to_parse = "M301 P22.1 Isaoihdals\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPIDConstants::parse(to_parse.cbegin(),
+                                                              to_parse.cend());
+
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with p and i ok and no d") {
+        std::string to_parse = "M301 P22.1 I22.1\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPIDConstants::parse(to_parse.cbegin(),
+                                                              to_parse.cend());
+
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with p and i ok and d prefix only") {
+        std::string to_parse = "M301 P22.1 I55.1 D\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPIDConstants::parse(to_parse.cbegin(),
+                                                              to_parse.cend());
+
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with p and i ok and d bad data") {
+        std::string to_parse = "M301 P22.1 I55.1 Dasdas\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPIDConstants::parse(to_parse.cbegin(),
+                                                              to_parse.cend());
+
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a correct command") {
+        std::string to_parse = "M301 P22.1 I0.15 D-1.2\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPIDConstants::parse(to_parse.cbegin(),
+                                                              to_parse.cend());
+
+            THEN("a value should be parsed") {
+                REQUIRE(result.first.has_value());
+                REQUIRE_THAT(result.first.value().kp,
+                             Catch::Matchers::WithinAbs(22.1, .01));
+                REQUIRE_THAT(result.first.value().ki,
+                             Catch::Matchers::WithinAbs(0.15, 0.001));
+                REQUIRE_THAT(result.first.value().kd,
+                             Catch::Matchers::WithinAbs(-1.2, .01));
+                REQUIRE(result.second == (to_parse.cend() - 2));
+            }
+        }
+    }
+
+    GIVEN("a response buffer large enough for the response") {
+        std::string buffer(64, 'c');
+        WHEN("filling response") {
+            auto written = gcode::SetHeaterPIDConstants::write_response_into(
+                buffer.begin(), buffer.end());
+            THEN("the response should be written") {
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith("M301 OK\n"));
+                REQUIRE(written == buffer.begin() + 8);
+            }
+        }
+    }
+
+    GIVEN("a response buffer not large enough for the response") {
+        std::string buffer(10, 'c');
+        WHEN("filling response") {
+            auto written = gcode::SetHeaterPIDConstants::write_response_into(
+                buffer.begin(), buffer.begin() + 5);
+            THEN("the response should be written only up to the size") {
+                REQUIRE_THAT(buffer, Catch::Matchers::Equals("M301 ccccc"));
+                REQUIRE(written == buffer.begin() + 5);
+            }
+        }
+    }
+}
+
+SCENARIO("SetHeaterPowerTest parser works") {
+    GIVEN("an empty string") {
+        std::string to_parse = "";
+
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPowerTest::parse(to_parse.cbegin(),
+                                                           to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a fully non-matching string") {
+        std::string to_parse = "asdhalghasdasd ";
+
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPowerTest::parse(to_parse.cbegin(),
+                                                           to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with prefix only") {
+        std::string to_parse = "M104.D S\n";
+
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPowerTest::parse(to_parse.cbegin(),
+                                                           to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a subprefix matching only") {
+        std::string to_parse = "Masdlasfhalsd\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPowerTest::parse(to_parse.cbegin(),
+                                                           to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a prefix matching but bad data") {
+        std::string to_parse = "M104.D Salsjdhas\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPowerTest::parse(to_parse.cbegin(),
+                                                           to_parse.cend());
+
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with good data") {
+        std::string to_parse = "M104.D S0.5\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::SetHeaterPowerTest::parse(to_parse.cbegin(),
+                                                           to_parse.cend());
+
+            THEN("the data should be parsed") {
+                REQUIRE(result.first.has_value());
+            }
+        }
+    }
+
+    GIVEN("a response buffer large enough for the response") {
+        std::string buffer(64, 'c');
+        WHEN("filling response") {
+            auto written = gcode::SetHeaterPowerTest::write_response_into(
+                buffer.begin(), buffer.end());
+            THEN("the response should be written") {
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::StartsWith("M104.D OK\n"));
+                REQUIRE(written == buffer.begin() + 10);
+            }
+        }
+    }
+
+    GIVEN("a response buffer not large enough for the response") {
+        std::string buffer(10, 'c');
+        WHEN("filling response") {
+            auto written = gcode::SetHeaterPowerTest::write_response_into(
+                buffer.begin(), buffer.begin() + 5);
+            THEN("the response should be written only up to the size") {
+                REQUIRE_THAT(buffer, Catch::Matchers::Equals("M104.ccccc"));
+                REQUIRE(written == buffer.begin() + 5);
             }
         }
     }

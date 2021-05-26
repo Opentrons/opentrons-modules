@@ -3,6 +3,7 @@
  */
 #pragma once
 
+#include <algorithm>
 #include <concepts>
 #include <cstddef>
 #include <variant>
@@ -10,6 +11,7 @@
 #include "hal/message_queue.hpp"
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/messages.hpp"
+#include "heater-shaker/pid.hpp"
 #include "heater-shaker/tasks.hpp"
 #include "heater-shaker/thermistor_conversion.hpp"
 
@@ -31,12 +33,22 @@ concept HeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // or if the error condition is still present (false)
     { p.try_reset_power_good() }
     ->std::same_as<bool>;
+
+    // A set_power_output function with inputs between 0 and 1 sets the
+    // relative output of the heater pad
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    {p.set_power_output(0.5)};
+    // disable_power_output should fully turn off the driver (set_power_output
+    // will usually turn it on at least a little bit)
+    {p.disable_power_output()};
 };
 
 struct State {
     enum Status {
         IDLE,
         ERROR,
+        CONTROLLING,
+        POWER_TEST,
     };
     Status system_status;
     uint8_t error_bitmap;
@@ -80,6 +92,17 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     static constexpr uint8_t ADC_BIT_DEPTH = 12;
     static constexpr double HEATER_PAD_OVERTEMP_SAFETY_LIMIT_C = 100;
     static constexpr double BOARD_OVERTEMP_SAFETY_LIMIT_C = 60;
+    static constexpr double DEFAULT_KI = 1.0;
+    static constexpr double DEFAULT_KP = 1.0;
+    static constexpr double DEFAULT_KD = 1.0;
+    static constexpr double MAX_CONTROLLABLE_TEMPERATURE = 95.0;
+    static constexpr double KP_MIN = -200;
+    static constexpr double KP_MAX = 200;
+    static constexpr double KI_MIN = -200;
+    static constexpr double KI_MAX = 200;
+    static constexpr double KD_MIN = -200;
+    static constexpr double KD_MAX = 200;
+
     explicit HeaterTask(Queue& q)
         : message_queue(q),
           task_registry(nullptr),
@@ -114,7 +137,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                     thermistor_conversion::ThermistorType::NTCG104ED104DTDSX,
                     THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
                 .error_bit = State::BOARD_SENSE_ERROR},
-          state{.system_status = State::IDLE, .error_bitmap = 0} {}
+          state{.system_status = State::IDLE, .error_bitmap = 0},
+          pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, 1.0, -1.0),
+          setpoint(0) {}
     HeaterTask(const HeaterTask& other) = delete;
     auto operator=(const HeaterTask& other) -> HeaterTask& = delete;
     HeaterTask(HeaterTask&& other) noexcept = delete;
@@ -154,6 +179,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             message);
     }
 
+    [[nodiscard]] auto get_pid() const -> const PID& { return pid; }
+
   private:
     template <typename Policy>
     auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
@@ -166,16 +193,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
         const messages::SetTemperatureMessage& msg, Policy& policy) -> void {
         // While in error state, we will refuse to set temperatures
         // But we can try and disarm the latch if that's the only problem
-        if (!policy.power_good() &&
-            ((state.error_bitmap & State::PAD_SENSE_ERROR) == 0)) {
-            if (policy.try_reset_power_good()) {
-                state.error_bitmap &= ~State::POWER_GOOD_ERROR;
-                state.system_status = State::IDLE;
-            } else {
-                state.error_bitmap |= State::POWER_GOOD_ERROR;
-                state.system_status = State::ERROR;
-            }
-        }
+        try_latch_disarm(policy);
         if (state.system_status == State::ERROR) {
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = msg.id,
@@ -202,12 +220,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                                      : pad_b.error;
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         auto avg_temp = (pad_a.temp_c + pad_b.temp_c) / 2.0;
-        auto response = messages::GetTemperatureResponse{
-            .responding_to_id = msg.id,
-            .current_temperature = avg_temp,
-            .setpoint_temperature =
-                48,  // NOLINT(cppcoreguidelines-avoid-magic-numbers)
-            .with_error = code};
+        auto response =
+            messages::GetTemperatureResponse{.responding_to_id = msg.id,
+                                             .current_temperature = avg_temp,
+                                             .setpoint_temperature = setpoint,
+                                             .with_error = code};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
@@ -226,6 +243,23 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             .pad_b_adc = pad_b.last_adc,
             .board_adc = board.last_adc,
             .power_good = policy.power_good()};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy> auto visit_message(
+        const messages::SetPIDConstantsMessage& msg, Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if ((msg.kp < KP_MIN) || (msg.kp > KP_MAX) || (msg.ki < KI_MIN) ||
+            (msg.ki > KI_MAX) || (msg.kd < KD_MIN) || (msg.kd > KD_MAX)) {
+            response.with_error =
+                errors::ErrorCode::HEATER_CONSTANT_OUT_OF_RANGE;
+        } else {
+            policy.disable_power_output();
+            pid = PID(msg.kp, msg.ki, msg.kd, 1.0, -1.0);
+        }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
@@ -268,9 +302,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                         task_registry->comms->get_message_queue().try_send(
                             error_message));
                     state.system_status = State::ERROR;
+                    setpoint = 0;
                 }
             } else {
                 state.system_status = State::ERROR;
+                setpoint = 0;
             }
         } else if ((changes & State::POWER_GOOD_ERROR) != 0) {
             auto error_message =
@@ -280,6 +316,50 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                 task_registry->comms->get_message_queue().try_send(
                     error_message));
             state.system_status = State::ERROR;
+            setpoint = 0;
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        double current_temp = (pad_a.temp_c + pad_b.temp_c) / 2.0;
+        if (state.system_status != State::ERROR) {
+            policy.set_power_output(pid.compute(setpoint - current_temp));
+            state.system_status = State::CONTROLLING;
+        }
+    }
+
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy> auto visit_message(
+        const messages::SetPowerTestMessage& msg, Policy& policy) -> void {
+        try_latch_disarm(policy);
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+        } else {
+            double power = std::clamp(msg.power, 0.0, 1.0);
+            if (power == 0.0) {
+                policy.disable_power_output();
+            } else {
+                policy.set_power_output(power);
+            }
+            setpoint = power;
+            state.system_status = State::POWER_TEST;
+        }
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy> auto try_latch_disarm(Policy& policy)
+        -> void {
+        if (!policy.power_good() &&
+            ((state.error_bitmap & State::PAD_SENSE_ERROR) == 0)) {
+            if (policy.try_reset_power_good()) {
+                state.error_bitmap &= ~State::POWER_GOOD_ERROR;
+                state.system_status = State::IDLE;
+            } else {
+                state.error_bitmap |= State::POWER_GOOD_ERROR;
+                state.system_status = State::ERROR;
+            }
         }
     }
 
@@ -360,6 +440,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     TemperatureSensor pad_b;
     TemperatureSensor board;
     State state;
+    PID pid;
+    double setpoint;
 };
 
 };  // namespace heater_task
