@@ -161,6 +161,13 @@ add_custom_command(OUTPUT heater-shaker.hex
 add_custom_target(heater-shaker-hex ALL
   DEPENDS heater-shaker.hex)
 
+add_custom_command(OUTPUT heater-shaker.bin
+  COMMAND ${CROSS_OBJCOPY} ARGS heater-shaker "-Obinary" heater-shaker.bin
+  DEPENDS heater-shaker
+  VERBATIM)
+add_custom_target(heater-shaker-bin ALL
+  DEPENDS heater-shaker.bin)
+
 find_package(Clang)
 
 # runs clang-tidy https://releases.llvm.org/11.0.1/tools/clang/tools/extra/docs/clang-tidy/index.html
