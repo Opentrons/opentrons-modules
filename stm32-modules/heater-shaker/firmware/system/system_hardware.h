@@ -10,6 +10,7 @@ extern "C" {
 #define SOFTPOWER_PORT GPIOB
 
 void system_hardware_setup(void);
+void system_hardware_enter_bootloader(void);
 
 #ifdef __cplusplus
 }  // extern "C"
