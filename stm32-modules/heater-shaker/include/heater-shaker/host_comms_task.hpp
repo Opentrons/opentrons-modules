@@ -114,6 +114,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
         return std::visit(visit_helper, message);
     }
 
+    [[nodiscard]] auto may_connect() const -> bool { return may_connect_latch; }
+
   private:
     /**
      * visit_message is a set of overloads for all the messages that the task
@@ -302,13 +304,13 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt> auto
         visit_message(const messages::ForceUSBDisconnectMessage& response,
                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        static_cast<void>(response);
-        static constexpr const char* notification = "goodbye\n";
-        auto ack_message =
+        static_cast<void>(tx_limit);
+        auto acknowledgement =
             messages::AcknowledgePrevious{.responding_to_id = response.id};
+        may_connect_latch = false;
         static_cast<void>(task_registry->system->get_message_queue().try_send(
-            ack_message, TICKS_TO_WAIT_ON_SEND));
-        return write_string_to_iterpair(tx_into, tx_limit, notification);
+            acknowledgement));
+        return tx_into;
     }
 
     /**
@@ -556,6 +558,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     GetTempCache get_temp_cache;
     GetRPMCache get_rpm_cache;
     GetTempDebugCache get_temp_debug_cache;
+    bool may_connect_latch = true;
 };
 
 };  // namespace host_comms_task

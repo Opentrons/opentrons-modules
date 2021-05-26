@@ -635,8 +635,8 @@ SCENARIO("message handling for other-task-initiated communication") {
                             tasks->get_system_queue().backing_deque.front())
                             .responding_to_id == message_obj.id);
             }
-            THEN("the task should write a nice lil message") {
-                REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith("goodbye"));
+            THEN("the task should disconnect") {
+                REQUIRE(!tasks->get_host_comms_task().may_connect());
             }
         }
     }
