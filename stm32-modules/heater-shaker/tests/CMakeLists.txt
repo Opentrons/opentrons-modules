@@ -9,7 +9,15 @@ add_executable(heater-shaker
   test_motor_policy.cpp
   test_heater_policy.cpp
   test_gcode_parse.cpp
-  test_gcodes.cpp
+  test_basic_gcodes.cpp
+  test_m104.cpp
+  test_m104d.cpp
+  test_m105.cpp
+  test_m105d.cpp
+  test_m123.cpp
+  test_m124.cpp
+  test_m3.cpp
+  test_m301.cpp
   test_pid.cpp
   test_double_buffer.cpp
   test_host_comms_task.cpp

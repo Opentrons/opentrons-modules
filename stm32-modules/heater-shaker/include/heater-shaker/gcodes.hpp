@@ -29,13 +29,14 @@ struct SetRPM {
     ** Example: M3 S500 sets target rpm to 500
     */
     using ParseResult = std::optional<SetRPM>;
+    static constexpr auto prefix = std::array{'M', '3', ' ', 'S'};
+    static constexpr const char* response = "M3 OK\n";
     int16_t rpm;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<InputLimit, InputIt> static auto
         write_response_into(InputIt buf, InputLimit limit) -> InputIt {
-        static constexpr const char* response = "M3 OK\n";
         return write_string_to_iterpair(buf, limit, response);
     }
 
@@ -45,7 +46,6 @@ struct SetRPM {
         parse(const InputIt& input, Limit limit)
             -> std::pair<ParseResult, InputIt> {
         // minimal m3 command
-        constexpr auto prefix = std::array{'M', '3', ' ', 'S'};
 
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
@@ -70,13 +70,14 @@ struct SetTemperature {
     ** Example: M104 S25 sets target temperature to 25C
     */
     using ParseResult = std::optional<SetTemperature>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '4', ' ', 'S'};
+    static constexpr const char* response = "M104 OK\n";
     double temperature;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<InLimit, InputIt> static auto
         write_response_into(InputIt buf, InLimit limit) -> InputIt {
-        static constexpr const char* response = "M104 OK\n";
         return write_string_to_iterpair(buf, limit, response);
     }
 
@@ -85,8 +86,6 @@ struct SetTemperature {
         std::sized_sentinel_for<Limit, InputIt> static auto
         parse(const InputIt& input, Limit limit)
             -> std::pair<ParseResult, InputIt> {
-        constexpr auto prefix = std::array{'M', '1', '0', '4', ' ', 'S'};
-
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -115,6 +114,7 @@ struct GetTemperature {
     ** Example: M105
     */
     using ParseResult = std::optional<GetTemperature>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '5'};
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt>&&
@@ -135,8 +135,6 @@ struct GetTemperature {
         std::sized_sentinel_for<Limit, InputIt> static auto
         parse(const InputIt& input, Limit limit)
             -> std::pair<ParseResult, InputIt> {
-        constexpr auto prefix = std::array{'M', '1', '0', '5'};
-
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -156,6 +154,8 @@ struct GetRPM {
     ** Format: M123
     ** Example: M123
     */
+    using ParseResult = std::optional<GetRPM>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '3'};
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt>&&
@@ -188,13 +188,13 @@ struct GetRPM {
         char_next = write_string_to_iterpair(char_next, char_limit, suffix);
         return buf + (char_next - &*buf);
     }
-    using ParseResult = std::optional<GetRPM>;
+
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<Limit, InputIt> static auto
         parse(const InputIt& input, Limit limit)
             -> std::pair<ParseResult, InputIt> {
-        constexpr auto prefix = std::array{'M', '1', '2', '3'};
+
 
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
@@ -221,12 +221,13 @@ struct SetAcceleration {
 
     using ParseResult = std::optional<SetAcceleration>;
     int32_t rpm_per_s;
+    static constexpr auto prefix = std::array{'M', '2', '0', '4', ' ', 'S'};
+    static constexpr const char* response = "M204 OK\n";
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<InputLimit, InputIt> static auto
         write_response_into(InputIt buf, InputLimit limit) -> InputIt {
-        static constexpr const char* response = "M204 OK\n";
         return write_string_to_iterpair(buf, limit, response);
     }
 
@@ -236,7 +237,6 @@ struct SetAcceleration {
         parse(const InputIt& input, Limit limit)
             -> std::pair<ParseResult, InputIt> {
         // minimal m3 command
-        constexpr auto prefix = std::array{'M', '2', '0', '4', ' ', 'S'};
 
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
@@ -268,6 +268,7 @@ struct GetTemperatureDebug {
      * - power good (PG)
      * */
     using ParseResult = std::optional<GetTemperatureDebug>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '5', '.', 'D'};
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt>&&
@@ -292,7 +293,6 @@ struct GetTemperatureDebug {
         std::sized_sentinel_for<Limit, InputIt> static auto
         parse(const InputIt& input, Limit limit)
             -> std::pair<ParseResult, InputIt> {
-        constexpr auto prefix = std::array{'M', '1', '0', '5', '.', 'D'};
 
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
@@ -314,12 +314,13 @@ struct SetHeaterPIDConstants {
     double kd;
 
     using ParseResult = std::optional<SetHeaterPIDConstants>;
+    static constexpr auto prefix = std::array{'M', '3', '0', '1', ' ', 'P'};
+    static constexpr const char* response = "M301 OK\n";
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<InputIt, InLimit> static auto
         write_response_into(InputIt buf, InLimit limit) -> InputIt {
-        static constexpr const char* response = "M301 OK\n";
         return write_string_to_iterpair(buf, limit, response);
     }
     template <typename InputIt, typename Limit>
@@ -327,7 +328,6 @@ struct SetHeaterPIDConstants {
         std::sized_sentinel_for<Limit, InputIt> static auto
         parse(const InputIt& input, Limit limit)
             -> std::pair<ParseResult, InputIt> {
-        constexpr auto prefix = std::array{'M', '3', '0', '1', ' ', 'P'};
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -391,12 +391,13 @@ struct SetHeaterPowerTest {
      **/
     double power;
     using ParseResult = std::optional<SetHeaterPowerTest>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '4', '.', 'D', ' ', 'S'};
+    static constexpr const char* response = "M104.D OK\n";
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<InputIt, InLimit> static auto
         write_response_into(InputIt buf, InLimit limit) -> InputIt {
-        static constexpr const char* response = "M104.D OK\n";
         return write_string_to_iterpair(buf, limit, response);
     }
     template <typename InputIt, typename Limit>
@@ -404,8 +405,6 @@ struct SetHeaterPowerTest {
         std::sized_sentinel_for<Limit, InputIt> static auto
         parse(const InputIt& input, Limit limit)
             -> std::pair<ParseResult, InputIt> {
-        constexpr auto prefix =
-            std::array{'M', '1', '0', '4', '.', 'D', ' ', 'S'};
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
