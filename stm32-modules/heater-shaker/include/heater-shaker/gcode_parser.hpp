@@ -43,7 +43,7 @@ requires std::forward_iterator<Input>&& std::sized_sentinel_for<Limit, Input>&&
                         typename PrefixArray::value_type> auto
     prefix_matches(const Input& start_from, Limit stop_at,
                    const PrefixArray& prefix) -> Input {
-    if (static_cast<size_t>(stop_at - start_from) <= prefix.size()) {
+    if (static_cast<size_t>(stop_at - start_from) < prefix.size()) {
         return start_from;
     }
     if (!std::equal(prefix.cbegin(), prefix.cend(), start_from)) {
