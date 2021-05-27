@@ -15,7 +15,7 @@ TEMPLATE_TEST_CASE("gcode basic parsing", "[gcode][parse]", gcode::SetRPM,
                    gcode::SetTemperature, gcode::GetTemperature, gcode::GetRPM,
                    gcode::SetAcceleration, gcode::GetTemperatureDebug,
                    gcode::SetHeaterPIDConstants, gcode::SetHeaterPowerTest,
-                   gcode::EnterBootloader) {
+                   gcode::EnterBootloader, gcode::GetVersion) {
     SECTION("attempting to parse an empty string fails") {
         std::string to_parse = "";
         auto output = TestType::parse(to_parse.cbegin(), to_parse.cend());
@@ -43,7 +43,8 @@ TEMPLATE_TEST_CASE("gcode basic parsing", "[gcode][parse]", gcode::SetRPM,
 */
 TEMPLATE_TEST_CASE("gcodes without parameters parse", "[gcode][parse]",
                    gcode::GetRPM, gcode::GetTemperature,
-                   gcode::GetTemperatureDebug, gcode::EnterBootloader) {
+                   gcode::GetTemperatureDebug, gcode::EnterBootloader,
+                   gcode::GetVersion) {
     SECTION("parsing the full prefix succeeds") {
         auto output =
             TestType::parse(TestType::prefix.cbegin(), TestType::prefix.cend());

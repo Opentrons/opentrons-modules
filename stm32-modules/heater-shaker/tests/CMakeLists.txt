@@ -19,6 +19,7 @@ add_executable(heater-shaker
   test_m124.cpp
   test_m3.cpp
   test_m301.cpp
+  test_version.cpp
   test_pid.cpp
   test_double_buffer.cpp
   test_host_comms_task.cpp

@@ -641,3 +641,25 @@ SCENARIO("message handling for other-task-initiated communication") {
         }
     }
 }
+
+SCENARIO("version handling") {
+    GIVEN("a host comms task") {
+        auto tasks = TaskBuilder::build();
+        std::string tx_buf(128, 'c');
+        WHEN("requesting the version") {
+            auto message_text = std::string("version\n");
+            auto message_obj =
+                messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                    &*message_text.begin(), &*message_text.end()));
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            THEN("the task should write out the version") {
+                tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                      tx_buf.end());
+
+                REQUIRE_THAT(tx_buf,
+                             Catch::Matchers::StartsWith("version FW:"));
+                REQUIRE_THAT(tx_buf, Catch::Matchers::Contains("HW:"));
+            }
+        }
+    }
+}

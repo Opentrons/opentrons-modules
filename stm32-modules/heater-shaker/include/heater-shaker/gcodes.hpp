@@ -437,6 +437,7 @@ struct EnterBootloader {
         write_response_into(InputIt buf, InLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
+
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<Limit, InputIt> static auto
@@ -447,6 +448,57 @@ struct EnterBootloader {
             return std::make_pair(ParseResult(), input);
         }
         return std::make_pair(ParseResult(EnterBootloader()), working);
+    }
+};
+
+struct GetVersion {
+    /**
+     * GetVersion keys off the string "version" and returns hardware and
+     * software versions
+     * */
+    using ParseResult = std::optional<GetVersion>;
+    static constexpr auto prefix =
+        std::array{'v', 'e', 'r', 's', 'i', 'o', 'n'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputIt, InLimit> static auto
+        write_response_into(InputIt write_to_buf, InLimit write_to_limit,
+                            const char* fw_version, const char* hw_version)
+            -> InputIt {
+        static constexpr const char* prefix = "version FW:";
+        auto written =
+            write_string_to_iterpair(write_to_buf, write_to_limit, prefix);
+        if (written == write_to_limit) {
+            return written;
+        }
+        written = write_string_to_iterpair(written, write_to_limit, fw_version);
+        if (written == write_to_limit) {
+            return written;
+        }
+        static constexpr const char* hw_prefix = " HW:";
+        written = write_string_to_iterpair(written, write_to_limit, hw_prefix);
+        if (written == write_to_limit) {
+            return written;
+        }
+        written = write_string_to_iterpair(written, write_to_limit, hw_version);
+        if (written == write_to_limit) {
+            return written;
+        }
+        static constexpr const char* suffix = " OK\n";
+        return write_string_to_iterpair(written, write_to_limit, suffix);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<Limit, InputIt> static auto
+        parse(const InputIt& input, Limit limit)
+            -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetVersion()), working);
     }
 };
 
