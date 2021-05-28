@@ -6,7 +6,8 @@
 #include "heater-shaker/gcodes.hpp"
 #pragma GCC diagnostic pop
 
-SCENARIO("GetTemperatureDebug (M105.D) parser works", "[gcode][parse][m105.d]") {
+SCENARIO("GetTemperatureDebug (M105.D) parser works",
+         "[gcode][parse][m105.d]") {
     GIVEN("a response buffer large enough for the formatted response") {
         std::string buffer(64, 'c');
         WHEN("filling response") {

@@ -6,7 +6,6 @@
 #include "heater-shaker/gcodes.hpp"
 #pragma GCC diagnostic pop
 
-
 SCENARIO("GetRPM (M103) response generation works", "[gcode][response][m103]") {
     GIVEN("a response buffer large enough for the formatted response") {
         std::string buffer(64, 'c');

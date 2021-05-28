@@ -6,7 +6,6 @@
 #include "heater-shaker/gcodes.hpp"
 #pragma GCC diagnostic pop
 
-
 SCENARIO("SetAcceleration (M124) parser works", "[gcode][parse][m124]") {
     GIVEN("a string with prefix only") {
         auto to_parse = std::array{'M', '1', '2', '4', ' ', 'S'};

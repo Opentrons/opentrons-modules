@@ -6,7 +6,6 @@
 #include "heater-shaker/gcodes.hpp"
 #pragma GCC diagnostic pop
 
-
 SCENARIO("SetTemperature (M104) parser works", "[gcode][parse][m104]") {
     GIVEN("a string with prefix only") {
         auto to_parse = std::array{'M', '1', '0', '4', ' ', 'S'};

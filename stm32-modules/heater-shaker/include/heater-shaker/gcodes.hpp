@@ -194,8 +194,6 @@ struct GetRPM {
         std::sized_sentinel_for<Limit, InputIt> static auto
         parse(const InputIt& input, Limit limit)
             -> std::pair<ParseResult, InputIt> {
-
-
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -293,7 +291,6 @@ struct GetTemperatureDebug {
         std::sized_sentinel_for<Limit, InputIt> static auto
         parse(const InputIt& input, Limit limit)
             -> std::pair<ParseResult, InputIt> {
-
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -391,7 +388,8 @@ struct SetHeaterPowerTest {
      **/
     double power;
     using ParseResult = std::optional<SetHeaterPowerTest>;
-    static constexpr auto prefix = std::array{'M', '1', '0', '4', '.', 'D', ' ', 'S'};
+    static constexpr auto prefix =
+        std::array{'M', '1', '0', '4', '.', 'D', ' ', 'S'};
     static constexpr const char* response = "M104.D OK\n";
 
     template <typename InputIt, typename InLimit>

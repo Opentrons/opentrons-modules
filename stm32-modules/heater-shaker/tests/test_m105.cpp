@@ -7,7 +7,6 @@
 #pragma GCC diagnostic pop
 
 SCENARIO("GetTemperature (M105) response works", "[gcode][response][m105]") {
-
     GIVEN("a response buffer large enough for the formatted response") {
         std::string buffer(64, 'c');
         WHEN("filling response") {

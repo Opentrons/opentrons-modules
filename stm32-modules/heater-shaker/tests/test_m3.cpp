@@ -6,7 +6,6 @@
 #include "heater-shaker/gcodes.hpp"
 #pragma GCC diagnostic pop
 
-
 SCENARIO("SetRPM (M3) parser works", "[gcode][parse][m3]") {
     GIVEN("a string with prefix only") {
         auto to_parse = std::array{'M', '3', ' ', 'S'};
