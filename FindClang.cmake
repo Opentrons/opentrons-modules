@@ -58,13 +58,14 @@ endif()
 
 find_program(Clang_EXECUTABLE
   clang
-  PATHS "${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}"
+  PATHS ${CMAKE_SOURCE_DIR}/stm32-tools/clang/${CMAKE_HOST_SYSTEM_NAME}
   PATH_SUFFIXES bin)
 
 find_program(Clang_CLANGFORMAT_EXECUTABLE
   clang-format
-  PATHS "${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}"
-  PATH_SUFFIXES bin)
+  PATHS ${CMAKE_SOURCE_DIR}/stm32-tools/clang/${CMAKE_HOST_SYSTEM_NAME}
+  PATH_SUFFIXES bin
+  NO_DEFAULT_PATH)
 
 find_program(Clang_CLANGTIDY_EXECUTABLE
   clang-tidy
@@ -88,12 +89,7 @@ if(NOT Clang_EXECUTABLE STREQUAL "Clang_EXECUTABLE-NOTFOUND")
   # cmake uses temporarily-valid globals for regex subexpression matching for some reason
   # so we use that instead of the output variable from string()
   set(INSTALLED_CLANG_VERSION ${CMAKE_MATCH_1})
-  if(NOT INSTALLED_CLANG_VERSION)
-    message(STATUS "Could not parse installed clang version, assuming old Apple LLVM")
-    set(INSTALLED_CLANG_VERSION "0.0.0")
-  else()
-    message(STATUS "Found installed clang with version: ${INSTALLED_CLANG_VERSION}")
-  endif()
+  message(STATUS "Found installed clang with version: ${INSTALLED_CLANG_VERSION}")
 else()
   message(STATUS "Couldn't find installed clang")
   set(INSTALLED_CLANG_VERSION "0.0.0")
