@@ -6,6 +6,7 @@ if (${CMAKE_CROSSCOMPILING})
   add_subdirectory(firmware)
 else()
   add_subdirectory(tests)
+  add_subdirectory(simulator)
 endif()
 
 find_package(Clang)
