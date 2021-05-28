@@ -52,10 +52,10 @@ constexpr size_t RESPONSE_LENGTH = 128;
 using Message = ::messages::MotorMessage;
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
-    using Queue = QueueImpl<Message>;
     static constexpr const uint32_t WAIT_TIME_TICKS = 100;
 
   public:
+    using Queue = QueueImpl<Message>;
     explicit MotorTask(Queue& q) : message_queue(q), task_registry(nullptr) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
@@ -76,7 +76,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
         // anywhere up to the provided timeout, which drives the controller
         // frequency.
 
-        static_cast<void>(message_queue.try_recv(&message, WAIT_TIME_TICKS));
+        static_cast<void>(message_queue.recv(&message));
         std::visit(
             [this, &policy](const auto& msg) -> void {
                 this->visit_message(msg, policy);

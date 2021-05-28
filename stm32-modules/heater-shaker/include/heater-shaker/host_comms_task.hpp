@@ -31,7 +31,10 @@ using Message = messages::HostCommsMessage;
 // HeaterTask<SomeQueueImpl<Message>>
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
+  public:
     using Queue = QueueImpl<Message>;
+
+  private:
     using GCodeParser =
         gcode::GroupParser<gcode::SetRPM, gcode::SetTemperature, gcode::GetRPM,
                            gcode::GetTemperature, gcode::SetAcceleration,

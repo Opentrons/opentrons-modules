@@ -84,9 +84,8 @@ struct TemperatureSensor {
 using Message = messages::HeaterMessage;
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
-    using Queue = QueueImpl<Message>;
-
   public:
+    using Queue = QueueImpl<Message>;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 100;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 44.2;
     static constexpr uint8_t ADC_BIT_DEPTH = 12;

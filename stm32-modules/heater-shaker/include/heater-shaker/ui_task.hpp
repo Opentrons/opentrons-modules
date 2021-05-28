@@ -24,9 +24,8 @@ using Message = messages::UIMessage;
 // HeaterTask<SomeQueueImpl<Message>>
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message> class UITask {
-    using Queue = QueueImpl<Message>;
-
   public:
+    using Queue = QueueImpl<Message>;
     explicit UITask(Queue& q) : message_queue(q), task_registry(nullptr) {}
     UITask(const UITask& other) = delete;
     auto operator=(const UITask& other) -> UITask& = delete;
