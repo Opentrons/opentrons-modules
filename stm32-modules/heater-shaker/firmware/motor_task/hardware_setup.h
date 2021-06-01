@@ -11,6 +11,8 @@ void motor_hardware_setup(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2,
                           TIM_HandleTypeDef* tim1, TIM_HandleTypeDef* tim2,
                           MCI_Handle_t* mci[], MCT_Handle_t* mct[]);
 
+void motor_hardware_solenoid_set(bool on);
+
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 
 #define MC_HAL_IS_USED
@@ -54,6 +56,9 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 
 #define DRIVER_NSLEEP_Port GPIOC
 #define DRIVER_NSLEEP_Pin GPIO_PIN_2
+
+#define SOLENOID_Port GPIOD
+#define SOLENOID_Pin GPIO_PIN_15
 
 #ifdef __cplusplus
 }  // extern "C"

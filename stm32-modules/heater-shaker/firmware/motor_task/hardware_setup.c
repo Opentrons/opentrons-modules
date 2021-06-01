@@ -379,6 +379,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   HAL_GPIO_Init(DRIVER_NSLEEP_Port, &GPIO_InitStruct);
   HAL_GPIO_WritePin(DRIVER_NSLEEP_Port, DRIVER_NSLEEP_Pin, GPIO_PIN_SET);
+  GPIO_InitStruct.Pin = SOLENOID_Pin;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(SOLENOID_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(SOLENOID_Port, SOLENOID_Pin, GPIO_PIN_RESET);
 }
 
 
@@ -716,6 +720,10 @@ void motor_hardware_setup(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2,
 
   /* Initialize interrupts */
   MX_NVIC_Init();
+}
+
+void motor_hardware_solenoid_set(bool on) {
+  HAL_GPIO_WritePin(SOLENOID_Port, SOLENOID_Pin, on ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 void Error_Handler() {
