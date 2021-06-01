@@ -10,9 +10,12 @@ template <typename Message, size_t queue_size = 8>
 class SimulatorMessageQueue {
   public:
     using clock = std::chrono::steady_clock;
+    using QueueType =
+        boost::lockfree::queue<Message, boost::lockfree::capacity<queue_size>>;
     class StopDuringMsgWait : public std::exception {};
-    SimulatorMessageQueue() : queue(), mythread_stop_token() {}
+    SimulatorMessageQueue() : queue(queue_size), mythread_stop_token() {}
 
+    auto get_backing_queue() -> QueueType& { return queue; }
     auto set_stop_token(std::stop_token st) { mythread_stop_token = st; }
 
     [[nodiscard]] auto try_send(const Message& message,
@@ -67,7 +70,6 @@ class SimulatorMessageQueue {
     [[nodiscard]] auto has_message() const -> bool { return !queue.empty(); }
 
   private:
-    boost::lockfree::queue<Message, boost::lockfree::capacity<queue_size>>
-        queue;
+    QueueType queue;
     std::stop_token mythread_stop_token;
 };

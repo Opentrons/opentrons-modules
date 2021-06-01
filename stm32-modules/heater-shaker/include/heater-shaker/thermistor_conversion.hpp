@@ -33,6 +33,7 @@ struct Conversion {
     Conversion() = delete;
 
     [[nodiscard]] auto convert(uint16_t adc_reading) const -> Result;
+    [[nodiscard]] auto backconvert(double temperature) const -> uint16_t;
 
   private:
     const double adc_max;

@@ -57,3 +57,30 @@ Conversion::Conversion(ThermistorType thermistor,
                       (resistance - before_res) +
                   before_temp);
 }
+
+[[nodiscard]] auto Conversion::backconvert(double temperature) const
+    -> uint16_t {
+    auto first_greater = std::find_if(
+        lookups::NTCG104ED104DTDSX().cbegin(),
+        lookups::NTCG104ED104DTDSX().end(),
+        [temperature](auto elem) { return elem.second > temperature; });
+
+    if (first_greater == lookups::NTCG104ED104DTDSX().end()) {
+        return adc_max_result;
+    }
+    if (first_greater == lookups::NTCG104ED104DTDSX().cbegin()) {
+        return 0;
+    }
+
+    auto after_temp = static_cast<double>(first_greater->second);
+    auto after_res = static_cast<double>(first_greater->first);
+    auto before = first_greater - 1;
+    auto before_temp = static_cast<double>(before->second);
+    auto before_res = static_cast<double>(before->first);
+    double resistance =
+        ((after_res - before_res) / (after_temp - before_temp)) *
+            (temperature - before_temp) +
+        before_res;
+    return static_cast<uint16_t>(adc_max /
+                                 ((bias_resistance_kohm / resistance) + 1.0));
+}

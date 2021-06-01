@@ -1,13 +1,14 @@
 #include "simulator/heater_thread.hpp"
 
+#include <cstdint>
 #include <memory>
 #include <stop_token>
 #include <thread>
 
 #include "heater-shaker/heater_task.hpp"
+#include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
-
-using namespace heater_thread;
+#include "heater-shaker/thermistor_conversion.hpp"
 
 struct SimHeaterPolicy {
     [[nodiscard]] auto power_good() const -> bool { return true; }
@@ -28,14 +29,37 @@ struct heater_thread::TaskControlBlock {
     SimHeaterTask task;
 };
 
-auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
+auto run(std::stop_token st,
+         std::shared_ptr<heater_thread::TaskControlBlock> tcb) -> void {
     auto policy = SimHeaterPolicy();
+    auto converter = thermistor_conversion::Conversion(
+        thermistor_conversion::ThermistorType::NTCG104ED104DTDSX,
+        heater_thread::SimHeaterTask::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
+        heater_thread::SimHeaterTask::ADC_BIT_DEPTH);
     tcb->queue.set_stop_token(st);
+    auto conversion_message = messages::TemperatureConversionComplete{
+        .pad_a = converter.backconvert(25.0),
+        .pad_b = converter.backconvert(25.0),
+        .board = converter.backconvert(30),
+    };
+    tcb->queue.get_backing_queue().push(
+        messages::HeaterMessage(conversion_message));
     while (!st.stop_requested()) {
+        auto last_setpoint = tcb->task.get_setpoint();
         try {
             tcb->task.run_once(policy);
-        } catch (const SimHeaterTask::Queue::StopDuringMsgWait& sdmw) {
+        } catch (const heater_thread::SimHeaterTask::Queue::StopDuringMsgWait&
+                     sdmw) {
             return;
+        }
+        auto new_setpoint = tcb->task.get_setpoint();
+        if (last_setpoint != new_setpoint) {
+            auto conversion_message = messages::TemperatureConversionComplete{
+                .pad_a = converter.backconvert(tcb->task.get_setpoint()),
+                .pad_b = converter.backconvert(tcb->task.get_setpoint()),
+                .board = converter.backconvert(30)};
+            tcb->queue.get_backing_queue().push(
+                messages::HeaterMessage(conversion_message));
         }
     }
 }

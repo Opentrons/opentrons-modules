@@ -145,6 +145,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     auto operator=(HeaterTask&& other) noexcept -> HeaterTask& = delete;
     ~HeaterTask() = default;
     auto get_message_queue() -> Queue& { return message_queue; }
+    // Please don't use this for cross-thread communication it's primarily
+    // there for the simulator
+    [[nodiscard]] auto get_setpoint() const -> double { return setpoint; }
 
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
         task_registry = other_tasks;

@@ -57,3 +57,20 @@ SCENARIO("thermistor conversions normal operation") {
         }
     }
 }
+
+SCENARIO("thermistor backconversion") {
+    GIVEN("a converter and some test temps") {
+        auto converter =
+            Conversion(ThermistorType::NTCG104ED104DTDSX, 1000, 10);
+        auto test_vals = std::array{10.0, 25.0, 50.0, 70.0, 90.0};
+        for (auto val : test_vals) {
+            WHEN("through-converting a temperature") {
+                auto reading = converter.backconvert(val);
+                THEN("the conversion should be similar") {
+                    REQUIRE_THAT(std::get<double>(converter.convert(reading)),
+                                 Catch::Matchers::WithinAbs(val, 0.1));
+                }
+            }
+        }
+    }
+}
