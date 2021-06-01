@@ -95,6 +95,22 @@ SCENARIO("heater task message passing") {
                     auto ack =
                         std::get<messages::AcknowledgePrevious>(response);
                     REQUIRE(ack.responding_to_id == message.id);
+                    AND_WHEN("sending a get-temperature query") {
+                        auto gettemp =
+                            messages::GetTemperatureMessage{.id = 1232};
+                        tasks->get_heater_queue().backing_deque.push_back(
+                            gettemp);
+                        tasks->run_heater_task();
+                        THEN("the response should have the new setpoint") {
+                            REQUIRE(!tasks->get_host_comms_queue()
+                                         .backing_deque.empty());
+                            REQUIRE(std::get<messages::GetTemperatureResponse>(
+                                        tasks->get_host_comms_queue()
+                                            .backing_deque.front())
+                                        .setpoint_temperature ==
+                                    message.target_temperature);
+                        }
+                    }
                 }
             }
         }

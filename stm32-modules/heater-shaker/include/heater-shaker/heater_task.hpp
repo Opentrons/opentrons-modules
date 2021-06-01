@@ -196,9 +196,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
         try_latch_disarm(policy);
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
-
         if (state.system_status == State::ERROR) {
+            setpoint = 0;
             response.with_error = most_relevant_error();
+        } else {
+            setpoint = msg.target_temperature;
         }
         if (msg.from_system) {
             static_cast<void>(
