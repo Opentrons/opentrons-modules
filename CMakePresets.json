@@ -55,6 +55,15 @@
         "CMAKE_FIND_APPBUNDLE": "NEVER",
         "CMAKE_EXPORT_COMPILE_COMMANDS": true
       }
+    },
+    {
+      "name": "stm32-host-gcc10",
+      "inherits": "stm32-host",
+      "displayName": "STM32 module host builds forcing g++",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc-10",
+        "CMAKE_CXX_COMPILER": "g++-10"
+      }
     }
   ]
 }

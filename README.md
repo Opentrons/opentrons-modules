@@ -62,15 +62,22 @@ For the STM32 modules, if you configure the host toolchain: `cmake --preset=stm3
 
 Individual tests may set their own check targets; for instance, you can build and run only the heater-shaker tests by running `cmake --build ./build-stm32-host --target heater-shaker-build-and-test`.
 
+If you are on OSX, you almost certainly want to force cmake to select gcc as the compiler used for building tests, because the version of clang built into osx is weird. We don't really want to always specify the compiler to use in tests, so forcing gcc is a separate cmake config preset, and it requires installing gcc 10:
+
+`brew install gcc@10`
+`cmake --preset=stm32-host-gcc10 .`
+
+You should specifically do this if you're seeing errors about `concepts` not existing, or `forward_iterator` not existing, or the like.
+
+You can change to a different compiler, like an installed upstream clang/llvm, by changing the cache variables `CMAKE_C_COMPILER` and `CMAKE_CXX_COMPILER`, or by making a custom configuration (see below) that specifies them.
+
+This isn't the default `stm32-host` because it requires specifying the compiler by version to actually work on OSX, where `gcc` and `g++` unqualified by version are... aliased to system clang. Setting the default to `gcc-10` and `g++-10` then might have problems on other platforms if someone update their gcc and g++ or on CI.
+
+
 ### Custom Configuration
 
-If you are running on macOS, you might run into this error: 
+CMake allows you to set preset overrides through a gitignored file called CMakeUserPresets.json. An example (that implements `stm32-host-gcc`, which is the preset above, as an example) is bundled in the `examples/` folder. To apply it, you would copy it into the root of the repo after checkout. `CMakeUSerPresets.json` works exactly like `CMakePresets.json`, but lets you make system- or IDE-specific configuration. In general, presets in `CMakeUserPresets` should inherit from those in `CMakePresets`, since most of the settings in the checked-in presets are good and only a couple need to be changed, but really it's up to you.
 
-```
-error: 'concepts' file not found
-```
-
-This means that the clang version on your system does not support Concepts. You will need to do `brew install gcc@10` and copy the `examples/CMakeUserPresets.json` to the root directory. You can then specify this custom configration by using `cmake --preset=stm32-host-gcc`.
 
 ## Contributing
 
