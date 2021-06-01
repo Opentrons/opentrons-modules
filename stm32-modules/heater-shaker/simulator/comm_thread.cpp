@@ -40,17 +40,15 @@ auto comm_thread::build()
 
 auto comm_thread::handle_input(tasks::Tasks<SimulatorMessageQueue>& tasks)
     -> void {
-    std::string written;
+    auto linebuf = std::make_shared<std::string>(1024, 'c');
     while (true) {
-        if (!std::cin.good() || std::cin.eof()) {
+        if (!std::cin.getline(linebuf->data(), linebuf->size() - 1, '\n')) {
             return;
         }
-        std::cin >> written;
-        // cin only tells you data when you hit enter, but it strips the
-        // newline, which we need
-        written.append("\n");
+        auto wrote_to = std::cin.gcount();
+        linebuf->at(wrote_to - 1) = '\n';
         auto message = messages::IncomingMessageFromHost(
-            written.data(), written.data() + written.size());
+            linebuf->data(), linebuf->data() + wrote_to);
         static_cast<void>(tasks.comms->get_message_queue().try_send(message));
     }
 }
