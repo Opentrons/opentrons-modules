@@ -16,6 +16,7 @@
 #include "heater-shaker/gcodes.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "heater-shaker/version.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>
@@ -35,12 +36,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     using Queue = QueueImpl<Message>;
 
   private:
-    using GCodeParser =
-        gcode::GroupParser<gcode::SetRPM, gcode::SetTemperature, gcode::GetRPM,
-                           gcode::GetTemperature, gcode::SetAcceleration,
-                           gcode::GetTemperatureDebug,
-                           gcode::SetHeaterPIDConstants,
-                           gcode::SetHeaterPowerTest, gcode::EnterBootloader>;
+    using GCodeParser = gcode::GroupParser<
+        gcode::SetRPM, gcode::SetTemperature, gcode::GetRPM,
+        gcode::GetTemperature, gcode::SetAcceleration,
+        gcode::GetTemperatureDebug, gcode::SetHeaterPIDConstants,
+        gcode::SetHeaterPowerTest, gcode::EnterBootloader, gcode::GetVersion>;
     using AckOnlyCache =
         AckCache<8, gcode::SetRPM, gcode::SetTemperature,
                  gcode::SetAcceleration, gcode::SetHeaterPIDConstants,
@@ -332,6 +332,17 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
         static_cast<void>(tx_into);
         static_cast<void>(tx_limit);
         return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> auto
+        visit_gcode(const gcode::GetVersion& ignore, InputIt tx_into,
+                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        static_cast<void>(ignore);
+        auto written = gcode::GetVersion::write_response_into(
+            tx_into, tx_limit, version::fw_version(), version::hw_version());
+        return std::make_pair(true, written);
     }
 
     template <typename InputIt, typename InputLimit>
