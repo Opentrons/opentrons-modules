@@ -2,8 +2,8 @@ name: 'Heater/shaker build/test'
 on:
   pull_request:
     paths:
-      - 'stm32-modules/heater-shaker'
-      - 'cmake/*'
+      - 'stm32-modules/heater-shaker/**/*'
+      - 'cmake/**/*'
       - 'CMakeLists.txt'
       - 'stm32-modules/CMakeLists.txt'
       - 'CMakePresets.json'
@@ -13,8 +13,8 @@ on:
       - 'cmake/Arduino*'
   push:
     paths:
-      - 'stm32-modules/heater-shaker'
-      - 'cmake/*'
+      - 'stm32-modules/heater-shaker/**/*'
+      - 'cmake/**/*'
       - 'CMakeLists.txt'
       - 'stm32-modules/CMakeLists.txt'
       - 'CMakePresets.json'
