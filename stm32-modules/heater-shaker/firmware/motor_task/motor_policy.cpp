@@ -15,6 +15,14 @@ using namespace errors;
 
 MotorPolicy::MotorPolicy(MCI_Handle_t *handle) : motor_handle(handle) {}
 
+auto MotorPolicy::homing_solenoid_disengage() -> void {
+
+}
+
+auto MotorPolicy::homing_solenoid_engage(double current_a) -> void {
+    static_cast<void>(current_a);
+}
+
 auto MotorPolicy::set_rpm(int16_t rpm) -> ErrorCode {
     if (rpm == 0) {
         stop();

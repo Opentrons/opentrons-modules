@@ -46,3 +46,21 @@ auto TestMotorPolicy::test_set_rpm_return_code(errors::ErrorCode error)
     -> void {
     set_rpm_return = error;
 }
+
+
+auto TestMotorPolicy::homing_solenoid_disengage() -> void {
+    solenoid_engaged = false;
+}
+
+auto TestMotorPolicy::homing_solenoid_engage(double current_a) -> void {
+    solenoid_engaged = true;
+    solenoid_current = current_a;
+}
+
+auto TestMotorPolicy::test_solenoid_engaged() const -> bool {
+    return solenoid_engaged;
+}
+
+auto TestMotorPolicy::test_solenoid_current() const -> double {
+    return solenoid_current;
+}

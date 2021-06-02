@@ -279,4 +279,89 @@ SCENARIO("motor task input error handling") {
     }
 }
 
-SCENARIO("motor task homing") {}
+SCENARIO("motor task homing") {
+    GIVEN("a motor task that is stopped") {
+        auto tasks = TaskBuilder::build();
+        CHECK(tasks->get_motor_task().get_state() ==
+              motor_task::State::STOPPED_UNKNOWN);
+        WHEN("starting a home sequence") {
+            auto home_message = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(home_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the motor task should enter homing state") {
+                REQUIRE(tasks->get_motor_task().get_state() ==
+                        motor_task::State::HOMING);
+            }
+        }
+    }
+    GIVEN("a motor task that is controlling at a slow speed") {
+        auto tasks = TaskBuilder::build();
+        auto run_message = messages::SetRPMMessage{.id = 123, .target_rpm = 0};
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(run_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        tasks->get_motor_policy().test_set_current_rpm(run_message.target_rpm);
+        CHECK(tasks->get_motor_policy().get_target_rpm() ==
+              run_message.target_rpm);
+        CHECK(tasks->get_motor_task().get_state() ==
+              motor_task::State::RUNNING);
+        WHEN("starting a home sequence") {
+            auto home_message = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(home_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the motor task should enter homing state") {
+                REQUIRE(tasks->get_motor_task().get_state() ==
+                        motor_task::State::HOMING);
+            }
+        }
+    }
+    GIVEN("a motor task that is controlling at a higher speed") {
+        auto tasks = TaskBuilder::build();
+        auto run_message =
+            messages::SetRPMMessage{.id = 123, .target_rpm = 4500};
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(run_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        tasks->get_motor_policy().test_set_current_rpm(run_message.target_rpm);
+        CHECK(tasks->get_motor_policy().get_target_rpm() ==
+              run_message.target_rpm);
+        CHECK(tasks->get_motor_task().get_state() ==
+              motor_task::State::RUNNING);
+        WHEN("starting a home sequence") {
+            auto home_message = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(home_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the motor task should enter homing state") {
+                REQUIRE(tasks->get_motor_task().get_state() ==
+                        motor_task::State::HOMING);
+            }
+        }
+    }
+
+    GIVEN("a motor task that is controlling in the home speed range") {
+        auto tasks = TaskBuilder::build();
+        auto run_message =
+            messages::SetRPMMessage{.id = 123, .target_rpm = 500};
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(run_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        tasks->get_motor_policy().test_set_current_rpm(run_message.target_rpm);
+        CHECK(tasks->get_motor_policy().get_target_rpm() ==
+              run_message.target_rpm);
+        CHECK(tasks->get_motor_task().get_state() ==
+              motor_task::State::RUNNING);
+        WHEN("starting a home sequence") {
+            auto home_message = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(home_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the motor task should enter homing state") {
+                REQUIRE(tasks->get_motor_task().get_state() ==
+                        motor_task::State::HOMING);
+            }
+        }
+    }
+}

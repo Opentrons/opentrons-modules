@@ -18,6 +18,9 @@ class MotorPolicy {
     auto stop() -> void;
     auto set_ramp_rate(int32_t rpm_per_s) -> errors::ErrorCode;
 
+    auto homing_solenoid_disengage() -> void;
+    auto homing_solenoid_engage(double current_a) -> void;
+
   private:
     int32_t ramp_rate = DEFAULT_RAMP_RATE_RPM_PER_S;
     MCI_Handle_t *motor_handle;

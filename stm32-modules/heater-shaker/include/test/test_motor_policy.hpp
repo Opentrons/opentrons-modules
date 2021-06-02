@@ -15,16 +15,25 @@ class TestMotorPolicy {
     auto set_ramp_rate(int32_t new_ramp_rate) -> errors::ErrorCode;
     auto stop() -> void;
 
+    auto homing_solenoid_disengage() -> void;
+    auto homing_solenoid_engage(double current_a) -> void;
+
+    [[nodiscard]] auto test_solenoid_engaged() const -> bool;
+    [[nodiscard]] auto test_solenoid_current() const -> double;
+
     auto test_set_current_rpm(int16_t current_rpm) -> void;
     [[nodiscard]] auto test_get_ramp_rate() -> int32_t;
 
     auto test_set_rpm_return_code(errors::ErrorCode code) -> void;
     auto test_set_ramp_rate_return_code(errors::ErrorCode code) -> void;
 
-  private:
+    private:
+
     int16_t target_rpm;
     int16_t current_rpm;
     int32_t ramp_rate;
     errors::ErrorCode set_rpm_return = errors::ErrorCode::NO_ERROR;
     errors::ErrorCode set_ramp_rate_return = errors::ErrorCode::NO_ERROR;
+    bool solenoid_engaged = false;
+    double solenoid_current = -1;
 };

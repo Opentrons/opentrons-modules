@@ -46,6 +46,8 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.stop()};
     { p.set_ramp_rate(static_cast<int32_t>(8)) }
     ->std::same_as<errors::ErrorCode>;
+    { p.homing_solenoid_disengage() };
+    { p.homing_solenoid_engage(0.3) };
 };
 
 struct State {
@@ -67,7 +69,9 @@ template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     static constexpr const uint32_t WAIT_TIME_TICKS = 100;
 
-  public:
+    public:
+    static constexpr uint16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 500;
+    static constexpr uint16_t HOMING_ROTATION_LIMIT_LOW_RPM = 250;
     using Queue = QueueImpl<Message>;
     explicit MotorTask(Queue& q)
         : state{.status = State::STOPPED_UNKNOWN},
@@ -188,8 +192,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     auto visit_message(const messages::BeginHomingMessage& msg, Policy& policy)
         -> void {
         state.status = State::HOMING;
-        static_cast<void>(msg);
-        static_cast<void>(policy);
+        if ((policy.get_current_rpm() > HOMING_ROTATION_LIMIT_HIGH_RPM)
+            || (policy.get_current_rpm() < HOMING_ROTATION_LIMIT_LOW_RPM)) {
+            policy.homing_solenoid_disengage();
+            policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM + 50);
+        }
     }
     State state;
     Queue& message_queue;
