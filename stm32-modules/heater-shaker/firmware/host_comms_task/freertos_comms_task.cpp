@@ -121,7 +121,9 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
         char *tx_end =
             top_task->run_once(local_task->tx_buf.accessible()->begin(),
                                local_task->tx_buf.accessible()->end());
-        if (tx_end != local_task->tx_buf.accessible()->data()) {
+        if (!top_task->may_connect()) {
+            USBD_Stop(&_local_task.usb_handle);
+        } else if (tx_end != local_task->tx_buf.accessible()->data()) {
             local_task->tx_buf.swap();
             USBD_CDC_SetTxBuffer(
                 &_local_task.usb_handle,

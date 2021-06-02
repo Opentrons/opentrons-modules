@@ -36,14 +36,19 @@ concept Response = requires(ResponseType rt) {
 *into
 ** the response.
 */
+// The from_system elements are a bit of a hack because we don't have full
+// message source tracking and it seems weird to add it for literally two
+// messages.
 struct SetRPMMessage {
     uint32_t id;
     int16_t target_rpm;
+    bool from_system = false;
 };
 
 struct SetTemperatureMessage {
     uint32_t id;
     double target_temperature;
+    bool from_system = false;
 };
 
 struct GetTemperatureMessage {
@@ -79,6 +84,14 @@ struct SetPIDConstantsMessage {
 struct SetPowerTestMessage {
     uint32_t id;
     double power;
+};
+
+struct EnterBootloaderMessage {
+    uint32_t id;
+};
+
+struct ForceUSBDisconnectMessage {
+    uint32_t id;
 };
 
 // Used internally to the motor task, communicates asynchronous errors to the
@@ -142,9 +155,10 @@ using HeaterMessage =
 using MotorMessage =
     ::std::variant<std::monostate, MotorSystemErrorMessage, SetRPMMessage,
                    GetRPMMessage, SetAccelerationMessage>;
-using UIMessage = ::std::variant<GetTemperatureResponse, GetRPMResponse>;
+using SystemMessage =
+    ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,
-                   GetTemperatureDebugResponse>;
+                   GetTemperatureDebugResponse, ForceUSBDisconnectMessage>;
 };  // namespace messages

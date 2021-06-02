@@ -97,8 +97,16 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
         auto error = policy.set_rpm(msg.target_rpm);
         auto response = messages::AcknowledgePrevious{
             .responding_to_id = msg.id, .with_error = error};
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
+        if (msg.from_system) {
+            static_cast<void>(
+                task_registry->system->get_message_queue().try_send(
+                    messages::SystemMessage(response)));
+
+        } else {
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    messages::HostCommsMessage(response)));
+        }
     }
 
     template <typename Policy>

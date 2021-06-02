@@ -421,4 +421,33 @@ struct SetHeaterPowerTest {
     }
 };
 
+struct EnterBootloader {
+    /**
+     * EnterBootloader uses the command string "dfu" instead of a gcode to be
+     * more like other modules. There are no arguments and in the happy path
+     * there is no response (because we reboot into the bootloader).
+     * */
+    using ParseResult = std::optional<EnterBootloader>;
+    static constexpr auto prefix = std::array{'d', 'f', 'u'};
+    static constexpr const char* response = "dfu OK\n";
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputIt, InLimit> static auto
+        write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<Limit, InputIt> static auto
+        parse(const InputIt& input, Limit limit)
+            -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(EnterBootloader()), working);
+    }
+};
+
 }  // namespace gcode

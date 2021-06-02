@@ -29,6 +29,7 @@ SCENARIO("testing ack cache functionality") {
                 REQUIRE(std::holds_alternative<std::monostate>(found));
             }
         }
+        WHEN("checking empty() in an empty cache") { REQUIRE(cache.empty()); }
         WHEN("adding to the cache") {
             auto id1 = cache.add(Element1(10));
             auto id2 = cache.add(Element2(2.5));
@@ -36,6 +37,7 @@ SCENARIO("testing ack cache functionality") {
                 REQUIRE(id1 != id2);
                 REQUIRE(id1 != 0);
             }
+            THEN("the cache should not be empty") { REQUIRE(!cache.empty()); }
         }
 
         WHEN("removing valid items from the cache") {

@@ -19,7 +19,7 @@ SCENARIO("motor task basic functionality") {
 SCENARIO("motor task message passing") {
     GIVEN("a motor task") {
         auto tasks = TaskBuilder::build();
-        WHEN("sending a set-rpm message") {
+        WHEN("sending a set-rpm message as if from the host comms") {
             auto message =
                 messages::SetRPMMessage{.id = 222, .target_rpm = 1254};
             tasks->get_motor_queue().backing_deque.push_back(
@@ -30,12 +30,43 @@ SCENARIO("motor task message passing") {
                 AND_THEN("the task should set the rpm") {
                     REQUIRE(tasks->get_motor_policy().get_target_rpm() == 1254);
                 }
-                AND_THEN("the task should respond to the message") {
+                AND_THEN(
+                    "the task should respond to the message to the host "
+                    "comms") {
                     REQUIRE(
                         !tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(tasks->get_system_queue().backing_deque.empty());
                     auto response =
                         tasks->get_host_comms_queue().backing_deque.front();
                     tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto ack =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(ack.responding_to_id == message.id);
+                }
+            }
+        }
+        WHEN("sending a set-rpm message as if from the system") {
+            auto message = messages::SetRPMMessage{
+                .id = 222, .target_rpm = 1254, .from_system = true};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_motor_queue().backing_deque.empty());
+                AND_THEN("the task should set the rpm") {
+                    REQUIRE(tasks->get_motor_policy().get_target_rpm() == 1254);
+                }
+                AND_THEN(
+                    "the task should respond to the message to the system") {
+                    REQUIRE(
+                        tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(!tasks->get_system_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_system_queue().backing_deque.front();
+                    tasks->get_system_queue().backing_deque.pop_front();
                     REQUIRE(
                         std::holds_alternative<messages::AcknowledgePrevious>(
                             response));

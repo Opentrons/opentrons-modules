@@ -8,6 +8,7 @@ add_executable(heater-shaker
   task_builder.cpp
   test_motor_policy.cpp
   test_heater_policy.cpp
+  test_system_policy.cpp
   test_gcode_parse.cpp
   test_basic_gcodes.cpp
   test_m104.cpp
@@ -23,6 +24,7 @@ add_executable(heater-shaker
   test_host_comms_task.cpp
   test_heater_task.cpp
   test_motor_task.cpp
+  test_system_task.cpp
   test_ack_cache.cpp
   test_errors.cpp
   test_message_passing.cpp
