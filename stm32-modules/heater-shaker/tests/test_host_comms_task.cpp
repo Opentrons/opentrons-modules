@@ -655,7 +655,6 @@ SCENARIO("version handling") {
             THEN("the task should write out the version") {
                 tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                       tx_buf.end());
-
                 REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith("M115 FW:"));
                 REQUIRE_THAT(tx_buf, Catch::Matchers::Contains("HW:"));
             }
