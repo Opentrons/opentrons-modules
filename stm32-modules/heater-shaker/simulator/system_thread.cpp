@@ -11,14 +11,13 @@
 
 using namespace system_thread;
 
-class SimSystemPolicy {
-    auto enter_bootloader() -> void {
-        std::terminate();
-    }
+struct SimSystemPolicy {
+    auto enter_bootloader() -> void { std::terminate(); }
 };
 
 struct system_thread::TaskControlBlock {
-    TaskControlBlock() : queue(SimSystemTask::Queue()), task(SimSystemTask(queue)) {}
+    TaskControlBlock()
+        : queue(SimSystemTask::Queue()), task(SimSystemTask(queue)) {}
     SimSystemTask::Queue queue;
     SimSystemTask task;
 };
