@@ -111,6 +111,11 @@ struct ErrorMessage {
     errors::ErrorCode code;
 };
 
+struct ActuateSolenoidMessage {
+    uint32_t id;
+    uint16_t current_ma;
+};
+
 /*
 ** Response structs either confirm actions or fulfill actions. Because some
 *messages
@@ -162,7 +167,8 @@ using HeaterMessage =
 using MotorMessage =
     ::std::variant<std::monostate, MotorSystemErrorMessage, SetRPMMessage,
                    GetRPMMessage, SetAccelerationMessage,
-                   CheckHomingStatusMessage, BeginHomingMessage>;
+                   CheckHomingStatusMessage, BeginHomingMessage,
+                   ActuateSolenoidMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious>;
 using HostCommsMessage =

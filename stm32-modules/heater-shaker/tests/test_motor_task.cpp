@@ -4,7 +4,7 @@
 #include "heater-shaker/motor_task.hpp"
 #include "test/task_builder.hpp"
 
-SCENARIO("motor task message passing") {
+SCENARIO("motor task core message handling", "[motor]") {
     GIVEN("a motor task") {
         auto tasks = TaskBuilder::build();
         WHEN("just having been built") {
@@ -132,7 +132,7 @@ SCENARIO("motor task message passing") {
     }
 }
 
-SCENARIO("motor task error handling") {
+SCENARIO("motor task error handling", "[motor]") {
     GIVEN("a motor task") {
         auto tasks = TaskBuilder::build();
         CHECK(tasks->get_motor_task().get_state() ==
@@ -241,7 +241,7 @@ SCENARIO("motor task error handling") {
     }
 }
 
-SCENARIO("motor task input error handling") {
+SCENARIO("motor task input error handling", "[motor]") {
     GIVEN("a motor task") {
         auto tasks = TaskBuilder::build();
         WHEN("a command requests an invalid speed") {
@@ -279,7 +279,7 @@ SCENARIO("motor task input error handling") {
     }
 }
 
-SCENARIO("motor task homing") {
+SCENARIO("motor task homing", "[motor][homing]") {
     GIVEN("a motor task that is stopped") {
         auto tasks = TaskBuilder::build();
         CHECK(tasks->get_motor_task().get_state() ==
@@ -361,6 +361,48 @@ SCENARIO("motor task homing") {
             THEN("the motor task should enter homing state") {
                 REQUIRE(tasks->get_motor_task().get_state() ==
                         motor_task::State::HOMING);
+            }
+        }
+    }
+}
+
+
+SCENARIO("motor task debug solenoid handling", "[motor][debug]") {
+    GIVEN("a motor task") {
+        auto tasks = TaskBuilder::build();
+        WHEN("activating the solenoid through the debug mechanism") {
+            auto solenoid_message =
+                messages::ActuateSolenoidMessage{.id = 123, .current_ma = 500};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(solenoid_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the task actuates the solenoid") {
+                REQUIRE(tasks->get_motor_policy().test_solenoid_engaged() == true);
+                REQUIRE(tasks->get_motor_policy().test_solenoid_current() == solenoid_message.current_ma);
+            }
+            THEN("the task sends a response") {
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto ack = std::get<messages::AcknowledgePrevious>(tasks->get_host_comms_queue().backing_deque.front());
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(ack.responding_to_id == solenoid_message.id);
+                REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
+            }
+
+        }
+        WHEN("deactivating the solenoid through the debug mechanism") {
+            auto solenoid_message =
+                messages::ActuateSolenoidMessage{.id=221, .current_ma = 0};
+            tasks->get_motor_queue().backing_deque.push_back(messages::MotorMessage(solenoid_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the task deactivates the solenoid") {
+                REQUIRE(tasks->get_motor_policy().test_solenoid_engaged() == false);
+            }
+            THEN("the task sends a response") {
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto ack = std::get<messages::AcknowledgePrevious>(tasks->get_host_comms_queue().backing_deque.front());
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(ack.responding_to_id == solenoid_message.id);
+                REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
             }
         }
     }

@@ -19,8 +19,8 @@ auto MotorPolicy::homing_solenoid_disengage() -> void {
 
 }
 
-auto MotorPolicy::homing_solenoid_engage(double current_a) -> void {
-    static_cast<void>(current_a);
+auto MotorPolicy::homing_solenoid_engage(uint16_t current_ma) -> void {
+    static_cast<void>(current_ma);
 }
 
 auto MotorPolicy::set_rpm(int16_t rpm) -> ErrorCode {

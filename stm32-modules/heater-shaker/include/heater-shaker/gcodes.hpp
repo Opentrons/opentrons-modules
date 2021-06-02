@@ -327,6 +327,46 @@ struct Home {
     }
 };
 
+struct ActuateSolenoid {
+    /*
+    ** Actuate solenoid is a debug command that lets you activate or deactivate
+    ** the solenoid. It uses G28.D Sxxxx where xxxx is an integer number of mA
+    ** to use, e.g. G28.D S328 for 0.328A. If the value is 0, the solenoid will
+    ** disengage.
+    */
+    using ParseResult = std::optional<ActuateSolenoid>;
+    static constexpr auto prefix = std::array{'G', '2', '8', '.', 'D', ' ', 'S'};
+    static constexpr const char* response = "G28.D OK\n";
+
+    uint16_t current_ma;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<Limit, InputIt> static auto
+        parse(const InputIt& input, Limit limit)
+            -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto current_ma_parse = parse_value<uint16_t>(working, limit);
+        if (!current_ma_parse.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        return std::make_pair(
+            ParseResult(ActuateSolenoid{
+                .current_ma=current_ma_parse.first.value()}), current_ma_parse.second);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> static auto
+        write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 struct SetHeaterPIDConstants {
     /**
      * SetHeaterPIDConstants uses M301 because smoothieware does. Parameters:

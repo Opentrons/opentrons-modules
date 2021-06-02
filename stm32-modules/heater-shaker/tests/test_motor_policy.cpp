@@ -52,15 +52,15 @@ auto TestMotorPolicy::homing_solenoid_disengage() -> void {
     solenoid_engaged = false;
 }
 
-auto TestMotorPolicy::homing_solenoid_engage(double current_a) -> void {
+auto TestMotorPolicy::homing_solenoid_engage(uint16_t current_ma) -> void {
     solenoid_engaged = true;
-    solenoid_current = current_a;
+    solenoid_current = current_ma;
 }
 
 auto TestMotorPolicy::test_solenoid_engaged() const -> bool {
     return solenoid_engaged;
 }
 
-auto TestMotorPolicy::test_solenoid_current() const -> double {
+auto TestMotorPolicy::test_solenoid_current() const -> uint16_t {
     return solenoid_current;
 }
