@@ -7,6 +7,13 @@
 SCENARIO("motor task message passing") {
     GIVEN("a motor task") {
         auto tasks = TaskBuilder::build();
+        WHEN("just having been built") {
+            THEN("the state should be idle/unknown") {
+                REQUIRE(tasks->get_motor_task().get_state() ==
+                        motor_task::State::STOPPED_UNKNOWN);
+            }
+        }
+
         WHEN("sending a set-rpm message as if from the host comms") {
             auto message =
                 messages::SetRPMMessage{.id = 222, .target_rpm = 1254};
@@ -33,6 +40,10 @@ SCENARIO("motor task message passing") {
                     auto ack =
                         std::get<messages::AcknowledgePrevious>(response);
                     REQUIRE(ack.responding_to_id == message.id);
+                }
+                AND_THEN("the task state should be running") {
+                    REQUIRE(tasks->get_motor_task().get_state() ==
+                            motor_task::State::RUNNING);
                 }
             }
         }
@@ -61,6 +72,10 @@ SCENARIO("motor task message passing") {
                     auto ack =
                         std::get<messages::AcknowledgePrevious>(response);
                     REQUIRE(ack.responding_to_id == message.id);
+                }
+                AND_THEN("the task state should be running") {
+                    REQUIRE(tasks->get_motor_task().get_state() ==
+                            motor_task::State::RUNNING);
                 }
             }
         }
@@ -120,12 +135,15 @@ SCENARIO("motor task message passing") {
 SCENARIO("motor task error handling") {
     GIVEN("a motor task") {
         auto tasks = TaskBuilder::build();
+        CHECK(tasks->get_motor_task().get_state() ==
+              motor_task::State::STOPPED_UNKNOWN);
         WHEN("sending an internal error with one bit set") {
             auto message = messages::MotorSystemErrorMessage{
                 .errors = static_cast<uint16_t>(
                     1u << errors::MotorErrorOffset::SW_ERROR)};
             tasks->get_motor_queue().backing_deque.push_back(message);
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
+
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_motor_queue().backing_deque.empty());
                 AND_THEN(
@@ -140,6 +158,10 @@ SCENARIO("motor task error handling") {
                         upstream));
                     REQUIRE(std::get<messages::ErrorMessage>(upstream).code ==
                             errors::ErrorCode::MOTOR_BLDC_DRIVER_ERROR);
+                }
+                AND_THEN("the task should enter error state") {
+                    REQUIRE(tasks->get_motor_task().get_state() ==
+                            motor_task::State::ERROR);
                 }
             }
         }
@@ -183,6 +205,10 @@ SCENARIO("motor task error handling") {
                                 .code ==
                             errors::ErrorCode::MOTOR_BLDC_OVERCURRENT);
                 }
+                AND_THEN("the task should enter error state") {
+                    REQUIRE(tasks->get_motor_task().get_state() ==
+                            motor_task::State::ERROR);
+                }
             }
         }
 
@@ -205,6 +231,10 @@ SCENARIO("motor task error handling") {
                     REQUIRE(
                         std::get<messages::ErrorMessage>(spurious_msg).code ==
                         errors::ErrorCode::MOTOR_SPURIOUS_ERROR);
+                }
+                AND_THEN("the task should not enter error state") {
+                    REQUIRE(tasks->get_motor_task().get_state() ==
+                            motor_task::State::STOPPED_UNKNOWN);
                 }
             }
         }
@@ -248,3 +278,5 @@ SCENARIO("motor task input error handling") {
         }
     }
 }
+
+SCENARIO("motor task homing") {}

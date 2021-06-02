@@ -48,6 +48,19 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     ->std::same_as<errors::ErrorCode>;
 };
 
+struct State {
+    enum TaskStatus {
+        STOPPED_UNKNOWN,  // Stopped but unclear whether we're homed (how we
+                          // boot)
+        RUNNING,          // Running under a speed control or ramping (including
+                          // speed=0)
+        ERROR,            // In an error state from the motor driver
+        HOMING,           // In the process of homing
+        STOPPED_HOMED     // Stopped and definitely homed
+    };
+    TaskStatus status;
+};
+
 constexpr size_t RESPONSE_LENGTH = 128;
 using Message = ::messages::MotorMessage;
 template <template <class> class QueueImpl>
@@ -56,13 +69,19 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
 
   public:
     using Queue = QueueImpl<Message>;
-    explicit MotorTask(Queue& q) : message_queue(q), task_registry(nullptr) {}
+    explicit MotorTask(Queue& q)
+        : state{.status = State::STOPPED_UNKNOWN},
+          message_queue(q),
+          task_registry(nullptr) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
     auto operator=(MotorTask&& other) noexcept -> MotorTask& = delete;
     ~MotorTask() = default;
     auto get_message_queue() -> Queue& { return message_queue; }
+    [[nodiscard]] auto get_state() const -> State::TaskStatus {
+        return state.status;
+    }
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
         task_registry = other_tasks;
     }
@@ -95,6 +114,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     auto visit_message(const messages::SetRPMMessage& msg, Policy& policy)
         -> void {
         auto error = policy.set_rpm(msg.target_rpm);
+        state.status = State::RUNNING;
         auto response = messages::AcknowledgePrevious{
             .responding_to_id = msg.id, .with_error = error};
         if (msg.from_system) {
@@ -148,6 +168,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
             auto code = errors::from_motor_error(
                 msg.errors, static_cast<errors::MotorErrorOffset>(offset));
             if (code != errors::ErrorCode::NO_ERROR) {
+                state.status = State::ERROR;
                 static_cast<void>(
                     task_registry->comms->get_message_queue().try_send(
                         messages::HostCommsMessage(
@@ -163,6 +184,14 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
         static_cast<void>(policy);
     }
 
+    template <typename Policy>
+    auto visit_message(const messages::BeginHomingMessage& msg, Policy& policy)
+        -> void {
+        state.status = State::HOMING;
+        static_cast<void>(msg);
+        static_cast<void>(policy);
+    }
+    State state;
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
 };

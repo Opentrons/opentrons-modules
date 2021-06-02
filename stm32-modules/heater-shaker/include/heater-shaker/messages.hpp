@@ -94,6 +94,10 @@ struct ForceUSBDisconnectMessage {
     uint32_t id;
 };
 
+struct BeginHomingMessage {
+    uint32_t id;
+};
+
 // Used internally to the motor task, communicates asynchronous errors to the
 // main controller task
 struct MotorSystemErrorMessage {
@@ -157,7 +161,8 @@ using HeaterMessage =
                    SetPIDConstantsMessage, SetPowerTestMessage>;
 using MotorMessage =
     ::std::variant<std::monostate, MotorSystemErrorMessage, SetRPMMessage,
-                   GetRPMMessage, SetAccelerationMessage, CheckHomingStatusMessage>;
+                   GetRPMMessage, SetAccelerationMessage,
+                   CheckHomingStatusMessage, BeginHomingMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious>;
 using HostCommsMessage =

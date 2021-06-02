@@ -299,6 +299,34 @@ struct GetTemperatureDebug {
     }
 };
 
+struct Home {
+    /**
+     * Home uses G28
+     * */
+    using ParseResult = std::optional<Home>;
+    static constexpr auto prefix = std::array{'G', '2', '8'};
+    static constexpr const char* response = "G28 OK\n";
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<Limit, InputIt> static auto
+        parse(const InputIt& input, Limit limit)
+            -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(Home()), working);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> static auto
+        write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 struct SetHeaterPIDConstants {
     /**
      * SetHeaterPIDConstants uses M301 because smoothieware does. Parameters:

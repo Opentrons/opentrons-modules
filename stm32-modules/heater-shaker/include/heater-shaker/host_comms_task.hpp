@@ -36,15 +36,18 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     using Queue = QueueImpl<Message>;
 
   private:
-    using GCodeParser = gcode::GroupParser<
-        gcode::SetRPM, gcode::SetTemperature, gcode::GetRPM,
-        gcode::GetTemperature, gcode::SetAcceleration,
-        gcode::GetTemperatureDebug, gcode::SetHeaterPIDConstants,
-        gcode::SetHeaterPowerTest, gcode::EnterBootloader, gcode::GetVersion>;
+    using GCodeParser =
+        gcode::GroupParser<gcode::SetRPM, gcode::SetTemperature, gcode::GetRPM,
+                           gcode::GetTemperature, gcode::SetAcceleration,
+                           gcode::GetTemperatureDebug,
+                           gcode::SetHeaterPIDConstants,
+                           gcode::SetHeaterPowerTest, gcode::EnterBootloader,
+                           gcode::GetVersion, gcode::Home>;
     using AckOnlyCache =
         AckCache<8, gcode::SetRPM, gcode::SetTemperature,
                  gcode::SetAcceleration, gcode::SetHeaterPIDConstants,
-                 gcode::SetHeaterPowerTest, gcode::EnterBootloader>;
+                 gcode::SetHeaterPowerTest, gcode::EnterBootloader,
+                 gcode::Home>;
     using GetTempCache = AckCache<8, gcode::GetTemperature>;
     using GetTempDebugCache = AckCache<8, gcode::GetTemperatureDebug>;
     using GetRPMCache = AckCache<8, gcode::GetRPM>;
@@ -343,6 +346,28 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
         auto written = gcode::GetVersion::write_response_into(
             tx_into, tx_limit, version::fw_version(), version::hw_version());
         return std::make_pair(true, written);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> auto
+        visit_gcode(const gcode::Home& home_code, InputIt tx_into,
+                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(home_code);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::BeginHomingMessage{.id = id};
+        if (!task_registry->motor->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
     }
 
     template <typename InputIt, typename InputLimit>
