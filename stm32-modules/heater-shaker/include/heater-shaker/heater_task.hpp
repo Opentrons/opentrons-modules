@@ -84,9 +84,8 @@ struct TemperatureSensor {
 using Message = messages::HeaterMessage;
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
-    using Queue = QueueImpl<Message>;
-
   public:
+    using Queue = QueueImpl<Message>;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 100;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 44.2;
     static constexpr uint8_t ADC_BIT_DEPTH = 12;
@@ -146,6 +145,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     auto operator=(HeaterTask&& other) noexcept -> HeaterTask& = delete;
     ~HeaterTask() = default;
     auto get_message_queue() -> Queue& { return message_queue; }
+    // Please don't use this for cross-thread communication it's primarily
+    // there for the simulator
+    [[nodiscard]] auto get_setpoint() const -> double { return setpoint; }
 
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
         task_registry = other_tasks;

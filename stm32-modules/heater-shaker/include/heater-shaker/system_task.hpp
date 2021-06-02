@@ -30,12 +30,12 @@ using Message = messages::SystemMessage;
 // SystemTask<SomeQueueImpl<Message>>
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message> class SystemTask {
-    using Queue = QueueImpl<Message>;
     using BootloaderPrepAckCache =
         AckCache<3, messages::SetTemperatureMessage, messages::SetRPMMessage,
                  messages::ForceUSBDisconnectMessage>;
 
   public:
+    using Queue = QueueImpl<Message>;
     explicit SystemTask(Queue& q)
         : message_queue(q),
           task_registry(nullptr),

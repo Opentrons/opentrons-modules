@@ -4,18 +4,6 @@
 #include "heater-shaker/motor_task.hpp"
 #include "test/task_builder.hpp"
 
-SCENARIO("motor task basic functionality") {
-    GIVEN("a motor task") {
-        auto tasks = TaskBuilder::build();
-        WHEN("calling run_once() with no messages") {
-            THEN("the task should work fine") {
-                REQUIRE_NOTHROW(tasks->get_motor_task().run_once(
-                    tasks->get_motor_policy()));
-            }
-        }
-    }
-}
-
 SCENARIO("motor task message passing") {
     GIVEN("a motor task") {
         auto tasks = TaskBuilder::build();
