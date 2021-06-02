@@ -453,12 +453,11 @@ struct EnterBootloader {
 
 struct GetVersion {
     /**
-     * GetVersion keys off the string "version" and returns hardware and
-     * software versions
+     * GetVersion keys off gcode M115 and returns hardware and
+     * software versions and eventually serial numbers
      * */
     using ParseResult = std::optional<GetVersion>;
-    static constexpr auto prefix =
-        std::array{'v', 'e', 'r', 's', 'i', 'o', 'n'};
+    static constexpr auto prefix = std::array{'M', '1', '1', '5'};
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt>&&
@@ -466,7 +465,7 @@ struct GetVersion {
         write_response_into(InputIt write_to_buf, InLimit write_to_limit,
                             const char* fw_version, const char* hw_version)
             -> InputIt {
-        static constexpr const char* prefix = "version FW:";
+        static constexpr const char* prefix = "M115 FW:";
         auto written =
             write_string_to_iterpair(write_to_buf, write_to_limit, prefix);
         if (written == write_to_limit) {

@@ -647,7 +647,7 @@ SCENARIO("version handling") {
         auto tasks = TaskBuilder::build();
         std::string tx_buf(128, 'c');
         WHEN("requesting the version") {
-            auto message_text = std::string("version\n");
+            auto message_text = std::string("M115\n");
             auto message_obj =
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
                     &*message_text.begin(), &*message_text.end()));
@@ -656,8 +656,7 @@ SCENARIO("version handling") {
                 tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                       tx_buf.end());
 
-                REQUIRE_THAT(tx_buf,
-                             Catch::Matchers::StartsWith("version FW:"));
+                REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith("M115 FW:"));
                 REQUIRE_THAT(tx_buf, Catch::Matchers::Contains("HW:"));
             }
         }
