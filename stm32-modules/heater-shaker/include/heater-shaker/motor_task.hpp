@@ -155,6 +155,14 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
             }
         }
     }
+
+    template <typename Policy>
+    auto visit_message(const messages::CheckHomingStatusMessage& msg,
+                       Policy& policy) -> void {
+        static_cast<void>(msg);
+        static_cast<void>(policy);
+    }
+
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
 };

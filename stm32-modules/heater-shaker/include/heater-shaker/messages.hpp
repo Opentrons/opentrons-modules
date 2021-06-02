@@ -100,6 +100,9 @@ struct MotorSystemErrorMessage {
     uint16_t errors;
 };
 
+// Used internally to the motor task to drive homing state machine changes
+struct CheckHomingStatusMessage {};
+
 struct ErrorMessage {
     errors::ErrorCode code;
 };
@@ -154,7 +157,7 @@ using HeaterMessage =
                    SetPIDConstantsMessage, SetPowerTestMessage>;
 using MotorMessage =
     ::std::variant<std::monostate, MotorSystemErrorMessage, SetRPMMessage,
-                   GetRPMMessage, SetAccelerationMessage>;
+                   GetRPMMessage, SetAccelerationMessage, CheckHomingStatusMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious>;
 using HostCommsMessage =
