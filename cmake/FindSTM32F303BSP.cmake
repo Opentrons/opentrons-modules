@@ -129,6 +129,7 @@ set(STM32F303BSP_VERSION "1.11.2" PARENT_SCOPE)
 set(STM32F303BSP_VERSION_STRING "1.11.2" PARENT_SCOPE)
 
 file(GLOB_RECURSE hal_driver_sources ${bsp_source}/Drivers/STM32F3xx_HAL_Driver/Src/*.c)
+list(REVERSE hal_driver_sources)
 add_library(
   STM32F303BSP_Drivers STATIC
   ${hal_driver_sources})
