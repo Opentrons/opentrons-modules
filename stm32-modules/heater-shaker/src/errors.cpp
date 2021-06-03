@@ -24,6 +24,7 @@ const char* const MOTOR_UNKNOWN_ERROR = "ERR110:main motor:unknown error\n";
 const char* const MOTOR_ILLEGAL_SPEED = "ERR120:main motor:illegal speed\n";
 const char* const MOTOR_ILLEGAL_RAMP_RATE =
     "ERR121:main motor:illegal ramp rate\n";
+const char* const MOTOR_BAD_HOME = "ERR122:main motor:bad home\n";
 const char* const HEATER_THERMISTOR_A_DISCONNECTED =
     "ERR201:heater:thermistor a disconnected\n";
 const char* const HEATER_THERMISTOR_A_SHORT =
@@ -74,6 +75,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(MOTOR_UNKNOWN_ERROR);
         HANDLE_CASE(MOTOR_ILLEGAL_SPEED);
         HANDLE_CASE(MOTOR_ILLEGAL_RAMP_RATE);
+        HANDLE_CASE(MOTOR_BAD_HOME);
         HANDLE_CASE(HEATER_THERMISTOR_A_DISCONNECTED);
         HANDLE_CASE(HEATER_THERMISTOR_A_SHORT);
         HANDLE_CASE(HEATER_THERMISTOR_A_OVERTEMP);

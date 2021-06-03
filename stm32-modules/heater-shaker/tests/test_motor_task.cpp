@@ -414,7 +414,6 @@ SCENARIO("motor task homing", "[motor][homing]") {
                 REQUIRE(tasks->get_motor_policy().test_solenoid_current() ==
                         std::remove_cvref_t<decltype(tasks->get_motor_task())>::
                             HOMING_SOLENOID_CURRENT_INITIAL);
-                REQUIRE(tasks->get_motor_queue().backing_deque.empty());
             }
         }
         WHEN(
@@ -454,10 +453,12 @@ SCENARIO("motor task homing", "[motor][homing]") {
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
         CHECK(tasks->get_motor_task().get_state() ==
               motor_task::State::HOMING_COASTING_TO_STOP);
-        CHECK(tasks->get_motor_queue().backing_deque.empty());
         WHEN("receiving an error") {
             tasks->get_motor_queue().backing_deque.push_back(
                 messages::MotorSystemErrorMessage{.errors = 0x2});
+            // This must run twice to handle the check-status message from the
+            // timeout mechanism before the error message
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task goes to homed state and lowers solenoid current") {
                 REQUIRE(tasks->get_motor_task().get_state() ==
@@ -470,6 +471,26 @@ SCENARIO("motor task homing", "[motor][homing]") {
                 auto ack = std::get<messages::AcknowledgePrevious>(
                     tasks->get_host_comms_queue().backing_deque.front());
                 REQUIRE(ack.responding_to_id == homing_message.id);
+                REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
+            }
+        }
+        WHEN("not receiving an error for too long") {
+            for (size_t i=0;
+                 i < std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_CYCLES_BEFORE_ERROR;
+                 i++) {
+                CHECK(tasks->get_motor_task().get_state() == motor_task::State::HOMING_COASTING_TO_STOP);
+                tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                CHECK(tasks->get_motor_policy().test_solenoid_current() ==
+                        std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                        HOMING_SOLENOID_CURRENT_INITIAL);
+                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+            }
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the home error should fire") {
+                auto ack_message = std::get<messages::AcknowledgePrevious>(tasks->get_host_comms_queue().backing_deque.front());
+                REQUIRE(ack_message.responding_to_id == homing_message.id);
+                REQUIRE(ack_message.with_error == errors::ErrorCode::MOTOR_BAD_HOME);
+                REQUIRE(tasks->get_motor_task().get_state() == motor_task::State::ERROR);
             }
         }
     }
