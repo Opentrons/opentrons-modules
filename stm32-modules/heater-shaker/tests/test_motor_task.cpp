@@ -475,22 +475,27 @@ SCENARIO("motor task homing", "[motor][homing]") {
             }
         }
         WHEN("not receiving an error for too long") {
-            for (size_t i=0;
-                 i < std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_CYCLES_BEFORE_ERROR;
+            for (size_t i = 0;
+                 i < std::remove_cvref_t<decltype(
+                         tasks->get_motor_task())>::HOMING_CYCLES_BEFORE_ERROR;
                  i++) {
-                CHECK(tasks->get_motor_task().get_state() == motor_task::State::HOMING_COASTING_TO_STOP);
+                CHECK(tasks->get_motor_task().get_state() ==
+                      motor_task::State::HOMING_COASTING_TO_STOP);
                 tasks->get_motor_task().run_once(tasks->get_motor_policy());
                 CHECK(tasks->get_motor_policy().test_solenoid_current() ==
-                        std::remove_cvref_t<decltype(tasks->get_motor_task())>::
-                        HOMING_SOLENOID_CURRENT_INITIAL);
+                      std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                          HOMING_SOLENOID_CURRENT_INITIAL);
                 CHECK(tasks->get_host_comms_queue().backing_deque.empty());
             }
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the home error should fire") {
-                auto ack_message = std::get<messages::AcknowledgePrevious>(tasks->get_host_comms_queue().backing_deque.front());
+                auto ack_message = std::get<messages::AcknowledgePrevious>(
+                    tasks->get_host_comms_queue().backing_deque.front());
                 REQUIRE(ack_message.responding_to_id == homing_message.id);
-                REQUIRE(ack_message.with_error == errors::ErrorCode::MOTOR_BAD_HOME);
-                REQUIRE(tasks->get_motor_task().get_state() == motor_task::State::ERROR);
+                REQUIRE(ack_message.with_error ==
+                        errors::ErrorCode::MOTOR_BAD_HOME);
+                REQUIRE(tasks->get_motor_task().get_state() ==
+                        motor_task::State::ERROR);
             }
         }
     }

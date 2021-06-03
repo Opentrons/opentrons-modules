@@ -227,9 +227,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
      * - When we get a check-status, go from moving-to-speed to coasting-to-stop
      * if we can and otherwise send another check-status
      * - When in coasting-to-stop, keep sending those check-statuses. If we keep
-     * the solenoid engaged forever, it will fry itself, so we need a timeout. If
-     * we get a motor system error, we're homed; if we don't, we need to cut the
-     * current, send an error, and go to failed state.
+     * the solenoid engaged forever, it will fry itself, so we need a timeout.
+     * If we get a motor system error, we're homed; if we don't, we need to cut
+     * the current, send an error, and go to failed state.
      * */
 
     template <typename Policy>
@@ -246,21 +246,22 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
             }
             policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
             static_cast<void>(get_message_queue().try_send(
-                    messages::CheckHomingStatusMessage{}));
+                messages::CheckHomingStatusMessage{}));
         } else if (state.status == State::HOMING_COASTING_TO_STOP) {
             homing_cycles_coasting++;
             if (homing_cycles_coasting > HOMING_CYCLES_BEFORE_ERROR) {
                 policy.homing_solenoid_engage(HOMING_SOLENOID_CURRENT_HOLD);
                 policy.stop();
                 state.status = State::ERROR;
-                static_cast<void>(task_registry->comms->get_message_queue().try_send(
-                                      messages::AcknowledgePrevious{
-                                      .responding_to_id = cached_home_id,
-                                      .with_error = errors::ErrorCode::MOTOR_BAD_HOME}));
+                static_cast<void>(
+                    task_registry->comms->get_message_queue().try_send(
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = cached_home_id,
+                            .with_error = errors::ErrorCode::MOTOR_BAD_HOME}));
             } else {
                 policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
                 static_cast<void>(get_message_queue().try_send(
-                                      messages::CheckHomingStatusMessage{}));
+                    messages::CheckHomingStatusMessage{}));
             }
         }
     }
