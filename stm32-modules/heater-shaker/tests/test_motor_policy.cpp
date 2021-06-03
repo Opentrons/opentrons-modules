@@ -63,3 +63,11 @@ auto TestMotorPolicy::test_solenoid_engaged() const -> bool {
 auto TestMotorPolicy::test_solenoid_current() const -> uint16_t {
     return solenoid_current;
 }
+
+auto TestMotorPolicy::test_get_last_delay() const -> uint16_t {
+    return last_delay;
+}
+
+auto TestMotorPolicy::delay_ticks(uint16_t ticks) -> void {
+    last_delay = ticks;
+}

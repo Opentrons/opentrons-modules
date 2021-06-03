@@ -49,6 +49,8 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.homing_solenoid_disengage()};
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.homing_solenoid_engage(122)};
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    {p.delay_ticks(10)};
 };
 
 struct State {
@@ -58,8 +60,11 @@ struct State {
         RUNNING,          // Running under a speed control or ramping (including
                           // speed=0)
         ERROR,            // In an error state from the motor driver
-        HOMING,           // In the process of homing
-        STOPPED_HOMED     // Stopped and definitely homed
+        HOMING_MOVING_TO_HOME_SPEED,  // Heading towards an appropriate speed
+                                      // for homing
+        HOMING_COASTING_TO_STOP,  // solenoid engaged, waiting for it to fall
+                                  // home
+        STOPPED_HOMED             // Stopped and definitely homed
     };
     TaskStatus status;
 };
@@ -68,12 +73,15 @@ constexpr size_t RESPONSE_LENGTH = 128;
 using Message = ::messages::MotorMessage;
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
-    static constexpr const uint32_t WAIT_TIME_TICKS = 100;
+    static constexpr const uint32_t HOMING_INTERSTATE_WAIT_TICKS = 100;
 
   public:
     static constexpr uint16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 500;
     static constexpr uint16_t HOMING_ROTATION_LIMIT_LOW_RPM = 250;
     static constexpr uint16_t HOMING_ROTATION_LOW_MARGIN = 50;
+    static constexpr uint16_t HOMING_SOLENOID_CURRENT_INITIAL = 300;
+    static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
+    static constexpr uint16_t HOMING_COAST_ROTATION = 2;
     using Queue = QueueImpl<Message>;
     explicit MotorTask(Queue& q)
         : state{.status = State::STOPPED_UNKNOWN},
@@ -167,18 +175,25 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
                         .code = errors::ErrorCode::MOTOR_SPURIOUS_ERROR})));
             return;
         }
-        for (auto offset =
-                 static_cast<uint8_t>(errors::MotorErrorOffset::FOC_DURATION);
-             offset <= static_cast<uint8_t>(errors::MotorErrorOffset::SW_ERROR);
-             offset++) {
-            auto code = errors::from_motor_error(
-                msg.errors, static_cast<errors::MotorErrorOffset>(offset));
-            if (code != errors::ErrorCode::NO_ERROR) {
-                state.status = State::ERROR;
-                static_cast<void>(
-                    task_registry->comms->get_message_queue().try_send(
-                        messages::HostCommsMessage(
-                            messages::ErrorMessage{.code = code})));
+        if (state.status == State::HOMING_COASTING_TO_STOP) {
+            policy.homing_solenoid_engage(HOMING_SOLENOID_CURRENT_HOLD);
+            policy.stop();
+            state.status = State::STOPPED_HOMED;
+        } else {
+            for (auto offset = static_cast<uint8_t>(
+                     errors::MotorErrorOffset::FOC_DURATION);
+                 offset <=
+                 static_cast<uint8_t>(errors::MotorErrorOffset::SW_ERROR);
+                 offset++) {
+                auto code = errors::from_motor_error(
+                    msg.errors, static_cast<errors::MotorErrorOffset>(offset));
+                if (code != errors::ErrorCode::NO_ERROR) {
+                    state.status = State::ERROR;
+                    static_cast<void>(
+                        task_registry->comms->get_message_queue().try_send(
+                            messages::HostCommsMessage(
+                                messages::ErrorMessage{.code = code})));
+                }
             }
         }
     }
@@ -187,20 +202,30 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     auto visit_message(const messages::CheckHomingStatusMessage& msg,
                        Policy& policy) -> void {
         static_cast<void>(msg);
-        static_cast<void>(policy);
+        if (state.status == State::HOMING_MOVING_TO_HOME_SPEED) {
+            if (policy.get_current_rpm() < HOMING_ROTATION_LIMIT_HIGH_RPM &&
+                policy.get_current_rpm() > HOMING_ROTATION_LIMIT_LOW_RPM) {
+                policy.homing_solenoid_engage(HOMING_SOLENOID_CURRENT_INITIAL);
+                state.status = State::HOMING_COASTING_TO_STOP;
+            } else {
+                policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
+                static_cast<void>(get_message_queue().try_send(
+                    messages::CheckHomingStatusMessage{}));
+            }
+        }
     }
 
     template <typename Policy>
     auto visit_message(const messages::BeginHomingMessage& msg, Policy& policy)
         -> void {
         static_cast<void>(msg);
-        state.status = State::HOMING;
-        if ((policy.get_current_rpm() > HOMING_ROTATION_LIMIT_HIGH_RPM) ||
-            (policy.get_current_rpm() < HOMING_ROTATION_LIMIT_LOW_RPM)) {
-            policy.homing_solenoid_disengage();
-            policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM +
-                           HOMING_ROTATION_LOW_MARGIN);
-        }
+        state.status = State::HOMING_MOVING_TO_HOME_SPEED;
+        policy.homing_solenoid_disengage();
+        policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM +
+                       HOMING_ROTATION_LOW_MARGIN);
+        policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
+        static_cast<void>(
+            get_message_queue().try_send(messages::CheckHomingStatusMessage{}));
     }
 
     template <typename Policy>

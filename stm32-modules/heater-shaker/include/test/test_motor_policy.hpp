@@ -18,6 +18,8 @@ class TestMotorPolicy {
     auto homing_solenoid_disengage() -> void;
     auto homing_solenoid_engage(uint16_t current_ma) -> void;
 
+    auto delay_ticks(uint16_t ticks) -> void;
+
     [[nodiscard]] auto test_solenoid_engaged() const -> bool;
     [[nodiscard]] auto test_solenoid_current() const -> uint16_t;
 
@@ -26,6 +28,7 @@ class TestMotorPolicy {
 
     auto test_set_rpm_return_code(errors::ErrorCode code) -> void;
     auto test_set_ramp_rate_return_code(errors::ErrorCode code) -> void;
+    [[nodiscard]] auto test_get_last_delay() const -> uint16_t;
 
   private:
     int16_t target_rpm;
@@ -35,4 +38,5 @@ class TestMotorPolicy {
     errors::ErrorCode set_ramp_rate_return = errors::ErrorCode::NO_ERROR;
     bool solenoid_engaged = false;
     uint16_t solenoid_current = 0;
+    uint16_t last_delay = 0;
 };

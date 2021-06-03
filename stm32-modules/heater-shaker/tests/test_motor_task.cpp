@@ -22,7 +22,8 @@ SCENARIO("motor task core message handling", "[motor]") {
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_motor_queue().backing_deque.empty());
-                AND_THEN("the task should set the rpm") {
+                AND_THEN("the task should set the rpm and disengage solenoid") {
+                    REQUIRE(!tasks->get_motor_policy().test_solenoid_engaged());
                     REQUIRE(tasks->get_motor_policy().get_target_rpm() == 1254);
                 }
                 AND_THEN(
@@ -55,8 +56,10 @@ SCENARIO("motor task core message handling", "[motor]") {
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_motor_queue().backing_deque.empty());
-                AND_THEN("the task should set the rpm") {
+                AND_THEN(
+                    "the task should set the rpm and disengage the solenoid") {
                     REQUIRE(tasks->get_motor_policy().get_target_rpm() == 1254);
+                    REQUIRE(!tasks->get_motor_policy().test_solenoid_engaged());
                 }
                 AND_THEN(
                     "the task should respond to the message to the system") {
@@ -291,7 +294,7 @@ SCENARIO("motor task homing", "[motor][homing]") {
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the motor task should enter homing state") {
                 REQUIRE(tasks->get_motor_task().get_state() ==
-                        motor_task::State::HOMING);
+                        motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
             }
         }
     }
@@ -313,7 +316,7 @@ SCENARIO("motor task homing", "[motor][homing]") {
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the motor task should enter homing state") {
                 REQUIRE(tasks->get_motor_task().get_state() ==
-                        motor_task::State::HOMING);
+                        motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
             }
         }
     }
@@ -336,7 +339,11 @@ SCENARIO("motor task homing", "[motor][homing]") {
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the motor task should enter homing state") {
                 REQUIRE(tasks->get_motor_task().get_state() ==
-                        motor_task::State::HOMING);
+                        motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
+                REQUIRE(
+                    std::holds_alternative<messages::CheckHomingStatusMessage>(
+                        tasks->get_motor_queue().backing_deque.front()));
+                REQUIRE(!tasks->get_motor_policy().test_solenoid_engaged());
             }
         }
     }
@@ -360,7 +367,96 @@ SCENARIO("motor task homing", "[motor][homing]") {
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the motor task should enter homing state") {
                 REQUIRE(tasks->get_motor_task().get_state() ==
-                        motor_task::State::HOMING);
+                        motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
+                REQUIRE(
+                    std::holds_alternative<messages::CheckHomingStatusMessage>(
+                        tasks->get_motor_queue().backing_deque.front()));
+                REQUIRE(!tasks->get_motor_policy().test_solenoid_engaged());
+            }
+        }
+    }
+
+    GIVEN("a motor task in the moving-to-home-speed state") {
+        auto tasks = TaskBuilder::build();
+        auto run_message =
+            messages::SetRPMMessage{.id = 123, .target_rpm = 500};
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(run_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        CHECK(tasks->get_motor_policy().get_target_rpm() ==
+              run_message.target_rpm);
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::BeginHomingMessage{.id = 2213});
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        CHECK(tasks->get_motor_policy().get_target_rpm() >
+              std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_LOW_RPM);
+        CHECK(tasks->get_motor_policy().get_target_rpm() <
+              std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_HIGH_RPM);
+        CHECK(tasks->get_motor_task().get_state() ==
+              motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
+        CHECK(std::holds_alternative<messages::CheckHomingStatusMessage>(
+            tasks->get_motor_queue().backing_deque.front()));
+        WHEN(
+            "checking the homing status while in the appropriate speed range") {
+            tasks->get_motor_policy().test_set_current_rpm(
+                (std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_HIGH_RPM +
+                 std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_LOW_RPM) /
+                2);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the task goes to coasting and engages the solenoid") {
+                REQUIRE(tasks->get_motor_task().get_state() ==
+                        motor_task::State::HOMING_COASTING_TO_STOP);
+                REQUIRE(tasks->get_motor_policy().test_solenoid_engaged());
+                REQUIRE(tasks->get_motor_policy().test_solenoid_current() ==
+                        std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_SOLENOID_CURRENT_INITIAL);
+                REQUIRE(tasks->get_motor_queue().backing_deque.empty());
+            }
+        }
+        WHEN(
+            "checking the homing status while not in the appropriate speed "
+            "range") {
+            tasks->get_motor_policy().test_set_current_rpm(
+                std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_HIGH_RPM * 1.1);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the task remains in moving-to-speed and waits for the rpm") {
+                REQUIRE(tasks->get_motor_task().get_state() ==
+                        motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
+                REQUIRE(!tasks->get_motor_policy().test_solenoid_engaged());
+                REQUIRE(
+                    std::holds_alternative<messages::CheckHomingStatusMessage>(
+                        tasks->get_motor_queue().backing_deque.front()));
+            }
+        }
+    }
+
+    GIVEN("a motor task in the wait-for-stop state") {
+        auto tasks = TaskBuilder::build();
+        auto run_message =
+            messages::SetRPMMessage{.id = 123, .target_rpm = 500};
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(run_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::BeginHomingMessage{.id = 2213});
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        tasks->get_motor_policy().test_set_current_rpm(tasks->get_motor_policy().get_target_rpm());
+        CHECK(tasks->get_motor_task().get_state() ==
+              motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        CHECK(tasks->get_motor_task().get_state() ==
+              motor_task::State::HOMING_COASTING_TO_STOP);
+        CHECK(tasks->get_motor_queue().backing_deque.empty());
+        WHEN("receiving an error") {
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorSystemErrorMessage{.errors = 0x2});
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the task goes to homed state and lowers solenoid current") {
+                REQUIRE(tasks->get_motor_task().get_state() ==
+                        motor_task::State::STOPPED_HOMED);
+                REQUIRE(tasks->get_motor_policy().test_solenoid_engaged());
+                REQUIRE(tasks->get_motor_policy().test_solenoid_current() ==
+                        std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_SOLENOID_CURRENT_HOLD);
+                REQUIRE(tasks->get_motor_policy().get_target_rpm() == 0);
             }
         }
     }

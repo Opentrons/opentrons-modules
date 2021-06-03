@@ -43,6 +43,8 @@ struct SimMotorPolicy {
         static_cast<void>(current_ma);
     }
 
+    auto delay_ticks(uint16_t ticks) -> void { static_cast<void>(ticks); }
+
   private:
     int16_t rpm_setpoint = 0;
     int16_t rpm_current = 0;

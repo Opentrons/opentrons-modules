@@ -1,5 +1,8 @@
 #include <algorithm>
 #include <cstdlib>
+
+#include "FreeRTOS.h"
+#include "task.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
 #pragma GCC diagnostic ignored "-Wregister"
@@ -33,8 +36,8 @@ auto MotorPolicy::homing_solenoid_engage(uint16_t current_ma) -> void {
     // and then rescale into 8 bits with 330 ending up at 255
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     auto dac_intermediate = static_cast<uint32_t>(current_ma) * 255;
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     auto dac_val = static_cast<uint8_t>(
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         (dac_intermediate / MAX_SOLENOID_CURRENT_MA) & 0xff);
     motor_hardware_solenoid_drive(dac_handle, dac_val);
 }
@@ -84,3 +87,6 @@ auto MotorPolicy::set_ramp_rate(int32_t rpm_per_s) -> ErrorCode {
     ramp_rate = rpm_per_s;
     return ErrorCode::NO_ERROR;
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::delay_ticks(uint16_t ticks) -> void { vTaskDelay(ticks); }

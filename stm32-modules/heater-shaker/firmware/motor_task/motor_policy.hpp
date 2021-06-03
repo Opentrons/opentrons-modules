@@ -27,6 +27,8 @@ class MotorPolicy {
     auto homing_solenoid_disengage() -> void;
     auto homing_solenoid_engage(uint16_t current_ma) -> void;
 
+    auto delay_ticks(uint16_t ticks) -> void;
+
   private:
     static constexpr uint16_t MAX_SOLENOID_CURRENT_MA = 330;
     int32_t ramp_rate = DEFAULT_RAMP_RATE_RPM_PER_S;
