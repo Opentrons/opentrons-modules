@@ -39,6 +39,7 @@ struct MotorTaskFreeRTOS {
     MCI_Handle_t *pMCI[NBR_OF_MOTORS];
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
     MCT_Handle_t *pMCT[NBR_OF_MOTORS];
+    DAC_HandleTypeDef hdac1;
 };
 
 enum class Notifications : uint8_t {
@@ -78,9 +79,10 @@ void run(void *param) {
         &_local_task.hadc1, &_local_task.hadc2, &_local_task.htim1,
         &_local_task.htim2,
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-        _local_task.pMCI, _local_task.pMCT);
+        _local_task.pMCI, _local_task.pMCT,
+        &_local_task.hdac1);
 
-    auto policy = MotorPolicy(_local_task.pMCI[0]);
+    auto policy = MotorPolicy(_local_task.pMCI[0], &_local_task.hdac1);
     while (true) {
         _task.run_once(policy);
     }

@@ -6,6 +6,8 @@
 #include "drive_parameters.h"
 #include "mc_interface.h"
 #include "mc_stm_types.h"
+#include "stm32f3xx_hal.h"
+#include "motor_hardware.h"
 #pragma GCC diagnostic pop
 
 #include "heater-shaker/errors.hpp"
@@ -13,13 +15,22 @@
 
 using namespace errors;
 
-MotorPolicy::MotorPolicy(MCI_Handle_t *handle) : motor_handle(handle) {}
+MotorPolicy::MotorPolicy(MCI_Handle_t *handle, DAC_HandleTypeDef* dac1) : motor_handle(handle), dac_handle(dac1) {}
 
-auto MotorPolicy::homing_solenoid_disengage() -> void {}
+auto MotorPolicy::homing_solenoid_disengage() -> void {
+    motor_hardware_solenoid_release(dac_handle);
+}
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::homing_solenoid_engage(uint16_t current_ma) -> void {
-    static_cast<void>(current_ma);
+    // hardware has a 1ohm sense resistor and the driver has an implicit 10x divider.
+    // the dac can express a max of 3.3V, so the maximum current we can drive is 330mA
+    // at 3.3V/dac fullscale of 255.
+    // we can therefore clamp the current input to 330
+    current_ma = ((current_ma > 330) ? 330 : current_ma);
+    // and then rescale into 8 bits with 330 ending up at 255
+    uint32_t dac_intermediate = current_ma * 255;
+    uint8_t dac_val = (uint8_t)((dac_intermediate / 330) & 0xff);
+    motor_hardware_solenoid_drive(dac_handle, dac_val);
 }
 
 auto MotorPolicy::set_rpm(int16_t rpm) -> ErrorCode {

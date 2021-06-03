@@ -9,9 +9,11 @@ extern "C" {
 
 void motor_hardware_setup(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2,
                           TIM_HandleTypeDef* tim1, TIM_HandleTypeDef* tim2,
-                          MCI_Handle_t* mci[], MCT_Handle_t* mct[]);
+                          MCI_Handle_t* mci[], MCT_Handle_t* mct[],
+                          DAC_HandleTypeDef* dac1);
 
-void motor_hardware_solenoid_set(bool on);
+void motor_hardware_solenoid_drive(DAC_HandleTypeDef* dac1, uint8_t dacval);
+void motor_hardware_solenoid_release(DAC_HandleTypeDef* dac1);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 
@@ -73,6 +75,11 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 #define SOLENOID_1_Pin GPIO_PIN_6
 #define SOLENOID_2_Port GPIOC
 #define SOLENOID_2_Pin GPIO_PIN_7
+// Pin A5 / DAC1_OUT2 is the DAC output channel that controls the reference
+// voltage for the solenoid current limiter
+#define SOLENOID_VREF_Port GPIOA
+#define SOLENOID_VREF_Pin GPIO_PIN_5
+#define SOLENOID_DAC_CHANNEL DAC_CHANNEL_2
 
 #ifdef __cplusplus
 }  // extern "C"

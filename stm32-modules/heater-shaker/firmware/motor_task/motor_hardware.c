@@ -383,6 +383,26 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(SOLENOID_1_Port, &GPIO_InitStruct);
   HAL_GPIO_WritePin(SOLENOID_1_Port, SOLENOID_1_Pin | SOLENOID_2_Pin, GPIO_PIN_RESET);
+  GPIO_InitStruct.Pin = SOLENOID_VREF_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(SOLENOID_VREF_Port, &GPIO_InitStruct);
+
+}
+
+static void DAC_Init(DAC_HandleTypeDef* dac) {
+  __HAL_RCC_DAC1_CLK_ENABLE();
+  dac->Instance = DAC1;
+  if (HAL_OK != HAL_DAC_Init(dac)) {
+    Error_Handler();
+  }
+  DAC_ChannelConfTypeDef chan_config = {
+     .DAC_Trigger = DAC_TRIGGER_NONE,
+     .DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE,
+  };
+  HAL_DAC_ConfigChannel(dac, &chan_config, SOLENOID_DAC_CHANNEL);
+  HAL_DAC_Start(dac, SOLENOID_DAC_CHANNEL);
+  HAL_DAC_SetValue(dac, SOLENOID_DAC_CHANNEL, DAC_ALIGN_8B_R, 0);
 }
 
 
@@ -710,20 +730,28 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
 
 void motor_hardware_setup(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2,
                           TIM_HandleTypeDef* tim1, TIM_HandleTypeDef* tim2,
-                          MCI_Handle_t* mci[], MCT_Handle_t* mct[]) {
+                          MCI_Handle_t* mci[], MCT_Handle_t* mct[],
+                          DAC_HandleTypeDef* dac1) {
   MX_GPIO_Init();
   MX_ADC1_Init(adc1);
   MX_ADC2_Init(adc2);
   MX_TIM1_Init(tim1);
   MX_TIM2_Init(tim2);
+  DAC_Init(dac1);
   MCboot(mci,mct);
 
   /* Initialize interrupts */
   MX_NVIC_Init();
 }
 
-void motor_hardware_solenoid_set(bool on) {
-  HAL_GPIO_WritePin(SOLENOID_Port, SOLENOID_Pin, on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+void motor_hardware_solenoid_drive(DAC_HandleTypeDef* dac1, uint8_t dacval) {
+    HAL_DAC_SetValue(dac1, SOLENOID_DAC_CHANNEL, DAC_ALIGN_8B_R, dacval);
+    HAL_GPIO_WritePin(SOLENOID_1_Port, SOLENOID_1_Pin, GPIO_PIN_SET);
+}
+
+void motor_hardware_solenoid_release(DAC_HandleTypeDef* dac1) {
+  HAL_GPIO_WritePin(SOLENOID_1_Port, SOLENOID_1_Pin, GPIO_PIN_RESET);
+  HAL_DAC_SetValue(dac1, SOLENOID_DAC_CHANNEL, DAC_ALIGN_8B_R, 0);
 }
 
 void Error_Handler() {
