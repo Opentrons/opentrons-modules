@@ -17,6 +17,7 @@ MotorPolicy::MotorPolicy(MCI_Handle_t *handle) : motor_handle(handle) {}
 
 auto MotorPolicy::homing_solenoid_disengage() -> void {}
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::homing_solenoid_engage(uint16_t current_ma) -> void {
     static_cast<void>(current_ma);
 }

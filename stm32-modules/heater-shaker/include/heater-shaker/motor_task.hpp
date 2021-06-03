@@ -47,6 +47,7 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     { p.set_ramp_rate(static_cast<int32_t>(8)) }
     ->std::same_as<errors::ErrorCode>;
     {p.homing_solenoid_disengage()};
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.homing_solenoid_engage(122)};
 };
 
@@ -72,6 +73,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
   public:
     static constexpr uint16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 500;
     static constexpr uint16_t HOMING_ROTATION_LIMIT_LOW_RPM = 250;
+    static constexpr uint16_t HOMING_ROTATION_LOW_MARGIN = 50;
     using Queue = QueueImpl<Message>;
     explicit MotorTask(Queue& q)
         : state{.status = State::STOPPED_UNKNOWN},
@@ -191,11 +193,12 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::BeginHomingMessage& msg, Policy& policy)
         -> void {
+        static_cast<void>(msg);
         state.status = State::HOMING;
         if ((policy.get_current_rpm() > HOMING_ROTATION_LIMIT_HIGH_RPM) ||
             (policy.get_current_rpm() < HOMING_ROTATION_LIMIT_LOW_RPM)) {
             policy.homing_solenoid_disengage();
-            policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM + 50);
+            policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM + HOMING_ROTATION_LOW_MARGIN);
         }
     }
 
