@@ -46,8 +46,8 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.stop()};
     { p.set_ramp_rate(static_cast<int32_t>(8)) }
     ->std::same_as<errors::ErrorCode>;
-    { p.homing_solenoid_disengage() };
-    { p.homing_solenoid_engage(122) };
+    {p.homing_solenoid_disengage()};
+    {p.homing_solenoid_engage(122)};
 };
 
 struct State {
@@ -69,7 +69,7 @@ template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     static constexpr const uint32_t WAIT_TIME_TICKS = 100;
 
-    public:
+  public:
     static constexpr uint16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 500;
     static constexpr uint16_t HOMING_ROTATION_LIMIT_LOW_RPM = 250;
     using Queue = QueueImpl<Message>;
@@ -192,25 +192,26 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     auto visit_message(const messages::BeginHomingMessage& msg, Policy& policy)
         -> void {
         state.status = State::HOMING;
-        if ((policy.get_current_rpm() > HOMING_ROTATION_LIMIT_HIGH_RPM)
-            || (policy.get_current_rpm() < HOMING_ROTATION_LIMIT_LOW_RPM)) {
+        if ((policy.get_current_rpm() > HOMING_ROTATION_LIMIT_HIGH_RPM) ||
+            (policy.get_current_rpm() < HOMING_ROTATION_LIMIT_LOW_RPM)) {
             policy.homing_solenoid_disengage();
             policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM + 50);
         }
     }
 
     template <typename Policy>
-    auto visit_message(const messages::ActuateSolenoidMessage& msg, Policy& policy) -> void {
+    auto visit_message(const messages::ActuateSolenoidMessage& msg,
+                       Policy& policy) -> void {
         state.status = State::STOPPED_UNKNOWN;
         if (msg.current_ma == 0) {
             policy.homing_solenoid_disengage();
         } else {
             policy.homing_solenoid_engage(static_cast<double>(msg.current_ma));
         }
-        auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        static_cast<void>(
-            task_registry->comms->get_message_queue().try_send(
-                messages::HostCommsMessage(response)));
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
     }
     State state;
     Queue& message_queue;

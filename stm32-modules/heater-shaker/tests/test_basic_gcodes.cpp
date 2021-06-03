@@ -66,8 +66,8 @@ TEMPLATE_TEST_CASE("gcodes without parameters parse", "[gcode][parse]",
 TEMPLATE_TEST_CASE("gcode responses without parameters generate",
                    "[gcode][response]", gcode::SetRPM, gcode::SetTemperature,
                    gcode::SetHeaterPowerTest, gcode::SetHeaterPIDConstants,
-                   gcode::SetAcceleration, gcode::EnterBootloader,
-                   gcode::Home, gcode::ActuateSolenoid) {
+                   gcode::SetAcceleration, gcode::EnterBootloader, gcode::Home,
+                   gcode::ActuateSolenoid) {
     SECTION("responses won't write into zero-size buffers") {
         std::string buffer(10, 'c');
         auto res =

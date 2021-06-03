@@ -1,5 +1,5 @@
-#ifndef __HARDWARE_SETUP_H
-#define __HARDWARE_SETUP_H
+#ifndef __MOTOR_HARDWARE_H
+#define __MOTOR_HARDWARE_H
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
@@ -63,4 +63,4 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
-#endif  // __HARDWARE_SETUP_H
+#endif  // __MOTOR_HARDWARE_H

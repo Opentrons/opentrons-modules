@@ -21,9 +21,9 @@ extern "C" {
 #pragma GCC diagnostic pop
 
 #include "firmware/freertos_message_queue.hpp"
-#include "hardware_setup.h"
 #include "heater-shaker/motor_task.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "motor_hardware.h"
 #include "motor_policy.hpp"
 
 namespace motor_control_task {

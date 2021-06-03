@@ -21,7 +21,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "hardware_setup.h"
+#include "motor_hardware.h"
 #include "parameters_conversion.h"
 
 #include "r3_2_f30x_pwm_curr_fdbk.h"

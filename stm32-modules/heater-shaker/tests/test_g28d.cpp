@@ -6,7 +6,6 @@
 #include "heater-shaker/gcodes.hpp"
 #pragma GCC diagnostic pop
 
-
 SCENARIO("ActuateSolenoid (G28.D) parser works", "[gcode][parse][g28.d]") {
     GIVEN("a string with prefix only") {
         std::string to_parse = "G28.D S\n";

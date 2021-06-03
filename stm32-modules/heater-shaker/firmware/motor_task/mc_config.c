@@ -16,7 +16,7 @@
   *
   ******************************************************************************
   */
-#include "hardware_setup.h"
+#include "motor_hardware.h"
 #include "mc_type.h"
 #include "parameters_conversion.h"
 #include "mc_parameters.h"

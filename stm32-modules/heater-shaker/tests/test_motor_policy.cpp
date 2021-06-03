@@ -47,7 +47,6 @@ auto TestMotorPolicy::test_set_rpm_return_code(errors::ErrorCode error)
     set_rpm_return = error;
 }
 
-
 auto TestMotorPolicy::homing_solenoid_disengage() -> void {
     solenoid_engaged = false;
 }

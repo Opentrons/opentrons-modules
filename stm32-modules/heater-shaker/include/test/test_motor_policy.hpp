@@ -27,8 +27,7 @@ class TestMotorPolicy {
     auto test_set_rpm_return_code(errors::ErrorCode code) -> void;
     auto test_set_ramp_rate_return_code(errors::ErrorCode code) -> void;
 
-    private:
-
+  private:
     int16_t target_rpm;
     int16_t current_rpm;
     int32_t ramp_rate;

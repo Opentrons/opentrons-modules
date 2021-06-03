@@ -335,7 +335,8 @@ struct ActuateSolenoid {
     ** disengage.
     */
     using ParseResult = std::optional<ActuateSolenoid>;
-    static constexpr auto prefix = std::array{'G', '2', '8', '.', 'D', ' ', 'S'};
+    static constexpr auto prefix =
+        std::array{'G', '2', '8', '.', 'D', ' ', 'S'};
     static constexpr const char* response = "G28.D OK\n";
 
     uint16_t current_ma;
@@ -355,8 +356,9 @@ struct ActuateSolenoid {
         }
 
         return std::make_pair(
-            ParseResult(ActuateSolenoid{
-                .current_ma=current_ma_parse.first.value()}), current_ma_parse.second);
+            ParseResult(
+                ActuateSolenoid{.current_ma = current_ma_parse.first.value()}),
+            current_ma_parse.second);
     }
 
     template <typename InputIt, typename InputLimit>

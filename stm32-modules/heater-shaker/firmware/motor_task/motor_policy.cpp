@@ -15,9 +15,7 @@ using namespace errors;
 
 MotorPolicy::MotorPolicy(MCI_Handle_t *handle) : motor_handle(handle) {}
 
-auto MotorPolicy::homing_solenoid_disengage() -> void {
-
-}
+auto MotorPolicy::homing_solenoid_disengage() -> void {}
 
 auto MotorPolicy::homing_solenoid_engage(uint16_t current_ma) -> void {
     static_cast<void>(current_ma);

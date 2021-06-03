@@ -1,6 +1,6 @@
 #include "stm32f3xx_hal.h"
 #include "parameters_conversion.h"
-#include "hardware_setup.h"
+#include "motor_hardware.h"
 #include "mc_tuning.h"
 #include "mc_interface.h"
 #include "mc_tasks.h"

@@ -366,7 +366,6 @@ SCENARIO("motor task homing", "[motor][homing]") {
     }
 }
 
-
 SCENARIO("motor task debug solenoid handling", "[motor][debug]") {
     GIVEN("a motor task") {
         auto tasks = TaskBuilder::build();
@@ -377,29 +376,34 @@ SCENARIO("motor task debug solenoid handling", "[motor][debug]") {
                 messages::MotorMessage(solenoid_message));
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task actuates the solenoid") {
-                REQUIRE(tasks->get_motor_policy().test_solenoid_engaged() == true);
-                REQUIRE(tasks->get_motor_policy().test_solenoid_current() == solenoid_message.current_ma);
+                REQUIRE(tasks->get_motor_policy().test_solenoid_engaged() ==
+                        true);
+                REQUIRE(tasks->get_motor_policy().test_solenoid_current() ==
+                        solenoid_message.current_ma);
             }
             THEN("the task sends a response") {
                 REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
-                auto ack = std::get<messages::AcknowledgePrevious>(tasks->get_host_comms_queue().backing_deque.front());
+                auto ack = std::get<messages::AcknowledgePrevious>(
+                    tasks->get_host_comms_queue().backing_deque.front());
                 tasks->get_host_comms_queue().backing_deque.pop_front();
                 REQUIRE(ack.responding_to_id == solenoid_message.id);
                 REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
             }
-
         }
         WHEN("deactivating the solenoid through the debug mechanism") {
             auto solenoid_message =
-                messages::ActuateSolenoidMessage{.id=221, .current_ma = 0};
-            tasks->get_motor_queue().backing_deque.push_back(messages::MotorMessage(solenoid_message));
+                messages::ActuateSolenoidMessage{.id = 221, .current_ma = 0};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(solenoid_message));
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task deactivates the solenoid") {
-                REQUIRE(tasks->get_motor_policy().test_solenoid_engaged() == false);
+                REQUIRE(tasks->get_motor_policy().test_solenoid_engaged() ==
+                        false);
             }
             THEN("the task sends a response") {
                 REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
-                auto ack = std::get<messages::AcknowledgePrevious>(tasks->get_host_comms_queue().backing_deque.front());
+                auto ack = std::get<messages::AcknowledgePrevious>(
+                    tasks->get_host_comms_queue().backing_deque.front());
                 tasks->get_host_comms_queue().backing_deque.pop_front();
                 REQUIRE(ack.responding_to_id == solenoid_message.id);
                 REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);

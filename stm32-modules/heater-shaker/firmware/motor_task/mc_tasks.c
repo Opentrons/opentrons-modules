@@ -19,7 +19,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "hardware_setup.h"
+#include "motor_hardware.h"
 #include "mc_type.h"
 #include "mc_math.h"
 #include "regular_conversion_manager.h"
