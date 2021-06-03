@@ -389,9 +389,11 @@ SCENARIO("motor task homing", "[motor][homing]") {
             messages::BeginHomingMessage{.id = 2213});
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
         CHECK(tasks->get_motor_policy().get_target_rpm() >
-              std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_LOW_RPM);
+              std::remove_cvref_t<decltype(
+                  tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_LOW_RPM);
         CHECK(tasks->get_motor_policy().get_target_rpm() <
-              std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_HIGH_RPM);
+              std::remove_cvref_t<decltype(
+                  tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_HIGH_RPM);
         CHECK(tasks->get_motor_task().get_state() ==
               motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
         CHECK(std::holds_alternative<messages::CheckHomingStatusMessage>(
@@ -399,8 +401,10 @@ SCENARIO("motor task homing", "[motor][homing]") {
         WHEN(
             "checking the homing status while in the appropriate speed range") {
             tasks->get_motor_policy().test_set_current_rpm(
-                (std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_HIGH_RPM +
-                 std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_LOW_RPM) /
+                (std::remove_cvref_t<decltype(
+                     tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_HIGH_RPM +
+                 std::remove_cvref_t<decltype(
+                     tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_LOW_RPM) /
                 2);
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task goes to coasting and engages the solenoid") {
@@ -408,7 +412,8 @@ SCENARIO("motor task homing", "[motor][homing]") {
                         motor_task::State::HOMING_COASTING_TO_STOP);
                 REQUIRE(tasks->get_motor_policy().test_solenoid_engaged());
                 REQUIRE(tasks->get_motor_policy().test_solenoid_current() ==
-                        std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_SOLENOID_CURRENT_INITIAL);
+                        std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                            HOMING_SOLENOID_CURRENT_INITIAL);
                 REQUIRE(tasks->get_motor_queue().backing_deque.empty());
             }
         }
@@ -416,7 +421,9 @@ SCENARIO("motor task homing", "[motor][homing]") {
             "checking the homing status while not in the appropriate speed "
             "range") {
             tasks->get_motor_policy().test_set_current_rpm(
-                std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_HIGH_RPM * 1.1);
+                std::remove_cvref_t<decltype(
+                    tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_HIGH_RPM *
+                1.1);
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task remains in moving-to-speed and waits for the rpm") {
                 REQUIRE(tasks->get_motor_task().get_state() ==
@@ -439,7 +446,8 @@ SCENARIO("motor task homing", "[motor][homing]") {
         tasks->get_motor_queue().backing_deque.push_back(
             messages::BeginHomingMessage{.id = 2213});
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_motor_policy().test_set_current_rpm(tasks->get_motor_policy().get_target_rpm());
+        tasks->get_motor_policy().test_set_current_rpm(
+            tasks->get_motor_policy().get_target_rpm());
         CHECK(tasks->get_motor_task().get_state() ==
               motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
@@ -455,7 +463,8 @@ SCENARIO("motor task homing", "[motor][homing]") {
                         motor_task::State::STOPPED_HOMED);
                 REQUIRE(tasks->get_motor_policy().test_solenoid_engaged());
                 REQUIRE(tasks->get_motor_policy().test_solenoid_current() ==
-                        std::remove_cvref_t<decltype(tasks->get_motor_task())>::HOMING_SOLENOID_CURRENT_HOLD);
+                        std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                            HOMING_SOLENOID_CURRENT_HOLD);
                 REQUIRE(tasks->get_motor_policy().get_target_rpm() == 0);
             }
         }

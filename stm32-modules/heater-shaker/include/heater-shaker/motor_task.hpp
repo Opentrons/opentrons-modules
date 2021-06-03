@@ -198,6 +198,34 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
         }
     }
 
+    /**
+     * CheckHomingStatusMessage and BeginHomingMessage are the two main
+     * components of the home sequence state machine. This task is designed to
+     * react to messages, which means it really doesn't want to wait forever
+     * doing complex tasks - it wants to do something quick and exit to handle
+     * more messages. For something like the homing state machine, though, we
+     * have some possibly-long-running sequences, like
+     * - Set low speed
+     * - wait until that happens
+     * - set solenoid
+     * - wait until the motor driver says we stalled
+     *
+     * So we replace any wait states with repeatedly sending ourselves another
+     * CheckHomingStatusMessage. Because we talk with queues, we won't spinlock
+     * ourselves - any messages sent asynchronously will get enqueued and
+     * handled eventually, and we'll wait a bit always in between runs - but we
+     * still do a bit of a sleep because otherwise we'd run every tick.
+     *
+     * So, the sequence is
+     * - Get a BeginHomingMessage and take the quick actions of setting an RPM
+     * target and doublechecking the solenoid is disengaged, then send ourselves
+     * a check-status
+     * - When we get a check-status, go from moving-to-speed to coasting-to-stop
+     * if we can and otherwise send another check-status
+     * - When in coasting-to-stop, just wait for errors, which the motor driver
+     * will send us
+     * */
+
     template <typename Policy>
     auto visit_message(const messages::CheckHomingStatusMessage& msg,
                        Policy& policy) -> void {
