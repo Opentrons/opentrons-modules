@@ -443,8 +443,9 @@ SCENARIO("motor task homing", "[motor][homing]") {
         tasks->get_motor_queue().backing_deque.push_back(
             messages::MotorMessage(run_message));
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_motor_queue().backing_deque.push_back(
-            messages::BeginHomingMessage{.id = 2213});
+        tasks->get_host_comms_queue().backing_deque.clear();
+        auto homing_message = messages::BeginHomingMessage{.id = 2213};
+        tasks->get_motor_queue().backing_deque.push_back(homing_message);
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
         tasks->get_motor_policy().test_set_current_rpm(
             tasks->get_motor_policy().get_target_rpm());
@@ -466,6 +467,9 @@ SCENARIO("motor task homing", "[motor][homing]") {
                         std::remove_cvref_t<decltype(tasks->get_motor_task())>::
                             HOMING_SOLENOID_CURRENT_HOLD);
                 REQUIRE(tasks->get_motor_policy().get_target_rpm() == 0);
+                auto ack = std::get<messages::AcknowledgePrevious>(
+                    tasks->get_host_comms_queue().backing_deque.front());
+                REQUIRE(ack.responding_to_id == homing_message.id);
             }
         }
     }

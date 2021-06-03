@@ -67,6 +67,11 @@ auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
         } catch (const SimMotorTask::Queue::StopDuringMsgWait& sdmw) {
             return;
         }
+        if (tcb->task.get_state() ==
+            motor_task::State::HOMING_COASTING_TO_STOP) {
+            static_cast<void>(tcb->queue.try_send(
+                messages::MotorSystemErrorMessage{.errors = 2}));
+        }
     }
 }
 

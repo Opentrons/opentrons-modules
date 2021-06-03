@@ -179,6 +179,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
             policy.homing_solenoid_engage(HOMING_SOLENOID_CURRENT_HOLD);
             policy.stop();
             state.status = State::STOPPED_HOMED;
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    messages::AcknowledgePrevious{.responding_to_id =
+                                                      cached_home_id}));
         } else {
             for (auto offset = static_cast<uint8_t>(
                      errors::MotorErrorOffset::FOC_DURATION);
@@ -246,12 +250,12 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::BeginHomingMessage& msg, Policy& policy)
         -> void {
-        static_cast<void>(msg);
         state.status = State::HOMING_MOVING_TO_HOME_SPEED;
         policy.homing_solenoid_disengage();
         policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM +
                        HOMING_ROTATION_LOW_MARGIN);
         policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
+        cached_home_id = msg.id;
         static_cast<void>(
             get_message_queue().try_send(messages::CheckHomingStatusMessage{}));
     }
@@ -273,6 +277,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     State state;
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
+    uint32_t cached_home_id = 0;
 };
 
 };  // namespace motor_task
