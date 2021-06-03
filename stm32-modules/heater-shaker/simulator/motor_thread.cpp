@@ -37,9 +37,7 @@ struct SimMotorPolicy {
         return errors::ErrorCode::NO_ERROR;
     }
 
-    auto homing_solenoid_disengage() const -> void {
-
-    }
+    auto homing_solenoid_disengage() const -> void {}
 
     auto homing_solenoid_engage(uint16_t current_ma) const -> void {
         static_cast<void>(current_ma);

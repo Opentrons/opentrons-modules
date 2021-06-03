@@ -17,7 +17,7 @@ class MotorPolicy {
     static constexpr int32_t MAX_RAMP_RATE_RPM_PER_S = 20000;
     static constexpr int32_t MIN_RAMP_RATE_RPM_PER_S = 1;
     MotorPolicy() = delete;
-    MotorPolicy(MCI_Handle_t *handle, DAC_HandleTypeDef* dac1);
+    MotorPolicy(MCI_Handle_t *handle, DAC_HandleTypeDef *dac1);
     auto set_rpm(int16_t rpm) -> errors::ErrorCode;
     [[nodiscard]] auto get_current_rpm() const -> int16_t;
     [[nodiscard]] auto get_target_rpm() const -> int16_t;
@@ -28,6 +28,7 @@ class MotorPolicy {
     auto homing_solenoid_engage(uint16_t current_ma) -> void;
 
   private:
+    static constexpr uint16_t MAX_SOLENOID_CURRENT_MA = 330;
     int32_t ramp_rate = DEFAULT_RAMP_RATE_RPM_PER_S;
     MCI_Handle_t *motor_handle;
     DAC_HandleTypeDef *dac_handle;

@@ -198,7 +198,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
         if ((policy.get_current_rpm() > HOMING_ROTATION_LIMIT_HIGH_RPM) ||
             (policy.get_current_rpm() < HOMING_ROTATION_LIMIT_LOW_RPM)) {
             policy.homing_solenoid_disengage();
-            policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM + HOMING_ROTATION_LOW_MARGIN);
+            policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM +
+                           HOMING_ROTATION_LOW_MARGIN);
         }
     }
 
