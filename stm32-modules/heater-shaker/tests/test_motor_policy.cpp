@@ -71,3 +71,12 @@ auto TestMotorPolicy::test_get_last_delay() const -> uint16_t {
 auto TestMotorPolicy::delay_ticks(uint16_t ticks) -> void {
     last_delay = ticks;
 }
+
+auto TestMotorPolicy::plate_lock_set_power(float power) -> void {
+    plate_lock_power = power;
+    plate_lock_enabled = true;
+}
+
+auto TestMotorPolicy::plate_lock_disable() -> void {
+    plate_lock_enabled = false;
+}

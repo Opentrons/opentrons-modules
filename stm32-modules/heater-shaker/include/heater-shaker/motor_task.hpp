@@ -51,6 +51,9 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.homing_solenoid_engage(122)};
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.delay_ticks(10)};
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    {p.plate_lock_set_power(0.1)};
+    {p.plate_lock_disable()};
 };
 
 struct State {

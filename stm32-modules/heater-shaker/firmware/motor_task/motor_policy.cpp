@@ -90,3 +90,10 @@ auto MotorPolicy::set_ramp_rate(int32_t rpm_per_s) -> ErrorCode {
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::delay_ticks(uint16_t ticks) -> void { vTaskDelay(ticks); }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::plate_lock_set_power(float power) -> void {
+    static_cast<void>(power);
+}
+
+auto MotorPolicy::plate_lock_disable() -> void {}

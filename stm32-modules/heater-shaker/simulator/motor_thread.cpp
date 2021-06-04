@@ -45,6 +45,10 @@ struct SimMotorPolicy {
 
     auto delay_ticks(uint16_t ticks) -> void { static_cast<void>(ticks); }
 
+    auto plate_lock_set_power(float power) -> void { static_cast<void>(power); }
+
+    auto plate_lock_disable() -> void {}
+
   private:
     int16_t rpm_setpoint = 0;
     int16_t rpm_current = 0;

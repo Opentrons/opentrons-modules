@@ -585,20 +585,24 @@ struct DebugControlPlateLockMotor {
      * Acknowledged immediately upon receipt
      * */
     using ParseResult = std::optional<DebugControlPlateLockMotor>;
-    static constexpr auto prefix = std::array{'M', '2', '4', '0', '.', 'D', ' ', 'S'};
+    static constexpr auto prefix =
+        std::array{'M', '2', '4', '0', '.', 'D', ' ', 'S'};
     static constexpr const char* response = "M240.D OK\n";
 
     float power;
 
     template <typename InputIt, typename InLimit>
-    requires std::forward_iterator<InputIt> && std::sized_sentinel_for<InputIt, InLimit> static auto
-    write_response_into(InputIt write_to_buf, InLimit write_to_limit){
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputIt, InLimit> static auto
+        write_response_into(InputIt write_to_buf, InLimit write_to_limit) {
         return write_string_to_iterpair(write_to_buf, write_to_limit, response);
     }
 
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&std::sized_sentinel_for<Limit, InputIt> static auto
-    parse(const InputIt& input, Limit limit) -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<Limit, InputIt> static auto
+        parse(const InputIt& input, Limit limit)
+            -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -607,7 +611,9 @@ struct DebugControlPlateLockMotor {
         if (!power_res.first.has_value() || power_res.second == working) {
             return std::make_pair(ParseResult(), input);
         }
-        return std::make_pair(ParseResult(DebugControlPlateLockMotor{.power = power_res.first.value()}), power_res.second);
+        return std::make_pair(ParseResult(DebugControlPlateLockMotor{
+                                  .power = power_res.first.value()}),
+                              power_res.second);
     }
 };
 

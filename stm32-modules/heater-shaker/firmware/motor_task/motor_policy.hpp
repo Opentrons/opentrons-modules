@@ -29,6 +29,9 @@ class MotorPolicy {
 
     auto delay_ticks(uint16_t ticks) -> void;
 
+    auto plate_lock_set_power(float power) -> void;
+    auto plate_lock_disable() -> void;
+
   private:
     static constexpr uint16_t MAX_SOLENOID_CURRENT_MA = 330;
     int32_t ramp_rate = DEFAULT_RAMP_RATE_RPM_PER_S;

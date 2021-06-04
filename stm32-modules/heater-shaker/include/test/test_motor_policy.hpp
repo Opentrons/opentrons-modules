@@ -20,6 +20,9 @@ class TestMotorPolicy {
 
     auto delay_ticks(uint16_t ticks) -> void;
 
+    auto plate_lock_set_power(float power) -> void;
+    auto plate_lock_disable() -> void;
+
     [[nodiscard]] auto test_solenoid_engaged() const -> bool;
     [[nodiscard]] auto test_solenoid_current() const -> uint16_t;
 
@@ -30,6 +33,9 @@ class TestMotorPolicy {
     auto test_set_ramp_rate_return_code(errors::ErrorCode code) -> void;
     [[nodiscard]] auto test_get_last_delay() const -> uint16_t;
 
+    [[nodiscard]] auto test_plate_lock_get_power() const -> float;
+    [[nodiscard]] auto test_plate_lock_enabled() const -> bool;
+
   private:
     int16_t target_rpm;
     int16_t current_rpm;
@@ -39,4 +45,6 @@ class TestMotorPolicy {
     bool solenoid_engaged = false;
     uint16_t solenoid_current = 0;
     uint16_t last_delay = 0;
+    float plate_lock_power = 0;
+    bool plate_lock_enabled = false;
 };
