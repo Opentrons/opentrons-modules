@@ -127,6 +127,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::SetRPMMessage& msg, Policy& policy)
         -> void {
+        policy.homing_solenoid_disengage();
         auto error = policy.set_rpm(msg.target_rpm);
         state.status = State::RUNNING;
         auto response = messages::AcknowledgePrevious{
