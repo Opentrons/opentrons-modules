@@ -345,6 +345,24 @@ static void MX_TIM2_Init(TIM_HandleTypeDef* tim2)
 
 }
 
+static void PlateLockTIM_Init(TIM_HandleTypeDef* tim3) {
+  tim3->instance = PLATE_LOCK_TIM;
+  tim3->Init.Prescaler = 0;
+  tim3->Init.CounterMode = TIM_COUNTERMODE_UP;
+  tim3->Init.Period = 65535;
+  tim3->Init.CLockDivision = TIM_CLOCKDIVISION_DIV1;
+  tim3->Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  HAL_TIM_PWM_Init(tim3);
+  TIM_OC_InitTypeDef chan_config = {
+  .OCMode = TIM_OCMODE_FORCED_INACTIVE,
+  .Pulse = 0,
+  .OCPolarity = TIM_OCPOLARITY_HIGH,
+  .OCNPolarity = TIM_OCNPOLARITY_HIGH,
+};
+  HAL_TIM_OC_ConfigChannel(tim3, &chan_config, PLATE_LOCK_IN_1_Chan);
+  HAL_TIM_OC_ConfigChannel(tim3, &chan_config, PLATE_LOCK_IN_2_Chan);
+}
+
 /**
   * @brief GPIO Initialization Function
   * @param None
@@ -360,6 +378,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
 
 
   /*Configure GPIO pin Output Level */
@@ -387,6 +406,23 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(SOLENOID_VREF_Port, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = PLATE_LOCK_IN_1_Pin | PLATE_LOCK_IN_2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
+  HAL_GPIO_Init(PLATE_LOCK_Port, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = PLATE_LOCK_NSLEEP_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(PLATE_LOCK_Port, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(PLATE_LOCK_PORT, PLATE_LOCK_NSLEEP_Pin);
+
+  GPIO_InitStruct.Pin = PLATE_LOCK_NFAULT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(PLATE_LOCK_Port, &GPIO_InitStruct);
 
 }
 

@@ -81,6 +81,16 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 #define SOLENOID_VREF_Pin GPIO_PIN_5
 #define SOLENOID_DAC_CHANNEL DAC_CHANNEL_2
 
+#define PLATE_LOCK_TIM TIM3
+#define PLATE_LOCK_Port GPIOE
+#define PLATE_LOCK_NSLEEP_Pin GPIO_PIN_5
+#define PLATE_LOCK_IN_1_Pin GPIO_PIN_2
+#define PLATE_LOCK_IN_1_Chan TIM_CHANNEL_1
+#define PLATE_LOCK_IN_2_Pin GPIO_PIN_3
+#define PLATE_LOCK_IN_2_Chan TIM_CHANNEL_2
+#define PLATE_LOCK_NFAULT_Pin GPIO_PIN_6
+
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
