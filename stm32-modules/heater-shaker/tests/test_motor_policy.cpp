@@ -80,3 +80,11 @@ auto TestMotorPolicy::plate_lock_set_power(float power) -> void {
 auto TestMotorPolicy::plate_lock_disable() -> void {
     plate_lock_enabled = false;
 }
+
+auto TestMotorPolicy::test_plate_lock_get_power() const -> float {
+    return plate_lock_power;
+}
+
+auto TestMotorPolicy::test_plate_lock_enabled() const -> bool {
+    return plate_lock_enabled;
+}

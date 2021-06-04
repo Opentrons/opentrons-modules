@@ -546,3 +546,92 @@ SCENARIO("motor task debug solenoid handling", "[motor][debug]") {
         }
     }
 }
+
+SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
+    GIVEN("a motor task with the lock off") {
+        auto tasks = TaskBuilder::build();
+        CHECK(!tasks->get_motor_policy().test_plate_lock_enabled());
+        WHEN("activating the plate lock through the debug mechanism") {
+            auto lock_message =
+                messages::SetPlateLockPowerMessage{.id = 123, .power = 0.5};
+            tasks->get_motor_queue().backing_deque.push_back(lock_message);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the lock should be on at the right power") {
+                REQUIRE(tasks->get_motor_policy().test_plate_lock_enabled());
+                REQUIRE(tasks->get_motor_policy().test_plate_lock_get_power() ==
+                        lock_message.power);
+            }
+            THEN("the message should be acknowledged") {
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .responding_to_id == lock_message.id);
+            }
+        }
+        WHEN("deactivating the plate lock through the debug mechanism") {
+            auto lock_message =
+                messages::SetPlateLockPowerMessage{.id = 123, .power = 0.0};
+            tasks->get_motor_queue().backing_deque.push_back(lock_message);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the lock should still be off") {
+                REQUIRE(!tasks->get_motor_policy().test_plate_lock_enabled());
+            }
+            THEN("the message should be acknowledged") {
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .responding_to_id == lock_message.id);
+            }
+        }
+    }
+    GIVEN("a motor task with the lock on") {
+        auto tasks = TaskBuilder::build();
+        auto lock_message =
+            messages::SetPlateLockPowerMessage{.id = 123, .power = 0.5};
+        CHECK(!tasks->get_motor_policy().test_plate_lock_enabled());
+        tasks->get_motor_queue().backing_deque.push_back(lock_message);
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        CHECK(tasks->get_motor_policy().test_plate_lock_enabled());
+        CHECK(tasks->get_motor_policy().test_plate_lock_get_power() ==
+              lock_message.power);
+        tasks->get_host_comms_queue().backing_deque.clear();
+        WHEN(
+            "activating the plate lock through the debug mechanism with a "
+            "different power") {
+            auto relock_message =
+                messages::SetPlateLockPowerMessage{.id = 123, .power = -0.5};
+            tasks->get_motor_queue().backing_deque.push_back(relock_message);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the lock should be on at the right power") {
+                REQUIRE(tasks->get_motor_policy().test_plate_lock_enabled());
+                REQUIRE(tasks->get_motor_policy().test_plate_lock_get_power() ==
+                        relock_message.power);
+            }
+            THEN("the message should be acknowledged") {
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .responding_to_id == relock_message.id);
+            }
+        }
+        WHEN("deactivating the plate lock through the debug mechanism") {
+            auto unlock_message =
+                messages::SetPlateLockPowerMessage{.id = 123, .power = 0.0};
+            tasks->get_motor_queue().backing_deque.push_back(unlock_message);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the lock should now be off") {
+                REQUIRE(!tasks->get_motor_policy().test_plate_lock_enabled());
+            }
+            THEN("the message should be acknowledged") {
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .responding_to_id == unlock_message.id);
+            }
+        }
+    }
+}

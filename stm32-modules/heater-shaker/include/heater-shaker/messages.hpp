@@ -116,6 +116,11 @@ struct ActuateSolenoidMessage {
     uint16_t current_ma;
 };
 
+struct SetPlateLockPowerMessage {
+    uint32_t id;
+    float power;
+};
+
 /*
 ** Response structs either confirm actions or fulfill actions. Because some
 *messages
@@ -168,7 +173,7 @@ using MotorMessage =
     ::std::variant<std::monostate, MotorSystemErrorMessage, SetRPMMessage,
                    GetRPMMessage, SetAccelerationMessage,
                    CheckHomingStatusMessage, BeginHomingMessage,
-                   ActuateSolenoidMessage>;
+                   ActuateSolenoidMessage, SetPlateLockPowerMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious>;
 using HostCommsMessage =

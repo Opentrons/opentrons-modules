@@ -3,6 +3,7 @@
  */
 #pragma once
 
+#include <algorithm>
 #include <concepts>
 #include <variant>
 
@@ -295,6 +296,18 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::SetPlateLockPowerMessage& msg,
+                       Policy& policy) -> void {
+        if (msg.power == 0) {
+            policy.plate_lock_disable();
+        } else {
+            policy.plate_lock_set_power(std::clamp(msg.power, -1.0F, 1.0F));
+        }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::AcknowledgePrevious{.responding_to_id = msg.id}));
     }
     State state;
     Queue& message_queue;
