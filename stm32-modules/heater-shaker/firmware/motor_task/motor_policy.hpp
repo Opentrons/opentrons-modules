@@ -8,6 +8,7 @@
 #pragma GCC diagnostic ignored "-Wvolatile"
 #pragma GCC diagnostic ignored "-Wregister"
 #include "mc_interface.h"
+#include "motor_hardware.h"
 #include "stm32f3xx_hal.h"
 #pragma GCC diagnostic pop
 
@@ -17,7 +18,7 @@ class MotorPolicy {
     static constexpr int32_t MAX_RAMP_RATE_RPM_PER_S = 20000;
     static constexpr int32_t MIN_RAMP_RATE_RPM_PER_S = 1;
     MotorPolicy() = delete;
-    MotorPolicy(MCI_Handle_t *handle, DAC_HandleTypeDef *dac1);
+    explicit MotorPolicy(motor_hardware_handles* handles);
     auto set_rpm(int16_t rpm) -> errors::ErrorCode;
     [[nodiscard]] auto get_current_rpm() const -> int16_t;
     [[nodiscard]] auto get_target_rpm() const -> int16_t;
@@ -35,6 +36,5 @@ class MotorPolicy {
   private:
     static constexpr uint16_t MAX_SOLENOID_CURRENT_MA = 330;
     int32_t ramp_rate = DEFAULT_RAMP_RATE_RPM_PER_S;
-    MCI_Handle_t *motor_handle;
-    DAC_HandleTypeDef *dac_handle;
+    motor_hardware_handles* hw_handles;
 };

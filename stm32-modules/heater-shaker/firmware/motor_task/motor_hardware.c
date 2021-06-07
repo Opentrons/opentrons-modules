@@ -346,11 +346,11 @@ static void MX_TIM2_Init(TIM_HandleTypeDef* tim2)
 }
 
 static void PlateLockTIM_Init(TIM_HandleTypeDef* tim3) {
-  tim3->instance = PLATE_LOCK_TIM;
+  tim3->Instance = PLATE_LOCK_TIM;
   tim3->Init.Prescaler = 0;
   tim3->Init.CounterMode = TIM_COUNTERMODE_UP;
   tim3->Init.Period = 65535;
-  tim3->Init.CLockDivision = TIM_CLOCKDIVISION_DIV1;
+  tim3->Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   tim3->Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   HAL_TIM_PWM_Init(tim3);
   TIM_OC_InitTypeDef chan_config = {
@@ -417,10 +417,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PLATE_LOCK_Port, &GPIO_InitStruct);
-  HAL_GPIO_WritePin(PLATE_LOCK_PORT, PLATE_LOCK_NSLEEP_Pin);
+  HAL_GPIO_WritePin(PLATE_LOCK_Port, PLATE_LOCK_NSLEEP_Pin, GPIO_PIN_SET);
 
   GPIO_InitStruct.Pin = PLATE_LOCK_NFAULT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT_PP;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PLATE_LOCK_Port, &GPIO_InitStruct);
 
@@ -764,18 +764,16 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
 
 }
 
-void motor_hardware_setup(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2,
-                          TIM_HandleTypeDef* tim1, TIM_HandleTypeDef* tim2,
-                          MCI_Handle_t* mci[], MCT_Handle_t* mct[],
-                          DAC_HandleTypeDef* dac1) {
+void motor_hardware_setup(motor_hardware_handles* handles) {
+  memset(handles, 0, sizeof(*handles));
   MX_GPIO_Init();
-  MX_ADC1_Init(adc1);
-  MX_ADC2_Init(adc2);
-  MX_TIM1_Init(tim1);
-  MX_TIM2_Init(tim2);
-  DAC_Init(dac1);
-  MCboot(mci,mct);
-
+  MX_ADC1_Init(&handles->adc1);
+  MX_ADC2_Init(&handles->adc2);
+  MX_TIM1_Init(&handles->tim1);
+  MX_TIM2_Init(&handles->tim2);
+  DAC_Init(&handles->dac1);
+  MCboot(handles->mci, handles->mct);
+  PlateLockTIM_Init(&handles->tim3);
   /* Initialize interrupts */
   MX_NVIC_Init();
 }

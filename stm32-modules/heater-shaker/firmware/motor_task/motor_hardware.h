@@ -3,14 +3,23 @@
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
+#include "mc_config.h"
 #include "mc_interface.h"
 #include "mc_tuning.h"
 #include "stm32f3xx_hal.h"
 
-void motor_hardware_setup(ADC_HandleTypeDef* adc1, ADC_HandleTypeDef* adc2,
-                          TIM_HandleTypeDef* tim1, TIM_HandleTypeDef* tim2,
-                          MCI_Handle_t* mci[], MCT_Handle_t* mct[],
-                          DAC_HandleTypeDef* dac1);
+typedef struct {
+    ADC_HandleTypeDef adc1;
+    ADC_HandleTypeDef adc2;
+    TIM_HandleTypeDef tim1;
+    TIM_HandleTypeDef tim2;
+    TIM_HandleTypeDef tim3;
+    DAC_HandleTypeDef dac1;
+    MCI_Handle_t* mci[NBR_OF_MOTORS];
+    MCT_Handle_t* mct[NBR_OF_MOTORS];
+} motor_hardware_handles;
+
+void motor_hardware_setup(motor_hardware_handles* handles);
 
 void motor_hardware_solenoid_drive(DAC_HandleTypeDef* dac1, uint8_t dacval);
 void motor_hardware_solenoid_release(DAC_HandleTypeDef* dac1);
@@ -89,7 +98,6 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 #define PLATE_LOCK_IN_2_Pin GPIO_PIN_3
 #define PLATE_LOCK_IN_2_Chan TIM_CHANNEL_2
 #define PLATE_LOCK_NFAULT_Pin GPIO_PIN_6
-
 
 #ifdef __cplusplus
 }  // extern "C"
