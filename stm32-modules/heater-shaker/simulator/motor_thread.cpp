@@ -37,6 +37,14 @@ struct SimMotorPolicy {
         return errors::ErrorCode::NO_ERROR;
     }
 
+    auto homing_solenoid_disengage() const -> void {}
+
+    auto homing_solenoid_engage(uint16_t current_ma) const -> void {
+        static_cast<void>(current_ma);
+    }
+
+    auto delay_ticks(uint16_t ticks) -> void { static_cast<void>(ticks); }
+
   private:
     int16_t rpm_setpoint = 0;
     int16_t rpm_current = 0;
@@ -58,6 +66,11 @@ auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
             tcb->task.run_once(policy);
         } catch (const SimMotorTask::Queue::StopDuringMsgWait& sdmw) {
             return;
+        }
+        if (tcb->task.get_state() ==
+            motor_task::State::HOMING_COASTING_TO_STOP) {
+            static_cast<void>(tcb->queue.try_send(
+                messages::MotorSystemErrorMessage{.errors = 2}));
         }
     }
 }

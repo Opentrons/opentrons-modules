@@ -46,3 +46,28 @@ auto TestMotorPolicy::test_set_rpm_return_code(errors::ErrorCode error)
     -> void {
     set_rpm_return = error;
 }
+
+auto TestMotorPolicy::homing_solenoid_disengage() -> void {
+    solenoid_engaged = false;
+}
+
+auto TestMotorPolicy::homing_solenoid_engage(uint16_t current_ma) -> void {
+    solenoid_engaged = true;
+    solenoid_current = current_ma;
+}
+
+auto TestMotorPolicy::test_solenoid_engaged() const -> bool {
+    return solenoid_engaged;
+}
+
+auto TestMotorPolicy::test_solenoid_current() const -> uint16_t {
+    return solenoid_current;
+}
+
+auto TestMotorPolicy::test_get_last_delay() const -> uint16_t {
+    return last_delay;
+}
+
+auto TestMotorPolicy::delay_ticks(uint16_t ticks) -> void {
+    last_delay = ticks;
+}

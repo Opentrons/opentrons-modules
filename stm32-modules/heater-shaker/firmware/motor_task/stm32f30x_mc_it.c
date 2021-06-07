@@ -24,7 +24,7 @@
 #include "mc_type.h"
 #include "mc_tasks.h"
 #include "parameters_conversion.h"
-#include "hardware_setup.h"
+#include "motor_hardware.h"
 #include "stm32f3xx_it.h"
 #include "mc_config.h"
 
