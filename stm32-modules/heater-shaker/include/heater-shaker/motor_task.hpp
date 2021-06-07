@@ -229,8 +229,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
      * if we can and otherwise send another check-status
      * - When in coasting-to-stop, keep sending those check-statuses. If we keep
      * the solenoid engaged forever, it will fry itself, so we need a timeout.
-     * In either case, we've probably homed successfully; sadly, the motor system
-     * isn't quite good enough to detect when it's homed on its own.
+     * In either case, we've probably homed successfully; sadly, the motor
+     * system isn't quite good enough to detect when it's homed on its own.
      * */
 
     template <typename Policy>
