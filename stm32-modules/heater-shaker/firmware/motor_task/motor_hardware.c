@@ -790,7 +790,7 @@ void motor_hardware_plate_lock_on(TIM_HandleTypeDef* tim3, float power) {
     power_scale = 1.f;
   }
   TIM_OC_InitTypeDef chan_config = {
-     .OCMode = TIM_OCMODE_PWM2,
+     .OCMode = TIM_OCMODE_PWM1,
      .Pulse = (uint16_t)(PLATE_LOCK_PWM_GRANULARITY * power_scale),
      .OCPolarity = TIM_OCPOLARITY_HIGH,
      .OCIdleState = TIM_OCIDLESTATE_RESET
