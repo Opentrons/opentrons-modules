@@ -24,6 +24,9 @@ void motor_hardware_setup(motor_hardware_handles* handles);
 void motor_hardware_solenoid_drive(DAC_HandleTypeDef* dac1, uint8_t dacval);
 void motor_hardware_solenoid_release(DAC_HandleTypeDef* dac1);
 
+void motor_hardware_plate_lock_on(TIM_HandleTypeDef* tim3, float power);
+void motor_hardware_plate_lock_off(TIM_HandleTypeDef* tim3);
+
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 
 #define MC_HAL_IS_USED
@@ -98,6 +101,22 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 #define PLATE_LOCK_IN_2_Pin GPIO_PIN_3
 #define PLATE_LOCK_IN_2_Chan TIM_CHANNEL_2
 #define PLATE_LOCK_NFAULT_Pin GPIO_PIN_6
+
+// These defines drive the math for setting the PWM clocking parameters.
+// The frequency will be respected as accurately as possible, and is in Hz.
+// Because we only have ints available, the requested granularity will be less
+// than or equal to whatever granularity we end up with - for instance, with
+// 15535 (uint16_t max) requested, the prescaler needs to be 4.6; we'll set it
+// to 4, and then the granularity will be 18000.
+#define PLATE_LOCK_PWM_GRANULARITY_REQUESTED 15535uL
+#define PLATE_LOCK_PWM_FREQ 1000uL
+#define PLATE_LOCK_TIM_CLKDIV 1uL
+#define PLATE_LOCK_INPUT_FREQ (72000000uL / PLATE_LOCK_TIM_CLKDIV)
+#define PLATE_LOCK_TIM_PRESCALER \
+    ((PLATE_LOCK_INPUT_FREQ) /   \
+     (PLATE_LOCK_PWM_FREQ * PLATE_LOCK_PWM_GRANULARITY_REQUESTED))
+#define PLATE_LOCK_PWM_GRANULARITY \
+    ((PLATE_LOCK_INPUT_FREQ / PLATE_LOCK_TIM_PRESCALER) / PLATE_LOCK_PWM_FREQ)
 
 #ifdef __cplusplus
 }  // extern "C"

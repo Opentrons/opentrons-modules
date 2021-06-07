@@ -93,7 +93,9 @@ auto MotorPolicy::delay_ticks(uint16_t ticks) -> void { vTaskDelay(ticks); }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::plate_lock_set_power(float power) -> void {
-    static_cast<void>(power);
+    motor_hardware_plate_lock_on(&hw_handles->tim3, power);
 }
 
-auto MotorPolicy::plate_lock_disable() -> void {}
+auto MotorPolicy::plate_lock_disable() -> void {
+    motor_hardware_plate_lock_off(&hw_handles->tim3);
+}

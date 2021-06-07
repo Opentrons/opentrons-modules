@@ -6,7 +6,7 @@
 #include "mc_tasks.h"
 #include "mc_config.h"
 #include <string.h>  // for memset
-
+#include <math.h> // for fabs
 
 #ifdef __cplusplus
 extern "C" {
@@ -346,21 +346,17 @@ static void MX_TIM2_Init(TIM_HandleTypeDef* tim2)
 }
 
 static void PlateLockTIM_Init(TIM_HandleTypeDef* tim3) {
+  __HAL_RCC_TIM3_CLK_ENABLE();
   tim3->Instance = PLATE_LOCK_TIM;
   tim3->Init.Prescaler = 0;
   tim3->Init.CounterMode = TIM_COUNTERMODE_UP;
-  tim3->Init.Period = 65535;
+  tim3->Init.Period = PLATE_LOCK_PWM_GRANULARITY;
   tim3->Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   tim3->Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   HAL_TIM_PWM_Init(tim3);
-  TIM_OC_InitTypeDef chan_config = {
-  .OCMode = TIM_OCMODE_FORCED_INACTIVE,
-  .Pulse = 0,
-  .OCPolarity = TIM_OCPOLARITY_HIGH,
-  .OCNPolarity = TIM_OCNPOLARITY_HIGH,
-};
-  HAL_TIM_OC_ConfigChannel(tim3, &chan_config, PLATE_LOCK_IN_1_Chan);
-  HAL_TIM_OC_ConfigChannel(tim3, &chan_config, PLATE_LOCK_IN_2_Chan);
+
+  motor_hardware_plate_lock_off(tim3);
+
 }
 
 /**
@@ -786,6 +782,45 @@ void motor_hardware_solenoid_drive(DAC_HandleTypeDef* dac1, uint8_t dacval) {
 void motor_hardware_solenoid_release(DAC_HandleTypeDef* dac1) {
   HAL_GPIO_WritePin(SOLENOID_1_Port, SOLENOID_1_Pin, GPIO_PIN_RESET);
   HAL_DAC_SetValue(dac1, SOLENOID_DAC_CHANNEL, DAC_ALIGN_8B_R, 0);
+}
+
+void motor_hardware_plate_lock_on(TIM_HandleTypeDef* tim3, float power) {
+  float power_scale = fabs(power);
+  if (power_scale > 1.f) {
+    power_scale = 1.f;
+  }
+  TIM_OC_InitTypeDef chan_config = {
+     .OCMode = TIM_OCMODE_PWM2,
+     .Pulse = (uint16_t)(PLATE_LOCK_PWM_GRANULARITY * power_scale),
+     .OCPolarity = TIM_OCPOLARITY_HIGH,
+     .OCIdleState = TIM_OCIDLESTATE_RESET
+};
+  uint32_t active_channel = ((power < 0) ? PLATE_LOCK_IN_1_Chan : PLATE_LOCK_IN_2_Chan);
+  uint32_t passive_channel = ((power < 0) ? PLATE_LOCK_IN_2_Chan : PLATE_LOCK_IN_1_Chan);
+  HAL_TIM_PWM_Stop(tim3, active_channel);
+  HAL_TIM_PWM_Stop(tim3, passive_channel);
+  HAL_TIM_PWM_ConfigChannel(tim3, &chan_config, active_channel);
+  chan_config.OCMode = TIM_OCMODE_FORCED_INACTIVE;
+  HAL_TIM_PWM_ConfigChannel(tim3, &chan_config, passive_channel);
+  HAL_TIM_GenerateEvent(tim3, TIM_EVENTSOURCE_UPDATE);
+  HAL_TIM_PWM_Start(tim3, passive_channel);
+  HAL_TIM_PWM_Start(tim3,  active_channel);
+}
+
+void motor_hardware_plate_lock_off(TIM_HandleTypeDef* tim3) {
+  TIM_OC_InitTypeDef chan_config = {
+     .OCMode = TIM_OCMODE_FORCED_INACTIVE,
+     .Pulse = 0,
+     .OCPolarity = TIM_OCPOLARITY_HIGH,
+     .OCIdleState = TIM_OCIDLESTATE_RESET
+};
+  HAL_TIM_PWM_Stop(tim3, PLATE_LOCK_IN_1_Chan);
+  HAL_TIM_PWM_Stop(tim3, PLATE_LOCK_IN_2_Chan);
+  HAL_TIM_OC_ConfigChannel(tim3, &chan_config, PLATE_LOCK_IN_1_Chan);
+  HAL_TIM_OC_ConfigChannel(tim3, &chan_config, PLATE_LOCK_IN_2_Chan);
+  HAL_TIM_GenerateEvent(tim3, TIM_EVENTSOURCE_UPDATE);
+  HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_1_Chan);
+  HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_2_Chan);
 }
 
 void Error_Handler() {
