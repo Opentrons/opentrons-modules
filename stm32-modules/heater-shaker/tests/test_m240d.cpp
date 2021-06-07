@@ -6,11 +6,13 @@
 #include "heater-shaker/gcodes.hpp"
 #pragma GCC diagnostic pop
 
-SCENARIO("DebugControlPlateLockMotor (M240.D) parser works", "[gcode][parse][m104.d]") {
+SCENARIO("DebugControlPlateLockMotor (M240.D) parser works",
+         "[gcode][parse][m104.d]") {
     GIVEN("a string with prefix only") {
         std::string to_parse = "M240.D S\n";
         WHEN("calling parse") {
-            auto result = gcode::DebugControlPlateLockMotor::parse(to_parse.cbegin(), to_parse.cend());
+            auto result = gcode::DebugControlPlateLockMotor::parse(
+                to_parse.cbegin(), to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -21,8 +23,8 @@ SCENARIO("DebugControlPlateLockMotor (M240.D) parser works", "[gcode][parse][m10
     GIVEN("a string with a prefix matching but bad data") {
         std::string to_parse = "M240.D Salsjdhas\r\n";
         WHEN("calling parse") {
-            auto result = gcode::DebugControlPlateLockMotor::parse(to_parse.cbegin(),
-                                                                   to_parse.cend());
+            auto result = gcode::DebugControlPlateLockMotor::parse(
+                to_parse.cbegin(), to_parse.cend());
 
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
@@ -34,8 +36,8 @@ SCENARIO("DebugControlPlateLockMotor (M240.D) parser works", "[gcode][parse][m10
     GIVEN("a string with good data") {
         std::string to_parse = "M240.D S-0.5\r\n";
         WHEN("calling parse") {
-            auto result = gcode::DebugControlPlateLockMotor::parse(to_parse.cbegin(),
-                                                                   to_parse.cend());
+            auto result = gcode::DebugControlPlateLockMotor::parse(
+                to_parse.cbegin(), to_parse.cend());
 
             THEN("the data should be parsed") {
                 REQUIRE(result.first.has_value());
