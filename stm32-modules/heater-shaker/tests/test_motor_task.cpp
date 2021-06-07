@@ -476,8 +476,9 @@ SCENARIO("motor task homing", "[motor][homing]") {
         }
         WHEN("not receiving an error for too long") {
             for (size_t i = 0;
-                 i < std::remove_cvref_t<decltype(
-                         tasks->get_motor_task())>::HOMING_CYCLES_BEFORE_ERROR;
+                 i <
+                 std::remove_cvref_t<decltype(
+                     tasks->get_motor_task())>::HOMING_CYCLES_BEFORE_TIMEOUT;
                  i++) {
                 CHECK(tasks->get_motor_task().get_state() ==
                       motor_task::State::HOMING_COASTING_TO_STOP);
@@ -488,14 +489,13 @@ SCENARIO("motor task homing", "[motor][homing]") {
                 CHECK(tasks->get_host_comms_queue().backing_deque.empty());
             }
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
-            THEN("the home error should fire") {
+            THEN("the home timeout should fire") {
                 auto ack_message = std::get<messages::AcknowledgePrevious>(
                     tasks->get_host_comms_queue().backing_deque.front());
                 REQUIRE(ack_message.responding_to_id == homing_message.id);
-                REQUIRE(ack_message.with_error ==
-                        errors::ErrorCode::MOTOR_BAD_HOME);
+                REQUIRE(ack_message.with_error == errors::ErrorCode::NO_ERROR);
                 REQUIRE(tasks->get_motor_task().get_state() ==
-                        motor_task::State::ERROR);
+                        motor_task::State::STOPPED_HOMED);
             }
         }
     }

@@ -81,7 +81,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     static constexpr uint16_t HOMING_ROTATION_LOW_MARGIN = 25;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_INITIAL = 200;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
-    static constexpr uint16_t HOMING_CYCLES_BEFORE_ERROR = 10;
+    static constexpr uint16_t HOMING_CYCLES_BEFORE_TIMEOUT = 10;
     using Queue = QueueImpl<Message>;
     explicit MotorTask(Queue& q)
         : state{.status = State::STOPPED_UNKNOWN},
@@ -250,15 +250,14 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
                 messages::CheckHomingStatusMessage{}));
         } else if (state.status == State::HOMING_COASTING_TO_STOP) {
             homing_cycles_coasting++;
-            if (homing_cycles_coasting > HOMING_CYCLES_BEFORE_ERROR) {
+            if (homing_cycles_coasting > HOMING_CYCLES_BEFORE_TIMEOUT) {
                 policy.homing_solenoid_engage(HOMING_SOLENOID_CURRENT_HOLD);
                 policy.stop();
-                state.status = State::ERROR;
+                state.status = State::STOPPED_HOMED;
                 static_cast<void>(
                     task_registry->comms->get_message_queue().try_send(
-                        messages::AcknowledgePrevious{
-                            .responding_to_id = cached_home_id,
-                            .with_error = errors::ErrorCode::MOTOR_BAD_HOME}));
+                        messages::AcknowledgePrevious{.responding_to_id =
+                                                          cached_home_id}));
             } else {
                 policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
                 static_cast<void>(get_message_queue().try_send(
