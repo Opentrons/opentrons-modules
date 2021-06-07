@@ -213,7 +213,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
      * - Set low speed
      * - wait until that happens
      * - set solenoid
-     * - wait until the motor driver says we stalled
+     * - wait until the motor driver says we stalled or for a period of time
      *
      * So we replace any wait states with repeatedly sending ourselves another
      * CheckHomingStatusMessage. Because we talk with queues, we won't spinlock
@@ -229,8 +229,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
      * if we can and otherwise send another check-status
      * - When in coasting-to-stop, keep sending those check-statuses. If we keep
      * the solenoid engaged forever, it will fry itself, so we need a timeout.
-     * If we get a motor system error, we're homed; if we don't, we need to cut
-     * the current, send an error, and go to failed state.
+     * In either case, we've probably homed successfully; sadly, the motor system
+     * isn't quite good enough to detect when it's homed on its own.
      * */
 
     template <typename Policy>
