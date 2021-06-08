@@ -12,6 +12,7 @@ import serial
 from serial.tools.list_ports import grep
 from matplotlib import pyplot as pp
 
+DEFAULT_PID_CONSTANTS = {'kp': 3631, 'ki': 1536, 'kd': 0}
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description='Test a heater-shaker for stability')
@@ -31,6 +32,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument('-a', '--acceleration', help='acceleration  (rpm/s)', type=int, default=1000)
     p.add_argument('--stability-criterion', type=float, default=2, help='square dev from target threshold for stability (rpm^2)')
     p.add_argument('--stability-window', type=float, default=1, help='trailing window duration for stability check (s)')
+    p.add_argument('-kp', dest='kp_override', type=float, help='Kp override')
+    p.add_argument('-ki', dest='ki_override', type=float, help='Ki override')
+    p.add_argument('-kd', dest='kd_override', type=float, help='Kd override')
     return p
 
 
@@ -71,6 +75,13 @@ def stable(data: List[Tuple[float, float]],
     if any([d > criterion for d in dev]):
         return False
     return True
+
+
+def set_speed_pid(ser: serial.Serial,
+                  kp: float, ki: float, kd: float):
+    print(f'Overriding PID constants to kp={kp}, ki={ki}, kd={kd}')
+    ser.write(f'M301 TM P{kp} I{ki} D{kd}\n'.encode())
+    guard_error(ser.readline(), b'M301')
 
 
 def sample_speed(ser: serial.Serial, target: float,
@@ -187,6 +198,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
     port = build_serial(args.port)
     set_acceleration(port, args.acceleration)
+    if args.kp_override or args.kd_override or args.ki_override:
+        overrides = {'kp': args.kp_override or DEFAULT_PID_CONSTANTS['kp'],
+                     'ki': args.ki_override or DEFAULT_PID_CONSTANTS['ki'],
+                     'kd': args.kd_override or DEFAULT_PID_CONSTANTS['kd']}
+        set_speed_pid(port, **overrides)
     if args.warmup_speed:
         do_warmup(port, args.warmup_speed)
     data = do_run(port, args.speed,

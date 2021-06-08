@@ -103,9 +103,10 @@ auto MotorPolicy::plate_lock_disable() -> void {
     motor_hardware_plate_lock_off(&hw_handles->tim3);
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::set_pid_constants(double kp, double ki, double kd) -> void {
-    static_cast<void>(kp);
-    static_cast<void>(ki);
-    static_cast<void>(kd);
+    // These conversions match those in drive_parameters.h and therefore let you just look
+    // at the numeric literals there
+    PID_SetKD(hw_handles->mct[0]->pPIDSpeed, static_cast<int16_t>(kd / (SPEED_UNIT / 10)));
+    PID_SetKP(hw_handles->mct[0]->pPIDSpeed, static_cast<int16_t>(kp / (SPEED_UNIT / 10)));
+    PID_SetKI(hw_handles->mct[0]->pPIDSpeed, static_cast<int16_t>(ki / (SPEED_UNIT / 10)));
 }

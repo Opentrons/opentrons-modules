@@ -555,7 +555,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
                     task_registry->motor->get_message_queue().try_send(
                         message, TICKS_TO_WAIT_ON_SEND);
         }
-        if (send_result) {
+        if (!send_result) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
             ack_only_cache.remove_if_present(id);
