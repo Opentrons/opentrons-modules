@@ -3,6 +3,7 @@
  */
 #pragma once
 
+#include <algorithm>
 #include <concepts>
 #include <variant>
 
@@ -51,6 +52,9 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.homing_solenoid_engage(122)};
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.delay_ticks(10)};
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    {p.plate_lock_set_power(0.1)};
+    {p.plate_lock_disable()};
 };
 
 struct State {
@@ -292,6 +296,18 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::SetPlateLockPowerMessage& msg,
+                       Policy& policy) -> void {
+        if (msg.power == 0) {
+            policy.plate_lock_disable();
+        } else {
+            policy.plate_lock_set_power(std::clamp(msg.power, -1.0F, 1.0F));
+        }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::AcknowledgePrevious{.responding_to_id = msg.id}));
     }
     State state;
     Queue& message_queue;

@@ -31,15 +31,7 @@ namespace motor_control_task {
 struct MotorTaskFreeRTOS {
     TaskHandle_t main_task;
     TaskHandle_t control_task;
-    ADC_HandleTypeDef hadc1;
-    ADC_HandleTypeDef hadc2;
-    TIM_HandleTypeDef htim1;
-    TIM_HandleTypeDef htim2;
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
-    MCI_Handle_t *pMCI[NBR_OF_MOTORS];
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
-    MCT_Handle_t *pMCT[NBR_OF_MOTORS];
-    DAC_HandleTypeDef hdac1;
+    motor_hardware_handles handles;
 };
 
 enum class Notifications : uint8_t {
@@ -75,13 +67,9 @@ static MotorTaskFreeRTOS _local_task;
 // Actual function that runs inside the task
 void run(void *param) {
     static_cast<void>(param);
-    motor_hardware_setup(
-        &_local_task.hadc1, &_local_task.hadc2, &_local_task.htim1,
-        &_local_task.htim2,
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-        _local_task.pMCI, _local_task.pMCT, &_local_task.hdac1);
+    motor_hardware_setup(&_local_task.handles);
 
-    auto policy = MotorPolicy(_local_task.pMCI[0], &_local_task.hdac1);
+    auto policy = MotorPolicy(&_local_task.handles);
     while (true) {
         _task.run_once(policy);
     }

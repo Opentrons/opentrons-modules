@@ -18,11 +18,11 @@
 
 using namespace errors;
 
-MotorPolicy::MotorPolicy(MCI_Handle_t* handle, DAC_HandleTypeDef* dac1)
-    : motor_handle(handle), dac_handle(dac1) {}
+MotorPolicy::MotorPolicy(motor_hardware_handles* handles)
+    : hw_handles(handles) {}
 
 auto MotorPolicy::homing_solenoid_disengage() -> void {
-    motor_hardware_solenoid_release(dac_handle);
+    motor_hardware_solenoid_release(&hw_handles->dac1);
 }
 
 auto MotorPolicy::homing_solenoid_engage(uint16_t current_ma) -> void {
@@ -39,7 +39,7 @@ auto MotorPolicy::homing_solenoid_engage(uint16_t current_ma) -> void {
     auto dac_val = static_cast<uint8_t>(
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         (dac_intermediate / MAX_SOLENOID_CURRENT_MA) & 0xff);
-    motor_hardware_solenoid_drive(dac_handle, dac_val);
+    motor_hardware_solenoid_drive(&hw_handles->dac1, dac_val);
 }
 
 auto MotorPolicy::set_rpm(int16_t rpm) -> ErrorCode {
@@ -56,25 +56,25 @@ auto MotorPolicy::set_rpm(int16_t rpm) -> ErrorCode {
         static_cast<uint16_t>(
             static_cast<int32_t>(std::abs(rpm - current_speed)) / ramp_rate),
         static_cast<uint16_t>(1));
-    MCI_ExecSpeedRamp(motor_handle, -command_01hz, ramp_time);
-    if (MCI_GetSTMState(motor_handle) == IDLE) {
-        MCI_StartMotor(motor_handle);
+    MCI_ExecSpeedRamp(hw_handles->mci[0], -command_01hz, ramp_time);
+    if (MCI_GetSTMState(hw_handles->mci[0]) == IDLE) {
+        MCI_StartMotor(hw_handles->mci[0]);
     }
     return ErrorCode::NO_ERROR;
 }
 
-auto MotorPolicy::stop() -> void { MCI_StopMotor(motor_handle); }
+auto MotorPolicy::stop() -> void { MCI_StopMotor(hw_handles->mci[0]); }
 
 auto MotorPolicy::get_current_rpm() const -> int16_t {
-    if (IDLE != MCI_GetSTMState(motor_handle)) {
-        return -MCI_GetAvrgMecSpeedUnit(motor_handle) * _RPM / _01HZ;
+    if (IDLE != MCI_GetSTMState(hw_handles->mci[0])) {
+        return -MCI_GetAvrgMecSpeedUnit(hw_handles->mci[0]) * _RPM / _01HZ;
     }
     return 0;
 }
 
 auto MotorPolicy::get_target_rpm() const -> int16_t {
-    if (IDLE != MCI_GetSTMState(motor_handle)) {
-        return -MCI_GetMecSpeedRefUnit(motor_handle) * _RPM / _01HZ;
+    if (IDLE != MCI_GetSTMState(hw_handles->mci[0])) {
+        return -MCI_GetMecSpeedRefUnit(hw_handles->mci[0]) * _RPM / _01HZ;
     }
     return 0;
 }
@@ -90,3 +90,12 @@ auto MotorPolicy::set_ramp_rate(int32_t rpm_per_s) -> ErrorCode {
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::delay_ticks(uint16_t ticks) -> void { vTaskDelay(ticks); }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::plate_lock_set_power(float power) -> void {
+    motor_hardware_plate_lock_on(&hw_handles->tim3, power);
+}
+
+auto MotorPolicy::plate_lock_disable() -> void {
+    motor_hardware_plate_lock_off(&hw_handles->tim3);
+}
