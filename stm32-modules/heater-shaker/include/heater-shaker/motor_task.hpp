@@ -47,6 +47,8 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.stop()};
     { p.set_ramp_rate(static_cast<int32_t>(8)) }
     ->std::same_as<errors::ErrorCode>;
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    {p.set_pid_constants(1.0, 2.0, 3.0)};
     {p.homing_solenoid_disengage()};
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.homing_solenoid_engage(122)};
@@ -146,6 +148,14 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
                 task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
         }
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::SetPIDConstantsMessage& msg,
+                       Policy& policy) -> void {
+        policy.set_pid_constants(msg.kp, msg.ki, msg.kd);
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::AcknowledgePrevious{.responding_to_id = msg.id}));
     }
 
     template <typename Policy>

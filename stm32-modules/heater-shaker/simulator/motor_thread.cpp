@@ -27,6 +27,12 @@ struct SimMotorPolicy {
     [[nodiscard]] auto get_target_rpm() const -> int16_t {
         return rpm_setpoint;
     }
+    auto set_pid_constants(double kp, double ki, double kd) {
+        static_cast<void>(kp);
+        static_cast<void>(ki);
+        static_cast<void>(kd);
+    }
+
     auto stop() -> void {
         rpm_setpoint = 0;
         rpm_current = 0;

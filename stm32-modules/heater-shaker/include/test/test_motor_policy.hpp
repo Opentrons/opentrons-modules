@@ -26,6 +26,8 @@ class TestMotorPolicy {
     [[nodiscard]] auto test_solenoid_engaged() const -> bool;
     [[nodiscard]] auto test_solenoid_current() const -> uint16_t;
 
+    auto set_pid_constants(double kp, double ki, double kd) -> void;
+
     auto test_set_current_rpm(int16_t current_rpm) -> void;
     [[nodiscard]] auto test_get_ramp_rate() -> int32_t;
 
@@ -35,6 +37,10 @@ class TestMotorPolicy {
 
     [[nodiscard]] auto test_plate_lock_get_power() const -> float;
     [[nodiscard]] auto test_plate_lock_enabled() const -> bool;
+
+    [[nodiscard]] auto test_get_overridden_ki() const -> double;
+    [[nodiscard]] auto test_get_overridden_kp() const -> double;
+    [[nodiscard]] auto test_get_overridden_kd() const -> double;
 
   private:
     int16_t target_rpm;
@@ -47,4 +53,7 @@ class TestMotorPolicy {
     uint16_t last_delay = 0;
     float plate_lock_power = 0;
     bool plate_lock_enabled = false;
+    double overridden_ki = 0.0;
+    double overridden_kp = 0.0;
+    double overridden_kd = 0.0;
 };
