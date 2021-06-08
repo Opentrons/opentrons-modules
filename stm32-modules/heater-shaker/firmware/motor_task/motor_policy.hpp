@@ -35,6 +35,6 @@ class MotorPolicy {
 
   private:
     static constexpr uint16_t MAX_SOLENOID_CURRENT_MA = 330;
-    int32_t ramp_rate = DEFAULT_RAMP_RATE_RPM_PER_S;
+    double ramp_rate_rpm_per_ms = static_cast<double>(DEFAULT_RAMP_RATE_RPM_PER_S) / 1000.0;
     motor_hardware_handles* hw_handles;
 };

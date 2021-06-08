@@ -52,11 +52,11 @@ auto MotorPolicy::set_rpm(int16_t rpm) -> ErrorCode {
     }
     int16_t current_speed = get_current_rpm();
     int16_t command_01hz = rpm * _01HZ / _RPM;
-    uint16_t ramp_time = std::max(
+    uint16_t ramp_time_ms = std::max(
         static_cast<uint16_t>(
-            static_cast<int32_t>(std::abs(rpm - current_speed)) / ramp_rate),
+            static_cast<int32_t>(std::abs(rpm - current_speed)) / ramp_rate_rpm_per_ms),
         static_cast<uint16_t>(1));
-    MCI_ExecSpeedRamp(hw_handles->mci[0], -command_01hz, ramp_time);
+    MCI_ExecSpeedRamp(hw_handles->mci[0], -command_01hz, ramp_time_ms);
     if (MCI_GetSTMState(hw_handles->mci[0]) == IDLE) {
         MCI_StartMotor(hw_handles->mci[0]);
     }
@@ -84,7 +84,7 @@ auto MotorPolicy::set_ramp_rate(int32_t rpm_per_s) -> ErrorCode {
         rpm_per_s < MIN_RAMP_RATE_RPM_PER_S) {
         return ErrorCode::MOTOR_ILLEGAL_RAMP_RATE;
     }
-    ramp_rate = rpm_per_s;
+    ramp_rate_rpm_per_ms = std::max(static_cast<double>(rpm_per_s) / 1000.0, 1.0);
     return ErrorCode::NO_ERROR;
 }
 
