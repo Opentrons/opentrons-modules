@@ -16,7 +16,8 @@ set(MCSDK_LOCATION "${CMAKE_CURRENT_LIST_DIR}/motor_task/MCSDK_v${MCSDK_VERSION}
 
 add_library(_mc_static STATIC IMPORTED)
 set_target_properties(_mc_static
-  PROPERTIES IMPORTED_LOCATION "${MCSDK_LOCATION}/lib/libmc-gcc_M4_NoCCMRAM.lib")
+  PROPERTIES IMPORTED_LOCATION
+  "${MCSDK_LOCATION}/lib/libmc-gcc_M4.lib")
 
 file(GLOB _mcsdk_any_sources "${MCSDK_LOCATION}/MCSDK/MCLib/Any/Src/*.c")
 file(GLOB _mcsdk_f3xx_sources "${MCSDK_LOCATION}/MCSDK/MCLib/F3xx/Src/*.c")
@@ -27,7 +28,8 @@ add_library(mc STATIC
   )
 set_target_properties(mc
   PROPERTIES C_STANDARD 11
-             C_STANDARD_REQUIRED TRUE)
+  C_STANDARD_REQUIRED TRUE)
+target_compile_definitions(mc PUBLIC CCMRAM)
 
 target_include_directories(mc
   PUBLIC "${MCSDK_LOCATION}/MCSDK/MCLib/Any/Inc"

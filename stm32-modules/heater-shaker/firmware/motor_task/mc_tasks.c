@@ -489,10 +489,10 @@ bool TSK_StopPermanencyTimeHasElapsedM1(void)
   return (retVal);
 }
 
-#if defined (CCMRAM_ENABLED)
+#if defined (CCMRAM)
 #if defined (__ICCARM__)
 #pragma location = ".ccmram"
-#elif defined (__CC_ARM)
+#elif defined (__CC_ARM) || defined(__GNUC__)
 __attribute__((section (".ccmram")))
 #endif
 #endif
