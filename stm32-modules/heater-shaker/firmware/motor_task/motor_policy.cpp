@@ -52,11 +52,10 @@ auto MotorPolicy::set_rpm(int16_t rpm) -> ErrorCode {
     }
     const int16_t current_speed = get_current_rpm();
     const int16_t command_01hz = rpm * _01HZ / _RPM;
-    const uint32_t speed_diff = std::abs(rpm-current_speed);
+    const uint32_t speed_diff = std::abs(rpm - current_speed);
     const uint32_t uncapped_ramp_time_ms = speed_diff / ramp_rate_rpm_per_ms;
-    const uint16_t ramp_time_ms =
-        std::max(static_cast<uint16_t>(uncapped_ramp_time_ms),
-                 static_cast<uint16_t>(1));
+    const uint16_t ramp_time_ms = std::max(
+        static_cast<uint16_t>(uncapped_ramp_time_ms), static_cast<uint16_t>(1));
     MCI_ExecSpeedRamp(hw_handles->mci[0], -command_01hz, ramp_time_ms);
     if (MCI_GetSTMState(hw_handles->mci[0]) == IDLE) {
         MCI_StartMotor(hw_handles->mci[0]);
@@ -104,9 +103,14 @@ auto MotorPolicy::plate_lock_disable() -> void {
 }
 
 auto MotorPolicy::set_pid_constants(double kp, double ki, double kd) -> void {
-    // These conversions match those in drive_parameters.h and therefore let you just look
-    // at the numeric literals there
-    PID_SetKD(hw_handles->mct[0]->pPIDSpeed, static_cast<int16_t>(kd / (SPEED_UNIT / 10)));
-    PID_SetKP(hw_handles->mct[0]->pPIDSpeed, static_cast<int16_t>(kp / (SPEED_UNIT / 10)));
-    PID_SetKI(hw_handles->mct[0]->pPIDSpeed, static_cast<int16_t>(ki / (SPEED_UNIT / 10)));
+    // These conversions match those in drive_parameters.h and therefore let you
+    // just look at the numeric literals there
+    static constexpr const double SPEED_UNIT_CONVERSION_SPC =
+        static_cast<double>(SPEED_UNIT) / 10.0;
+    PID_SetKD(hw_handles->mct[0]->pPIDSpeed,
+              static_cast<int16_t>(kd / SPEED_UNIT_CONVERSION_SPC));
+    PID_SetKP(hw_handles->mct[0]->pPIDSpeed,
+              static_cast<int16_t>(kp / SPEED_UNIT_CONVERSION_SPC));
+    PID_SetKI(hw_handles->mct[0]->pPIDSpeed,
+              static_cast<int16_t>(ki / SPEED_UNIT_CONVERSION_SPC));
 }
