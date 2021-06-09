@@ -21,10 +21,10 @@ static void MX_NVIC_Init(void)
   HAL_NVIC_SetPriority(TIM1_BRK_TIM15_IRQn, 9, 0);
   HAL_NVIC_EnableIRQ(TIM1_BRK_TIM15_IRQn);
   /* TIM1_UP_TIM16_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM1_UP_TIM16_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(TIM1_UP_TIM16_IRQn, 3, 0);
   HAL_NVIC_EnableIRQ(TIM1_UP_TIM16_IRQn);
   /* ADC1_2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(ADC1_2_IRQn, 7, 0);
+  HAL_NVIC_SetPriority(ADC1_2_IRQn, 4, 0);
   HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
   /* TIM2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM2_IRQn, 8, 0);
@@ -419,7 +419,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PLATE_LOCK_Port, &GPIO_InitStruct);
-
 }
 
 static void DAC_Init(DAC_HandleTypeDef* dac) {

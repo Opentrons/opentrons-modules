@@ -64,7 +64,7 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef *hpcd)
   __HAL_RCC_SYSCFG_CLK_ENABLE();
 
   /* Set USB Default FS Interrupt priority */
-  HAL_NVIC_SetPriority(USB_LP_CAN_RX0_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(USB_LP_CAN_RX0_IRQn, 10, 0);
 
   /* Enable USB FS Interrupt */
   HAL_NVIC_EnableIRQ(USB_LP_CAN_RX0_IRQn);
