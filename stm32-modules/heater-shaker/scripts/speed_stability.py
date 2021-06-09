@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import math
 from copy import copy
 import csv
 from dataclasses import dataclass, asdict
@@ -13,7 +14,7 @@ from typing import Any, Dict, Tuple, List, Optional
 
 import serial
 from serial.tools.list_ports import grep
-from matplotlib import pyplot as pp
+from matplotlib import pyplot as pp, gridspec
 
 DEFAULT_PID_CONSTANTS = {'kp': 3631, 'ki': 1536, 'kd': 0}
 
@@ -151,7 +152,7 @@ def sample_speed(ser: serial.Serial,
                  min_time: datetime.timedelta =  None):
     min_time = min_time or datetime.timedelta(seconds=2)
     if config.fixed_time_sample:
-        min_time = min(min_time, fixed_time_sample)
+        min_time = min(min_time, config.fixed_time_sample)
     print("Beginning data sampling (ctrl-c ONCE stops early)")
     running_since = datetime.datetime.now()
     data = []
@@ -221,7 +222,10 @@ def do_run(ser: serial.Serial, config: RunConfig):
 
 
 def plot_data(data: List[Tuple[float, float]], config: RunConfig):
-    fig, axes = pp.subplots()
+    fig = pp.figure()
+    gs = gridspec.GridSpec(2, 1, height_ratios=[4, 1], hspace=0.5)
+    axes = pp.subplot(gs[0])
+    bwaxes = pp.subplot(gs[1])
     axes.plot([sample[0] for sample in data], [sample[1] for sample in data], label='speed')
     axes.axhline(config.speed, color='red', linestyle='-.', label='target speed')
     axes.axhspan(config.speed - config.stability_criterion**2, config.speed + config.stability_criterion**2,
@@ -249,6 +253,14 @@ def plot_data(data: List[Tuple[float, float]], config: RunConfig):
         horizontalalignment='left')
     box = text.get_window_extent(
         fig.canvas.get_renderer()).transformed(axes.transData.inverted())
+    def matched(sample):
+        if data[0][1] < config.speed:
+            return sample[1] > config.speed
+        else:
+            return sample[1] < config.speed
+    crossing = [samp for samp in data if matched(samp)][0]
+    axes.annotate(f'target crossing:\nt={crossing[0]}',
+                  crossing, (0.01, 0.8), 'axes fraction')
 
     # shift right to visible area
     minx, maxx = sorted(box.intervalx)
@@ -260,6 +272,18 @@ def plot_data(data: List[Tuple[float, float]], config: RunConfig):
     else:
         newy = miny
     text.set_position((newx, newy))
+
+    #filtered_samples  =  list(itertools.dropwhile(
+    #lambda samp: (samp[0] < 0.1 * data[-1][0]) or abs(samp[1]-config.speed) < 0.1*config.speed, data))
+    filtered_samples = data[len(data)//2:-1]
+    box_data = [filtered_samp[1] for filtered_samp in filtered_samples]
+    bwaxes.boxplot(box_data, vert=False)
+    bp = bwaxes.set_xlabel('speed (rpm)')
+    bwaxes.set_title(f'Speed sample data after first target intercept')
+    axes.indicate_inset([filtered_samples[0][0], min(box_data),
+                         filtered_samples[-1][0]-filtered_samples[0][0],
+                         max(box_data)-min(box_data)],
+                        bwaxes)
 
     axes.set_ylabel('speed (rpm)')
     axes.set_xlabel('time (sec)')
@@ -290,7 +314,7 @@ def write_csv(data: List[Tuple[float, float]], config: RunConfig, destfile: io.S
 if __name__ == '__main__':
     parser = build_parser()
     args = parser.parse_args()
-    if 'json' in args.output and 'csv' in args.output:
+    if args.output and 'json' in args.output and 'csv' in args.output:
         raise RuntimeError("please pick just one of json or csv")
     port = build_serial(args.port)
     config = RunConfig.from_args(args)
@@ -301,10 +325,10 @@ if __name__ == '__main__':
         do_warmup(port, config.warmup_speed)
     data = do_run(port, config)
     port.close()
-
-    if 'json' in args.output:
+    output_type = args.output or ['plot']
+    if 'json' in output_type:
         write_json(data, config, args.output_file)
-    if 'csv' in args.output:
+    if 'csv' in output_type:
         write_csv(data, config, args.output_file)
-    if not args.output or 'plot' in args.output:
+    if 'plot' in output_type:
         plot_data(data, config)
