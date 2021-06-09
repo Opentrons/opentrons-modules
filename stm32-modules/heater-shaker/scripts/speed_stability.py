@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 import argparse
+from copy import copy
+import csv
+from dataclasses import dataclass, asdict
 import itertools
 import io
 import datetime
 import time
 import json
 import re
-from typing import Tuple, List
+from typing import Any, Dict, Tuple, List, Optional
 
 import serial
 from serial.tools.list_ports import grep
@@ -16,7 +19,7 @@ DEFAULT_PID_CONSTANTS = {'kp': 3631, 'ki': 1536, 'kd': 0}
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description='Test a heater-shaker for stability')
-    p.add_argument('-o', '--output', choices=['plot','json'],
+    p.add_argument('-o', '--output', choices=['plot','json', 'csv'],
                    action='append',
                    help='Output type; plot draws a matplotlib graph, json dumps a data blob. Pass twice to do both.')
     p.add_argument('-f', '--file', type=argparse.FileType('w'), help='Path to write the json blob (ignored if not -ojson)',
@@ -28,7 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
                     default=None)
     p.add_argument('-t', '--time', type=float, help='Time to sample after setting the target speed. If not specified, tries to await stability',
                    default=None)
-    p.add_argument('-s', '--sampling-time', dest='sample_time', type=float, help='How frequently to sample speed', default=0.1)
+    p.add_argument('-s', '--sampling-time', dest='sampling_time', type=float, help='How frequently to sample speed', default=0.1)
     p.add_argument('-a', '--acceleration', help='acceleration  (rpm/s)', type=int, default=1000)
     p.add_argument('--stability-criterion', type=float, default=2, help='square dev from target threshold for stability (rpm^2)')
     p.add_argument('--stability-window', type=float, default=1, help='trailing window duration for stability check (s)')
@@ -36,6 +39,65 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument('-ki', dest='ki_override', type=float, help='Ki override')
     p.add_argument('-kd', dest='kd_override', type=float, help='Kd override')
     return p
+
+
+@dataclass
+class RunConfig:
+    speed: float
+    warmup_speed: Optional[float]
+    fixed_time_sample: Optional[datetime.timedelta]
+    sampling_time: datetime.timedelta
+    acceleration: float
+    stability_criterion: float
+    stability_window: datetime.timedelta
+    pid_constants: Dict[str, float]
+    pid_constants_need_setting: bool
+
+    @classmethod
+    def from_args(cls, args: argparse.Namespace):
+        pid_constants = copy(DEFAULT_PID_CONSTANTS)
+        needs_setting = False
+        if args.kp_override:
+            pid_constants['kp'] = args.kp_override
+            needs_setting = True
+        if args.ki_override:
+            pid_constants['ki'] = args.ki_override
+            needs_setting = True
+        if args.kd_override:
+            pid_constants['kd'] = args.kd_override
+            needs_setting = True
+        return cls(speed=args.speed,
+                   warmup_speed=args.warmup_speed,
+                   fixed_time_sample=args.time and datetime.timedelta(seconds=args.time),
+                   sampling_time=datetime.timedelta(seconds=args.sampling_time),
+                   acceleration=args.acceleration,
+                   stability_criterion=args.stability_criterion,
+                   stability_window=datetime.timedelta(seconds=args.stability_window),
+                   pid_constants=pid_constants,
+                   pid_constants_need_setting=needs_setting)
+
+    def dict_for_save(self) -> Dict[str, Any]:
+        mydict = asdict(self)
+        for k, v in mydict.items():
+            if isinstance(v, datetime.timedelta):
+                mydict[k] = v.total_seconds()
+        mydict.pop('pid_constants_need_setting')
+        return mydict
+
+    def rowiterable_for_save(self) -> List[List[Any]]:
+        return [
+            ['speed (rpm)', self.speed],
+            ['warmup speed (rpm)',  self.warmup_speed or 0],
+            ['fixed sample time  (s)',
+             (self.fixed_time_sample and self.fixed_time_sample.total_seconds())
+             or 'not set'],
+            ['acceleration (rpm/s)', self.acceleration],
+            ['stability criterion (rpm^2)', self.stability_criterion],
+            ['stability window (s)',  self.stability_window.total_seconds()],
+            ['kp', self.pid_constants['kp']],
+            ['ki', self.pid_constants['ki']],
+            ['kd', self.pid_constants['kd']]
+        ]
 
 
 def build_serial(port: str = None) -> serial.Serial:
@@ -84,19 +146,12 @@ def set_speed_pid(ser: serial.Serial,
     guard_error(ser.readline(), b'M301')
 
 
-def sample_speed(ser: serial.Serial, target: float,
-                 stab_window: datetime.timedelta,
-                 stab_criterion: float,
-                 sample_time: datetime.timedelta,
-                 timeout: datetime.timedelta = None,
-                 fixed_time: datetime.timedelta = None,
+def sample_speed(ser: serial.Serial,
+                 config: RunConfig,
                  min_time: datetime.timedelta =  None):
-    sample_time = sample_time or datetime.timedelta(milliseconds=100)
     min_time = min_time or datetime.timedelta(seconds=2)
-    if fixed_time:
-        min_time = min(min_time, fixed_time)
-    if timeout:
-        min_time = min(min_time, timeout)
+    if config.fixed_time_sample:
+        min_time = min(min_time, fixed_time_sample)
     print("Beginning data sampling (ctrl-c ONCE stops early)")
     running_since = datetime.datetime.now()
     data = []
@@ -105,16 +160,16 @@ def sample_speed(ser: serial.Serial, target: float,
             speed, target = get_speed(ser)
             now = datetime.datetime.now()
             data.append(((now - running_since).total_seconds(), speed))
-            time.sleep(sample_time.total_seconds())
+            time.sleep(config.sampling_time.total_seconds())
             if now - running_since < min_time:
                 continue
-            if timeout and now - running_since > timeout:
-                raise RuntimeError('timeout exceeded')
-            if fixed_time and now - running_since > fixed_time:
+            if config.fixed_time_sample and now - running_since > config.fixed_time_sample:
                 print(
                     "Data sampling complete after (fixed time elapsed) {(now-running_since).total_seconds()}s")
                 break
-            if not fixed_time and (abs(speed-target) < 2) and stable(data, target, stab_window, stab_criterion):
+            if (not config.fixed_time_sample)\
+               and (abs(speed-target) < 2) \
+               and stable(data, target, config.stability_window, config.stability_criterion):
                 print(
                     "Data sampling complete after (speed stable) {(now-running_since).total_seconds()}")
                 break
@@ -144,73 +199,112 @@ def do_warmup(ser: serial.Serial, speed: float):
     print(f"Doing warmup phase at {speed}RPM")
     then = datetime.datetime.now()
     set_speed(ser, speed)
-    sample_speed(ser, speed, sample_time=datetime.timedelta(seconds=1), stab_window=datetime.timedelta(seconds=0.5), stab_criterion=5)
+    warmup_config = RunConfig(
+        speed=speed,
+        stability_window=datetime.timedelta(seconds=2),
+        stability_criterion=20,
+        sampling_time=datetime.timedelta(milliseconds=500))
+    sample_speed(ser, warmup_config)
     now = datetime.datetime.now()
     print(f"Warmup phase complete after {(now-then).total_seconds()}")
 
 
-def do_run(ser: serial.Serial,
-           speed: float,
-           stab_window: datetime.timedelta,
-           stab_criterion: float,
-           sampletime: float = None,
-           fixedtime: float = None):
+def do_run(ser: serial.Serial, config: RunConfig):
     print(f"Doing main sample run")
     then = datetime.datetime.now()
-    set_speed(ser, speed)
-    data = sample_speed(
-        ser,
-        speed,
-        stab_window,
-        stab_criterion,
-        sampletime and datetime.timedelta(seconds=sampletime),
-        None,
-        fixedtime and datetime.timedelta(seconds=fixedtime))
+    set_speed(ser, config.speed)
+    data = sample_speed(ser, config)
     now = datetime.datetime.now()
     set_speed(ser, 0)
     print(f"Data acquisition complete after {(now-then).total_seconds()}")
     return data
 
 
-def plot_data(data: List[Tuple[float, float]], speed: float, stab_criterion: float = None):
-    pp.plot([sample[0] for sample in data], [sample[1] for sample in data], label='speed')
-    pp.axhline(speed, color='red', linestyle='-.', label='target speed')
-    if stab_criterion:
-        pp.axhspan(speed - stab_criterion**2, speed + stab_criterion**2,
-                   alpha=0.1, color='r')
-    pp.ylabel('speed (rpm)')
-    pp.xlabel('time (sec)')
-    pp.title(f'Speed/Time (target={args.speed}rpm)')
+def plot_data(data: List[Tuple[float, float]], config: RunConfig):
+    fig, axes = pp.subplots()
+    axes.plot([sample[0] for sample in data], [sample[1] for sample in data], label='speed')
+    axes.axhline(config.speed, color='red', linestyle='-.', label='target speed')
+    axes.axhspan(config.speed - config.stability_criterion**2, config.speed + config.stability_criterion**2,
+                 alpha=0.1, color='r')
+    # options string: we'd like to put the options on the plot mostly so that if
+    # it's saved as an image, we keep them around. it'll be a big chunk of text,
+    # so we autolayout it to either the bottom right or top right depending on
+    # whether most of the data is on the bottom or the top (because we capture
+    # a ramp and then regulation period, it'll usually have a blank space)
+    options_string = '\n'.join(f'{k}: {val}' for k, val in config.dict_for_save().items())
+    yavg = sum([sample[1] for sample in data]) / len(data)
+    ylims = axes.get_ylim()
+    if yavg < sum(ylims)/2:
+        pos = (axes.get_xlim()[1], ylims[1])
+        valign = 'top'
+    else:
+        pos = (axes.get_xlim()[1], ylims[0])
+        valign = 'bottom'
+    # once we render the text we  know what size it is, so we can shift it in
+    # to the visible area
+    text = axes.text(
+        *pos,
+        options_string,
+        verticalalignment=valign,
+        horizontalalignment='left')
+    box = text.get_window_extent(
+        fig.canvas.get_renderer()).transformed(axes.transData.inverted())
+
+    # shift right to visible area
+    minx, maxx = sorted(box.intervalx)
+    miny, maxy = sorted(box.intervaly)
+    newx = minx - (maxx-minx)
+    if yavg < sum(ylims)/2:
+        # line is low, text is high
+        newy = miny - (maxy-miny)
+    else:
+        newy = miny
+    text.set_position((newx, newy))
+
+    axes.set_ylabel('speed (rpm)')
+    axes.set_xlabel('time (sec)')
+    axes.set_title(f'Speed/Time (target={config.speed}rpm)')
     pp.show()
 
-def write_data(data: List[Tuple[float, float]], speed: float, destfile: io.StringIO):
+def write_json(data: List[Tuple[float, float]], config: RunConfig, destfile: io.StringIO):
     timestamp = datetime.datetime.now()
-    output_file = destfile or open(f'./heater-shaker-speed-{timestamp}.json', 'w')
+    output_file = destfile or open(f'./heater-shaker-speed-{config.speed}rpm-{timestamp}.json', 'w')
     json.dump({'meta': {'name': 'heater-shaker motor consistency run',
+                        'config': config.dict_for_save(),
                         'format': ['time', 'speed'], 'units': ['s', 'rpm'],
                         'takenAt': str(timestamp)},
                    'data': data}, output_file)
 
-
+def write_csv(data: List[Tuple[float, float]], config: RunConfig, destfile: io.StringIO):
+    timestamp = datetime.datetime.now()
+    output_file = destfile or open(f'./heater-shaker-speed-{config.speed}rpm-{timestamp}.csv', 'w')
+    writer = csv.writer(output_file)
+    writer.writerows(
+        [['title', 'heater shaker speed'],
+         ['taken at', str(timestamp)]])
+    writer.writerows(config.rowiterable_for_save())
+    writer.writerows([['time', 'speed'],
+                      ['seconds', 'rpm']])
+    writer.writerows(data)
 
 if __name__ == '__main__':
     parser = build_parser()
     args = parser.parse_args()
+    if 'json' in args.output and 'csv' in args.output:
+        raise RuntimeError("please pick just one of json or csv")
     port = build_serial(args.port)
-    set_acceleration(port, args.acceleration)
-    if args.kp_override or args.kd_override or args.ki_override:
-        overrides = {'kp': args.kp_override or DEFAULT_PID_CONSTANTS['kp'],
-                     'ki': args.ki_override or DEFAULT_PID_CONSTANTS['ki'],
-                     'kd': args.kd_override or DEFAULT_PID_CONSTANTS['kd']}
-        set_speed_pid(port, **overrides)
-    if args.warmup_speed:
-        do_warmup(port, args.warmup_speed)
-    data = do_run(port, args.speed,
-                  datetime.timedelta(seconds=args.stability_window),
-                  args.stability_criterion,
-                  args.sample_time, args.time)
+    config = RunConfig.from_args(args)
+    set_acceleration(port, config.acceleration)
+    if config.pid_constants_need_setting:
+        set_speed_pid(port, **config.pid_constants)
+    if config.warmup_speed:
+        do_warmup(port, config.warmup_speed)
+    data = do_run(port, config)
     port.close()
+
     if 'json' in args.output:
-        write_data(data, args.speed, args.output_file)
+        write_json(data, config, args.output_file)
+    if 'csv' in args.output:
+        write_csv(data, config, args.output_file)
     if not args.output or 'plot' in args.output:
-        plot_data(data, args.speed, args.stability_criterion)
+        plot_data(data, config)
