@@ -50,12 +50,12 @@ auto MotorPolicy::set_rpm(int16_t rpm) -> ErrorCode {
     if (rpm > MAX_APPLICATION_SPEED_RPM || rpm < MIN_APPLICATION_SPEED_RPM) {
         return ErrorCode::MOTOR_ILLEGAL_SPEED;
     }
-    int16_t current_speed = get_current_rpm();
-    int16_t command_01hz = rpm * _01HZ / _RPM;
-    uint16_t ramp_time_ms =
-        std::max(static_cast<uint16_t>(
-                     static_cast<int32_t>(std::abs(rpm - current_speed)) /
-                     ramp_rate_rpm_per_ms),
+    const int16_t current_speed = get_current_rpm();
+    const int16_t command_01hz = rpm * _01HZ / _RPM;
+    const uint32_t speed_diff = std::abs(rpm-current_speed);
+    const uint32_t uncapped_ramp_time_ms = speed_diff / ramp_rate_rpm_per_ms;
+    const uint16_t ramp_time_ms =
+        std::max(static_cast<uint16_t>(uncapped_ramp_time_ms),
                  static_cast<uint16_t>(1));
     MCI_ExecSpeedRamp(hw_handles->mci[0], -command_01hz, ramp_time_ms);
     if (MCI_GetSTMState(hw_handles->mci[0]) == IDLE) {
