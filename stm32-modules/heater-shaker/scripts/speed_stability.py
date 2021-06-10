@@ -16,7 +16,7 @@ import serial
 from serial.tools.list_ports import grep
 from matplotlib import pyplot as pp, gridspec
 
-DEFAULT_PID_CONSTANTS = {'kp': 3631, 'ki': 1536, 'kd': 0}
+DEFAULT_PID_CONSTANTS = {'kp': 2372, 'ki': 2624, 'kd': 0}
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description='Test a heater-shaker for stability')
@@ -258,9 +258,11 @@ def plot_data(data: List[Tuple[float, float]], config: RunConfig):
             return sample[1] > config.speed
         else:
             return sample[1] < config.speed
-    crossing = [samp for samp in data if matched(samp)][0]
-    axes.annotate(f'target crossing:\nt={crossing[0]}',
-                  crossing, (0.01, 0.8), 'axes fraction')
+    crossings = [samp for samp in data if matched(samp)]
+    if crossings:
+        crossing = crossings[0]
+        axes.annotate(f'target crossing:\nt={crossing[0]}',
+                      crossing, (0.01, 0.8), 'axes fraction')
 
     # shift right to visible area
     minx, maxx = sorted(box.intervalx)
