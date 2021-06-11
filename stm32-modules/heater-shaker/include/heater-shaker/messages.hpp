@@ -169,11 +169,10 @@ using HeaterMessage =
     ::std::variant<std::monostate, SetTemperatureMessage, GetTemperatureMessage,
                    TemperatureConversionComplete, GetTemperatureDebugMessage,
                    SetPIDConstantsMessage, SetPowerTestMessage>;
-using MotorMessage =
-    ::std::variant<std::monostate, MotorSystemErrorMessage, SetRPMMessage,
-                   GetRPMMessage, SetAccelerationMessage,
-                   CheckHomingStatusMessage, BeginHomingMessage,
-                   ActuateSolenoidMessage, SetPlateLockPowerMessage>;
+using MotorMessage = ::std::variant<
+    std::monostate, MotorSystemErrorMessage, SetRPMMessage, GetRPMMessage,
+    SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,
+    ActuateSolenoidMessage, SetPlateLockPowerMessage, SetPIDConstantsMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious>;
 using HostCommsMessage =

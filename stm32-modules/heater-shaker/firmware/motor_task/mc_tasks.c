@@ -489,10 +489,10 @@ bool TSK_StopPermanencyTimeHasElapsedM1(void)
   return (retVal);
 }
 
-#if defined (CCMRAM_ENABLED)
+#if defined (CCMRAM)
 #if defined (__ICCARM__)
 #pragma location = ".ccmram"
-#elif defined (__CC_ARM)
+#elif defined (__CC_ARM) || defined(__GNUC__)
 __attribute__((section (".ccmram")))
 #endif
 #endif
@@ -622,6 +622,7 @@ uint16_t TSK_SafetyTask_PWMOFF(uint8_t bMotor)
     break;
   case FAULT_OVER:
     PWMC_SwitchOffPWM(pwmcHandle[bMotor]);
+    CodeReturn |= (STM_GetFaultState(&STM[bMotor]) & 0xffff);
     break;
   default:
     break;

@@ -50,13 +50,13 @@ auto MotorPolicy::set_rpm(int16_t rpm) -> ErrorCode {
     if (rpm > MAX_APPLICATION_SPEED_RPM || rpm < MIN_APPLICATION_SPEED_RPM) {
         return ErrorCode::MOTOR_ILLEGAL_SPEED;
     }
-    int16_t current_speed = get_current_rpm();
-    int16_t command_01hz = rpm * _01HZ / _RPM;
-    uint16_t ramp_time = std::max(
-        static_cast<uint16_t>(
-            static_cast<int32_t>(std::abs(rpm - current_speed)) / ramp_rate),
-        static_cast<uint16_t>(1));
-    MCI_ExecSpeedRamp(hw_handles->mci[0], -command_01hz, ramp_time);
+    const int16_t current_speed = get_current_rpm();
+    const int16_t command_01hz = rpm * _01HZ / _RPM;
+    const uint32_t speed_diff = std::abs(rpm - current_speed);
+    const uint32_t uncapped_ramp_time_ms = speed_diff / ramp_rate_rpm_per_ms;
+    const uint16_t ramp_time_ms = std::max(
+        static_cast<uint16_t>(uncapped_ramp_time_ms), static_cast<uint16_t>(1));
+    MCI_ExecSpeedRamp(hw_handles->mci[0], -command_01hz, ramp_time_ms);
     if (MCI_GetSTMState(hw_handles->mci[0]) == IDLE) {
         MCI_StartMotor(hw_handles->mci[0]);
     }
@@ -84,7 +84,9 @@ auto MotorPolicy::set_ramp_rate(int32_t rpm_per_s) -> ErrorCode {
         rpm_per_s < MIN_RAMP_RATE_RPM_PER_S) {
         return ErrorCode::MOTOR_ILLEGAL_RAMP_RATE;
     }
-    ramp_rate = rpm_per_s;
+    ramp_rate_rpm_per_ms =
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        std::max(static_cast<double>(rpm_per_s) / 1000.0, 1.0);
     return ErrorCode::NO_ERROR;
 }
 
@@ -98,4 +100,17 @@ auto MotorPolicy::plate_lock_set_power(float power) -> void {
 
 auto MotorPolicy::plate_lock_disable() -> void {
     motor_hardware_plate_lock_off(&hw_handles->tim3);
+}
+
+auto MotorPolicy::set_pid_constants(double kp, double ki, double kd) -> void {
+    // These conversions match those in drive_parameters.h and therefore let you
+    // just look at the numeric literals there
+    static constexpr const double SPEED_UNIT_CONVERSION_SPC =
+        static_cast<double>(SPEED_UNIT) / 10.0;
+    PID_SetKD(hw_handles->mct[0]->pPIDSpeed,
+              static_cast<int16_t>(kd / SPEED_UNIT_CONVERSION_SPC));
+    PID_SetKP(hw_handles->mct[0]->pPIDSpeed,
+              static_cast<int16_t>(kp / SPEED_UNIT_CONVERSION_SPC));
+    PID_SetKI(hw_handles->mct[0]->pPIDSpeed,
+              static_cast<int16_t>(ki / SPEED_UNIT_CONVERSION_SPC));
 }

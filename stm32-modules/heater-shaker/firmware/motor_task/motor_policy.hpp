@@ -20,6 +20,7 @@ class MotorPolicy {
     MotorPolicy() = delete;
     explicit MotorPolicy(motor_hardware_handles* handles);
     auto set_rpm(int16_t rpm) -> errors::ErrorCode;
+    auto set_pid_constants(double kp, double ki, double kd) -> void;
     [[nodiscard]] auto get_current_rpm() const -> int16_t;
     [[nodiscard]] auto get_target_rpm() const -> int16_t;
     auto stop() -> void;
@@ -35,6 +36,8 @@ class MotorPolicy {
 
   private:
     static constexpr uint16_t MAX_SOLENOID_CURRENT_MA = 330;
-    int32_t ramp_rate = DEFAULT_RAMP_RATE_RPM_PER_S;
+    double ramp_rate_rpm_per_ms =
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        static_cast<double>(DEFAULT_RAMP_RATE_RPM_PER_S) / 1000.0;
     motor_hardware_handles* hw_handles;
 };

@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 #include <iterator>
 #include <optional>
 #include <utility>
@@ -372,19 +373,22 @@ struct ActuateSolenoid {
     }
 };
 
-struct SetHeaterPIDConstants {
+struct SetPIDConstants {
     /**
-     * SetHeaterPIDConstants uses M301 because smoothieware does. Parameters:
+     * SetPIDConstants uses M301 because smoothieware does. Parameters:
+     * T[H|M]
      * Pxxx.xxx Ixxx.xxx Dxxx.xxx
      *
-     * Example: M301 P1.02 I2.1 D1.0\r\n
+     * Example: M301 TH P1.02 I2.1 D1.0\r\n
      * */
+    enum Target { HEATER, MOTOR };
     double kp;
     double ki;
     double kd;
+    Target target;
 
-    using ParseResult = std::optional<SetHeaterPIDConstants>;
-    static constexpr auto prefix = std::array{'M', '3', '0', '1', ' ', 'P'};
+    using ParseResult = std::optional<SetPIDConstants>;
+    static constexpr auto prefix = std::array{'M', '3', '0', '1', ' ', 'T'};
     static constexpr const char* response = "M301 OK\n";
 
     template <typename InputIt, typename InLimit>
@@ -400,6 +404,23 @@ struct SetHeaterPIDConstants {
             -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        Target target = HEATER;
+        if (*working == 'M') {
+            target = MOTOR;
+        } else if (*working != 'H') {
+            return std::make_pair(ParseResult(), input);
+        }
+        working++;
+        if (working == limit) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        constexpr auto p_pref = std::array{' ', 'P'};
+        auto before_pref = working;
+        working = prefix_matches(working, limit, p_pref);
+        if (working == before_pref) {
             return std::make_pair(ParseResult(), input);
         }
 
@@ -432,9 +453,10 @@ struct SetHeaterPIDConstants {
         }
 
         return std::make_pair(
-            ParseResult(SetHeaterPIDConstants{.kp = kp_res.first.value(),
-                                              .ki = ki_res.first.value(),
-                                              .kd = kd_res.first.value()}),
+            ParseResult(SetPIDConstants{.kp = kp_res.first.value(),
+                                        .ki = ki_res.first.value(),
+                                        .kd = kd_res.first.value(),
+                                        .target = target}),
             kd_res.second);
     }
 };

@@ -14,7 +14,7 @@
 TEMPLATE_TEST_CASE("gcode basic parsing", "[gcode][parse]", gcode::SetRPM,
                    gcode::SetTemperature, gcode::GetTemperature, gcode::GetRPM,
                    gcode::SetAcceleration, gcode::GetTemperatureDebug,
-                   gcode::SetHeaterPIDConstants, gcode::SetHeaterPowerTest,
+                   gcode::SetPIDConstants, gcode::SetHeaterPowerTest,
                    gcode::EnterBootloader, gcode::GetVersion, gcode::Home,
                    gcode::ActuateSolenoid, gcode::DebugControlPlateLockMotor) {
     SECTION("attempting to parse an empty string fails") {
@@ -65,7 +65,7 @@ TEMPLATE_TEST_CASE("gcodes without parameters parse", "[gcode][parse]",
 */
 TEMPLATE_TEST_CASE("gcode responses without parameters generate",
                    "[gcode][response]", gcode::SetRPM, gcode::SetTemperature,
-                   gcode::SetHeaterPowerTest, gcode::SetHeaterPIDConstants,
+                   gcode::SetHeaterPowerTest, gcode::SetPIDConstants,
                    gcode::SetAcceleration, gcode::EnterBootloader, gcode::Home,
                    gcode::ActuateSolenoid, gcode::DebugControlPlateLockMotor) {
     SECTION("responses won't write into zero-size buffers") {

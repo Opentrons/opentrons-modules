@@ -88,3 +88,22 @@ auto TestMotorPolicy::test_plate_lock_get_power() const -> float {
 auto TestMotorPolicy::test_plate_lock_enabled() const -> bool {
     return plate_lock_enabled;
 }
+
+auto TestMotorPolicy::set_pid_constants(double kp, double ki, double kd)
+    -> void {
+    overridden_kp = kp;
+    overridden_ki = ki;
+    overridden_kd = kd;
+}
+
+auto TestMotorPolicy::test_get_overridden_kp() const -> double {
+    return overridden_kp;
+}
+
+auto TestMotorPolicy::test_get_overridden_ki() const -> double {
+    return overridden_ki;
+}
+
+auto TestMotorPolicy::test_get_overridden_kd() const -> double {
+    return overridden_kd;
+}

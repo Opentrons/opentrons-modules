@@ -607,6 +607,62 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
     }
 }
 
+SCENARIO("message handling for m301") {
+    GIVEN("a host_comms task") {
+        auto tasks = TaskBuilder::build();
+        std::string tx_buf(128, 'c');
+        WHEN("sending a motor-target set-PID-constant message") {
+            std::string message_text = "M301 TM P12.0 I221.5 D-1.2\n";
+            auto message_obj = messages::IncomingMessageFromHost(
+                &*message_text.begin(), &*message_text.end());
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            tasks->get_host_comms_task().run_once(tx_buf.begin(), tx_buf.end());
+            THEN("the gcode is parsed and sent to the motor") {
+                REQUIRE(!tasks->get_motor_queue().backing_deque.empty());
+                auto motor_message =
+                    tasks->get_motor_queue().backing_deque.front();
+                REQUIRE_THAT(
+                    std::get<messages::SetPIDConstantsMessage>(motor_message)
+                        .kp,
+                    Catch::Matchers::WithinAbs(12.0, 0.1));
+                REQUIRE_THAT(
+                    std::get<messages::SetPIDConstantsMessage>(motor_message)
+                        .ki,
+                    Catch::Matchers::WithinAbs(221.5, 0.5));
+                REQUIRE_THAT(
+                    std::get<messages::SetPIDConstantsMessage>(motor_message)
+                        .kd,
+                    Catch::Matchers::WithinAbs(-1.2, 0.01));
+            }
+        }
+
+        WHEN("sending a heater-target set-PID-constant message") {
+            std::string message_text = "M301 TH P0 I-25 D12.1\n";
+            auto message_obj = messages::IncomingMessageFromHost(
+                &*message_text.begin(), &*message_text.end());
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            tasks->get_host_comms_task().run_once(tx_buf.begin(), tx_buf.end());
+            THEN("the gcode is parsed and sent to the heater") {
+                REQUIRE(!tasks->get_heater_queue().backing_deque.empty());
+                auto heater_message =
+                    tasks->get_heater_queue().backing_deque.front();
+                REQUIRE_THAT(
+                    std::get<messages::SetPIDConstantsMessage>(heater_message)
+                        .kp,
+                    Catch::Matchers::WithinAbs(0, 0.01));
+                REQUIRE_THAT(
+                    std::get<messages::SetPIDConstantsMessage>(heater_message)
+                        .ki,
+                    Catch::Matchers::WithinAbs(-25, 0.1));
+                REQUIRE_THAT(
+                    std::get<messages::SetPIDConstantsMessage>(heater_message)
+                        .kd,
+                    Catch::Matchers::WithinAbs(12.1, 0.1));
+            }
+        }
+    }
+}
+
 SCENARIO("message handling for other-task-initiated communication") {
     GIVEN("a host_comms task") {
         auto tasks = TaskBuilder::build();

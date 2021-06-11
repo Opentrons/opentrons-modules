@@ -39,12 +39,12 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     using GCodeParser = gcode::GroupParser<
         gcode::SetRPM, gcode::SetTemperature, gcode::GetRPM,
         gcode::GetTemperature, gcode::SetAcceleration,
-        gcode::GetTemperatureDebug, gcode::SetHeaterPIDConstants,
+        gcode::GetTemperatureDebug, gcode::SetPIDConstants,
         gcode::SetHeaterPowerTest, gcode::EnterBootloader, gcode::GetVersion,
         gcode::Home, gcode::ActuateSolenoid, gcode::DebugControlPlateLockMotor>;
     using AckOnlyCache =
         AckCache<8, gcode::SetRPM, gcode::SetTemperature,
-                 gcode::SetAcceleration, gcode::SetHeaterPIDConstants,
+                 gcode::SetAcceleration, gcode::SetPIDConstants,
                  gcode::SetHeaterPowerTest, gcode::EnterBootloader, gcode::Home,
                  gcode::ActuateSolenoid, gcode::DebugControlPlateLockMotor>;
     using GetTempCache = AckCache<8, gcode::GetTemperature>;
@@ -532,7 +532,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::SetHeaterPIDConstants& gcode, InputIt tx_into,
+        visit_gcode(const gcode::SetPIDConstants& gcode, InputIt tx_into,
                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
@@ -543,8 +543,19 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
 
         auto message = messages::SetPIDConstantsMessage{
             .id = id, .kp = gcode.kp, .ki = gcode.ki, .kd = gcode.kd};
-        if (!task_registry->heater->get_message_queue().try_send(
-                message, TICKS_TO_WAIT_ON_SEND)) {
+        bool send_result = false;
+        switch (gcode.target) {
+            case gcode::SetPIDConstants::HEATER:
+                send_result =
+                    task_registry->heater->get_message_queue().try_send(
+                        message, TICKS_TO_WAIT_ON_SEND);
+                break;
+            case gcode::SetPIDConstants::MOTOR:
+                send_result =
+                    task_registry->motor->get_message_queue().try_send(
+                        message, TICKS_TO_WAIT_ON_SEND);
+        }
+        if (!send_result) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
             ack_only_cache.remove_if_present(id);
