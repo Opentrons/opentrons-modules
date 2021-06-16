@@ -91,9 +91,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     static constexpr uint8_t ADC_BIT_DEPTH = 12;
     static constexpr double HEATER_PAD_OVERTEMP_SAFETY_LIMIT_C = 100;
     static constexpr double BOARD_OVERTEMP_SAFETY_LIMIT_C = 60;
-    static constexpr double DEFAULT_KI = 1.0;
-    static constexpr double DEFAULT_KP = 1.0;
-    static constexpr double DEFAULT_KD = 1.0;
+    static constexpr double DEFAULT_KI = 0.102;
+    static constexpr double DEFAULT_KP = 0.97;
+    static constexpr double DEFAULT_KD = 1.901;
     static constexpr double MAX_CONTROLLABLE_TEMPERATURE = 95.0;
     static constexpr double KP_MIN = -200;
     static constexpr double KP_MAX = 200;
