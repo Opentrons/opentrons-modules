@@ -164,7 +164,7 @@ void heater_hardware_begin_conversions(heater_hardware* hardware) {
     ADC_ChannelConfTypeDef channel_conf = {
         .Channel = NTC_PAD_A,
         .Rank = ADC_REGULAR_RANK_1,
-        .SamplingTime = ADC_SAMPLETIME_19CYCLES_5,
+        .SamplingTime = ADC_SAMPLETIME_601CYCLES_5,
     };
     hw_internal* internal = (hw_internal*)hardware->hardware_internal;
     if (!internal) {
@@ -258,7 +258,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     ADC_ChannelConfTypeDef channel_conf = {
       .Channel = internal->reading_which,
       .Rank = ADC_REGULAR_RANK_1,
-      .SamplingTime = ADC_SAMPLETIME_19CYCLES_5,
+      .SamplingTime = ADC_SAMPLETIME_601CYCLES_5,
     };
     switch(which) {
         case NTC_PAD_A: {
