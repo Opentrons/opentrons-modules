@@ -219,7 +219,9 @@ SCENARIO("PID controller") {
         }
     }
 
-    GIVEN("a pid controller with an iterm and integrator reset armed with a positive error value") {
+    GIVEN(
+        "a pid controller with an iterm and integrator reset armed with a "
+        "positive error value") {
         auto p = PID(0, 1, 0, 1);
         p.arm_integrator_reset(25);
         WHEN("repeatedly calculating controls without an error zero-cross") {
@@ -233,31 +235,39 @@ SCENARIO("PID controller") {
                 REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
             }
         }
-        WHEN("repeatedly calculating results that include a single error zero-cross") {
+        WHEN(
+            "repeatedly calculating results that include a single error "
+            "zero-cross") {
             std::vector<float> inputs = {3, 3, 3, 3, -3, -3, -3, -3};
             std::vector<float> results(8);
             std::transform(
                 inputs.cbegin(), inputs.cend(), results.begin(),
-                [&p](const float& error){ return p.compute(error);} );
+                [&p](const float& error) { return p.compute(error); });
             THEN("the integrator should be reset when the error crosses zero") {
                 std::vector<float> intended = {3, 6, 9, 12, -3, -6, -9, -12};
                 REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
             }
         }
-        WHEN("repeatedly calculating results that include multiple error zero-crosses") {
+        WHEN(
+            "repeatedly calculating results that include multiple error "
+            "zero-crosses") {
             std::vector<float> inputs = {3, 3, -3, -3, 1, -1, 2, -2};
             std::vector<float> results(8);
             std::transform(
                 inputs.cbegin(), inputs.cend(), results.begin(),
-                [&p](const float& error){ return p.compute(error);} );
-            THEN("the integrator should be reset only after the first zero cross") {
+                [&p](const float& error) { return p.compute(error); });
+            THEN(
+                "the integrator should be reset only after the first zero "
+                "cross") {
                 std::vector<float> intended = {3, 6, -3, -6, -5, -6, -4, -6};
                 REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
             }
         }
     }
 
-    GIVEN("a pid controller with an iterm and integrator reset armed with a negative error value") {
+    GIVEN(
+        "a pid controller with an iterm and integrator reset armed with a "
+        "negative error value") {
         auto p = PID(0, 1, 0, 1);
         p.arm_integrator_reset(-25);
         WHEN("repeatedly calculating controls without an error zero-cross") {
@@ -267,28 +277,35 @@ SCENARIO("PID controller") {
                 inputs.cbegin(), inputs.cend(), results.begin(),
                 [&p](const float& error) { return p.compute(error); });
             THEN("the integrator term should accumulate") {
-                std::vector<float> intended = {-3, -6, -9, -12, -15, -18, -21, -24};
+                std::vector<float> intended = {-3,  -6,  -9,  -12,
+                                               -15, -18, -21, -24};
                 REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
             }
         }
-        WHEN("repeatedly calculating results that include a single error zero-cross") {
+        WHEN(
+            "repeatedly calculating results that include a single error "
+            "zero-cross") {
             std::vector<float> inputs = {-3, -3, -3, -3, 3, 3, 3, 3};
             std::vector<float> results(8);
             std::transform(
                 inputs.cbegin(), inputs.cend(), results.begin(),
-                [&p](const float& error){ return p.compute(error);} );
+                [&p](const float& error) { return p.compute(error); });
             THEN("the integrator should be reset when the error crosses zero") {
                 std::vector<float> intended = {-3, -6, -9, -12, 3, 6, 9, 12};
                 REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
             }
         }
-        WHEN("repeatedly calculating results that include multiple error zero-crosses") {
+        WHEN(
+            "repeatedly calculating results that include multiple error "
+            "zero-crosses") {
             std::vector<float> inputs = {-3, -3, 3, 3, -1, 1, -2, 2};
             std::vector<float> results(8);
             std::transform(
                 inputs.cbegin(), inputs.cend(), results.begin(),
-                [&p](const float& error){ return p.compute(error);} );
-            THEN("the integrator should be reset only after the first zero cross") {
+                [&p](const float& error) { return p.compute(error); });
+            THEN(
+                "the integrator should be reset only after the first zero "
+                "cross") {
                 std::vector<float> intended = {-3, -6, 3, 6, 5, 6, 4, 6};
                 REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
             }

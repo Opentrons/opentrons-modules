@@ -101,8 +101,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     static constexpr double KI_MAX = 200;
     static constexpr double KD_MIN = -200;
     static constexpr double KD_MAX = 200;
-    static constexpr double CONTROLLER_PERIOD_S = 0.1;
-
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    static constexpr double CONTROL_PERIOD_S =
+        static_cast<uint32_t>(CONTROL_PERIOD_TICKS) * 0.001;
     explicit HeaterTask(Queue& q)
         : message_queue(q),
           task_registry(nullptr),
@@ -138,7 +139,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                     THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
                 .error_bit = State::BOARD_SENSE_ERROR},
           state{.system_status = State::IDLE, .error_bitmap = 0},
-          pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROLLER_PERIOD_S),
+          pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_S, 1.0, -1.0),
           setpoint(0) {}
     HeaterTask(const HeaterTask& other) = delete;
     auto operator=(const HeaterTask& other) -> HeaterTask& = delete;
@@ -263,7 +264,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                 errors::ErrorCode::HEATER_CONSTANT_OUT_OF_RANGE;
         } else {
             policy.disable_power_output();
-            pid = PID(msg.kp, msg.ki, msg.kd, CONTROLLER_PERIOD_S);
+            pid = PID(msg.kp, msg.ki, msg.kd, CONTROL_PERIOD_S, 1.0, -1.0);
         }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));

@@ -42,7 +42,7 @@ auto PID::compute(double error) -> double {
     }
     const double unclamped_iterm = last_iterm() + sampletime() * ki() * error;
     const double iterm =
-      std::clamp(unclamped_iterm, windup_limit_low(), windup_limit_high());
+        std::clamp(unclamped_iterm, windup_limit_low(), windup_limit_high());
     _last_iterm = iterm;
     const double errdiff = error - last_error();
     _last_error = error;
