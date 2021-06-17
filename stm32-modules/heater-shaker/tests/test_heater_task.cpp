@@ -71,6 +71,18 @@ SCENARIO("heater task message passing") {
                                     .setpoint_temperature == 0.125);
                     }
                 }
+                AND_WHEN("continuing to get thermistor readings") {
+                    auto conversion_message =
+                        messages::TemperatureConversionComplete{
+                            .pad_a = ((1U << 9) - 1),
+                            .pad_b = (1U << 9),
+                            .board = (1U << 11)};
+                    tasks->get_heater_queue().backing_deque.push_front(
+                        conversion_message);
+                    tasks->run_heater_task();
+                    REQUIRE(tasks->get_heater_policy().last_power_setting() ==
+                            0.125);
+                }
             }
         }
         WHEN("sending a set-temperature message as if from host comms") {

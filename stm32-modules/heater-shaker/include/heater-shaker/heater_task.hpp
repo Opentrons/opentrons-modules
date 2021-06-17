@@ -205,6 +205,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
         } else {
             setpoint = msg.target_temperature;
             pid.arm_integrator_reset(setpoint - pad_temperature());
+            state.system_status = State::CONTROLLING;
         }
         if (msg.from_system) {
             static_cast<void>(
@@ -224,12 +225,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
         errors::ErrorCode code = pad_a.error != errors::ErrorCode::NO_ERROR
                                      ? pad_a.error
                                      : pad_b.error;
-        auto response =
-            messages::GetTemperatureResponse{
-        .responding_to_id = msg.id,
-        .current_temperature = pad_temperature(),
-        .setpoint_temperature = setpoint,
-        .with_error = code};
+        auto response = messages::GetTemperatureResponse{
+            .responding_to_id = msg.id,
+            .current_temperature = pad_temperature(),
+            .setpoint_temperature = setpoint,
+            .with_error = code};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
@@ -324,11 +324,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             setpoint = 0;
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-        if (state.system_status != State::ERROR && (setpoint != 0)) {
-            policy.set_power_output(
-                pid.compute(setpoint - pad_temperature()));
-            state.system_status = State::CONTROLLING;
-        } else {
+        if (state.system_status == State::CONTROLLING) {
+            policy.set_power_output(pid.compute(setpoint - pad_temperature()));
+        } else if (state.system_status != State::POWER_TEST) {
             policy.disable_power_output();
         }
     }
