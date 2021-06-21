@@ -6,7 +6,7 @@
 
 SCENARIO("PID controller") {
     GIVEN("a PID controller initialized with all 0 coeffs") {
-        auto p = PID(0, 0, 0);
+        auto p = PID(0, 0, 0, 1);
         WHEN("calculating a value") {
             auto result = p.compute(12312.0);
             THEN("the result should be 0") { REQUIRE(result == 0.0); }
@@ -17,11 +17,12 @@ SCENARIO("PID controller") {
         }
     }
     GIVEN("a PID controller") {
-        auto p = PID(1.0, 2.0, 3.0, 4.0, -5.0);
+        auto p = PID(1.0, 2.0, 3.0, 1.0, 4.0, -5.0);
         WHEN("querying the accessors for static data") {
             auto kp = p.kp();
             auto ki = p.ki();
             auto kd = p.kd();
+            auto ts = p.sampletime();
             auto windup_high = p.windup_limit_high();
             auto windup_low = p.windup_limit_low();
             THEN("the queried values should match the ctor values") {
@@ -30,6 +31,7 @@ SCENARIO("PID controller") {
                 REQUIRE(kd == 3.0);
                 REQUIRE(windup_high == 4.0);
                 REQUIRE(windup_low == -5.0);
+                REQUIRE(ts == 1.0);
             }
         }
         WHEN("computing values") {
@@ -37,12 +39,12 @@ SCENARIO("PID controller") {
             p.compute(3.0);
             THEN("the updated state should be correct") {
                 REQUIRE(p.last_error() == 3.0);
-                REQUIRE(p.integrator() == 4.0);
+                REQUIRE(p.last_iterm() == 4.0);
             }
         }
     }
     GIVEN("a PID controller with only kp") {
-        auto p = PID(2.0, 0, 0);
+        auto p = PID(2.0, 0, 0, 1.0);
         WHEN("repeatedly calculating controls") {
             std::vector<float> results(8);
             std::vector<float> inputs = {0, 1, 2, 3, 4, 5, 6, 7};
@@ -73,7 +75,7 @@ SCENARIO("PID controller") {
         }
     }
     GIVEN("a PID controller with only kd") {
-        auto p = PID(0, 0, 1.0);
+        auto p = PID(0, 0, 1.0, 1.0);
         WHEN("repeatedly calculating controls") {
             std::vector<float> results(8);
             std::vector<float> inputs = {0, 1, 2, 4, 8, 16, 32, 64};
@@ -116,7 +118,7 @@ SCENARIO("PID controller") {
     }
 
     GIVEN("a PID controller with only ki and no windup limiters") {
-        auto p = PID(0, 1.0, 0);
+        auto p = PID(0, 1.0, 0, 1.0);
         WHEN("repeatedly calculating controls from positive errors") {
             std::vector<float> results(8);
             std::vector<float> inputs = {2, 2, 2, 2, 2, 2, 2, 2};
@@ -162,7 +164,7 @@ SCENARIO("PID controller") {
     }
 
     GIVEN("a PID controller with only ki and a windup limiter") {
-        auto p = PID(0, 2, 0, 16, -12);
+        auto p = PID(0, 2, 0, 1.0, 16, -12);
         WHEN("repeatedly calculating controls from positive errors") {
             std::vector<float> inputs = {3, 3, 3, 3, 3, 3, 3, 3};
             std::vector<float> results(8);
@@ -170,7 +172,7 @@ SCENARIO("PID controller") {
                 inputs.cbegin(), inputs.cend(), results.begin(),
                 [&p](const float& error) { return p.compute(error); });
             THEN("the result should accumulate and clip at bound") {
-                std::vector<float> intended = {6, 12, 18, 24, 30, 32, 32, 32};
+                std::vector<float> intended = {6, 12, 16, 16, 16, 16, 16, 16};
                 REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
             }
         }
@@ -182,37 +184,130 @@ SCENARIO("PID controller") {
                 inputs.cbegin(), inputs.cend(), results.begin(),
                 [&p](const float& error) { return p.compute(error); });
             THEN("the result should accumulate and clip at bound") {
-                std::vector<float> intended = {-4,  -8,  -12, -16,
-                                               -20, -24, -24, -24};
+                std::vector<float> intended = {-4,  -8,  -12, -12,
+                                               -12, -12, -12, -12};
                 REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
             }
         }
 
         WHEN("alternating input signs") {
             std::vector<float> results(6);
-            std::vector<float> inputs = {10, 10, -16, -10, -10, 12};
+            std::vector<float> inputs = {5, 10, -8, -5, -2, 6};
             std::transform(
                 inputs.cbegin(), inputs.cend(), results.begin(),
                 [&p](const float& error) { return p.compute(error); });
             THEN(
                 "the integral term is properly cancelled by negating the "
-                "clip") {
-                std::vector<float> intended = {20, 32, 0, -20, -24, 0};
+                "input") {
+                std::vector<float> intended = {10, 16, 0, -10, -12, 0};
                 REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
             }
         }
     }
 
     GIVEN("a PID controller with all coeffs set and windup limiters present") {
-        auto p = PID(2, -1, 1, 10, -12);
+        auto p = PID(2, -1, 1, 1.0, 10, -12);
         WHEN("repeatedly calculating controls") {
             THEN("the result should behave correctly from first principles") {
                 REQUIRE(p.compute(1) == 2);
                 REQUIRE(p.last_error() == 1);
-                REQUIRE(p.integrator() == 1);
+                REQUIRE(p.last_iterm() == -1);
                 REQUIRE(p.compute(2) == 2);
                 REQUIRE(p.last_error() == 2);
-                REQUIRE(p.integrator() == 3);
+                REQUIRE(p.last_iterm() == -3);
+            }
+        }
+    }
+
+    GIVEN(
+        "a pid controller with an iterm and integrator reset armed with a "
+        "positive error value") {
+        auto p = PID(0, 1, 0, 1);
+        p.arm_integrator_reset(25);
+        WHEN("repeatedly calculating controls without an error zero-cross") {
+            std::vector<float> inputs = {3, 3, 3, 3, 3, 3, 3, 3};
+            std::vector<float> results(8);
+            std::transform(
+                inputs.cbegin(), inputs.cend(), results.begin(),
+                [&p](const float& error) { return p.compute(error); });
+            THEN("the integrator term should accumulate") {
+                std::vector<float> intended = {3, 6, 9, 12, 15, 18, 21, 24};
+                REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
+            }
+        }
+        WHEN(
+            "repeatedly calculating results that include a single error "
+            "zero-cross") {
+            std::vector<float> inputs = {3, 3, 3, 3, -3, -3, -3, -3};
+            std::vector<float> results(8);
+            std::transform(
+                inputs.cbegin(), inputs.cend(), results.begin(),
+                [&p](const float& error) { return p.compute(error); });
+            THEN("the integrator should be reset when the error crosses zero") {
+                std::vector<float> intended = {3, 6, 9, 12, -3, -6, -9, -12};
+                REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
+            }
+        }
+        WHEN(
+            "repeatedly calculating results that include multiple error "
+            "zero-crosses") {
+            std::vector<float> inputs = {3, 3, -3, -3, 1, -1, 2, -2};
+            std::vector<float> results(8);
+            std::transform(
+                inputs.cbegin(), inputs.cend(), results.begin(),
+                [&p](const float& error) { return p.compute(error); });
+            THEN(
+                "the integrator should be reset only after the first zero "
+                "cross") {
+                std::vector<float> intended = {3, 6, -3, -6, -5, -6, -4, -6};
+                REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
+            }
+        }
+    }
+
+    GIVEN(
+        "a pid controller with an iterm and integrator reset armed with a "
+        "negative error value") {
+        auto p = PID(0, 1, 0, 1);
+        p.arm_integrator_reset(-25);
+        WHEN("repeatedly calculating controls without an error zero-cross") {
+            std::vector<float> inputs = {-3, -3, -3, -3, -3, -3, -3, -3};
+            std::vector<float> results(8);
+            std::transform(
+                inputs.cbegin(), inputs.cend(), results.begin(),
+                [&p](const float& error) { return p.compute(error); });
+            THEN("the integrator term should accumulate") {
+                std::vector<float> intended = {-3,  -6,  -9,  -12,
+                                               -15, -18, -21, -24};
+                REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
+            }
+        }
+        WHEN(
+            "repeatedly calculating results that include a single error "
+            "zero-cross") {
+            std::vector<float> inputs = {-3, -3, -3, -3, 3, 3, 3, 3};
+            std::vector<float> results(8);
+            std::transform(
+                inputs.cbegin(), inputs.cend(), results.begin(),
+                [&p](const float& error) { return p.compute(error); });
+            THEN("the integrator should be reset when the error crosses zero") {
+                std::vector<float> intended = {-3, -6, -9, -12, 3, 6, 9, 12};
+                REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
+            }
+        }
+        WHEN(
+            "repeatedly calculating results that include multiple error "
+            "zero-crosses") {
+            std::vector<float> inputs = {-3, -3, 3, 3, -1, 1, -2, 2};
+            std::vector<float> results(8);
+            std::transform(
+                inputs.cbegin(), inputs.cend(), results.begin(),
+                [&p](const float& error) { return p.compute(error); });
+            THEN(
+                "the integrator should be reset only after the first zero "
+                "cross") {
+                std::vector<float> intended = {-3, -6, 3, 6, 5, 6, 4, 6};
+                REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
             }
         }
     }

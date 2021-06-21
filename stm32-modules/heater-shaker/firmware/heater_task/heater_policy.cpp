@@ -1,5 +1,7 @@
 #include "heater_policy.hpp"
 
+#include <algorithm>
+
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -34,16 +36,14 @@ HeaterPolicy::HeaterPolicy(heater_hardware* hardware)
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-make-member-function-const)
 auto HeaterPolicy::set_power_output(double relative_power) -> void {
-    if (relative_power > 1.0 || relative_power < 0.0) {
-        return;
-    }
+    const double relative_clamped = std::clamp(relative_power, 0.0, 1.0);
     heater_hardware_power_set(
         hardware_handle,
         // The macro HEATER_PAD_PWM_GRANULARITY purposefully uses integer
         // division since the end goal is in fact an integer
         // NOLINTNEXTLINE(bugprone-integer-division)
         static_cast<uint16_t>(static_cast<double>(HEATER_PAD_PWM_GRANULARITY) *
-                              relative_power));
+                              relative_clamped));
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-make-member-function-const)

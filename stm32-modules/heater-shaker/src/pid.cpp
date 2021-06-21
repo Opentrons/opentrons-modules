@@ -3,19 +3,20 @@
 #include <algorithm>
 #include <limits>
 
-PID::PID(double kp, double ki, double kd)
-    : PID(kp, ki, kd, std::numeric_limits<double>::infinity(),
+PID::PID(double kp, double ki, double kd, double sampletime)
+    : PID(kp, ki, kd, sampletime, std::numeric_limits<double>::infinity(),
           -std::numeric_limits<double>::infinity()) {}
 
-PID::PID(double kp, double ki, double kd, double windup_limit_high,
-         double windup_limit_low)
+PID::PID(double kp, double ki, double kd, double sampletime,
+         double windup_limit_high, double windup_limit_low)
     : _kp(kp),
       _ki(ki),
       _kd(kd),
+      _sampletime(sampletime),
       _windup_limit_high(windup_limit_high),
       _windup_limit_low(windup_limit_low),
-      _integrator(0),
-      _last_error(0) {}
+      _last_error(0),
+      _last_iterm(0) {}
 
 auto PID::kp() const -> double { return _kp; }
 
@@ -23,23 +24,42 @@ auto PID::ki() const -> double { return _ki; }
 
 auto PID::kd() const -> double { return _kd; }
 
+auto PID::sampletime() const -> double { return _sampletime; }
+
+auto PID::last_iterm() const -> double { return _last_iterm; }
+
 auto PID::windup_limit_high() const -> double { return _windup_limit_high; }
 
 auto PID::windup_limit_low() const -> double { return _windup_limit_low; }
 
-auto PID::integrator() const -> double { return _integrator; }
-
 auto PID::last_error() const -> double { return _last_error; }
 
 auto PID::compute(double error) -> double {
-    _integrator =
-        std::clamp(error + _integrator, _windup_limit_low, _windup_limit_high);
-    const double errdiff = error - _last_error;
+    if (((_reset_trigger == FALLING) && (error <= 0)) ||
+        ((_reset_trigger == RISING) && (error > 0))) {
+        _last_iterm = 0;
+        _reset_trigger = NONE;
+    }
+    const double unclamped_iterm = last_iterm() + sampletime() * ki() * error;
+    const double iterm =
+        std::clamp(unclamped_iterm, windup_limit_low(), windup_limit_high());
+    _last_iterm = iterm;
+    const double errdiff = error - last_error();
     _last_error = error;
-    return (_kp * error) + (_kd * errdiff) + (_ki * _integrator);
+    const double pterm = kp() * error;
+    const double dterm = kd() * errdiff / sampletime();
+    return pterm + iterm + dterm;
 }
 
 auto PID::reset() -> void {
-    _integrator = 0;
     _last_error = 0;
+    _last_iterm = 0;
+}
+
+auto PID::arm_integrator_reset(double error) -> void {
+    if (error <= 0) {
+        _reset_trigger = RISING;
+    } else {
+        _reset_trigger = FALLING;
+    }
 }

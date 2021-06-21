@@ -6,6 +6,7 @@
 #include "stm32f3xx_hal_gpio.h"
 #include "stm32f3xx_hal_cortex.h"
 #include "stm32f3xx_hal_tim.h"
+#include "stm32f3xx_ll_tim.h"
 
 #include "heater_hardware.h"
 
@@ -21,6 +22,7 @@ typedef struct {
     ADC_HandleTypeDef ntc_adc;
     TIM_HandleTypeDef pad_tim;
     TIM_OC_InitTypeDef pwm_config;
+    bool heater_started;
 } hw_internal;
 
 hw_internal _internals = {
@@ -36,7 +38,8 @@ hw_internal _internals = {
 .OCFastMode = TIM_OCFAST_DISABLE,
 .OCIdleState=TIM_OCIDLESTATE_RESET,
 .OCNIdleState=TIM_OCNIDLESTATE_RESET,
-    }
+},
+.heater_started = false,
 };
 
 heater_hardware *HEATER_HW_HANDLE = NULL;
@@ -54,6 +57,7 @@ heater_hardware *HEATER_HW_HANDLE = NULL;
 #define HEATER_PAD_ENABLE_PORT GPIOD
 #define HEATER_PAD_ENABLE_PIN (1<<14)
 #define HEATER_PAD_ENABLE_TIM_CHANNEL TIM_CHANNEL_3
+#define HEATER_PAD_LL_SETCOMPARE LL_TIM_OC_SetCompareCH3
 
 
 static void gpio_setup(void) {
@@ -160,7 +164,7 @@ void heater_hardware_begin_conversions(heater_hardware* hardware) {
     ADC_ChannelConfTypeDef channel_conf = {
         .Channel = NTC_PAD_A,
         .Rank = ADC_REGULAR_RANK_1,
-        .SamplingTime = ADC_SAMPLETIME_19CYCLES_5,
+        .SamplingTime = ADC_SAMPLETIME_601CYCLES_5,
     };
     hw_internal* internal = (hw_internal*)hardware->hardware_internal;
     if (!internal) {
@@ -197,6 +201,7 @@ void heater_hardware_power_disable(heater_hardware* hardware) {
         init_error();
     }
     HAL_TIM_PWM_Stop(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
+    internal->heater_started = false;
 }
 
 void heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
@@ -205,10 +210,15 @@ void heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
         init_error();
     }
     internal->pwm_config.Pulse = setting;
-    HAL_TIM_PWM_Stop(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
-    HAL_TIM_PWM_ConfigChannel(
-        &internal->pad_tim, &internal->pwm_config, HEATER_PAD_ENABLE_TIM_CHANNEL);
-    HAL_TIM_PWM_Start(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
+    if (!internal->heater_started) {
+        HAL_TIM_PWM_Stop(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
+        HAL_TIM_PWM_ConfigChannel(
+            &internal->pad_tim, &internal->pwm_config, HEATER_PAD_ENABLE_TIM_CHANNEL);
+        HAL_TIM_PWM_Start(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
+        internal->heater_started = true;
+    } else {
+        HEATER_PAD_LL_SETCOMPARE(internal->pad_tim.Instance, setting);
+    }
 }
 
 
@@ -248,7 +258,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     ADC_ChannelConfTypeDef channel_conf = {
       .Channel = internal->reading_which,
       .Rank = ADC_REGULAR_RANK_1,
-      .SamplingTime = ADC_SAMPLETIME_19CYCLES_5,
+      .SamplingTime = ADC_SAMPLETIME_601CYCLES_5,
     };
     switch(which) {
         case NTC_PAD_A: {

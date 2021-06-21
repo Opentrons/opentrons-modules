@@ -91,9 +91,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     static constexpr uint8_t ADC_BIT_DEPTH = 12;
     static constexpr double HEATER_PAD_OVERTEMP_SAFETY_LIMIT_C = 100;
     static constexpr double BOARD_OVERTEMP_SAFETY_LIMIT_C = 60;
-    static constexpr double DEFAULT_KI = 1.0;
-    static constexpr double DEFAULT_KP = 1.0;
-    static constexpr double DEFAULT_KD = 1.0;
+    static constexpr double DEFAULT_KI = 0.102;
+    static constexpr double DEFAULT_KP = 0.97;
+    static constexpr double DEFAULT_KD = 1.901;
     static constexpr double MAX_CONTROLLABLE_TEMPERATURE = 95.0;
     static constexpr double KP_MIN = -200;
     static constexpr double KP_MAX = 200;
@@ -101,7 +101,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     static constexpr double KI_MAX = 200;
     static constexpr double KD_MIN = -200;
     static constexpr double KD_MAX = 200;
-
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    static constexpr double CONTROL_PERIOD_S =
+        static_cast<uint32_t>(CONTROL_PERIOD_TICKS) * 0.001;
     explicit HeaterTask(Queue& q)
         : message_queue(q),
           task_registry(nullptr),
@@ -137,7 +139,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                     THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
                 .error_bit = State::BOARD_SENSE_ERROR},
           state{.system_status = State::IDLE, .error_bitmap = 0},
-          pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, 1.0, -1.0),
+          pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_S, 1.0, -1.0),
           setpoint(0) {}
     HeaterTask(const HeaterTask& other) = delete;
     auto operator=(const HeaterTask& other) -> HeaterTask& = delete;
@@ -203,6 +205,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             response.with_error = most_relevant_error();
         } else {
             setpoint = msg.target_temperature;
+            pid.arm_integrator_reset(setpoint - pad_temperature());
+            state.system_status = State::CONTROLLING;
         }
         if (msg.from_system) {
             static_cast<void>(
@@ -222,13 +226,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
         errors::ErrorCode code = pad_a.error != errors::ErrorCode::NO_ERROR
                                      ? pad_a.error
                                      : pad_b.error;
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-        auto avg_temp = (pad_a.temp_c + pad_b.temp_c) / 2.0;
-        auto response =
-            messages::GetTemperatureResponse{.responding_to_id = msg.id,
-                                             .current_temperature = avg_temp,
-                                             .setpoint_temperature = setpoint,
-                                             .with_error = code};
+        auto response = messages::GetTemperatureResponse{
+            .responding_to_id = msg.id,
+            .current_temperature = pad_temperature(),
+            .setpoint_temperature = setpoint,
+            .with_error = code};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
@@ -262,7 +264,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
                 errors::ErrorCode::HEATER_CONSTANT_OUT_OF_RANGE;
         } else {
             policy.disable_power_output();
-            pid = PID(msg.kp, msg.ki, msg.kd, 1.0, -1.0);
+            pid = PID(msg.kp, msg.ki, msg.kd, CONTROL_PERIOD_S, 1.0, -1.0);
         }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
@@ -323,10 +325,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
             setpoint = 0;
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-        double current_temp = (pad_a.temp_c + pad_b.temp_c) / 2.0;
-        if (state.system_status != State::ERROR) {
-            policy.set_power_output(pid.compute(setpoint - current_temp));
-            state.system_status = State::CONTROLLING;
+        if (state.system_status == State::CONTROLLING) {
+            policy.set_power_output(pid.compute(setpoint - pad_temperature()));
+        } else if (state.system_status != State::POWER_TEST) {
+            policy.disable_power_output();
         }
     }
 
@@ -437,6 +439,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
         }
 
         return board.error;
+    }
+
+    [[nodiscard]] auto pad_temperature() const -> double {
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        return (pad_a.temp_c + pad_b.temp_c) / 2.0;
     }
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
