@@ -170,7 +170,8 @@ void heater_hardware_begin_conversions(heater_hardware* hardware) {
         .Channel = NTC_PAD_A,
         .Rank = ADC_REGULAR_RANK_1,
         .SamplingTime = ADC_SAMPLETIME_601CYCLES_5,
-    };
+};
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
     hw_internal* internal = (hw_internal*)hardware->hardware_internal;
     if (!internal) {
         init_error();
@@ -181,6 +182,7 @@ void heater_hardware_begin_conversions(heater_hardware* hardware) {
     }
 
     HAL_ADC_Start_IT(&internal->ntc_adc);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
 }
 
 bool heater_hardware_sense_power_good() {
@@ -265,9 +267,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
       .Rank = ADC_REGULAR_RANK_1,
       .SamplingTime = ADC_SAMPLETIME_601CYCLES_5,
 };
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
+
     switch(which) {
         case NTC_PAD_A: {
+            HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
             internal->results.pad_a_val = HAL_ADC_GetValue(&internal->ntc_adc);
             if (HAL_OK != HAL_ADC_ConfigChannel(&internal->ntc_adc, &channel_conf)) {
                 init_error();
