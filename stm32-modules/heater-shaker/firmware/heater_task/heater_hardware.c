@@ -86,6 +86,10 @@ static void gpio_setup(void) {
     HAL_GPIO_WritePin(HEATER_PGOOD_LATCH_PORT,
                       HEATER_PGOOD_LATCH_PIN,
                       GPIO_PIN_SET);
+    gpio_init.Pin = GPIO_PIN_10;
+    gpio_init.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOC, &gpio_init);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
     gpio_init.Pin = HEATER_PAD_ENABLE_PIN;
     gpio_init.Mode = GPIO_MODE_AF_PP;
     gpio_init.Alternate = GPIO_AF2_TIM4;
@@ -142,6 +146,7 @@ void heater_hardware_setup(heater_hardware* hardware) {
     __HAL_RCC_GPIOE_CLK_ENABLE();
     __HAL_RCC_ADC34_CLK_ENABLE();
     __HAL_RCC_TIM4_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
     gpio_setup();
     adc_setup(&_internals.ntc_adc);
     tim_setup(&_internals.pad_tim);
@@ -259,7 +264,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
       .Channel = internal->reading_which,
       .Rank = ADC_REGULAR_RANK_1,
       .SamplingTime = ADC_SAMPLETIME_601CYCLES_5,
-    };
+};
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
     switch(which) {
         case NTC_PAD_A: {
             internal->results.pad_a_val = HAL_ADC_GetValue(&internal->ntc_adc);
@@ -282,6 +288,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
             }
             break;}
     }
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
 }
 
 static void init_error(void) {
