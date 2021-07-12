@@ -11,11 +11,12 @@ execute_process(COMMAND ${GIT_EXECUTABLE} describe --tags --match "heater-shaker
   OUTPUT_VARIABLE TAGNAME
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 if (NOT TAGNAME)
+  message(INFO "set default tagname")
   set(TAGNAME "@(dev)-")
 endif()
 
 string(REGEX MATCH "@.*$" PREPENDED_VERSION ${TAGNAME})
-string(SUBSTRING ${PREPENDED_VERSION} 1 -l VERSION)
+string(SUBSTRING "${PREPENDED_VERSION}" 1 -1 VERSION)
 if (NOT VERSION)
   set(VERSION "(dev)")
 endif()
