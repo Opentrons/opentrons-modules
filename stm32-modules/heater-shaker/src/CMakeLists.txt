@@ -11,7 +11,6 @@ execute_process(COMMAND ${GIT_EXECUTABLE} describe --tags --match "heater-shaker
   OUTPUT_VARIABLE TAGNAME
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 if (NOT TAGNAME)
-  message(INFO "set default tagname")
   set(TAGNAME "@(dev)-")
 endif()
 
