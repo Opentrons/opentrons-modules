@@ -11,10 +11,10 @@ struct G28D2 {
     using ParseResult = std::optional<G28D2>;
 
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto code = std::array{'G', '2', '8', '.', '2'};
         if (static_cast<size_t>(limit - input) >= code.size() &&
             std::equal(code.cbegin(), code.cend(), input)) {
@@ -29,10 +29,10 @@ struct M105 {
     using ParseResult = std::optional<M105>;
 
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         using namespace std::string_literals;
         auto code = std::array{'M', '1', '0', '5'};
         if (static_cast<size_t>(limit - input) >= code.size() &&

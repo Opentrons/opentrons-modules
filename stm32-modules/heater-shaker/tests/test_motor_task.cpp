@@ -389,11 +389,11 @@ SCENARIO("motor task homing", "[motor][homing]") {
             messages::BeginHomingMessage{.id = 2213});
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
         CHECK(tasks->get_motor_policy().get_target_rpm() >
-              std::remove_cvref_t<decltype(
-                  tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_LOW_RPM);
+              std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                  HOMING_ROTATION_LIMIT_LOW_RPM);
         CHECK(tasks->get_motor_policy().get_target_rpm() <
-              std::remove_cvref_t<decltype(
-                  tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_HIGH_RPM);
+              std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                  HOMING_ROTATION_LIMIT_HIGH_RPM);
         CHECK(tasks->get_motor_task().get_state() ==
               motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
         CHECK(std::holds_alternative<messages::CheckHomingStatusMessage>(
@@ -401,10 +401,10 @@ SCENARIO("motor task homing", "[motor][homing]") {
         WHEN(
             "checking the homing status while in the appropriate speed range") {
             tasks->get_motor_policy().test_set_current_rpm(
-                (std::remove_cvref_t<decltype(
-                     tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_HIGH_RPM +
-                 std::remove_cvref_t<decltype(
-                     tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_LOW_RPM) /
+                (std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                     HOMING_ROTATION_LIMIT_HIGH_RPM +
+                 std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                     HOMING_ROTATION_LIMIT_LOW_RPM) /
                 2);
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task goes to coasting and engages the solenoid") {
@@ -420,8 +420,8 @@ SCENARIO("motor task homing", "[motor][homing]") {
             "checking the homing status while not in the appropriate speed "
             "range") {
             tasks->get_motor_policy().test_set_current_rpm(
-                std::remove_cvref_t<decltype(
-                    tasks->get_motor_task())>::HOMING_ROTATION_LIMIT_HIGH_RPM *
+                std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                    HOMING_ROTATION_LIMIT_HIGH_RPM *
                 1.1);
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task remains in moving-to-speed and waits for the rpm") {
@@ -476,9 +476,8 @@ SCENARIO("motor task homing", "[motor][homing]") {
         }
         WHEN("not receiving an error for too long") {
             for (size_t i = 0;
-                 i <
-                 std::remove_cvref_t<decltype(
-                     tasks->get_motor_task())>::HOMING_CYCLES_BEFORE_TIMEOUT;
+                 i < std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                         HOMING_CYCLES_BEFORE_TIMEOUT;
                  i++) {
                 CHECK(tasks->get_motor_task().get_state() ==
                       motor_task::State::HOMING_COASTING_TO_STOP);

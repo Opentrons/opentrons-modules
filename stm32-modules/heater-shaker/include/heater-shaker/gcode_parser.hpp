@@ -21,9 +21,8 @@ namespace gcode {
  * the head of the input.
  */
 template <typename Input, typename Limit>
-requires std::forward_iterator<Input>&&
-    std::sized_sentinel_for<Limit, Input> auto
-    gobble_whitespace(const Input& start_from, Limit stop_at) -> Input {
+requires std::forward_iterator<Input> && std::sized_sentinel_for<Limit, Input>
+auto gobble_whitespace(const Input& start_from, Limit stop_at) -> Input {
     // this has to be a lambda because std::isspace's prototype does not
     // interact well with template argument deduction, sadly
     return std::find_if_not(
@@ -38,11 +37,12 @@ requires std::forward_iterator<Input>&&
  * will point to immediately after the prefix in the input.
  */
 template <typename Input, typename Limit, typename PrefixArray>
-requires std::forward_iterator<Input>&& std::sized_sentinel_for<Limit, Input>&&
-    std::convertible_to<std::iter_value_t<Input>,
-                        typename PrefixArray::value_type> auto
-    prefix_matches(const Input& start_from, Limit stop_at,
-                   const PrefixArray& prefix) -> Input {
+requires std::forward_iterator<Input> &&
+    std::sized_sentinel_for<Limit, Input> &&
+    std::convertible_to < std::iter_value_t<Input>,
+typename PrefixArray::value_type >
+    auto prefix_matches(const Input& start_from, Limit stop_at,
+                        const PrefixArray& prefix) -> Input {
     if (static_cast<size_t>(stop_at - start_from) < prefix.size()) {
         return start_from;
     }
@@ -70,10 +70,10 @@ requires std::forward_iterator<Input>&& std::sized_sentinel_for<Limit, Input>&&
  */
 template <typename ValueType, typename Input, typename Limit,
           size_t working_buf_size = 32>
-requires std::forward_iterator<Input>&& std::sized_sentinel_for<Limit, Input>&&
-    std::integral<ValueType> auto
-    parse_value(const Input& start_from, Limit stop_at)
-        -> std::pair<std::optional<ValueType>, Input> {
+requires std::forward_iterator<Input> &&
+    std::sized_sentinel_for<Limit, Input> && std::integral<ValueType>
+auto parse_value(const Input& start_from, Limit stop_at)
+    -> std::pair<std::optional<ValueType>, Input> {
     ValueType value = 0;
     Input working = start_from;
     auto [after_ptr, ec] = std::from_chars(&(*working), &(*stop_at), value);
@@ -98,10 +98,10 @@ requires std::forward_iterator<Input>&& std::sized_sentinel_for<Limit, Input>&&
 // for this.
 template <typename ValueType, typename Input, typename Limit,
           size_t working_buf_size = 32>
-requires std::forward_iterator<Input>&& std::sized_sentinel_for<Limit, Input>&&
-    std::floating_point<ValueType> auto
-    parse_value(const Input& start_from, Limit stop_at)
-        -> std::pair<std::optional<ValueType>, Input> {
+requires std::forward_iterator<Input> &&
+    std::sized_sentinel_for<Limit, Input> && std::floating_point<ValueType>
+auto parse_value(const Input& start_from, Limit stop_at)
+    -> std::pair<std::optional<ValueType>, Input> {
     ValueType value = 0;
     std::array<std::iter_value_t<Input>, working_buf_size> buf{};
     std::copy(start_from, std::min(stop_at, start_from + working_buf_size),
@@ -165,10 +165,10 @@ class GroupParser {
      * run should start.
      */
     template <typename Input, typename Limit>
-    requires std::forward_iterator<Input>&&
-        std::sized_sentinel_for<Limit, Input> auto
-        parse_available(Input start_from, Limit stop_at)
-            -> std::pair<ParseResult, Input> {
+    requires std::forward_iterator<Input> &&
+        std::sized_sentinel_for<Limit, Input>
+    auto parse_available(Input start_from, Limit stop_at)
+        -> std::pair<ParseResult, Input> {
         // Take out all whitespace at the head of the string
         start_from = gobble_whitespace(start_from, stop_at);
         // We need to prep a result to capture in the lambda in the fold
@@ -187,8 +187,8 @@ class GroupParser {
            // implementations, and its job is to take the std::optional that
            // each gcode parser returns and coalesce the results into the
            // std::variant union type.
-            [&result, &start_from](decltype(
-                GCodes::parse(start_from, stop_at)) this_result) -> void {
+            [&result, &start_from](decltype(GCodes::parse(
+                start_from, stop_at)) this_result) -> void {
                 // the rule here is that we take the first match, so we only
                 // store the result if there's nothing in our variant yet, and
                 // the parse succeeded.

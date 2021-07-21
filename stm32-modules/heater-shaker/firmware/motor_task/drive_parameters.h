@@ -134,7 +134,7 @@ extern "C" {
     TURN_OFF_PWM /*!< TURN_OFF_PWM,     \
                      TURN_ON_R_BRAKE or \
                      TURN_ON_LOW_SIDES */
-#endif /* 0 */
+#endif           /* 0 */
 #define R_BRAKE_SWITCH_OFF_THRES_V 29
 
 #define OV_TEMPERATURE_THRESHOLD_C 110 /*!< Celsius degrees */

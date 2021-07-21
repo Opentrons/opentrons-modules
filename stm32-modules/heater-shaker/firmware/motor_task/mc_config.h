@@ -55,5 +55,5 @@ extern RampExtMngr_Handle_t RampExtMngrHFParamsM1;
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
-#endif /* __MC_CONFIG_H */
+#endif  /* __MC_CONFIG_H */
 /******************* (C) COPYRIGHT 2019 STMicroelectronics *****END OF FILE****/

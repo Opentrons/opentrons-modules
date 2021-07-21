@@ -60,9 +60,8 @@ auto from_motor_error(uint16_t error_bitmap, MotorErrorOffset which)
 auto errorstring(ErrorCode code) -> const char*;
 
 template <typename Input, typename Limit>
-requires std::forward_iterator<Input>&&
-    std::sized_sentinel_for<Limit, Input> constexpr auto
-    write_into(Input start, Limit end, ErrorCode code) -> Input {
+requires std::forward_iterator<Input> && std::sized_sentinel_for<Limit, Input>
+constexpr auto write_into(Input start, Limit end, ErrorCode code) -> Input {
     const char* str = errorstring(code);
     return write_string_to_iterpair(start, end, str);
 }
