@@ -34,7 +34,7 @@ include(FetchContent)
 set(LOCALINSTALL_CLANG_DIR "${CMAKE_SOURCE_DIR}/stm32-tools/clang")
 message(STATUS "local install clang dir: ${LOCALINSTALL_CLANG_DIR}")
 
-set(DL_CLANG_VERSION "11.0.0")
+set(DL_CLANG_VERSION "12.0.0")
 
 if("${CMAKE_HOST_SYSTEM_NAME}" STREQUAL "Linux")
   set(CLANG_ARCHIVE "x86_64-linux-gnu-ubuntu-20.04.tar.xz")
@@ -58,13 +58,14 @@ endif()
 
 find_program(Clang_EXECUTABLE
   clang
-  PATHS "${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}"
+  PATHS ${CMAKE_SOURCE_DIR}/stm32-tools/clang/${CMAKE_HOST_SYSTEM_NAME}
   PATH_SUFFIXES bin)
 
 find_program(Clang_CLANGFORMAT_EXECUTABLE
   clang-format
-  PATHS "${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}"
-  PATH_SUFFIXES bin)
+  PATHS ${CMAKE_SOURCE_DIR}/stm32-tools/clang/${CMAKE_HOST_SYSTEM_NAME}
+  PATH_SUFFIXES bin
+  NO_DEFAULT_PATH)
 
 find_program(Clang_CLANGTIDY_EXECUTABLE
   clang-tidy
