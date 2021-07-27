@@ -74,6 +74,6 @@ void TSK_HardwareFaultTask(void);
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
-#endif /* __MCTASKS_H */
+#endif  /* __MCTASKS_H */
 
 /******************* (C) COPYRIGHT 2019 STMicroelectronics *****END OF FILE****/

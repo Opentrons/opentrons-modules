@@ -27,12 +27,10 @@ template <typename Policy>
 concept HeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // Check if the hardware is ready (true) or if some errors is preventing
     // power flowing to the heater pad drivers
-    { cp.power_good() }
-    ->std::same_as<bool>;
+    { cp.power_good() } -> std::same_as<bool>;
     // Attempt to reset the heater error latch and check if it worked (true)
     // or if the error condition is still present (false)
-    { p.try_reset_power_good() }
-    ->std::same_as<bool>;
+    { p.try_reset_power_good() } -> std::same_as<bool>;
 
     // A set_power_output function with inputs between 0 and 1 sets the
     // relative output of the heater pad
@@ -83,7 +81,8 @@ struct TemperatureSensor {
 // HeaterTask<SomeQueueImpl<Message>>
 using Message = messages::HeaterMessage;
 template <template <class> class QueueImpl>
-requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
+requires MessageQueue<QueueImpl<Message>, Message>
+class HeaterTask {
   public:
     using Queue = QueueImpl<Message>;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 100;
@@ -167,8 +166,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
      * HeaterExecutionPolicy concept above.
      * */
     template <typename Policy>
-    requires HeaterExecutionPolicy<Policy> auto run_once(Policy& policy)
-        -> void {
+    requires HeaterExecutionPolicy<Policy>
+    auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
 
         // This is the call down to the provided queue. It will block for
@@ -193,8 +192,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     }
 
     template <typename Policy>
-    requires HeaterExecutionPolicy<Policy> auto visit_message(
-        const messages::SetTemperatureMessage& msg, Policy& policy) -> void {
+    requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::SetTemperatureMessage& msg,
+                       Policy& policy) -> void {
         // While in error state, we will refuse to set temperatures
         // But we can try and disarm the latch if that's the only problem
         try_latch_disarm(policy);
@@ -220,8 +220,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     }
 
     template <typename Policy>
-    requires HeaterExecutionPolicy<Policy> auto visit_message(
-        const messages::GetTemperatureMessage& msg, Policy& policy) -> void {
+    requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::GetTemperatureMessage& msg,
+                       Policy& policy) -> void {
         static_cast<void>(policy);
         errors::ErrorCode code = pad_a.error != errors::ErrorCode::NO_ERROR
                                      ? pad_a.error
@@ -236,9 +237,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     }
 
     template <typename Policy>
-    requires HeaterExecutionPolicy<Policy> auto visit_message(
-        const messages::GetTemperatureDebugMessage& msg, Policy& policy)
-        -> void {
+    requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::GetTemperatureDebugMessage& msg,
+                       Policy& policy) -> void {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         auto response = messages::GetTemperatureDebugResponse{
             .responding_to_id = msg.id,
@@ -254,8 +255,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     }
 
     template <typename Policy>
-    requires HeaterExecutionPolicy<Policy> auto visit_message(
-        const messages::SetPIDConstantsMessage& msg, Policy& policy) -> void {
+    requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::SetPIDConstantsMessage& msg,
+                       Policy& policy) -> void {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if ((msg.kp < KP_MIN) || (msg.kp > KP_MAX) || (msg.ki < KI_MIN) ||
@@ -271,9 +273,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     }
 
     template <typename Policy>
-    requires HeaterExecutionPolicy<Policy> auto visit_message(
-        const messages::TemperatureConversionComplete& msg, Policy& policy)
-        -> void {
+    requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::TemperatureConversionComplete& msg,
+                       Policy& policy) -> void {
         auto old_error_bitmap = state.error_bitmap;
         if (!policy.power_good()) {
             state.error_bitmap |= State::POWER_GOOD_ERROR;
@@ -333,8 +335,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     }
 
     template <typename Policy>
-    requires HeaterExecutionPolicy<Policy> auto visit_message(
-        const messages::SetPowerTestMessage& msg, Policy& policy) -> void {
+    requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::SetPowerTestMessage& msg, Policy& policy)
+        -> void {
         try_latch_disarm(policy);
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
@@ -355,8 +358,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class HeaterTask {
     }
 
     template <typename Policy>
-    requires HeaterExecutionPolicy<Policy> auto try_latch_disarm(Policy& policy)
-        -> void {
+    requires HeaterExecutionPolicy<Policy>
+    auto try_latch_disarm(Policy& policy) -> void {
         if (!policy.power_good() &&
             ((state.error_bitmap & State::PAD_SENSE_ERROR) == 0)) {
             if (policy.try_reset_power_good()) {

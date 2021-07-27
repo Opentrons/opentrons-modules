@@ -38,15 +38,13 @@ namespace motor_task {
  */
 template <typename Policy>
 concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
-    { p.set_rpm(static_cast<int16_t>(16)) }
-    ->std::same_as<errors::ErrorCode>;
-    { cp.get_current_rpm() }
-    ->std::same_as<int16_t>;
-    { cp.get_target_rpm() }
-    ->std::same_as<int16_t>;
+    { p.set_rpm(static_cast<int16_t>(16)) } -> std::same_as<errors::ErrorCode>;
+    { cp.get_current_rpm() } -> std::same_as<int16_t>;
+    { cp.get_target_rpm() } -> std::same_as<int16_t>;
     {p.stop()};
-    { p.set_ramp_rate(static_cast<int32_t>(8)) }
-    ->std::same_as<errors::ErrorCode>;
+    {
+        p.set_ramp_rate(static_cast<int32_t>(8))
+        } -> std::same_as<errors::ErrorCode>;
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.set_pid_constants(1.0, 2.0, 3.0)};
     {p.homing_solenoid_disengage()};
@@ -78,7 +76,8 @@ struct State {
 constexpr size_t RESPONSE_LENGTH = 128;
 using Message = ::messages::MotorMessage;
 template <template <class> class QueueImpl>
-requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
+requires MessageQueue<QueueImpl<Message>, Message>
+class MotorTask {
     static constexpr const uint32_t HOMING_INTERSTATE_WAIT_TICKS = 100;
 
   public:
@@ -107,8 +106,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class MotorTask {
     }
 
     template <typename Policy>
-    requires MotorExecutionPolicy<Policy> auto run_once(Policy& policy)
-        -> void {
+    requires MotorExecutionPolicy<Policy>
+    auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
 
         // This is the call down to the provided queue. It will block for

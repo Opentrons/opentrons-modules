@@ -29,7 +29,8 @@ using Message = messages::SystemMessage;
 // this template to do so as SystemTask<SomeQueueImpl> rather than
 // SystemTask<SomeQueueImpl<Message>>
 template <template <class> class QueueImpl>
-requires MessageQueue<QueueImpl<Message>, Message> class SystemTask {
+requires MessageQueue<QueueImpl<Message>, Message>
+class SystemTask {
     using BootloaderPrepAckCache =
         AckCache<3, messages::SetTemperatureMessage, messages::SetRPMMessage,
                  messages::ForceUSBDisconnectMessage>;
@@ -52,8 +53,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class SystemTask {
     }
 
     template <typename Policy>
-    requires SystemExecutionPolicy<Policy> auto run_once(Policy& policy)
-        -> void {
+    requires SystemExecutionPolicy<Policy>
+    auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
 
         message_queue.recv(&message);
@@ -65,9 +66,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class SystemTask {
     }
 
     template <typename Policy>
-    requires SystemExecutionPolicy<Policy> auto visit_message(
-        const messages::EnterBootloaderMessage& message, Policy& policy)
-        -> void {
+    requires SystemExecutionPolicy<Policy>
+    auto visit_message(const messages::EnterBootloaderMessage& message,
+                       Policy& policy) -> void {
         // When we go into the bootloader, we're going to do a system reset
         // essentially - we want to undo our clock setup, gate off clocks to
         // peripherals, in general try and make the system look like it just
@@ -113,8 +114,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class SystemTask {
     }
 
     template <typename Policy>
-    requires SystemExecutionPolicy<Policy> auto visit_message(
-        const messages::AcknowledgePrevious& message, Policy& policy) -> void {
+    requires SystemExecutionPolicy<Policy>
+    auto visit_message(const messages::AcknowledgePrevious& message,
+                       Policy& policy) -> void {
         // handle an acknowledgement for one of the prep tasks we've dispatched
         auto cache_entry =
             prep_cache.remove_if_present(message.responding_to_id);
@@ -141,8 +143,8 @@ requires MessageQueue<QueueImpl<Message>, Message> class SystemTask {
     }
 
     template <typename Policy>
-    requires SystemExecutionPolicy<Policy> auto visit_message(
-        const std::monostate& message, Policy& policy) -> void {
+    requires SystemExecutionPolicy<Policy>
+    auto visit_message(const std::monostate& message, Policy& policy) -> void {
         static_cast<void>(message);
         static_cast<void>(policy);
     }

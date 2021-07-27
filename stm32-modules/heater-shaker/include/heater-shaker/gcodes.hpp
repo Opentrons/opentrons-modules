@@ -35,17 +35,17 @@ struct SetRPM {
     int16_t rpm;
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> static auto
-        write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
 
     template <typename InputIt, typename Limit>
-    requires std::contiguous_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         // minimal m3 command
 
         auto working = prefix_matches(input, limit, prefix);
@@ -76,17 +76,17 @@ struct SetTemperature {
     double temperature;
 
     template <typename InputIt, typename InLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InLimit, InputIt> static auto
-        write_response_into(InputIt buf, InLimit limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InLimit, InputIt>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
 
     template <typename InputIt, typename Limit>
-    requires std::contiguous_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -118,11 +118,11 @@ struct GetTemperature {
     static constexpr auto prefix = std::array{'M', '1', '0', '5'};
 
     template <typename InputIt, typename InLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputIt, InLimit> static auto
-        write_response_into(InputIt buf, InLimit limit,
-                            double current_temperature,
-                            double setpoint_temperature) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double current_temperature,
+                                    double setpoint_temperature) -> InputIt {
         auto res = snprintf(&*buf, (limit - buf), "M105 C%0.2f T%0.2f OK\n",
                             static_cast<float>(current_temperature),
                             static_cast<float>(setpoint_temperature));
@@ -132,10 +132,10 @@ struct GetTemperature {
         return buf + res;
     }
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -159,11 +159,11 @@ struct GetRPM {
     static constexpr auto prefix = std::array{'M', '1', '2', '3'};
 
     template <typename InputIt, typename InLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InLimit, InputIt> static auto
-        write_response_into(InputIt buf, const InLimit limit,
-                            int16_t current_rpm, int16_t setpoint_rpm)
-            -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InLimit, InputIt>
+    static auto write_response_into(InputIt buf, const InLimit limit,
+                                    int16_t current_rpm, int16_t setpoint_rpm)
+        -> InputIt {
         static constexpr const char* prefix = "M123 C";
         char* char_next = &*buf;
         char* const char_limit = &*limit;
@@ -191,10 +191,10 @@ struct GetRPM {
     }
 
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -224,17 +224,17 @@ struct SetAcceleration {
     static constexpr const char* response = "M204 OK\n";
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> static auto
-        write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
 
     template <typename InputIt, typename Limit>
-    requires std::contiguous_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         // minimal m3 command
 
         auto working = prefix_matches(input, limit, prefix);
@@ -270,12 +270,13 @@ struct GetTemperatureDebug {
     static constexpr auto prefix = std::array{'M', '1', '0', '5', '.', 'D'};
 
     template <typename InputIt, typename InLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputIt, InLimit> static auto
-        write_response_into(InputIt buf, InLimit limit, double pad_a_temp,
-                            double pad_b_temp, double board_temp,
-                            uint16_t pad_a_adc, uint16_t pad_b_adc,
-                            uint16_t board_adc, bool power_good) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double pad_a_temp, double pad_b_temp,
+                                    double board_temp, uint16_t pad_a_adc,
+                                    uint16_t pad_b_adc, uint16_t board_adc,
+                                    bool power_good) -> InputIt {
         auto res = snprintf(
             &*buf, (limit - buf),
             "M105.D AT%0.2f BT%0.2f OT%0.2f AD%d BD%d OD%d PG%d OK\n",
@@ -288,10 +289,10 @@ struct GetTemperatureDebug {
         return buf + res;
     }
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -309,10 +310,10 @@ struct Home {
     static constexpr const char* response = "G28 OK\n";
 
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -324,9 +325,9 @@ struct Home {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> static auto
-        write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
 };
@@ -346,10 +347,10 @@ struct ActuateSolenoid {
     uint16_t current_ma;
 
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -366,9 +367,9 @@ struct ActuateSolenoid {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> static auto
-        write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
 };
@@ -392,16 +393,16 @@ struct SetPIDConstants {
     static constexpr const char* response = "M301 OK\n";
 
     template <typename InputIt, typename InLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputIt, InLimit> static auto
-        write_response_into(InputIt buf, InLimit limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -488,16 +489,16 @@ struct SetHeaterPowerTest {
     static constexpr const char* response = "M104.D OK\n";
 
     template <typename InputIt, typename InLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputIt, InLimit> static auto
-        write_response_into(InputIt buf, InLimit limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -527,17 +528,17 @@ struct EnterBootloader {
     static constexpr const char* response = "dfu OK\n";
 
     template <typename InputIt, typename InLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputIt, InLimit> static auto
-        write_response_into(InputIt buf, InLimit limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
 
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -555,11 +556,12 @@ struct GetVersion {
     static constexpr auto prefix = std::array{'M', '1', '1', '5'};
 
     template <typename InputIt, typename InLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputIt, InLimit> static auto
-        write_response_into(InputIt write_to_buf, InLimit write_to_limit,
-                            const char* fw_version, const char* hw_version)
-            -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt write_to_buf,
+                                    InLimit write_to_limit,
+                                    const char* fw_version,
+                                    const char* hw_version) -> InputIt {
         static constexpr const char* prefix = "M115 FW:";
         auto written =
             write_string_to_iterpair(write_to_buf, write_to_limit, prefix);
@@ -584,10 +586,10 @@ struct GetVersion {
     }
 
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -614,17 +616,18 @@ struct DebugControlPlateLockMotor {
     float power;
 
     template <typename InputIt, typename InLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputIt, InLimit> static auto
-        write_response_into(InputIt write_to_buf, InLimit write_to_limit) {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt write_to_buf,
+                                    InLimit write_to_limit) {
         return write_string_to_iterpair(write_to_buf, write_to_limit, response);
     }
 
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
