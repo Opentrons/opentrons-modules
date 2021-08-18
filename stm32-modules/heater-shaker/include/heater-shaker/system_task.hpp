@@ -10,6 +10,7 @@
 #include "heater-shaker/ack_cache.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "heater-shaker/version.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>
@@ -18,9 +19,15 @@ struct Tasks;
 
 namespace system_task {
 
+//std::array<char,8> TestArr = {"TESTSNX"};
+
 template <typename Policy>
 concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.enter_bootloader()};
+    {p.set_serial_number(std::array<char,8> {"TESTSNX"})}
+    ->std::same_as<errors::ErrorCode>; //ask Seth how to best initialize and pass in an array for testing
+    {p.get_serial_number()}
+    ->std::same_as<std::array<char,8>>;
 };
 
 using Message = messages::SystemMessage;
@@ -36,6 +43,7 @@ requires MessageQueue<QueueImpl<Message>, Message> class SystemTask {
 
   public:
     using Queue = QueueImpl<Message>;
+    static constexpr uint8_t SERIAL_NUMBER_SIZE = 8;
     explicit SystemTask(Queue& q)
         : message_queue(q),
           task_registry(nullptr),
@@ -138,6 +146,32 @@ requires MessageQueue<QueueImpl<Message>, Message> class SystemTask {
         if (prep_cache.empty()) {
             policy.enter_bootloader();
         }
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::SetSerialNumberMessage& msg, Policy& policy)
+        -> void {
+        auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        //check if SN valid size
+        if (msg.serial_number.size() != SERIAL_NUMBER_SIZE) {
+            response.with_error = errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID;
+        } else {
+            response.with_error = policy.set_serial_number(msg.serial_number);
+        }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::GetSystemInfoMessage& msg, Policy& policy)
+        -> void {
+        auto response = 
+            messages::GetSystemInfoResponse{.responding_to_id = msg.id,
+                                              .serial_number = policy.get_serial_number(),
+                                              .fw_version = version::fw_version(),
+                                              .hw_version = version::hw_version()};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
     }
 
     template <typename Policy>

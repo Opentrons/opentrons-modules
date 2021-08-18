@@ -68,6 +68,7 @@ set(HS_FW_NONLINTABLE_SRCS
   ${MOTOR_DIR}/regular_conversion_manager.c
   ${SYSTEM_DIR}/system_hardware.c
   ${HEATER_DIR}/heater_hardware.c
+  ${SYSTEM_DIR}/system_serial_number.c
   )
 
 add_executable(heater-shaker
@@ -79,6 +80,7 @@ target_link_options(heater-shaker
   "LINKER:-T,${SYSTEM_DIR}/STM32F303RETx_FLASH.ld"
   "LINKER:--print-memory-usage"
   "LINKER:--error-unresolved-symbols"
+  "LINKER:--gc-sections"
   "LINKER:-u,_printf_float"
   "LINKER:-u,_scanf_float")
 

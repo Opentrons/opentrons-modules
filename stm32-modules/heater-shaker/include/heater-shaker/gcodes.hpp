@@ -546,18 +546,19 @@ struct EnterBootloader {
     }
 };
 
-struct GetVersion {
+struct GetSystemInfo {
     /**
-     * GetVersion keys off gcode M115 and returns hardware and
-     * software versions and eventually serial numbers
+     * GetSystemInfo keys off gcode M115 and returns hardware and
+     * software versions and serial number
      * */
-    using ParseResult = std::optional<GetVersion>;
+    using ParseResult = std::optional<GetSystemInfo>;
     static constexpr auto prefix = std::array{'M', '1', '1', '5'};
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt>&&
         std::sized_sentinel_for<InputIt, InLimit> static auto
         write_response_into(InputIt write_to_buf, InLimit write_to_limit,
+                            std::array<char, 8> serial_number,
                             const char* fw_version, const char* hw_version)
             -> InputIt {
         static constexpr const char* prefix = "M115 FW:";
@@ -579,6 +580,15 @@ struct GetVersion {
         if (written == write_to_limit) {
             return written;
         }
+        static constexpr const char* sn_prefix = " SerialNo:";
+        written = write_string_to_iterpair(written, write_to_limit, sn_prefix);
+        if (written == write_to_limit) {
+            return written;
+        }
+        written = write_string_to_iterpair(written, write_to_limit, serial_number.begin());
+        if (written == write_to_limit) {
+            return written;
+        }
         static constexpr const char* suffix = " OK\n";
         return write_string_to_iterpair(written, write_to_limit, suffix);
     }
@@ -592,7 +602,66 @@ struct GetVersion {
         if (working == input) {
             return std::make_pair(ParseResult(), input);
         }
-        return std::make_pair(ParseResult(GetVersion()), working);
+        return std::make_pair(ParseResult(GetSystemInfo()), working);
+    }
+};
+
+struct SetSerialNumber {
+    /*
+    ** Set Serial Number uses a random gcode, M996, adjacent to the firmware update gcode, 997
+    ** Format: M996 <SN>
+    ** Example: M996 HSM02071521A4 sets serial number to HSM02071521A4
+    */
+    using ParseResult = std::optional<SetSerialNumber>;
+    static constexpr auto prefix = std::array{'M', '9', '9', '6', ' '};
+    static constexpr const char* response = "M996 OK\n";
+    static constexpr std::size_t serial_number_length = 8;
+    std::array<char, serial_number_length> serial_number = {};
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<InputLimit, InputIt> static auto
+        write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt>&&
+        std::sized_sentinel_for<Limit, InputIt> static auto
+        parse(const InputIt& input, Limit limit)
+            -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto after = working;
+        bool found = false;
+        for (int index = 0; (index != (limit - working + 1)) && (!found); index++) {
+            if (std::isspace(*(working + index)) || ((*(working + index)) == '\0')) {
+                after = (working + index);
+                found = true;
+            }
+        }
+        if (((after - working) > 0) && ((after - working) < static_cast<int>(serial_number_length))) {
+            //utilize utility or create one to construct and transfer SN from gcode string. No parsing needed
+            //make constructor that takes iterator pair (start and length). Copy in data in-line (strcpy)
+            std::array<char, serial_number_length> serial_number_res = {};
+            std::copy(working, (working + (after - working)), serial_number_res.begin());
+            return std::make_pair(ParseResult(SetSerialNumber{.serial_number = serial_number_res}), 
+                    after);
+        } else {
+            return std::make_pair(ParseResult(), input);
+        }
+        //do we need to do anything with value_res.second?
+
+/*         auto value_res = parse_value<char>(working, limit);
+
+        if (!value_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(SetSerialNumber{.serial_number = static_cast<char *>(value_res.first.value())}),
+                              value_res.second); */
     }
 };
 

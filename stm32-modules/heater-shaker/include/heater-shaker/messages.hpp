@@ -63,6 +63,10 @@ struct GetRPMMessage {
     uint32_t id;
 };
 
+struct GetSystemInfoMessage {
+    uint32_t id;
+};
+
 struct SetAccelerationMessage {
     uint32_t id;
     int32_t rpm_per_s;
@@ -84,6 +88,12 @@ struct SetPIDConstantsMessage {
 struct SetPowerTestMessage {
     uint32_t id;
     double power;
+};
+
+struct SetSerialNumberMessage {
+    uint32_t id;
+    static constexpr std::size_t serial_number_length = 8;
+    std::array<char, serial_number_length> serial_number;
 };
 
 struct EnterBootloaderMessage {
@@ -155,6 +165,14 @@ struct GetRPMResponse {
     int16_t setpoint_rpm;
 };
 
+struct GetSystemInfoResponse {
+    uint32_t responding_to_id;
+    static constexpr std::size_t serial_number_length = 8;
+    std::array<char, serial_number_length> serial_number;
+    const char* fw_version;
+    const char* hw_version;
+};
+
 struct AcknowledgePrevious {
     uint32_t responding_to_id;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
@@ -174,9 +192,11 @@ using MotorMessage = ::std::variant<
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,
     ActuateSolenoidMessage, SetPlateLockPowerMessage, SetPIDConstantsMessage>;
 using SystemMessage =
-    ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious>;
+    ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious, 
+    SetSerialNumberMessage, GetSystemInfoMessage>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,
-                   GetTemperatureDebugResponse, ForceUSBDisconnectMessage>;
+                   GetTemperatureDebugResponse, ForceUSBDisconnectMessage,
+                   GetSystemInfoResponse>;
 };  // namespace messages
