@@ -14,27 +14,30 @@
 
 namespace motor_task {
 template <template <class> class QueueImpl>
-requires MessageQueue<QueueImpl<messages::MotorMessage>,
-                      messages::MotorMessage> class MotorTask;
-}
+requires MessageQueue<QueueImpl<messages::MotorMessage>, messages::MotorMessage>
+class MotorTask;
+}  // namespace motor_task
 
 namespace heater_task {
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<messages::HeaterMessage>,
-                      messages::HeaterMessage> class HeaterTask;
-}
+                      messages::HeaterMessage>
+class HeaterTask;
+}  // namespace heater_task
 
 namespace host_comms_task {
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<messages::HostCommsMessage>,
-                      messages::HostCommsMessage> class HostCommsTask;
-}
+                      messages::HostCommsMessage>
+class HostCommsTask;
+}  // namespace host_comms_task
 
 namespace system_task {
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<messages::SystemMessage>,
-                      messages::SystemMessage> class SystemTask;
-}
+                      messages::SystemMessage>
+class SystemTask;
+}  // namespace system_task
 
 namespace tasks {
 /* Container relating the RTOSTask for the implementation and the portable task

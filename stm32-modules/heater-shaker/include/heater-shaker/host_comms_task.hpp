@@ -31,7 +31,8 @@ using Message = messages::HostCommsMessage;
 // this template to do so as HostCommsTask<SomeQueueImpl> rather than
 // HeaterTask<SomeQueueImpl<Message>>
 template <template <class> class QueueImpl>
-requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
+requires MessageQueue<QueueImpl<Message>, Message>
+class HostCommsTask {
   public:
     using Queue = QueueImpl<Message>;
 
@@ -97,9 +98,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
      **/
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        run_once(InputIt tx_into, InputLimit tx_limit) -> InputLimit {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto run_once(InputIt tx_into, InputLimit tx_limit) -> InputLimit {
         auto message = Message(std::monostate());
 
         // This is the call down to the provided queue. It may block
@@ -139,10 +140,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
      * again for whatever gcodes it parses.
      * */
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_message(const messages::IncomingMessageFromHost& msg,
-                      InputIt tx_into, InputLimit tx_limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::IncomingMessageFromHost& msg,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
         // The parser is only really guaranteed to work if the message is
         // complete, ending in a newline, so let's make sure of that
         auto parser = GCodeParser();
@@ -192,10 +193,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_message(const messages::AcknowledgePrevious& msg, InputIt tx_into,
-                      InputLimit tx_limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::AcknowledgePrevious& msg,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
         auto cache_entry =
             ack_only_cache.remove_if_present(msg.responding_to_id);
         return std::visit(
@@ -216,18 +217,18 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_message(const messages::ErrorMessage& msg, InputIt tx_into,
-                      InputLimit tx_limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::ErrorMessage& msg, InputIt tx_into,
+                       InputLimit tx_limit) -> InputIt {
         return errors::write_into(tx_into, tx_limit, msg.code);
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_message(const std::monostate& ignore, InputIt tx_into,
-                      InputLimit tx_limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const std::monostate& ignore, InputIt tx_into,
+                       InputLimit tx_limit) -> InputIt {
         static_cast<void>(ignore);
         static_cast<void>(tx_into);
         static_cast<void>(tx_limit);
@@ -235,10 +236,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_message(const messages::GetTemperatureResponse& response,
-                      InputIt tx_into, InputLimit tx_limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetTemperatureResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
         auto cache_entry =
             get_temp_cache.remove_if_present(response.responding_to_id);
         return std::visit(
@@ -262,10 +263,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_message(const messages::GetTemperatureDebugResponse& response,
-                      InputIt tx_into, InputLimit tx_limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetTemperatureDebugResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
         auto cache_entry =
             get_temp_debug_cache.remove_if_present(response.responding_to_id);
         return std::visit(
@@ -287,10 +288,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_message(const messages::GetRPMResponse& response, InputIt tx_into,
-                      InputLimit tx_limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetRPMResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
         auto cache_entry =
             get_rpm_cache.remove_if_present(response.responding_to_id);
         return std::visit(
@@ -310,10 +311,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_message(const messages::GetSystemInfoResponse& response, InputIt tx_into,
-                      InputLimit tx_limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetSystemInfoResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
         auto cache_entry = 
             get_system_info_cache.remove_if_present(response.responding_to_id);
         return std::visit(
@@ -333,10 +334,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_message(const messages::ForceUSBDisconnectMessage& response,
-                      InputIt tx_into, InputLimit tx_limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::ForceUSBDisconnectMessage& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
         static_cast<void>(tx_limit);
         auto acknowledgement =
             messages::AcknowledgePrevious{.responding_to_id = response.id};
@@ -354,10 +355,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
 
     // our parse-done handler does nothing
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const std::monostate& ignore, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const std::monostate& ignore, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         static_cast<void>(ignore);
         static_cast<void>(tx_into);
         static_cast<void>(tx_limit);
@@ -365,10 +366,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::GetSystemInfo& gcode, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetSystemInfo& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = get_system_info_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -387,9 +388,9 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::SetSerialNumber& gcode, InputIt tx_into,
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetSerialNumber& gcode, InputIt tx_into,
                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
@@ -410,11 +411,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::ActuateSolenoid& solenoid_gcode,
-                    InputIt tx_into, InputLimit tx_limit)
-            -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::ActuateSolenoid& solenoid_gcode,
+                     InputIt tx_into, InputLimit tx_limit)
+        -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(solenoid_gcode);
         if (id == 0) {
             return std::make_pair(
@@ -434,10 +435,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::Home& home_code, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::Home& home_code, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(home_code);
         if (id == 0) {
             return std::make_pair(
@@ -456,10 +457,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::SetRPM& gcode, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetRPM& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -479,10 +480,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::SetAcceleration& gcode, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetAcceleration& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -502,10 +503,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::GetRPM& gcode, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetRPM& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = get_rpm_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -524,10 +525,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::SetTemperature& gcode, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetTemperature& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -547,10 +548,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::GetTemperature& gcode, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetTemperature& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = get_temp_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -569,10 +570,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::GetTemperatureDebug& gcode, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetTemperatureDebug& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = get_temp_debug_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -592,10 +593,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::SetPIDConstants& gcode, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetPIDConstants& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -628,10 +629,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::SetHeaterPowerTest& gcode, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetHeaterPowerTest& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -653,11 +654,11 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::DebugControlPlateLockMotor& gcode,
-                    InputIt tx_into, InputLimit tx_limit)
-            -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::DebugControlPlateLockMotor& gcode,
+                     InputIt tx_into, InputLimit tx_limit)
+        -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -678,10 +679,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const gcode::EnterBootloader& gcode, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::EnterBootloader& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -703,10 +704,10 @@ requires MessageQueue<QueueImpl<Message>, Message> class HostCommsTask {
 
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> auto
-        visit_gcode(const GCodeParser::ParseError& _ignore, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const GCodeParser::ParseError& _ignore, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         static_cast<void>(_ignore);
         return std::make_pair(
             false, errors::write_into(tx_into, tx_limit,

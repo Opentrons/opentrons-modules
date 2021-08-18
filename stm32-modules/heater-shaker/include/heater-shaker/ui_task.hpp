@@ -23,7 +23,8 @@ using Message = messages::UIMessage;
 // this template to do so as UITask<SomeQueueImpl> rather than
 // HeaterTask<SomeQueueImpl<Message>>
 template <template <class> class QueueImpl>
-requires MessageQueue<QueueImpl<Message>, Message> class UITask {
+requires MessageQueue<QueueImpl<Message>, Message>
+class UITask {
   public:
     using Queue = QueueImpl<Message>;
     explicit UITask(Queue& q) : message_queue(q), task_registry(nullptr) {}

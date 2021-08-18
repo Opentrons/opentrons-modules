@@ -31,5 +31,5 @@ extern const R3_2_Params_t R3_2_ParamsM1;
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
-#endif /* MC_PARAMETERS_H */
+#endif  /* MC_PARAMETERS_H */
 /******************* (C) COPYRIGHT 2019 STMicroelectronics *****END OF FILE****/

@@ -34,7 +34,7 @@ include(FetchContent)
 set(LOCALINSTALL_CLANG_DIR "${CMAKE_SOURCE_DIR}/stm32-tools/clang")
 message(STATUS "local install clang dir: ${LOCALINSTALL_CLANG_DIR}")
 
-set(DL_CLANG_VERSION "11.0.0")
+set(DL_CLANG_VERSION "12.0.0")
 
 if("${CMAKE_HOST_SYSTEM_NAME}" STREQUAL "Linux")
   set(CLANG_ARCHIVE "x86_64-linux-gnu-ubuntu-20.04.tar.xz")

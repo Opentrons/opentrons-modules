@@ -20,14 +20,12 @@ auto get_responding_to_id(const MessageType& message) -> IdType {
 
 template <typename MessageType>
 concept Message = requires(MessageType mt) {
-    { get_own_id(mt) }
-    ->std::same_as<uint32_t>;
+    { get_own_id(mt) } -> std::same_as<uint32_t>;
 };
 
 template <typename ResponseType>
 concept Response = requires(ResponseType rt) {
-    { get_responding_to_id(rt) }
-    ->std::same_as<uint32_t>;
+    { get_responding_to_id(rt) } -> std::same_as<uint32_t>;
 };
 
 /*
