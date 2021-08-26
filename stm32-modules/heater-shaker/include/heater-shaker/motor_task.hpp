@@ -55,6 +55,7 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.plate_lock_set_power(0.1)};
     {p.plate_lock_disable()};
+    {p.get_plate_lock_state()} -> std::same_as<std::array<char, 14>>;
 };
 
 struct State {
@@ -88,6 +89,7 @@ class MotorTask {
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
     static constexpr uint16_t HOMING_CYCLES_BEFORE_TIMEOUT = 10;
     using Queue = QueueImpl<Message>;
+    static constexpr uint8_t PLATE_LOCK_STATE_SIZE = 14;
     explicit MotorTask(Queue& q)
         : state{.status = State::STOPPED_UNKNOWN},
           message_queue(q),
@@ -318,6 +320,17 @@ class MotorTask {
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::AcknowledgePrevious{.responding_to_id = msg.id}));
     }
+
+    template <typename Policy>
+    auto visit_message(const messages::GetPlateLockStateMessage& msg, Policy& policy)
+        -> void {
+        auto response = 
+            messages::GetPlateLockStateResponse{.responding_to_id = msg.id,
+                                              .plate_lock_state = policy.get_plate_lock_state()};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
     State state;
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;

@@ -17,7 +17,19 @@ typedef struct {
     DAC_HandleTypeDef dac1;
     MCI_Handle_t* mci[NBR_OF_MOTORS];
     MCT_Handle_t* mct[NBR_OF_MOTORS];
+    EXTI_HandleTypeDef engaged_exti;
+    EXTI_HandleTypeDef released_exti;
 } motor_hardware_handles;
+
+typedef enum
+{
+    IDLE_CLOSED = 0,
+    OPENING = 1,
+    IDLE_OPEN = 2,
+    CLOSING = 3,
+    IDLE_UNKNOWN = 4,
+    UNKNOWN = 5
+} plate_lock_state;
 
 void motor_hardware_setup(motor_hardware_handles* handles);
 
@@ -28,6 +40,8 @@ void motor_hardware_plate_lock_on(TIM_HandleTypeDef* tim3, float power);
 void motor_hardware_plate_lock_off(TIM_HandleTypeDef* tim3);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
+
+plate_lock_state motor_get_plate_lock_state(void);
 
 #define MC_HAL_IS_USED
 
@@ -101,6 +115,13 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 #define PLATE_LOCK_IN_2_Pin GPIO_PIN_3
 #define PLATE_LOCK_IN_2_Chan TIM_CHANNEL_2
 #define PLATE_LOCK_NFAULT_Pin GPIO_PIN_6
+#define PLATE_LOCK_ENGAGED_Pin GPIO_PIN_0
+#define PLATE_LOCK_RELEASED_Pin GPIO_PIN_4
+//#define PLATE_LOCK_RELEASED_Chan TIM_CHANNEL_3
+//#define PLATE_LOCK_ENGAGED_TIM TIM16
+//#define PLATE_LOCK_ENGAGED_Chan TIM_CHANNEL_1
+//USART1_TX setup for engaged?
+//Pullup
 
 // These defines drive the math for setting the PWM clocking parameters.
 // The frequency will be respected as accurately as possible, and is in Hz.

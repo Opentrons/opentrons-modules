@@ -642,4 +642,47 @@ struct DebugControlPlateLockMotor {
     }
 };
 
+struct GetPlateLockState {
+    /*
+    ** GetPlateLockState keys off a random gcode that sometimes does the right thing since
+    **it's not like it's standardized or anything, M241
+    ** Format: M241
+    ** Example: M241
+    */
+    using ParseResult = std::optional<GetPlateLockState>;
+    static constexpr auto prefix = std::array{'M', '2', '4', '1'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InLimit, InputIt>
+    static auto write_response_into(InputIt write_to_buf, const InLimit write_to_limit,
+                                    std::array<char, 14> plate_lock_state)
+        -> InputIt {
+        static constexpr const char* prefix = "M241 STATE:";
+        auto written =
+            write_string_to_iterpair(write_to_buf, write_to_limit, prefix);
+        if (written == write_to_limit) {
+            return written;
+        }
+        written = write_string_to_iterpair(written, write_to_limit, plate_lock_state.begin());
+        if (written == write_to_limit) {
+            return written;
+        }
+        static constexpr const char* suffix = " OK\n";
+        return write_string_to_iterpair(written, write_to_limit, suffix);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetPlateLockState()), working);
+    }
+};
+
 }  // namespace gcode

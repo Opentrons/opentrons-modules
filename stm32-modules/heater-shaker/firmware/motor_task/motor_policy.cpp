@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstdlib>
+#include <array>
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -100,6 +101,37 @@ auto MotorPolicy::plate_lock_set_power(float power) -> void {
 
 auto MotorPolicy::plate_lock_disable() -> void {
     motor_hardware_plate_lock_off(&hw_handles->tim3);
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::get_plate_lock_state(void) -> std::array<char, 14> {
+    //what type/format is STATE? Is it int?
+    plate_lock_state plate_lock_state_enum = motor_get_plate_lock_state();
+    //Convert to array. Just make switch case to hardcode output array?
+    std::array<char, 14> plate_lock_state_array = {};
+    switch(plate_lock_state_enum) {
+        case IDLE_CLOSED:
+            plate_lock_state_array = std::array<char, 14>{"IDLE_CLOSED"};
+            break;
+        case OPENING:
+            plate_lock_state_array = std::array<char, 14>{"OPENING"};
+            break;
+        case IDLE_OPEN:
+            plate_lock_state_array = std::array<char, 14>{"IDLE_OPEN"};
+            break;
+        case CLOSING:
+            plate_lock_state_array = std::array<char, 14>{"CLOSING"};
+            break;
+        case IDLE_UNKNOWN:
+            plate_lock_state_array = std::array<char, 14>{"IDLE_UNKNOWN"};
+            break;
+        case UNKNOWN:
+            plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
+            break;
+        default:
+            plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
+    }
+    return plate_lock_state_array;
 }
 
 auto MotorPolicy::set_pid_constants(double kp, double ki, double kd) -> void {
