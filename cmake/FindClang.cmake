@@ -82,7 +82,7 @@ endif()
 
 if(NOT Clang_EXECUTABLE STREQUAL "Clang_EXECUTABLE-NOTFOUND")
   execute_process(
-    COMMAND clang --version
+    COMMAND ${Clang_EXECUTABLE} --version
     OUTPUT_VARIABLE INSTALLED_CLANG_VERSION_BLOB)
   string(REGEX MATCH "clang version ([0-9]+\.[0-9]+\.[0-9]+)"
     CV_REGEX_OUTPUT ${INSTALLED_CLANG_VERSION_BLOB})
