@@ -931,10 +931,12 @@ void EXTI4_IRQHandler(void)
   */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
+  
+  //need any checks like in heater callback function?
   if(((GPIO_Pin == PLATE_LOCK_ENGAGED_Pin) && (STATE == CLOSING)) \
     || ((GPIO_Pin == PLATE_LOCK_RELEASED_Pin) && (STATE == OPENING)))
   {
-    motor_hardware_plate_lock_off(&MOTOR_HW_HANDLE->tim3);
+    motor_hardware_plate_lock_off(&MOTOR_HW_HANDLE->tim3); //correct, working?
     if(STATE == CLOSING) {
       STATE = IDLE_CLOSED;
     }else if(STATE == OPENING) {

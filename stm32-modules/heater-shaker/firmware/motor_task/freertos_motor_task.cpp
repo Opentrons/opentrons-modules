@@ -64,6 +64,17 @@ StaticTask_t control_task_data;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static MotorTaskFreeRTOS _local_task;
 
+static void handle_latch(const latch_results *results) {
+    if (results == nullptr) {
+        return;
+    }
+    static_cast<void>(
+        _task.get_message_queue().try_send_from_isr(
+            messages::MotorMessage(messages::LatchComplete{
+                .open = results->open,
+                .closed = results->closed})));
+}
+
 // Actual function that runs inside the task
 void run(void *param) {
     static_cast<void>(param);
@@ -87,6 +98,19 @@ void run_control_task(void *param) {
         }
     }
 }
+
+/*void run_latch_task(void *param) {
+    static_cast<void>(param);
+    TickType_t last_wake_time = xTaskGetTickCount();
+    while (true) {
+        vTaskDelayUntil(
+            &last_wake_time,
+            // NOLINTNEXTLINE(readability-static-accessed-through-instance)
+            _task.LATCH_PERIOD_TICKS);
+        motor_latch_begin_
+
+    }
+}*/
 
 // Starter function that creates and spins off the task
 auto start()

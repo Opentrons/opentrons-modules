@@ -72,6 +72,11 @@ struct TemperatureConversionComplete {
     uint16_t board;
 };
 
+struct LatchComplete {
+    bool open;
+    bool closed;
+}
+
 struct SetPIDConstantsMessage {
     uint32_t id;
     double kp;

@@ -90,6 +90,7 @@ class MotorTask {
     static constexpr uint16_t HOMING_CYCLES_BEFORE_TIMEOUT = 10;
     using Queue = QueueImpl<Message>;
     static constexpr uint8_t PLATE_LOCK_STATE_SIZE = 14;
+    //static constexpr const uint32_t LATCH_PERIOD_TICKS = 100;
     explicit MotorTask(Queue& q)
         : state{.status = State::STOPPED_UNKNOWN},
           message_queue(q),
@@ -216,6 +217,16 @@ class MotorTask {
                 }
             }
         }
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::LatchComplete& msg,
+                       Policy& policy) -> void {
+        //error checking like heater_task?
+        //break out open and closed handlers?
+        handle_latch_complete(msg.open, open);
+        handle_latch_complete(msg.closed, closed);
+
     }
 
     /**
