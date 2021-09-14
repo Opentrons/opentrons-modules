@@ -72,10 +72,10 @@ struct TemperatureConversionComplete {
     uint16_t board;
 };
 
-struct LatchComplete {
+struct PlateLockComplete {
     bool open;
     bool closed;
-}
+};
 
 struct SetPIDConstantsMessage {
     uint32_t id;

@@ -931,9 +931,22 @@ void EXTI4_IRQHandler(void)
   */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-  
+  //do a HAL_GPIO_ReadPin for each pin?
+  optical_switch_results* results;
+  if (GPIO_Pin == PLATE_LOCK_ENGAGED_Pin) {
+    results->closed = true;
+  } else {
+    results->closed = false;
+  }
+  if (GPIO_Pin == PLATE_LOCK_RELEASED_Pin) {
+    results->open = true;
+  } else {
+    results->open = false;
+  }
+  MOTOR_HW_HANDLE->plate_lock_complete(&results);
+
   //need any checks like in heater callback function?
-  if(((GPIO_Pin == PLATE_LOCK_ENGAGED_Pin) && (STATE == CLOSING)) \
+  /*if(((GPIO_Pin == PLATE_LOCK_ENGAGED_Pin) && (STATE == CLOSING)) \
     || ((GPIO_Pin == PLATE_LOCK_RELEASED_Pin) && (STATE == OPENING)))
   {
     motor_hardware_plate_lock_off(&MOTOR_HW_HANDLE->tim3); //correct, working?
@@ -942,7 +955,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }else if(STATE == OPENING) {
       STATE = IDLE_OPEN;
     }
-  }
+  }*/
 }
 
 plate_lock_state motor_get_plate_lock_state(void)

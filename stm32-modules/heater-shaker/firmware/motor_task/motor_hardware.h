@@ -17,11 +17,12 @@ typedef struct {
     DAC_HandleTypeDef dac1;
     MCI_Handle_t* mci[NBR_OF_MOTORS];
     MCT_Handle_t* mct[NBR_OF_MOTORS];
-    EXTI_HandleTypeDef engaged_exti;
-    EXTI_HandleTypeDef released_exti;
+    void (*plate_lock_complete)(const optical_switch_results* results);
+    //EXTI_HandleTypeDef engaged_exti;
+    //EXTI_HandleTypeDef released_exti;
 } motor_hardware_handles;
 
-typedef enum
+/*typedef enum
 {
     IDLE_CLOSED = 0,
     OPENING = 1,
@@ -29,7 +30,12 @@ typedef enum
     CLOSING = 3,
     IDLE_UNKNOWN = 4,
     UNKNOWN = 5
-} plate_lock_state;
+} plate_lock_state;*/
+
+typedef struct {
+    bool open;
+    bool closed;
+} optical_switch_results;
 
 void motor_hardware_setup(motor_hardware_handles* handles);
 

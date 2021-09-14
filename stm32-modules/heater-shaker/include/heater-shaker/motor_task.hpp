@@ -74,6 +74,18 @@ struct State {
     TaskStatus status;
 };
 
+struct PlateLockState {
+    enum PlateLockTaskStatus {
+        IDLE_CLOSED = 0,
+        OPENING = 1,
+        IDLE_OPEN = 2,
+        CLOSING = 3,
+        IDLE_UNKNOWN = 4,
+        UNKNOWN = 5
+    };
+    PlateLockTaskStatus status;
+};
+
 constexpr size_t RESPONSE_LENGTH = 128;
 using Message = ::messages::MotorMessage;
 template <template <class> class QueueImpl>
@@ -325,9 +337,28 @@ class MotorTask {
                        Policy& policy) -> void {
         if (msg.power == 0) {
             policy.plate_lock_disable();
+            platelockstate.platelockstatus = IDLE_UNKNOWN;
         } else {
             policy.plate_lock_set_power(std::clamp(msg.power, -1.0F, 1.0F));
+            if (msg.power > 0) {
+                platelockstate.platelockstatus = OPENING;
+            } elseif (msg.power < 0) {
+                platelockstate.platelockstatus = CLOSING;
+            }
         }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::AcknowledgePrevious{.responding_to_id = msg.id}));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::PlateLockComplete& msg,
+                       Policy& policy) -> void {
+        policy.plate_lock_disable();
+        //change state
+        if ((msg.closed == true) && (msg.open == false)) {
+
+        } elseif ()
+
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::AcknowledgePrevious{.responding_to_id = msg.id}));
     }
@@ -342,6 +373,7 @@ class MotorTask {
             messages::HostCommsMessage(response)));
     }
 
+    PlateLockState platelockstate = UNKNOWN;
     State state;
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;

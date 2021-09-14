@@ -64,13 +64,13 @@ StaticTask_t control_task_data;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static MotorTaskFreeRTOS _local_task;
 
-static void handle_latch(const latch_results *results) {
+static void handle_plate_lock(const optical_switch_results *results) {
     if (results == nullptr) {
         return;
     }
     static_cast<void>(
         _task.get_message_queue().try_send_from_isr(
-            messages::MotorMessage(messages::LatchComplete{
+            messages::MotorMessage(messages::PlateLockComplete{
                 .open = results->open,
                 .closed = results->closed})));
 }
