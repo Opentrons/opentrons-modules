@@ -105,6 +105,7 @@ class MotorTask {
     //static constexpr const uint32_t LATCH_PERIOD_TICKS = 100;
     explicit MotorTask(Queue& q)
         : state{.status = State::STOPPED_UNKNOWN},
+          plate_lock_state{.status = PlateLockState::UNKNOWN},
           message_queue(q),
           task_registry(nullptr) {}
     MotorTask(const MotorTask& other) = delete;
@@ -115,6 +116,9 @@ class MotorTask {
     auto get_message_queue() -> Queue& { return message_queue; }
     [[nodiscard]] auto get_state() const -> State::TaskStatus {
         return state.status;
+    }
+    [[nodiscard]] auto get_plate_lock_state() const -> PlateLockState::PlateLockTaskStatus {
+        return plate_lock_state.status;
     }
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
         task_registry = other_tasks;
@@ -229,16 +233,6 @@ class MotorTask {
                 }
             }
         }
-    }
-
-    template <typename Policy>
-    auto visit_message(const messages::LatchComplete& msg,
-                       Policy& policy) -> void {
-        //error checking like heater_task?
-        //break out open and closed handlers?
-        handle_latch_complete(msg.open, open);
-        handle_latch_complete(msg.closed, closed);
-
     }
 
     /**
@@ -364,6 +358,16 @@ class MotorTask {
     }
 
     template <typename Policy>
+    auto visit_message(const messages::PlateLockComplete& msg,
+                       Policy& policy) -> void {
+        //error checking like heater_task?
+        //break out open and closed handlers?
+        handle_latch_complete(msg.open, open);
+        handle_latch_complete(msg.closed, closed);
+
+    }
+
+    template <typename Policy>
     auto visit_message(const messages::GetPlateLockStateMessage& msg, Policy& policy)
         -> void {
         auto response = 
@@ -373,7 +377,7 @@ class MotorTask {
             messages::HostCommsMessage(response)));
     }
 
-    PlateLockState platelockstate = UNKNOWN;
+    PlateLockState plate_lock_state;
     State state;
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
