@@ -16,7 +16,7 @@ extern "C" {
 static void Error_Handler();
 
 motor_hardware_handles *MOTOR_HW_HANDLE = NULL;
-plate_lock_state STATE = UNKNOWN;
+//plate_lock_state STATE = UNKNOWN;
 
 static void MX_NVIC_Init(void)
 {
@@ -359,7 +359,7 @@ static void PlateLockTIM_Init(TIM_HandleTypeDef* tim3) {
   HAL_TIM_PWM_Init(tim3);
 
   motor_hardware_plate_lock_off(tim3);
-  STATE = IDLE_UNKNOWN;
+  //STATE = IDLE_UNKNOWN;
 
 }
 
