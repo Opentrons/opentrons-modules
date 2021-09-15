@@ -934,12 +934,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   optical_switch_results results;
   if (GPIO_Pin == PLATE_LOCK_ENGAGED_Pin) {
     results.closed = true;
-  } else {
     results.open = false;
   }
   if (GPIO_Pin == PLATE_LOCK_RELEASED_Pin) {
     results.open = true;
-  } else {
     results.closed = false;
   }
   MOTOR_HW_HANDLE->plate_lock_complete(&results);

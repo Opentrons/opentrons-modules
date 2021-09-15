@@ -334,9 +334,9 @@ class MotorTask {
             plate_lock_state.status = PlateLockState::IDLE_UNKNOWN;
         } else {
             policy.plate_lock_set_power(std::clamp(msg.power, -1.0F, 1.0F));
-            if (msg.power > 0) {
+            if (msg.power < 0) {
                 plate_lock_state.status = PlateLockState::OPENING;
-            } else if (msg.power < 0) {
+            } else if (msg.power > 0) {
                 plate_lock_state.status = PlateLockState::CLOSING;
             }
         }
