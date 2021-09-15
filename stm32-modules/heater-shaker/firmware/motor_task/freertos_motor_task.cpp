@@ -80,6 +80,8 @@ static void handle_plate_lock(const optical_switch_results *results) {
 // Actual function that runs inside the task
 void run(void *param) {
     static_cast<void>(param);
+    memset(&_local_task.handles, 0, sizeof(_local_task.handles));
+    _local_task.handles.plate_lock_complete = handle_plate_lock;
     motor_hardware_setup(&_local_task.handles);
 
     auto policy = MotorPolicy(&_local_task.handles);

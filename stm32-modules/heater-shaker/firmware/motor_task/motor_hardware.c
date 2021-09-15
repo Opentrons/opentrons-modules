@@ -812,7 +812,6 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
 }
 
 void motor_hardware_setup(motor_hardware_handles* handles) {
-  memset(handles, 0, sizeof(*handles));
   MOTOR_HW_HANDLE = handles;
   MX_GPIO_Init();
   MX_ADC1_Init(&handles->adc1);
@@ -932,16 +931,16 @@ void EXTI4_IRQHandler(void)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   //do a HAL_GPIO_ReadPin for each pin?
-  optical_switch_results* results;
+  optical_switch_results results;
   if (GPIO_Pin == PLATE_LOCK_ENGAGED_Pin) {
-    results->closed = true;
+    results.closed = true;
   } else {
-    results->closed = false;
+    results.open = false;
   }
   if (GPIO_Pin == PLATE_LOCK_RELEASED_Pin) {
-    results->open = true;
+    results.open = true;
   } else {
-    results->open = false;
+    results.closed = false;
   }
   MOTOR_HW_HANDLE->plate_lock_complete(&results);
 

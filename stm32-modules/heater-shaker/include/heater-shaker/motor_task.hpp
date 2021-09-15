@@ -402,8 +402,8 @@ class MotorTask {
             messages::HostCommsMessage(response)));
     }
 
-    PlateLockState plate_lock_state;
     State state;
+    PlateLockState plate_lock_state;
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
     uint32_t cached_home_id = 0;
