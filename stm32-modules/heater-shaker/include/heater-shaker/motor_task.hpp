@@ -55,7 +55,7 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.plate_lock_set_power(0.1)};
     {p.plate_lock_disable()};
-    {p.get_plate_lock_state()} -> std::same_as<std::array<char, 14>>;
+    //{p.get_plate_lock_state()} -> std::same_as<std::array<char, 14>>;
 };
 
 struct State {
@@ -105,7 +105,7 @@ class MotorTask {
     //static constexpr const uint32_t LATCH_PERIOD_TICKS = 100;
     explicit MotorTask(Queue& q)
         : state{.status = State::STOPPED_UNKNOWN},
-          plate_lock_state{.status = PlateLockState::UNKNOWN},
+          plate_lock_state{.status = PlateLockState::IDLE_UNKNOWN},
           message_queue(q),
           task_registry(nullptr) {}
     MotorTask(const MotorTask& other) = delete;
@@ -331,13 +331,13 @@ class MotorTask {
                        Policy& policy) -> void {
         if (msg.power == 0) {
             policy.plate_lock_disable();
-            platelockstate.platelockstatus = IDLE_UNKNOWN;
+            plate_lock_state.status = PlateLockState::IDLE_UNKNOWN;
         } else {
             policy.plate_lock_set_power(std::clamp(msg.power, -1.0F, 1.0F));
             if (msg.power > 0) {
-                platelockstate.platelockstatus = OPENING;
-            } elseif (msg.power < 0) {
-                platelockstate.platelockstatus = CLOSING;
+                plate_lock_state.status = PlateLockState::OPENING;
+            } else if (msg.power < 0) {
+                plate_lock_state.status = PlateLockState::CLOSING;
             }
         }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
@@ -350,14 +350,16 @@ class MotorTask {
         policy.plate_lock_disable();
         //change state
         if ((msg.closed == true) && (msg.open == false)) {
+            plate_lock_state.status = PlateLockState::IDLE_CLOSED;
+        } else if ((msg.open == true) && (msg.closed == false)) {
+            plate_lock_state.status = PlateLockState::IDLE_OPEN;
+        }
 
-        } elseif ()
-
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
-            messages::AcknowledgePrevious{.responding_to_id = msg.id}));
+        /*static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::AcknowledgePrevious{.responding_to_id = msg.id}));*/
     }
 
-    template <typename Policy>
+    /*template <typename Policy>
     auto visit_message(const messages::PlateLockComplete& msg,
                        Policy& policy) -> void {
         //error checking like heater_task?
@@ -365,14 +367,37 @@ class MotorTask {
         handle_latch_complete(msg.open, open);
         handle_latch_complete(msg.closed, closed);
 
-    }
+    }*/
 
     template <typename Policy>
     auto visit_message(const messages::GetPlateLockStateMessage& msg, Policy& policy)
         -> void {
+        std::array<char, 14> plate_lock_state_array = {};
+        switch(plate_lock_state.status) {
+        case PlateLockState::IDLE_CLOSED:
+            plate_lock_state_array = std::array<char, 14>{"IDLE_CLOSED"};
+            break;
+        case PlateLockState::OPENING:
+            plate_lock_state_array = std::array<char, 14>{"OPENING"};
+            break;
+        case PlateLockState::IDLE_OPEN:
+            plate_lock_state_array = std::array<char, 14>{"IDLE_OPEN"};
+            break;
+        case PlateLockState::CLOSING:
+            plate_lock_state_array = std::array<char, 14>{"CLOSING"};
+            break;
+        case PlateLockState::IDLE_UNKNOWN:
+            plate_lock_state_array = std::array<char, 14>{"IDLE_UNKNOWN"};
+            break;
+        case PlateLockState::UNKNOWN:
+            plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
+            break;
+        default:
+            plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
+        }
         auto response = 
             messages::GetPlateLockStateResponse{.responding_to_id = msg.id,
-                                              .plate_lock_state = policy.get_plate_lock_state()};
+                                              .plate_lock_state = plate_lock_state_array};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }

@@ -9,6 +9,11 @@ extern "C" {
 #include "stm32f3xx_hal.h"
 
 typedef struct {
+    bool open;
+    bool closed;
+} optical_switch_results;
+
+typedef struct {
     ADC_HandleTypeDef adc1;
     ADC_HandleTypeDef adc2;
     TIM_HandleTypeDef tim1;
@@ -32,11 +37,6 @@ typedef struct {
     UNKNOWN = 5
 } plate_lock_state;*/
 
-typedef struct {
-    bool open;
-    bool closed;
-} optical_switch_results;
-
 void motor_hardware_setup(motor_hardware_handles* handles);
 
 void motor_hardware_solenoid_drive(DAC_HandleTypeDef* dac1, uint8_t dacval);
@@ -47,7 +47,7 @@ void motor_hardware_plate_lock_off(TIM_HandleTypeDef* tim3);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 
-plate_lock_state motor_get_plate_lock_state(void);
+//plate_lock_state motor_get_plate_lock_state(void);
 
 #define MC_HAL_IS_USED
 

@@ -33,7 +33,7 @@ class MotorPolicy {
 
     auto plate_lock_set_power(float power) -> void;
     auto plate_lock_disable() -> void;
-    auto get_plate_lock_state(void) -> std::array<char, 14>;
+    //auto get_plate_lock_state(void) -> std::array<char, 14>;
 
   private:
     static constexpr uint16_t MAX_SOLENOID_CURRENT_MA = 330;

@@ -38,6 +38,8 @@ enum class Notifications : uint8_t {
     INCOMING_MESSAGE = 1,
 };
 
+static void handle_plate_lock(const optical_switch_results *results);
+
 static FreeRTOSMessageQueue<motor_task::Message>
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
     _motor_queue(static_cast<uint8_t>(Notifications::INCOMING_MESSAGE),

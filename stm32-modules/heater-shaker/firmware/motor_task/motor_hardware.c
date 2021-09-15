@@ -958,10 +958,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   }*/
 }
 
-plate_lock_state motor_get_plate_lock_state(void)
+/*plate_lock_state motor_get_plate_lock_state(void)
 {
   return STATE;
-}
+}*/
 
 void Error_Handler() {
   while (true) {}

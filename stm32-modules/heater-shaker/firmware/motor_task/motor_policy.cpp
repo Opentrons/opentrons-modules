@@ -1,6 +1,6 @@
 #include <algorithm>
 #include <cstdlib>
-#include <array>
+//#include <array>
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -104,7 +104,7 @@ auto MotorPolicy::plate_lock_disable() -> void {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::get_plate_lock_state(void) -> std::array<char, 14> {
+/*auto MotorPolicy::get_plate_lock_state(void) -> std::array<char, 14> {
     //what type/format is STATE? Is it int?
     plate_lock_state plate_lock_state_enum = motor_get_plate_lock_state();
     //Convert to array. Just make switch case to hardcode output array?
@@ -132,7 +132,7 @@ auto MotorPolicy::get_plate_lock_state(void) -> std::array<char, 14> {
             plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
     }
     return plate_lock_state_array;
-}
+}*/
 
 auto MotorPolicy::set_pid_constants(double kp, double ki, double kd) -> void {
     // These conversions match those in drive_parameters.h and therefore let you
