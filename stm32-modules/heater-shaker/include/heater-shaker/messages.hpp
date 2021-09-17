@@ -124,7 +124,19 @@ struct SetPlateLockPowerMessage {
     float power;
 };
 
+struct OpenPlateLockMessage {
+    uint32_t id;
+};
+
+struct ClosePlateLockMessage {
+    uint32_t id;
+};
+
 struct GetPlateLockStateMessage {
+    uint32_t id;
+};
+
+struct GetPlateLockStateDebugMessage {
     uint32_t id;
 };
 
@@ -168,6 +180,14 @@ struct GetPlateLockStateResponse {
     std::array<char, state_length> plate_lock_state;
 };
 
+struct GetPlateLockStateDebugResponse {
+    uint32_t responding_to_id;
+    static constexpr std::size_t state_length = 14;
+    std::array<char, state_length> plate_lock_state;
+    bool plate_lock_open_state;
+    bool plate_lock_closed_state;
+};
+
 struct AcknowledgePrevious {
     uint32_t responding_to_id;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
@@ -185,13 +205,14 @@ using HeaterMessage =
 using MotorMessage = ::std::variant<
     std::monostate, MotorSystemErrorMessage, SetRPMMessage, GetRPMMessage,
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,
-    ActuateSolenoidMessage, SetPlateLockPowerMessage, SetPIDConstantsMessage,
-    PlateLockComplete, GetPlateLockStateMessage>;
+    ActuateSolenoidMessage, SetPlateLockPowerMessage, OpenPlateLockMessage,
+    ClosePlateLockMessage, SetPIDConstantsMessage, PlateLockComplete,
+    GetPlateLockStateMessage, GetPlateLockStateDebugMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,
                    GetTemperatureDebugResponse, ForceUSBDisconnectMessage,
-                   GetPlateLockStateResponse>;
+                   GetPlateLockStateResponse, GetPlateLockStateDebugResponse>;
 };  // namespace messages

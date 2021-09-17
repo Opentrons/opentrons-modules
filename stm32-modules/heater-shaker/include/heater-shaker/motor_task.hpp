@@ -345,9 +345,41 @@ class MotorTask {
     }
 
     template <typename Policy>
+    auto visit_message(const messages::OpenPlateLockMessage& msg,
+                       Policy& policy) -> void {
+        auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        //check if homed, else error
+        if (state.status != State::STOPPED_HOMED) {
+            response = messages::AcknowledgePrevious{
+                .responding_to_id = msg.id, .with_error = errors::ErrorCode::MOTOR_NOT_HOME};
+        } else {
+            policy.plate_lock_set_power(-1.0F);
+            plate_lock_state.status = PlateLockState::OPENING;
+        }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+                messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::ClosePlateLockMessage& msg,
+                       Policy& policy) -> void {
+        auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        //check if homed, else error
+        if (state.status != State::STOPPED_HOMED) {
+            response = messages::AcknowledgePrevious{
+                .responding_to_id = msg.id, .with_error = errors::ErrorCode::MOTOR_NOT_HOME};
+        } else {
+            policy.plate_lock_set_power(1.0F);
+            plate_lock_state.status = PlateLockState::CLOSING;
+        }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+                messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
     auto visit_message(const messages::PlateLockComplete& msg,
                        Policy& policy) -> void {
-        policy.plate_lock_disable();
+        policy.plate_lock_brake();
         //change state
         if ((msg.closed == true) && (msg.open == false)) {
             plate_lock_state.status = PlateLockState::IDLE_CLOSED;
@@ -398,6 +430,45 @@ class MotorTask {
         auto response = 
             messages::GetPlateLockStateResponse{.responding_to_id = msg.id,
                                               .plate_lock_state = plate_lock_state_array};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::GetPlateLockStateDebugMessage& msg, Policy& policy)
+        -> void {
+        //read each optical switch state
+        bool open_switch = policy.plate_lock_open_sensor_read();
+        bool closed_switch = policy.plate_lock_closed_sensor_read();
+
+        std::array<char, 14> plate_lock_state_array = {};
+        switch(plate_lock_state.status) {
+        case PlateLockState::IDLE_CLOSED:
+            plate_lock_state_array = std::array<char, 14>{"IDLE_CLOSED"};
+            break;
+        case PlateLockState::OPENING:
+            plate_lock_state_array = std::array<char, 14>{"OPENING"};
+            break;
+        case PlateLockState::IDLE_OPEN:
+            plate_lock_state_array = std::array<char, 14>{"IDLE_OPEN"};
+            break;
+        case PlateLockState::CLOSING:
+            plate_lock_state_array = std::array<char, 14>{"CLOSING"};
+            break;
+        case PlateLockState::IDLE_UNKNOWN:
+            plate_lock_state_array = std::array<char, 14>{"IDLE_UNKNOWN"};
+            break;
+        case PlateLockState::UNKNOWN:
+            plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
+            break;
+        default:
+            plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
+        }
+        auto response = 
+            messages::GetPlateLockStateDebugResponse{.responding_to_id = msg.id,
+                                              .plate_lock_state = plate_lock_state_array,
+                                              .plate_lock_open_state = open_switch,
+                                              .plate_lock_closed_state = closed_switch};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }

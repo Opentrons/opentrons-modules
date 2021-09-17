@@ -16,7 +16,6 @@ extern "C" {
 static void Error_Handler();
 
 motor_hardware_handles *MOTOR_HW_HANDLE = NULL;
-//plate_lock_state STATE = UNKNOWN;
 
 static void MX_NVIC_Init(void)
 {
@@ -878,6 +877,23 @@ void motor_hardware_plate_lock_off(TIM_HandleTypeDef* tim3) {
   HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_2_Chan);
 }
 
+void motor_hardware_plate_lock_brake(TIM_HandleTypeDef* tim3) {
+  float power_scale = 1.f;
+  TIM_OC_InitTypeDef chan_config = {
+     .OCMode = TIM_OCMODE_PWM1,
+     .Pulse = (uint16_t)(PLATE_LOCK_PWM_GRANULARITY * power_scale),
+     .OCPolarity = TIM_OCPOLARITY_HIGH,
+     .OCIdleState = TIM_OCIDLESTATE_RESET
+};
+  HAL_TIM_PWM_Stop(tim3, PLATE_LOCK_IN_1_Chan);
+  HAL_TIM_PWM_Stop(tim3, PLATE_LOCK_IN_2_Chan);
+  HAL_TIM_OC_ConfigChannel(tim3, &chan_config, PLATE_LOCK_IN_1_Chan);
+  HAL_TIM_OC_ConfigChannel(tim3, &chan_config, PLATE_LOCK_IN_2_Chan);
+  HAL_TIM_GenerateEvent(tim3, TIM_EVENTSOURCE_UPDATE);
+  HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_1_Chan);
+  HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_2_Chan);
+}
+
 /*
 // Actual IRQ handler to call into the HAL IRQ handler
 void EXTI0_IRQHandler(void) {
@@ -943,22 +959,16 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   MOTOR_HW_HANDLE->plate_lock_complete(&results);
 
   //need any checks like in heater callback function?
-  /*if(((GPIO_Pin == PLATE_LOCK_ENGAGED_Pin) && (STATE == CLOSING)) \
-    || ((GPIO_Pin == PLATE_LOCK_RELEASED_Pin) && (STATE == OPENING)))
-  {
-    motor_hardware_plate_lock_off(&MOTOR_HW_HANDLE->tim3); //correct, working?
-    if(STATE == CLOSING) {
-      STATE = IDLE_CLOSED;
-    }else if(STATE == OPENING) {
-      STATE = IDLE_OPEN;
-    }
-  }*/
 }
 
-/*plate_lock_state motor_get_plate_lock_state(void)
+bool motor_hardware_plate_lock_sensor_read(uint16_t GPIO_Pin)
 {
-  return STATE;
-}*/
+  if (GPIO_PIN_SET == HAL_GPIO_ReadPin(PLATE_LOCK_Port, GPIO_Pin)) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
 void Error_Handler() {
   while (true) {}
