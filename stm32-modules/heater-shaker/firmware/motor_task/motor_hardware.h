@@ -23,8 +23,6 @@ typedef struct {
     MCI_Handle_t* mci[NBR_OF_MOTORS];
     MCT_Handle_t* mct[NBR_OF_MOTORS];
     void (*plate_lock_complete)(const optical_switch_results* results);
-    //EXTI_HandleTypeDef engaged_exti;
-    //EXTI_HandleTypeDef released_exti;
 } motor_hardware_handles;
 
 void motor_hardware_setup(motor_hardware_handles* handles);

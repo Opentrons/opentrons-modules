@@ -38,8 +38,6 @@ enum class Notifications : uint8_t {
     INCOMING_MESSAGE = 1,
 };
 
-static void handle_plate_lock(const optical_switch_results *results);
-
 static FreeRTOSMessageQueue<motor_task::Message>
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
     _motor_queue(static_cast<uint8_t>(Notifications::INCOMING_MESSAGE),
@@ -102,19 +100,6 @@ void run_control_task(void *param) {
         }
     }
 }
-
-/*void run_latch_task(void *param) {
-    static_cast<void>(param);
-    TickType_t last_wake_time = xTaskGetTickCount();
-    while (true) {
-        vTaskDelayUntil(
-            &last_wake_time,
-            // NOLINTNEXTLINE(readability-static-accessed-through-instance)
-            _task.LATCH_PERIOD_TICKS);
-        motor_latch_begin_
-
-    }
-}*/
 
 // Starter function that creates and spins off the task
 auto start()

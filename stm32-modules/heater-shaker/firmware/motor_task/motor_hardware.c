@@ -358,8 +358,6 @@ static void PlateLockTIM_Init(TIM_HandleTypeDef* tim3) {
   HAL_TIM_PWM_Init(tim3);
 
   motor_hardware_plate_lock_off(tim3);
-  //STATE = IDLE_UNKNOWN;
-
 }
 
 /**
@@ -374,7 +372,7 @@ static void EXTI0_Config(void)
   /* Enable GPIOE clock */
   __HAL_RCC_GPIOE_CLK_ENABLE();
   
-  /* Configure User Button, connected to PE0 IOs in External Interrupt Mode with Rising edge trigger detection. */
+  /* Configure plate lock engaged optical switch*/
   GPIO_InitStructure.Pin = PLATE_LOCK_ENGAGED_Pin;
   GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStructure.Pull = GPIO_PULLUP;
@@ -398,7 +396,7 @@ static void EXTI4_Config(void)
   /* Enable GPIOE clock */
   __HAL_RCC_GPIOE_CLK_ENABLE();
   
-  /* Configure User Button, connected to PE4 IOs in External Interrupt Mode with Rising edge trigger detection. */
+  /* Configure plate lock released optical switch*/
   GPIO_InitStructure.Pin = PLATE_LOCK_RELEASED_Pin;
   GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStructure.Pull = GPIO_PULLUP;
@@ -820,9 +818,7 @@ void motor_hardware_setup(motor_hardware_handles* handles) {
   DAC_Init(&handles->dac1);
   MCboot(handles->mci, handles->mct);
   PlateLockTIM_Init(&handles->tim3);
-  /* Configure EXTI0 (connected to PE0 pin) in interrupt mode */
   EXTI0_Config();
-  /* Configure EXTI4 (connected to PE4 pin) in interrupt mode */
   EXTI4_Config();
   /* Initialize interrupts */
   MX_NVIC_Init();
@@ -894,24 +890,6 @@ void motor_hardware_plate_lock_brake(TIM_HandleTypeDef* tim3) {
   HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_2_Chan);
 }
 
-/*
-// Actual IRQ handler to call into the HAL IRQ handler
-void EXTI0_IRQHandler(void) {
-    if (MOTOR_HW_HANDLE && MOTOR_HW_HANDLE->engaged_exti) {
-        motor_hardware_handles* internal = (motor_hardware_handles*)MOTOR_HW_HANDLE;
-        HAL_EXTI_IRQHandler(&internal->engaged_exti);
-    }
-}
-
-// Actual IRQ handler to call into the HAL IRQ handler
-void EXTI4_IRQHandler(void) {
-    if (MOTOR_HW_HANDLE && MOTOR_HW_HANDLE->released_exti) {
-        motor_hardware_handles* internal = (motor_hardware_handles*)MOTOR_HW_HANDLE;
-        HAL_EXTI_IRQHandler(&internal->released_exti);
-    }
-}
-*/
-
 /******************************************************************************/
 /*                 STM32F3xx Peripherals Interrupt Handlers                   */
 /*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
@@ -946,7 +924,6 @@ void EXTI4_IRQHandler(void)
   */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-  //do a HAL_GPIO_ReadPin for each pin?
   optical_switch_results results;
   if (GPIO_Pin == PLATE_LOCK_ENGAGED_Pin) {
     results.closed = true;
@@ -957,8 +934,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     results.closed = false;
   }
   MOTOR_HW_HANDLE->plate_lock_complete(&results);
-
-  //need any checks like in heater callback function?
 }
 
 bool motor_hardware_plate_lock_sensor_read(uint16_t GPIO_Pin)

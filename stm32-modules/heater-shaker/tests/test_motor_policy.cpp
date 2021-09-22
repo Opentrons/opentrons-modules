@@ -89,6 +89,14 @@ auto TestMotorPolicy::test_plate_lock_enabled() const -> bool {
     return plate_lock_enabled;
 }
 
+auto TestMotorPolicy::plate_lock_brake() -> void {
+    plate_lock_braked = true;
+}
+
+auto TestMotorPolicy::test_plate_lock_braked() const -> bool {
+    return plate_lock_braked;
+}
+
 auto TestMotorPolicy::set_pid_constants(double kp, double ki, double kd)
     -> void {
     overridden_kp = kp;

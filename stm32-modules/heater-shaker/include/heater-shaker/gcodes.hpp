@@ -644,7 +644,7 @@ struct DebugControlPlateLockMotor {
 
 struct OpenPlateLock {
     /**
-     * OpenPlateLock is M242 because why not.
+     * OpenPlateLock is M242 based on existing convention
      *
      * Acknowledged immediately upon receipt
      * */
@@ -676,7 +676,7 @@ struct OpenPlateLock {
 
 struct ClosePlateLock {
     /**
-     * ClosePlateLock is M243 because why not.
+     * ClosePlateLock is M243 based on existing convention
      *
      * Acknowledged immediately upon receipt
      * */
@@ -709,7 +709,7 @@ struct ClosePlateLock {
 struct GetPlateLockState {
     /*
     ** GetPlateLockState keys off a random gcode that sometimes does the right thing since
-    **it's not like it's standardized or anything, M241
+    ** it's not like it's standardized or anything, M241
     ** Format: M241
     ** Example: M241
     */

@@ -1056,3 +1056,317 @@ SCENARIO("dfu parser works") {
         }
     }
 }
+
+SCENARIO("OpenPlateLock parser works") {
+    GIVEN("an empty string") {
+        std::string to_parse = "";
+
+        WHEN("calling parse") {
+            auto result = gcode::OpenPlateLock::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a fully non-matching string") {
+        std::string to_parse = "asdhalghasdasd ";
+
+        WHEN("calling parse") {
+            auto result = gcode::OpenPlateLock::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a subprefix matching only") {
+        std::string to_parse = "M24asdlasfhalsd\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::OpenPlateLock::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a good gcode") {
+        auto to_parse = std::string("M242\r\n");
+
+        WHEN("calling parse") {
+            auto result = gcode::OpenPlateLock::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("a gcode should be parsed") {
+                REQUIRE(result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin() + 4);
+            }
+        }
+    }
+
+    GIVEN("a response buffer large enough for the response") {
+        std::string response_buf(64, 'c');
+        WHEN("filling the response") {
+            auto written = gcode::OpenPlateLock::write_response_into(
+                response_buf.begin(), response_buf.end());
+            THEN("the response should be filled") {
+                REQUIRE_THAT(response_buf,
+                             Catch::Matchers::StartsWith("M242 OK\n"));
+                REQUIRE(written == response_buf.begin() + 8);
+            }
+        }
+    }
+
+    GIVEN("a response buffer not large enough for the response") {
+        std::string response_buf(10, 'c');
+        auto written = gcode::OpenPlateLock::write_response_into(
+            response_buf.begin(), response_buf.begin() + 4);
+        THEN("the response should be filled only up to its size") {
+            REQUIRE_THAT(response_buf, Catch::Matchers::Equals("M242ccccccc"));
+            REQUIRE(written == response_buf.begin() + 4);
+        }
+    }
+}
+
+SCENARIO("ClosePlateLock parser works") {
+    GIVEN("an empty string") {
+        std::string to_parse = "";
+
+        WHEN("calling parse") {
+            auto result = gcode::ClosePlateLock::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a fully non-matching string") {
+        std::string to_parse = "asdhalghasdasd ";
+
+        WHEN("calling parse") {
+            auto result = gcode::ClosePlateLock::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a subprefix matching only") {
+        std::string to_parse = "M24asdlasfhalsd\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::ClosePlateLock::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a good gcode") {
+        auto to_parse = std::string("M243\r\n");
+
+        WHEN("calling parse") {
+            auto result = gcode::ClosePlateLock::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("a gcode should be parsed") {
+                REQUIRE(result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin() + 4);
+            }
+        }
+    }
+
+    GIVEN("a response buffer large enough for the response") {
+        std::string response_buf(64, 'c');
+        WHEN("filling the response") {
+            auto written = gcode::ClosePlateLock::write_response_into(
+                response_buf.begin(), response_buf.end());
+            THEN("the response should be filled") {
+                REQUIRE_THAT(response_buf,
+                             Catch::Matchers::StartsWith("M243 OK\n"));
+                REQUIRE(written == response_buf.begin() + 8);
+            }
+        }
+    }
+
+    GIVEN("a response buffer not large enough for the response") {
+        std::string response_buf(10, 'c');
+        auto written = gcode::ClosePlateLock::write_response_into(
+            response_buf.begin(), response_buf.begin() + 4);
+        THEN("the response should be filled only up to its size") {
+            REQUIRE_THAT(response_buf, Catch::Matchers::Equals("M243ccccccc"));
+            REQUIRE(written == response_buf.begin() + 4);
+        }
+    }
+}
+
+SCENARIO("GetPlateLockState parser works") {
+    GIVEN("an empty string") {
+        std::string to_parse = "";
+
+        WHEN("calling parse") {
+            auto result = gcode::GetPlateLockState::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a fully non-matching string") {
+        std::string to_parse = "asdhalghasdasd ";
+
+        WHEN("calling parse") {
+            auto result = gcode::GetPlateLockState::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a subprefix matching only") {
+        std::string to_parse = "M24asdlasfhalsd\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::GetPlateLockState::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a good gcode") {
+        auto to_parse = std::string("M241\r\n");
+
+        WHEN("calling parse") {
+            auto result = gcode::GetPlateLockState::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("a gcode should be parsed") {
+                REQUIRE(result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin() + 4);
+            }
+        }
+    }
+
+    GIVEN("a response buffer large enough for the response") {
+        std::string buffer(64, 'c');
+        WHEN("filling the response") {
+            auto written = gcode::GetPlateLockState::write_response_into(
+                buffer.begin(), buffer.end(), std::array<char, 14> {"IDLE_UNKNOWN"});
+            THEN("the response should be written in full") {
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::StartsWith("M241 STATE:IDLE_UNKNOWN OK\n"));
+                REQUIRE(written != buffer.begin());
+            }
+        }
+    }
+
+    GIVEN("a response buffer not large enough for the response") {
+        std::string buffer(10, 'c');
+        WHEN("filling the response") {
+            auto written = gcode::GetPlateLockState::write_response_into(
+                buffer.begin(), buffer.begin() + 4, std::array<char, 14> {"IDLE_UNKNOWN"});
+            THEN("the response should write only up to the available space") {
+                std::string response = "M241cccccc";
+                response.at(4) = '\0';
+                REQUIRE_THAT(buffer, Catch::Matchers::Equals(response));
+                REQUIRE(written != buffer.begin());
+            }
+        }
+    }
+}
+
+SCENARIO("GetPlateLockStateDebug parser works") {
+    GIVEN("an empty string") {
+        std::string to_parse = "";
+
+        WHEN("calling parse") {
+            auto result = gcode::GetPlateLockStateDebug::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a fully non-matching string") {
+        std::string to_parse = "asdhalghasdasd ";
+
+        WHEN("calling parse") {
+            auto result = gcode::GetPlateLockStateDebug::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a subprefix matching only") {
+        std::string to_parse = "M2asdlasfhalsd\r\n";
+        WHEN("calling parse") {
+            auto result = gcode::GetPlateLockStateDebug::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("nothing should be parsed") {
+                REQUIRE(!result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin());
+            }
+        }
+    }
+
+    GIVEN("a string with a good gcode") {
+        auto to_parse = std::string("M241.D\r\n");
+
+        WHEN("calling parse") {
+            auto result = gcode::GetPlateLockStateDebug::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
+            THEN("a gcode should be parsed") {
+                REQUIRE(result.first.has_value());
+                REQUIRE(result.second == to_parse.cbegin() + 6);
+            }
+        }
+    }
+
+    GIVEN("a response buffer large enough for the response") {
+        std::string buffer(64, 'c');
+        WHEN("filling the response") {
+            auto written = gcode::GetPlateLockStateDebug::write_response_into(
+                buffer.begin(), buffer.end(), std::array<char, 14> {"IDLE_UNKNOWN"},
+                true, true);
+            THEN("the response should be filled") {
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::StartsWith("M241.D STATE:IDLE_UNKNOWN OpenSensor:1 ClosedSensor:1 OK\n"));
+                REQUIRE(written != buffer.begin());
+            }
+        }
+    }
+
+    GIVEN("a response buffer not large enough for the response") {
+        std::string buffer(10, 'c');
+        WHEN("filling the response") {
+            auto written = gcode::GetPlateLockStateDebug::write_response_into(
+                buffer.begin(), buffer.begin() + 6, std::array<char, 14> {"IDLE_UNKNOWN"},
+                true, true);
+            THEN("the response should write only up to the available space") {
+                std::string response = "M241.Dcccc";
+                response.at(6) = '\0';
+                REQUIRE_THAT(buffer, Catch::Matchers::Equals(response));
+                REQUIRE(written != buffer.begin());
+            }
+        }
+    }
+}

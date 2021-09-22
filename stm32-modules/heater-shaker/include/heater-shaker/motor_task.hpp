@@ -55,7 +55,6 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.plate_lock_set_power(0.1)};
     {p.plate_lock_disable()};
-    //{p.get_plate_lock_state()} -> std::same_as<std::array<char, 14>>;
 };
 
 struct State {
@@ -102,7 +101,6 @@ class MotorTask {
     static constexpr uint16_t HOMING_CYCLES_BEFORE_TIMEOUT = 10;
     using Queue = QueueImpl<Message>;
     static constexpr uint8_t PLATE_LOCK_STATE_SIZE = 14;
-    //static constexpr const uint32_t LATCH_PERIOD_TICKS = 100;
     explicit MotorTask(Queue& q)
         : state{.status = State::STOPPED_UNKNOWN},
           plate_lock_state{.status = PlateLockState::IDLE_UNKNOWN},
@@ -348,7 +346,6 @@ class MotorTask {
     auto visit_message(const messages::OpenPlateLockMessage& msg,
                        Policy& policy) -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        //check if homed, else error
         if (state.status != State::STOPPED_HOMED) {
             response = messages::AcknowledgePrevious{
                 .responding_to_id = msg.id, .with_error = errors::ErrorCode::MOTOR_NOT_HOME};
@@ -364,7 +361,6 @@ class MotorTask {
     auto visit_message(const messages::ClosePlateLockMessage& msg,
                        Policy& policy) -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        //check if homed, else error
         if (state.status != State::STOPPED_HOMED) {
             response = messages::AcknowledgePrevious{
                 .responding_to_id = msg.id, .with_error = errors::ErrorCode::MOTOR_NOT_HOME};
@@ -380,26 +376,12 @@ class MotorTask {
     auto visit_message(const messages::PlateLockComplete& msg,
                        Policy& policy) -> void {
         policy.plate_lock_brake();
-        //change state
         if ((msg.closed == true) && (msg.open == false)) {
             plate_lock_state.status = PlateLockState::IDLE_CLOSED;
         } else if ((msg.open == true) && (msg.closed == false)) {
             plate_lock_state.status = PlateLockState::IDLE_OPEN;
         }
-
-        /*static_cast<void>(task_registry->comms->get_message_queue().try_send(
-            messages::AcknowledgePrevious{.responding_to_id = msg.id}));*/
     }
-
-    /*template <typename Policy>
-    auto visit_message(const messages::PlateLockComplete& msg,
-                       Policy& policy) -> void {
-        //error checking like heater_task?
-        //break out open and closed handlers?
-        handle_latch_complete(msg.open, open);
-        handle_latch_complete(msg.closed, closed);
-
-    }*/
 
     template <typename Policy>
     auto visit_message(const messages::GetPlateLockStateMessage& msg, Policy& policy)
