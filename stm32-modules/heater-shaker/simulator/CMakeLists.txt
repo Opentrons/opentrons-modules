@@ -6,7 +6,7 @@ add_executable(heater-shaker-simulator
   system_thread.cpp
   main.cpp)
 
-target_link_libraries(heater-shaker-simulator PRIVATE heater-shaker-core Boost::boost)
+target_link_libraries(heater-shaker-simulator PRIVATE heater-shaker-core Boost::boost pthread)
 target_include_directories(heater-shaker-simulator PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 
