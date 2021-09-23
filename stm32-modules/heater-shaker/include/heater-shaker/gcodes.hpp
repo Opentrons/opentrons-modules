@@ -745,6 +745,9 @@ struct GetPlateLockState {
         if (working == input) {
             return std::make_pair(ParseResult(), input);
         }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
         return std::make_pair(ParseResult(GetPlateLockState()), working);
     }
 };

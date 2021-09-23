@@ -690,27 +690,19 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
                     &*message_text.begin(), &*message_text.end()));
             tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
-            tasks->get_host_comms_task().run_once(tx_buf.begin(), tx_buf.end()); //added
-            //auto written_firstpass = tasks->get_host_comms_task().run_once(
-            //    tx_buf.begin(), tx_buf.end());
+            auto written_firstpass = tasks->get_host_comms_task().run_once(
+                tx_buf.begin(), tx_buf.end());
             THEN(
                 "the task should pass the message on to the motor and not "
                 "immediately ack") {
                 REQUIRE(tasks->get_motor_queue().backing_deque.size() != 0);
                 auto motor_message =
                     tasks->get_motor_queue().backing_deque.front();
-                //auto index = motor_message.index(); //added
-                //CAPTURE(index); //added
-                //auto get_message =
-                //    std::get<messages::GetPlateLockStateDebugMessage>(motor_message); //added
-                //CAPTURE(get_message); //added
-                REQUIRE(std::holds_alternative<messages::GetPlateLockStateMessage>(
-                    motor_message)); //added
-                //REQUIRE(std::holds_alternative<messages::GetPlateLockStateDebugMessage>(
-                //    motor_message));
-                //auto get_platelock_state_debug_message =
-                //    std::get<messages::GetPlateLockStateDebugMessage>(motor_message);
-                /*tasks->get_motor_queue().backing_deque.pop_front();
+                REQUIRE(std::holds_alternative<messages::GetPlateLockStateDebugMessage>(
+                    motor_message));
+                auto get_platelock_state_debug_message =
+                    std::get<messages::GetPlateLockStateDebugMessage>(motor_message);
+                tasks->get_motor_queue().backing_deque.pop_front();
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
                 AND_WHEN("sending a good response back to the comms task") {
@@ -774,7 +766,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
-                }*/
+                }
             }
         }
     }
