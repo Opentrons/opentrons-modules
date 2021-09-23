@@ -68,11 +68,9 @@ static void handle_plate_lock(const optical_switch_results *results) {
     if (results == nullptr) {
         return;
     }
-    static_cast<void>(
-        _task.get_message_queue().try_send_from_isr(
-            messages::MotorMessage(messages::PlateLockComplete{
-                .open = results->open,
-                .closed = results->closed})));
+    static_cast<void>(_task.get_message_queue().try_send_from_isr(
+        messages::MotorMessage(messages::PlateLockComplete{
+            .open = results->open, .closed = results->closed})));
 }
 
 // Actual function that runs inside the task

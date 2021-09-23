@@ -55,7 +55,8 @@ class HostCommsTask {
     using GetTempDebugCache = AckCache<8, gcode::GetTemperatureDebug>;
     using GetRPMCache = AckCache<8, gcode::GetRPM>;
     using GetPlateLockStateCache = AckCache<8, gcode::GetPlateLockState>;
-    using GetPlateLockStateDebugCache = AckCache<8, gcode::GetPlateLockStateDebug>;
+    using GetPlateLockStateDebugCache =
+        AckCache<8, gcode::GetPlateLockStateDebug>;
 
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
@@ -319,8 +320,8 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetPlateLockStateResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry = 
-            get_plate_lock_state_cache.remove_if_present(response.responding_to_id);
+        auto cache_entry = get_plate_lock_state_cache.remove_if_present(
+            response.responding_to_id);
         return std::visit(
             [tx_into, tx_limit, response](auto cache_element) {
                 using T = std::decay_t<decltype(cache_element)>;
@@ -341,8 +342,8 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetPlateLockStateDebugResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry = 
-            get_plate_lock_state_debug_cache.remove_if_present(response.responding_to_id);
+        auto cache_entry = get_plate_lock_state_debug_cache.remove_if_present(
+            response.responding_to_id);
         return std::visit(
             [tx_into, tx_limit, response](auto cache_element) {
                 using T = std::decay_t<decltype(cache_element)>;
@@ -353,7 +354,8 @@ class HostCommsTask {
                 } else {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.plate_lock_state,
-                        response.plate_lock_open_state, response.plate_lock_closed_state);
+                        response.plate_lock_open_state,
+                        response.plate_lock_closed_state);
                 }
             },
             cache_entry);
@@ -427,8 +429,9 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_gcode(const gcode::GetPlateLockStateDebug& gcode, InputIt tx_into,
-                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    auto visit_gcode(const gcode::GetPlateLockStateDebug& gcode,
+                     InputIt tx_into, InputLimit tx_limit)
+        -> std::pair<bool, InputIt> {
         auto id = get_plate_lock_state_debug_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -717,17 +720,15 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_gcode(const gcode::OpenPlateLock& gcode,
-                     InputIt tx_into, InputLimit tx_limit)
-        -> std::pair<bool, InputIt> {
+    auto visit_gcode(const gcode::OpenPlateLock& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message =
-            messages::OpenPlateLockMessage{.id = id};
+        auto message = messages::OpenPlateLockMessage{.id = id};
         if (!task_registry->motor->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
@@ -742,17 +743,15 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_gcode(const gcode::ClosePlateLock& gcode,
-                     InputIt tx_into, InputLimit tx_limit)
-        -> std::pair<bool, InputIt> {
+    auto visit_gcode(const gcode::ClosePlateLock& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message =
-            messages::ClosePlateLockMessage{.id = id};
+        auto message = messages::ClosePlateLockMessage{.id = id};
         if (!task_registry->motor->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(

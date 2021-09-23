@@ -1062,8 +1062,8 @@ SCENARIO("OpenPlateLock parser works") {
         std::string to_parse = "";
 
         WHEN("calling parse") {
-            auto result = gcode::OpenPlateLock::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+            auto result =
+                gcode::OpenPlateLock::parse(to_parse.cbegin(), to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1075,8 +1075,8 @@ SCENARIO("OpenPlateLock parser works") {
         std::string to_parse = "asdhalghasdasd ";
 
         WHEN("calling parse") {
-            auto result = gcode::OpenPlateLock::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+            auto result =
+                gcode::OpenPlateLock::parse(to_parse.cbegin(), to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1087,8 +1087,8 @@ SCENARIO("OpenPlateLock parser works") {
     GIVEN("a string with a subprefix matching only") {
         std::string to_parse = "M24asdlasfhalsd\r\n";
         WHEN("calling parse") {
-            auto result = gcode::OpenPlateLock::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+            auto result =
+                gcode::OpenPlateLock::parse(to_parse.cbegin(), to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1100,8 +1100,8 @@ SCENARIO("OpenPlateLock parser works") {
         auto to_parse = std::string("M242\r\n");
 
         WHEN("calling parse") {
-            auto result = gcode::OpenPlateLock::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+            auto result =
+                gcode::OpenPlateLock::parse(to_parse.cbegin(), to_parse.cend());
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin() + 4);
@@ -1139,7 +1139,7 @@ SCENARIO("ClosePlateLock parser works") {
 
         WHEN("calling parse") {
             auto result = gcode::ClosePlateLock::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+                                                       to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1152,7 +1152,7 @@ SCENARIO("ClosePlateLock parser works") {
 
         WHEN("calling parse") {
             auto result = gcode::ClosePlateLock::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+                                                       to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1164,7 +1164,7 @@ SCENARIO("ClosePlateLock parser works") {
         std::string to_parse = "M24asdlasfhalsd\r\n";
         WHEN("calling parse") {
             auto result = gcode::ClosePlateLock::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+                                                       to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1177,7 +1177,7 @@ SCENARIO("ClosePlateLock parser works") {
 
         WHEN("calling parse") {
             auto result = gcode::ClosePlateLock::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+                                                       to_parse.cend());
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin() + 4);
@@ -1215,7 +1215,7 @@ SCENARIO("GetPlateLockState parser works") {
 
         WHEN("calling parse") {
             auto result = gcode::GetPlateLockState::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+                                                          to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1228,7 +1228,7 @@ SCENARIO("GetPlateLockState parser works") {
 
         WHEN("calling parse") {
             auto result = gcode::GetPlateLockState::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+                                                          to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1240,7 +1240,7 @@ SCENARIO("GetPlateLockState parser works") {
         std::string to_parse = "M24asdlasfhalsd\r\n";
         WHEN("calling parse") {
             auto result = gcode::GetPlateLockState::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+                                                          to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1253,7 +1253,7 @@ SCENARIO("GetPlateLockState parser works") {
 
         WHEN("calling parse") {
             auto result = gcode::GetPlateLockState::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+                                                          to_parse.cend());
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin() + 4);
@@ -1265,10 +1265,11 @@ SCENARIO("GetPlateLockState parser works") {
         std::string buffer(64, 'c');
         WHEN("filling the response") {
             auto written = gcode::GetPlateLockState::write_response_into(
-                buffer.begin(), buffer.end(), std::array<char, 14> {"IDLE_UNKNOWN"});
+                buffer.begin(), buffer.end(),
+                std::array<char, 14>{"IDLE_UNKNOWN"});
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::StartsWith("M241 STATE:IDLE_UNKNOWN OK\n"));
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
+                                         "M241 STATE:IDLE_UNKNOWN OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
@@ -1278,7 +1279,8 @@ SCENARIO("GetPlateLockState parser works") {
         std::string buffer(10, 'c');
         WHEN("filling the response") {
             auto written = gcode::GetPlateLockState::write_response_into(
-                buffer.begin(), buffer.begin() + 4, std::array<char, 14> {"IDLE_UNKNOWN"});
+                buffer.begin(), buffer.begin() + 4,
+                std::array<char, 14>{"IDLE_UNKNOWN"});
             THEN("the response should write only up to the available space") {
                 std::string response = "M241cccccc";
                 response.at(4) = '\0';
@@ -1294,8 +1296,8 @@ SCENARIO("GetPlateLockStateDebug parser works") {
         std::string to_parse = "";
 
         WHEN("calling parse") {
-            auto result = gcode::GetPlateLockStateDebug::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+            auto result = gcode::GetPlateLockStateDebug::parse(
+                to_parse.cbegin(), to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1307,8 +1309,8 @@ SCENARIO("GetPlateLockStateDebug parser works") {
         std::string to_parse = "asdhalghasdasd ";
 
         WHEN("calling parse") {
-            auto result = gcode::GetPlateLockStateDebug::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+            auto result = gcode::GetPlateLockStateDebug::parse(
+                to_parse.cbegin(), to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1319,8 +1321,8 @@ SCENARIO("GetPlateLockStateDebug parser works") {
     GIVEN("a string with a subprefix matching only") {
         std::string to_parse = "M2asdlasfhalsd\r\n";
         WHEN("calling parse") {
-            auto result = gcode::GetPlateLockStateDebug::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+            auto result = gcode::GetPlateLockStateDebug::parse(
+                to_parse.cbegin(), to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1332,8 +1334,8 @@ SCENARIO("GetPlateLockStateDebug parser works") {
         auto to_parse = std::string("M241.D\r\n");
 
         WHEN("calling parse") {
-            auto result = gcode::GetPlateLockStateDebug::parse(to_parse.cbegin(),
-                                                        to_parse.cend());
+            auto result = gcode::GetPlateLockStateDebug::parse(
+                to_parse.cbegin(), to_parse.cend());
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin() + 6);
@@ -1345,11 +1347,12 @@ SCENARIO("GetPlateLockStateDebug parser works") {
         std::string buffer(64, 'c');
         WHEN("filling the response") {
             auto written = gcode::GetPlateLockStateDebug::write_response_into(
-                buffer.begin(), buffer.end(), std::array<char, 14> {"IDLE_UNKNOWN"},
-                true, true);
+                buffer.begin(), buffer.end(),
+                std::array<char, 14>{"IDLE_UNKNOWN"}, true, true);
             THEN("the response should be filled") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::StartsWith("M241.D STATE:IDLE_UNKNOWN OpenSensor:1 ClosedSensor:1 OK\n"));
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
+                                         "M241.D STATE:IDLE_UNKNOWN "
+                                         "OpenSensor:1 ClosedSensor:1 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
@@ -1359,8 +1362,8 @@ SCENARIO("GetPlateLockStateDebug parser works") {
         std::string buffer(10, 'c');
         WHEN("filling the response") {
             auto written = gcode::GetPlateLockStateDebug::write_response_into(
-                buffer.begin(), buffer.begin() + 6, std::array<char, 14> {"IDLE_UNKNOWN"},
-                true, true);
+                buffer.begin(), buffer.begin() + 6,
+                std::array<char, 14>{"IDLE_UNKNOWN"}, true, true);
             THEN("the response should write only up to the available space") {
                 std::string response = "M241.Dcccc";
                 response.at(6) = '\0';
