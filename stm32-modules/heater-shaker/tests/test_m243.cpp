@@ -6,29 +6,31 @@
 #include "heater-shaker/gcodes.hpp"
 #pragma GCC diagnostic pop
 
-SCENARIO("ClosePlateLock (M243) parser works",
-         "[gcode][parse][m243]") {
-    GIVEN("a string with prefix only") {
-        std::string to_parse = "M243\n";
-        WHEN("calling parse") {
-            auto result = gcode::ClosePlateLock::parse(
-                to_parse.cbegin(), to_parse.cend());
-            THEN("nothing should be parsed") {
-                REQUIRE(!result.first.has_value());
-                REQUIRE(result.second == to_parse.cbegin());
+SCENARIO("ClosePlateLock (M243) response works", "[gcode][parse][M243]") {
+    GIVEN("a response buffer large enough for the formatted response") {
+        std::string buffer(64, 'c');
+        WHEN("filling response") {
+            auto written = gcode::ClosePlateLock::write_response_into(
+                buffer.begin(), buffer.end());
+            THEN("the response should be written in full") {
+                std::string ok = "M243 OK\n";
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(ok));
+                REQUIRE(written == buffer.begin() + ok.size());
+                std::string suffix(buffer.size() - ok.size(), 'c');
+                REQUIRE_THAT(buffer, Catch::Matchers::EndsWith(suffix));
             }
         }
     }
 
-    GIVEN("a string with a prefix matching but bad data") {
-        std::string to_parse = "M243 alsjdhas\r\n";
-        WHEN("calling parse") {
-            auto result = gcode::ClosePlateLock::parse(
-                to_parse.cbegin(), to_parse.cend());
-
-            THEN("nothing should be parsed") {
-                REQUIRE(!result.first.has_value());
-                REQUIRE(result.second == to_parse.cbegin());
+    GIVEN("a response buffer not large enough for the formatted response") {
+        std::string buffer(16, 'c');
+        WHEN("filling response") {
+            auto written = gcode::ClosePlateLock::write_response_into(
+                buffer.begin(), buffer.begin() + 6);
+            THEN("the response should write only up to the available space") {
+                std::string response = "M243 Occcccccccc";
+                REQUIRE_THAT(buffer, Catch::Matchers::Equals(response));
+                REQUIRE(written == buffer.begin() + 6);
             }
         }
     }

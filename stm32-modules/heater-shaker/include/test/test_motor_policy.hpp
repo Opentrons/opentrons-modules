@@ -39,6 +39,8 @@ class TestMotorPolicy {
     [[nodiscard]] auto test_plate_lock_get_power() const -> float;
     [[nodiscard]] auto test_plate_lock_enabled() const -> bool;
     [[nodiscard]] auto test_plate_lock_braked() const -> bool;
+    [[nodiscard]] auto plate_lock_open_sensor_read() const -> bool;
+    [[nodiscard]] auto plate_lock_closed_sensor_read() const -> bool;
 
     [[nodiscard]] auto test_get_overridden_ki() const -> double;
     [[nodiscard]] auto test_get_overridden_kp() const -> double;

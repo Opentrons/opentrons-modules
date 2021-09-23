@@ -637,42 +637,116 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
     GIVEN("a motor task to open plate lock") {
         auto tasks = TaskBuilder::build();
         CHECK(!tasks->get_motor_policy().test_plate_lock_enabled());
-        CHECK(tasks->get_motor_task().get_plate_lock_state == IDLE_UNKNOWN);
-        tasks->get_motor_task()->state.status = State::STOPPED_HOMED;
-        WHEN("opening the plate lock") {
+        CHECK(tasks->get_motor_task().get_plate_lock_state() == motor_task::PlateLockState::IDLE_UNKNOWN);
+        //move state to not homed
+        auto run_message =
+            messages::SetRPMMessage{.id = 123, .target_rpm = 500};
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(run_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        tasks->get_host_comms_queue().backing_deque.clear();
+        auto homing_message = messages::BeginHomingMessage{.id = 2213};
+        tasks->get_motor_queue().backing_deque.push_back(homing_message);
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        tasks->get_motor_policy().test_set_current_rpm(
+            tasks->get_motor_policy().get_target_rpm());
+        CHECK(tasks->get_motor_task().get_state() ==
+              motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        CHECK(tasks->get_motor_task().get_state() ==
+              motor_task::State::HOMING_COASTING_TO_STOP);
+        WHEN("opening the plate lock and not homed"){
+            auto open_message = messages::OpenPlateLockMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(open_message);
+            //run twice to handle the check-status message first?
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("an error message should be created") {
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto response = tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .with_error == errors::ErrorCode::MOTOR_NOT_HOME);
+            }
+        }
+        WHEN("opening the plate lock and homed") {
+            //move state to homed
+            for (size_t i = 0;
+                 i < std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                         HOMING_CYCLES_BEFORE_TIMEOUT;
+                 i++) {
+                CHECK(tasks->get_motor_task().get_state() ==
+                      motor_task::State::HOMING_COASTING_TO_STOP);
+                tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                CHECK(tasks->get_motor_policy().test_solenoid_current() ==
+                      std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                          HOMING_SOLENOID_CURRENT_INITIAL);
+                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+            }
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the home timeout should fire") {
+                auto ack_message = std::get<messages::AcknowledgePrevious>(
+                    tasks->get_host_comms_queue().backing_deque.front());
+                REQUIRE(ack_message.responding_to_id == homing_message.id);
+                REQUIRE(ack_message.with_error == errors::ErrorCode::NO_ERROR);
+                REQUIRE(tasks->get_motor_task().get_state() ==
+                        motor_task::State::STOPPED_HOMED);
+            }
             auto open_message = messages::OpenPlateLockMessage{.id = 123};
             tasks->get_motor_queue().backing_deque.push_back(open_message);
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("motor should be enabled with correct power and state") {
                 REQUIRE(tasks->get_motor_policy().test_plate_lock_enabled());
                 REQUIRE(tasks->get_motor_policy().test_plate_lock_get_power() == -1.0F);
-                REQUIRE(tasks->get_motor_task().get_plate_lock_state() == OPENING);
+                REQUIRE(tasks->get_motor_task().get_plate_lock_state() == motor_task::PlateLockState::OPENING);
                 AND_THEN("a stop condition is sent") {
                     auto stop_message = messages::PlateLockComplete{
                         .open = true, .closed = false};
                     tasks->get_motor_queue().backing_deque.push_back(stop_message);
                     tasks->get_motor_task().run_once(tasks->get_motor_policy());
                     REQUIRE(tasks->get_motor_policy().test_plate_lock_braked());
-                    REQUIRE(tasks->get_motor_task().get_plate_lock_state() == IDLE_OPEN);
+                    REQUIRE(tasks->get_motor_task().get_plate_lock_state() == motor_task::PlateLockState::IDLE_OPEN);
                 }
             }
-            tasks->get_host_comms_queue().backing_deque.clear();
         }
-        WHEN("closing the plate lock") {
+        WHEN("closing the plate lock and homed") {
+            //move state to homed
+            for (size_t i = 0;
+                 i < std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                         HOMING_CYCLES_BEFORE_TIMEOUT;
+                 i++) {
+                CHECK(tasks->get_motor_task().get_state() ==
+                      motor_task::State::HOMING_COASTING_TO_STOP);
+                tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                CHECK(tasks->get_motor_policy().test_solenoid_current() ==
+                      std::remove_cvref_t<decltype(tasks->get_motor_task())>::
+                          HOMING_SOLENOID_CURRENT_INITIAL);
+                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+            }
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the home timeout should fire") {
+                auto ack_message = std::get<messages::AcknowledgePrevious>(
+                    tasks->get_host_comms_queue().backing_deque.front());
+                REQUIRE(ack_message.responding_to_id == homing_message.id);
+                REQUIRE(ack_message.with_error == errors::ErrorCode::NO_ERROR);
+                REQUIRE(tasks->get_motor_task().get_state() ==
+                        motor_task::State::STOPPED_HOMED);
+            }
+            tasks->get_host_comms_queue().backing_deque.clear(); //clear homing messages in host_comms queue
             auto close_message = messages::ClosePlateLockMessage{.id = 123};
             tasks->get_motor_queue().backing_deque.push_back(close_message);
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("motor should be enabled with correct power and state") {
                 REQUIRE(tasks->get_motor_policy().test_plate_lock_enabled());
                 REQUIRE(tasks->get_motor_policy().test_plate_lock_get_power() == 1.0F);
-                REQUIRE(tasks->get_motor_task().get_plate_lock_state() == CLOSING);
+                REQUIRE(tasks->get_motor_task().get_plate_lock_state() == motor_task::PlateLockState::CLOSING);
                 AND_THEN("a stop condition is sent") {
                     auto stop_message = messages::PlateLockComplete{
                         .open = false, .closed = true};
                     tasks->get_motor_queue().backing_deque.push_back(stop_message);
                     tasks->get_motor_task().run_once(tasks->get_motor_policy());
                     REQUIRE(tasks->get_motor_policy().test_plate_lock_braked());
-                    REQUIRE(tasks->get_motor_task().get_plate_lock_state() == IDLE_CLOSED);
+                    REQUIRE(tasks->get_motor_task().get_plate_lock_state() == motor_task::PlateLockState::IDLE_CLOSED);
                 }
             }
             AND_THEN("the message should be acknowledged") {
@@ -683,34 +757,5 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                             .responding_to_id == close_message.id);
             }
         }
-        WHEN("opening the plate lock and not homed"){
-            tasks->get_motor_task()->state.status = State::HOMING_MOVING_TO_HOME_SPEED;
-            auto open_message = messages::OpenPlateLockMessage{.id = 123};
-            tasks->get_motor_queue().backing_deque.push_back(open_message);
-            tasks->get_motor_task().run_once(tasks->get_motor_policy());
-            THEN("an error message should be created") {
-                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
-                auto response = tasks->get_host_comms_queue().backing_deque.front();
-                tasks->get_host_comms_queue().backing_dequeue.pop_front();
-                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
-                            .with_error == errors::ErrorCode::MOTOR_NOT_HOME);
-            }
-        }
-        /*WHEN("deactivating the plate lock through the debug mechanism") {
-            auto unlock_message =
-                messages::SetPlateLockPowerMessage{.id = 123, .power = 0.0};
-            tasks->get_motor_queue().backing_deque.push_back(unlock_message);
-            tasks->get_motor_task().run_once(tasks->get_motor_policy());
-            THEN("the lock should now be off") {
-                REQUIRE(!tasks->get_motor_policy().test_plate_lock_enabled());
-            }
-            THEN("the message should be acknowledged") {
-                auto response =
-                    tasks->get_host_comms_queue().backing_deque.front();
-                tasks->get_host_comms_queue().backing_deque.pop_front();
-                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
-                            .responding_to_id == unlock_message.id);
-            }
-        }*/
     }
 }

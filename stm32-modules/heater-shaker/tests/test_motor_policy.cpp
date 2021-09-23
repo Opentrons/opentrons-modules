@@ -97,6 +97,22 @@ auto TestMotorPolicy::test_plate_lock_braked() const -> bool {
     return plate_lock_braked;
 }
 
+auto TestMotorPolicy::plate_lock_open_sensor_read() const -> bool {
+    if (!plate_lock_braked) {
+        return false;
+    } else {
+        return plate_lock_power < 0.0 ? true : false;
+    }
+}
+
+auto TestMotorPolicy::plate_lock_closed_sensor_read() const -> bool {
+    if (!plate_lock_braked) {
+        return false;
+    } else {
+        return plate_lock_power > 0.0 ? true : false;
+    }
+}
+
 auto TestMotorPolicy::set_pid_constants(double kp, double ki, double kd)
     -> void {
     overridden_kp = kp;

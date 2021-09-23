@@ -782,21 +782,21 @@ struct GetPlateLockStateDebug {
         if (written == write_to_limit) {
             return written;
         }
-        auto tochars_result = std::to_chars(written, write_to_limit, plate_lock_open_state ? 1 : 0);
-        if (tochars_result.ec != std::errc()) {
+        const char* open_state_chars = plate_lock_open_state ? "1" : "0";
+        written = write_string_to_iterpair(written, write_to_limit, open_state_chars);
+        if (written == write_to_limit) {
             return written;
         }
-        written = tochars_result.ptr;
         static constexpr const char* closed_sensor_prefix = " ClosedSensor:";
         written = write_string_to_iterpair(written, write_to_limit, closed_sensor_prefix);
         if (written == write_to_limit) {
             return written;
         }
-        tochars_result = std::to_chars(written, write_to_limit, plate_lock_closed_state ? 1 : 0);
-        if (tochars_result.ec != std::errc()) {
+        const char* closed_state_chars = plate_lock_closed_state ? "1" : "0";
+        written = write_string_to_iterpair(written, write_to_limit, closed_state_chars);
+        if (written == write_to_limit) {
             return written;
         }
-        written = tochars_result.ptr;
         static constexpr const char* suffix = " OK\n";
         return write_string_to_iterpair(written, write_to_limit, suffix);
     }
