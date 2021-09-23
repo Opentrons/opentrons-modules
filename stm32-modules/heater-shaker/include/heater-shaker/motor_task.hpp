@@ -346,6 +346,7 @@ class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::OpenPlateLockMessage& msg,
                        Policy& policy) -> void {
+        static constexpr float OpenPower = -1.0F;
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (state.status != State::STOPPED_HOMED) {
@@ -353,7 +354,7 @@ class MotorTask {
                 .responding_to_id = msg.id,
                 .with_error = errors::ErrorCode::MOTOR_NOT_HOME};
         } else {
-            policy.plate_lock_set_power(-1.0F);
+            policy.plate_lock_set_power(OpenPower);
             plate_lock_state.status = PlateLockState::OPENING;
         }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
@@ -363,6 +364,7 @@ class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::ClosePlateLockMessage& msg,
                        Policy& policy) -> void {
+        static constexpr float ClosePower = 1.0F;
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (state.status != State::STOPPED_HOMED) {
@@ -370,7 +372,7 @@ class MotorTask {
                 .responding_to_id = msg.id,
                 .with_error = errors::ErrorCode::MOTOR_NOT_HOME};
         } else {
-            policy.plate_lock_set_power(1.0F);
+            policy.plate_lock_set_power(ClosePower);
             plate_lock_state.status = PlateLockState::CLOSING;
         }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
