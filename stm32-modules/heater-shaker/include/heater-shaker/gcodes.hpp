@@ -642,4 +642,185 @@ struct DebugControlPlateLockMotor {
     }
 };
 
+struct OpenPlateLock {
+    /**
+     * OpenPlateLock is M242 based on existing convention
+     *
+     * Acknowledged immediately upon receipt
+     * */
+    using ParseResult = std::optional<OpenPlateLock>;
+    static constexpr auto prefix = std::array{'M', '2', '4', '2'};
+    static constexpr const char* response = "M242 OK\n";
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt write_to_buf,
+                                    InLimit write_to_limit) {
+        return write_string_to_iterpair(write_to_buf, write_to_limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(OpenPlateLock()), working);
+    }
+};
+
+struct ClosePlateLock {
+    /**
+     * ClosePlateLock is M243 based on existing convention
+     *
+     * Acknowledged immediately upon receipt
+     * */
+    using ParseResult = std::optional<ClosePlateLock>;
+    static constexpr auto prefix = std::array{'M', '2', '4', '3'};
+    static constexpr const char* response = "M243 OK\n";
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt write_to_buf,
+                                    InLimit write_to_limit) {
+        return write_string_to_iterpair(write_to_buf, write_to_limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(ClosePlateLock()), working);
+    }
+};
+
+struct GetPlateLockState {
+    /*
+    ** GetPlateLockState keys off a random gcode that sometimes does the right
+    *thing since
+    ** it's not like it's standardized or anything, M241
+    ** Format: M241
+    ** Example: M241
+    */
+    using ParseResult = std::optional<GetPlateLockState>;
+    static constexpr auto prefix = std::array{'M', '2', '4', '1'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InLimit, InputIt>
+    static auto write_response_into(InputIt write_to_buf,
+                                    const InLimit write_to_limit,
+                                    std::array<char, 14> plate_lock_state)
+        -> InputIt {
+        static constexpr const char* prefix = "M241 STATE:";
+        auto written =
+            write_string_to_iterpair(write_to_buf, write_to_limit, prefix);
+        if (written == write_to_limit) {
+            return written;
+        }
+        written = write_string_to_iterpair(written, write_to_limit,
+                                           plate_lock_state.begin());
+        if (written == write_to_limit) {
+            return written;
+        }
+        static constexpr const char* suffix = " OK\n";
+        return write_string_to_iterpair(written, write_to_limit, suffix);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetPlateLockState()), working);
+    }
+};
+
+struct GetPlateLockStateDebug {
+    /*
+    ** GetPlateLockStateDebug keys off a random gcode and returns plate lock
+    *state *and state of the open and closed plate lock optical switches
+    ** Format: M241.D
+    ** Example: M241.D
+    */
+    using ParseResult = std::optional<GetPlateLockStateDebug>;
+    static constexpr auto prefix = std::array{'M', '2', '4', '1', '.', 'D'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InLimit, InputIt>
+    static auto write_response_into(InputIt write_to_buf,
+                                    const InLimit write_to_limit,
+                                    std::array<char, 14> plate_lock_state,
+                                    bool plate_lock_open_state,
+                                    bool plate_lock_closed_state) -> InputIt {
+        static constexpr const char* prefix = "M241.D STATE:";
+        auto written =
+            write_string_to_iterpair(write_to_buf, write_to_limit, prefix);
+        if (written == write_to_limit) {
+            return written;
+        }
+        written = write_string_to_iterpair(written, write_to_limit,
+                                           plate_lock_state.begin());
+        if (written == write_to_limit) {
+            return written;
+        }
+        static constexpr const char* open_sensor_prefix = " OpenSensor:";
+        written = write_string_to_iterpair(written, write_to_limit,
+                                           open_sensor_prefix);
+        if (written == write_to_limit) {
+            return written;
+        }
+        const char* open_state_chars = plate_lock_open_state ? "1" : "0";
+        written =
+            write_string_to_iterpair(written, write_to_limit, open_state_chars);
+        if (written == write_to_limit) {
+            return written;
+        }
+        static constexpr const char* closed_sensor_prefix = " ClosedSensor:";
+        written = write_string_to_iterpair(written, write_to_limit,
+                                           closed_sensor_prefix);
+        if (written == write_to_limit) {
+            return written;
+        }
+        const char* closed_state_chars = plate_lock_closed_state ? "1" : "0";
+        written = write_string_to_iterpair(written, write_to_limit,
+                                           closed_state_chars);
+        if (written == write_to_limit) {
+            return written;
+        }
+        static constexpr const char* suffix = " OK\n";
+        return write_string_to_iterpair(written, write_to_limit, suffix);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetPlateLockStateDebug()), working);
+    }
+};
+
 }  // namespace gcode

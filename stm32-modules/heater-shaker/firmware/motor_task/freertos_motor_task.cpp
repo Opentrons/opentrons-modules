@@ -64,9 +64,20 @@ StaticTask_t control_task_data;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static MotorTaskFreeRTOS _local_task;
 
+static void handle_plate_lock(const optical_switch_results *results) {
+    if (results == nullptr) {
+        return;
+    }
+    static_cast<void>(_task.get_message_queue().try_send_from_isr(
+        messages::MotorMessage(messages::PlateLockComplete{
+            .open = results->open, .closed = results->closed})));
+}
+
 // Actual function that runs inside the task
 void run(void *param) {
     static_cast<void>(param);
+    memset(&_local_task.handles, 0, sizeof(_local_task.handles));
+    _local_task.handles.plate_lock_complete = handle_plate_lock;
     motor_hardware_setup(&_local_task.handles);
 
     auto policy = MotorPolicy(&_local_task.handles);

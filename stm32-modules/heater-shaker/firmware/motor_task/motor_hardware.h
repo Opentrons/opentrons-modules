@@ -9,6 +9,11 @@ extern "C" {
 #include "stm32f3xx_hal.h"
 
 typedef struct {
+    bool open;
+    bool closed;
+} optical_switch_results;
+
+typedef struct {
     ADC_HandleTypeDef adc1;
     ADC_HandleTypeDef adc2;
     TIM_HandleTypeDef tim1;
@@ -17,6 +22,7 @@ typedef struct {
     DAC_HandleTypeDef dac1;
     MCI_Handle_t* mci[NBR_OF_MOTORS];
     MCT_Handle_t* mct[NBR_OF_MOTORS];
+    void (*plate_lock_complete)(const optical_switch_results* results);
 } motor_hardware_handles;
 
 void motor_hardware_setup(motor_hardware_handles* handles);
@@ -26,6 +32,8 @@ void motor_hardware_solenoid_release(DAC_HandleTypeDef* dac1);
 
 void motor_hardware_plate_lock_on(TIM_HandleTypeDef* tim3, float power);
 void motor_hardware_plate_lock_off(TIM_HandleTypeDef* tim3);
+void motor_hardware_plate_lock_brake(TIM_HandleTypeDef* tim3);
+bool motor_hardware_plate_lock_sensor_read(uint16_t GPIO_Pin);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 
@@ -101,6 +109,8 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 #define PLATE_LOCK_IN_2_Pin GPIO_PIN_3
 #define PLATE_LOCK_IN_2_Chan TIM_CHANNEL_2
 #define PLATE_LOCK_NFAULT_Pin GPIO_PIN_6
+#define PLATE_LOCK_ENGAGED_Pin GPIO_PIN_0
+#define PLATE_LOCK_RELEASED_Pin GPIO_PIN_4
 
 // These defines drive the math for setting the PWM clocking parameters.
 // The frequency will be respected as accurately as possible, and is in Hz.

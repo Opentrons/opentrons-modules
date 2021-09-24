@@ -15,6 +15,8 @@ extern "C" {
 
 static void Error_Handler();
 
+motor_hardware_handles *MOTOR_HW_HANDLE = NULL;
+
 static void MX_NVIC_Init(void)
 {
   /* TIM1_BRK_TIM15_IRQn interrupt configuration */
@@ -356,7 +358,54 @@ static void PlateLockTIM_Init(TIM_HandleTypeDef* tim3) {
   HAL_TIM_PWM_Init(tim3);
 
   motor_hardware_plate_lock_off(tim3);
+}
 
+/**
+  * @brief  Configures EXTI Line0 (connected to PE0 pin) in interrupt mode
+  * @param  None
+  * @retval None
+  */
+static void EXTI0_Config(void)
+{
+  GPIO_InitTypeDef   GPIO_InitStructure;
+
+  /* Enable GPIOE clock */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  
+  /* Configure plate lock engaged optical switch*/
+  GPIO_InitStructure.Pin = PLATE_LOCK_ENGAGED_Pin;
+  GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStructure.Pull = GPIO_PULLUP;
+  GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(PLATE_LOCK_Port, &GPIO_InitStructure);
+
+  /* Enable and set EXTI0 Interrupt to the lowest priority */
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 10, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+}
+
+/**
+  * @brief  Configures EXTI Line4 (connected to PE4 pin) in interrupt mode
+  * @param  None
+  * @retval None
+  */
+static void EXTI4_Config(void)
+{
+  GPIO_InitTypeDef   GPIO_InitStructure;
+
+  /* Enable GPIOE clock */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  
+  /* Configure plate lock released optical switch*/
+  GPIO_InitStructure.Pin = PLATE_LOCK_RELEASED_Pin;
+  GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStructure.Pull = GPIO_PULLUP;
+  GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(PLATE_LOCK_Port, &GPIO_InitStructure);
+
+  /* Enable and set EXTI4 Interrupt to the lowest priority */
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 10, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 }
 
 /**
@@ -760,7 +809,7 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
 }
 
 void motor_hardware_setup(motor_hardware_handles* handles) {
-  memset(handles, 0, sizeof(*handles));
+  MOTOR_HW_HANDLE = handles;
   MX_GPIO_Init();
   MX_ADC1_Init(&handles->adc1);
   MX_ADC2_Init(&handles->adc2);
@@ -769,6 +818,8 @@ void motor_hardware_setup(motor_hardware_handles* handles) {
   DAC_Init(&handles->dac1);
   MCboot(handles->mci, handles->mct);
   PlateLockTIM_Init(&handles->tim3);
+  EXTI0_Config();
+  EXTI4_Config();
   /* Initialize interrupts */
   MX_NVIC_Init();
 }
@@ -820,6 +871,78 @@ void motor_hardware_plate_lock_off(TIM_HandleTypeDef* tim3) {
   HAL_TIM_GenerateEvent(tim3, TIM_EVENTSOURCE_UPDATE);
   HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_1_Chan);
   HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_2_Chan);
+}
+
+void motor_hardware_plate_lock_brake(TIM_HandleTypeDef* tim3) {
+  float power_scale = 1.f;
+  TIM_OC_InitTypeDef chan_config = {
+     .OCMode = TIM_OCMODE_PWM1,
+     .Pulse = (uint16_t)(PLATE_LOCK_PWM_GRANULARITY * power_scale),
+     .OCPolarity = TIM_OCPOLARITY_HIGH,
+     .OCIdleState = TIM_OCIDLESTATE_RESET
+};
+  HAL_TIM_PWM_Stop(tim3, PLATE_LOCK_IN_1_Chan);
+  HAL_TIM_PWM_Stop(tim3, PLATE_LOCK_IN_2_Chan);
+  HAL_TIM_OC_ConfigChannel(tim3, &chan_config, PLATE_LOCK_IN_1_Chan);
+  HAL_TIM_OC_ConfigChannel(tim3, &chan_config, PLATE_LOCK_IN_2_Chan);
+  HAL_TIM_GenerateEvent(tim3, TIM_EVENTSOURCE_UPDATE);
+  HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_1_Chan);
+  HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_2_Chan);
+}
+
+/******************************************************************************/
+/*                 STM32F3xx Peripherals Interrupt Handlers                   */
+/*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
+/*  available peripheral interrupt handler's name please refer to the startup */
+/*  file (startup_stm32f3xx.s).                                               */
+/******************************************************************************/
+
+/**
+  * @brief  This function handles External line 0 interrupt request.
+  * @param  None
+  * @retval None
+  */
+void EXTI0_IRQHandler(void)
+{
+  HAL_GPIO_EXTI_IRQHandler(PLATE_LOCK_ENGAGED_Pin);
+}
+
+/**
+  * @brief  This function handles External line 4 interrupt request.
+  * @param  None
+  * @retval None
+  */
+void EXTI4_IRQHandler(void)
+{
+  HAL_GPIO_EXTI_IRQHandler(PLATE_LOCK_RELEASED_Pin);
+}
+
+/**
+  * @brief EXTI line detection callbacks
+  * @param GPIO_Pin: Specifies the pins connected EXTI line
+  * @retval None
+  */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  optical_switch_results results;
+  if (GPIO_Pin == PLATE_LOCK_ENGAGED_Pin) {
+    results.closed = true;
+    results.open = false;
+  }
+  if (GPIO_Pin == PLATE_LOCK_RELEASED_Pin) {
+    results.open = true;
+    results.closed = false;
+  }
+  MOTOR_HW_HANDLE->plate_lock_complete(&results);
+}
+
+bool motor_hardware_plate_lock_sensor_read(uint16_t GPIO_Pin)
+{
+  if (GPIO_PIN_SET == HAL_GPIO_ReadPin(PLATE_LOCK_Port, GPIO_Pin)) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 void Error_Handler() {
