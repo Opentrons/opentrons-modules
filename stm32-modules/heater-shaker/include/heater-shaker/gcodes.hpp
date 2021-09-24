@@ -557,7 +557,7 @@ struct GetSystemInfo {
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<InputIt, InLimit> 
+        std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt write_to_buf,
                                     InLimit write_to_limit,
                                     std::array<char, 8> serial_number,
@@ -587,7 +587,8 @@ struct GetSystemInfo {
         if (written == write_to_limit) {
             return written;
         }
-        written = write_string_to_iterpair(written, write_to_limit, serial_number.begin());
+        written = write_string_to_iterpair(written, write_to_limit,
+                                           serial_number.begin());
         if (written == write_to_limit) {
             return written;
         }
@@ -610,7 +611,8 @@ struct GetSystemInfo {
 
 struct SetSerialNumber {
     /*
-    ** Set Serial Number uses a random gcode, M996, adjacent to the firmware update gcode, 997
+    ** Set Serial Number uses a random gcode, M996, adjacent to the firmware
+    *update gcode, 997
     ** Format: M996 <SN>
     ** Example: M996 HSM02071521A4 sets serial number to HSM02071521A4
     */
@@ -621,17 +623,17 @@ struct SetSerialNumber {
     std::array<char, serial_number_length> serial_number = {};
 
     template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<InputLimit, InputIt> static auto
-        write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
 
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt>&&
-        std::sized_sentinel_for<Limit, InputIt> static auto
-        parse(const InputIt& input, Limit limit)
-            -> std::pair<ParseResult, InputIt> {
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
@@ -639,31 +641,38 @@ struct SetSerialNumber {
 
         auto after = working;
         bool found = false;
-        for (int index = 0; (index != (limit - working + 1)) && (!found); index++) {
-            if (std::isspace(*(working + index)) || ((*(working + index)) == '\0')) {
+        for (int index = 0; (index != (limit - working + 1)) && (!found);
+             index++) {
+            if (std::isspace(*(working + index)) ||
+                ((*(working + index)) == '\0')) {
                 after = (working + index);
                 found = true;
             }
         }
-        if (((after - working) > 0) && ((after - working) < static_cast<int>(serial_number_length))) {
-            //utilize utility or create one to construct and transfer SN from gcode string. No parsing needed
-            //make constructor that takes iterator pair (start and length). Copy in data in-line (strcpy)
+        if (((after - working) > 0) &&
+            ((after - working) < static_cast<int>(serial_number_length))) {
+            // utilize utility or create one to construct and transfer SN from
+            // gcode string. No parsing needed make constructor that takes
+            // iterator pair (start and length). Copy in data in-line (strcpy)
             std::array<char, serial_number_length> serial_number_res = {};
-            std::copy(working, (working + (after - working)), serial_number_res.begin());
-            return std::make_pair(ParseResult(SetSerialNumber{.serial_number = serial_number_res}), 
-                    after);
+            std::copy(working, (working + (after - working)),
+                      serial_number_res.begin());
+            return std::make_pair(ParseResult(SetSerialNumber{
+                                      .serial_number = serial_number_res}),
+                                  after);
         } else {
             return std::make_pair(ParseResult(), input);
         }
-        //do we need to do anything with value_res.second?
+        // do we need to do anything with value_res.second?
 
-/*         auto value_res = parse_value<char>(working, limit);
+        /*         auto value_res = parse_value<char>(working, limit);
 
-        if (!value_res.first.has_value()) {
-            return std::make_pair(ParseResult(), input);
-        }
-        return std::make_pair(ParseResult(SetSerialNumber{.serial_number = static_cast<char *>(value_res.first.value())}),
-                              value_res.second); */
+                if (!value_res.first.has_value()) {
+                    return std::make_pair(ParseResult(), input);
+                }
+                return std::make_pair(ParseResult(SetSerialNumber{.serial_number
+           = static_cast<char *>(value_res.first.value())}),
+                                      value_res.second); */
     }
 };
 

@@ -1062,8 +1062,8 @@ SCENARIO("SetSerialNumber parser works") {
         std::string to_parse = "";
 
         WHEN("calling parse") {
-            auto result =
-                gcode::SetSerialNumber::parse(to_parse.cbegin(), to_parse.cend());
+            auto result = gcode::SetSerialNumber::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1075,8 +1075,8 @@ SCENARIO("SetSerialNumber parser works") {
         std::string to_parse = "asdhalghasdasd ";
 
         WHEN("calling parse") {
-            auto result =
-                gcode::SetSerialNumber::parse(to_parse.cbegin(), to_parse.cend());
+            auto result = gcode::SetSerialNumber::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1088,8 +1088,8 @@ SCENARIO("SetSerialNumber parser works") {
         auto to_parse = std::array{'M', '9', '9', '6', ' '};
 
         WHEN("calling parse") {
-            auto result =
-                gcode::SetSerialNumber::parse(to_parse.cbegin(), to_parse.cend());
+            auto result = gcode::SetSerialNumber::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1100,8 +1100,8 @@ SCENARIO("SetSerialNumber parser works") {
     GIVEN("a string with a subprefix matching only") {
         std::string to_parse = "Masdlasfhalsd\r\n";
         WHEN("calling parse") {
-            auto result =
-                gcode::SetSerialNumber::parse(to_parse.cbegin(), to_parse.cend());
+            auto result = gcode::SetSerialNumber::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
                 REQUIRE(result.second == to_parse.cbegin());
@@ -1112,8 +1112,8 @@ SCENARIO("SetSerialNumber parser works") {
     GIVEN("a string with a prefix matching but bad data") {
         std::string to_parse = "M996 alsjdhas\r\n";
         WHEN("calling parse") {
-            auto result =
-                gcode::SetSerialNumber::parse(to_parse.cbegin(), to_parse.cend());
+            auto result = gcode::SetSerialNumber::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
 
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
@@ -1125,8 +1125,8 @@ SCENARIO("SetSerialNumber parser works") {
     GIVEN("a string with a matching prefix and float data") {
         std::string to_parse = "M996 1000.0\r\n";
         WHEN("calling parse") {
-            auto result =
-                gcode::SetSerialNumber::parse(to_parse.cbegin(), to_parse.cend());
+            auto result = gcode::SetSerialNumber::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
 
             THEN("nothing should be parsed") {
                 REQUIRE(!result.first.has_value());
@@ -1138,8 +1138,8 @@ SCENARIO("SetSerialNumber parser works") {
     GIVEN("a string with a matching prefix and a negative value") {
         std::string to_parse = "M996 -10\r\n";
         WHEN("calling parse") {
-            auto result =
-                gcode::SetSerialNumber::parse(to_parse.cbegin(), to_parse.cend());
+            auto result = gcode::SetSerialNumber::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
 
             THEN("nothing should be parsed") {
                 REQUIRE(result.first.has_value());
@@ -1152,8 +1152,8 @@ SCENARIO("SetSerialNumber parser works") {
     GIVEN("a string with a matching prefix and positive integral data") {
         std::string to_parse = "M996 1000\r\n";
         WHEN("calling parse") {
-            auto result =
-                gcode::SetSerialNumber::parse(to_parse.cbegin(), to_parse.cend());
+            auto result = gcode::SetSerialNumber::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
 
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());
@@ -1166,8 +1166,8 @@ SCENARIO("SetSerialNumber parser works") {
     GIVEN("a string with valid data and content afterwards") {
         std::string to_parse = "M996 1000 asgasasd";
         WHEN("calling parse") {
-            auto result =
-                gcode::SetSerialNumber::parse(to_parse.cbegin(), to_parse.cend());
+            auto result = gcode::SetSerialNumber::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
 
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());

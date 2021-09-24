@@ -19,15 +19,17 @@ struct Tasks;
 
 namespace system_task {
 
-//std::array<char,8> TestArr = {"TESTSNX"};
+// std::array<char,8> TestArr = {"TESTSNX"};
 
 template <typename Policy>
 concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.enter_bootloader()};
-    {p.set_serial_number(std::array<char,8> {"TESTSNX"})}
-    ->std::same_as<errors::ErrorCode>; //ask Seth how to best initialize and pass in an array for testing
-    {p.get_serial_number()}
-    ->std::same_as<std::array<char,8>>;
+    {
+        p.set_serial_number(std::array<char, 8>{"TESTSNX"})
+        }
+        -> std::same_as<errors::ErrorCode>;  // ask Seth how to best initialize
+                                             // and pass in an array for testing
+    { p.get_serial_number() } -> std::same_as<std::array<char, 8>>;
 };
 
 using Message = messages::SystemMessage;
@@ -151,12 +153,14 @@ class SystemTask {
     }
 
     template <typename Policy>
-    auto visit_message(const messages::SetSerialNumberMessage& msg, Policy& policy)
-        -> void {
-        auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        //check if SN valid size
+    auto visit_message(const messages::SetSerialNumberMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        // check if SN valid size
         if (msg.serial_number.size() != SERIAL_NUMBER_SIZE) {
-            response.with_error = errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID;
+            response.with_error =
+                errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID;
         } else {
             response.with_error = policy.set_serial_number(msg.serial_number);
         }
@@ -165,13 +169,13 @@ class SystemTask {
     }
 
     template <typename Policy>
-    auto visit_message(const messages::GetSystemInfoMessage& msg, Policy& policy)
-        -> void {
-        auto response = 
-            messages::GetSystemInfoResponse{.responding_to_id = msg.id,
-                                              .serial_number = policy.get_serial_number(),
-                                              .fw_version = version::fw_version(),
-                                              .hw_version = version::hw_version()};
+    auto visit_message(const messages::GetSystemInfoMessage& msg,
+                       Policy& policy) -> void {
+        auto response = messages::GetSystemInfoResponse{
+            .responding_to_id = msg.id,
+            .serial_number = policy.get_serial_number(),
+            .fw_version = version::fw_version(),
+            .hw_version = version::hw_version()};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }

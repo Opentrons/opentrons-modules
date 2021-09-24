@@ -315,7 +315,7 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetSystemInfoResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry = 
+        auto cache_entry =
             get_system_info_cache.remove_if_present(response.responding_to_id);
         return std::visit(
             [tx_into, tx_limit, response](auto cache_element) {
@@ -391,15 +391,15 @@ class HostCommsTask {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::SetSerialNumber& gcode, InputIt tx_into,
-                    InputLimit tx_limit) -> std::pair<bool, InputIt> {
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message =
-            messages::SetSerialNumberMessage{.id = id, .serial_number = gcode.serial_number};
+        auto message = messages::SetSerialNumberMessage{
+            .id = id, .serial_number = gcode.serial_number};
         if (!task_registry->system->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(

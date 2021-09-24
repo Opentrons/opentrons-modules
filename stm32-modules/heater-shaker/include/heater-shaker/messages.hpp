@@ -190,8 +190,8 @@ using MotorMessage = ::std::variant<
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,
     ActuateSolenoidMessage, SetPlateLockPowerMessage, SetPIDConstantsMessage>;
 using SystemMessage =
-    ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious, 
-    SetSerialNumberMessage, GetSystemInfoMessage>;
+    ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
+                   SetSerialNumberMessage, GetSystemInfoMessage>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,

@@ -1,4 +1,4 @@
-//need any other headers (like heater_policy.cpp or motor_policy.cpp)?
+// need any other headers (like heater_policy.cpp or motor_policy.cpp)?
 
 #include <array>
 #include <iterator>
