@@ -27,7 +27,11 @@ auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
     auto policy = SimSystemPolicy();
     tcb->queue.set_stop_token(st);
     while (!st.stop_requested()) {
-        tcb->task.run_once(policy);
+        try {
+            tcb->task.run_once(policy);
+        } catch (const SimSystemTask::Queue::StopDuringMsgWait sdmw) {
+            return;
+        }
     }
 }
 
