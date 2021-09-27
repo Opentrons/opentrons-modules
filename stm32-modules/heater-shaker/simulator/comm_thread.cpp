@@ -5,6 +5,7 @@
 #include <stop_token>
 #include <string_view>
 #include <thread>
+#include <boost/asio.hpp>
 
 #include "heater-shaker/host_comms_task.hpp"
 #include "heater-shaker/messages.hpp"
@@ -39,16 +40,37 @@ auto comm_thread::build()
 }
 
 auto comm_thread::handle_input(tasks::Tasks<SimulatorMessageQueue>& tasks)
-    -> void {
-    auto linebuf = std::make_shared<std::string>(1024, 'c');
-    while (true) {
-        if (!std::cin.getline(linebuf->data(), linebuf->size() - 1, '\n')) {
-            return;
+-> void {
+    boost::asio::io_service io_context;
+
+    boost::asio::ip::tcp::socket mysocket(io_context);
+    boost::asio::ip::tcp::endpoint endpoint(
+            boost::asio::ip::address::from_string("127.0.0.1"), 9999);
+    boost::system::error_code ec;
+    mysocket.connect(endpoint, ec);
+    if (ec) {
+
+    }
+
+    char pBuff[30];
+    boost::asio::mutable_buffer buff(pBuff, sizeof(pBuff));
+    std::string tot;
+
+    std::size_t l = mysocket.read_some(buff);
+    while (l > 0) {
+        tot.append(static_cast<const char*>(buff.data()), l);
+
+        std::size_t pos = tot.find("\r");
+        while (pos != std::string::npos) {
+            std::string msg = tot.substr(0, pos);
+            tot.erase(0, pos+1);
+            std::cout << "Sending " << msg << " to queue" << std::endl;
+            auto c_string = msg.c_str();
+
+            auto message = messages::IncomingMessageFromHost(c_string, msg.c_str());
+            static_cast<void>(tasks.comms->get_message_queue().try_send(message));
+            pos = tot.find("\r");
         }
-        auto wrote_to = std::cin.gcount();
-        linebuf->at(wrote_to - 1) = '\n';
-        auto message = messages::IncomingMessageFromHost(
-            linebuf->data(), linebuf->data() + wrote_to);
-        static_cast<void>(tasks.comms->get_message_queue().try_send(message));
+        l = mysocket.read_some(buff);
     }
 }
