@@ -13,8 +13,8 @@ SCENARIO("GetRPM (M103) response generation works", "[gcode][response][m103]") {
             auto written = gcode::GetRPM::write_response_into(
                 buffer.begin(), buffer.end(), 10, 25);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::StartsWith("M123 C:10 T:25 OK\n"));
+                REQUIRE_THAT(
+                    buffer, Catch::Matchers::StartsWith("M123 C:10 T:25 OK\n"));
                 REQUIRE(written == buffer.begin() + 18);
             }
         }
