@@ -13,9 +13,9 @@ SCENARIO("GetRPM (M103) response generation works", "[gcode][response][m103]") {
             auto written = gcode::GetRPM::write_response_into(
                 buffer.begin(), buffer.end(), 10, 25);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::StartsWith("M123 C10 T25 OK\n"));
-                REQUIRE(written == buffer.begin() + 16);
+                REQUIRE_THAT(
+                    buffer, Catch::Matchers::StartsWith("M123 C:10 T:25 OK\n"));
+                REQUIRE(written == buffer.begin() + 18);
             }
         }
     }
@@ -27,7 +27,7 @@ SCENARIO("GetRPM (M103) response generation works", "[gcode][response][m103]") {
                 buffer.begin(), buffer.begin() + 7, 10, 25);
             THEN("the response should write only up to the available space") {
                 REQUIRE_THAT(buffer,
-                             Catch::Matchers::Equals("M123 Ccccccccccc"));
+                             Catch::Matchers::Equals("M123 C:ccccccccc"));
                 REQUIRE(written == buffer.begin() + 7);
             }
         }

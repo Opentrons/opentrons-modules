@@ -44,7 +44,7 @@ SCENARIO("testing full message passing integration") {
                 written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE_THAT(response_buffer, Catch::Matchers::StartsWith(
-                                                  "M123 C1050 T3500 OK\n"));
+                                                  "M123 C:1050 T:3500 OK\n"));
             }
         }
         WHEN("sending a set-temp message by string to the host comms task") {
@@ -79,7 +79,7 @@ SCENARIO("testing full message passing integration") {
                 written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE_THAT(response_buffer, Catch::Matchers::StartsWith(
-                                                  "M105 C95.20 T0.00 OK\n"));
+                                                  "M105 C:95.20 T:0.00 OK\n"));
             }
         }
 
