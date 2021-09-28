@@ -5,6 +5,7 @@
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/messages.hpp"
 #include "test/task_builder.hpp"
+#include "systemwide.hpp"
 
 SCENARIO("usb message parsing") {
     GIVEN("a host_comms_task") {
@@ -315,7 +316,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
         }
 
         WHEN("sending a set-serial-number") {
-            auto message_text = std::string("M996 TESTSN2\n");
+            auto message_text = std::string("M996 TESTSN2xxxxxxxxxxxxxxxx\n");
             auto message_obj =
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
                     &*message_text.begin(), &*message_text.end()));
@@ -331,7 +332,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 auto set_serial_number_message =
                     std::get<messages::SetSerialNumberMessage>(system_message);
                 tasks->get_system_queue().backing_deque.pop_front();
-                std::array<char, 8> Test_SN = {"TESTSN2"};
+                std::array<char, systemwide::serial_number_length> Test_SN = {"TESTSN2xxxxxxxxxxxxxxxx"};
                 REQUIRE(set_serial_number_message.serial_number == Test_SN);
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
@@ -687,7 +688,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
         }
 
         WHEN("sending a get-system-info") {
-            auto message_text = std::string("M123\n");
+            auto message_text = std::string("M115\n");
             auto message_obj =
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
                     &*message_text.begin(), &*message_text.end()));
@@ -695,24 +696,25 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
             auto written_firstpass = tasks->get_host_comms_task().run_once(
                 tx_buf.begin(), tx_buf.end());
             THEN(
-                "the task should pass the message on to the motor and not "
+                "the task should pass the message on to the system and not "
                 "immediately ack") {
-                REQUIRE(tasks->get_motor_queue().backing_deque.size() != 0);
-                auto motor_message =
-                    tasks->get_motor_queue().backing_deque.front();
-                REQUIRE(std::holds_alternative<messages::GetRPMMessage>(
-                    motor_message));
-                auto get_rpm_message =
-                    std::get<messages::GetRPMMessage>(motor_message);
-                tasks->get_motor_queue().backing_deque.pop_front();
+                REQUIRE(tasks->get_system_queue().backing_deque.size() != 0);
+                auto system_message =
+                    tasks->get_system_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::GetSystemInfoMessage>(
+                    system_message));
+                auto get_system_info_message =
+                    std::get<messages::GetSystemInfoMessage>(system_message);
+                tasks->get_system_queue().backing_deque.pop_front();
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
                 AND_WHEN("sending a good response back to the comms task") {
                     auto response =
-                        messages::HostCommsMessage(messages::GetRPMResponse{
-                            .responding_to_id = get_rpm_message.id,
-                            .current_rpm = 1500,
-                            .setpoint_rpm = 1750});
+                        messages::HostCommsMessage(messages::GetSystemInfoResponse{
+                            .responding_to_id = get_system_info_message.id,
+                            .serial_number = std::array<char, systemwide::serial_number_length> {"TESTSN8"},
+                            .fw_version = "v1.0.1",
+                            .hw_version = "v1.0.1"});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -720,8 +722,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "M123 C1500 T1750 OK\n"));
-                        REQUIRE(written_secondpass == tx_buf.begin() + 20);
+                                                 "M115 FW:v1.0.1 HW:v1.0.1 SerialNo:TESTSN8 OK\n"));
+                        REQUIRE(written_secondpass == tx_buf.begin() + 45);
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -729,10 +731,11 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 AND_WHEN(
                     "sending a response with wrong id back to the comms task") {
                     auto response =
-                        messages::HostCommsMessage(messages::GetRPMResponse{
-                            .responding_to_id = get_rpm_message.id + 1,
-                            .current_rpm = 9999,
-                            .setpoint_rpm = 1590});
+                        messages::HostCommsMessage(messages::GetSystemInfoResponse{
+                            .responding_to_id = get_system_info_message.id + 1,
+                            .serial_number = std::array<char, systemwide::serial_number_length> {"TESTSN8"},
+                            .fw_version = "v1.0.1",
+                            .hw_version = "v1.0.1"});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -752,7 +755,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     "comms task") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{.responding_to_id =
-                                                          get_rpm_message.id});
+                                                          get_system_info_message.id});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -863,7 +866,7 @@ SCENARIO("message handling for other-task-initiated communication") {
     }
 }
 
-SCENARIO("system info handling") {
+/*SCENARIO("system info handling") {
     GIVEN("a host comms task") {
         auto tasks = TaskBuilder::build();
         std::string tx_buf(128, 'c');
@@ -881,4 +884,4 @@ SCENARIO("system info handling") {
             }
         }
     }
-}
+}*/

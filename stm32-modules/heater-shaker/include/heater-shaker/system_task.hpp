@@ -11,6 +11,7 @@
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
 #include "heater-shaker/version.hpp"
+#include "systemwide.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>
@@ -19,17 +20,15 @@ struct Tasks;
 
 namespace system_task {
 
-// std::array<char,8> TestArr = {"TESTSNX"};
-
 template <typename Policy>
 concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.enter_bootloader()};
     {
-        p.set_serial_number(std::array<char, 8>{"TESTSNX"})
+        p.set_serial_number(std::array<char, systemwide::serial_number_length>{"TESTSNXxxxxxxxxxxxxxxxx"})
         }
         -> std::same_as<errors::ErrorCode>;  // ask Seth how to best initialize
                                              // and pass in an array for testing
-    { p.get_serial_number() } -> std::same_as<std::array<char, 8>>;
+    { p.get_serial_number() } -> std::same_as<std::array<char, systemwide::serial_number_length>>;
 };
 
 using Message = messages::SystemMessage;
@@ -46,7 +45,6 @@ class SystemTask {
 
   public:
     using Queue = QueueImpl<Message>;
-    static constexpr uint8_t SERIAL_NUMBER_SIZE = 8;
     explicit SystemTask(Queue& q)
         : message_queue(q),
           task_registry(nullptr),
@@ -157,13 +155,7 @@ class SystemTask {
                        Policy& policy) -> void {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        // check if SN valid size
-        if (msg.serial_number.size() != SERIAL_NUMBER_SIZE) {
-            response.with_error =
-                errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID;
-        } else {
-            response.with_error = policy.set_serial_number(msg.serial_number);
-        }
+        response.with_error = policy.set_serial_number(msg.serial_number);
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
