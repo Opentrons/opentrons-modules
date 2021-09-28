@@ -3,5 +3,5 @@
 
 class systemwide {
   public:
-    static constexpr std::size_t serial_number_length = 24;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH = 24;
 };

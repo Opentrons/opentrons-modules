@@ -31,7 +31,7 @@ SCENARIO("SetSerialNumber (M996) parser works", "[gcode][parse][m996]") {
             THEN("nothing should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.first.value().serial_number ==
-                        std::array<char, systemwide::serial_number_length>{
+                        std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
                             "-100000xxxxxxxxxxxxxxxx"});
                 REQUIRE(result.second == to_parse.cbegin() + 28);
             }
@@ -47,7 +47,7 @@ SCENARIO("SetSerialNumber (M996) parser works", "[gcode][parse][m996]") {
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.first.value().serial_number ==
-                        std::array<char, systemwide::serial_number_length>{
+                        std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
                             "1000000xxxxxxxxxxxxxxxx"});
                 REQUIRE(result.second == to_parse.cbegin() + 28);
             }
@@ -63,7 +63,7 @@ SCENARIO("SetSerialNumber (M996) parser works", "[gcode][parse][m996]") {
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.first.value().serial_number ==
-                        std::array<char, systemwide::serial_number_length>{
+                        std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
                             "1000000xxxxxxxxxxxxxxxx"});
                 AND_THEN(
                     "the iterator should past just past the end of the gcode") {
@@ -99,7 +99,7 @@ SCENARIO("SetSerialNumber (M996) parser works", "[gcode][parse][m996]") {
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.first.value().serial_number ==
-                        std::array<char, systemwide::serial_number_length>{
+                        std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
                             "10000"});
                 AND_THEN(
                     "the iterator should past just past the end of the gcode") {

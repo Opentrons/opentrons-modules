@@ -24,12 +24,12 @@ template <typename Policy>
 concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.enter_bootloader()};
     {
-        p.set_serial_number(std::array<char, systemwide::serial_number_length>{
+        p.set_serial_number(std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
             "TESTSNXxxxxxxxxxxxxxxxx"})
         } -> std::same_as<errors::ErrorCode>;
     {
         p.get_serial_number()
-        } -> std::same_as<std::array<char, systemwide::serial_number_length>>;
+        } -> std::same_as<std::array<char, systemwide::SERIAL_NUMBER_LENGTH>>;
 };
 
 using Message = messages::SystemMessage;

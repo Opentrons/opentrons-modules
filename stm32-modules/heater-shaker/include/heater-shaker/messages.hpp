@@ -91,9 +91,9 @@ struct SetPowerTestMessage {
 
 struct SetSerialNumberMessage {
     uint32_t id;
-    static constexpr std::size_t serial_number_length =
-        systemwide::serial_number_length;
-    std::array<char, serial_number_length> serial_number;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        systemwide::SERIAL_NUMBER_LENGTH;
+    std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
 };
 
 struct EnterBootloaderMessage {
@@ -167,9 +167,9 @@ struct GetRPMResponse {
 
 struct GetSystemInfoResponse {
     uint32_t responding_to_id;
-    static constexpr std::size_t serial_number_length =
-        systemwide::serial_number_length;
-    std::array<char, serial_number_length> serial_number;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        systemwide::SERIAL_NUMBER_LENGTH;
+    std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
     const char* fw_version;
     const char* hw_version;
 };

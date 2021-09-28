@@ -556,15 +556,15 @@ struct GetSystemInfo {
      * */
     using ParseResult = std::optional<GetSystemInfo>;
     static constexpr auto prefix = std::array{'M', '1', '1', '5'};
-    static constexpr std::size_t serial_number_length =
-        systemwide::serial_number_length;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        systemwide::SERIAL_NUMBER_LENGTH;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(
         InputIt write_to_buf, InLimit write_to_limit,
-        std::array<char, serial_number_length> serial_number,
+        std::array<char, SERIAL_NUMBER_LENGTH> serial_number,
         const char* fw_version, const char* hw_version) -> InputIt {
         static constexpr const char* prefix = "M115 FW:";
         auto written =
@@ -622,9 +622,9 @@ struct SetSerialNumber {
     using ParseResult = std::optional<SetSerialNumber>;
     static constexpr auto prefix = std::array{'M', '9', '9', '6', ' '};
     static constexpr const char* response = "M996 OK\n";
-    static constexpr std::size_t serial_number_length =
-        systemwide::serial_number_length;
-    std::array<char, serial_number_length> serial_number = {};
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        systemwide::SERIAL_NUMBER_LENGTH;
+    std::array<char, SERIAL_NUMBER_LENGTH> serial_number = {};
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 
     template <typename InputIt, typename InputLimit>
@@ -655,8 +655,8 @@ struct SetSerialNumber {
             }
         }
         if (((after - working) > 0) &&
-            ((after - working) < static_cast<int>(serial_number_length))) {
-            std::array<char, serial_number_length> serial_number_res = {};
+            ((after - working) < static_cast<int>(SERIAL_NUMBER_LENGTH))) {
+            std::array<char, SERIAL_NUMBER_LENGTH> serial_number_res = {};
             std::copy(working, (working + (after - working)),
                       serial_number_res.begin());
             return std::make_pair(ParseResult(SetSerialNumber{
@@ -664,7 +664,7 @@ struct SetSerialNumber {
                                   after);
         } else if (((after - working) > 0) &&
                    ((after - working) >=
-                    static_cast<int>(serial_number_length))) {
+                    static_cast<int>(SERIAL_NUMBER_LENGTH))) {
             return std::make_pair(
                 ParseResult(SetSerialNumber{
                     .with_error =
