@@ -123,7 +123,7 @@ struct GetTemperature {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     double current_temperature,
                                     double setpoint_temperature) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M105 C%0.2f T%0.2f OK\n",
+        auto res = snprintf(&*buf, (limit - buf), "M105 C:%0.2f T:%0.2f OK\n",
                             static_cast<float>(current_temperature),
                             static_cast<float>(setpoint_temperature));
         if (res <= 0) {
@@ -164,7 +164,7 @@ struct GetRPM {
     static auto write_response_into(InputIt buf, const InLimit limit,
                                     int16_t current_rpm, int16_t setpoint_rpm)
         -> InputIt {
-        static constexpr const char* prefix = "M123 C";
+        static constexpr const char* prefix = "M123 C:";
         char* char_next = &*buf;
         char* const char_limit = &*limit;
         char_next = write_string_to_iterpair(char_next, char_limit, prefix);
@@ -175,7 +175,7 @@ struct GetRPM {
         }
         char_next = tochars_result.ptr;
 
-        static constexpr const char* setpoint_prefix = " T";
+        static constexpr const char* setpoint_prefix = " T:";
         char_next =
             write_string_to_iterpair(char_next, char_limit, setpoint_prefix);
 
@@ -279,7 +279,7 @@ struct GetTemperatureDebug {
                                     bool power_good) -> InputIt {
         auto res = snprintf(
             &*buf, (limit - buf),
-            "M105.D AT%0.2f BT%0.2f OT%0.2f AD%d BD%d OD%d PG%d OK\n",
+            "M105.D AT:%0.2f BT:%0.2f OT:%0.2f AD:%d BD:%d OD:%d PG:%d OK\n",
             static_cast<float>(pad_a_temp), static_cast<float>(pad_b_temp),
             static_cast<float>(board_temp), pad_a_adc, pad_b_adc, board_adc,
             power_good ? 1 : 0);

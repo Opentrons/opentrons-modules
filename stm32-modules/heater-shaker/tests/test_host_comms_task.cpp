@@ -433,8 +433,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should respond to the get-temp message") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "M105 C47.00 T0.00 OK\n"));
-                        REQUIRE(written_secondpass == tx_buf.begin() + 21);
+                                                 "M105 C:47.00 T:0.00 OK\n"));
+                        REQUIRE(written_secondpass == tx_buf.begin() + 23);
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -546,8 +546,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                         "message") {
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith(
-                                         "M105.D AT100.00 BT42.00 OT22.00 "
-                                         "AD14420 BD0 OD2220 PG0 OK\n"));
+                                         "M105.D AT:100.00 BT:42.00 OT:22.00 "
+                                         "AD:14420 BD:0 OD:2220 PG:0 OK\n"));
                         REQUIRE(written_secondpass != tx_buf.begin());
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
@@ -634,8 +634,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "M123 C1500 T1750 OK\n"));
-                        REQUIRE(written_secondpass == tx_buf.begin() + 20);
+                                                 "M123 C:1500 T:1750 OK\n"));
+                        REQUIRE(written_secondpass == tx_buf.begin() + 22);
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }

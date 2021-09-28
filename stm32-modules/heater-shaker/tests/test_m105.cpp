@@ -14,8 +14,8 @@ SCENARIO("GetTemperature (M105) response works", "[gcode][response][m105]") {
                 buffer.begin(), buffer.end(), 10.25, 25.001);
             THEN("the response should be written in full") {
                 REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
-                                         "M105 C10.25 T25.00 OK\n"));
-                REQUIRE(written == buffer.begin() + 22);
+                                         "M105 C:10.25 T:25.00 OK\n"));
+                REQUIRE(written == buffer.begin() + 24);
             }
         }
     }
