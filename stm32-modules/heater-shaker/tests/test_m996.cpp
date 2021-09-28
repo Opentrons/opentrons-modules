@@ -1,8 +1,8 @@
 #include <array>
-#include "systemwide.hpp"
-#include "heater-shaker/errors.hpp"
 
 #include "catch2/catch.hpp"
+#include "heater-shaker/errors.hpp"
+#include "systemwide.hpp"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"
 #include "heater-shaker/gcodes.hpp"
@@ -31,7 +31,8 @@ SCENARIO("SetSerialNumber (M996) parser works", "[gcode][parse][m996]") {
             THEN("nothing should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.first.value().serial_number ==
-                        std::array<char, systemwide::serial_number_length>{"-100000xxxxxxxxxxxxxxxx"});
+                        std::array<char, systemwide::serial_number_length>{
+                            "-100000xxxxxxxxxxxxxxxx"});
                 REQUIRE(result.second == to_parse.cbegin() + 28);
             }
         }
@@ -46,7 +47,8 @@ SCENARIO("SetSerialNumber (M996) parser works", "[gcode][parse][m996]") {
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.first.value().serial_number ==
-                        std::array<char, systemwide::serial_number_length>{"1000000xxxxxxxxxxxxxxxx"});
+                        std::array<char, systemwide::serial_number_length>{
+                            "1000000xxxxxxxxxxxxxxxx"});
                 REQUIRE(result.second == to_parse.cbegin() + 28);
             }
         }
@@ -61,7 +63,8 @@ SCENARIO("SetSerialNumber (M996) parser works", "[gcode][parse][m996]") {
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.first.value().serial_number ==
-                        std::array<char, systemwide::serial_number_length>{"1000000xxxxxxxxxxxxxxxx"});
+                        std::array<char, systemwide::serial_number_length>{
+                            "1000000xxxxxxxxxxxxxxxx"});
                 AND_THEN(
                     "the iterator should past just past the end of the gcode") {
                     REQUIRE(result.second == to_parse.cbegin() + 28);
@@ -73,13 +76,15 @@ SCENARIO("SetSerialNumber (M996) parser works", "[gcode][parse][m996]") {
     GIVEN("a string with too much valid data") {
         std::string to_parse = "M996 1000000Axxxxxxxxxxxxxxxx";
         WHEN("calling parse") {
-            auto result =
-                gcode::SetSerialNumber::parse(to_parse.cbegin(),
-    to_parse.cend());
+            auto result = gcode::SetSerialNumber::parse(to_parse.cbegin(),
+                                                        to_parse.cend());
 
-            THEN("nothing should be parsed and error message should be passed back") {
+            THEN(
+                "nothing should be parsed and error message should be passed "
+                "back") {
                 REQUIRE(result.first.has_value());
-                REQUIRE(result.first.value().with_error == errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID);
+                REQUIRE(result.first.value().with_error ==
+                        errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID);
                 REQUIRE(result.second == to_parse.cbegin());
             }
         }
@@ -94,7 +99,8 @@ SCENARIO("SetSerialNumber (M996) parser works", "[gcode][parse][m996]") {
             THEN("a gcode should be parsed") {
                 REQUIRE(result.first.has_value());
                 REQUIRE(result.first.value().serial_number ==
-                        std::array<char, systemwide::serial_number_length>{"10000"});
+                        std::array<char, systemwide::serial_number_length>{
+                            "10000"});
                 AND_THEN(
                     "the iterator should past just past the end of the gcode") {
                     REQUIRE(result.second == to_parse.cbegin() + 10);

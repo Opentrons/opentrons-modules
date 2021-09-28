@@ -18,10 +18,10 @@
 #include <optional>
 #include <utility>
 
+#include "heater-shaker/errors.hpp"
 #include "heater-shaker/gcode_parser.hpp"
 #include "heater-shaker/utility.hpp"
 #include "systemwide.hpp"
-#include "heater-shaker/errors.hpp"
 
 namespace gcode {
 
@@ -556,16 +556,16 @@ struct GetSystemInfo {
      * */
     using ParseResult = std::optional<GetSystemInfo>;
     static constexpr auto prefix = std::array{'M', '1', '1', '5'};
-    static constexpr std::size_t serial_number_length = systemwide::serial_number_length;
+    static constexpr std::size_t serial_number_length =
+        systemwide::serial_number_length;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
-    static auto write_response_into(InputIt write_to_buf,
-                                    InLimit write_to_limit,
-                                    std::array<char, serial_number_length> serial_number,
-                                    const char* fw_version,
-                                    const char* hw_version) -> InputIt {
+    static auto write_response_into(
+        InputIt write_to_buf, InLimit write_to_limit,
+        std::array<char, serial_number_length> serial_number,
+        const char* fw_version, const char* hw_version) -> InputIt {
         static constexpr const char* prefix = "M115 FW:";
         auto written =
             write_string_to_iterpair(write_to_buf, write_to_limit, prefix);
@@ -622,7 +622,8 @@ struct SetSerialNumber {
     using ParseResult = std::optional<SetSerialNumber>;
     static constexpr auto prefix = std::array{'M', '9', '9', '6', ' '};
     static constexpr const char* response = "M996 OK\n";
-    static constexpr std::size_t serial_number_length = systemwide::serial_number_length;
+    static constexpr std::size_t serial_number_length =
+        systemwide::serial_number_length;
     std::array<char, serial_number_length> serial_number = {};
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 
@@ -653,33 +654,25 @@ struct SetSerialNumber {
                 found = true;
             }
         }
-        if (((after - working) > 0) && ((after - working) < static_cast<int>(serial_number_length))) {
-            // utilize utility or create one to construct and transfer SN from
-            // gcode string. No parsing needed make constructor that takes
-            // iterator pair (start and length). Copy in data in-line (strcpy)
+        if (((after - working) > 0) &&
+            ((after - working) < static_cast<int>(serial_number_length))) {
             std::array<char, serial_number_length> serial_number_res = {};
             std::copy(working, (working + (after - working)),
-                    serial_number_res.begin());
+                      serial_number_res.begin());
             return std::make_pair(ParseResult(SetSerialNumber{
-                                    .serial_number = serial_number_res}),
-                                after);
-        } else if (((after - working) > 0) && ((after - working) >= static_cast<int>(serial_number_length))) {
-            return std::make_pair(ParseResult(SetSerialNumber{
-                                    .with_error = errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID}),
-                                input);
+                                      .serial_number = serial_number_res}),
+                                  after);
+        } else if (((after - working) > 0) &&
+                   ((after - working) >=
+                    static_cast<int>(serial_number_length))) {
+            return std::make_pair(
+                ParseResult(SetSerialNumber{
+                    .with_error =
+                        errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID}),
+                input);
         } else {
             return std::make_pair(ParseResult(), input);
         }
-        // do we need to do anything with value_res.second?
-
-        /*         auto value_res = parse_value<char>(working, limit);
-
-                if (!value_res.first.has_value()) {
-                    return std::make_pair(ParseResult(), input);
-                }
-                return std::make_pair(ParseResult(SetSerialNumber{.serial_number
-           = static_cast<char *>(value_res.first.value())}),
-                                      value_res.second); */
     }
 };
 

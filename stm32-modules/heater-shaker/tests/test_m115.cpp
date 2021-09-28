@@ -1,7 +1,7 @@
 #include <array>
-#include "systemwide.hpp"
 
 #include "catch2/catch.hpp"
+#include "systemwide.hpp"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"
 #include "heater-shaker/gcodes.hpp"
@@ -11,7 +11,8 @@ SCENARIO("GetSystemInfo (M115) response works", "[gcode][parse][m115]") {
     GIVEN("a response buffer large enough for the formatted response") {
         std::string buffer(64, 'c');
         WHEN("filling response") {
-            std::array<char, systemwide::serial_number_length> TEST_SN = {"TESTSN1"};
+            std::array<char, systemwide::serial_number_length> TEST_SN = {
+                "TESTSN1"};
             auto written = gcode::GetSystemInfo::write_response_into(
                 buffer.begin(), buffer.end(), TEST_SN, "hello", "world");
             THEN("the response should be written in full") {
@@ -27,7 +28,8 @@ SCENARIO("GetSystemInfo (M115) response works", "[gcode][parse][m115]") {
     GIVEN("a response buffer not large enough for the formatted response") {
         std::string buffer(32, 'c');
         WHEN("filling response") {
-            std::array<char, systemwide::serial_number_length> TEST_SN = {"TESTSN1xxxxxxxxxxxxxxxx"};
+            std::array<char, systemwide::serial_number_length> TEST_SN = {
+                "TESTSN1xxxxxxxxxxxxxxxx"};
             auto written = gcode::GetSystemInfo::write_response_into(
                 buffer.begin(), buffer.begin() + 16, TEST_SN, "hello", "world");
             THEN("the response should write only up to the available space") {

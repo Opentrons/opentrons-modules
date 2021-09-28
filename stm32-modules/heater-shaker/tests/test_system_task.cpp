@@ -1,8 +1,8 @@
 #include "catch2/catch.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/system_task.hpp"
-#include "test/task_builder.hpp"
 #include "systemwide.hpp"
+#include "test/task_builder.hpp"
 
 SCENARIO("system task message passing") {
     GIVEN("a system task") {
@@ -89,7 +89,10 @@ SCENARIO("system task message passing") {
 
         WHEN("sending a set-serial-number message as if from the host comms") {
             auto message = messages::SetSerialNumberMessage{
-                .id = 123, .serial_number = std::array<char, systemwide::serial_number_length>{"TESTSN4"}};
+                .id = 123,
+                .serial_number =
+                    std::array<char, systemwide::serial_number_length>{
+                        "TESTSN4"}};
             tasks->get_system_queue().backing_deque.push_back(
                 messages::SystemMessage(message));
             tasks->get_system_task().run_once(tasks->get_system_policy());
@@ -97,7 +100,8 @@ SCENARIO("system task message passing") {
                 REQUIRE(tasks->get_system_queue().backing_deque.empty());
                 AND_THEN("the task should set the serial number") {
                     REQUIRE(tasks->get_system_policy().get_serial_number() ==
-                            std::array<char, systemwide::serial_number_length>{"TESTSN4"});
+                            std::array<char, systemwide::serial_number_length>{
+                                "TESTSN4"});
                 }
                 AND_THEN(
                     "the task should respond to the message to the host "
@@ -122,7 +126,8 @@ SCENARIO("system task message passing") {
             auto message = messages::GetSystemInfoMessage{.id = 123};
             tasks->get_system_queue().backing_deque.push_back(
                 messages::SystemMessage(message));
-            tasks->get_system_policy().set_serial_number(std::array<char, systemwide::serial_number_length>{"TESTSN6"});
+            tasks->get_system_policy().set_serial_number(
+                std::array<char, systemwide::serial_number_length>{"TESTSN6"});
             tasks->get_system_task().run_once(tasks->get_system_policy());
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_system_queue().backing_deque.empty());
@@ -140,7 +145,9 @@ SCENARIO("system task message passing") {
                     auto getsysteminfo =
                         std::get<messages::GetSystemInfoResponse>(response);
                     REQUIRE(getsysteminfo.responding_to_id == message.id);
-                    REQUIRE(getsysteminfo.serial_number == std::array<char, systemwide::serial_number_length>{"TESTSN6"});
+                    REQUIRE(getsysteminfo.serial_number ==
+                            std::array<char, systemwide::serial_number_length>{
+                                "TESTSN6"});
                 }
             }
         }

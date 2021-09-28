@@ -4,8 +4,8 @@
 #include "catch2/catch.hpp"
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/messages.hpp"
-#include "test/task_builder.hpp"
 #include "systemwide.hpp"
+#include "test/task_builder.hpp"
 
 SCENARIO("usb message parsing") {
     GIVEN("a host_comms_task") {
@@ -332,7 +332,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 auto set_serial_number_message =
                     std::get<messages::SetSerialNumberMessage>(system_message);
                 tasks->get_system_queue().backing_deque.pop_front();
-                std::array<char, systemwide::serial_number_length> Test_SN = {"TESTSN2xxxxxxxxxxxxxxxx"};
+                std::array<char, systemwide::serial_number_length> Test_SN = {
+                    "TESTSN2xxxxxxxxxxxxxxxx"};
                 REQUIRE(set_serial_number_message.serial_number == Test_SN);
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
@@ -709,10 +710,13 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
                 AND_WHEN("sending a good response back to the comms task") {
-                    auto response =
-                        messages::HostCommsMessage(messages::GetSystemInfoResponse{
+                    auto response = messages::HostCommsMessage(
+                        messages::GetSystemInfoResponse{
                             .responding_to_id = get_system_info_message.id,
-                            .serial_number = std::array<char, systemwide::serial_number_length> {"TESTSN8"},
+                            .serial_number =
+                                std::array<char,
+                                           systemwide::serial_number_length>{
+                                    "TESTSN8"},
                             .fw_version = "v1.0.1",
                             .hw_version = "v1.0.1"});
                     tasks->get_host_comms_queue().backing_deque.push_back(
@@ -722,7 +726,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "M115 FW:v1.0.1 HW:v1.0.1 SerialNo:TESTSN8 OK\n"));
+                                                 "M115 FW:v1.0.1 HW:v1.0.1 "
+                                                 "SerialNo:TESTSN8 OK\n"));
                         REQUIRE(written_secondpass == tx_buf.begin() + 45);
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
@@ -730,10 +735,13 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 }
                 AND_WHEN(
                     "sending a response with wrong id back to the comms task") {
-                    auto response =
-                        messages::HostCommsMessage(messages::GetSystemInfoResponse{
+                    auto response = messages::HostCommsMessage(
+                        messages::GetSystemInfoResponse{
                             .responding_to_id = get_system_info_message.id + 1,
-                            .serial_number = std::array<char, systemwide::serial_number_length> {"TESTSN8"},
+                            .serial_number =
+                                std::array<char,
+                                           systemwide::serial_number_length>{
+                                    "TESTSN8"},
                             .fw_version = "v1.0.1",
                             .hw_version = "v1.0.1"});
                     tasks->get_host_comms_queue().backing_deque.push_back(
@@ -754,8 +762,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     "sending a response with wrong message type back to the "
                     "comms task") {
                     auto response = messages::HostCommsMessage(
-                        messages::AcknowledgePrevious{.responding_to_id =
-                                                          get_system_info_message.id});
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = get_system_info_message.id});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
