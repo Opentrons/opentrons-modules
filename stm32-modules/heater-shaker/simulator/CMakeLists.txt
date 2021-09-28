@@ -4,6 +4,7 @@ add_executable(heater-shaker-simulator
   motor_thread.cpp
   heater_thread.cpp
   system_thread.cpp
+  cli_parser.cpp
   main.cpp)
 
 target_link_libraries(heater-shaker-simulator PRIVATE heater-shaker-core Boost::boost Boost::program_options pthread)
