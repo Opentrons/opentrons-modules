@@ -21,6 +21,7 @@
 #include "heater-shaker/gcode_parser.hpp"
 #include "heater-shaker/utility.hpp"
 #include "systemwide.hpp"
+#include "heater-shaker/errors.hpp"
 
 namespace gcode {
 
@@ -623,6 +624,7 @@ struct SetSerialNumber {
     static constexpr const char* response = "M996 OK\n";
     static constexpr std::size_t serial_number_length = systemwide::serial_number_length;
     std::array<char, serial_number_length> serial_number = {};
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -651,17 +653,20 @@ struct SetSerialNumber {
                 found = true;
             }
         }
-        if (((after - working) > 0) &&
-            ((after - working) < static_cast<int>(serial_number_length))) {
+        if (((after - working) > 0) && ((after - working) < static_cast<int>(serial_number_length))) {
             // utilize utility or create one to construct and transfer SN from
             // gcode string. No parsing needed make constructor that takes
             // iterator pair (start and length). Copy in data in-line (strcpy)
             std::array<char, serial_number_length> serial_number_res = {};
             std::copy(working, (working + (after - working)),
-                      serial_number_res.begin());
+                    serial_number_res.begin());
             return std::make_pair(ParseResult(SetSerialNumber{
-                                      .serial_number = serial_number_res}),
-                                  after);
+                                    .serial_number = serial_number_res}),
+                                after);
+        } else if (((after - working) > 0) && ((after - working) >= static_cast<int>(serial_number_length))) {
+            return std::make_pair(ParseResult(SetSerialNumber{
+                                    .with_error = errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID}),
+                                input);
         } else {
             return std::make_pair(ParseResult(), input);
         }

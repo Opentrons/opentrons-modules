@@ -398,6 +398,11 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
+        if (gcode.with_error == errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID));
+        }
         auto message = messages::SetSerialNumberMessage{
             .id = id, .serial_number = gcode.serial_number};
         if (!task_registry->system->get_message_queue().try_send(
