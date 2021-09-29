@@ -15,6 +15,14 @@
 using namespace system_thread;
 
 struct SimSystemPolicy {
+  private:
+    bool serial_number_set = false;
+    static constexpr std::size_t SYSTEM_SERIAL_NUMBER_LENGTH =
+        systemwide::SERIAL_NUMBER_LENGTH;
+    std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number = {};
+    errors::ErrorCode set_serial_number_return = errors::ErrorCode::NO_ERROR;
+
+  public:
     auto enter_bootloader() -> void { std::terminate(); }
 
     auto set_serial_number(
@@ -39,13 +47,6 @@ struct SimSystemPolicy {
             return empty_serial_number;
         }
     }
-
-  private:
-    bool serial_number_set = false;
-    static constexpr std::size_t SYSTEM_SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
-    std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number = {};
-    errors::ErrorCode set_serial_number_return = errors::ErrorCode::NO_ERROR;
 };
 
 struct system_thread::TaskControlBlock {

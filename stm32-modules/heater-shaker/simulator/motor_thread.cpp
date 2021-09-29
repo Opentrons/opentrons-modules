@@ -52,40 +52,40 @@ struct SimMotorPolicy {
     auto delay_ticks(uint16_t ticks) -> void { static_cast<void>(ticks); }
 
     auto plate_lock_set_power(float power) -> void {
-        plate_lock_power = power;
-        plate_lock_enabled = true;
-        plate_lock_braked = false;
+        sim_plate_lock_power = power;
+        sim_plate_lock_enabled = true;
+        sim_plate_lock_braked = false;
     }
 
     auto plate_lock_disable() -> void {
-        plate_lock_enabled = false;
-        plate_lock_power = 0.0;
+        sim_plate_lock_enabled = false;
+        sim_plate_lock_power = 0.0;
     }
 
-    auto plate_lock_get_power() const -> float { return plate_lock_power; }
+    auto plate_lock_get_power() const -> float { return sim_plate_lock_power; }
 
-    auto plate_lock_enabled() const -> bool { return plate_lock_enabled; }
+    auto plate_lock_enabled() const -> bool { return sim_plate_lock_enabled; }
 
     auto plate_lock_brake() -> void {
-        plate_lock_braked = true;
-        plate_lock_power = 0.0;
+        sim_plate_lock_braked = true;
+        sim_plate_lock_power = 0.0;
     }
 
-    auto plate_lock_braked() const -> bool { return plate_lock_braked; }
+    auto plate_lock_braked() const -> bool { return sim_plate_lock_braked; }
 
     auto plate_lock_open_sensor_read() const -> bool {
-        if (!plate_lock_braked) {
+        if (!sim_plate_lock_braked) {
             return false;
         } else {
-            return plate_lock_power < 0.0 ? true : false;
+            return sim_plate_lock_power < 0.0 ? true : false;
         }
     }
 
     auto plate_lock_closed_sensor_read() const -> bool {
-        if (!plate_lock_braked) {
+        if (!sim_plate_lock_braked) {
             return false;
         } else {
-            return plate_lock_power > 0.0 ? true : false;
+            return sim_plate_lock_power > 0.0 ? true : false;
         }
     }
 
@@ -93,9 +93,9 @@ struct SimMotorPolicy {
     int16_t rpm_setpoint = 0;
     int16_t rpm_current = 0;
     int32_t ramp_rate = DEFAULT_RAMP_RATE_RPM_PER_S;
-    float plate_lock_power = 0;
-    bool plate_lock_enabled = false;
-    bool plate_lock_braked = false;
+    float sim_plate_lock_power = 0;
+    bool sim_plate_lock_enabled = false;
+    bool sim_plate_lock_braked = false;
 };
 
 struct motor_thread::TaskControlBlock {
