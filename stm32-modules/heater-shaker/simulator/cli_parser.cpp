@@ -1,6 +1,8 @@
 #include "simulator/cli_parser.hpp"
 #include <boost/program_options.hpp>
 #include <iostream>
+#include "simulator/sim_driver.hpp"
+
 
 using namespace cli_parser;
 
@@ -22,7 +24,7 @@ void neither_driver_error(boost::program_options::options_description desc) {
     exit(1);
 }
 
-cli_parser::SimType cli_parser::get_sim_type(int num_args, char *args[]) {
+sim_driver::SimDriver* cli_parser::get_sim_driver(int num_args, char *args[]) {
     bool use_stdin = false;
     bool use_socket = false;
     bool options_specified = num_args > 1;
@@ -51,11 +53,12 @@ cli_parser::SimType cli_parser::get_sim_type(int num_args, char *args[]) {
     if (num_args <= 1) { no_options_specified_error(desc); }
     if (use_stdin && use_socket) { both_drivers_specified_error(desc); }
 
-    cli_parser::SimType sim_type;
+    sim_driver::SimDriver* sim_driver;
 
-    if (use_stdin) { sim_type = STDIN; }
-    else if (use_socket) { sim_type = SOCKET; }
-    else { neither_driver_error(); }
+    if (use_stdin) { sim_driver = new sim_driver::StdinSimDriver(); }
+    else if (use_socket) { sim_driver = new sim_driver::SocketSimDriver(vm["socket"].as<std::string>()); }
+    else { neither_driver_error(desc); }
 
-    return sim_type;
+    return sim_driver;
+
 }
