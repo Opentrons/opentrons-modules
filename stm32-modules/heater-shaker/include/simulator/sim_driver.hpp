@@ -2,6 +2,7 @@
 #include "heater-shaker/host_comms_task.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "simulator/simulator_queue.hpp"
 
 
 namespace sim_driver {
@@ -13,7 +14,7 @@ namespace sim_driver {
         public:
             virtual std::string get_name() = 0;
             virtual void write() = 0;
-            virtual std::string read() = 0;
+            virtual void read(tasks::Tasks<SimulatorMessageQueue>& tasks) = 0;
     };
 
     class SocketSimDriver: public SimDriver {
@@ -27,7 +28,7 @@ namespace sim_driver {
             int get_port();
             std::string get_name();
             void write();
-            std::string read();
+            void read(tasks::Tasks<SimulatorMessageQueue>& tasks);
     };
 
     class StdinSimDriver: public SimDriver {
@@ -36,6 +37,6 @@ namespace sim_driver {
             StdinSimDriver();
             std::string get_name();
             void write();
-            std::string read();
+            void read(tasks::Tasks<SimulatorMessageQueue>& tasks);
     };
 }
