@@ -48,6 +48,10 @@ const char* const HEATER_HARDWARE_ERROR_LATCH =
     "ERR211:heater:hardware error latch set\n";
 const char* const HEATER_CONSTANT_OUT_OF_RANGE =
     "ERR212:heater:control constant out of range\n";
+const char* const SYSTEM_SERIAL_NUMBER_INVALID =
+    "ERR301:system:serial number invalid format\n";
+const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
+    "ERR302:system:HAL error, busy, or timeout\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -89,6 +93,8 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(HEATER_THERMISTOR_BOARD_DISCONNECTED);
         HANDLE_CASE(HEATER_HARDWARE_ERROR_LATCH);
         HANDLE_CASE(HEATER_CONSTANT_OUT_OF_RANGE);
+        HANDLE_CASE(SYSTEM_SERIAL_NUMBER_INVALID);
+        HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
     }
     return UNKNOWN_ERROR;
 }

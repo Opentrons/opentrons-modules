@@ -1,6 +1,7 @@
 #include "catch2/catch.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/system_task.hpp"
+#include "systemwide.hpp"
 #include "test/task_builder.hpp"
 
 SCENARIO("system task message passing") {
@@ -82,6 +83,71 @@ SCENARIO("system task message passing") {
 
                     tasks->run_system_task();
                     REQUIRE(tasks->get_system_policy().bootloader_entered());
+                }
+            }
+        }
+
+        WHEN("sending a set-serial-number message as if from the host comms") {
+            auto message = messages::SetSerialNumberMessage{
+                .id = 123,
+                .serial_number =
+                    std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
+                        "TESTSN4"}};
+            tasks->get_system_queue().backing_deque.push_back(
+                messages::SystemMessage(message));
+            tasks->get_system_task().run_once(tasks->get_system_policy());
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_system_queue().backing_deque.empty());
+                AND_THEN("the task should set the serial number") {
+                    REQUIRE(tasks->get_system_policy().get_serial_number() ==
+                            std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
+                                "TESTSN4"});
+                }
+                AND_THEN(
+                    "the task should respond to the message to the host "
+                    "comms") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(tasks->get_system_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto ack =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(ack.responding_to_id == message.id);
+                }
+            }
+        }
+
+        WHEN("sending a get-system-info message as if from the host comms") {
+            auto message = messages::GetSystemInfoMessage{.id = 123};
+            tasks->get_system_queue().backing_deque.push_back(
+                messages::SystemMessage(message));
+            tasks->get_system_policy().set_serial_number(
+                std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{"TESTSN6"});
+            tasks->get_system_task().run_once(tasks->get_system_policy());
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_system_queue().backing_deque.empty());
+                AND_THEN(
+                    "the task should respond to the message to the host "
+                    "comms") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::GetSystemInfoResponse>(
+                            response));
+                    auto getsysteminfo =
+                        std::get<messages::GetSystemInfoResponse>(response);
+                    REQUIRE(getsysteminfo.responding_to_id == message.id);
+                    REQUIRE(getsysteminfo.serial_number ==
+                            std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
+                                "TESTSN6"});
                 }
             }
         }
