@@ -32,22 +32,21 @@ void sim_driver::SocketSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& task
             boost::asio::ip::address::from_string(this->host), this->port);
     boost::system::error_code ec;
     mysocket.connect(endpoint, ec);
-    if (ec) {
-
-    }
+    if (ec) { };
 
     char pBuff[30];
     boost::asio::mutable_buffer buff(pBuff, sizeof(pBuff));
-    std::string tot;
+    std::string read_data;
+    std::size_t l;
 
-    std::size_t l = mysocket.read_some(buff);
-    while (l > 0) {
-        tot.append(static_cast<const char*>(buff.data()), l);
+    do {
+        std::size_t l = mysocket.read_some(buff);
+        read_data.append(static_cast<const char*>(buff.data()), l);
 
-        std::size_t pos = tot.find("\n");
+        std::size_t pos = read_data.find("\n");
         while (pos != std::string::npos) {
             auto linebuf = std::string(1024, 'c');
-            std::string msg = tot.substr(0, pos + 1);
+            std::string msg = read_data.substr(0, pos + 1);
 
             linebuf.replace(0, msg.length(), msg);
             std::cout << linebuf.data() << std::endl;
@@ -56,11 +55,11 @@ void sim_driver::SocketSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& task
             auto message = messages::IncomingMessageFromHost(linebuf.data(), linebuf.data() + msg.size());
             static_cast<void>(tasks.comms->get_message_queue().try_send(message));
 
-            tot.erase(0, pos+1);
-            pos = tot.find("\n");
+            read_data.erase(0, pos+1);
+            pos = read_data.find("\n");
         }
         l = mysocket.read_some(buff);
-    }
+    } while (l > 0);
 }
 
 sim_driver::StdinSimDriver::StdinSimDriver() { }
