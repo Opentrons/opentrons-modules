@@ -5,6 +5,7 @@
 #include <variant>
 
 #include "heater-shaker/errors.hpp"
+#include "systemwide.hpp"
 
 namespace messages {
 
@@ -61,6 +62,10 @@ struct GetRPMMessage {
     uint32_t id;
 };
 
+struct GetSystemInfoMessage {
+    uint32_t id;
+};
+
 struct SetAccelerationMessage {
     uint32_t id;
     int32_t rpm_per_s;
@@ -87,6 +92,13 @@ struct SetPIDConstantsMessage {
 struct SetPowerTestMessage {
     uint32_t id;
     double power;
+};
+
+struct SetSerialNumberMessage {
+    uint32_t id;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        systemwide::SERIAL_NUMBER_LENGTH;
+    std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
 };
 
 struct EnterBootloaderMessage {
@@ -174,6 +186,15 @@ struct GetRPMResponse {
     int16_t setpoint_rpm;
 };
 
+struct GetSystemInfoResponse {
+    uint32_t responding_to_id;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        systemwide::SERIAL_NUMBER_LENGTH;
+    std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
+    const char* fw_version;
+    const char* hw_version;
+};
+
 struct GetPlateLockStateResponse {
     uint32_t responding_to_id;
     static constexpr std::size_t state_length = 14;
@@ -209,10 +230,12 @@ using MotorMessage = ::std::variant<
     ClosePlateLockMessage, SetPIDConstantsMessage, PlateLockComplete,
     GetPlateLockStateMessage, GetPlateLockStateDebugMessage>;
 using SystemMessage =
-    ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious>;
+    ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
+                   SetSerialNumberMessage, GetSystemInfoMessage>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,
                    GetTemperatureDebugResponse, ForceUSBDisconnectMessage,
-                   GetPlateLockStateResponse, GetPlateLockStateDebugResponse>;
+                   GetPlateLockStateResponse, GetPlateLockStateDebugResponse,
+                   GetSystemInfoResponse>;
 };  // namespace messages

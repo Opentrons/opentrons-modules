@@ -10,6 +10,8 @@
 #include "heater-shaker/ack_cache.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "heater-shaker/version.hpp"
+#include "systemwide.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>
@@ -21,6 +23,13 @@ namespace system_task {
 template <typename Policy>
 concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.enter_bootloader()};
+    {
+        p.set_serial_number(std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
+            "TESTSNXxxxxxxxxxxxxxxxx"})
+        } -> std::same_as<errors::ErrorCode>;
+    {
+        p.get_serial_number()
+        } -> std::same_as<std::array<char, systemwide::SERIAL_NUMBER_LENGTH>>;
 };
 
 using Message = messages::SystemMessage;
@@ -140,6 +149,28 @@ class SystemTask {
         if (prep_cache.empty()) {
             policy.enter_bootloader();
         }
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::SetSerialNumberMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        response.with_error = policy.set_serial_number(msg.serial_number);
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::GetSystemInfoMessage& msg,
+                       Policy& policy) -> void {
+        auto response = messages::GetSystemInfoResponse{
+            .responding_to_id = msg.id,
+            .serial_number = policy.get_serial_number(),
+            .fw_version = version::fw_version(),
+            .hw_version = version::hw_version()};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
     }
 
     template <typename Policy>

@@ -41,19 +41,22 @@ class HostCommsTask {
         gcode::SetRPM, gcode::SetTemperature, gcode::GetRPM,
         gcode::GetTemperature, gcode::SetAcceleration,
         gcode::GetTemperatureDebug, gcode::SetPIDConstants,
-        gcode::SetHeaterPowerTest, gcode::EnterBootloader, gcode::GetVersion,
-        gcode::Home, gcode::ActuateSolenoid, gcode::DebugControlPlateLockMotor,
-        gcode::OpenPlateLock, gcode::ClosePlateLock, gcode::GetPlateLockState,
+        gcode::SetHeaterPowerTest, gcode::EnterBootloader, gcode::GetSystemInfo,
+        gcode::SetSerialNumber, gcode::Home, gcode::ActuateSolenoid,
+        gcode::DebugControlPlateLockMotor, gcode::OpenPlateLock,
+        gcode::ClosePlateLock, gcode::GetPlateLockState,
         gcode::GetPlateLockStateDebug>;
     using AckOnlyCache =
         AckCache<8, gcode::SetRPM, gcode::SetTemperature,
                  gcode::SetAcceleration, gcode::SetPIDConstants,
                  gcode::SetHeaterPowerTest, gcode::EnterBootloader, gcode::Home,
                  gcode::ActuateSolenoid, gcode::DebugControlPlateLockMotor,
-                 gcode::OpenPlateLock, gcode::ClosePlateLock>;
+                 gcode::OpenPlateLock, gcode::ClosePlateLock,
+                 gcode::SetSerialNumber>;
     using GetTempCache = AckCache<8, gcode::GetTemperature>;
     using GetTempDebugCache = AckCache<8, gcode::GetTemperatureDebug>;
     using GetRPMCache = AckCache<8, gcode::GetRPM>;
+    using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetPlateLockStateCache = AckCache<8, gcode::GetPlateLockState>;
     using GetPlateLockStateDebugCache =
         AckCache<8, gcode::GetPlateLockStateDebug>;
@@ -72,6 +75,8 @@ class HostCommsTask {
           get_rpm_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_temp_debug_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_system_info_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_plate_lock_state_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
@@ -318,6 +323,29 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetSystemInfoResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            get_system_info_cache.remove_if_present(response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.serial_number,
+                        response.fw_version, response.hw_version);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetPlateLockStateResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
         auto cache_entry = get_plate_lock_state_cache.remove_if_present(
@@ -396,12 +424,53 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_gcode(const gcode::GetVersion& ignore, InputIt tx_into,
+    auto visit_gcode(const gcode::GetSystemInfo& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
-        static_cast<void>(ignore);
-        auto written = gcode::GetVersion::write_response_into(
-            tx_into, tx_limit, version::fw_version(), version::hw_version());
-        return std::make_pair(true, written);
+        auto id = get_system_info_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetSystemInfoMessage{.id = id};
+        if (!task_registry->system->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_system_info_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetSerialNumber& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        if (gcode.with_error ==
+            errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID) {
+            return std::make_pair(
+                false, errors::write_into(
+                           tx_into, tx_limit,
+                           errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID));
+        }
+        auto message = messages::SetSerialNumberMessage{
+            .id = id, .serial_number = gcode.serial_number};
+        if (!task_registry->system->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
     }
 
     template <typename InputIt, typename InputLimit>
@@ -805,6 +874,7 @@ class HostCommsTask {
     GetTempCache get_temp_cache;
     GetRPMCache get_rpm_cache;
     GetTempDebugCache get_temp_debug_cache;
+    GetSystemInfoCache get_system_info_cache;
     GetPlateLockStateCache get_plate_lock_state_cache;
     GetPlateLockStateDebugCache get_plate_lock_state_debug_cache;
     bool may_connect_latch = true;
