@@ -77,6 +77,11 @@ struct TemperatureConversionComplete {
     uint16_t board;
 };
 
+struct PlateLockComplete {
+    bool open;
+    bool closed;
+};
+
 struct SetPIDConstantsMessage {
     uint32_t id;
     double kp;
@@ -131,6 +136,22 @@ struct SetPlateLockPowerMessage {
     float power;
 };
 
+struct OpenPlateLockMessage {
+    uint32_t id;
+};
+
+struct ClosePlateLockMessage {
+    uint32_t id;
+};
+
+struct GetPlateLockStateMessage {
+    uint32_t id;
+};
+
+struct GetPlateLockStateDebugMessage {
+    uint32_t id;
+};
+
 /*
 ** Response structs either confirm actions or fulfill actions. Because some
 *messages
@@ -174,6 +195,20 @@ struct GetSystemInfoResponse {
     const char* hw_version;
 };
 
+struct GetPlateLockStateResponse {
+    uint32_t responding_to_id;
+    static constexpr std::size_t state_length = 14;
+    std::array<char, state_length> plate_lock_state;
+};
+
+struct GetPlateLockStateDebugResponse {
+    uint32_t responding_to_id;
+    static constexpr std::size_t state_length = 14;
+    std::array<char, state_length> plate_lock_state;
+    bool plate_lock_open_state;
+    bool plate_lock_closed_state;
+};
+
 struct AcknowledgePrevious {
     uint32_t responding_to_id;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
@@ -191,7 +226,9 @@ using HeaterMessage =
 using MotorMessage = ::std::variant<
     std::monostate, MotorSystemErrorMessage, SetRPMMessage, GetRPMMessage,
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,
-    ActuateSolenoidMessage, SetPlateLockPowerMessage, SetPIDConstantsMessage>;
+    ActuateSolenoidMessage, SetPlateLockPowerMessage, OpenPlateLockMessage,
+    ClosePlateLockMessage, SetPIDConstantsMessage, PlateLockComplete,
+    GetPlateLockStateMessage, GetPlateLockStateDebugMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage>;
@@ -199,5 +236,6 @@ using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,
                    GetTemperatureDebugResponse, ForceUSBDisconnectMessage,
+                   GetPlateLockStateResponse, GetPlateLockStateDebugResponse,
                    GetSystemInfoResponse>;
 };  // namespace messages
