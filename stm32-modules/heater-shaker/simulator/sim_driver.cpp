@@ -28,8 +28,7 @@ void sim_driver::SocketSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& task
     boost::asio::io_service io_context;
 
     boost::asio::ip::tcp::socket mysocket(io_context);
-    boost::asio::ip::tcp::endpoint endpoint(
-            boost::asio::ip::address::from_string(this->host), this->port);
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(this->host), this->port);
     boost::system::error_code ec;
     mysocket.connect(endpoint, ec);
     if (ec) { };
@@ -42,15 +41,14 @@ void sim_driver::SocketSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& task
     do {
         std::size_t l = mysocket.read_some(buff);
         read_data.append(static_cast<const char*>(buff.data()), l);
-
+        auto linebuf = std::string(1024, 'c');
         std::size_t pos = read_data.find("\n");
+
         while (pos != std::string::npos) {
-            auto linebuf = std::string(1024, 'c');
+
             std::string msg = read_data.substr(0, pos + 1);
 
             linebuf.replace(0, msg.length(), msg);
-            std::cout << linebuf.data() << std::endl;
-            std::cout << linebuf.data() + msg.size() << std::endl;
 
             auto message = messages::IncomingMessageFromHost(linebuf.data(), linebuf.data() + msg.size());
             static_cast<void>(tasks.comms->get_message_queue().try_send(message));
@@ -74,8 +72,6 @@ void sim_driver::StdinSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& tasks
         auto wrote_to = std::cin.gcount();
 
         linebuf->at(wrote_to - 1) = '\n';
-        std::cout << linebuf->data() << std::endl;
-        std::cout << linebuf->data() + wrote_to << std::endl;
         auto message = messages::IncomingMessageFromHost(linebuf->data(), linebuf->data() + wrote_to);
         static_cast<void>(tasks.comms->get_message_queue().try_send(message));
     }
