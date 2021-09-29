@@ -75,10 +75,12 @@ auto TestMotorPolicy::delay_ticks(uint16_t ticks) -> void {
 auto TestMotorPolicy::plate_lock_set_power(float power) -> void {
     plate_lock_power = power;
     plate_lock_enabled = true;
+    plate_lock_braked = false;
 }
 
 auto TestMotorPolicy::plate_lock_disable() -> void {
     plate_lock_enabled = false;
+    plate_lock_power = 0.0;
 }
 
 auto TestMotorPolicy::test_plate_lock_get_power() const -> float {
@@ -89,7 +91,10 @@ auto TestMotorPolicy::test_plate_lock_enabled() const -> bool {
     return plate_lock_enabled;
 }
 
-auto TestMotorPolicy::plate_lock_brake() -> void { plate_lock_braked = true; }
+auto TestMotorPolicy::plate_lock_brake() -> void {
+    plate_lock_braked = true;
+    plate_lock_power = 0.0;
+}
 
 auto TestMotorPolicy::test_plate_lock_braked() const -> bool {
     return plate_lock_braked;

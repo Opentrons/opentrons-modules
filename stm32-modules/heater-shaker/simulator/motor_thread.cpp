@@ -51,14 +51,51 @@ struct SimMotorPolicy {
 
     auto delay_ticks(uint16_t ticks) -> void { static_cast<void>(ticks); }
 
-    auto plate_lock_set_power(float power) -> void { static_cast<void>(power); }
+    auto plate_lock_set_power(float power) -> void {
+        sim_plate_lock_power = power;
+        sim_plate_lock_enabled = true;
+        sim_plate_lock_braked = false;
+    }
 
-    auto plate_lock_disable() -> void {}
+    auto plate_lock_disable() -> void {
+        sim_plate_lock_enabled = false;
+        sim_plate_lock_power = 0.0;
+    }
+
+    auto plate_lock_get_power() const -> float { return sim_plate_lock_power; }
+
+    auto plate_lock_enabled() const -> bool { return sim_plate_lock_enabled; }
+
+    auto plate_lock_brake() -> void {
+        sim_plate_lock_braked = true;
+        sim_plate_lock_power = 0.0;
+    }
+
+    auto plate_lock_braked() const -> bool { return sim_plate_lock_braked; }
+
+    auto plate_lock_open_sensor_read() const -> bool {
+        if (!sim_plate_lock_braked) {
+            return false;
+        } else {
+            return sim_plate_lock_power < 0.0 ? true : false;
+        }
+    }
+
+    auto plate_lock_closed_sensor_read() const -> bool {
+        if (!sim_plate_lock_braked) {
+            return false;
+        } else {
+            return sim_plate_lock_power > 0.0 ? true : false;
+        }
+    }
 
   private:
     int16_t rpm_setpoint = 0;
     int16_t rpm_current = 0;
     int32_t ramp_rate = DEFAULT_RAMP_RATE_RPM_PER_S;
+    float sim_plate_lock_power = 0;
+    bool sim_plate_lock_enabled = false;
+    bool sim_plate_lock_braked = false;
 };
 
 struct motor_thread::TaskControlBlock {
