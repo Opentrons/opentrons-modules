@@ -1,13 +1,23 @@
 find_package(Boost 1.71.0)
-add_executable(heater-shaker-simulator
-  comm_thread.cpp
-  motor_thread.cpp
-  heater_thread.cpp
-  system_thread.cpp
-  cli_parser.cpp
-  main.cpp)
+add_executable(
+        heater-shaker-simulator
+        comm_thread.cpp
+        motor_thread.cpp
+        heater_thread.cpp
+        system_thread.cpp
+        cli_parser.cpp
+        main.cpp
+        sim_driver.cpp
+)
 
-target_link_libraries(heater-shaker-simulator PRIVATE heater-shaker-core Boost::boost Boost::program_options pthread)
+target_link_libraries(
+        heater-shaker-simulator
+        PRIVATE
+        heater-shaker-core
+        Boost::boost
+        Boost::program_options
+        pthread
+)
 target_include_directories(heater-shaker-simulator PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 
