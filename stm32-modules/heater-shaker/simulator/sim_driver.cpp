@@ -44,15 +44,20 @@ void sim_driver::SocketSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& task
     while (l > 0) {
         tot.append(static_cast<const char*>(buff.data()), l);
 
-        std::size_t pos = tot.find("\r");
+        std::size_t pos = tot.find("\n");
         while (pos != std::string::npos) {
-            std::string msg = tot.substr(0, pos);
-            tot.erase(0, pos+1);
-            auto c_string = msg.c_str();
+            auto linebuf = std::string(1024, 'c');
+            std::string msg = tot.substr(0, pos + 1);
 
-            auto message = messages::IncomingMessageFromHost((c_string, c_string + msg.size()));
+            linebuf.replace(0, msg.length(), msg);
+            std::cout << linebuf.data() << std::endl;
+            std::cout << linebuf.data() + msg.size() << std::endl;
+
+            auto message = messages::IncomingMessageFromHost(linebuf.data(), linebuf.data() + msg.size());
             static_cast<void>(tasks.comms->get_message_queue().try_send(message));
-            pos = tot.find("\r");
+
+            tot.erase(0, pos+1);
+            pos = tot.find("\n");
         }
         l = mysocket.read_some(buff);
     }
@@ -70,7 +75,8 @@ void sim_driver::StdinSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& tasks
         auto wrote_to = std::cin.gcount();
 
         linebuf->at(wrote_to - 1) = '\n';
-
+        std::cout << linebuf->data() << std::endl;
+        std::cout << linebuf->data() + wrote_to << std::endl;
         auto message = messages::IncomingMessageFromHost(linebuf->data(), linebuf->data() + wrote_to);
         static_cast<void>(tasks.comms->get_message_queue().try_send(message));
     }
