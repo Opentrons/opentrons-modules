@@ -5,19 +5,19 @@
 using namespace cli_parser;
 
 void no_options_specified_error(boost::program_options::options_description desc) {
-    std::cout << std::endl << "ERROR: You must provide either the --stdin OR the --socket option." << std::endl << std::endl;
+    std::cerr << std::endl << "ERROR: You must provide either the --stdin OR the --socket option." << std::endl << std::endl;
     std::cout << desc << std::endl;
     exit(1);
 }
 
 void both_drivers_specified_error(boost::program_options::options_description desc) {
-    std::cout << std::endl << "ERROR: You may only provide either the --stdin OR the --socket option, not both." << std::endl << std::endl;
+    std::cerr << std::endl << "ERROR: You may only provide either the --stdin OR the --socket option, not both." << std::endl << std::endl;
     std::cout << desc << std::endl;
     exit(1);
 }
 
 void neither_driver_error(boost::program_options::options_description desc) {
-    std::cout << std::endl << "ERROR: Neither --socket or --stdin was specified";
+    std::cerr << std::endl << "ERROR: Neither --socket or --stdin was specified";
     std::cout << desc << std::endl;
     exit(1);
 }
