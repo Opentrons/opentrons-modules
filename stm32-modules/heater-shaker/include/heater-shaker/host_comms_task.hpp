@@ -43,14 +43,16 @@ class HostCommsTask {
         gcode::GetTemperatureDebug, gcode::SetPIDConstants,
         gcode::SetHeaterPowerTest, gcode::EnterBootloader, gcode::GetSystemInfo,
         gcode::SetSerialNumber, gcode::Home, gcode::ActuateSolenoid,
-        gcode::DebugControlPlateLockMotor, gcode::OpenPlateLock, gcode::ClosePlateLock,
-        gcode::GetPlateLockState, gcode::GetPlateLockStateDebug>;
+        gcode::DebugControlPlateLockMotor, gcode::OpenPlateLock,
+        gcode::ClosePlateLock, gcode::GetPlateLockState,
+        gcode::GetPlateLockStateDebug>;
     using AckOnlyCache =
         AckCache<8, gcode::SetRPM, gcode::SetTemperature,
                  gcode::SetAcceleration, gcode::SetPIDConstants,
                  gcode::SetHeaterPowerTest, gcode::EnterBootloader, gcode::Home,
                  gcode::ActuateSolenoid, gcode::DebugControlPlateLockMotor,
-                 gcode::OpenPlateLock, gcode::ClosePlateLock, gcode::SetSerialNumber>;
+                 gcode::OpenPlateLock, gcode::ClosePlateLock,
+                 gcode::SetSerialNumber>;
     using GetTempCache = AckCache<8, gcode::GetTemperature>;
     using GetTempDebugCache = AckCache<8, gcode::GetTemperatureDebug>;
     using GetRPMCache = AckCache<8, gcode::GetRPM>;
@@ -340,7 +342,7 @@ class HostCommsTask {
             },
             cache_entry);
     }
-    
+
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>

@@ -396,7 +396,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 }
             }
         }
-  
+
         WHEN("sending an open-platelock") {
             auto message_text = std::string("M242\n");
             auto message_obj =
@@ -859,7 +859,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 }
             }
         }
-  
+
         WHEN("sending a get-platelock-state-debug") {
             auto message_text = std::string("M241.D\n");
             auto message_obj =
