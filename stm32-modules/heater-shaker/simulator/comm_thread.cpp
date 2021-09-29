@@ -23,7 +23,6 @@ struct comm_thread::TaskControlBlock {
 };
 
 auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
-    std::cout << "Running" << std::endl;
     tcb->queue.set_stop_token(st);
     std::string buffer(1024, 'c');
     while (!st.stop_requested()) {

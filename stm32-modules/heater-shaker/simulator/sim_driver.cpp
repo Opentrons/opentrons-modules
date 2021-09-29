@@ -48,10 +48,9 @@ void sim_driver::SocketSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& task
         while (pos != std::string::npos) {
             std::string msg = tot.substr(0, pos);
             tot.erase(0, pos+1);
-            std::cout << "Sending " << msg << " to queue" << std::endl;
             auto c_string = msg.c_str();
 
-            auto message = messages::IncomingMessageFromHost(c_string, msg.c_str());
+            auto message = messages::IncomingMessageFromHost((c_string, c_string + msg.size()));
             static_cast<void>(tasks.comms->get_message_queue().try_send(message));
             pos = tot.find("\r");
         }
@@ -69,9 +68,10 @@ void sim_driver::StdinSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& tasks
             return;
         }
         auto wrote_to = std::cin.gcount();
+
         linebuf->at(wrote_to - 1) = '\n';
-        auto message = messages::IncomingMessageFromHost(
-                linebuf->data(), linebuf->data() + wrote_to);
+
+        auto message = messages::IncomingMessageFromHost(linebuf->data(), linebuf->data() + wrote_to);
         static_cast<void>(tasks.comms->get_message_queue().try_send(message));
     }
 }
