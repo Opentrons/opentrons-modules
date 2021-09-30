@@ -19,7 +19,7 @@ auto SystemPolicy::enter_bootloader() -> void {
 auto SystemPolicy::set_serial_number(
     std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number)
     -> errors::ErrorCode {
-    uint64_t to_write_arr [3];
+    uint64_t to_write_arr[3];
     // convert bytes to uint64_t for system_set_serial_number
     // write to 8 chars to each of first 3 addresses on last page of flash
     for (uint8_t address = 0; address < ADDRESSES; address++) {
@@ -30,7 +30,7 @@ auto SystemPolicy::set_serial_number(
              input != limit && byte_index >= 0; input++, byte_index--) {
             to_write |= (static_cast<uint64_t>(*input) << (byte_index * 8));
         }
-        to_write_arr [address] = to_write;
+        to_write_arr[address] = to_write;
     }
     if (!system_set_serial_number(to_write_arr)) {
         return errors::ErrorCode::SYSTEM_SERIAL_NUMBER_HAL_ERROR;
