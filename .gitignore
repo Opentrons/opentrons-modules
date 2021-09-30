@@ -132,3 +132,6 @@ build-stm32-host/
 
 # Custom CMake Config
 /CMakeUserPresets.json
+
+# Clion Config
+.idea*
