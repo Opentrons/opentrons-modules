@@ -1,17 +1,16 @@
 #include "simulator/comm_thread.hpp"
 
+#include <boost/asio.hpp>
 #include <iostream>
 #include <memory>
 #include <stop_token>
 #include <string_view>
 #include <thread>
-#include <boost/asio.hpp>
 
 #include "heater-shaker/host_comms_task.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
 #include "simulator/sim_driver.hpp"
-
 
 using namespace comm_thread;
 
@@ -41,6 +40,7 @@ auto comm_thread::build()
     return tasks::Task{std::make_unique<std::jthread>(run, tcb), &tcb->task};
 }
 
-void comm_thread::handle_input(sim_driver::SimDriver* driver, tasks::Tasks<SimulatorMessageQueue>& tasks){
+void comm_thread::handle_input(sim_driver::SimDriver* driver,
+                               tasks::Tasks<SimulatorMessageQueue>& tasks) {
     driver->read(tasks);
 }
