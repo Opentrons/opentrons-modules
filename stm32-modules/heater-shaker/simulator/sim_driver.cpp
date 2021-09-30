@@ -34,7 +34,7 @@ auto get_socket(std::string host, int port){
     boost::asio::ip::tcp::socket socket(io_context);
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(host), port);
     boost::system::error_code ec;
-    socket.connect(endpoint, ec);
+    socket.connect(endpoint, ec);  // TODO: Change this to socket.bind - Derek Maggio 9/30/21
     if (ec) {
         std::cerr << "Failed to create socket: " << ec.category().name() << ": " << ec.value() << std::endl;
         exit(ec.value());
@@ -49,6 +49,11 @@ void sim_driver::SocketSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& task
     boost::asio::mutable_buffer buff(pBuff, sizeof(pBuff));
     std::string read_data;
 
+    /*
+     * TODO: This algorithm starts dropping G-Codes if they are sent faster than once every 0.005 seconds.
+     * Need to handle that
+     * Derek Maggio 9/30/21
+     */
     std::size_t l = socket.read_some(buff);
     while (l > 0) {
 
