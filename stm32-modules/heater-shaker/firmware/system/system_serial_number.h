@@ -8,7 +8,11 @@ extern "C" {
 #include <stdbool.h>
 #include <stddef.h>
 
-bool system_set_serial_number(uint64_t *to_write);
+struct writable_serial {
+    uint64_t contents[3];
+};
+
+bool system_set_serial_number(struct writable_serial* to_write);
 
 uint64_t system_get_serial_number(uint8_t address);
 
