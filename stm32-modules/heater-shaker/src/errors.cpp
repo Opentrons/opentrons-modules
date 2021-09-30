@@ -25,6 +25,7 @@ const char* const MOTOR_ILLEGAL_SPEED = "ERR120:main motor:illegal speed\n";
 const char* const MOTOR_ILLEGAL_RAMP_RATE =
     "ERR121:main motor:illegal ramp rate\n";
 const char* const MOTOR_BAD_HOME = "ERR122:main motor:bad home\n";
+const char* const MOTOR_NOT_HOME = "ERR123:main motor:not home (required)\n";
 const char* const HEATER_THERMISTOR_A_DISCONNECTED =
     "ERR201:heater:thermistor a disconnected\n";
 const char* const HEATER_THERMISTOR_A_SHORT =
@@ -47,6 +48,10 @@ const char* const HEATER_HARDWARE_ERROR_LATCH =
     "ERR211:heater:hardware error latch set\n";
 const char* const HEATER_CONSTANT_OUT_OF_RANGE =
     "ERR212:heater:control constant out of range\n";
+const char* const SYSTEM_SERIAL_NUMBER_INVALID =
+    "ERR301:system:serial number invalid format\n";
+const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
+    "ERR302:system:HAL error, busy, or timeout\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -76,6 +81,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(MOTOR_ILLEGAL_SPEED);
         HANDLE_CASE(MOTOR_ILLEGAL_RAMP_RATE);
         HANDLE_CASE(MOTOR_BAD_HOME);
+        HANDLE_CASE(MOTOR_NOT_HOME);
         HANDLE_CASE(HEATER_THERMISTOR_A_DISCONNECTED);
         HANDLE_CASE(HEATER_THERMISTOR_A_SHORT);
         HANDLE_CASE(HEATER_THERMISTOR_A_OVERTEMP);
@@ -87,6 +93,8 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(HEATER_THERMISTOR_BOARD_DISCONNECTED);
         HANDLE_CASE(HEATER_HARDWARE_ERROR_LATCH);
         HANDLE_CASE(HEATER_CONSTANT_OUT_OF_RANGE);
+        HANDLE_CASE(SYSTEM_SERIAL_NUMBER_INVALID);
+        HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
     }
     return UNKNOWN_ERROR;
 }

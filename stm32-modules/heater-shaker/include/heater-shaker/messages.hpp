@@ -5,6 +5,7 @@
 #include <variant>
 
 #include "heater-shaker/errors.hpp"
+#include "systemwide.hpp"
 
 namespace messages {
 
@@ -61,6 +62,10 @@ struct GetRPMMessage {
     uint32_t id;
 };
 
+struct GetSystemInfoMessage {
+    uint32_t id;
+};
+
 struct SetAccelerationMessage {
     uint32_t id;
     int32_t rpm_per_s;
@@ -70,6 +75,11 @@ struct TemperatureConversionComplete {
     uint16_t pad_a;
     uint16_t pad_b;
     uint16_t board;
+};
+
+struct PlateLockComplete {
+    bool open;
+    bool closed;
 };
 
 struct SetPIDConstantsMessage {
@@ -82,6 +92,13 @@ struct SetPIDConstantsMessage {
 struct SetPowerTestMessage {
     uint32_t id;
     double power;
+};
+
+struct SetSerialNumberMessage {
+    uint32_t id;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        systemwide::SERIAL_NUMBER_LENGTH;
+    std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
 };
 
 struct EnterBootloaderMessage {
@@ -119,6 +136,22 @@ struct SetPlateLockPowerMessage {
     float power;
 };
 
+struct OpenPlateLockMessage {
+    uint32_t id;
+};
+
+struct ClosePlateLockMessage {
+    uint32_t id;
+};
+
+struct GetPlateLockStateMessage {
+    uint32_t id;
+};
+
+struct GetPlateLockStateDebugMessage {
+    uint32_t id;
+};
+
 /*
 ** Response structs either confirm actions or fulfill actions. Because some
 *messages
@@ -153,6 +186,29 @@ struct GetRPMResponse {
     int16_t setpoint_rpm;
 };
 
+struct GetSystemInfoResponse {
+    uint32_t responding_to_id;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        systemwide::SERIAL_NUMBER_LENGTH;
+    std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
+    const char* fw_version;
+    const char* hw_version;
+};
+
+struct GetPlateLockStateResponse {
+    uint32_t responding_to_id;
+    static constexpr std::size_t state_length = 14;
+    std::array<char, state_length> plate_lock_state;
+};
+
+struct GetPlateLockStateDebugResponse {
+    uint32_t responding_to_id;
+    static constexpr std::size_t state_length = 14;
+    std::array<char, state_length> plate_lock_state;
+    bool plate_lock_open_state;
+    bool plate_lock_closed_state;
+};
+
 struct AcknowledgePrevious {
     uint32_t responding_to_id;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
@@ -170,11 +226,16 @@ using HeaterMessage =
 using MotorMessage = ::std::variant<
     std::monostate, MotorSystemErrorMessage, SetRPMMessage, GetRPMMessage,
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,
-    ActuateSolenoidMessage, SetPlateLockPowerMessage, SetPIDConstantsMessage>;
+    ActuateSolenoidMessage, SetPlateLockPowerMessage, OpenPlateLockMessage,
+    ClosePlateLockMessage, SetPIDConstantsMessage, PlateLockComplete,
+    GetPlateLockStateMessage, GetPlateLockStateDebugMessage>;
 using SystemMessage =
-    ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious>;
+    ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
+                   SetSerialNumberMessage, GetSystemInfoMessage>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,
-                   GetTemperatureDebugResponse, ForceUSBDisconnectMessage>;
+                   GetTemperatureDebugResponse, ForceUSBDisconnectMessage,
+                   GetPlateLockStateResponse, GetPlateLockStateDebugResponse,
+                   GetSystemInfoResponse>;
 };  // namespace messages

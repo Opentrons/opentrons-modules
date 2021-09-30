@@ -102,6 +102,18 @@ auto MotorPolicy::plate_lock_disable() -> void {
     motor_hardware_plate_lock_off(&hw_handles->tim3);
 }
 
+auto MotorPolicy::plate_lock_brake() -> void {
+    motor_hardware_plate_lock_brake(&hw_handles->tim3);
+}
+
+auto MotorPolicy::plate_lock_open_sensor_read() -> bool {
+    return motor_hardware_plate_lock_sensor_read(PLATE_LOCK_RELEASED_Pin);
+}
+
+auto MotorPolicy::plate_lock_closed_sensor_read() -> bool {
+    return motor_hardware_plate_lock_sensor_read(PLATE_LOCK_ENGAGED_Pin);
+}
+
 auto MotorPolicy::set_pid_constants(double kp, double ki, double kd) -> void {
     // These conversions match those in drive_parameters.h and therefore let you
     // just look at the numeric literals there

@@ -15,9 +15,10 @@ SCENARIO("GetTemperatureDebug (M105.D) parser works",
                 buffer.begin(), buffer.end(), 10.25, 11.25, 12.25, 10, 11, 12,
                 true);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
-                                         "M105.D AT10.25 BT11.25 OT12.25 AD10 "
-                                         "BD11 OD12 PG1 OK\n"));
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::StartsWith(
+                                 "M105.D AT:10.25 BT:11.25 OT:12.25 AD:10 "
+                                 "BD:11 OD:12 PG:1 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }

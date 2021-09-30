@@ -75,10 +75,12 @@ auto TestMotorPolicy::delay_ticks(uint16_t ticks) -> void {
 auto TestMotorPolicy::plate_lock_set_power(float power) -> void {
     plate_lock_power = power;
     plate_lock_enabled = true;
+    plate_lock_braked = false;
 }
 
 auto TestMotorPolicy::plate_lock_disable() -> void {
     plate_lock_enabled = false;
+    plate_lock_power = 0.0;
 }
 
 auto TestMotorPolicy::test_plate_lock_get_power() const -> float {
@@ -87,6 +89,31 @@ auto TestMotorPolicy::test_plate_lock_get_power() const -> float {
 
 auto TestMotorPolicy::test_plate_lock_enabled() const -> bool {
     return plate_lock_enabled;
+}
+
+auto TestMotorPolicy::plate_lock_brake() -> void {
+    plate_lock_braked = true;
+    plate_lock_power = 0.0;
+}
+
+auto TestMotorPolicy::test_plate_lock_braked() const -> bool {
+    return plate_lock_braked;
+}
+
+auto TestMotorPolicy::plate_lock_open_sensor_read() const -> bool {
+    if (!plate_lock_braked) {
+        return false;
+    } else {
+        return plate_lock_power < 0.0 ? true : false;
+    }
+}
+
+auto TestMotorPolicy::plate_lock_closed_sensor_read() const -> bool {
+    if (!plate_lock_braked) {
+        return false;
+    } else {
+        return plate_lock_power > 0.0 ? true : false;
+    }
 }
 
 auto TestMotorPolicy::set_pid_constants(double kp, double ki, double kd)
