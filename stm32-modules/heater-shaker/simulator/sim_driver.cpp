@@ -21,33 +21,43 @@ sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
 }
 
 std::string sim_driver::SocketSimDriver::get_host() { return this->host; }
+
 int sim_driver::SocketSimDriver::get_port() { return this->port; }
+
 std::string sim_driver::SocketSimDriver::get_name() { return this-> name; }
+
 void sim_driver::SocketSimDriver::write() { }
-void sim_driver::SocketSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& tasks) {
+
+auto get_socket(std::string host, int port){
     boost::asio::io_service io_context;
 
-    boost::asio::ip::tcp::socket mysocket(io_context);
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(this->host), this->port);
+    boost::asio::ip::tcp::socket socket(io_context);
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(host), port);
     boost::system::error_code ec;
-    mysocket.connect(endpoint, ec);
-    if (ec) { };
+    socket.connect(endpoint, ec);
+    if (ec) {
+        std::cerr << "Failed to create socket: " << ec.category().name() << ": " << ec.value() << std::endl;
+        exit(ec.value());
+    }
+    return socket;
+}
 
+void sim_driver::SocketSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& tasks) {
     char pBuff[30];
+    auto socket = get_socket(this->host, this->port);
+    auto linebuf = std::string(1024, 'c');
     boost::asio::mutable_buffer buff(pBuff, sizeof(pBuff));
     std::string read_data;
-    std::size_t l;
 
-    do {
-        std::size_t l = mysocket.read_some(buff);
+    std::size_t l = socket.read_some(buff);
+    while (l > 0) {
+
         read_data.append(static_cast<const char*>(buff.data()), l);
-        auto linebuf = std::string(1024, 'c');
         std::size_t pos = read_data.find("\n");
 
         while (pos != std::string::npos) {
 
             std::string msg = read_data.substr(0, pos + 1);
-
             linebuf.replace(0, msg.length(), msg);
 
             auto message = messages::IncomingMessageFromHost(linebuf.data(), linebuf.data() + msg.size());
@@ -56,8 +66,9 @@ void sim_driver::SocketSimDriver::read(tasks::Tasks<SimulatorMessageQueue>& task
             read_data.erase(0, pos+1);
             pos = read_data.find("\n");
         }
-        l = mysocket.read_some(buff);
-    } while (l > 0);
+
+        l = socket.read_some(buff);
+    }
 }
 
 sim_driver::StdinSimDriver::StdinSimDriver() { }
