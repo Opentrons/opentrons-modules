@@ -5,18 +5,17 @@
 #include "simulator/simulator_queue.hpp"
 
 namespace sim_driver {
-const std::string SOCKET_DRIVER_NAME = "Socket";
-const std::string STDIN_DRIVER_NAME = "Stdin";
+
 class SimDriver {
 
   public:
-    virtual const std::string& get_name() const = 0
+    virtual const std::string& get_name() const = 0;
     virtual void write() = 0;
     virtual void read(tasks::Tasks<SimulatorMessageQueue>& tasks) = 0;
 };
 
 class SocketSimDriver : public SimDriver {
-    std::string name = SOCKET_DRIVER_NAME;
+    static const std::string name;
     std::string host;
     int port;
 
@@ -24,17 +23,17 @@ class SocketSimDriver : public SimDriver {
     SocketSimDriver(std::string);
     std::string get_host();
     int get_port();
-    std::string get_name();
+    const std::string& get_name() const;
     void write();
     void read(tasks::Tasks<SimulatorMessageQueue>& tasks);
 };
 
 class StdinSimDriver : public SimDriver {
-    std::string name = STDIN_DRIVER_NAME;
+    static const std::string name;
 
   public:
     StdinSimDriver();
-    std::string get_name();
+    const std::string& get_name() const;
     void write();
     void read(tasks::Tasks<SimulatorMessageQueue>& tasks);
 };

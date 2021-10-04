@@ -7,6 +7,9 @@
 
 using namespace sim_driver;
 
+const std::string SOCKET_DRIVER_NAME = "Socket";
+const std::string STDIN_DRIVER_NAME = "Stdin";
+
 sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
     std::regex url_regex(":\\/\\/([a-zA-Z0-9.]*):(\\d*)$");
     std::smatch url_match_result;
@@ -21,11 +24,13 @@ sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
     }
 }
 
+const std::string sim_driver::SocketSimDriver::name = SOCKET_DRIVER_NAME;
+
 std::string sim_driver::SocketSimDriver::get_host() { return this->host; }
 
 int sim_driver::SocketSimDriver::get_port() { return this->port; }
 
-std::string sim_driver::SocketSimDriver::get_name() { return this->name; }
+const std::string& sim_driver::SocketSimDriver::get_name() const { return this->name; }
 
 void sim_driver::SocketSimDriver::write() {}
 
@@ -82,7 +87,8 @@ void sim_driver::SocketSimDriver::read(
 }
 
 sim_driver::StdinSimDriver::StdinSimDriver() {}
-std::string sim_driver::StdinSimDriver::get_name() { return this->name; }
+const std::string sim_driver::StdinSimDriver::name = STDIN_DRIVER_NAME;
+const std::string& sim_driver::StdinSimDriver::get_name() const { return this->name; }
 void sim_driver::StdinSimDriver::write() {}
 void sim_driver::StdinSimDriver::read(
     tasks::Tasks<SimulatorMessageQueue>& tasks) {
