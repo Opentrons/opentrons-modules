@@ -8,10 +8,9 @@ namespace sim_driver {
 const std::string SOCKET_DRIVER_NAME = "Socket";
 const std::string STDIN_DRIVER_NAME = "Stdin";
 class SimDriver {
-    std::string name;
 
   public:
-    virtual std::string get_name() = 0;
+    virtual const std::string& get_name() const = 0
     virtual void write() = 0;
     virtual void read(tasks::Tasks<SimulatorMessageQueue>& tasks) = 0;
 };
