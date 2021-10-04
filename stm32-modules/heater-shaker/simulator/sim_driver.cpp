@@ -64,12 +64,9 @@ void sim_driver::SocketSimDriver::read(
      * TODO: This algorithm starts dropping G-Codes if they are sent faster than
      * once every 0.005 seconds. Need to handle that Derek Maggio 9/30/21
      */
-    std::size_t l = socket.read_some(buff);
-    while (l > 0) {
+    for (std::size_t l = socket.read_some(buff); l > 0;) {
         read_data.append(static_cast<const char*>(buff.data()), l);
-        std::size_t pos = read_data.find("\n");
-
-        while (pos != std::string::npos) {
+        for (std::size_t pos = read_data.find("\n"); pos != std::string::npos;) {
             std::string msg = read_data.substr(0, pos + 1);
             linebuf.replace(0, msg.length(), msg);
 
