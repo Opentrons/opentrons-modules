@@ -7,7 +7,8 @@ add_executable(
         system_thread.cpp
         cli_parser.cpp
         main.cpp
-        sim_driver.cpp
+        socket_sim_driver.cpp
+        stdin_sim_driver.cpp
 )
 
 target_link_libraries(

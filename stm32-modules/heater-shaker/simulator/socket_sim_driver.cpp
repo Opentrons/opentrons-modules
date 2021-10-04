@@ -1,16 +1,15 @@
-#include "simulator/sim_driver.hpp"
+#include "simulator/socket_sim_driver.hpp"
 
 #include <boost/asio.hpp>
 #include <regex>
 
 #include "simulator/simulator_queue.hpp"
 
-using namespace sim_driver;
+using namespace socket_sim_driver;
 
 const std::string SOCKET_DRIVER_NAME = "Socket";
-const std::string STDIN_DRIVER_NAME = "Stdin";
 
-sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
+socket_sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
     std::regex url_regex(":\\/\\/([a-zA-Z0-9.]*):(\\d*)$");
     std::smatch url_match_result;
 
@@ -24,17 +23,19 @@ sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
     }
 }
 
-const std::string sim_driver::SocketSimDriver::name = SOCKET_DRIVER_NAME;
+const std::string socket_sim_driver::SocketSimDriver::name = SOCKET_DRIVER_NAME;
 
-std::string sim_driver::SocketSimDriver::get_host() { return this->host; }
+std::string socket_sim_driver::SocketSimDriver::get_host() {
+    return this->host;
+}
 
-int sim_driver::SocketSimDriver::get_port() { return this->port; }
+int socket_sim_driver::SocketSimDriver::get_port() { return this->port; }
 
-const std::string& sim_driver::SocketSimDriver::get_name() const {
+const std::string& socket_sim_driver::SocketSimDriver::get_name() const {
     return this->name;
 }
 
-void sim_driver::SocketSimDriver::write() {}
+void socket_sim_driver::SocketSimDriver::write() {}
 
 auto get_socket(std::string host, int port) {
     boost::asio::io_service io_context;
@@ -54,7 +55,7 @@ auto get_socket(std::string host, int port) {
     return socket;
 }
 
-void sim_driver::SocketSimDriver::read(
+void socket_sim_driver::SocketSimDriver::read(
     tasks::Tasks<SimulatorMessageQueue>& tasks) {
     char pBuff[30];
     auto socket = get_socket(this->host, this->port);
@@ -83,27 +84,5 @@ void sim_driver::SocketSimDriver::read(
         }
 
         l = socket.read_some(buff);
-    }
-}
-
-sim_driver::StdinSimDriver::StdinSimDriver() {}
-const std::string sim_driver::StdinSimDriver::name = STDIN_DRIVER_NAME;
-const std::string& sim_driver::StdinSimDriver::get_name() const {
-    return this->name;
-}
-void sim_driver::StdinSimDriver::write() {}
-void sim_driver::StdinSimDriver::read(
-    tasks::Tasks<SimulatorMessageQueue>& tasks) {
-    auto linebuf = std::make_shared<std::string>(1024, 'c');
-    while (true) {
-        if (!std::cin.getline(linebuf->data(), linebuf->size() - 1, '\n')) {
-            return;
-        }
-        auto wrote_to = std::cin.gcount();
-
-        linebuf->at(wrote_to - 1) = '\n';
-        auto message = messages::IncomingMessageFromHost(
-            linebuf->data(), linebuf->data() + wrote_to);
-        static_cast<void>(tasks.comms->get_message_queue().try_send(message));
     }
 }

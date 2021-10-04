@@ -4,6 +4,8 @@
 #include <iostream>
 
 #include "simulator/sim_driver.hpp"
+#include "simulator/socket_sim_driver.hpp"
+#include "simulator/stdin_sim_driver.hpp"
 
 using namespace cli_parser;
 
@@ -81,10 +83,10 @@ sim_driver::SimDriver* cli_parser::get_sim_driver(int num_args, char* args[]) {
     sim_driver::SimDriver* sim_driver;
 
     if (use_stdin) {
-        sim_driver = new sim_driver::StdinSimDriver();
+        sim_driver = new stdin_sim_driver::StdinSimDriver();
     } else if (use_socket) {
-        sim_driver =
-            new sim_driver::SocketSimDriver(vm["socket"].as<std::string>());
+        sim_driver = new socket_sim_driver::SocketSimDriver(
+            vm["socket"].as<std::string>());
     } else {
         neither_driver_error(desc);
     }
