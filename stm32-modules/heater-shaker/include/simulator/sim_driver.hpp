@@ -7,7 +7,6 @@
 namespace sim_driver {
 
 class SimDriver {
-
   public:
     virtual const std::string& get_name() const = 0;
     virtual void write() = 0;

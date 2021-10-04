@@ -29,7 +29,8 @@ using namespace cli_parser;
     exit(1);
 }
 
-[[noreturn]] void neither_driver_error(boost::program_options::options_description desc) {
+[[noreturn]] void neither_driver_error(
+    boost::program_options::options_description desc) {
     std::cerr << std::endl
               << "ERROR: Neither --socket or --stdin was specified";
     std::cerr << desc << std::endl;

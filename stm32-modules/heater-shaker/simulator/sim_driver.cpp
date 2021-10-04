@@ -30,7 +30,9 @@ std::string sim_driver::SocketSimDriver::get_host() { return this->host; }
 
 int sim_driver::SocketSimDriver::get_port() { return this->port; }
 
-const std::string& sim_driver::SocketSimDriver::get_name() const { return this->name; }
+const std::string& sim_driver::SocketSimDriver::get_name() const {
+    return this->name;
+}
 
 void sim_driver::SocketSimDriver::write() {}
 
@@ -66,7 +68,8 @@ void sim_driver::SocketSimDriver::read(
      */
     for (std::size_t l = socket.read_some(buff); l > 0;) {
         read_data.append(static_cast<const char*>(buff.data()), l);
-        for (std::size_t pos = read_data.find("\n"); pos != std::string::npos;) {
+        for (std::size_t pos = read_data.find("\n");
+             pos != std::string::npos;) {
             std::string msg = read_data.substr(0, pos + 1);
             linebuf.replace(0, msg.length(), msg);
 
@@ -85,7 +88,9 @@ void sim_driver::SocketSimDriver::read(
 
 sim_driver::StdinSimDriver::StdinSimDriver() {}
 const std::string sim_driver::StdinSimDriver::name = STDIN_DRIVER_NAME;
-const std::string& sim_driver::StdinSimDriver::get_name() const { return this->name; }
+const std::string& sim_driver::StdinSimDriver::get_name() const {
+    return this->name;
+}
 void sim_driver::StdinSimDriver::write() {}
 void sim_driver::StdinSimDriver::read(
     tasks::Tasks<SimulatorMessageQueue>& tasks) {
