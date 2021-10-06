@@ -2,7 +2,7 @@
 
 #include <boost/program_options.hpp>
 #include <iostream>
-
+#include <memory>
 #include "simulator/sim_driver.hpp"
 #include "simulator/socket_sim_driver.hpp"
 #include "simulator/stdin_sim_driver.hpp"
@@ -39,7 +39,7 @@ using namespace cli_parser;
     exit(1);
 }
 
-sim_driver::SimDriver* cli_parser::get_sim_driver(int num_args, char* args[]) {
+std::unique_ptr<sim_driver::SimDriver> cli_parser::get_sim_driver(int num_args, char* args[]) {
     bool use_stdin = false;
     bool use_socket = false;
     bool options_specified = num_args > 1;
@@ -80,16 +80,11 @@ sim_driver::SimDriver* cli_parser::get_sim_driver(int num_args, char* args[]) {
         both_drivers_specified_error(desc);
     }
 
-    sim_driver::SimDriver* sim_driver;
-
     if (use_stdin) {
-        sim_driver = new stdin_sim_driver::StdinSimDriver();
+        return std::make_unique<stdin_sim_driver::StdinSimDriver>();
     } else if (use_socket) {
-        sim_driver = new socket_sim_driver::SocketSimDriver(
-            vm["socket"].as<std::string>());
+        return std::make_unique<socket_sim_driver::SocketSimDriver>(vm["socket"].as<std::string>());
     } else {
         neither_driver_error(desc);
     }
-
-    return sim_driver;
 }

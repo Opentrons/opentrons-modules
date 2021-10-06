@@ -1,4 +1,5 @@
 #include <iostream>
+#include <memory>
 
 #include "heater-shaker/tasks.hpp"
 #include "simulator/cli_parser.hpp"
@@ -12,6 +13,7 @@
 using namespace std;
 
 int main(int argc, char *argv[]) {
+    std::unique_ptr<std::array<char, 2048>> pBuff {};
     auto sim_driver = cli_parser::get_sim_driver(argc, argv);
     auto system = system_thread::build();
     auto heater = heater_thread::build();
@@ -19,7 +21,7 @@ int main(int argc, char *argv[]) {
     auto comms = comm_thread::build();
     auto tasks = tasks::Tasks<SimulatorMessageQueue>(heater.task, comms.task,
                                                      motor.task, system.task);
-    comm_thread::handle_input(sim_driver, tasks);
+    comm_thread::handle_input(std::move(sim_driver), tasks);
     system.handle->request_stop();
     heater.handle->request_stop();
     motor.handle->request_stop();

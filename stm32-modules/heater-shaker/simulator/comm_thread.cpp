@@ -41,7 +41,7 @@ auto comm_thread::build()
     return tasks::Task{std::make_unique<std::jthread>(run, tcb), &tcb->task};
 }
 
-void comm_thread::handle_input(sim_driver::SimDriver* driver,
+void comm_thread::handle_input(std::unique_ptr<sim_driver::SimDriver>&& driver,
                                tasks::Tasks<SimulatorMessageQueue>& tasks) {
     driver->read(tasks);
 }
