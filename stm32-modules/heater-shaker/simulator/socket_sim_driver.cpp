@@ -1,13 +1,13 @@
 #include "simulator/socket_sim_driver.hpp"
 
-#include <boost/asio.hpp>
-#include <regex>
-#include <memory>
 #include <algorithm>
+#include <boost/asio.hpp>
 #include <iterator>
+#include <memory>
+#include <regex>
 
-#include "simulator/simulator_queue.hpp"
 #include "hal/double_buffer.hpp"
+#include "simulator/simulator_queue.hpp"
 
 using namespace socket_sim_driver;
 
@@ -60,7 +60,8 @@ auto get_socket(std::string host, int port) {
 }
 
 int has_char(char* char_array, char value_to_find) {
-    char* position = std::find(char_array, char_array + strlen(char_array), value_to_find);
+    char* position =
+        std::find(char_array, char_array + strlen(char_array), value_to_find);
     return char_array + strlen(char_array) != position;
 }
 
@@ -69,7 +70,8 @@ void socket_sim_driver::SocketSimDriver::read(
     char pBuff[30];
     auto socket = get_socket(this->host, this->port);
     boost::asio::mutable_buffer buff(pBuff, sizeof(pBuff));
-    auto write_buffer = std::make_shared<double_buffer::DoubleBuffer<char, 2048>>();
+    auto write_buffer =
+        std::make_shared<double_buffer::DoubleBuffer<char, 2048>>();
 
     size_t l = socket.read_some(buff);
     char* end_of_input = std::begin(*write_buffer->accessible());
@@ -79,10 +81,14 @@ void socket_sim_driver::SocketSimDriver::read(
             end_of_input = std::begin(*write_buffer->accessible());
         }
         char* data = write_buffer->accessible()->data();
-        end_of_input = std::copy(reinterpret_cast<char*>(buff.data()), reinterpret_cast<char*>(buff.data()) + l, end_of_input);
-        if ( has_char(data, '\n') ) {
-            auto message = messages::IncomingMessageFromHost(std::begin(*write_buffer->accessible()), end_of_input);
-            static_cast<void>(tasks.comms->get_message_queue().try_send(message));
+        end_of_input =
+            std::copy(reinterpret_cast<char*>(buff.data()),
+                      reinterpret_cast<char*>(buff.data()) + l, end_of_input);
+        if (has_char(data, '\n')) {
+            auto message = messages::IncomingMessageFromHost(
+                std::begin(*write_buffer->accessible()), end_of_input);
+            static_cast<void>(
+                tasks.comms->get_message_queue().try_send(message));
             write_buffer->swap();
             end_of_input = std::begin(*write_buffer->accessible());
             end_of_buffer = std::end(*write_buffer->accessible());

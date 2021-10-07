@@ -13,7 +13,7 @@
 using namespace std;
 
 int main(int argc, char *argv[]) {
-    std::unique_ptr<std::array<char, 2048>> pBuff {};
+    std::unique_ptr<std::array<char, 2048>> pBuff{};
     auto sim_driver = cli_parser::get_sim_driver(argc, argv);
     auto system = system_thread::build();
     auto heater = heater_thread::build();
