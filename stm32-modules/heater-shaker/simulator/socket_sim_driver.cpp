@@ -2,8 +2,12 @@
 
 #include <boost/asio.hpp>
 #include <regex>
+#include <memory>
+#include <algorithm>
+#include <iterator>
 
 #include "simulator/simulator_queue.hpp"
+#include "hal/double_buffer.hpp"
 
 using namespace socket_sim_driver;
 
@@ -55,34 +59,34 @@ auto get_socket(std::string host, int port) {
     return socket;
 }
 
+int get_index(char* char_array, char value_to_find) {
+    char* position = std::find(char_array, char_array + strlen(char_array), value_to_find);
+    return (char_array + strlen(char_array) == position) ? -1 : (position - char_array);
+}
+
 void socket_sim_driver::SocketSimDriver::read(
     tasks::Tasks<SimulatorMessageQueue>& tasks) {
     char pBuff[30];
     auto socket = get_socket(this->host, this->port);
-    auto linebuf = std::string(1024, 'c');
     boost::asio::mutable_buffer buff(pBuff, sizeof(pBuff));
-    std::string read_data;
+    auto write_buffer = std::make_shared<double_buffer::DoubleBuffer<char, 2048>>();
 
-    /*
-     * TODO: This algorithm starts dropping G-Codes if they are sent faster than
-     * once every 0.005 seconds. Need to handle that Derek Maggio 9/30/21
-     */
-    for (std::size_t l = socket.read_some(buff); l > 0;) {
-        read_data.append(static_cast<const char*>(buff.data()), l);
-        for (std::size_t pos = read_data.find("\n");
-             pos != std::string::npos;) {
-            std::string msg = read_data.substr(0, pos + 1);
-            linebuf.replace(0, msg.length(), msg);
-
-            auto message = messages::IncomingMessageFromHost(
-                linebuf.data(), linebuf.data() + msg.size());
-            static_cast<void>(
-                tasks.comms->get_message_queue().try_send(message));
-
-            read_data.erase(0, pos + 1);
-            pos = read_data.find("\n");
+    size_t l = socket.read_some(buff);
+    char* end_of_input = std::begin(*write_buffer->accessible());
+    char* end_of_buffer = std::end(*write_buffer->accessible());
+    for (; l > 0; l = socket.read_some(buff)) {
+        if (end_of_input + l > end_of_buffer) {
+            end_of_input = std::begin(*write_buffer->accessible());
         }
-
-        l = socket.read_some(buff);
+        char* data = write_buffer->accessible()->data();
+        end_of_input = std::copy(reinterpret_cast<char*>(buff.data()), reinterpret_cast<char*>(buff.data()) + l, end_of_input);
+        int pos = get_index(data, '\n');
+        if ( pos != -1 ) {
+            auto message = messages::IncomingMessageFromHost(std::begin(*write_buffer->accessible()), end_of_input);
+            static_cast<void>(tasks.comms->get_message_queue().try_send(message));
+            write_buffer->swap();
+            end_of_input = std::begin(*write_buffer->accessible());
+            end_of_buffer = std::end(*write_buffer->accessible());
+        }
     }
 }
