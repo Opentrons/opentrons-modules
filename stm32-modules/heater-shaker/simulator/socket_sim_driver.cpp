@@ -59,9 +59,9 @@ auto get_socket(std::string host, int port) {
     return socket;
 }
 
-int get_index(char* char_array, char value_to_find) {
+int has_char(char* char_array, char value_to_find) {
     char* position = std::find(char_array, char_array + strlen(char_array), value_to_find);
-    return (char_array + strlen(char_array) == position) ? -1 : (position - char_array);
+    return char_array + strlen(char_array) != position;
 }
 
 void socket_sim_driver::SocketSimDriver::read(
@@ -80,8 +80,7 @@ void socket_sim_driver::SocketSimDriver::read(
         }
         char* data = write_buffer->accessible()->data();
         end_of_input = std::copy(reinterpret_cast<char*>(buff.data()), reinterpret_cast<char*>(buff.data()) + l, end_of_input);
-        int pos = get_index(data, '\n');
-        if ( pos != -1 ) {
+        if ( has_char(data, '\n') ) {
             auto message = messages::IncomingMessageFromHost(std::begin(*write_buffer->accessible()), end_of_input);
             static_cast<void>(tasks.comms->get_message_queue().try_send(message));
             write_buffer->swap();
