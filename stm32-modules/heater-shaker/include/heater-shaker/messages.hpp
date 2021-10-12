@@ -142,6 +142,7 @@ struct OpenPlateLockMessage {
 
 struct ClosePlateLockMessage {
     uint32_t id;
+    bool from_startup;
 };
 
 struct GetPlateLockStateMessage {

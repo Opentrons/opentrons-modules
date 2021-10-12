@@ -349,13 +349,17 @@ class MotorTask {
         static constexpr float OpenPower = -1.0F;
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        if (state.status != State::STOPPED_HOMED) {
-            response = messages::AcknowledgePrevious{
-                .responding_to_id = msg.id,
-                .with_error = errors::ErrorCode::MOTOR_NOT_HOME};
+        if (!policy.plate_lock_open_sensor_read()) {
+            if (state.status != State::STOPPED_HOMED) {
+                response = messages::AcknowledgePrevious{
+                    .responding_to_id = msg.id,
+                    .with_error = errors::ErrorCode::MOTOR_NOT_HOME};
+            } else {
+                policy.plate_lock_set_power(OpenPower);
+                plate_lock_state.status = PlateLockState::OPENING;
+            }
         } else {
-            policy.plate_lock_set_power(OpenPower);
-            plate_lock_state.status = PlateLockState::OPENING;
+            plate_lock_state.status = PlateLockState::IDLE_OPEN;
         }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
@@ -367,13 +371,17 @@ class MotorTask {
         static constexpr float ClosePower = 1.0F;
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        if (state.status != State::STOPPED_HOMED) {
-            response = messages::AcknowledgePrevious{
-                .responding_to_id = msg.id,
-                .with_error = errors::ErrorCode::MOTOR_NOT_HOME};
+        if (!policy.plate_lock_closed_sensor_read()) {
+            if ((!msg.from_startup) && (state.status != State::STOPPED_HOMED)) {
+                response = messages::AcknowledgePrevious{
+                    .responding_to_id = msg.id,
+                    .with_error = errors::ErrorCode::MOTOR_NOT_HOME};
+            } else {
+                policy.plate_lock_set_power(ClosePower);
+                plate_lock_state.status = PlateLockState::CLOSING;
+            }
         } else {
-            policy.plate_lock_set_power(ClosePower);
-            plate_lock_state.status = PlateLockState::CLOSING;
+            plate_lock_state.status = PlateLockState::IDLE_CLOSED;
         }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
