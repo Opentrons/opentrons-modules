@@ -79,8 +79,16 @@ void run(void *param) {
     memset(&_local_task.handles, 0, sizeof(_local_task.handles));
     _local_task.handles.plate_lock_complete = handle_plate_lock;
     motor_hardware_setup(&_local_task.handles);
-
     auto policy = MotorPolicy(&_local_task.handles);
+    //close plate lock at startup
+    static constexpr float ClosePower = 1.0F;
+    motor_hardware_plate_lock_on(&_local_task.handles.tim3, ClosePower);
+    //home main motor via message at startup
+    auto &queue = _task.get_message_queue();
+    //auto id = ack_only_cache.add(home_code); //how to get id like in host_comms_task?
+    auto message = messages::BeginHomingMessage{}; //no .id = id
+    static_cast<void>(queue.try_send(message, 10));
+
     while (true) {
         _task.run_once(policy);
     }

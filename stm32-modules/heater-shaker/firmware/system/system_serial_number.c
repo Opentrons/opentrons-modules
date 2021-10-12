@@ -7,7 +7,7 @@
 
 #include "system_serial_number.h"
 
-static uint32_t PAGE_ADDRESS = 0x0805F800; //last page in flash memory, 0x0807F800 for 512K FLASH
+static uint32_t PAGE_ADDRESS = 0x0807F800; //last page in flash memory, 0x0805F800 for 384K (NFF board), 0x0807F800 for 512K (FF board) FLASH
 static uint8_t ADDRESS_SIZE = 64;
 
 bool system_set_serial_number(struct writable_serial* to_write) {
