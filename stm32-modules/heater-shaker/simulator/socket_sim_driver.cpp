@@ -18,8 +18,8 @@ socket_sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
     std::smatch url_match_result;
 
     if (std::regex_search(url, url_match_result, url_regex)) {
-        host = url_match_result[1];
-        port = std::stoi(url_match_result[2]);
+        address_info = socket_sim_driver::AddressInfo{
+            url_match_result[1], std::stoi(url_match_result[2])};
 
     } else {
         std::cerr << "Malformed url." << std::endl;
@@ -30,10 +30,12 @@ socket_sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
 const std::string socket_sim_driver::SocketSimDriver::name = SOCKET_DRIVER_NAME;
 
 std::string socket_sim_driver::SocketSimDriver::get_host() {
-    return this->host;
+    return this->address_info.host;
 }
 
-int socket_sim_driver::SocketSimDriver::get_port() { return this->port; }
+int socket_sim_driver::SocketSimDriver::get_port() {
+    return this->address_info.port;
+}
 
 const std::string& socket_sim_driver::SocketSimDriver::get_name() const {
     return this->name;
@@ -68,7 +70,7 @@ int has_char(char* char_array, char value_to_find) {
 void socket_sim_driver::SocketSimDriver::read(
     tasks::Tasks<SimulatorMessageQueue>& tasks) {
     char pBuff[30];
-    auto socket = get_socket(this->host, this->port);
+    auto socket = get_socket(this->get_host(), this->get_port());
     boost::asio::mutable_buffer buff(pBuff, sizeof(pBuff));
     auto write_buffer =
         std::make_shared<double_buffer::DoubleBuffer<char, 2048>>();

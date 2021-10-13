@@ -7,10 +7,14 @@
 
 namespace socket_sim_driver {
 
-class SocketSimDriver : public sim_driver::SimDriver {
-    static const std::string name;
+struct AddressInfo {
     std::string host;
     int port;
+};
+
+class SocketSimDriver : public sim_driver::SimDriver {
+    static const std::string name;
+    AddressInfo address_info;
 
   public:
     SocketSimDriver(std::string);
