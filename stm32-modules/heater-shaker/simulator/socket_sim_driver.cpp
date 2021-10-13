@@ -63,8 +63,7 @@ const std::string& socket_sim_driver::SocketSimDriver::get_name() const {
 }
 
 void socket_sim_driver::SocketSimDriver::write(std::string message)  {
-//    auto socket = get_socket(this->get_host(), this->get_port());
-    std::cout << message;
+    this->s->write_some(boost::asio::buffer(message));
 }
 
 int has_char(char* char_array, char value_to_find) {
