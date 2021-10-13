@@ -12,4 +12,4 @@ class SimDriver {
     virtual void write(std::string message) = 0;
     virtual void read(tasks::Tasks<SimulatorMessageQueue>& tasks) = 0;
 };
-}
+}  // namespace sim_driver

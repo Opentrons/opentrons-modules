@@ -13,16 +13,15 @@ using namespace socket_sim_driver;
 
 const std::string SOCKET_DRIVER_NAME = "Socket";
 
-std::unique_ptr<boost::asio::ip::tcp::socket> connect_to_socket(std::string host, int port) {
+std::unique_ptr<boost::asio::ip::tcp::socket> connect_to_socket(
+    std::string host, int port) {
     boost::asio::io_service io_context;
 
     auto socket = std::make_unique<boost::asio::ip::tcp::socket>(io_context);
     boost::asio::ip::tcp::endpoint endpoint(
-            boost::asio::ip::address::from_string(host), port);
+        boost::asio::ip::address::from_string(host), port);
     boost::system::error_code ec;
-    socket->connect(
-            endpoint,
-            ec);
+    socket->connect(endpoint, ec);
     if (ec) {
         std::cerr << "Failed to create socket: " << ec.category().name() << ": "
                   << ec.value() << std::endl;
@@ -46,8 +45,6 @@ socket_sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
     }
 }
 
-
-
 const std::string socket_sim_driver::SocketSimDriver::name = SOCKET_DRIVER_NAME;
 
 std::string socket_sim_driver::SocketSimDriver::get_host() {
@@ -62,7 +59,7 @@ const std::string& socket_sim_driver::SocketSimDriver::get_name() const {
     return this->name;
 }
 
-void socket_sim_driver::SocketSimDriver::write(std::string message)  {
+void socket_sim_driver::SocketSimDriver::write(std::string message) {
     this->s->write_some(boost::asio::buffer(message));
 }
 

@@ -10,7 +10,8 @@
 namespace comm_thread {
 using SimCommTask = host_comms_task::HostCommsTask<SimulatorMessageQueue>;
 struct TaskControlBlock;
-auto build(std::shared_ptr<sim_driver::SimDriver>&&) -> tasks::Task<std::unique_ptr<std::jthread>, SimCommTask>;
+auto build(std::shared_ptr<sim_driver::SimDriver>&&)
+    -> tasks::Task<std::unique_ptr<std::jthread>, SimCommTask>;
 void handle_input(std::shared_ptr<sim_driver::SimDriver>&& driver,
                   tasks::Tasks<SimulatorMessageQueue>& tasks);
 };  // namespace comm_thread

@@ -1,10 +1,11 @@
 #pragma once
+#include <boost/asio.hpp>
+
 #include "heater-shaker/host_comms_task.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
 #include "simulator/sim_driver.hpp"
 #include "simulator/simulator_queue.hpp"
-#include <boost/asio.hpp>
 
 namespace socket_sim_driver {
 
