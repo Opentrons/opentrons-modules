@@ -22,26 +22,26 @@ struct comm_thread::TaskControlBlock {
 };
 
 // TODO: Refactor this into using a driver.write method
-auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
+auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb, std::shared_ptr<sim_driver::SimDriver> driver) -> void {
     tcb->queue.set_stop_token(st);
     std::string buffer(1024, 'c');
     while (!st.stop_requested()) {
         try {
             auto wrote_to = tcb->task.run_once(buffer.begin(), buffer.end());
-            std::cout << std::string_view(buffer.begin(), wrote_to);
+            driver->write(std::string(buffer.begin(), wrote_to));
         } catch (const SimCommTask::Queue::StopDuringMsgWait sdmw) {
             return;
         }
     }
 }
 
-auto comm_thread::build()
+auto comm_thread::build(std::shared_ptr<sim_driver::SimDriver>&& driver)
     -> tasks::Task<std::unique_ptr<std::jthread>, comm_thread::SimCommTask> {
     auto tcb = std::make_shared<TaskControlBlock>();
-    return tasks::Task{std::make_unique<std::jthread>(run, tcb), &tcb->task};
+    return tasks::Task{std::make_unique<std::jthread>(run, tcb, driver), &tcb->task};
 }
 
-void comm_thread::handle_input(std::unique_ptr<sim_driver::SimDriver>&& driver,
+void comm_thread::handle_input(std::shared_ptr<sim_driver::SimDriver>&& driver,
                                tasks::Tasks<SimulatorMessageQueue>& tasks) {
     driver->read(tasks);
 }

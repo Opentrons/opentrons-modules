@@ -9,7 +9,7 @@ namespace sim_driver {
 class SimDriver {
   public:
     virtual const std::string& get_name() const = 0;
-    virtual void write() = 0;
+    virtual void write(std::string message) = 0;
     virtual void read(tasks::Tasks<SimulatorMessageQueue>& tasks) = 0;
 };
 }

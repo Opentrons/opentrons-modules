@@ -27,6 +27,24 @@ socket_sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
     }
 }
 
+auto get_socket(std::string host, int port) {
+    boost::asio::io_service io_context;
+
+    boost::asio::ip::tcp::socket socket(io_context);
+    boost::asio::ip::tcp::endpoint endpoint(
+            boost::asio::ip::address::from_string(host), port);
+    boost::system::error_code ec;
+    socket.connect(
+            endpoint,
+            ec);
+    if (ec) {
+        std::cerr << "Failed to create socket: " << ec.category().name() << ": "
+                  << ec.value() << std::endl;
+        exit(ec.value());
+    }
+    return socket;
+}
+
 const std::string socket_sim_driver::SocketSimDriver::name = SOCKET_DRIVER_NAME;
 
 std::string socket_sim_driver::SocketSimDriver::get_host() {
@@ -41,25 +59,12 @@ const std::string& socket_sim_driver::SocketSimDriver::get_name() const {
     return this->name;
 }
 
-void socket_sim_driver::SocketSimDriver::write() {}
-
-auto get_socket(std::string host, int port) {
-    boost::asio::io_service io_context;
-
-    boost::asio::ip::tcp::socket socket(io_context);
-    boost::asio::ip::tcp::endpoint endpoint(
-        boost::asio::ip::address::from_string(host), port);
-    boost::system::error_code ec;
-    socket.connect(
-        endpoint,
-        ec);  // TODO: Change this to socket.bind - Derek Maggio 9/30/21
-    if (ec) {
-        std::cerr << "Failed to create socket: " << ec.category().name() << ": "
-                  << ec.value() << std::endl;
-        exit(ec.value());
-    }
-    return socket;
+void socket_sim_driver::SocketSimDriver::write(std::string message)  {
+//    auto socket = get_socket(this->get_host(), this->get_port());
+    std::cout << message;
 }
+
+
 
 int has_char(char* char_array, char value_to_find) {
     char* position =

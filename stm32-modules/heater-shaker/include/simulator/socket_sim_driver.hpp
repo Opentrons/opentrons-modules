@@ -21,7 +21,7 @@ class SocketSimDriver : public sim_driver::SimDriver {
     std::string get_host();
     int get_port();
     const std::string& get_name() const;
-    void write();
+    void write(std::string message);
     void read(tasks::Tasks<SimulatorMessageQueue>& tasks);
 };
 }  // namespace socket_sim_driver

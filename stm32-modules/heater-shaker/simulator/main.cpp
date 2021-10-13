@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
     auto system = system_thread::build();
     auto heater = heater_thread::build();
     auto motor = motor_thread::build();
-    auto comms = comm_thread::build();
+    auto comms = comm_thread::build(std::move(sim_driver));
     auto tasks = tasks::Tasks<SimulatorMessageQueue>(heater.task, comms.task,
                                                      motor.task, system.task);
     comm_thread::handle_input(std::move(sim_driver), tasks);

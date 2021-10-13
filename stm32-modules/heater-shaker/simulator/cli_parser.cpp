@@ -40,7 +40,7 @@ using namespace cli_parser;
     exit(1);
 }
 
-std::unique_ptr<sim_driver::SimDriver> cli_parser::get_sim_driver(
+std::shared_ptr<sim_driver::SimDriver> cli_parser::get_sim_driver(
     int num_args, char* args[]) {
     bool use_stdin = false;
     bool use_socket = false;
@@ -83,9 +83,9 @@ std::unique_ptr<sim_driver::SimDriver> cli_parser::get_sim_driver(
     }
 
     if (use_stdin) {
-        return std::make_unique<stdin_sim_driver::StdinSimDriver>();
+        return std::make_shared<stdin_sim_driver::StdinSimDriver>();
     } else if (use_socket) {
-        return std::make_unique<socket_sim_driver::SocketSimDriver>(
+        return std::make_shared<socket_sim_driver::SocketSimDriver>(
             vm["socket"].as<std::string>());
     } else {
         neither_driver_error(desc);

@@ -12,7 +12,7 @@ class StdinSimDriver : public sim_driver::SimDriver {
   public:
     StdinSimDriver();
     const std::string& get_name() const;
-    void write();
+    void write(std::string message);
     void read(tasks::Tasks<SimulatorMessageQueue>& tasks);
 };
 }  // namespace stdin_sim_driver
