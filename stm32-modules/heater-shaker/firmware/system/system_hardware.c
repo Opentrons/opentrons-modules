@@ -3,7 +3,10 @@
 #include "stm32f3xx_hal_cortex.h"
 #include "system_hardware.h"
 
-void system_hardware_setup(void) {
+system_hardware_handles *SYSTEM_HW_HANDLE = NULL;
+
+void system_hardware_setup(system_hardware_handles* handles) {
+    SYSTEM_HW_HANDLE = handles;
     GPIO_InitTypeDef gpio_init = {
       .Pin = SOFTPOWER_BUTTON_SENSE_PIN | SOFTPOWER_UNPLUG_SENSE_PIN,
       .Mode = GPIO_MODE_INPUT,
@@ -59,4 +62,47 @@ asm volatile (
   : // no outputs
   : "r" (*sysmem_boot_loc)
   : "memory"  );
+}
+
+/* I2C handler declaration */
+I2C_HandleTypeDef I2cHandle;
+
+/* Buffer used for transmission */
+uint8_t aTxBuffer[] = " ****I2C_TwoBoards communication based on IT****  ****I2C_TwoBoards communication based on IT****  ****I2C_TwoBoards communication based on IT**** ";
+
+/* Buffer used for reception */
+uint8_t aRxBuffer[RXBUFFERSIZE];
+
+/*##-1- Configure the I2C peripheral ######################################*/
+I2cHandle.Instance             = I2Cx;
+I2cHandle.Init.Timing          = I2C_TIMING;
+I2cHandle.Init.OwnAddress1     = I2C_ADDRESS;
+I2cHandle.Init.AddressingMode  = I2C_ADDRESSINGMODE_7BIT;
+I2cHandle.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+I2cHandle.Init.OwnAddress2     = 0xFF;
+I2cHandle.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+I2cHandle.Init.NoStretchMode   = I2C_NOSTRETCH_DISABLE;
+
+void system_hardware_led_change(uint16_t register_map) {
+  //loop thru bits
+  //if bit_previous != bit
+    //if 1, set register high
+    //else set low
+  //enum for bit-to-register table? or just add bit # to base_register?
+  //store current state as previous state
+
+  //ensure state initialized as all low and stored
+
+}
+
+void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *I2cHandle)
+{
+  //signal that the transfer has completed successfully
+  led_transmit_result result;
+  if (I2cHandle->State == HAL_I2C_STATE_READY) {
+    result.success = true;
+  } else {
+    result.success = false;
+  }
+  SYSTEM_HW_HANDLE->led_transmit_complete(&result);
 }
