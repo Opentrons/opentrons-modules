@@ -21,12 +21,11 @@ class SocketSimDriver : public sim_driver::SimDriver {
 
   public:
     SocketSimDriver(std::string);
-    std::string get_host();
-    int get_port();
+    const std::string& get_host() const;
+    int get_port() const;
     const std::string& get_name() const;
-    std::unique_ptr<boost::asio::ip::tcp::socket> get_socket();
 
-    void write(std::string message);
+    void write(const std::string& message);
     void read(tasks::Tasks<SimulatorMessageQueue>& tasks);
 };
 }  // namespace socket_sim_driver

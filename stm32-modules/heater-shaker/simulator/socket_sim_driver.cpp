@@ -47,11 +47,11 @@ socket_sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
 
 const std::string socket_sim_driver::SocketSimDriver::name = SOCKET_DRIVER_NAME;
 
-std::string socket_sim_driver::SocketSimDriver::get_host() {
+const std::string& socket_sim_driver::SocketSimDriver::get_host() const {
     return this->address_info.host;
 }
 
-int socket_sim_driver::SocketSimDriver::get_port() {
+int socket_sim_driver::SocketSimDriver::get_port() const {
     return this->address_info.port;
 }
 
@@ -59,7 +59,7 @@ const std::string& socket_sim_driver::SocketSimDriver::get_name() const {
     return this->name;
 }
 
-void socket_sim_driver::SocketSimDriver::write(std::string message) {
+void socket_sim_driver::SocketSimDriver::write(const std::string& message) {
     this->s->write_some(boost::asio::buffer(message));
 }
 

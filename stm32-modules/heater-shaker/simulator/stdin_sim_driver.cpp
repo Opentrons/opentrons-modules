@@ -14,7 +14,7 @@ const std::string stdin_sim_driver::StdinSimDriver::name = STDIN_DRIVER_NAME;
 const std::string& stdin_sim_driver::StdinSimDriver::get_name() const {
     return this->name;
 }
-void stdin_sim_driver::StdinSimDriver::write(std::string message) {
+void stdin_sim_driver::StdinSimDriver::write(const std::string& message) {
     std::cout << message;
 }
 void stdin_sim_driver::StdinSimDriver::read(

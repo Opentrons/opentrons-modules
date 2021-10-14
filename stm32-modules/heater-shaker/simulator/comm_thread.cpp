@@ -21,7 +21,6 @@ struct comm_thread::TaskControlBlock {
     SimCommTask task;
 };
 
-// TODO: Refactor this into using a driver.write method
 auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb,
          std::shared_ptr<sim_driver::SimDriver> driver) -> void {
     tcb->queue.set_stop_token(st);
