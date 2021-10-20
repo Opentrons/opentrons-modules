@@ -83,7 +83,7 @@ void run(void *param) {
     auto &queue = _task.get_message_queue();
     //ensure plate lock closed via message at startup (needed for homing)
     auto message1 = messages::ClosePlateLockMessage{.from_startup = true};
-    static_cast<void>(queue.try_send(message1, 1000)); //adjust ticks to ensure fully closed before homing message sent?
+    static_cast<void>(queue.try_send(message1, 1500)); //adjust ticks to ensure fully closed before homing message sent?
     //then ensure main motor homed via message at startup
     auto message2 = messages::BeginHomingMessage{};
     static_cast<void>(queue.try_send(message2, 10));
