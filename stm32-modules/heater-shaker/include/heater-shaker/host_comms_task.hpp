@@ -45,14 +45,14 @@ class HostCommsTask {
         gcode::SetSerialNumber, gcode::Home, gcode::ActuateSolenoid,
         gcode::DebugControlPlateLockMotor, gcode::OpenPlateLock,
         gcode::ClosePlateLock, gcode::GetPlateLockState,
-        gcode::GetPlateLockStateDebug>;
+        gcode::GetPlateLockStateDebug, gcode::SetLED>;
     using AckOnlyCache =
         AckCache<8, gcode::SetRPM, gcode::SetTemperature,
                  gcode::SetAcceleration, gcode::SetPIDConstants,
                  gcode::SetHeaterPowerTest, gcode::EnterBootloader, gcode::Home,
                  gcode::ActuateSolenoid, gcode::DebugControlPlateLockMotor,
                  gcode::OpenPlateLock, gcode::ClosePlateLock,
-                 gcode::SetSerialNumber>;
+                 gcode::SetSerialNumber, gcode::SetLED>;
     using GetTempCache = AckCache<8, gcode::GetTemperature>;
     using GetTempDebugCache = AckCache<8, gcode::GetTemperatureDebug>;
     using GetRPMCache = AckCache<8, gcode::GetRPM>;
@@ -60,6 +60,7 @@ class HostCommsTask {
     using GetPlateLockStateCache = AckCache<8, gcode::GetPlateLockState>;
     using GetPlateLockStateDebugCache =
         AckCache<8, gcode::GetPlateLockStateDebug>;
+    using LEDAckCache = AckCache<8, gcode::SetLED>;
 
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
@@ -80,7 +81,9 @@ class HostCommsTask {
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_plate_lock_state_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          get_plate_lock_state_debug_cache() {}
+          get_plate_lock_state_debug_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          led_ack_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -392,6 +395,30 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::LEDTransmitCompleteResponse& msg,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            led_ack_cache.remove_if_present(msg.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, msg](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else if (msg.error != errors::ErrorCode::NO_ERROR) {
+                    return errors::write_into(tx_into, tx_limit,
+                                              msg.error);
+                } else {
+                    return cache_element.write_response_into(tx_into, tx_limit, msg.success);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::ForceUSBDisconnectMessage& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
         static_cast<void>(tx_limit);
@@ -463,6 +490,30 @@ class HostCommsTask {
         }
         auto message = messages::SetSerialNumberMessage{
             .id = id, .serial_number = gcode.serial_number};
+        if (!task_registry->system->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetLED& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        led_ack_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::StartSetLEDMessage{
+            .id = id, .aTxBuffer = gcode.aTxBuffer};
         if (!task_registry->system->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
@@ -877,6 +928,7 @@ class HostCommsTask {
     GetSystemInfoCache get_system_info_cache;
     GetPlateLockStateCache get_plate_lock_state_cache;
     GetPlateLockStateDebugCache get_plate_lock_state_debug_cache;
+    LEDAckCache led_ack_cache;
     bool may_connect_latch = true;
 };
 

@@ -30,6 +30,7 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {
         p.get_serial_number()
         } -> std::same_as<std::array<char, systemwide::SERIAL_NUMBER_LENGTH>>;
+    {p.start_set_led(uint8_t [systemwide::TXBUFFERSIZE]{0})} -> std::same_as<errors::ErrorCode>;
 };
 
 using Message = messages::SystemMessage;
@@ -174,6 +175,37 @@ class SystemTask {
     }
 
     template <typename Policy>
+    auto visit_message(const messages::StartSetLEDMessage& msg,
+                       Policy& policy) -> void {
+        cached_led_id = msg.id;
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (!policy.check_I2C_ready) {
+            response.with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
+        } else {
+            response.with_error = policy.start_set_led(msg.aTxBuffer);
+        }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::LEDTransmitComplete& msg, Policy& policy)
+        -> void {
+        auto response =
+            messages::LEDTransmitCompleteResponse{.responding_to_id = cached_led_id, 
+                                                        .success = msg.transmitted};
+        if (msg.error) {
+            response.error = errors::ErrorCode::SYSTEM_LED_TRANSMIT_COMPLETION_ERROR;
+        }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+
+        //create a new LEDTransmitCompleteResponse Host_Comms_Task message w .success and .error vars
+        //what kind of gcode output does Ack message w/o .id create? Need to print success and error vars
+    }
+
+    template <typename Policy>
     requires SystemExecutionPolicy<Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
         static_cast<void>(message);
@@ -184,6 +216,7 @@ class SystemTask {
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
     BootloaderPrepAckCache prep_cache;
+    uint32_t cached_led_id = 0;
 };
 
 };  // namespace system_task

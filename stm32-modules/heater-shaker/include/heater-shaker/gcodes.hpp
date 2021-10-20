@@ -676,6 +676,68 @@ struct SetSerialNumber {
     }
 };
 
+struct SetLED { //make sure M998 isn't used. Just use this to turn them on, cycle power to reset
+    /*
+    ** Set LED uses a random gcode, M998, adjacent to the firmware
+    ** update gcode, M997
+    ** Format: M998 <which_LED>
+    ** Example: M998 0 sets first LED pin high
+    */
+    using ParseResult = std::optional<SetLED>;
+    static constexpr auto prefix = std::array{'M', '9', '9', '8', ' '};
+    static constexpr const char* response = "M998 OK\n";
+    uint8_t aTxBuffer[systemwide::TXBUFFERSIZE] = {};
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit, bool success) -> InputIt {
+        static constexpr const char* prefix = "M998 Success:";
+        auto written =
+            write_string_to_iterpair(buf, limit, prefix);
+        if (written == limit) {
+            return written;
+        }
+        const char* success_chars = success ? "1" : "0";
+        written =
+            write_string_to_iterpair(written, limit, success_chars);
+        if (written == limit) {
+            return written;
+        }
+        static constexpr const char* suffix = " OK\n";
+        return write_string_to_iterpair(written, limit, suffix);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto value_res = parse_value<uint8_t>(working, limit);
+
+        if (!value_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        uint8_t UpdateBuffer[systemwide::TXBUFFERSIZE] = {};
+        uint8_t index = static_cast<uint8_t>(value_res.first.value());
+        UpdateBuffer[index] = (uint8_t)0x30;
+        return std::make_pair(ParseResult(SetLED{.aTxBuffer = UpdateBuffer}),
+                              value_res.second);
+    }
+};
+
 struct DebugControlPlateLockMotor {
     /**
      * DebugControlPlateLockMotor is M240.D because why not.
@@ -834,7 +896,7 @@ struct GetPlateLockState {
 struct GetPlateLockStateDebug {
     /*
     ** GetPlateLockStateDebug keys off a random gcode and returns plate lock
-    *state *and state of the open and closed plate lock optical switches
+    ** state and state of the open and closed plate lock optical switches
     ** Format: M241.D
     ** Example: M241.D
     */

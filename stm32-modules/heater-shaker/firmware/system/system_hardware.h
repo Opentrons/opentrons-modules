@@ -8,11 +8,18 @@ extern "C" {
 
 typedef struct {
     bool success;
+    bool error;
 } led_transmit_result;
 
 typedef struct {
     void (*led_transmit_complete)(const led_transmit_result* result);
+    void (*led_transmit_error_complete)(const led_transmit_result* result);
 } system_hardware_handles;
+
+typedef enum {
+    PWM_Init,
+    LED_Control
+} I2C_Operations;
 
 #define I2C_ADDRESS        0xD8
 /* I2C TIMING Register define when I2C clock source is SYSCLK */
@@ -45,12 +52,15 @@ typedef struct {
 #define I2Cx_ER_IRQHandler              I2C1_ER_IRQHandler
 
 /* Size of Transmission buffer */
-#define TXBUFFERSIZE                      (COUNTOF(aTxBuffer) - 1)
-/* Size of Reception buffer */
-#define RXBUFFERSIZE                      TXBUFFERSIZE
+#define TXBUFFERSIZE                    12 //pull from systemwide.hpp
 
-/* Exported macro ------------------------------------------------------------*/
-#define COUNTOF(__BUFFER__)   (sizeof(__BUFFER__) / sizeof(*(__BUFFER__)))
+#define BASE_PWM_REGISTER               0x04
+#define UPDATE_REGISTER                 0x13
+#define BASE_REGISTER                   0x17 //first LED is on driver channel 4
+#define REGISTER_SIZE                   SIZEOF(BASE_REGISTER)
+
+#define LED_OUTPUT_HIGH                 0x30
+#define LED_PWM_OUTPUT_HIGH             0xFF
 
 #define SOFTPOWER_BUTTON_SENSE_PIN GPIO_PIN_4
 #define SOFTPOWER_UNPLUG_SENSE_PIN GPIO_PIN_5
@@ -58,7 +68,8 @@ typedef struct {
 
 void system_hardware_setup(system_hardware_handles* handles);
 void system_hardware_enter_bootloader(void);
-void system_hardware_led_change(uint16_t register_map);
+void system_hardware_set_led(uint16_t register_map);
+bool system_hardware_I2C_ready(void);
 
 #ifdef __cplusplus
 }  // extern "C"

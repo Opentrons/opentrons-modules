@@ -51,8 +51,17 @@ static void handle_led_transmit_callback(const led_transmit_result *result) {
         return;
     }
     static_cast<void>(_task.get_message_queue().try_send_from_isr(
-        messages::SystemMessage(messages::LEDComplete{
-            .transmitted = result->success})));
+        messages::SystemMessage(messages::LEDTransmitComplete{
+            .transmitted = result->success, .error = false})));
+}
+
+static void handle_led_transmit_error_callback(const led_transmit_result *result) {
+    if (result == nullptr) {
+        return;
+    }
+    static_cast<void>(_task.get_message_queue().try_send_from_isr(
+        messages::SystemMessage(messages::LEDTransmitComplete{
+            .transmitted = result->success, .error = result->error})));
 }
 
 // Actual function that runs inside the task, unused param because we don't get
@@ -60,6 +69,7 @@ static void handle_led_transmit_callback(const led_transmit_result *result) {
 static void run(void *param) {
     memset(&_local_task.handles, 0, sizeof(_local_task.handles));
     _local_task.handles.led_transmit_complete = handle_led_transmit_callback;
+    _local_task.handles.led_transmit_error_complete = handle_led_transmit_error_callback;
     system_hardware_setup(&_local_task.handles);
     static constexpr uint32_t delay_ticks = 100;
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
