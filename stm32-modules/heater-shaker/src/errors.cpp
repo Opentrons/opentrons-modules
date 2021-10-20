@@ -26,6 +26,7 @@ const char* const MOTOR_ILLEGAL_RAMP_RATE =
     "ERR121:main motor:illegal ramp rate\n";
 const char* const MOTOR_BAD_HOME = "ERR122:main motor:bad home\n";
 const char* const MOTOR_NOT_HOME = "ERR123:main motor:not home (required)\n";
+const char* const PLATE_LOCK_TIMEOUT = "ERR124:plate lock:timeout\n";
 const char* const HEATER_THERMISTOR_A_DISCONNECTED =
     "ERR201:heater:thermistor a disconnected\n";
 const char* const HEATER_THERMISTOR_A_SHORT =
@@ -82,6 +83,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(MOTOR_ILLEGAL_RAMP_RATE);
         HANDLE_CASE(MOTOR_BAD_HOME);
         HANDLE_CASE(MOTOR_NOT_HOME);
+        HANDLE_CASE(PLATE_LOCK_TIMEOUT);
         HANDLE_CASE(HEATER_THERMISTOR_A_DISCONNECTED);
         HANDLE_CASE(HEATER_THERMISTOR_A_SHORT);
         HANDLE_CASE(HEATER_THERMISTOR_A_OVERTEMP);

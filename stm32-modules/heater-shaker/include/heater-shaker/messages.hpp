@@ -153,6 +153,8 @@ struct GetPlateLockStateDebugMessage {
     uint32_t id;
 };
 
+struct CheckPlateLockStatusMessage {};
+
 /*
 ** Response structs either confirm actions or fulfill actions. Because some
 *messages

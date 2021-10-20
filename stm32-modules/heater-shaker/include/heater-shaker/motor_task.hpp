@@ -91,6 +91,7 @@ template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
 class MotorTask {
     static constexpr const uint32_t HOMING_INTERSTATE_WAIT_TICKS = 100;
+    static constexpr const uint32_t PLATE_LOCK_WAIT_TICKS = 100; //test and adjust
 
   public:
     static constexpr uint16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 250;
@@ -347,44 +348,48 @@ class MotorTask {
     auto visit_message(const messages::OpenPlateLockMessage& msg,
                        Policy& policy) -> void {
         static constexpr float OpenPower = -1.0F;
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (!policy.plate_lock_open_sensor_read()) {
             if (state.status != State::STOPPED_HOMED) {
-                response = messages::AcknowledgePrevious{
-                    .responding_to_id = msg.id,
-                    .with_error = errors::ErrorCode::MOTOR_NOT_HOME};
+                static_cast<void>(task_registry->comms->get_message_queue().try_send(
+                    messages::AcknowledgePrevious{.responding_to_id = msg.id,
+                    .with_error = errors::ErrorCode::MOTOR_NOT_HOME}));
             } else {
+                cached_plate_lock_id = msg.id;
                 policy.plate_lock_set_power(OpenPower);
                 plate_lock_state.status = PlateLockState::OPENING;
+                policy.delay_ticks(PLATE_LOCK_WAIT_TICKS);
+                static_cast<void>(
+                    get_message_queue().try_send(messages::CheckPlateLockStatusMessage{}));
             }
         } else {
             plate_lock_state.status = PlateLockState::IDLE_OPEN;
+            static_cast<void>(task_registry->comms->get_message_queue().try_send(
+                messages::AcknowledgePrevious{.responding_to_id = msg.id}));
         }
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
     }
 
     template <typename Policy>
     auto visit_message(const messages::ClosePlateLockMessage& msg,
                        Policy& policy) -> void {
         static constexpr float ClosePower = 1.0F;
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (!policy.plate_lock_closed_sensor_read()) {
             if ((!msg.from_startup) && (state.status != State::STOPPED_HOMED)) {
-                response = messages::AcknowledgePrevious{
-                    .responding_to_id = msg.id,
-                    .with_error = errors::ErrorCode::MOTOR_NOT_HOME};
+                static_cast<void>(task_registry->comms->get_message_queue().try_send(
+                    messages::AcknowledgePrevious{.responding_to_id = msg.id,
+                    .with_error = errors::ErrorCode::MOTOR_NOT_HOME}));
             } else {
+                cached_plate_lock_id = msg.id;
                 policy.plate_lock_set_power(ClosePower);
                 plate_lock_state.status = PlateLockState::CLOSING;
+                policy.delay_ticks(PLATE_LOCK_WAIT_TICKS);
+                static_cast<void>(
+                    get_message_queue().try_send(messages::CheckPlateLockStatusMessage{}));
             }
         } else {
             plate_lock_state.status = PlateLockState::IDLE_CLOSED;
+            static_cast<void>(task_registry->comms->get_message_queue().try_send(
+                messages::AcknowledgePrevious{.responding_to_id = msg.id}));
         }
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
     }
 
     template <typename Policy>
@@ -396,6 +401,26 @@ class MotorTask {
         } else if ((msg.open == true) && (msg.closed == false)) {
             plate_lock_state.status = PlateLockState::IDLE_OPEN;
         }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::AcknowledgePrevious{.responding_to_id = cached_plate_lock_id}));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::CheckPlateLockStatusMessage& msg,
+                       Policy& policy) -> void {
+        if ((plate_lock_state.status != PlateLockState::IDLE_CLOSED) || (plate_lock_state.status != PlateLockState::IDLE_OPEN)) {
+            policy.plate_lock_brake();
+            if (plate_lock_state.status == PlateLockState::CLOSING) {
+                plate_lock_state.status = PlateLockState::IDLE_CLOSED; //fair to do? no, unknown
+            } else if (plate_lock_state.status == PlateLockState::OPENING) {
+                plate_lock_state.status = PlateLockState::IDLE_OPEN; //fair to do?
+            } else {
+                plate_lock_state.status = PlateLockState::IDLE_UNKNOWN;
+            }
+        }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::AcknowledgePrevious{.responding_to_id = cached_plate_lock_id,
+            .with_error = errors::ErrorCode::PLATE_LOCK_TIMEOUT}));
     }
 
     template <typename Policy>
@@ -476,6 +501,7 @@ class MotorTask {
     tasks::Tasks<QueueImpl>* task_registry;
     uint32_t cached_home_id = 0;
     uint32_t homing_cycles_coasting = 0;
+    uint32_t cached_plate_lock_id = 0;
 };
 
 };  // namespace motor_task
