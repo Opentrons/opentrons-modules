@@ -81,12 +81,11 @@ void run(void *param) {
     motor_hardware_setup(&_local_task.handles);
     auto policy = MotorPolicy(&_local_task.handles);
     auto &queue = _task.get_message_queue();
-    //close plate lock via message at startup
-    auto message1 = messages::ClosePlateLockMessage{.from_startup = true}; //no .id = id
-    static_cast<void>(queue.try_send(message1, 10)); //adjust ticks to ensure fully closed before homing message sent?
-    //home main motor via message at startup
-    //auto id = ack_only_cache.add(home_code); //how to get id like in host_comms_task?
-    auto message2 = messages::BeginHomingMessage{}; //no .id = id
+    //ensure plate lock closed via message at startup (needed for homing)
+    auto message1 = messages::ClosePlateLockMessage{.from_startup = true};
+    static_cast<void>(queue.try_send(message1, 1000)); //adjust ticks to ensure fully closed before homing message sent?
+    //then ensure main motor homed via message at startup
+    auto message2 = messages::BeginHomingMessage{};
     static_cast<void>(queue.try_send(message2, 10));
 
     while (true) {

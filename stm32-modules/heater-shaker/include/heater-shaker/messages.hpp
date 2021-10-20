@@ -231,7 +231,7 @@ using MotorMessage = ::std::variant<
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,
     ActuateSolenoidMessage, SetPlateLockPowerMessage, OpenPlateLockMessage,
     ClosePlateLockMessage, SetPIDConstantsMessage, PlateLockComplete,
-    GetPlateLockStateMessage, GetPlateLockStateDebugMessage>;
+    GetPlateLockStateMessage, GetPlateLockStateDebugMessage, CheckPlateLockStatusMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage>;
