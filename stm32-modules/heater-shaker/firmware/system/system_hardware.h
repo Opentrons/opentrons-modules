@@ -6,6 +6,8 @@
 extern "C" {
 #endif  // __cplusplus
 
+#include <stdbool.h>
+
 typedef struct {
     bool success;
     bool error;
@@ -51,13 +53,10 @@ typedef enum {
 #define I2Cx_EV_IRQHandler              I2C1_EV_IRQHandler
 #define I2Cx_ER_IRQHandler              I2C1_ER_IRQHandler
 
-/* Size of Transmission buffer */
-#define TXBUFFERSIZE                    12 //pull from systemwide.hpp
-
 #define BASE_PWM_REGISTER               0x04
 #define UPDATE_REGISTER                 0x13
 #define BASE_REGISTER                   0x17 //first LED is on driver channel 4
-#define REGISTER_SIZE                   SIZEOF(BASE_REGISTER)
+#define REGISTER_SIZE                   (sizeof(BASE_REGISTER))
 
 #define LED_OUTPUT_HIGH                 0x30
 #define LED_PWM_OUTPUT_HIGH             0xFF
@@ -68,7 +67,7 @@ typedef enum {
 
 void system_hardware_setup(system_hardware_handles* handles);
 void system_hardware_enter_bootloader(void);
-void system_hardware_set_led(uint16_t register_map);
+bool system_hardware_set_led(uint8_t* aTxBuffer, I2C_Operations operation);
 bool system_hardware_I2C_ready(void);
 
 #ifdef __cplusplus

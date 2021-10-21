@@ -21,7 +21,7 @@
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/gcode_parser.hpp"
 #include "heater-shaker/utility.hpp"
-#include "systemwide.hpp"
+#include "systemwide.h"
 
 namespace gcode {
 
@@ -556,8 +556,7 @@ struct GetSystemInfo {
      * */
     using ParseResult = std::optional<GetSystemInfo>;
     static constexpr auto prefix = std::array{'M', '1', '1', '5'};
-    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH = SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -623,7 +622,7 @@ struct SetSerialNumber {
     static constexpr auto prefix = std::array{'M', '9', '9', '6', ' '};
     static constexpr const char* response = "M996 OK\n";
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SERIAL_NUMBER_LENGTH> serial_number = {};
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 
@@ -686,7 +685,7 @@ struct SetLED { //make sure M998 isn't used. Just use this to turn them on, cycl
     using ParseResult = std::optional<SetLED>;
     static constexpr auto prefix = std::array{'M', '9', '9', '8', ' '};
     static constexpr const char* response = "M998 OK\n";
-    uint8_t aTxBuffer[systemwide::TXBUFFERSIZE] = {};
+    std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer = {};
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -730,7 +729,7 @@ struct SetLED { //make sure M998 isn't used. Just use this to turn them on, cycl
         if (!value_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        uint8_t UpdateBuffer[systemwide::TXBUFFERSIZE] = {};
+        std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> UpdateBuffer = {};
         uint8_t index = static_cast<uint8_t>(value_res.first.value());
         UpdateBuffer[index] = (uint8_t)0x30;
         return std::make_pair(ParseResult(SetLED{.aTxBuffer = UpdateBuffer}),

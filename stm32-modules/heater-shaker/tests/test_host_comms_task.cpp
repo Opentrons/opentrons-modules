@@ -4,7 +4,7 @@
 #include "catch2/catch.hpp"
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/messages.hpp"
-#include "systemwide.hpp"
+#include "systemwide.h"
 #include "test/task_builder.hpp"
 
 SCENARIO("usb message parsing") {
@@ -332,7 +332,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 auto set_serial_number_message =
                     std::get<messages::SetSerialNumberMessage>(system_message);
                 tasks->get_system_queue().backing_deque.pop_front();
-                std::array<char, systemwide::SERIAL_NUMBER_LENGTH> Test_SN = {
+                std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> Test_SN = {
                     "TESTSN2xxxxxxxxxxxxxxxx"};
                 REQUIRE(set_serial_number_message.serial_number == Test_SN);
                 REQUIRE(written_firstpass == tx_buf.begin());
@@ -794,7 +794,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                             .responding_to_id = get_system_info_message.id,
                             .serial_number =
                                 std::array<char,
-                                           systemwide::SERIAL_NUMBER_LENGTH>{
+                                           SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>{
                                     "TESTSN8"},
                             .fw_version = "v1.0.1",
                             .hw_version = "v1.0.1"});
@@ -819,7 +819,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                             .responding_to_id = get_system_info_message.id + 1,
                             .serial_number =
                                 std::array<char,
-                                           systemwide::SERIAL_NUMBER_LENGTH>{
+                                           SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>{
                                     "TESTSN8"},
                             .fw_version = "v1.0.1",
                             .hw_version = "v1.0.1"});

@@ -55,10 +55,9 @@ auto SystemPolicy::get_serial_number(void)
     return serial_number_array;
 }
 
-//#define TXBUFFERSIZE
-auto SystemPolicy::start_set_led(uint8_t aTxBuffer[systemwide::TXBUFFERSIZE])
+auto SystemPolicy::start_set_led(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer)
     -> errors::ErrorCode {
-    if (!system_hardware_set_led(aTxBuffer)) {
+    if (!system_hardware_set_led(aTxBuffer.data(), LED_Control)) {
         return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
     }
     return errors::ErrorCode::NO_ERROR;
@@ -66,5 +65,5 @@ auto SystemPolicy::start_set_led(uint8_t aTxBuffer[systemwide::TXBUFFERSIZE])
 //create new LED errors (SYSTEM_LED_TRANSMIT_START_HAL_ERROR)
 
 auto SystemPolicy::check_I2C_ready(void) -> bool {
-    return(system_hardware_I2C_ready);
+    return(system_hardware_I2C_ready());
 }

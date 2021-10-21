@@ -1,7 +1,7 @@
 #include "catch2/catch.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/system_task.hpp"
-#include "systemwide.hpp"
+#include "systemwide.h"
 #include "test/task_builder.hpp"
 
 SCENARIO("system task message passing") {
@@ -91,7 +91,7 @@ SCENARIO("system task message passing") {
             auto message = messages::SetSerialNumberMessage{
                 .id = 123,
                 .serial_number =
-                    std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
+                    std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>{
                         "TESTSN4"}};
             tasks->get_system_queue().backing_deque.push_back(
                 messages::SystemMessage(message));
@@ -100,7 +100,7 @@ SCENARIO("system task message passing") {
                 REQUIRE(tasks->get_system_queue().backing_deque.empty());
                 AND_THEN("the task should set the serial number") {
                     REQUIRE(tasks->get_system_policy().get_serial_number() ==
-                            std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
+                            std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>{
                                 "TESTSN4"});
                 }
                 AND_THEN(
@@ -127,7 +127,7 @@ SCENARIO("system task message passing") {
             tasks->get_system_queue().backing_deque.push_back(
                 messages::SystemMessage(message));
             tasks->get_system_policy().set_serial_number(
-                std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{"TESTSN6"});
+                std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>{"TESTSN6"});
             tasks->get_system_task().run_once(tasks->get_system_policy());
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_system_queue().backing_deque.empty());
@@ -146,7 +146,7 @@ SCENARIO("system task message passing") {
                         std::get<messages::GetSystemInfoResponse>(response);
                     REQUIRE(getsysteminfo.responding_to_id == message.id);
                     REQUIRE(getsysteminfo.serial_number ==
-                            std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
+                            std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>{
                                 "TESTSN6"});
                 }
             }

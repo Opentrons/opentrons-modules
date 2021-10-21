@@ -11,7 +11,7 @@
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
 #include "heater-shaker/version.hpp"
-#include "systemwide.hpp"
+#include "systemwide.h"
 
 namespace tasks {
 template <template <class> class QueueImpl>
@@ -24,13 +24,13 @@ template <typename Policy>
 concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.enter_bootloader()};
     {
-        p.set_serial_number(std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
+        p.set_serial_number(std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>{
             "TESTSNXxxxxxxxxxxxxxxxx"})
         } -> std::same_as<errors::ErrorCode>;
     {
         p.get_serial_number()
-        } -> std::same_as<std::array<char, systemwide::SERIAL_NUMBER_LENGTH>>;
-    {p.start_set_led(uint8_t [systemwide::TXBUFFERSIZE]{0})} -> std::same_as<errors::ErrorCode>;
+        } -> std::same_as<std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>>;
+    {p.start_set_led(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE>{})} -> std::same_as<errors::ErrorCode>;
 };
 
 using Message = messages::SystemMessage;
@@ -180,7 +180,7 @@ class SystemTask {
         cached_led_id = msg.id;
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        if (!policy.check_I2C_ready) {
+        if (!policy.check_I2C_ready()) {
             response.with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
         } else {
             response.with_error = policy.start_set_led(msg.aTxBuffer);

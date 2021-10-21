@@ -3,6 +3,7 @@
 #include "stm32f3xx_it.h"
 #include "stm32f3xx_hal_cortex.h"
 #include "system_hardware.h"
+#include "systemwide.h"
 
 system_hardware_handles *SYSTEM_HW_HANDLE = NULL;
 
@@ -33,9 +34,9 @@ void system_hardware_setup(system_hardware_handles* handles) {
     HAL_I2C_Init(&I2cHandle);
     HAL_I2CEx_ConfigAnalogFilter(&I2cHandle,I2C_ANALOGFILTER_ENABLE); //do this?
 
-    uint8_t PWMInitBuffer[TXBUFFERSIZE] = {LED_PWM_OUTPUT_HIGH};
+    uint8_t PWMInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_PWM_OUTPUT_HIGH};
     system_hardware_set_led(PWMInitBuffer, PWM_Init);
-    uint8_t OutputInitBuffer[TXBUFFERSIZE] = {0}; //make all zeroes
+    uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0}; //make all zeroes
     system_hardware_set_led(OutputInitBuffer, LED_Control);
     //any error checking?
 }
@@ -162,7 +163,8 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c)
   HAL_NVIC_DisableIRQ(I2Cx_EV_IRQn);
 }
 
-bool system_hardware_set_led(uint8_t aTxBuffer[TXBUFFERSIZE], I2C_Operations operation) {
+//bool system_hardware_set_led(uint8_t aTxBuffer[SYSTEM_WIDE_TXBUFFERSIZE], I2C_Operations operation) {
+bool system_hardware_set_led(uint8_t* aTxBuffer, I2C_Operations operation) {
   //loop thru bits
   //if bit_previous != bit
     //if 1, set register high
@@ -173,7 +175,7 @@ bool system_hardware_set_led(uint8_t aTxBuffer[TXBUFFERSIZE], I2C_Operations ope
   //ensure state initialized as all low and stored
 
   //use address auto increment
-  //loop thru aTxBuffer, use TXBUFFERSIZE
+  //loop thru aTxBuffer, use SYSTEM_WIDE_TXBUFFERSIZE
 
   //make TXBUFFERSIZE part of systemwide? Get rid of #define in this header
   //how to include systemwide.hpp in .h file??
@@ -190,7 +192,7 @@ bool system_hardware_set_led(uint8_t aTxBuffer[TXBUFFERSIZE], I2C_Operations ope
   //won't callback signal end of transmission?
   //returns bool for transmit_start_success
 
-  uint16_t base_register;
+  uint16_t base_register = 0;
   uint8_t UpdateBuffer[1] = {};
 
   switch(operation) {
@@ -203,10 +205,10 @@ bool system_hardware_set_led(uint8_t aTxBuffer[TXBUFFERSIZE], I2C_Operations ope
   }
 
   HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&I2cHandle, (uint16_t)I2C_ADDRESS, base_register,
-    (uint16_t)REGISTER_SIZE, (uint8_t*)aTxBuffer, TXBUFFERSIZE);
-  if ((status == HAL_OK) && (operation == LED_Control) { //only update after LED control transmit at initialization
+    (uint16_t)REGISTER_SIZE, (uint8_t*)aTxBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
+  if ((status == HAL_OK) && (operation == LED_Control)) { //only update after LED control transmit at initialization
     status = HAL_I2C_Mem_Write_IT(&I2cHandle, (uint16_t)I2C_ADDRESS, (uint16_t)UPDATE_REGISTER,
-      (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, SIZEOF(UpdateBuffer));
+      (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
   }
   return (status == HAL_OK);
 

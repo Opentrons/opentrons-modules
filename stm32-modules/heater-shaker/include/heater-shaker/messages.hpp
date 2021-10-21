@@ -5,7 +5,7 @@
 #include <variant>
 
 #include "heater-shaker/errors.hpp"
-#include "systemwide.hpp"
+#include "systemwide.h"
 
 namespace messages {
 
@@ -97,13 +97,13 @@ struct SetPowerTestMessage {
 struct SetSerialNumberMessage {
     uint32_t id;
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
 };
 
 struct StartSetLEDMessage {
     uint32_t id;
-    uint8_t aTxBuffer[systemwide::TXBUFFERSIZE];
+    std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer;
 };
 
 struct LEDTransmitComplete {
@@ -199,7 +199,7 @@ struct GetRPMResponse {
 struct GetSystemInfoResponse {
     uint32_t responding_to_id;
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
     const char* fw_version;
     const char* hw_version;
