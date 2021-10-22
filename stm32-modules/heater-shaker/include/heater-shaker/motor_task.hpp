@@ -308,16 +308,16 @@ class MotorTask {
                 task_registry->comms->get_message_queue().try_send(
                     messages::AcknowledgePrevious{
                         .responding_to_id = msg.id,
-                        .with_error = errors::ErrorCode::PLATE_LOCK_NOT_CLOSED}));
-        } else {*/
-            state.status = State::HOMING_MOVING_TO_HOME_SPEED;
-            policy.homing_solenoid_disengage();
-            policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM +
-                        HOMING_ROTATION_LOW_MARGIN);
-            policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
-            cached_home_id = msg.id;
-            static_cast<void>(
-                get_message_queue().try_send(messages::CheckHomingStatusMessage{}));
+                        .with_error =
+        errors::ErrorCode::PLATE_LOCK_NOT_CLOSED})); } else {*/
+        state.status = State::HOMING_MOVING_TO_HOME_SPEED;
+        policy.homing_solenoid_disengage();
+        policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM +
+                       HOMING_ROTATION_LOW_MARGIN);
+        policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
+        cached_home_id = msg.id;
+        static_cast<void>(
+            get_message_queue().try_send(messages::CheckHomingStatusMessage{}));
         //}
     }
 
@@ -406,12 +406,13 @@ class MotorTask {
         } else {
             plate_lock_state.status = PlateLockState::IDLE_CLOSED;
             if (msg.from_startup) {
-                static_cast<void>(
-                    get_message_queue().try_send(messages::BeginHomingMessage{}));
+                static_cast<void>(get_message_queue().try_send(
+                    messages::BeginHomingMessage{}));
             } else {
                 static_cast<void>(
                     task_registry->comms->get_message_queue().try_send(
-                        messages::AcknowledgePrevious{.responding_to_id = msg.id}));
+                        messages::AcknowledgePrevious{.responding_to_id =
+                                                          msg.id}));
             }
         }
     }
@@ -429,9 +430,10 @@ class MotorTask {
             static_cast<void>(
                 get_message_queue().try_send(messages::BeginHomingMessage{}));
         } else {
-            static_cast<void>(task_registry->comms->get_message_queue().try_send(
-                messages::AcknowledgePrevious{.responding_to_id =
-                                                cached_plate_lock_id}));
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    messages::AcknowledgePrevious{.responding_to_id =
+                                                      cached_plate_lock_id}));
         }
     }
 
@@ -444,8 +446,8 @@ class MotorTask {
                 policy.plate_lock_brake();
                 plate_lock_state.status = PlateLockState::IDLE_UNKNOWN;
                 if (from_startup) {
-                    static_cast<void>(
-                        get_message_queue().try_send(messages::BeginHomingMessage{}));
+                    static_cast<void>(get_message_queue().try_send(
+                        messages::BeginHomingMessage{}));
                 } else {
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(

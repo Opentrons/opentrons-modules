@@ -702,82 +702,127 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                 tasks->get_motor_queue().backing_deque.push_back(open_message);
                 tasks->get_motor_task().run_once(tasks->get_motor_policy());
                 THEN("motor should be enabled with correct power and state") {
-                    REQUIRE(tasks->get_motor_policy().test_plate_lock_enabled());
-                    REQUIRE(tasks->get_motor_policy().test_plate_lock_get_power() ==
-                            -1.0F);
+                    REQUIRE(
+                        tasks->get_motor_policy().test_plate_lock_enabled());
+                    REQUIRE(
+                        tasks->get_motor_policy().test_plate_lock_get_power() ==
+                        -1.0F);
                     REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
                             motor_task::PlateLockState::OPENING);
-                    REQUIRE(std::holds_alternative<messages::CheckPlateLockStatusMessage>(
-                            tasks->get_motor_queue().backing_deque.front()));
-                    AND_WHEN("opening plate lock and not receiving a plate complete event for too long") {
+                    REQUIRE(std::holds_alternative<
+                            messages::CheckPlateLockStatusMessage>(
+                        tasks->get_motor_queue().backing_deque.front()));
+                    AND_WHEN(
+                        "opening plate lock and not receiving a plate complete "
+                        "event for too long") {
                         for (size_t i = 0;
-                            i < std::remove_cvref_t<decltype(tasks->get_motor_task())>::
-                                    PLATE_LOCK_MOVE_TIME_THRESHOLD;
-                            i = i + 100) { //mimic polling_time incrementing
-                            CHECK(tasks->get_motor_task().get_plate_lock_state() ==
-                                    motor_task::PlateLockState::OPENING);
-                            tasks->get_motor_task().run_once(tasks->get_motor_policy());
-                            CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+                             i < std::remove_cvref_t<
+                                     decltype(tasks->get_motor_task())>::
+                                     PLATE_LOCK_MOVE_TIME_THRESHOLD;
+                             i = i + 100) {  // mimic polling_time incrementing
+                            CHECK(tasks->get_motor_task()
+                                      .get_plate_lock_state() ==
+                                  motor_task::PlateLockState::OPENING);
+                            tasks->get_motor_task().run_once(
+                                tasks->get_motor_policy());
+                            CHECK(tasks->get_host_comms_queue()
+                                      .backing_deque.empty());
                         }
-                        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                        tasks->get_motor_task().run_once(
+                            tasks->get_motor_policy());
                         THEN("the plate lock timeout should fire") {
-                            REQUIRE(tasks->get_motor_policy().test_plate_lock_braked());
-                            CHECK(tasks->get_motor_queue().backing_deque.empty());
-                            REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
+                            REQUIRE(tasks->get_motor_policy()
+                                        .test_plate_lock_braked());
+                            CHECK(
+                                tasks->get_motor_queue().backing_deque.empty());
+                            REQUIRE(tasks->get_motor_task()
+                                        .get_plate_lock_state() ==
                                     motor_task::PlateLockState::IDLE_UNKNOWN);
-                            auto ack_message = std::get<messages::AcknowledgePrevious>(
-                                tasks->get_host_comms_queue().backing_deque.front());
-                            REQUIRE(ack_message.responding_to_id == open_message.id);
-                            REQUIRE(ack_message.with_error == errors::ErrorCode::PLATE_LOCK_TIMEOUT);
+                            auto ack_message =
+                                std::get<messages::AcknowledgePrevious>(
+                                    tasks->get_host_comms_queue()
+                                        .backing_deque.front());
+                            REQUIRE(ack_message.responding_to_id ==
+                                    open_message.id);
+                            REQUIRE(ack_message.with_error ==
+                                    errors::ErrorCode::PLATE_LOCK_TIMEOUT);
                         }
                     }
-                    tasks->get_motor_queue().backing_deque.pop_front(); //pulling message out of queue
+                    tasks->get_motor_queue()
+                        .backing_deque
+                        .pop_front();  // pulling message out of queue
                     AND_WHEN("a stop condition is sent") {
                         auto stop_message = messages::PlateLockComplete{
                             .open = true, .closed = false};
                         tasks->get_motor_queue().backing_deque.push_back(
                             stop_message);
-                        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                        tasks->get_motor_task().run_once(
+                            tasks->get_motor_policy());
                         auto response =
                             tasks->get_host_comms_queue().backing_deque.front();
                         tasks->get_host_comms_queue().backing_deque.pop_front();
                         THEN("state should update and send acknowledgement") {
-                            REQUIRE(tasks->get_motor_policy().test_plate_lock_braked());
-                            REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
+                            REQUIRE(tasks->get_motor_policy()
+                                        .test_plate_lock_braked());
+                            REQUIRE(tasks->get_motor_task()
+                                        .get_plate_lock_state() ==
                                     motor_task::PlateLockState::IDLE_OPEN);
-                            CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-                            REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            CHECK(tasks->get_host_comms_queue()
+                                      .backing_deque.empty());
+                            REQUIRE(std::get<messages::AcknowledgePrevious>(
+                                        response)
                                         .responding_to_id == open_message.id);
                         }
-                        AND_WHEN("check plate lock status message is called") { //pushing message back in from above
-                            auto check_status_message = messages::CheckPlateLockStatusMessage{};
-                            tasks->get_motor_queue().backing_deque.push_back(check_status_message);
-                            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                        AND_WHEN(
+                            "check plate lock status message is called") {  // pushing message back in from above
+                            auto check_status_message =
+                                messages::CheckPlateLockStatusMessage{};
+                            tasks->get_motor_queue().backing_deque.push_back(
+                                check_status_message);
+                            tasks->get_motor_task().run_once(
+                                tasks->get_motor_policy());
                             THEN("nothing should happen") {
-                                REQUIRE(tasks->get_motor_policy().test_plate_lock_braked());
-                                REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
-                                    motor_task::PlateLockState::IDLE_OPEN);
-                                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-                                CHECK(tasks->get_motor_queue().backing_deque.empty());
+                                REQUIRE(tasks->get_motor_policy()
+                                            .test_plate_lock_braked());
+                                REQUIRE(tasks->get_motor_task()
+                                            .get_plate_lock_state() ==
+                                        motor_task::PlateLockState::IDLE_OPEN);
+                                CHECK(tasks->get_host_comms_queue()
+                                          .backing_deque.empty());
+                                CHECK(tasks->get_motor_queue()
+                                          .backing_deque.empty());
                             }
                         }
                         AND_WHEN("another open plate lock message is sent") {
-                            auto open_message_2 = messages::OpenPlateLockMessage{.id = 234};
-                            tasks->get_motor_queue().backing_deque.push_back(open_message_2);
-                            tasks->get_motor_task().run_once(tasks->get_motor_policy());
-                            auto response =
-                                tasks->get_host_comms_queue().backing_deque.front();
-                            tasks->get_host_comms_queue().backing_deque.pop_front();
-                            THEN("plate lock motor shouldn't move and acknowledgement should be sent") {
-                                CHECK(tasks->get_motor_queue().backing_deque.empty());
-                                REQUIRE(!tasks->get_motor_policy().test_plate_lock_enabled());
-                                REQUIRE(tasks->get_motor_policy().test_plate_lock_get_power() ==
+                            auto open_message_2 =
+                                messages::OpenPlateLockMessage{.id = 234};
+                            tasks->get_motor_queue().backing_deque.push_back(
+                                open_message_2);
+                            tasks->get_motor_task().run_once(
+                                tasks->get_motor_policy());
+                            auto response = tasks->get_host_comms_queue()
+                                                .backing_deque.front();
+                            tasks->get_host_comms_queue()
+                                .backing_deque.pop_front();
+                            THEN(
+                                "plate lock motor shouldn't move and "
+                                "acknowledgement should be sent") {
+                                CHECK(tasks->get_motor_queue()
+                                          .backing_deque.empty());
+                                REQUIRE(!tasks->get_motor_policy()
+                                             .test_plate_lock_enabled());
+                                REQUIRE(tasks->get_motor_policy()
+                                            .test_plate_lock_get_power() ==
                                         0.0F);
-                                REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
+                                REQUIRE(tasks->get_motor_task()
+                                            .get_plate_lock_state() ==
                                         motor_task::PlateLockState::IDLE_OPEN);
-                                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-                                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
-                                            .responding_to_id == open_message_2.id);
+                                CHECK(tasks->get_host_comms_queue()
+                                          .backing_deque.empty());
+                                REQUIRE(std::get<messages::AcknowledgePrevious>(
+                                            response)
+                                            .responding_to_id ==
+                                        open_message_2.id);
                             }
                         }
                     }
@@ -815,166 +860,258 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                 tasks->get_motor_queue().backing_deque.push_back(close_message);
                 tasks->get_motor_task().run_once(tasks->get_motor_policy());
                 THEN("motor should be enabled with correct power and state") {
-                    REQUIRE(tasks->get_motor_policy().test_plate_lock_enabled());
-                    REQUIRE(tasks->get_motor_policy().test_plate_lock_get_power() ==
-                            1.0F);
+                    REQUIRE(
+                        tasks->get_motor_policy().test_plate_lock_enabled());
+                    REQUIRE(
+                        tasks->get_motor_policy().test_plate_lock_get_power() ==
+                        1.0F);
                     REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
                             motor_task::PlateLockState::CLOSING);
-                    REQUIRE(std::holds_alternative<messages::CheckPlateLockStatusMessage>(
-                            tasks->get_motor_queue().backing_deque.front()));
-                    AND_WHEN("closing plate lock and not receiving a plate complete event for too long") {
+                    REQUIRE(std::holds_alternative<
+                            messages::CheckPlateLockStatusMessage>(
+                        tasks->get_motor_queue().backing_deque.front()));
+                    AND_WHEN(
+                        "closing plate lock and not receiving a plate complete "
+                        "event for too long") {
                         for (size_t i = 0;
-                            i < std::remove_cvref_t<decltype(tasks->get_motor_task())>::
-                                    PLATE_LOCK_MOVE_TIME_THRESHOLD;
-                            i = i + 100) { //mimic polling_time incrementing
-                            CHECK(tasks->get_motor_task().get_plate_lock_state() ==
-                                    motor_task::PlateLockState::CLOSING);
-                            tasks->get_motor_task().run_once(tasks->get_motor_policy());
-                            CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+                             i < std::remove_cvref_t<
+                                     decltype(tasks->get_motor_task())>::
+                                     PLATE_LOCK_MOVE_TIME_THRESHOLD;
+                             i = i + 100) {  // mimic polling_time incrementing
+                            CHECK(tasks->get_motor_task()
+                                      .get_plate_lock_state() ==
+                                  motor_task::PlateLockState::CLOSING);
+                            tasks->get_motor_task().run_once(
+                                tasks->get_motor_policy());
+                            CHECK(tasks->get_host_comms_queue()
+                                      .backing_deque.empty());
                         }
-                        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                        tasks->get_motor_task().run_once(
+                            tasks->get_motor_policy());
                         THEN("the plate lock timeout should fire") {
-                            REQUIRE(tasks->get_motor_policy().test_plate_lock_braked());
-                            CHECK(tasks->get_motor_queue().backing_deque.empty());
-                            REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
+                            REQUIRE(tasks->get_motor_policy()
+                                        .test_plate_lock_braked());
+                            CHECK(
+                                tasks->get_motor_queue().backing_deque.empty());
+                            REQUIRE(tasks->get_motor_task()
+                                        .get_plate_lock_state() ==
                                     motor_task::PlateLockState::IDLE_UNKNOWN);
-                            auto ack_message = std::get<messages::AcknowledgePrevious>(
-                                tasks->get_host_comms_queue().backing_deque.front());
-                            REQUIRE(ack_message.responding_to_id == close_message.id);
-                            REQUIRE(ack_message.with_error == errors::ErrorCode::PLATE_LOCK_TIMEOUT);
+                            auto ack_message =
+                                std::get<messages::AcknowledgePrevious>(
+                                    tasks->get_host_comms_queue()
+                                        .backing_deque.front());
+                            REQUIRE(ack_message.responding_to_id ==
+                                    close_message.id);
+                            REQUIRE(ack_message.with_error ==
+                                    errors::ErrorCode::PLATE_LOCK_TIMEOUT);
                         }
                     }
-                    tasks->get_motor_queue().backing_deque.pop_front(); //pulling message out of queue
+                    tasks->get_motor_queue()
+                        .backing_deque
+                        .pop_front();  // pulling message out of queue
                     AND_WHEN("a stop condition is sent") {
                         auto stop_message = messages::PlateLockComplete{
                             .open = false, .closed = true};
                         tasks->get_motor_queue().backing_deque.push_back(
                             stop_message);
-                        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                        tasks->get_motor_task().run_once(
+                            tasks->get_motor_policy());
                         auto response =
                             tasks->get_host_comms_queue().backing_deque.front();
                         tasks->get_host_comms_queue().backing_deque.pop_front();
                         THEN("state should update and send acknowledgement") {
-                            REQUIRE(tasks->get_motor_policy().test_plate_lock_braked());
-                            REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
+                            REQUIRE(tasks->get_motor_policy()
+                                        .test_plate_lock_braked());
+                            REQUIRE(tasks->get_motor_task()
+                                        .get_plate_lock_state() ==
                                     motor_task::PlateLockState::IDLE_CLOSED);
-                            CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-                            REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            CHECK(tasks->get_host_comms_queue()
+                                      .backing_deque.empty());
+                            REQUIRE(std::get<messages::AcknowledgePrevious>(
+                                        response)
                                         .responding_to_id == close_message.id);
                         }
-                        AND_WHEN("check plate lock status message is called") { //pushing message back in from above
-                            auto check_status_message = messages::CheckPlateLockStatusMessage{};
-                            tasks->get_motor_queue().backing_deque.push_back(check_status_message);
-                            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                        AND_WHEN(
+                            "check plate lock status message is called") {  // pushing message back in from above
+                            auto check_status_message =
+                                messages::CheckPlateLockStatusMessage{};
+                            tasks->get_motor_queue().backing_deque.push_back(
+                                check_status_message);
+                            tasks->get_motor_task().run_once(
+                                tasks->get_motor_policy());
                             THEN("nothing should happen") {
-                                REQUIRE(tasks->get_motor_policy().test_plate_lock_braked());
-                                REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
+                                REQUIRE(tasks->get_motor_policy()
+                                            .test_plate_lock_braked());
+                                REQUIRE(
+                                    tasks->get_motor_task()
+                                        .get_plate_lock_state() ==
                                     motor_task::PlateLockState::IDLE_CLOSED);
-                                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-                                CHECK(tasks->get_motor_queue().backing_deque.empty());
+                                CHECK(tasks->get_host_comms_queue()
+                                          .backing_deque.empty());
+                                CHECK(tasks->get_motor_queue()
+                                          .backing_deque.empty());
                             }
                         }
                         AND_WHEN("another close plate lock message is sent") {
-                            auto close_message_2 = messages::ClosePlateLockMessage{.id = 234};
-                            tasks->get_motor_queue().backing_deque.push_back(close_message_2);
-                            tasks->get_motor_task().run_once(tasks->get_motor_policy());
-                            auto response =
-                                tasks->get_host_comms_queue().backing_deque.front();
-                            tasks->get_host_comms_queue().backing_deque.pop_front();
-                            THEN("plate lock motor shouldn't move and acknowledgement should be sent") {
-                                CHECK(tasks->get_motor_queue().backing_deque.empty());
-                                REQUIRE(!tasks->get_motor_policy().test_plate_lock_enabled());
-                                REQUIRE(tasks->get_motor_policy().test_plate_lock_get_power() ==
+                            auto close_message_2 =
+                                messages::ClosePlateLockMessage{.id = 234};
+                            tasks->get_motor_queue().backing_deque.push_back(
+                                close_message_2);
+                            tasks->get_motor_task().run_once(
+                                tasks->get_motor_policy());
+                            auto response = tasks->get_host_comms_queue()
+                                                .backing_deque.front();
+                            tasks->get_host_comms_queue()
+                                .backing_deque.pop_front();
+                            THEN(
+                                "plate lock motor shouldn't move and "
+                                "acknowledgement should be sent") {
+                                CHECK(tasks->get_motor_queue()
+                                          .backing_deque.empty());
+                                REQUIRE(!tasks->get_motor_policy()
+                                             .test_plate_lock_enabled());
+                                REQUIRE(tasks->get_motor_policy()
+                                            .test_plate_lock_get_power() ==
                                         0.0F);
-                                REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
-                                        motor_task::PlateLockState::IDLE_CLOSED);
-                                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-                                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
-                                            .responding_to_id == close_message_2.id);
+                                REQUIRE(
+                                    tasks->get_motor_task()
+                                        .get_plate_lock_state() ==
+                                    motor_task::PlateLockState::IDLE_CLOSED);
+                                CHECK(tasks->get_host_comms_queue()
+                                          .backing_deque.empty());
+                                REQUIRE(std::get<messages::AcknowledgePrevious>(
+                                            response)
+                                            .responding_to_id ==
+                                        close_message_2.id);
                             }
                         }
                     }
                 }
             }
             AND_WHEN("sending a close plate lock message on startup") {
-                auto close_message = messages::ClosePlateLockMessage{.id = 123, .from_startup = true};
+                auto close_message = messages::ClosePlateLockMessage{
+                    .id = 123, .from_startup = true};
                 tasks->get_motor_queue().backing_deque.push_back(close_message);
                 tasks->get_motor_task().run_once(tasks->get_motor_policy());
                 THEN("motor should be enabled with correct power and state") {
-                    REQUIRE(tasks->get_motor_policy().test_plate_lock_enabled());
-                    REQUIRE(tasks->get_motor_policy().test_plate_lock_get_power() ==
-                            1.0F);
+                    REQUIRE(
+                        tasks->get_motor_policy().test_plate_lock_enabled());
+                    REQUIRE(
+                        tasks->get_motor_policy().test_plate_lock_get_power() ==
+                        1.0F);
                     REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
                             motor_task::PlateLockState::CLOSING);
-                    REQUIRE(std::holds_alternative<messages::CheckPlateLockStatusMessage>(
-                            tasks->get_motor_queue().backing_deque.front()));
-                    AND_WHEN("closing plate lock and not receiving a plate complete event for too long") {
+                    REQUIRE(std::holds_alternative<
+                            messages::CheckPlateLockStatusMessage>(
+                        tasks->get_motor_queue().backing_deque.front()));
+                    AND_WHEN(
+                        "closing plate lock and not receiving a plate complete "
+                        "event for too long") {
                         for (size_t i = 0;
-                            i < std::remove_cvref_t<decltype(tasks->get_motor_task())>::
-                                    PLATE_LOCK_MOVE_TIME_THRESHOLD;
-                            i = i + 100) { //mimic polling_time incrementing
-                            CHECK(tasks->get_motor_task().get_plate_lock_state() ==
-                                    motor_task::PlateLockState::CLOSING);
-                            tasks->get_motor_task().run_once(tasks->get_motor_policy());
-                            CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+                             i < std::remove_cvref_t<
+                                     decltype(tasks->get_motor_task())>::
+                                     PLATE_LOCK_MOVE_TIME_THRESHOLD;
+                             i = i + 100) {  // mimic polling_time incrementing
+                            CHECK(tasks->get_motor_task()
+                                      .get_plate_lock_state() ==
+                                  motor_task::PlateLockState::CLOSING);
+                            tasks->get_motor_task().run_once(
+                                tasks->get_motor_policy());
+                            CHECK(tasks->get_host_comms_queue()
+                                      .backing_deque.empty());
                         }
-                        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                        tasks->get_motor_task().run_once(
+                            tasks->get_motor_policy());
                         THEN("the plate lock timeout should fire") {
-                            REQUIRE(tasks->get_motor_policy().test_plate_lock_braked());
-                            REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
+                            REQUIRE(tasks->get_motor_policy()
+                                        .test_plate_lock_braked());
+                            REQUIRE(tasks->get_motor_task()
+                                        .get_plate_lock_state() ==
                                     motor_task::PlateLockState::IDLE_UNKNOWN);
-                            REQUIRE(std::holds_alternative<messages::BeginHomingMessage>(
-                                    tasks->get_motor_queue().backing_deque.front()));
-                            CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+                            REQUIRE(std::holds_alternative<
+                                    messages::BeginHomingMessage>(
+                                tasks->get_motor_queue()
+                                    .backing_deque.front()));
+                            CHECK(tasks->get_host_comms_queue()
+                                      .backing_deque.empty());
                         }
                     }
-                    tasks->get_motor_queue().backing_deque.pop_front(); //pulling message out of queue
+                    tasks->get_motor_queue()
+                        .backing_deque
+                        .pop_front();  // pulling message out of queue
                     AND_WHEN("a stop condition is sent") {
                         auto stop_message = messages::PlateLockComplete{
                             .open = false, .closed = true};
                         tasks->get_motor_queue().backing_deque.push_back(
                             stop_message);
-                        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                        tasks->get_motor_task().run_once(
+                            tasks->get_motor_policy());
                         auto response =
                             tasks->get_motor_queue().backing_deque.front();
                         tasks->get_motor_queue().backing_deque.pop_front();
                         THEN("state should update and send acknowledgement") {
-                            REQUIRE(tasks->get_motor_policy().test_plate_lock_braked());
-                            REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
+                            REQUIRE(tasks->get_motor_policy()
+                                        .test_plate_lock_braked());
+                            REQUIRE(tasks->get_motor_task()
+                                        .get_plate_lock_state() ==
                                     motor_task::PlateLockState::IDLE_CLOSED);
-                            CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-                            REQUIRE(std::holds_alternative<messages::BeginHomingMessage>(
-                                    response));
+                            CHECK(tasks->get_host_comms_queue()
+                                      .backing_deque.empty());
+                            REQUIRE(std::holds_alternative<
+                                    messages::BeginHomingMessage>(response));
                         }
-                        AND_WHEN("check plate lock status message is called") { //pushing message back in from above
-                            auto check_status_message = messages::CheckPlateLockStatusMessage{};
-                            tasks->get_motor_queue().backing_deque.push_back(check_status_message);
-                            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                        AND_WHEN(
+                            "check plate lock status message is called") {  // pushing message back in from above
+                            auto check_status_message =
+                                messages::CheckPlateLockStatusMessage{};
+                            tasks->get_motor_queue().backing_deque.push_back(
+                                check_status_message);
+                            tasks->get_motor_task().run_once(
+                                tasks->get_motor_policy());
                             THEN("nothing should happen") {
-                                REQUIRE(tasks->get_motor_policy().test_plate_lock_braked());
-                                REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
+                                REQUIRE(tasks->get_motor_policy()
+                                            .test_plate_lock_braked());
+                                REQUIRE(
+                                    tasks->get_motor_task()
+                                        .get_plate_lock_state() ==
                                     motor_task::PlateLockState::IDLE_CLOSED);
-                                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-                                CHECK(tasks->get_motor_queue().backing_deque.empty());
+                                CHECK(tasks->get_host_comms_queue()
+                                          .backing_deque.empty());
+                                CHECK(tasks->get_motor_queue()
+                                          .backing_deque.empty());
                             }
                         }
                         AND_WHEN("another close plate lock message is sent") {
-                            auto close_message_2 = messages::ClosePlateLockMessage{.id = 234};
-                            tasks->get_motor_queue().backing_deque.push_back(close_message_2);
-                            tasks->get_motor_task().run_once(tasks->get_motor_policy());
-                            auto response =
-                                tasks->get_host_comms_queue().backing_deque.front();
-                            tasks->get_host_comms_queue().backing_deque.pop_front();
-                            THEN("plate lock motor shouldn't move and acknowledgement should be sent") {
-                                CHECK(tasks->get_motor_queue().backing_deque.empty());
-                                REQUIRE(!tasks->get_motor_policy().test_plate_lock_enabled());
-                                REQUIRE(tasks->get_motor_policy().test_plate_lock_get_power() ==
+                            auto close_message_2 =
+                                messages::ClosePlateLockMessage{.id = 234};
+                            tasks->get_motor_queue().backing_deque.push_back(
+                                close_message_2);
+                            tasks->get_motor_task().run_once(
+                                tasks->get_motor_policy());
+                            auto response = tasks->get_host_comms_queue()
+                                                .backing_deque.front();
+                            tasks->get_host_comms_queue()
+                                .backing_deque.pop_front();
+                            THEN(
+                                "plate lock motor shouldn't move and "
+                                "acknowledgement should be sent") {
+                                CHECK(tasks->get_motor_queue()
+                                          .backing_deque.empty());
+                                REQUIRE(!tasks->get_motor_policy()
+                                             .test_plate_lock_enabled());
+                                REQUIRE(tasks->get_motor_policy()
+                                            .test_plate_lock_get_power() ==
                                         0.0F);
-                                REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
-                                        motor_task::PlateLockState::IDLE_CLOSED);
-                                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-                                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
-                                            .responding_to_id == close_message_2.id);
+                                REQUIRE(
+                                    tasks->get_motor_task()
+                                        .get_plate_lock_state() ==
+                                    motor_task::PlateLockState::IDLE_CLOSED);
+                                CHECK(tasks->get_host_comms_queue()
+                                          .backing_deque.empty());
+                                REQUIRE(std::get<messages::AcknowledgePrevious>(
+                                            response)
+                                            .responding_to_id ==
+                                        close_message_2.id);
                             }
                         }
                     }

@@ -83,8 +83,7 @@ void run(void *param) {
     auto &queue = _task.get_message_queue();
     // ensure plate lock closed via message at startup (needed for homing)
     auto message1 = messages::ClosePlateLockMessage{.from_startup = true};
-    static_cast<void>(
-        queue.try_send(message1, 10));
+    static_cast<void>(queue.try_send(message1, 10));
 
     while (true) {
         _task.run_once(policy);
