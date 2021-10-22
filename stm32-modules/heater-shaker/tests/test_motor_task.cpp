@@ -285,10 +285,13 @@ SCENARIO("motor task input error handling", "[motor]") {
 SCENARIO("motor task homing", "[motor][homing]") {
     GIVEN("a motor task that is stopped") {
         auto tasks = TaskBuilder::build();
-        auto close_pl_message = messages::PlateLockComplete{.open = false, .closed = true}; //required before homing
-        tasks->get_motor_queue().backing_deque.push_back(messages::MotorMessage(close_pl_message));
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false, .closed = true};  // required before homing
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_host_comms_queue().backing_deque.pop_front(); //clear generated ack message
+        tasks->get_host_comms_queue()
+            .backing_deque.pop_front();  // clear generated ack message
         CHECK(tasks->get_motor_task().get_state() ==
               motor_task::State::STOPPED_UNKNOWN);
         WHEN("starting a home sequence") {
@@ -304,10 +307,13 @@ SCENARIO("motor task homing", "[motor][homing]") {
     }
     GIVEN("a motor task that is controlling at a slow speed") {
         auto tasks = TaskBuilder::build();
-        auto close_pl_message = messages::PlateLockComplete{.open = false, .closed = true}; //required before homing
-        tasks->get_motor_queue().backing_deque.push_back(messages::MotorMessage(close_pl_message));
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false, .closed = true};  // required before homing
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_host_comms_queue().backing_deque.pop_front(); //clear generated ack message
+        tasks->get_host_comms_queue()
+            .backing_deque.pop_front();  // clear generated ack message
         auto run_message = messages::SetRPMMessage{.id = 123, .target_rpm = 0};
         tasks->get_motor_queue().backing_deque.push_back(
             messages::MotorMessage(run_message));
@@ -330,10 +336,13 @@ SCENARIO("motor task homing", "[motor][homing]") {
     }
     GIVEN("a motor task that is controlling at a higher speed") {
         auto tasks = TaskBuilder::build();
-        auto close_pl_message = messages::PlateLockComplete{.open = false, .closed = true}; //required before homing
-        tasks->get_motor_queue().backing_deque.push_back(messages::MotorMessage(close_pl_message));
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false, .closed = true};  // required before homing
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_host_comms_queue().backing_deque.pop_front(); //clear generated ack message
+        tasks->get_host_comms_queue()
+            .backing_deque.pop_front();  // clear generated ack message
         auto run_message =
             messages::SetRPMMessage{.id = 123, .target_rpm = 4500};
         tasks->get_motor_queue().backing_deque.push_back(
@@ -362,10 +371,13 @@ SCENARIO("motor task homing", "[motor][homing]") {
 
     GIVEN("a motor task that is controlling in the home speed range") {
         auto tasks = TaskBuilder::build();
-        auto close_pl_message = messages::PlateLockComplete{.open = false, .closed = true}; //required before homing
-        tasks->get_motor_queue().backing_deque.push_back(messages::MotorMessage(close_pl_message));
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false, .closed = true};  // required before homing
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_host_comms_queue().backing_deque.pop_front(); //clear generated ack message
+        tasks->get_host_comms_queue()
+            .backing_deque.pop_front();  // clear generated ack message
         auto run_message =
             messages::SetRPMMessage{.id = 123, .target_rpm = 500};
         tasks->get_motor_queue().backing_deque.push_back(
@@ -394,10 +406,13 @@ SCENARIO("motor task homing", "[motor][homing]") {
 
     GIVEN("a motor task in the moving-to-home-speed state") {
         auto tasks = TaskBuilder::build();
-        auto close_pl_message = messages::PlateLockComplete{.open = false, .closed = true}; //required before homing
-        tasks->get_motor_queue().backing_deque.push_back(messages::MotorMessage(close_pl_message));
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false, .closed = true};  // required before homing
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_host_comms_queue().backing_deque.pop_front(); //clear generated ack message
+        tasks->get_host_comms_queue()
+            .backing_deque.pop_front();  // clear generated ack message
         auto run_message =
             messages::SetRPMMessage{.id = 123, .target_rpm = 500};
         tasks->get_motor_queue().backing_deque.push_back(
@@ -457,10 +472,13 @@ SCENARIO("motor task homing", "[motor][homing]") {
 
     GIVEN("a motor task in the wait-for-stop state") {
         auto tasks = TaskBuilder::build();
-        auto close_pl_message = messages::PlateLockComplete{.open = false, .closed = true}; //required before homing
-        tasks->get_motor_queue().backing_deque.push_back(messages::MotorMessage(close_pl_message));
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false, .closed = true};  // required before homing
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_host_comms_queue().backing_deque.pop_front(); //clear generated ack message
+        tasks->get_host_comms_queue()
+            .backing_deque.pop_front();  // clear generated ack message
         auto run_message =
             messages::SetRPMMessage{.id = 123, .target_rpm = 500};
         tasks->get_motor_queue().backing_deque.push_back(
@@ -660,8 +678,9 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
 
     GIVEN("a motor task to open plate lock") {
         auto tasks = TaskBuilder::build();
-        //first ensure plate lock closed to home
-        auto stop_message = messages::PlateLockComplete{.open = false, .closed = true};
+        // first ensure plate lock closed to home
+        auto stop_message =
+            messages::PlateLockComplete{.open = false, .closed = true};
         tasks->get_motor_queue().backing_deque.push_back(stop_message);
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
         auto response = tasks->get_host_comms_queue().backing_deque.front();
@@ -886,10 +905,13 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                 .backing_deque
                 .clear();  // clear homing messages in host_comms queue
             AND_WHEN("sending a regular close plate lock message") {
-                auto open_message = messages::OpenPlateLockMessage{.id = 123}; //placing plate lock in not-closed state
+                auto open_message = messages::OpenPlateLockMessage{
+                    .id = 123};  // placing plate lock in not-closed state
                 tasks->get_motor_queue().backing_deque.push_back(open_message);
                 tasks->get_motor_task().run_once(tasks->get_motor_policy());
-                tasks->get_motor_queue().backing_deque.pop_front();  //pulling out CheckPlateLockStatusMessage
+                tasks->get_motor_queue()
+                    .backing_deque
+                    .pop_front();  // pulling out CheckPlateLockStatusMessage
                 auto close_message = messages::ClosePlateLockMessage{.id = 123};
                 tasks->get_motor_queue().backing_deque.push_back(close_message);
                 tasks->get_motor_task().run_once(tasks->get_motor_policy());
@@ -1023,10 +1045,13 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                 }
             }
             AND_WHEN("sending a close plate lock message on startup") {
-                auto open_message = messages::OpenPlateLockMessage{.id = 123}; //placing plate lock in not-closed state
+                auto open_message = messages::OpenPlateLockMessage{
+                    .id = 123};  // placing plate lock in not-closed state
                 tasks->get_motor_queue().backing_deque.push_back(open_message);
                 tasks->get_motor_task().run_once(tasks->get_motor_policy());
-                tasks->get_motor_queue().backing_deque.pop_front();  //pulling out CheckPlateLockStatusMessage
+                tasks->get_motor_queue()
+                    .backing_deque
+                    .pop_front();  // pulling out CheckPlateLockStatusMessage
                 auto close_message = messages::ClosePlateLockMessage{
                     .id = 123, .from_startup = true};
                 tasks->get_motor_queue().backing_deque.push_back(close_message);

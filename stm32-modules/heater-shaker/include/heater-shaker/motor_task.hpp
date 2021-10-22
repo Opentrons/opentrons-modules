@@ -308,16 +308,17 @@ class MotorTask {
                 task_registry->comms->get_message_queue().try_send(
                     messages::AcknowledgePrevious{
                         .responding_to_id = msg.id,
-                        .with_error = errors::ErrorCode::PLATE_LOCK_NOT_CLOSED}));
+                        .with_error =
+                            errors::ErrorCode::PLATE_LOCK_NOT_CLOSED}));
         } else {
             state.status = State::HOMING_MOVING_TO_HOME_SPEED;
             policy.homing_solenoid_disengage();
             policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM +
-                        HOMING_ROTATION_LOW_MARGIN);
+                           HOMING_ROTATION_LOW_MARGIN);
             policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
             cached_home_id = msg.id;
-            static_cast<void>(
-                get_message_queue().try_send(messages::CheckHomingStatusMessage{}));
+            static_cast<void>(get_message_queue().try_send(
+                messages::CheckHomingStatusMessage{}));
         }
     }
 
@@ -388,12 +389,14 @@ class MotorTask {
         static constexpr float ClosePower = 1.0F;
         if ((!policy.plate_lock_closed_sensor_read()) &&
             (plate_lock_state.status != PlateLockState::IDLE_CLOSED)) {
-            if ((state.status != State::STOPPED_HOMED) && (state.status != State::STOPPED_UNKNOWN)) {
+            if ((state.status != State::STOPPED_HOMED) &&
+                (state.status != State::STOPPED_UNKNOWN)) {
                 static_cast<void>(
                     task_registry->comms->get_message_queue().try_send(
                         messages::AcknowledgePrevious{
                             .responding_to_id = msg.id,
-                            .with_error = errors::ErrorCode::MOTOR_NOT_STOPPED}));
+                            .with_error =
+                                errors::ErrorCode::MOTOR_NOT_STOPPED}));
             } else {
                 from_startup = msg.from_startup ? true : false;
                 cached_plate_lock_id = msg.id;
