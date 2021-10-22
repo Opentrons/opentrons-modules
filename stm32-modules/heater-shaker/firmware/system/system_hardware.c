@@ -255,15 +255,16 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
   SYSTEM_HW_HANDLE->led_transmit_error_complete(&result);
 }
 
+//*********** was in example project, but think including is wrong and cause of build errors *************
 /**
   * @brief  This function handles SysTick Handler.
   * @param  None
   * @retval None
   */
-void SysTick_Handler(void)
+/*void SysTick_Handler(void)
 {
   HAL_IncTick();
-}
+}*/
 
 /******************************************************************************/
 /*                 STM32F3xx Peripherals Interrupt Handlers                  */
