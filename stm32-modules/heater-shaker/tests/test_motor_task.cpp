@@ -13,7 +13,51 @@ SCENARIO("motor task core message handling", "[motor]") {
                         motor_task::State::STOPPED_UNKNOWN);
             }
         }
-
+        WHEN(
+            "sending a set-rpm message as if from the host comms and plate "
+            "lock not closed") {
+            auto message =
+                messages::SetRPMMessage{.id = 222, .target_rpm = 1254};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_motor_queue().backing_deque.empty());
+                AND_THEN(
+                    "the task should not set the rpm and disengage solenoid") {
+                    REQUIRE(tasks->get_motor_policy().get_target_rpm() == 0);
+                }
+                AND_THEN(
+                    "the task should respond to the message to the host "
+                    "comms") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(tasks->get_system_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto ack =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(ack.responding_to_id == message.id);
+                    REQUIRE(ack.with_error ==
+                            errors::ErrorCode::PLATE_LOCK_NOT_CLOSED);
+                }
+                AND_THEN("the task state should still be idle_unknown") {
+                    REQUIRE(tasks->get_motor_task().get_state() ==
+                            motor_task::State::STOPPED_UNKNOWN);
+                }
+            }
+        }
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false, .closed = true};  // required before homing
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        tasks->get_host_comms_queue()
+            .backing_deque.pop_front();  // clear generated ack message
         WHEN("sending a set-rpm message as if from the host comms") {
             auto message =
                 messages::SetRPMMessage{.id = 222, .target_rpm = 1254};
@@ -247,6 +291,13 @@ SCENARIO("motor task error handling", "[motor]") {
 SCENARIO("motor task input error handling", "[motor]") {
     GIVEN("a motor task") {
         auto tasks = TaskBuilder::build();
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false, .closed = true};  // required before homing
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        tasks->get_host_comms_queue()
+            .backing_deque.pop_front();  // clear generated ack message
         WHEN("a command requests an invalid speed") {
             tasks->get_motor_policy().test_set_rpm_return_code(
                 errors::ErrorCode::MOTOR_ILLEGAL_SPEED);
