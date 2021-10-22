@@ -16,7 +16,7 @@ SCENARIO("motor task core message handling", "[motor]") {
             .backing_deque.pop_front();  // clear generated ack message
         WHEN("just having been built") {
             THEN("the state should be idle/unknown") {
-                REQUIRE(tasks->get_motor_task().get_state() ==
+                REQUIRE(tasks->get_motor_task().get_state() == 
                         motor_task::State::STOPPED_UNKNOWN);
             }
         }
