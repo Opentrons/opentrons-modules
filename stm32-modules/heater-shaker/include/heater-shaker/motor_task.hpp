@@ -152,20 +152,30 @@ class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::SetRPMMessage& msg, Policy& policy)
         -> void {
-        policy.homing_solenoid_disengage();
-        auto error = policy.set_rpm(msg.target_rpm);
-        state.status = State::RUNNING;
-        auto response = messages::AcknowledgePrevious{
-            .responding_to_id = msg.id, .with_error = error};
-        if (msg.from_system) {
-            static_cast<void>(
-                task_registry->system->get_message_queue().try_send(
-                    messages::SystemMessage(response)));
-
-        } else {
+        if ((!policy.plate_lock_closed_sensor_read()) &&
+            (plate_lock_state.status != PlateLockState::IDLE_CLOSED)) {
             static_cast<void>(
                 task_registry->comms->get_message_queue().try_send(
-                    messages::HostCommsMessage(response)));
+                    messages::AcknowledgePrevious{
+                        .responding_to_id = msg.id,
+                        .with_error =
+                            errors::ErrorCode::PLATE_LOCK_NOT_CLOSED}));
+        } else {
+            policy.homing_solenoid_disengage();
+            auto error = policy.set_rpm(msg.target_rpm);
+            state.status = State::RUNNING;
+            auto response = messages::AcknowledgePrevious{
+                .responding_to_id = msg.id, .with_error = error};
+            if (msg.from_system) {
+                static_cast<void>(
+                    task_registry->system->get_message_queue().try_send(
+                        messages::SystemMessage(response)));
+
+            } else {
+                static_cast<void>(
+                    task_registry->comms->get_message_queue().try_send(
+                        messages::HostCommsMessage(response)));
+            }
         }
     }
 

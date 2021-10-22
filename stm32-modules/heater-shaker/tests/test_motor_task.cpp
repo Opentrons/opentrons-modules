@@ -7,6 +7,13 @@
 SCENARIO("motor task core message handling", "[motor]") {
     GIVEN("a motor task") {
         auto tasks = TaskBuilder::build();
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false, .closed = true};  // required before homing
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        tasks->get_host_comms_queue()
+            .backing_deque.pop_front();  // clear generated ack message
         WHEN("just having been built") {
             THEN("the state should be idle/unknown") {
                 REQUIRE(tasks->get_motor_task().get_state() ==
@@ -247,6 +254,13 @@ SCENARIO("motor task error handling", "[motor]") {
 SCENARIO("motor task input error handling", "[motor]") {
     GIVEN("a motor task") {
         auto tasks = TaskBuilder::build();
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false, .closed = true};  // required before homing
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        tasks->get_host_comms_queue()
+            .backing_deque.pop_front();  // clear generated ack message
         WHEN("a command requests an invalid speed") {
             tasks->get_motor_policy().test_set_rpm_return_code(
                 errors::ErrorCode::MOTOR_ILLEGAL_SPEED);
