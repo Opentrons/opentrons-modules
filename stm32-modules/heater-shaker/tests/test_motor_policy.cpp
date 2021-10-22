@@ -93,6 +93,7 @@ auto TestMotorPolicy::test_plate_lock_enabled() const -> bool {
 
 auto TestMotorPolicy::plate_lock_brake() -> void {
     plate_lock_braked = true;
+    plate_lock_enabled = false;
     plate_lock_power = 0.0;
 }
 
