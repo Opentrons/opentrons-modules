@@ -79,8 +79,12 @@ void run(void *param) {
     memset(&_local_task.handles, 0, sizeof(_local_task.handles));
     _local_task.handles.plate_lock_complete = handle_plate_lock;
     motor_hardware_setup(&_local_task.handles);
-
     auto policy = MotorPolicy(&_local_task.handles);
+    auto &queue = _task.get_message_queue();
+    // ensure plate lock closed via message at startup (needed for homing)
+    auto message1 = messages::ClosePlateLockMessage{.from_startup = true};
+    static_cast<void>(queue.try_send(message1, 10));
+
     while (true) {
         _task.run_once(policy);
     }

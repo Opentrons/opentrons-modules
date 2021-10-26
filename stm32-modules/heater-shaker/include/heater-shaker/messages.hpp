@@ -152,6 +152,7 @@ struct OpenPlateLockMessage {
 
 struct ClosePlateLockMessage {
     uint32_t id;
+    bool from_startup;
 };
 
 struct GetPlateLockStateMessage {
@@ -161,6 +162,8 @@ struct GetPlateLockStateMessage {
 struct GetPlateLockStateDebugMessage {
     uint32_t id;
 };
+
+struct CheckPlateLockStatusMessage {};
 
 /*
 ** Response structs either confirm actions or fulfill actions. Because some
@@ -244,7 +247,8 @@ using MotorMessage = ::std::variant<
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,
     ActuateSolenoidMessage, SetPlateLockPowerMessage, OpenPlateLockMessage,
     ClosePlateLockMessage, SetPIDConstantsMessage, PlateLockComplete,
-    GetPlateLockStateMessage, GetPlateLockStateDebugMessage>;
+    GetPlateLockStateMessage, GetPlateLockStateDebugMessage,
+    CheckPlateLockStatusMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage, StartSetLEDMessage,
