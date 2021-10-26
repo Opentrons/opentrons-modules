@@ -100,7 +100,7 @@ class MotorTask {
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_INITIAL = 200;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
     static constexpr uint16_t HOMING_CYCLES_BEFORE_TIMEOUT = 10;
-    static constexpr uint16_t PLATE_LOCK_MOVE_TIME_THRESHOLD = 1250;
+    static constexpr uint16_t PLATE_LOCK_MOVE_TIME_THRESHOLD = 2350; //1250 for 380:1 motor, 2350 for 1000:1 motor
     using Queue = QueueImpl<Message>;
     static constexpr uint8_t PLATE_LOCK_STATE_SIZE = 14;
     explicit MotorTask(Queue& q)
