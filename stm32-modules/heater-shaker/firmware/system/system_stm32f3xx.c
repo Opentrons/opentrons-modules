@@ -238,7 +238,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PREDIV = RCC_PREDIV_DIV1; //effects I2C?
+  RCC_OscInitStruct.PLL.PREDIV = RCC_PREDIV_DIV1; //effects I2C? Prediv clock not divided
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
   HAL_RCC_OscConfig(&RCC_OscInitStruct);
 

@@ -31,3 +31,16 @@ auto TestSystemPolicy::get_serial_number(void)
         return empty_serial_number;
     }
 }
+
+auto TestSystemPolicy::check_I2C_ready(void) -> bool {
+    if (!test_I2C_ready) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
+auto TestSystemPolicy::start_set_led(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer)
+    -> errors::ErrorCode {
+    return errors::ErrorCode::NO_ERROR;
+}

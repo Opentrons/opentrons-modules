@@ -10,6 +10,10 @@ system_hardware_handles *SYSTEM_HW_HANDLE = NULL;
 /* I2C handler declaration */
 I2C_HandleTypeDef I2cHandle;
 
+uint8_t PWMInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_PWM_OUTPUT_HIGH};
+uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x30}; //0x30 to turn all on, 0 to turn all off
+uint8_t UpdateBuffer[1] = {0};
+
 void system_hardware_setup(system_hardware_handles* handles) {
     SYSTEM_HW_HANDLE = handles;
     GPIO_InitTypeDef gpio_init = {
@@ -34,10 +38,9 @@ void system_hardware_setup(system_hardware_handles* handles) {
     HAL_I2C_Init(&I2cHandle);
     HAL_I2CEx_ConfigAnalogFilter(&I2cHandle,I2C_ANALOGFILTER_ENABLE); //do this?
 
-    uint8_t PWMInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_PWM_OUTPUT_HIGH};
-    system_hardware_set_led(PWMInitBuffer, PWM_Init);
-    uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0}; //make all zeroes
-    system_hardware_set_led(OutputInitBuffer, LED_Control);
+    system_hardware_setup_led();
+    //system_hardware_set_led(PWMInitBuffer, PWM_Init);
+    //system_hardware_set_led(OutputInitBuffer, LED_Control);
     //any error checking?
 }
 
@@ -88,81 +91,6 @@ asm volatile (
   : "memory"  );
 }
 
-/**
-  * @brief I2C MSP Initialization 
-  *        This function configures the hardware resources used in this example: 
-  *           - Peripheral's clock enable
-  *           - Peripheral's GPIO Configuration  
-  *           - DMA configuration for transmission request by peripheral 
-  *           - NVIC configuration for DMA interrupt request enable
-  * @param hi2c: I2C handle pointer
-  * @retval None
-  */
-void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c)
-{
-  GPIO_InitTypeDef  GPIO_InitStruct;
-  RCC_PeriphCLKInitTypeDef  RCC_PeriphCLKInitStruct;
-  
-  /*##-1- Configure the I2C clock source. The clock is derived from the SYSCLK #*/
-  RCC_PeriphCLKInitStruct.PeriphClockSelection = RCC_PERIPHCLK_I2Cx;
-  RCC_PeriphCLKInitStruct.I2c1ClockSelection = RCC_I2CxCLKSOURCE_SYSCLK;
-  HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphCLKInitStruct);
-
-  /*##-2- Enable peripherals and GPIO Clocks #################################*/
-  /* Enable GPIO TX/RX clock */
-  I2Cx_SCL_GPIO_CLK_ENABLE();
-  I2Cx_SDA_GPIO_CLK_ENABLE();
-  /* Enable I2Cx clock */
-  I2Cx_CLK_ENABLE(); 
-
-  /*##-3- Configure peripheral GPIO ##########################################*/  
-  /* I2C TX GPIO pin configuration  */
-  GPIO_InitStruct.Pin       = I2Cx_SCL_PIN;
-  GPIO_InitStruct.Mode      = GPIO_MODE_AF_OD;
-  GPIO_InitStruct.Pull      = GPIO_PULLUP;
-  GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
-  GPIO_InitStruct.Alternate = I2Cx_SCL_SDA_AF;
-  HAL_GPIO_Init(I2Cx_SCL_GPIO_PORT, &GPIO_InitStruct);
-    
-  /* I2C RX GPIO pin configuration  */
-  GPIO_InitStruct.Pin       = I2Cx_SDA_PIN;
-  GPIO_InitStruct.Alternate = I2Cx_SCL_SDA_AF;
-  HAL_GPIO_Init(I2Cx_SDA_GPIO_PORT, &GPIO_InitStruct);
-    
-  /*##-4- Configure the NVIC for I2C ########################################*/   
-  /* NVIC for I2Cx */
-  HAL_NVIC_SetPriority(I2Cx_ER_IRQn, 0, 1);
-  HAL_NVIC_EnableIRQ(I2Cx_ER_IRQn);
-  HAL_NVIC_SetPriority(I2Cx_EV_IRQn, 0, 2);
-  HAL_NVIC_EnableIRQ(I2Cx_EV_IRQn);
-}
-
-/**
-  * @brief I2C MSP De-Initialization 
-  *        This function frees the hardware resources used in this example:
-  *          - Disable the Peripheral's clock
-  *          - Revert GPIO, DMA and NVIC configuration to their default state
-  * @param hi2c: I2C handle pointer
-  * @retval None
-  */
-void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c)
-{
-  
-  /*##-1- Reset peripherals ##################################################*/
-  I2Cx_FORCE_RESET();
-  I2Cx_RELEASE_RESET();
-
-  /*##-2- Disable peripherals and GPIO Clocks #################################*/
-  /* Configure I2C Tx as alternate function  */
-  HAL_GPIO_DeInit(I2Cx_SCL_GPIO_PORT, I2Cx_SCL_PIN);
-  /* Configure I2C Rx as alternate function  */
-  HAL_GPIO_DeInit(I2Cx_SDA_GPIO_PORT, I2Cx_SDA_PIN);
-  
-  /*##-3- Disable the NVIC for I2C ##########################################*/
-  HAL_NVIC_DisableIRQ(I2Cx_ER_IRQn);
-  HAL_NVIC_DisableIRQ(I2Cx_EV_IRQn);
-}
-
 //bool system_hardware_set_led(uint8_t aTxBuffer[SYSTEM_WIDE_TXBUFFERSIZE], I2C_Operations operation) {
 bool system_hardware_set_led(uint8_t* aTxBuffer, I2C_Operations operation) {
   //loop thru bits
@@ -193,7 +121,6 @@ bool system_hardware_set_led(uint8_t* aTxBuffer, I2C_Operations operation) {
   //returns bool for transmit_start_success
 
   uint16_t base_register = 0;
-  uint8_t UpdateBuffer[1] = {};
 
   switch(operation) {
     case PWM_Init:
@@ -204,19 +131,39 @@ bool system_hardware_set_led(uint8_t* aTxBuffer, I2C_Operations operation) {
       break;
   }
 
-  HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&I2cHandle, (uint16_t)I2C_ADDRESS, base_register,
+  //copy array into file global array
+  //write, take, write, take, give in ISR (give error if error callback). ulTaskNotifyTake
+
+  HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, base_register,
     (uint16_t)REGISTER_SIZE, (uint8_t*)aTxBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
-  if ((status == HAL_OK) && (operation == LED_Control)) { //only update after LED control transmit at initialization
-    status = HAL_I2C_Mem_Write_IT(&I2cHandle, (uint16_t)I2C_ADDRESS, (uint16_t)UPDATE_REGISTER,
-      (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
-  }
-  return (status == HAL_OK);
+  //if ((status == HAL_OK) && (operation == LED_Control)) { //only update after LED control transmit at initialization
+  //  status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
+  //    (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
+  //}
+  return (status == HAL_OK); //translate into error/no error at policy level, create Ack Message at end of StartSetLED System_Task function
 
 /*HAL_StatusTypeDef HAL_I2C_Mem_Write_IT(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
                                        uint16_t MemAddSize, uint8_t *pData, uint16_t Size)
 
 HAL_StatusTypeDef HAL_I2C_Master_Transmit_IT(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint8_t *pData,
                                              uint16_t Size)*/
+}
+
+//debug function. Confirm all HAL function inputs correct
+bool system_hardware_setup_led(void) {
+  HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_PWM_REGISTER,
+    (uint16_t)REGISTER_SIZE, (uint8_t*)PWMInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
+  //non-blocking delay. Use policy-level delay_ticks?
+  if (status == HAL_OK) {
+    status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_REGISTER,
+      (uint16_t)REGISTER_SIZE, (uint8_t*)OutputInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
+      //non-blocking delay
+    if (status == HAL_OK) {
+      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
+        (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
+    }
+  }
+  return (status == HAL_OK);
 }
 
 bool system_hardware_I2C_ready(void) {
@@ -293,3 +240,78 @@ void I2Cx_ER_IRQHandler(void)
 {
   HAL_I2C_ER_IRQHandler(&I2cHandle);
 }
+
+/**
+  * @brief I2C MSP Initialization 
+  *        This function configures the hardware resources used in this example: 
+  *           - Peripheral's clock enable
+  *           - Peripheral's GPIO Configuration  
+  *           - DMA configuration for transmission request by peripheral 
+  *           - NVIC configuration for DMA interrupt request enable
+  * @param hi2c: I2C handle pointer
+  * @retval None
+  */
+// void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c)
+// {
+//   GPIO_InitTypeDef  GPIO_InitStruct;
+//   RCC_PeriphCLKInitTypeDef  RCC_PeriphCLKInitStruct;
+  
+//   /*##-1- Configure the I2C clock source. The clock is derived from the SYSCLK #*/
+//   RCC_PeriphCLKInitStruct.PeriphClockSelection = RCC_PERIPHCLK_I2Cx;
+//   RCC_PeriphCLKInitStruct.I2c1ClockSelection = RCC_I2CxCLKSOURCE_SYSCLK;
+//   HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphCLKInitStruct);
+
+//   /*##-2- Enable peripherals and GPIO Clocks #################################*/
+//   /* Enable GPIO TX/RX clock */
+//   I2Cx_SCL_GPIO_CLK_ENABLE();
+//   I2Cx_SDA_GPIO_CLK_ENABLE();
+//   /* Enable I2Cx clock */
+//   I2Cx_CLK_ENABLE(); 
+
+//   /*##-3- Configure peripheral GPIO ##########################################*/  
+//   /* I2C TX GPIO pin configuration  */
+//   GPIO_InitStruct.Pin       = I2Cx_SCL_PIN;
+//   GPIO_InitStruct.Mode      = GPIO_MODE_AF_OD;
+//   GPIO_InitStruct.Pull      = GPIO_PULLUP;
+//   GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
+//   GPIO_InitStruct.Alternate = I2Cx_SCL_SDA_AF;
+//   HAL_GPIO_Init(I2Cx_SCL_GPIO_PORT, &GPIO_InitStruct);
+    
+//   /* I2C RX GPIO pin configuration  */
+//   GPIO_InitStruct.Pin       = I2Cx_SDA_PIN;
+//   GPIO_InitStruct.Alternate = I2Cx_SCL_SDA_AF;
+//   HAL_GPIO_Init(I2Cx_SDA_GPIO_PORT, &GPIO_InitStruct);
+    
+//   /*##-4- Configure the NVIC for I2C ########################################*/   
+//   /* NVIC for I2Cx */
+//   HAL_NVIC_SetPriority(I2Cx_ER_IRQn, 10, 0);
+//   HAL_NVIC_EnableIRQ(I2Cx_ER_IRQn);
+//   HAL_NVIC_SetPriority(I2Cx_EV_IRQn, 10, 0);
+//   HAL_NVIC_EnableIRQ(I2Cx_EV_IRQn);
+// }
+
+/**
+  * @brief I2C MSP De-Initialization 
+  *        This function frees the hardware resources used in this example:
+  *          - Disable the Peripheral's clock
+  *          - Revert GPIO, DMA and NVIC configuration to their default state
+  * @param hi2c: I2C handle pointer
+  * @retval None
+  */
+// void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c)
+// {
+  
+//   /*##-1- Reset peripherals ##################################################*/
+//   I2Cx_FORCE_RESET();
+//   I2Cx_RELEASE_RESET();
+
+//   /*##-2- Disable peripherals and GPIO Clocks #################################*/
+//   /* Configure I2C Tx as alternate function  */
+//   HAL_GPIO_DeInit(I2Cx_SCL_GPIO_PORT, I2Cx_SCL_PIN);
+//   /* Configure I2C Rx as alternate function  */
+//   HAL_GPIO_DeInit(I2Cx_SDA_GPIO_PORT, I2Cx_SDA_PIN);
+  
+//   /*##-3- Disable the NVIC for I2C ##########################################*/
+//   HAL_NVIC_DisableIRQ(I2Cx_ER_IRQn);
+//   HAL_NVIC_DisableIRQ(I2Cx_EV_IRQn);
+// }

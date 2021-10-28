@@ -170,6 +170,6 @@ header file. */
    sure the system and peripherials are using a different time base (TIM based
    for example).
  */
-#define xPortSysTickHandler SysTick_Handler
+#define xPortSysTickHandler SysTick_Handler //example I2C project stm32f3xx_it.c file has HAL_IncTick() in SysTick_Handler
 
 #endif /* FREERTOS_CONFIG_H */

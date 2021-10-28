@@ -23,11 +23,11 @@ typedef enum {
     LED_Control
 } I2C_Operations;
 
-#define I2C_ADDRESS        0xD8
+#define I2C_ADDRESS        0x6C
 /* I2C TIMING Register define when I2C clock source is SYSCLK */
 /* I2C TIMING is calculated in case of the I2C Clock source is the SYSCLK = 72 MHz */
 /* This example use TIMING to 0x00C4092A to reach 1 MHz speed (Rise time = 26ns, Fall time = 2ns) */
-#define I2C_TIMING      0x00C4092A
+#define I2C_TIMING      0xA0000518
 
 /* Definition for I2Cx clock resources */
 #define I2Cx                            I2C1
@@ -56,7 +56,7 @@ typedef enum {
 #define BASE_PWM_REGISTER               0x04
 #define UPDATE_REGISTER                 0x13
 #define BASE_REGISTER                   0x17 //first LED is on driver channel 4
-#define REGISTER_SIZE                   (sizeof(BASE_REGISTER))
+#define REGISTER_SIZE                   0x01
 
 #define LED_OUTPUT_HIGH                 0x30
 #define LED_PWM_OUTPUT_HIGH             0xFF
