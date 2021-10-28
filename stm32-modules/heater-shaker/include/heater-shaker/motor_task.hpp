@@ -95,7 +95,7 @@ class MotorTask {
 
   public:
     static constexpr uint16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 250;
-    static constexpr uint16_t HOMING_ROTATION_LIMIT_LOW_RPM = 200;
+    static constexpr uint16_t HOMING_ROTATION_LIMIT_LOW_RPM = 50;
     static constexpr uint16_t HOMING_ROTATION_LOW_MARGIN = 25;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_INITIAL = 200;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
