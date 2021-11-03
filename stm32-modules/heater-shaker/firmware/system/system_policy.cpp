@@ -65,20 +65,20 @@ auto SystemPolicy::start_set_led_original(std::array<uint8_t, SYSTEM_WIDE_TXBUFF
     return errors::ErrorCode::NO_ERROR;
 }
 
-auto SystemPolicy::start_set_led(void) -> errors::ErrorCode {
-    if (!system_hardware_set_led(0)) {
+auto SystemPolicy::start_set_led(uint8_t which) -> errors::ErrorCode {
+    if (!system_hardware_set_led(0, which)) {
         return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
     }
     delay_ticks(100);
-    if (!system_hardware_set_led(1)) {
+    if (!system_hardware_set_led(1, which)) {
         return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
     }
     delay_ticks(100);
-    if (!system_hardware_set_led(2)) {
+    if (!system_hardware_set_led(2, which)) {
         return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
     }
     delay_ticks(100);
-    if (!system_hardware_set_led(3)) {
+    if (!system_hardware_set_led(3, which)) {
         return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
     }
     return errors::ErrorCode::NO_ERROR;

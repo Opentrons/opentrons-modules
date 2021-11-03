@@ -104,6 +104,7 @@ struct SetSerialNumberMessage {
 struct StartSetLEDMessage {
     uint32_t id;
     std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer;
+    uint8_t which;
 };
 
 struct LEDTransmitComplete {

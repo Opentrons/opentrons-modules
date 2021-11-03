@@ -68,7 +68,7 @@ typedef enum {
 void system_hardware_setup(system_hardware_handles* handles);
 void system_hardware_enter_bootloader(void);
 bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operation);
-bool system_hardware_set_led(uint8_t step);
+bool system_hardware_set_led(uint8_t step, uint8_t which);
 bool system_hardware_I2C_ready(void);
 
 #ifdef __cplusplus

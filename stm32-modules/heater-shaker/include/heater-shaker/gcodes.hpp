@@ -686,6 +686,7 @@ struct SetLED { //make sure M998 isn't used. Just use this to turn them on, cycl
     static constexpr auto prefix = std::array{'M', '9', '9', '8', ' '};
     static constexpr const char* response = "M998 OK\n";
     std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer = {};
+    uint8_t which = 0;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -732,7 +733,9 @@ struct SetLED { //make sure M998 isn't used. Just use this to turn them on, cycl
         std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> UpdateBuffer = {};
         uint8_t index = static_cast<uint8_t>(value_res.first.value());
         UpdateBuffer[index] = (uint8_t)0x30;
-        return std::make_pair(ParseResult(SetLED{.aTxBuffer = UpdateBuffer}),
+        //return std::make_pair(ParseResult(SetLED{.aTxBuffer = UpdateBuffer}),
+        //                      value_res.second);
+        return std::make_pair(ParseResult(SetLED{.which = index}),
                               value_res.second);
     }
 };
