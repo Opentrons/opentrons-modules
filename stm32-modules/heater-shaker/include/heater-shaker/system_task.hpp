@@ -30,7 +30,7 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {
         p.get_serial_number()
         } -> std::same_as<std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>>;
-    {p.start_set_led(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE>{})} -> std::same_as<errors::ErrorCode>;
+    //{p.start_set_led(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE>{})} -> std::same_as<errors::ErrorCode>;
 };
 
 using Message = messages::SystemMessage;
@@ -183,7 +183,8 @@ class SystemTask {
         if (!policy.check_I2C_ready()) {
             response.with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
         } else {
-            response.with_error = policy.start_set_led(msg.aTxBuffer);
+            //response.with_error = policy.start_set_led(msg.aTxBuffer);
+            response.with_error = policy.start_set_led();
         }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));

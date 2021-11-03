@@ -10,9 +10,10 @@ system_hardware_handles *SYSTEM_HW_HANDLE = NULL;
 /* I2C handler declaration */
 I2C_HandleTypeDef I2cHandle;
 
-uint8_t PWMInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_PWM_OUTPUT_HIGH};
-uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x30}; //0x30 to turn all on, 0 to turn all off
+uint8_t PWMInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI};
+uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30}; //0x30 to turn all on, 0 to turn all off
 uint8_t UpdateBuffer[1] = {0};
+uint8_t ShutdownBuffer[1] = {1};
 
 void system_hardware_setup(system_hardware_handles* handles) {
     SYSTEM_HW_HANDLE = handles;
@@ -38,7 +39,8 @@ void system_hardware_setup(system_hardware_handles* handles) {
     HAL_I2C_Init(&I2cHandle);
     HAL_I2CEx_ConfigAnalogFilter(&I2cHandle,I2C_ANALOGFILTER_ENABLE); //do this?
 
-    system_hardware_setup_led();
+    //system_hardware_setup_led();
+
     //system_hardware_set_led(PWMInitBuffer, PWM_Init);
     //system_hardware_set_led(OutputInitBuffer, LED_Control);
     //any error checking?
@@ -92,7 +94,7 @@ asm volatile (
 }
 
 //bool system_hardware_set_led(uint8_t aTxBuffer[SYSTEM_WIDE_TXBUFFERSIZE], I2C_Operations operation) {
-bool system_hardware_set_led(uint8_t* aTxBuffer, I2C_Operations operation) {
+bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operation) {
   //loop thru bits
   //if bit_previous != bit
     //if 1, set register high
@@ -162,6 +164,32 @@ bool system_hardware_setup_led(void) {
       status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
         (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
     }
+  }
+  return (status == HAL_OK);
+}
+
+//debug function. Confirm all HAL function inputs correct
+bool system_hardware_set_led(uint8_t step) {
+  HAL_StatusTypeDef status;
+  switch(step) {
+    case 0:
+      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)0x00,
+        (uint16_t)REGISTER_SIZE, (uint8_t*)ShutdownBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
+      break;
+    case 1:
+      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_PWM_REGISTER,
+        (uint16_t)REGISTER_SIZE, (uint8_t*)PWMInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
+      break;
+    case 2:
+      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_REGISTER,
+        (uint16_t)REGISTER_SIZE, (uint8_t*)OutputInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
+      break;
+    case 3:
+      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
+        (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
+      break;
+    default:
+      status = HAL_ERROR;
   }
   return (status == HAL_OK);
 }

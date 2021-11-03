@@ -27,7 +27,7 @@ typedef enum {
 /* I2C TIMING Register define when I2C clock source is SYSCLK */
 /* I2C TIMING is calculated in case of the I2C Clock source is the SYSCLK = 72 MHz */
 /* This example use TIMING to 0x00C4092A to reach 1 MHz speed (Rise time = 26ns, Fall time = 2ns) */
-#define I2C_TIMING      0xA0000518
+#define I2C_TIMING      0x00201D2B
 
 /* Definition for I2Cx clock resources */
 #define I2Cx                            I2C1
@@ -59,7 +59,7 @@ typedef enum {
 #define REGISTER_SIZE                   0x01
 
 #define LED_OUTPUT_HIGH                 0x30
-#define LED_PWM_OUTPUT_HIGH             0xFF
+#define LED_PWM_OUT_HI                  0xFF
 
 #define SOFTPOWER_BUTTON_SENSE_PIN GPIO_PIN_4
 #define SOFTPOWER_UNPLUG_SENSE_PIN GPIO_PIN_5
@@ -67,7 +67,8 @@ typedef enum {
 
 void system_hardware_setup(system_hardware_handles* handles);
 void system_hardware_enter_bootloader(void);
-bool system_hardware_set_led(uint8_t* aTxBuffer, I2C_Operations operation);
+bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operation);
+bool system_hardware_set_led(uint8_t step);
 bool system_hardware_I2C_ready(void);
 
 #ifdef __cplusplus

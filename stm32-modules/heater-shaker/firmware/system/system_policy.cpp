@@ -2,6 +2,8 @@
 #include <iterator>
 #include <ranges>
 
+#include "FreeRTOS.h"
+#include "task.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
 #include "system_hardware.h"
@@ -55,15 +57,36 @@ auto SystemPolicy::get_serial_number(void)
     return serial_number_array;
 }
 
-auto SystemPolicy::start_set_led(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer)
+auto SystemPolicy::start_set_led_original(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer)
     -> errors::ErrorCode {
-    if (!system_hardware_set_led(aTxBuffer.data(), LED_Control)) {
+    if (!system_hardware_set_led_original(aTxBuffer.data(), LED_Control)) {
         return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
     }
     return errors::ErrorCode::NO_ERROR;
 }
-//create new LED errors (SYSTEM_LED_TRANSMIT_START_HAL_ERROR)
+
+auto SystemPolicy::start_set_led(void) -> errors::ErrorCode {
+    if (!system_hardware_set_led(0)) {
+        return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
+    }
+    delay_ticks(100);
+    if (!system_hardware_set_led(1)) {
+        return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
+    }
+    delay_ticks(100);
+    if (!system_hardware_set_led(2)) {
+        return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
+    }
+    delay_ticks(100);
+    if (!system_hardware_set_led(3)) {
+        return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
+    }
+    return errors::ErrorCode::NO_ERROR;
+}
 
 auto SystemPolicy::check_I2C_ready(void) -> bool {
     return(system_hardware_I2C_ready());
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto SystemPolicy::delay_ticks(uint16_t ticks) -> void { vTaskDelay(ticks); }
