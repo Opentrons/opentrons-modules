@@ -92,6 +92,7 @@ requires MessageQueue<QueueImpl<Message>, Message>
 class MotorTask {
     static constexpr const uint32_t HOMING_INTERSTATE_WAIT_TICKS = 100;
     static constexpr const uint16_t PLATE_LOCK_WAIT_TICKS = 100;
+    static constexpr const uint16_t STARTUP_HOMING_WAIT_TICKS = 200; //needed to ensure motor setup complete at startup before homing
 
   public:
     static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 250;
@@ -419,6 +420,7 @@ class MotorTask {
         } else {
             plate_lock_state.status = PlateLockState::IDLE_CLOSED;
             if (msg.from_startup) {
+                policy.delay_ticks(STARTUP_HOMING_WAIT_TICKS);
                 static_cast<void>(get_message_queue().try_send(
                     messages::BeginHomingMessage{}));
             } else {
@@ -440,6 +442,7 @@ class MotorTask {
             plate_lock_state.status = PlateLockState::IDLE_OPEN;
         }
         if (from_startup) {
+            policy.delay_ticks(STARTUP_HOMING_WAIT_TICKS);
             static_cast<void>(
                 get_message_queue().try_send(messages::BeginHomingMessage{}));
         } else {
@@ -459,6 +462,7 @@ class MotorTask {
                 policy.plate_lock_brake();
                 plate_lock_state.status = PlateLockState::IDLE_UNKNOWN;
                 if (from_startup) {
+                    policy.delay_ticks(STARTUP_HOMING_WAIT_TICKS);
                     static_cast<void>(get_message_queue().try_send(
                         messages::BeginHomingMessage{}));
                 } else {
