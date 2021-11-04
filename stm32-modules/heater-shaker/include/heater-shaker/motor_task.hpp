@@ -378,10 +378,9 @@ class MotorTask {
             (plate_lock_state.status == PlateLockState::IDLE_OPEN)) {
             plate_lock_state.status = PlateLockState::IDLE_OPEN;
         } else {
-            if ((state.status != State::STOPPED_HOMED) &&
-                (state.status != State::STOPPED_UNKNOWN)) {
+            if (state.status != State::STOPPED_HOMED) {
                 check_state_message.with_error =
-                    errors::ErrorCode::MOTOR_NOT_STOPPED;
+                    errors::ErrorCode::MOTOR_NOT_HOME;
             } else {
                 policy.plate_lock_set_power(OpenPower);
                 plate_lock_state.status = PlateLockState::OPENING;
@@ -417,12 +416,12 @@ class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::CheckPlateLockStatusMessage& msg,
                        Policy& policy) -> void {
-        if (msg.with_error == errors::ErrorCode::MOTOR_NOT_STOPPED) {
+        if (msg.with_error != errors::ErrorCode::NO_ERROR) {
             static_cast<void>(
                 task_registry->comms->get_message_queue().try_send(
                     messages::AcknowledgePrevious{
                         .responding_to_id = msg.responding_to_id,
-                        .with_error = errors::ErrorCode::MOTOR_NOT_STOPPED}));
+                        .with_error = msg.with_error}));
         } else if ((plate_lock_state.status == PlateLockState::IDLE_CLOSED) ||
                    (plate_lock_state.status == PlateLockState::IDLE_OPEN)) {
             if (msg.from_startup) {
