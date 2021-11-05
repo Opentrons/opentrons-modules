@@ -92,15 +92,18 @@ requires MessageQueue<QueueImpl<Message>, Message>
 class MotorTask {
     static constexpr const uint32_t HOMING_INTERSTATE_WAIT_TICKS = 100;
     static constexpr const uint16_t PLATE_LOCK_WAIT_TICKS = 100;
+    static constexpr const uint16_t STARTUP_HOMING_WAIT_TICKS =
+        200;  // needed to ensure motor setup complete at startup before homing
 
   public:
-    static constexpr uint16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 250;
-    static constexpr uint16_t HOMING_ROTATION_LIMIT_LOW_RPM = 200;
-    static constexpr uint16_t HOMING_ROTATION_LOW_MARGIN = 25;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 250;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_LOW_RPM = 200;
+    static constexpr int16_t HOMING_ROTATION_LOW_MARGIN = 25;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_INITIAL = 200;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
     static constexpr uint16_t HOMING_CYCLES_BEFORE_TIMEOUT = 10;
-    static constexpr uint16_t PLATE_LOCK_MOVE_TIME_THRESHOLD = 1250;
+    static constexpr uint16_t PLATE_LOCK_MOVE_TIME_THRESHOLD =
+        2350;  // 1250 for 380:1 motor, 2350 for 1000:1 motor
     using Queue = QueueImpl<Message>;
     static constexpr uint8_t PLATE_LOCK_STATE_SIZE = 14;
     explicit MotorTask(Queue& q)
@@ -369,64 +372,83 @@ class MotorTask {
     auto visit_message(const messages::OpenPlateLockMessage& msg,
                        Policy& policy) -> void {
         static constexpr float OpenPower = -1.0F;
-        if ((!policy.plate_lock_open_sensor_read()) &&
-            (plate_lock_state.status != PlateLockState::IDLE_OPEN)) {
+        auto check_state_message =
+            messages::CheckPlateLockStatusMessage{.responding_to_id = msg.id};
+        if ((policy.plate_lock_open_sensor_read()) ||
+            (plate_lock_state.status == PlateLockState::IDLE_OPEN)) {
+            plate_lock_state.status = PlateLockState::IDLE_OPEN;
+        } else {
             if (state.status != State::STOPPED_HOMED) {
-                static_cast<void>(
-                    task_registry->comms->get_message_queue().try_send(
-                        messages::AcknowledgePrevious{
-                            .responding_to_id = msg.id,
-                            .with_error = errors::ErrorCode::MOTOR_NOT_HOME}));
+                check_state_message.with_error =
+                    errors::ErrorCode::MOTOR_NOT_HOME;
             } else {
-                cached_plate_lock_id = msg.id;
                 policy.plate_lock_set_power(OpenPower);
                 plate_lock_state.status = PlateLockState::OPENING;
                 polling_time = 0;
-                static_cast<void>(get_message_queue().try_send(
-                    messages::CheckPlateLockStatusMessage{}));
             }
-        } else {
-            plate_lock_state.status = PlateLockState::IDLE_OPEN;
-            static_cast<void>(
-                task_registry->comms->get_message_queue().try_send(
-                    messages::AcknowledgePrevious{.responding_to_id = msg.id}));
         }
+        static_cast<void>(get_message_queue().try_send(check_state_message));
     }
 
     template <typename Policy>
     auto visit_message(const messages::ClosePlateLockMessage& msg,
                        Policy& policy) -> void {
         static constexpr float ClosePower = 1.0F;
-        if ((!policy.plate_lock_closed_sensor_read()) &&
-            (plate_lock_state.status != PlateLockState::IDLE_CLOSED)) {
+        auto check_state_message = messages::CheckPlateLockStatusMessage{
+            .responding_to_id = msg.id, .from_startup = msg.from_startup};
+        if ((policy.plate_lock_closed_sensor_read()) ||
+            (plate_lock_state.status == PlateLockState::IDLE_CLOSED)) {
+            plate_lock_state.status = PlateLockState::IDLE_CLOSED;
+        } else {
             if ((state.status != State::STOPPED_HOMED) &&
                 (state.status != State::STOPPED_UNKNOWN)) {
-                static_cast<void>(
-                    task_registry->comms->get_message_queue().try_send(
-                        messages::AcknowledgePrevious{
-                            .responding_to_id = msg.id,
-                            .with_error =
-                                errors::ErrorCode::MOTOR_NOT_STOPPED}));
+                check_state_message.with_error =
+                    errors::ErrorCode::MOTOR_NOT_STOPPED;
             } else {
-                from_startup = msg.from_startup ? true : false;
-                cached_plate_lock_id = msg.id;
                 policy.plate_lock_set_power(ClosePower);
                 plate_lock_state.status = PlateLockState::CLOSING;
                 polling_time = 0;
-                static_cast<void>(get_message_queue().try_send(
-                    messages::CheckPlateLockStatusMessage{}));
             }
-        } else {
-            plate_lock_state.status = PlateLockState::IDLE_CLOSED;
+        }
+        static_cast<void>(get_message_queue().try_send(check_state_message));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::CheckPlateLockStatusMessage& msg,
+                       Policy& policy) -> void {
+        if (msg.with_error != errors::ErrorCode::NO_ERROR) {
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    messages::AcknowledgePrevious{
+                        .responding_to_id = msg.responding_to_id,
+                        .with_error = msg.with_error}));
+        } else if ((plate_lock_state.status == PlateLockState::IDLE_CLOSED) ||
+                   (plate_lock_state.status == PlateLockState::IDLE_OPEN)) {
             if (msg.from_startup) {
+                policy.delay_ticks(STARTUP_HOMING_WAIT_TICKS);
                 static_cast<void>(get_message_queue().try_send(
                     messages::BeginHomingMessage{}));
             } else {
                 static_cast<void>(
                     task_registry->comms->get_message_queue().try_send(
-                        messages::AcknowledgePrevious{.responding_to_id =
-                                                          msg.id}));
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = msg.responding_to_id}));
             }
+        } else if (polling_time > PLATE_LOCK_MOVE_TIME_THRESHOLD) {
+            policy.plate_lock_brake();
+            plate_lock_state.status = PlateLockState::IDLE_UNKNOWN;
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    messages::AcknowledgePrevious{
+                        .responding_to_id = msg.responding_to_id,
+                        .with_error = errors::ErrorCode::PLATE_LOCK_TIMEOUT}));
+        } else {
+            policy.delay_ticks(PLATE_LOCK_WAIT_TICKS);
+            polling_time += PLATE_LOCK_WAIT_TICKS;
+            static_cast<void>(get_message_queue().try_send(
+                messages::CheckPlateLockStatusMessage{
+                    .responding_to_id = msg.responding_to_id,
+                    .from_startup = msg.from_startup}));
         }
     }
 
@@ -438,43 +460,6 @@ class MotorTask {
             plate_lock_state.status = PlateLockState::IDLE_CLOSED;
         } else if ((msg.open == true) && (msg.closed == false)) {
             plate_lock_state.status = PlateLockState::IDLE_OPEN;
-        }
-        if (from_startup) {
-            static_cast<void>(
-                get_message_queue().try_send(messages::BeginHomingMessage{}));
-        } else {
-            static_cast<void>(
-                task_registry->comms->get_message_queue().try_send(
-                    messages::AcknowledgePrevious{.responding_to_id =
-                                                      cached_plate_lock_id}));
-        }
-    }
-
-    template <typename Policy>
-    auto visit_message(const messages::CheckPlateLockStatusMessage& msg,
-                       Policy& policy) -> void {
-        if ((plate_lock_state.status != PlateLockState::IDLE_CLOSED) &&
-            (plate_lock_state.status != PlateLockState::IDLE_OPEN)) {
-            if (polling_time > PLATE_LOCK_MOVE_TIME_THRESHOLD) {
-                policy.plate_lock_brake();
-                plate_lock_state.status = PlateLockState::IDLE_UNKNOWN;
-                if (from_startup) {
-                    static_cast<void>(get_message_queue().try_send(
-                        messages::BeginHomingMessage{}));
-                } else {
-                    static_cast<void>(
-                        task_registry->comms->get_message_queue().try_send(
-                            messages::AcknowledgePrevious{
-                                .responding_to_id = cached_plate_lock_id,
-                                .with_error =
-                                    errors::ErrorCode::PLATE_LOCK_TIMEOUT}));
-                }
-            } else {
-                policy.delay_ticks(PLATE_LOCK_WAIT_TICKS);
-                polling_time += PLATE_LOCK_WAIT_TICKS;
-                static_cast<void>(get_message_queue().try_send(
-                    messages::CheckPlateLockStatusMessage{}));
-            }
         }
     }
 
@@ -556,9 +541,7 @@ class MotorTask {
     tasks::Tasks<QueueImpl>* task_registry;
     uint32_t cached_home_id = 0;
     uint32_t homing_cycles_coasting = 0;
-    uint32_t cached_plate_lock_id = 0;
     uint32_t polling_time = 0;
-    bool from_startup = false;
 };
 
 };  // namespace motor_task

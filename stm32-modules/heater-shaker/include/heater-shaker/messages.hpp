@@ -149,6 +149,7 @@ struct SetPlateLockPowerMessage {
 
 struct OpenPlateLockMessage {
     uint32_t id;
+    bool from_startup;
 };
 
 struct ClosePlateLockMessage {
@@ -164,7 +165,11 @@ struct GetPlateLockStateDebugMessage {
     uint32_t id;
 };
 
-struct CheckPlateLockStatusMessage {};
+struct CheckPlateLockStatusMessage {
+    uint32_t responding_to_id;
+    bool from_startup;
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
+};
 
 /*
 ** Response structs either confirm actions or fulfill actions. Because some
