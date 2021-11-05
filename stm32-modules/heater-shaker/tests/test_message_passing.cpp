@@ -11,6 +11,12 @@ SCENARIO("testing full message passing integration") {
             messages::HeaterMessage(messages::TemperatureConversionComplete{
                 .pad_a = (1U << 9), .pad_b = (1U << 9), .board = (1U << 11)}));
         tasks->run_heater_task();
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false,
+            .closed = true};  // required before moving main motor
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
         WHEN("sending a set-rpm message by string to the host comms task") {
             std::string message_str = "M3 S2000\n";
             tasks->get_host_comms_queue().backing_deque.push_back(

@@ -138,10 +138,12 @@ struct SetPlateLockPowerMessage {
 
 struct OpenPlateLockMessage {
     uint32_t id;
+    bool from_startup;
 };
 
 struct ClosePlateLockMessage {
     uint32_t id;
+    bool from_startup;
 };
 
 struct GetPlateLockStateMessage {
@@ -150,6 +152,12 @@ struct GetPlateLockStateMessage {
 
 struct GetPlateLockStateDebugMessage {
     uint32_t id;
+};
+
+struct CheckPlateLockStatusMessage {
+    uint32_t responding_to_id;
+    bool from_startup;
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
 /*
@@ -228,7 +236,8 @@ using MotorMessage = ::std::variant<
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,
     ActuateSolenoidMessage, SetPlateLockPowerMessage, OpenPlateLockMessage,
     ClosePlateLockMessage, SetPIDConstantsMessage, PlateLockComplete,
-    GetPlateLockStateMessage, GetPlateLockStateDebugMessage>;
+    GetPlateLockStateMessage, GetPlateLockStateDebugMessage,
+    CheckPlateLockStatusMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage>;
