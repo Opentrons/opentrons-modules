@@ -58,8 +58,8 @@ typedef enum {
 #define BASE_REGISTER                   0x17 //first LED is on driver channel 4
 #define REGISTER_SIZE                   0x01
 
-#define LED_OUTPUT_HIGH                 0x30
-#define LED_PWM_OUT_HI                  0xFF
+#define LED_OUTPUT_HIGH                 0x30 //0x30 full current output
+#define LED_PWM_OUT_HI                  0xFF //0xFF full pwm output
 
 #define SOFTPOWER_BUTTON_SENSE_PIN GPIO_PIN_4
 #define SOFTPOWER_UNPLUG_SENSE_PIN GPIO_PIN_5
