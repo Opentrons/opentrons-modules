@@ -8,8 +8,8 @@
 #include "system_serial_number.h"
 #pragma GCC diagnostic pop
 
-#include "thermocycler-refresh/errors.hpp"
 #include "system_policy.hpp"
+#include "thermocycler-refresh/errors.hpp"
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto SystemPolicy::enter_bootloader() -> void {

@@ -13,18 +13,19 @@
 #pragma GCC diagnostic pop
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-//tasks::Tasks<FreeRTOSMessageQueue> tasks_aggregator;
+// tasks::Tasks<FreeRTOSMessageQueue> tasks_aggregator;
 
 auto main() -> int {
     HardwareInit();
-    
+
     system_hardware_setup();
     system_debug_led(1);
 
-    while(1); // TEMP - spin forever until USB is implemented
-    //auto system = system_control_task::start();
-    //auto comms = host_comms_control_task::start();
-    //tasks_aggregator.initialize(nullptr, system.task);
-    //vTaskStartScheduler();
+    while (1)
+        ;  // TEMP - spin forever until USB is implemented
+    // auto system = system_control_task::start();
+    // auto comms = host_comms_control_task::start();
+    // tasks_aggregator.initialize(nullptr, system.task);
+    // vTaskStartScheduler();
     return 0;
 }

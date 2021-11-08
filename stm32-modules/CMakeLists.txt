@@ -3,6 +3,8 @@
 if (${CMAKE_CROSSCOMPILING})
     find_package(CrossGCC)
     find_package(OpenOCD)
+else()
+    find_package(Boost 1.71.0)
 endif()
 
 add_subdirectory(heater-shaker)

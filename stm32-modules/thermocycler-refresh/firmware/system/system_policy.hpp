@@ -2,8 +2,8 @@
 
 #include <array>
 
-#include "thermocycler-refresh/errors.hpp"
 #include "systemwide.hpp"
+#include "thermocycler-refresh/errors.hpp"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"

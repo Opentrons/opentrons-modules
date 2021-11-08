@@ -1,4 +1,3 @@
-find_package(Boost 1.71.0)
 add_executable(
         heater-shaker-simulator
         comm_thread.cpp
