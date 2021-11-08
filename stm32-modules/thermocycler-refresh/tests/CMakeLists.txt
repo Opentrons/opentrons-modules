@@ -3,3 +3,32 @@ find_package(Catch2 REQUIRED)
 include(CTest)
 include(Catch)
 include(AddBuildAndTestTarget)
+
+add_executable(${TARGET_MODULE_NAME}
+    test_main.cpp)
+
+target_include_directories(${TARGET_MODULE_NAME} 
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+
+set_target_properties(${TARGET_MODULE_NAME}
+    PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED TRUE)
+
+target_compile_options(${TARGET_MODULE_NAME}
+    PUBLIC
+    -Wall
+    -Werror
+    -Weffc++
+    -Wreorder
+    -Wsign-promo
+    -Wextra-semi
+    -Wctor-dtor-privacy
+    -fno-rtti)
+
+target_link_libraries(${TARGET_MODULE_NAME} 
+    ${TARGET_MODULE_NAME}-core Catch2::Catch2)
+
+# TO BE ENABLED once tests are actually implemented
+# catch_discover_tests(${TARGET_MODULE_NAME} )
+add_build_and_test_target(${TARGET_MODULE_NAME} )

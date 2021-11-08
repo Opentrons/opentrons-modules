@@ -154,7 +154,7 @@ list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
 add_custom_target(${TARGET_MODULE_NAME}-lint
   COMMENT "Linting"
   ALL
-  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${HS_FW_LINTABLE_SRCS} ${CORE_LINTABLE_SOURCES} --config=)
+  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS} ${CORE_LINTABLE_SOURCES} --config=)
 
 # Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an
 # arguable misuse of the concept) to the appropriate cross-gdb with

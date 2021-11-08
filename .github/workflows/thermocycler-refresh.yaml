@@ -1,8 +1,8 @@
-name: 'Heater/shaker build/test'
+name: 'Thermocycler Refresh build/test'
 on:
   pull_request:
     paths:
-      - 'stm32-modules/heater-shaker/**/*'
+      - 'stm32-modules/thermocycler-refresh/**/*'
       - 'cmake/**/*'
       - 'CMakeLists.txt'
       - 'stm32-modules/CMakeLists.txt'
@@ -13,20 +13,20 @@ on:
       - 'cmake/Arduino*'
   push:
     paths:
-      - 'stm32-modules/heater-shaker/**/*'
+      - 'stm32-modules/thermocycler-refresh/**/*'
       - 'cmake/**/*'
       - 'CMakeLists.txt'
       - 'stm32-modules/CMakeLists.txt'
       - 'CMakePresets.json'
       - '.clang-format'
       - '.clang-tidy'
-      - '.github/workflows/heater-shaker.yaml'
+      - '.github/workflows/thermocycler-refresh.yaml'
     paths_ignore:
       - 'cmake/Arduino*'
     branches:
       - '*'
     tags:
-      - 'heater-shaker@*'
+      - 'thermocycler-refresh@*'
   workflow_dispatch:
 
 
@@ -52,11 +52,11 @@ jobs:
       - name: 'Configure'
         run: cmake --preset=stm32-cross .
       - name: 'Format'
-        run: cmake --build ./build-stm32-cross --target heater-shaker-format-ci
+        run: cmake --build ./build-stm32-cross --target thermocycler-refresh-format-ci
       - name: 'Lint'
-        run: cmake --build ./build-stm32-cross --target heater-shaker-lint
+        run: cmake --build ./build-stm32-cross --target thermocycler-refresh-lint
       - name: 'Build'
-        run: cmake --build ./build-stm32-cross --target heater-shaker-hex
+        run: cmake --build ./build-stm32-cross --target thermocycler-refresh-hex
   host-compile-test:
     name: 'Host-Compile/Test'
     runs-on: 'ubuntu-20.04'
@@ -78,7 +78,5 @@ jobs:
           restore-keys: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
       - name: 'Configure'
         run: cmake --preset=stm32-host .
-      - name: 'Build'
-        run: cmake --build ./build-stm32-host --target heater-shaker
-      - name: 'Test'
-        run: cmake --build ./build-stm32-host --target test
+      - name: 'Build and Test'
+        run: cmake --build ./build-stm32-host --target thermocycler-refresh-build-and-test
