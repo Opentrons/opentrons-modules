@@ -154,3 +154,34 @@ macro(add_STM32G4_freertos suffix)
                 C_STANDARD_REQUIRED TRUE)
 endmacro()
 set(STM32G4xx_FreeRTOS_FOUND ${bsp_populated} PARENT_SCOPE)
+
+macro(add_STM32G4_usb suffix)
+        set(usb_root ${bsp_source}/Middlewares/ST/STM32_USB_Device_Library/)
+        set(usb_core_root ${usb_root}/Core)
+        set(usb_cdc_root ${usb_root}/Class/CDC)
+        set(usb_class_sources
+                ${usb_cdc_root}/Src/usbd_cdc.c)
+        set(usb_core_sources
+                ${usb_core_root}/Src/usbd_core.c
+                ${usb_core_root}/Src/usbd_ctlreq.c
+                ${usb_core_root}/Src/usbd_ioreq.c)
+
+        add_library(
+                STM32G4xx_USB_${suffix} STATIC 
+                ${usb_core_sources}
+                ${usb_class_sources})
+
+        get_target_property(_hal_include_dirs STM32G4xx_Drivers_${suffix} INCLUDE_DIRECTORIES)
+
+        target_include_directories(
+                STM32G4xx_USB_${suffix}
+                PUBLIC  ${usb_core_root}/Inc
+                        ${usb_cdc_root}/Inc
+                        ${_hal_include_dirs})
+        
+        set_target_properties(
+                STM32G4xx_USB_${suffix}
+                PROPERTIES C_STANDARD 11
+                C_STANDARD_REQUIRED TRUE)
+endmacro()
+set(STM32G4xx_USB_FOUND ${bsp_populated} PARENT_SCOPE)
