@@ -3,8 +3,6 @@
 
 find_package(STM32F303BSP
   COMPONENTS Drivers FreeRTOS USB)
-find_package(CrossGCC)
-find_package(OpenOCD)
 
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(HEATER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/heater_task")
