@@ -1,5 +1,5 @@
 #[=======================================================================[.rst:
-STM32GCCCrossToolchain.cmake
+STM32CortexM33GCCCrossToolchain.cmake
 ----------------------------
 
 This module should never be imported and used in a CMakeLists.txt file at either
@@ -21,9 +21,9 @@ set(CMAKE_ASM_COMPILER "${CrossGCC_BINDIR}/${CrossGCC_TRIPLE}-gcc")
 set(CMAKE_CXX_COMPILER "${CrossGCC_BINDIR}/${CrossGCC_TRIPLE}-g++")
 
 set(GCC_CROSS_BASE_FLAGS
-  "-mthumb -mcpu=cortex-m4 -mfloat-abi=hard -specs=nosys.specs -specs=nano.specs -fpic -ffunction-sections -fdata-sections -fno-lto")
-set(CMAKE_C_COMPILER_TARGET thumbv7m-unknown-none-eabi)
-set(CMAKE_CXX_COMPILER_TARGET thumbv7m-unknown-none-eabi)
+        "-mthumb -mcpu=cortex-m33 -mfloat-abi=hard -specs=nosys.specs -specs=nano.specs -fpic -ffunction-sections -fdata-sections -fno-lto")
+set(CMAKE_C_COMPILER_TARGET thumbv8m.main-none-eabi)
+set(CMAKE_CXX_COMPILER_TARGET thumbv8m.main-none-eabi)
 set(CMAKE_C_FLAGS ${GCC_CROSS_BASE_FLAGS})
 set(CMAKE_CXX_FLAGS ${GCC_CROSS_BASE_FLAGS})
 set(CMAKE_ASM_FLAGS ${GCC_CROSS_BASE_FLAGS})
