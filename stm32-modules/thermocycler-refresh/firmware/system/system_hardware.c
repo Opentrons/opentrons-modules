@@ -14,10 +14,9 @@ void system_hardware_setup(void) {
     HAL_GPIO_Init(GPIOE, &gpio_init);
 }
 
-// This is the start of the sys memory region from the datasheet. It should be the
-// same for at least all the f303s, including the vdt6 which is on the nffs and the
-// vc that will be on the ff.
-#define SYSMEM_START 0x1fffd800
+// This is the start of the sys memory region for the STM32G491 
+// from the reference manual and STM application note AN2606
+#define SYSMEM_START 0x1fff0000
 #define SYSMEM_BOOT (SYSMEM_START + 4)
 
 // address 4 in the bootable region is the address of the first instruction that
