@@ -1,0 +1,14 @@
+python
+import os,sys
+sys.path.extend(["${GDBSVDTools_terminaltables_DIRECTORY}", "${GDBSVDTools_cmsissvd_DIRECTORY}/python", "${GDBSVDTools_six_DIRECTORY}"])
+end
+
+
+source ${GDBSVDTools_gdbsvd_EXECUTABLE}
+svd ${GDBSVDTools_cmsissvd_DIRECTORY}/data/STMicro/STM32G491xx.svd
+target extended-remote | ${OpenOCD_EXECUTABLE} -c "gdb_port pipe" -f ${G4_BOARD_FILE_PATH} 2>/dev/null
+set remote hardware-breakpoint-limit 6
+set remote hardware-watchpoint-limit 4
+mon reset
+break main
+load

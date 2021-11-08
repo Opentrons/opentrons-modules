@@ -1,81 +1,39 @@
 # This CMakeLists.txt handles everything that is compiled only when
 # cross-compiling, like the board support packages and special options.
 
-find_package(STM32F303BSP
-  COMPONENTS Drivers FreeRTOS USB)
+find_package(STM32G4xx)
+add_STM32G4_driver(${TARGET_MODULE_NAME})
+add_STM32G4_freertos(${TARGET_MODULE_NAME})
+add_STM32G4_usb(${TARGET_MODULE_NAME})
 
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
-set(HEATER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/heater_task")
-set(MOTOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/motor_task")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 
-set(MCSDK_VERSION 5.4.4)
-set(MCSDK_LOCATION "${CMAKE_CURRENT_LIST_DIR}/motor_task/MCSDK_v${MCSDK_VERSION}/MotorControl")
-
-add_library(_mc_static STATIC IMPORTED)
-set_target_properties(_mc_static
-  PROPERTIES IMPORTED_LOCATION
-  "${MCSDK_LOCATION}/lib/libmc-gcc_M4.lib")
-
-file(GLOB _mcsdk_any_sources "${MCSDK_LOCATION}/MCSDK/MCLib/Any/Src/*.c")
-file(GLOB _mcsdk_f3xx_sources "${MCSDK_LOCATION}/MCSDK/MCLib/F3xx/Src/*.c")
-
-add_library(mc STATIC
-  ${_mcsdk_any_sources}
-  ${_mcsdk_f3xx_sources}
-  )
-set_target_properties(mc
-  PROPERTIES C_STANDARD 11
-  C_STANDARD_REQUIRED TRUE)
-target_compile_definitions(mc PUBLIC CCMRAM)
-
-target_include_directories(mc
-  PUBLIC "${MCSDK_LOCATION}/MCSDK/MCLib/Any/Inc"
-         "${MCSDK_LOCATION}/MCSDK/MCLib/F3xx/Inc"
-  PRIVATE "${CMAKE_CURRENT_LIST_DIR}/motor_task")
-target_link_libraries(mc PUBLIC _mc_static STM32F303BSP_Drivers)
-target_link_libraries(_mc_static INTERFACE mc)
-
-
 # Add source files that should be checked by clang-tidy here
-set(HS_FW_LINTABLE_SRCS
-  ${SYSTEM_DIR}/main.cpp
-  ${SYSTEM_DIR}/freertos_system_task.cpp
+set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
+  ${SYSTEM_DIR}/main.cpp 
+  #${SYSTEM_DIR}/freertos_system_task.cpp
   ${SYSTEM_DIR}/system_policy.cpp
-  ${HEATER_DIR}/freertos_heater_task.cpp
-  ${HEATER_DIR}/heater_policy.cpp
-  ${MOTOR_DIR}/freertos_motor_task.cpp
-  ${MOTOR_DIR}/motor_policy.cpp
-  ${COMMS_DIR}/freertos_comms_task.cpp
+  #${COMMS_DIR}/freertos_comms_task.cpp
   ${SYSTEM_DIR}/freertos_idle_timer_task.cpp)
 
 # Add source files that should NOT be checked by clang-tidy here
-set(HS_FW_NONLINTABLE_SRCS
-  ${SYSTEM_DIR}/system_stm32f3xx.c
-  ${SYSTEM_DIR}/stm32f3xx_it.c
-  ${SYSTEM_DIR}/startup_stm32f303xe.s
-  ${COMMS_DIR}/usbd_conf.c
-  ${COMMS_DIR}/usbd_desc.c
-  ${MOTOR_DIR}/motor_hardware.c
-  ${MOTOR_DIR}/mc_config.c
-  ${MOTOR_DIR}/mc_interface.c
-  ${MOTOR_DIR}/mc_math.c
-  ${MOTOR_DIR}/mc_parameters.c
-  ${MOTOR_DIR}/mc_tasks.c
-  ${MOTOR_DIR}/stm32f30x_mc_it.c
-  ${MOTOR_DIR}/regular_conversion_manager.c
+set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
+  ${SYSTEM_DIR}/system_stm32g4xx.c
+  ${SYSTEM_DIR}/stm32g4xx_it.c
+  ${SYSTEM_DIR}/startup_stm32g491vetx.s
   ${SYSTEM_DIR}/system_hardware.c
-  ${HEATER_DIR}/heater_hardware.c
-  ${SYSTEM_DIR}/system_serial_number.c
+  #${COMMS_DIR}/usbd_conf.c
+  #${COMMS_DIR}/usbd_desc.c
   )
 
-add_executable(heater-shaker
-  ${HS_FW_LINTABLE_SRCS}
-  ${HS_FW_NONLINTABLE_SRCS})
+add_executable(${TARGET_MODULE_NAME}
+  ${${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS}
+  ${${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS})
 
-target_link_options(heater-shaker
+target_link_options(${TARGET_MODULE_NAME}
   PRIVATE
-  "LINKER:-T,${SYSTEM_DIR}/STM32F303RETx_FLASH.ld"
+  "LINKER:-T,${SYSTEM_DIR}/STM32G491VETx_FLASH.ld"
   "LINKER:--print-memory-usage"
   "LINKER:--error-unresolved-symbols"
   "LINKER:--gc-sections"
@@ -86,19 +44,19 @@ target_link_options(heater-shaker
 # but hopefully that's quick)
 set_source_files_properties(${SYSTEM_DIR}/main.cpp
   PROPERTIES
-  OBJECT_DEPENDS "${SYSTEM_DIR}/STM32F303RETx_FLASH.ld")
+  OBJECT_DEPENDS "${SYSTEM_DIR}/STM32G491VETx_FLASH.ld")
 
-set_target_properties(heater-shaker
+set_target_properties(${TARGET_MODULE_NAME}
   PROPERTIES CXX_STANDARD 20
              CXX_STANDARD_REQUIRED TRUE
              C_STANDARD 11
              C_STANDARD_REQUIRED TRUE)
 
-  target_include_directories(heater-shaker
+  target_include_directories(${TARGET_MODULE_NAME}
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    PRIVATE ${MOTOR_DIR})
+    )
 
-target_compile_options(heater-shaker
+target_compile_options(${TARGET_MODULE_NAME}
   PUBLIC
   -Wall
   -Werror
@@ -111,29 +69,35 @@ target_compile_options(heater-shaker
 
 
 target_link_libraries(
-  heater-shaker
-  STM32F303BSP_Drivers STM32F303BSP_USB STM32F303BSP_FreeRTOS mc heater-shaker-core)
+  ${TARGET_MODULE_NAME}
+  STM32G4xx_Drivers_${TARGET_MODULE_NAME} 
+  STM32G4xx_FreeRTOS_${TARGET_MODULE_NAME} 
+  #STM32G4xx_USB_${TARGET_MODULE_NAME} 
+  ${TARGET_MODULE_NAME}-core)
 
 
-target_include_directories(STM32F303BSP_Drivers
+target_include_directories(STM32G4xx_Drivers_${TARGET_MODULE_NAME}
   PUBLIC ${SYSTEM_DIR})
-target_include_directories(STM32F303BSP_USB
+target_include_directories(STM32G4xx_USB_${TARGET_MODULE_NAME}
   PUBLIC ${COMMS_DIR})
-target_include_directories(STM32F303BSP_FreeRTOS
+target_include_directories(STM32G4xx_FreeRTOS_${TARGET_MODULE_NAME}
   PUBLIC ${SYSTEM_DIR})
 
-target_compile_definitions(STM32F303BSP_Drivers
-  PUBLIC STM32F303xE)
-target_compile_definitions(STM32F303BSP_USB
-  PUBLIC STM32F303xE)
-target_compile_definitions(STM32F303BSP_FreeRTOS
-  PUBLIC STM32F303xE)
+target_compile_definitions(STM32G4xx_Drivers_${TARGET_MODULE_NAME}
+  PUBLIC STM32G491xx)
+target_compile_definitions(STM32G4xx_USB_${TARGET_MODULE_NAME}
+  PUBLIC STM32G491xx)
+target_compile_definitions(STM32G4xx_FreeRTOS_${TARGET_MODULE_NAME}
+  PUBLIC STM32G491xx)
 
 set_target_properties(
-  STM32F303BSP_FreeRTOS
+  STM32G4xx_FreeRTOS_${TARGET_MODULE_NAME}
   PROPERTIES FREERTOS_HEAP_IMPLEMENTATION "heap_5")
 
 find_package(GDBSVDTools)
+
+# Update G4 board file manually as it doesn't seem to be included with OpenOCD
+set(G4_BOARD_FILE_PATH ${SYSTEM_DIR}/stm32g4discovery.cfg)
 
 # Fills in the template with values specified by the find_package(OpenOCD) call above
 configure_file(${SYSTEM_DIR}/gdbinit.template ./gdbinit)
@@ -147,7 +111,7 @@ find_program(ARM_GDB
 message(STATUS "Found svd exe at ${GDBSVDTools_gdbsvd_EXECUTABLE}")
 # Configure gdb (full path to cross-gdb set in the toolchain) to use the gdbinit in
 # this dir
-set_target_properties(heater-shaker
+set_target_properties(${TARGET_MODULE_NAME}
   PROPERTIES
   CROSSCOMPILING_EMULATOR
   "${ARM_GDB};--command=${CMAKE_CURRENT_BINARY_DIR}/gdbinit")
@@ -156,19 +120,19 @@ find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
   PATHS "${CrossGCC_BINDIR}"
   NO_DEFAULT_PATH
   REQUIRED)
-add_custom_command(OUTPUT heater-shaker.hex
-  COMMAND ${CROSS_OBJCOPY} ARGS heater-shaker "-Oihex" heater-shaker.hex
-  DEPENDS heater-shaker
+add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.hex
+  COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET_MODULE_NAME} "-Oihex" ${TARGET_MODULE_NAME}.hex
+  DEPENDS ${TARGET_MODULE_NAME}
   VERBATIM)
-add_custom_target(heater-shaker-hex ALL
-  DEPENDS heater-shaker.hex)
+add_custom_target(${TARGET_MODULE_NAME}-hex ALL
+  DEPENDS ${TARGET_MODULE_NAME}.hex)
 
-add_custom_command(OUTPUT heater-shaker.bin
-  COMMAND ${CROSS_OBJCOPY} ARGS heater-shaker "-Obinary" heater-shaker.bin
-  DEPENDS heater-shaker
+add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.bin
+  COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET_MODULE_NAME} "-Obinary" ${TARGET_MODULE_NAME}.bin
+  DEPENDS ${TARGET_MODULE_NAME}
   VERBATIM)
-add_custom_target(heater-shaker-bin ALL
-  DEPENDS heater-shaker.bin)
+add_custom_target(${TARGET_MODULE_NAME}-bin ALL
+  DEPENDS ${TARGET_MODULE_NAME}.bin)
 
 find_package(Clang)
 
@@ -187,10 +151,10 @@ set(CLANG_EXTRA_ARGS ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
 # This helps with clang accepting what GCC accepts around the implementations of the message queue
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
-add_custom_target(heater-shaker-lint
+add_custom_target(${TARGET_MODULE_NAME}-lint
   COMMENT "Linting"
   ALL
-  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${HS_FW_LINTABLE_SRCS} ${CORE_LINTABLE_SOURCES} --config=)
+  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS} ${CORE_LINTABLE_SOURCES} --config=)
 
 # Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an
 # arguable misuse of the concept) to the appropriate cross-gdb with
@@ -198,15 +162,15 @@ add_custom_target(heater-shaker-lint
 # done here because it won't be multi-os compatible, and also it
 # should be running the entire time and that's tough to accomplish
 # in a custom command
-add_custom_target(heater-shaker-debug
+add_custom_target(${TARGET_MODULE_NAME}-debug
   COMMENT "Starting gdb and openocd"
-  COMMAND heater-shaker
+  COMMAND ${TARGET_MODULE_NAME}
   USES_TERMINAL
   )
 
 # Runs openocd to flash the board (without using a debugger)
-add_custom_target(heater-shaker-flash
-  COMMAND "${OpenOCD_EXECUTABLE}" "-f" "${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg" "-c" "program $<TARGET_FILE:heater-shaker>;exit"
+add_custom_target(${TARGET_MODULE_NAME}-flash
+  COMMAND "${OpenOCD_EXECUTABLE}" "-f" "${SYSTEM_DIR}/stm32g4discovery.cfg" "-c" "program $<TARGET_FILE:${TARGET_MODULE_NAME}>;exit"
   VERBATIM
   COMMENT "Flashing board"
-  DEPENDS heater-shaker)
+  DEPENDS ${TARGET_MODULE_NAME})
