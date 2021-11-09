@@ -5,9 +5,9 @@
 
 #include "FreeRTOS.h"
 #include "firmware/freertos_message_queue.hpp"
+#include "task.h"
 #include "thermocycler-refresh/host_comms_task.hpp"
 #include "thermocycler-refresh/tasks.hpp"
-#include "task.h"
 
 namespace host_comms_control_task {
 // Function that starts the task

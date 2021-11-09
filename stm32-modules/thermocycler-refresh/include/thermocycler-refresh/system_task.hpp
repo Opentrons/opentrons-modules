@@ -7,11 +7,11 @@
 #include <variant>
 
 #include "hal/message_queue.hpp"
+#include "systemwide.hpp"
 #include "thermocycler-refresh/ack_cache.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 #include "thermocycler-refresh/version.hpp"
-#include "systemwide.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>

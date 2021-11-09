@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <variant>
 
-#include "thermocycler-refresh/errors.hpp"
 #include "systemwide.hpp"
+#include "thermocycler-refresh/errors.hpp"
 
 namespace messages {
 

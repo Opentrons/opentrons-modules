@@ -5,9 +5,9 @@
 
 #include "FreeRTOS.h"
 #include "firmware/freertos_message_queue.hpp"
+#include "task.h"
 #include "thermocycler-refresh/system_task.hpp"
 #include "thermocycler-refresh/tasks.hpp"
-#include "task.h"
 
 namespace system_control_task {
 // Function that actually starts the task

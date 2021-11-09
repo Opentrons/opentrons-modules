@@ -7,15 +7,15 @@
 
 #include "FreeRTOS.h"
 #include "firmware/freertos_message_queue.hpp"
-#include "thermocycler-refresh/system_task.hpp"
-#include "thermocycler-refresh/tasks.hpp"
 #include "system_policy.hpp"
 #include "task.h"
+#include "thermocycler-refresh/system_task.hpp"
+#include "thermocycler-refresh/tasks.hpp"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
-#include "system_hardware.h"
 #include "stm32g4xx_hal.h"
+#include "system_hardware.h"
 #pragma GCC diagnostic pop
 
 namespace system_control_task {

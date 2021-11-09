@@ -87,7 +87,6 @@ static std::array<StackType_t, stack_size> stack;
 static StaticTask_t
     data;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
-
 // Actual function that runs in the task
 void run(void *param) {  // NOLINT(misc-unused-parameters)
     auto *task_pair = static_cast<decltype(_tasks) *>(param);
@@ -98,15 +97,15 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
     // which leads to delays and annoying kernel messages. See
     // stm32g4xx-bsp/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c:159
     // for annotated descriptor definitions
-    
+
     uint16_t len;
     auto *usb_hs_desc = USBD_CDC.GetHSConfigDescriptor(&len);
-    if((usb_hs_desc != nullptr) && (len > 30)) {
+    if ((usb_hs_desc != nullptr) && (len > 30)) {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         usb_hs_desc[30] = 0;
     }
     auto *usb_fs_desc = USBD_CDC.GetFSConfigDescriptor(&len);
-    if((usb_fs_desc != nullptr) && (len > 30)) {
+    if ((usb_fs_desc != nullptr) && (len > 30)) {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         usb_fs_desc[30] = 0;
     }
