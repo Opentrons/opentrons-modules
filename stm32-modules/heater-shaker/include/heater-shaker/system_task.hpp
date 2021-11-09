@@ -183,8 +183,8 @@ class SystemTask {
         if (!policy.check_I2C_ready()) {
             response.with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
         } else {
-            //response.with_error = policy.start_set_led(msg.aTxBuffer);
-            response.with_error = policy.start_set_led(msg.which);
+            response.with_error = policy.start_set_led(msg.aTxBuffer);
+            //response.with_error = policy.start_set_led(msg.which);
         }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));

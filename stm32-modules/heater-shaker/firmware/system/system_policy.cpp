@@ -57,36 +57,36 @@ auto SystemPolicy::get_serial_number(void)
     return serial_number_array;
 }
 
-auto SystemPolicy::start_set_led_original(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer)
+auto SystemPolicy::start_set_led(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> TransmitBuffer)
     -> errors::ErrorCode {
-    if (!system_hardware_set_led_original(aTxBuffer.data(), LED_Control)) {
+    if (!system_hardware_set_led(TransmitBuffer.data())) {
         return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
     }
     return errors::ErrorCode::NO_ERROR;
 }
 
-auto SystemPolicy::start_set_led(uint8_t which) -> errors::ErrorCode {
-    if (!system_hardware_set_led(0, which)) {
+/*auto SystemPolicy::start_set_led_test(uint8_t which) -> errors::ErrorCode {
+    if (!system_hardware_set_led_test(0, which)) {
         return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
     }
     delay_ticks(100);
-    if (!system_hardware_set_led(1, which)) {
+    if (!system_hardware_set_led_test(1, which)) {
         return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
     }
     delay_ticks(100);
-    if (!system_hardware_set_led(2, which)) {
+    if (!system_hardware_set_led_test(2, which)) {
         return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
     }
     delay_ticks(100);
-    if (!system_hardware_set_led(3, which)) {
+    if (!system_hardware_set_led_test(3, which)) {
         return errors::ErrorCode::SYSTEM_LED_TRANSMIT_START_HAL_ERROR;
     }
     return errors::ErrorCode::NO_ERROR;
-}
+}*/
 
 auto SystemPolicy::check_I2C_ready(void) -> bool {
     return(system_hardware_I2C_ready());
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto SystemPolicy::delay_ticks(uint16_t ticks) -> void { vTaskDelay(ticks); }
+//auto SystemPolicy::delay_ticks(uint16_t ticks) -> void { vTaskDelay(ticks); }

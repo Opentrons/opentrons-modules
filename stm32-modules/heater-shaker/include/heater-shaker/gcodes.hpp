@@ -685,7 +685,7 @@ struct SetLED { //make sure M998 isn't used. Just use this to turn them on, cycl
     using ParseResult = std::optional<SetLED>;
     static constexpr auto prefix = std::array{'M', '9', '9', '8', ' '};
     static constexpr const char* response = "M998 OK\n";
-    std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer = {};
+    std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> updatebuffer = {};
     uint8_t which = 0;
 
     template <typename InputIt, typename InputLimit>
@@ -730,13 +730,13 @@ struct SetLED { //make sure M998 isn't used. Just use this to turn them on, cycl
         if (!value_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> UpdateBuffer = {};
+        std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> tempBuffer = {};
         uint8_t index = static_cast<uint8_t>(value_res.first.value());
-        UpdateBuffer[index] = (uint8_t)0x30;
-        //return std::make_pair(ParseResult(SetLED{.aTxBuffer = UpdateBuffer}),
-        //                      value_res.second);
-        return std::make_pair(ParseResult(SetLED{.which = index}),
+        tempBuffer[index] = (uint8_t)0x30;
+        return std::make_pair(ParseResult(SetLED{.updatebuffer = tempBuffer}),
                               value_res.second);
+        //return std::make_pair(ParseResult(SetLED{.which = index}),
+        //                      value_res.second);
     }
 };
 

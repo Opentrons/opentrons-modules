@@ -7,6 +7,7 @@ extern "C" {
 #endif  // __cplusplus
 
 #include <stdbool.h>
+#include "systemwide.h"
 
 typedef struct {
     bool success;
@@ -22,6 +23,8 @@ typedef enum {
     PWM_Init,
     LED_Control
 } I2C_Operations;
+
+uint8_t LEDOutputBuffer[SYSTEM_WIDE_TXBUFFERSIZE];
 
 #define I2C_ADDRESS        0x6C
 /* I2C TIMING Register define when I2C clock source is SYSCLK */
@@ -56,10 +59,13 @@ typedef enum {
 #define BASE_PWM_REGISTER               0x04
 #define UPDATE_REGISTER                 0x13
 #define BASE_REGISTER                   0x17 //first LED is on driver channel 4
+#define SHUTDOWN_REGISTER               0x00
 #define REGISTER_SIZE                   0x01
 
-#define LED_OUTPUT_HIGH                 0x30 //0x30 full current output
-#define LED_PWM_OUT_HI                  0xFF //0xFF full pwm output
+#define LED_OUT_HI                      0x30 //full current output
+#define LED_PWM_OUT_HI                  0xFF //full pwm output
+#define LED_OUT_MID                     0x13 //low current output
+#define LED_PWM_OUT_MID                 0x4B //low pwm output
 
 #define SOFTPOWER_BUTTON_SENSE_PIN GPIO_PIN_4
 #define SOFTPOWER_UNPLUG_SENSE_PIN GPIO_PIN_5
@@ -67,8 +73,10 @@ typedef enum {
 
 void system_hardware_setup(system_hardware_handles* handles);
 void system_hardware_enter_bootloader(void);
+bool system_hardware_setup_led(void);
+bool system_hardware_set_led(uint8_t* aTxBuffer);
 bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operation);
-bool system_hardware_set_led(uint8_t step, uint8_t which);
+bool system_hardware_set_led_test(uint8_t step, uint8_t which);
 bool system_hardware_I2C_ready(void);
 
 #ifdef __cplusplus

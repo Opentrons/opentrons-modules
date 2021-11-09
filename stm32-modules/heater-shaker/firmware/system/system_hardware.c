@@ -4,14 +4,18 @@
 #include "stm32f3xx_hal_cortex.h"
 #include "system_hardware.h"
 #include "systemwide.h"
+#include "FreeRTOS.h" //need?
+#include "task.h"
+#include <string.h>
 
 system_hardware_handles *SYSTEM_HW_HANDLE = NULL;
+static TaskHandle_t xTaskToNotify = NULL;
 
 /* I2C handler declaration */
 I2C_HandleTypeDef I2cHandle;
 
 uint8_t PWMInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI};
-uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; //0x30 to turn all on, 0 to turn all off
+uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 uint8_t UpdateBuffer[1] = {0};
 uint8_t ShutdownBuffer[1] = {1};
 
@@ -39,11 +43,9 @@ void system_hardware_setup(system_hardware_handles* handles) {
     HAL_I2C_Init(&I2cHandle);
     HAL_I2CEx_ConfigAnalogFilter(&I2cHandle,I2C_ANALOGFILTER_ENABLE); //do this?
 
-    //system_hardware_setup_led();
-
-    //system_hardware_set_led(PWMInitBuffer, PWM_Init);
-    //system_hardware_set_led(OutputInitBuffer, LED_Control);
-    //any error checking?
+    if (!system_hardware_setup_led()) {
+      //throw error?!
+    }
 }
 
 // This is the start of the sys memory region from the datasheet. It should be the
@@ -143,45 +145,22 @@ bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operati
   //    (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
   //}
   return (status == HAL_OK); //translate into error/no error at policy level, create Ack Message at end of StartSetLED System_Task function
-
-/*HAL_StatusTypeDef HAL_I2C_Mem_Write_IT(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
-                                       uint16_t MemAddSize, uint8_t *pData, uint16_t Size)
-
-HAL_StatusTypeDef HAL_I2C_Master_Transmit_IT(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint8_t *pData,
-                                             uint16_t Size)*/
 }
 
 //debug function. Confirm all HAL function inputs correct
-bool system_hardware_setup_led(void) {
-  HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_PWM_REGISTER,
-    (uint16_t)REGISTER_SIZE, (uint8_t*)PWMInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
-  //non-blocking delay. Use policy-level delay_ticks?
-  if (status == HAL_OK) {
-    status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_REGISTER,
-      (uint16_t)REGISTER_SIZE, (uint8_t*)OutputInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
-      //non-blocking delay
-    if (status == HAL_OK) {
-      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
-        (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
-    }
-  }
-  return (status == HAL_OK);
-}
-
-//debug function. Confirm all HAL function inputs correct
-bool system_hardware_set_led(uint8_t step, uint8_t which) {
+bool system_hardware_set_led_test(uint8_t step, uint8_t which) {
   HAL_StatusTypeDef status;
   switch(step) {
     case 0:
       status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)0x00,
-        (uint16_t)REGISTER_SIZE, (uint8_t*)ShutdownBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
+        (uint16_t)REGISTER_SIZE, (uint8_t*)ShutdownBuffer, (uint16_t)(sizeof(ShutdownBuffer)));
       break;
     case 1:
       status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_PWM_REGISTER,
         (uint16_t)REGISTER_SIZE, (uint8_t*)PWMInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
       break;
     case 2:
-      OutputInitBuffer[which] = (OutputInitBuffer[which] == 0x00) ? 0x30 : 0x00;
+      OutputInitBuffer[which] = (OutputInitBuffer[which] == 0x00) ? LED_OUT_HI : 0x00;
       status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_REGISTER,
         (uint16_t)REGISTER_SIZE, (uint8_t*)OutputInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
       break;
@@ -195,20 +174,96 @@ bool system_hardware_set_led(uint8_t step, uint8_t which) {
   return (status == HAL_OK);
 }
 
+//proper error handling. Enumarate more, detailed errors
+//does NotifyTake block? Just system task?
+
+bool system_hardware_setup_led(void) {
+  uint32_t ulNotificationValue;
+  const TickType_t xMaxBlockTime = pdMS_TO_TICKS( 100 );
+  HAL_StatusTypeDef status;
+
+  configASSERT( xTaskToNotify == NULL );
+  xTaskToNotify = xTaskGetCurrentTaskHandle();
+  status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)SHUTDOWN_REGISTER,
+    (uint16_t)REGISTER_SIZE, (uint8_t*)ShutdownBuffer, (uint16_t)(sizeof(ShutdownBuffer)));
+  ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
+
+  if ((status == HAL_OK) && (ulNotificationValue == 1)) {
+    configASSERT( xTaskToNotify == NULL );
+    xTaskToNotify = xTaskGetCurrentTaskHandle();
+    status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_PWM_REGISTER,
+      (uint16_t)REGISTER_SIZE, (uint8_t*)PWMInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
+    ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
+
+    if ((status == HAL_OK) && (ulNotificationValue == 1)) {
+      configASSERT( xTaskToNotify == NULL );
+      xTaskToNotify = xTaskGetCurrentTaskHandle();
+      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_REGISTER,
+        (uint16_t)REGISTER_SIZE, (uint8_t*)OutputInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
+      ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
+
+      if ((status == HAL_OK) && (ulNotificationValue == 1)) {
+        configASSERT( xTaskToNotify == NULL );
+        xTaskToNotify = xTaskGetCurrentTaskHandle();
+        status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
+          (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
+        ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
+
+      }
+    }
+  }
+
+  return ((status == HAL_OK) && (ulNotificationValue == 1));
+}
+
+bool system_hardware_set_led(uint8_t* aTxBuffer) {
+  uint32_t ulNotificationValue;
+  const TickType_t xMaxBlockTime = pdMS_TO_TICKS( 100 );
+  HAL_StatusTypeDef status;
+
+  memcpy(LEDOutputBuffer, aTxBuffer, sizeof(LEDOutputBuffer));
+
+  configASSERT( xTaskToNotify == NULL );
+  xTaskToNotify = xTaskGetCurrentTaskHandle();
+  status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_REGISTER,
+    (uint16_t)REGISTER_SIZE, (uint8_t*)LEDOutputBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
+  ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
+
+  if ((status == HAL_OK) && (ulNotificationValue == 1)) {
+    configASSERT( xTaskToNotify == NULL );
+    xTaskToNotify = xTaskGetCurrentTaskHandle();
+    status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
+      (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
+    ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
+
+  }
+
+  return ((status == HAL_OK) && (ulNotificationValue == 1));
+}
+
 bool system_hardware_I2C_ready(void) {
   return (HAL_I2C_GetState(&I2cHandle) == HAL_I2C_STATE_READY);
 }
 
 void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 {
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  configASSERT( xTaskToNotify != NULL );
+  if (I2cHandle->State == HAL_I2C_STATE_READY) { //right way to check this error?
+    vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
+  }
+  xTaskToNotify = NULL;
+  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+
+  //vTaskNotifyGiveFromISR(receiver_handle, &xHigherPriorityTaskWoken);
   //signal that the transfer has completed successfully
-  led_transmit_result result;
+  /*led_transmit_result result;
   if (I2cHandle->State == HAL_I2C_STATE_READY) {
     result.success = true;
   } else {
     result.success = false;
   }
-  SYSTEM_HW_HANDLE->led_transmit_complete(&result);
+  SYSTEM_HW_HANDLE->led_transmit_complete(&result);*/
 }
 
 /**
@@ -223,12 +278,20 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
   /** 1- When Slave don't acknowledge it's address, Master restarts communication.
     * 2- When Master don't acknowledge the last data transferred, Slave don't care in this example.
     */
-  led_transmit_result result;
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  configASSERT( xTaskToNotify != NULL );
+  if (!HAL_I2C_GetError(I2cHandle)) { //there's implicitly an error, so even necessary? Just don't give notify back?
+    vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
+  }
+  xTaskToNotify = NULL;
+  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+
+  /*led_transmit_result result;
   result.success = false; //need?
   if (HAL_I2C_GetError(I2cHandle) != HAL_I2C_ERROR_AF) { //does this signal error?!
     result.error = true; //can we get specific error?
   }
-  SYSTEM_HW_HANDLE->led_transmit_error_complete(&result);
+  SYSTEM_HW_HANDLE->led_transmit_error_complete(&result);*/
 }
 
 //*********** was in example project, but think including is wrong and cause of build errors *************
@@ -269,78 +332,3 @@ void I2Cx_ER_IRQHandler(void)
 {
   HAL_I2C_ER_IRQHandler(&I2cHandle);
 }
-
-/**
-  * @brief I2C MSP Initialization 
-  *        This function configures the hardware resources used in this example: 
-  *           - Peripheral's clock enable
-  *           - Peripheral's GPIO Configuration  
-  *           - DMA configuration for transmission request by peripheral 
-  *           - NVIC configuration for DMA interrupt request enable
-  * @param hi2c: I2C handle pointer
-  * @retval None
-  */
-// void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c)
-// {
-//   GPIO_InitTypeDef  GPIO_InitStruct;
-//   RCC_PeriphCLKInitTypeDef  RCC_PeriphCLKInitStruct;
-  
-//   /*##-1- Configure the I2C clock source. The clock is derived from the SYSCLK #*/
-//   RCC_PeriphCLKInitStruct.PeriphClockSelection = RCC_PERIPHCLK_I2Cx;
-//   RCC_PeriphCLKInitStruct.I2c1ClockSelection = RCC_I2CxCLKSOURCE_SYSCLK;
-//   HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphCLKInitStruct);
-
-//   /*##-2- Enable peripherals and GPIO Clocks #################################*/
-//   /* Enable GPIO TX/RX clock */
-//   I2Cx_SCL_GPIO_CLK_ENABLE();
-//   I2Cx_SDA_GPIO_CLK_ENABLE();
-//   /* Enable I2Cx clock */
-//   I2Cx_CLK_ENABLE(); 
-
-//   /*##-3- Configure peripheral GPIO ##########################################*/  
-//   /* I2C TX GPIO pin configuration  */
-//   GPIO_InitStruct.Pin       = I2Cx_SCL_PIN;
-//   GPIO_InitStruct.Mode      = GPIO_MODE_AF_OD;
-//   GPIO_InitStruct.Pull      = GPIO_PULLUP;
-//   GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
-//   GPIO_InitStruct.Alternate = I2Cx_SCL_SDA_AF;
-//   HAL_GPIO_Init(I2Cx_SCL_GPIO_PORT, &GPIO_InitStruct);
-    
-//   /* I2C RX GPIO pin configuration  */
-//   GPIO_InitStruct.Pin       = I2Cx_SDA_PIN;
-//   GPIO_InitStruct.Alternate = I2Cx_SCL_SDA_AF;
-//   HAL_GPIO_Init(I2Cx_SDA_GPIO_PORT, &GPIO_InitStruct);
-    
-//   /*##-4- Configure the NVIC for I2C ########################################*/   
-//   /* NVIC for I2Cx */
-//   HAL_NVIC_SetPriority(I2Cx_ER_IRQn, 10, 0);
-//   HAL_NVIC_EnableIRQ(I2Cx_ER_IRQn);
-//   HAL_NVIC_SetPriority(I2Cx_EV_IRQn, 10, 0);
-//   HAL_NVIC_EnableIRQ(I2Cx_EV_IRQn);
-// }
-
-/**
-  * @brief I2C MSP De-Initialization 
-  *        This function frees the hardware resources used in this example:
-  *          - Disable the Peripheral's clock
-  *          - Revert GPIO, DMA and NVIC configuration to their default state
-  * @param hi2c: I2C handle pointer
-  * @retval None
-  */
-// void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c)
-// {
-  
-//   /*##-1- Reset peripherals ##################################################*/
-//   I2Cx_FORCE_RESET();
-//   I2Cx_RELEASE_RESET();
-
-//   /*##-2- Disable peripherals and GPIO Clocks #################################*/
-//   /* Configure I2C Tx as alternate function  */
-//   HAL_GPIO_DeInit(I2Cx_SCL_GPIO_PORT, I2Cx_SCL_PIN);
-//   /* Configure I2C Rx as alternate function  */
-//   HAL_GPIO_DeInit(I2Cx_SDA_GPIO_PORT, I2Cx_SDA_PIN);
-  
-//   /*##-3- Disable the NVIC for I2C ##########################################*/
-//   HAL_NVIC_DisableIRQ(I2Cx_ER_IRQn);
-//   HAL_NVIC_DisableIRQ(I2Cx_EV_IRQn);
-// }

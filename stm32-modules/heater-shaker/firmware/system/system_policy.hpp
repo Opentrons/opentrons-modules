@@ -26,9 +26,9 @@ class SystemPolicy {
         -> errors::ErrorCode;
     auto get_serial_number(void)
         -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
-    auto start_set_led_original(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer)
+    auto start_set_led(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> TransmitBuffer)
         -> errors::ErrorCode;
-    auto start_set_led(uint8_t which) -> errors::ErrorCode;
+    //auto start_set_led_test(uint8_t which) -> errors::ErrorCode;
     auto check_I2C_ready(void) -> bool;
-    auto delay_ticks(uint16_t ticks) -> void;
+    //auto delay_ticks(uint16_t ticks) -> void;
 };

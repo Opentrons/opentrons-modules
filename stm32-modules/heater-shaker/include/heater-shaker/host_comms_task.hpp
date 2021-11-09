@@ -512,10 +512,10 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        //auto message = messages::StartSetLEDMessage{
-        //    .id = id, .aTxBuffer = gcode.aTxBuffer};
         auto message = messages::StartSetLEDMessage{
-            .id = id, .which = gcode.which};
+            .id = id, .aTxBuffer = gcode.updatebuffer};
+        //auto message = messages::StartSetLEDMessage{
+        //    .id = id, .which = gcode.which};
         if (!task_registry->system->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
