@@ -12,9 +12,9 @@ set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${SYSTEM_DIR}/main.cpp 
-  #${SYSTEM_DIR}/freertos_system_task.cpp
+  ${SYSTEM_DIR}/freertos_system_task.cpp
   ${SYSTEM_DIR}/system_policy.cpp
-  #${COMMS_DIR}/freertos_comms_task.cpp
+  ${COMMS_DIR}/freertos_comms_task.cpp
   ${SYSTEM_DIR}/freertos_idle_timer_task.cpp)
 
 # Add source files that should NOT be checked by clang-tidy here
@@ -23,8 +23,10 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/stm32g4xx_it.c
   ${SYSTEM_DIR}/startup_stm32g491vetx.s
   ${SYSTEM_DIR}/system_hardware.c
-  #${COMMS_DIR}/usbd_conf.c
-  #${COMMS_DIR}/usbd_desc.c
+  ${SYSTEM_DIR}/stm32g4xx_hal_timebase_tim.c
+  ${SYSTEM_DIR}/system_serial_number.c
+  ${COMMS_DIR}/usbd_conf.c
+  ${COMMS_DIR}/usbd_desc.c
   )
 
 add_executable(${TARGET_MODULE_NAME}
@@ -72,7 +74,7 @@ target_link_libraries(
   ${TARGET_MODULE_NAME}
   STM32G4xx_Drivers_${TARGET_MODULE_NAME} 
   STM32G4xx_FreeRTOS_${TARGET_MODULE_NAME} 
-  #STM32G4xx_USB_${TARGET_MODULE_NAME} 
+  STM32G4xx_USB_${TARGET_MODULE_NAME} 
   ${TARGET_MODULE_NAME}-core)
 
 

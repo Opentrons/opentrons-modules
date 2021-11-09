@@ -7,11 +7,16 @@
 
 #include "system_serial_number.h"
 
-static uint32_t PAGE_ADDRESS = 0x0807F800; //last page in flash memory, 0x0805F800 for 384K (NFF board), 0x0807F800 for 512K (FF board) FLASH 
-static uint8_t ADDRESS_SIZE = 64;
+static const uint32_t PAGE_ADDRESS = 0x0807F800; //last page in flash memory, 0x0807F800 for 512K (FF board) FLASH 
+static const uint32_t PAGE_INDEX = 255; //last page index in flash memory
+static const uint8_t  ADDRESS_SIZE = 64;
 
 bool system_set_serial_number(struct writable_serial* to_write) {
-    FLASH_EraseInitTypeDef pageToErase = {.TypeErase = FLASH_TYPEERASE_PAGES, .PageAddress = PAGE_ADDRESS, .NbPages = 1};
+    FLASH_EraseInitTypeDef pageToErase = {
+        .TypeErase = FLASH_TYPEERASE_PAGES, 
+        .Banks = FLASH_BANK_1, 
+        .Page = PAGE_INDEX, 
+        .NbPages = 1};
     uint32_t pageErrorPtr = 0; //pointer to variable  that contains the configuration information on faulty page in case of error
     uint32_t ProgramAddress1 = PAGE_ADDRESS;
     uint32_t ProgramAddress2 = PAGE_ADDRESS + ADDRESS_SIZE;
@@ -27,6 +32,10 @@ bool system_set_serial_number(struct writable_serial* to_write) {
             if (status == HAL_OK) {
                 status = HAL_FLASH_Lock();
             }
+        }
+        else {
+            // Safe to drop status because this always succeeds
+            (void) HAL_FLASH_Lock();
         }
     }
     return (status == HAL_OK);

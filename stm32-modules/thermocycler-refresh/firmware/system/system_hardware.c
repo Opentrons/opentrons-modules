@@ -2,7 +2,16 @@
 #include "stm32g4xx_hal_rcc.h"
 #include "stm32g4xx_hal_cortex.h"
 #include "system_hardware.h"
+#include "stm32g4xx_hal_tim.h"
 
+/** Global variable instantiation */
+
+/** PUBLIC FUNCTION IMPLEMENTATION */
+
+/**
+ * Initialize hardware specific to the system process:
+ * - PE6 = Heartbeat LED
+ */
 void system_hardware_setup(void) {
     GPIO_InitTypeDef gpio_init = {
       .Pin = GPIO_PIN_6,
@@ -64,4 +73,32 @@ asm volatile (
   : // no outputs
   : "r" (*sysmem_boot_loc)
   : "memory"  );
+}
+
+
+/** OVERRIDDEN HAL FUNCTIONS */
+
+/**
+  * Initializes the Global MSP.
+  */
+void HAL_MspInit(void)
+{
+  /* USER CODE BEGIN MspInit 0 */
+
+  /* USER CODE END MspInit 0 */
+
+  __HAL_RCC_SYSCFG_CLK_ENABLE();
+  __HAL_RCC_PWR_CLK_ENABLE();
+
+  /* System interrupt init*/
+  /* PendSV_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(PendSV_IRQn, 15, 0);
+
+  /** Disable the internal Pull-Up in Dead Battery pins of UCPD peripheral
+  */
+  HAL_PWREx_DisableUCPDDeadBattery();
+
+  /* USER CODE BEGIN MspInit 1 */
+
+  /* USER CODE END MspInit 1 */
 }
