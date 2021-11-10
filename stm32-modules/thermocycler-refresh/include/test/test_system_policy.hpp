@@ -1,8 +1,8 @@
 #pragma once
 #include <array>
 
-#include "thermocycler-refresh/errors.hpp"
 #include "systemwide.hpp"
+#include "thermocycler-refresh/errors.hpp"
 
 class TestSystemPolicy {
   private:

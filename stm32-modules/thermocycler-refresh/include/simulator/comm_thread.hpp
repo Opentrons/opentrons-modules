@@ -2,10 +2,10 @@
 #include <memory>
 #include <thread>
 
-#include "thermocycler-refresh/host_comms_task.hpp"
-#include "thermocycler-refresh/tasks.hpp"
 #include "simulator/sim_driver.hpp"
 #include "simulator/simulator_queue.hpp"
+#include "thermocycler-refresh/host_comms_task.hpp"
+#include "thermocycler-refresh/tasks.hpp"
 
 namespace comm_thread {
 using SimCommTask = host_comms_task::HostCommsTask<SimulatorMessageQueue>;

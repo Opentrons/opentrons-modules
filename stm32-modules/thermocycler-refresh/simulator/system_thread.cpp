@@ -8,9 +8,9 @@
 #include <stop_token>
 #include <thread>
 
+#include "systemwide.hpp"
 #include "thermocycler-refresh/errors.hpp"
 #include "thermocycler-refresh/tasks.hpp"
-#include "systemwide.hpp"
 
 using namespace system_thread;
 

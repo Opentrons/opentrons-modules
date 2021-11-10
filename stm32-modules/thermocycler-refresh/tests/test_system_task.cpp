@@ -1,8 +1,8 @@
 #include "catch2/catch.hpp"
-#include "thermocycler-refresh/messages.hpp"
-#include "thermocycler-refresh/system_task.hpp"
 #include "systemwide.hpp"
 #include "test/task_builder.hpp"
+#include "thermocycler-refresh/messages.hpp"
+#include "thermocycler-refresh/system_task.hpp"
 
 SCENARIO("system task message passing") {
     GIVEN("a system task") {

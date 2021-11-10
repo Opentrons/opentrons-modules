@@ -1,11 +1,11 @@
 #pragma once
 #include <boost/asio.hpp>
 
+#include "simulator/sim_driver.hpp"
+#include "simulator/simulator_queue.hpp"
 #include "thermocycler-refresh/host_comms_task.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/tasks.hpp"
-#include "simulator/sim_driver.hpp"
-#include "simulator/simulator_queue.hpp"
 
 namespace socket_sim_driver {
 

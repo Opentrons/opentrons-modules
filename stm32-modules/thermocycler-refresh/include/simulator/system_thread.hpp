@@ -2,9 +2,9 @@
 #include <memory>
 #include <thread>
 
+#include "simulator/simulator_queue.hpp"
 #include "thermocycler-refresh/system_task.hpp"
 #include "thermocycler-refresh/tasks.hpp"
-#include "simulator/simulator_queue.hpp"
 
 namespace system_thread {
 using SimSystemTask = system_task::SystemTask<SimulatorMessageQueue>;

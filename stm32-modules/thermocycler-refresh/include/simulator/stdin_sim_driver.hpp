@@ -1,9 +1,9 @@
 #pragma once
+#include "simulator/sim_driver.hpp"
+#include "simulator/simulator_queue.hpp"
 #include "thermocycler-refresh/host_comms_task.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/tasks.hpp"
-#include "simulator/sim_driver.hpp"
-#include "simulator/simulator_queue.hpp"
 
 namespace stdin_sim_driver {
 class StdinSimDriver : public sim_driver::SimDriver {

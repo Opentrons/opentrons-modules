@@ -2,11 +2,11 @@
 #include <memory>
 #include <utility>
 
+#include "test/test_message_queue.hpp"
+#include "test/test_system_policy.hpp"
 #include "thermocycler-refresh/host_comms_task.hpp"
 #include "thermocycler-refresh/system_task.hpp"
 #include "thermocycler-refresh/tasks.hpp"
-#include "test/test_message_queue.hpp"
-#include "test/test_system_policy.hpp"
 
 struct TaskBuilder {
     ~TaskBuilder() = default;

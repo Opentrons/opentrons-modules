@@ -2,10 +2,10 @@
 #include <string>
 
 #include "catch2/catch.hpp"
-#include "thermocycler-refresh/errors.hpp"
-#include "thermocycler-refresh/messages.hpp"
 #include "systemwide.hpp"
 #include "test/task_builder.hpp"
+#include "thermocycler-refresh/errors.hpp"
+#include "thermocycler-refresh/messages.hpp"
 
 SCENARIO("usb message parsing") {
     GIVEN("a host_comms_task") {
