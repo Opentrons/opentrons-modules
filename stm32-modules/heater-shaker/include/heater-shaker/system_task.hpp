@@ -30,7 +30,16 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {
         p.get_serial_number()
         } -> std::same_as<std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>>;
-    //{p.start_set_led(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE>{})} -> std::same_as<errors::ErrorCode>;
+    {p.start_set_led(LED_MODE::WHITE_ON)} -> std::same_as<errors::ErrorCode>;
+};
+
+struct LEDBlinkState {
+    enum LEDBlinkTaskStatus {
+        BLINK_OFF = 0,
+        BLINK_ON_WAITING = 1,
+        BLINK_OFF_WAITING = 2
+    };
+    LEDBlinkTaskStatus status;
 };
 
 using Message = messages::SystemMessage;
@@ -41,6 +50,7 @@ using Message = messages::SystemMessage;
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
 class SystemTask {
+    static constexpr const uint32_t LED_BLINK_WAIT_MS = 500;
     using BootloaderPrepAckCache =
         AckCache<3, messages::SetTemperatureMessage, messages::SetRPMMessage,
                  messages::ForceUSBDisconnectMessage>;
@@ -48,7 +58,8 @@ class SystemTask {
   public:
     using Queue = QueueImpl<Message>;
     explicit SystemTask(Queue& q)
-        : message_queue(q),
+        : led_blink_state{.status = LEDBlinkState::BLINK_OFF},
+          message_queue(q),
           task_registry(nullptr),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           prep_cache() {}
@@ -175,35 +186,95 @@ class SystemTask {
     }
 
     template <typename Policy>
-    auto visit_message(const messages::StartSetLEDMessage& msg,
+    auto visit_message(const messages::SetLEDMessage& msg,
                        Policy& policy) -> void {
-        cached_led_id = msg.id;
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (!policy.check_I2C_ready()) {
             response.with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
         } else {
-            response.with_error = policy.start_set_led(msg.aTxBuffer);
-            //response.with_error = policy.start_set_led(msg.which);
+            response.with_error = policy.start_set_led(msg.mode);
         }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
 
     template <typename Policy>
-    auto visit_message(const messages::LEDTransmitComplete& msg, Policy& policy)
-        -> void {
+    auto visit_message(const messages::IdentifyModuleStartLEDMessage& msg,
+                       Policy& policy) -> void {
         auto response =
-            messages::LEDTransmitCompleteResponse{.responding_to_id = cached_led_id, 
-                                                        .success = msg.transmitted};
-        if (msg.error) {
-            response.error = errors::ErrorCode::SYSTEM_LED_TRANSMIT_COMPLETION_ERROR;
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (!policy.check_I2C_ready()) {
+            response.with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
+        } else {
+            response.with_error = policy.start_set_led(LED_MODE::WHITE_ON);
         }
+        led_blink_state.status = LEDBlinkState::BLINK_ON_WAITING;
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
+        policy.delay_time_ms(LED_BLINK_WAIT_MS);
+        static_cast<void>(get_message_queue().try_send(
+            messages::CheckLEDBlinkStatusMessage{}));
+    }
 
-        //create a new LEDTransmitCompleteResponse Host_Comms_Task message w .success and .error vars
-        //what kind of gcode output does Ack message w/o .id create? Need to print success and error vars
+    template <typename Policy>
+    auto visit_message(const messages::IdentifyModuleStopLEDMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (!policy.check_I2C_ready()) {
+            response.with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
+        } else {
+            response.with_error = policy.start_set_led(LED_MODE::WHITE_OFF);
+        }
+        led_blink_state.status = LEDBlinkState::BLINK_OFF;
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::CheckLEDBlinkStatusMessage& msg,
+                       Policy& policy) -> void {
+        bool bStatus = true;
+        if ((led_blink_state.status == LEDBlinkState::BLINK_ON_WAITING) || (led_blink_state.status == LEDBlinkState::BLINK_OFF_WAITING)) {
+            if (!policy.check_I2C_ready()) {
+                bStatus = false;
+                static_cast<void>(
+                    task_registry->comms->get_message_queue().try_send(
+                        messages::AcknowledgePrevious{
+                            .with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY}));
+            }
+            if (bStatus) {
+                if (led_blink_state.status == LEDBlinkState::BLINK_ON_WAITING) {
+                    if (policy.start_set_led(LED_MODE::WHITE_OFF) != errors::ErrorCode::NO_ERROR) {
+                        bStatus = false;
+                        static_cast<void>(
+                            task_registry->comms->get_message_queue().try_send(
+                                messages::AcknowledgePrevious{
+                                    .with_error = errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR}));
+                    }
+                    if (bStatus) {
+                        led_blink_state.status = LEDBlinkState::BLINK_OFF_WAITING;
+                    }
+                } else if (led_blink_state.status == LEDBlinkState::BLINK_OFF_WAITING) {
+                    if (policy.start_set_led(LED_MODE::WHITE_ON) != errors::ErrorCode::NO_ERROR) {
+                        bStatus = false;
+                        static_cast<void>(
+                            task_registry->comms->get_message_queue().try_send(
+                                messages::AcknowledgePrevious{
+                                    .with_error = errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR}));
+                    }
+                    if (bStatus) {
+                        led_blink_state.status = LEDBlinkState::BLINK_ON_WAITING;
+                    }
+                }
+                if (bStatus) {
+                    policy.delay_time_ms(LED_BLINK_WAIT_MS);
+                    static_cast<void>(get_message_queue().try_send(
+                        messages::CheckLEDBlinkStatusMessage{}));
+                }
+            }
+        }
     }
 
     template <typename Policy>
@@ -214,10 +285,10 @@ class SystemTask {
     }
 
   private:
+    LEDBlinkState led_blink_state;
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
     BootloaderPrepAckCache prep_cache;
-    uint32_t cached_led_id = 0;
 };
 
 };  // namespace system_task

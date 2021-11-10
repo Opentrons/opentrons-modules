@@ -59,10 +59,8 @@ const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
     "ERR302:system:HAL error, busy, or timeout\n";
 const char* const SYSTEM_LED_I2C_NOT_READY = 
     "ERR303:system:LED I2C not ready\n";
-const char* const SYSTEM_LED_TRANSMIT_START_HAL_ERROR =
-    "ERR304:system:LED I2C transmit failed to start\n";
-const char* const SYSTEM_LED_TRANSMIT_COMPLETION_ERROR =
-    "ERR305:system:LED I2C transmit failed to complete\n";
+const char* const SYSTEM_LED_TRANSMIT_ERROR =
+    "ERR304:system:LED I2C transmission or FreeRTOS notification passing failed\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -110,8 +108,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_INVALID);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
         HANDLE_CASE(SYSTEM_LED_I2C_NOT_READY);
-        HANDLE_CASE(SYSTEM_LED_TRANSMIT_START_HAL_ERROR);
-        HANDLE_CASE(SYSTEM_LED_TRANSMIT_COMPLETION_ERROR);
+        HANDLE_CASE(SYSTEM_LED_TRANSMIT_ERROR);
     }
     return UNKNOWN_ERROR;
 }

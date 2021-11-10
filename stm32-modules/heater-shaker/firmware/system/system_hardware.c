@@ -8,19 +8,19 @@
 #include "task.h"
 #include <string.h>
 
-system_hardware_handles *SYSTEM_HW_HANDLE = NULL;
 static TaskHandle_t xTaskToNotify = NULL;
-
-/* I2C handler declaration */
 I2C_HandleTypeDef I2cHandle;
 
 uint8_t PWMInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI};
 uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 uint8_t UpdateBuffer[1] = {0};
 uint8_t ShutdownBuffer[1] = {1};
+uint8_t WhiteOnBuffer[3] = {LED_OUT_HI, LED_OUT_HI, LED_OUT_HI};
+uint8_t WhiteOffBuffer[3] = {0x00, 0x00, 0x00};
+uint8_t RedOnBuffer[9] = {LED_OUT_HI, 0x00, 0x00, LED_OUT_HI, 0x00, 0x00, LED_OUT_HI, 0x00, 0x00};
+uint8_t RedOffBuffer[9] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-void system_hardware_setup(system_hardware_handles* handles) {
-    SYSTEM_HW_HANDLE = handles;
+void system_hardware_setup(void) {
     GPIO_InitTypeDef gpio_init = {
       .Pin = SOFTPOWER_BUTTON_SENSE_PIN | SOFTPOWER_UNPLUG_SENSE_PIN,
       .Mode = GPIO_MODE_INPUT,
@@ -96,21 +96,13 @@ asm volatile (
 }
 
 //bool system_hardware_set_led(uint8_t aTxBuffer[SYSTEM_WIDE_TXBUFFERSIZE], I2C_Operations operation) {
-bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operation) {
+/*bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operation) {
   //loop thru bits
   //if bit_previous != bit
     //if 1, set register high
     //else set low
   //enum for bit-to-register table? or just add bit # to base_register?
   //store current state as previous state
-
-  //ensure state initialized as all low and stored
-
-  //use address auto increment
-  //loop thru aTxBuffer, use SYSTEM_WIDE_TXBUFFERSIZE
-
-  //make TXBUFFERSIZE part of systemwide? Get rid of #define in this header
-  //how to include systemwide.hpp in .h file??
   
   //eventually have a enum table at high level for mapping LEDs (and their states) to array index/state
   //#define LED_OUTPUT_HIGH
@@ -135,7 +127,8 @@ bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operati
       break;
   }
 
-  //copy array into file global array
+  //have enum struct w preset LED state arrays (all PRD states). In systemwide?
+  //how to blink LEDs?
   //write, take, write, take, give in ISR (give error if error callback). ulTaskNotifyTake
 
   HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, base_register,
@@ -145,37 +138,9 @@ bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operati
   //    (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
   //}
   return (status == HAL_OK); //translate into error/no error at policy level, create Ack Message at end of StartSetLED System_Task function
-}
+}*/
 
-//debug function. Confirm all HAL function inputs correct
-bool system_hardware_set_led_test(uint8_t step, uint8_t which) {
-  HAL_StatusTypeDef status;
-  switch(step) {
-    case 0:
-      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)0x00,
-        (uint16_t)REGISTER_SIZE, (uint8_t*)ShutdownBuffer, (uint16_t)(sizeof(ShutdownBuffer)));
-      break;
-    case 1:
-      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_PWM_REGISTER,
-        (uint16_t)REGISTER_SIZE, (uint8_t*)PWMInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
-      break;
-    case 2:
-      OutputInitBuffer[which] = (OutputInitBuffer[which] == 0x00) ? LED_OUT_HI : 0x00;
-      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_REGISTER,
-        (uint16_t)REGISTER_SIZE, (uint8_t*)OutputInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
-      break;
-    case 3:
-      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
-        (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
-      break;
-    default:
-      status = HAL_ERROR;
-  }
-  return (status == HAL_OK);
-}
-
-//proper error handling. Enumarate more, detailed errors
-//does NotifyTake block? Just system task?
+//does NotifyTake block? Just system task? Just means task set aside until interrupt?
 
 bool system_hardware_setup_led(void) {
   uint32_t ulNotificationValue;
@@ -188,57 +153,89 @@ bool system_hardware_setup_led(void) {
     (uint16_t)REGISTER_SIZE, (uint8_t*)ShutdownBuffer, (uint16_t)(sizeof(ShutdownBuffer)));
   ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
 
-  if ((status == HAL_OK) && (ulNotificationValue == 1)) {
+  if ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY)) {
     configASSERT( xTaskToNotify == NULL );
     xTaskToNotify = xTaskGetCurrentTaskHandle();
     status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_PWM_REGISTER,
       (uint16_t)REGISTER_SIZE, (uint8_t*)PWMInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
     ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
 
-    if ((status == HAL_OK) && (ulNotificationValue == 1)) {
+    if ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY)) {
       configASSERT( xTaskToNotify == NULL );
       xTaskToNotify = xTaskGetCurrentTaskHandle();
-      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_REGISTER,
+      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_WHITE_REGISTER,
         (uint16_t)REGISTER_SIZE, (uint8_t*)OutputInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
       ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
 
-      if ((status == HAL_OK) && (ulNotificationValue == 1)) {
+      if ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY)) {
         configASSERT( xTaskToNotify == NULL );
         xTaskToNotify = xTaskGetCurrentTaskHandle();
         status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
           (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
         ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
-
       }
     }
   }
 
-  return ((status == HAL_OK) && (ulNotificationValue == 1));
+  return ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY));
 }
 
-bool system_hardware_set_led(uint8_t* aTxBuffer) {
+bool system_hardware_set_led(LED_MODE mode) {
+  uint16_t register_address;
+  uint8_t* set_buffer;
+  uint16_t buffer_size;
+
+  switch (mode) {
+    case WHITE_ON:
+      register_address = BASE_WHITE_REGISTER;
+      set_buffer = WhiteOnBuffer;
+      buffer_size = sizeof(WhiteOnBuffer);
+      break;
+    case WHITE_OFF:
+      register_address = BASE_WHITE_REGISTER;
+      set_buffer = WhiteOffBuffer;
+      buffer_size = sizeof(WhiteOffBuffer);
+      break;
+    case RED_ON:
+      register_address = BASE_RED_REGISTER;
+      set_buffer = RedOnBuffer;
+      buffer_size = sizeof(RedOnBuffer);
+      break;
+    case RED_OFF:
+      register_address = BASE_RED_REGISTER;
+      set_buffer = RedOffBuffer;
+      buffer_size = sizeof(RedOffBuffer);
+      break;
+    default:
+      register_address = BASE_WHITE_REGISTER;
+      set_buffer = OutputInitBuffer;
+      buffer_size = sizeof(OutputInitBuffer);
+      break;
+  }
+
+  return system_hardware_set_led_send(register_address, set_buffer, buffer_size);
+}
+
+bool system_hardware_set_led_send(uint16_t register_address, uint8_t* set_buffer, uint16_t buffer_size) {
   uint32_t ulNotificationValue;
   const TickType_t xMaxBlockTime = pdMS_TO_TICKS( 100 );
   HAL_StatusTypeDef status;
 
-  memcpy(LEDOutputBuffer, aTxBuffer, sizeof(LEDOutputBuffer));
-
   configASSERT( xTaskToNotify == NULL );
   xTaskToNotify = xTaskGetCurrentTaskHandle();
-  status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_REGISTER,
-    (uint16_t)REGISTER_SIZE, (uint8_t*)LEDOutputBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
+  status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)register_address,
+    (uint16_t)REGISTER_SIZE, (uint8_t*)set_buffer, (uint16_t)buffer_size);
   ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
 
-  if ((status == HAL_OK) && (ulNotificationValue == 1)) {
+  if ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY)) {
     configASSERT( xTaskToNotify == NULL );
     xTaskToNotify = xTaskGetCurrentTaskHandle();
     status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
       (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
     ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
-
   }
 
-  return ((status == HAL_OK) && (ulNotificationValue == 1));
+  return ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY));
 }
 
 bool system_hardware_I2C_ready(void) {
@@ -249,21 +246,9 @@ void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   configASSERT( xTaskToNotify != NULL );
-  if (I2cHandle->State == HAL_I2C_STATE_READY) { //right way to check this error?
-    vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
-  }
+  vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
   xTaskToNotify = NULL;
   portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
-
-  //vTaskNotifyGiveFromISR(receiver_handle, &xHigherPriorityTaskWoken);
-  //signal that the transfer has completed successfully
-  /*led_transmit_result result;
-  if (I2cHandle->State == HAL_I2C_STATE_READY) {
-    result.success = true;
-  } else {
-    result.success = false;
-  }
-  SYSTEM_HW_HANDLE->led_transmit_complete(&result);*/
 }
 
 /**
@@ -275,23 +260,11 @@ void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *I2cHandle)
   */
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
 {
-  /** 1- When Slave don't acknowledge it's address, Master restarts communication.
-    * 2- When Master don't acknowledge the last data transferred, Slave don't care in this example.
-    */
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   configASSERT( xTaskToNotify != NULL );
-  if (!HAL_I2C_GetError(I2cHandle)) { //there's implicitly an error, so even necessary? Just don't give notify back?
-    vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
-  }
+  vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
   xTaskToNotify = NULL;
   portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
-
-  /*led_transmit_result result;
-  result.success = false; //need?
-  if (HAL_I2C_GetError(I2cHandle) != HAL_I2C_ERROR_AF) { //does this signal error?!
-    result.error = true; //can we get specific error?
-  }
-  SYSTEM_HW_HANDLE->led_transmit_error_complete(&result);*/
 }
 
 //*********** was in example project, but think including is wrong and cause of build errors *************

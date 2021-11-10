@@ -9,23 +9,6 @@ extern "C" {
 #include <stdbool.h>
 #include "systemwide.h"
 
-typedef struct {
-    bool success;
-    bool error;
-} led_transmit_result;
-
-typedef struct {
-    void (*led_transmit_complete)(const led_transmit_result* result);
-    void (*led_transmit_error_complete)(const led_transmit_result* result);
-} system_hardware_handles;
-
-typedef enum {
-    PWM_Init,
-    LED_Control
-} I2C_Operations;
-
-uint8_t LEDOutputBuffer[SYSTEM_WIDE_TXBUFFERSIZE];
-
 #define I2C_ADDRESS        0x6C
 /* I2C TIMING Register define when I2C clock source is SYSCLK */
 /* I2C TIMING is calculated in case of the I2C Clock source is the SYSCLK = 72 MHz */
@@ -58,7 +41,8 @@ uint8_t LEDOutputBuffer[SYSTEM_WIDE_TXBUFFERSIZE];
 
 #define BASE_PWM_REGISTER               0x04
 #define UPDATE_REGISTER                 0x13
-#define BASE_REGISTER                   0x17 //first LED is on driver channel 4
+#define BASE_WHITE_REGISTER             0x17 //first white LED is on driver channel 4
+#define BASE_RED_REGISTER               0x1A //first red LED is on driver channel 7
 #define SHUTDOWN_REGISTER               0x00
 #define REGISTER_SIZE                   0x01
 
@@ -71,12 +55,12 @@ uint8_t LEDOutputBuffer[SYSTEM_WIDE_TXBUFFERSIZE];
 #define SOFTPOWER_UNPLUG_SENSE_PIN GPIO_PIN_5
 #define SOFTPOWER_PORT GPIOB
 
-void system_hardware_setup(system_hardware_handles* handles);
+void system_hardware_setup(void);
 void system_hardware_enter_bootloader(void);
 bool system_hardware_setup_led(void);
-bool system_hardware_set_led(uint8_t* aTxBuffer);
-bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operation);
-bool system_hardware_set_led_test(uint8_t step, uint8_t which);
+bool system_hardware_set_led(LED_MODE mode);
+//bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operation);
+bool system_hardware_set_led_send(uint16_t register_address, uint8_t* set_buffer, uint16_t buffer_size);
 bool system_hardware_I2C_ready(void);
 
 #ifdef __cplusplus

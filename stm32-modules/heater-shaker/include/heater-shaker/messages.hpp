@@ -101,15 +101,20 @@ struct SetSerialNumberMessage {
     std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
 };
 
-struct StartSetLEDMessage {
+struct SetLEDMessage {
     uint32_t id;
-    std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer;
+    LED_MODE mode;
 };
 
-struct LEDTransmitComplete {
-    bool transmitted;
-    bool error;
+struct IdentifyModuleStartLEDMessage {
+    uint32_t id;
 };
+
+struct IdentifyModuleStopLEDMessage {
+    uint32_t id;
+};
+
+struct CheckLEDBlinkStatusMessage {};
 
 struct EnterBootloaderMessage {
     uint32_t id;
@@ -227,12 +232,6 @@ struct GetPlateLockStateDebugResponse {
     bool plate_lock_closed_state;
 };
 
-struct LEDTransmitCompleteResponse {
-    uint32_t responding_to_id;
-    bool success;
-    errors::ErrorCode error = errors::ErrorCode::NO_ERROR;
-};
-
 struct AcknowledgePrevious {
     uint32_t responding_to_id;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
@@ -256,12 +255,13 @@ using MotorMessage = ::std::variant<
     CheckPlateLockStatusMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
-                   SetSerialNumberMessage, GetSystemInfoMessage, StartSetLEDMessage,
-                   LEDTransmitComplete>;
+                   SetSerialNumberMessage, GetSystemInfoMessage, SetLEDMessage,
+                   IdentifyModuleStartLEDMessage, IdentifyModuleStopLEDMessage,
+                   CheckLEDBlinkStatusMessage>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,
                    GetTemperatureDebugResponse, ForceUSBDisconnectMessage,
                    GetPlateLockStateResponse, GetPlateLockStateDebugResponse,
-                   GetSystemInfoResponse, LEDTransmitCompleteResponse>;
+                   GetSystemInfoResponse>;
 };  // namespace messages

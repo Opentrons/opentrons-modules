@@ -675,44 +675,25 @@ struct SetSerialNumber {
     }
 };
 
-struct SetLED { //make sure M998 isn't used. Just use this to turn them on, cycle power to reset
+struct SetLEDDebug {
     /*
-    ** Set LED uses a random gcode, M998, adjacent to the firmware
+    ** Set LED Debug uses a random gcode, M998.D, adjacent to the firmware
     ** update gcode, M997
-    ** Format: M998 <which_LED>
-    ** Example: M998 0 sets first LED pin high
+    ** Format: M998.D <which_LED_mode>
+    ** Example: M998.D 0 selects WHITE_ON mode and turns the three white LEDs on
     */
-    using ParseResult = std::optional<SetLED>;
-    static constexpr auto prefix = std::array{'M', '9', '9', '8', ' '};
-    static constexpr const char* response = "M998 OK\n";
-    std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> updatebuffer = {};
-    uint8_t which = 0;
+    using ParseResult = std::optional<SetLEDDebug>;
+    static constexpr auto prefix = std::array{'M', '9', '9', '8', '.', 'D', ' '};
+    static constexpr const char* response = "M998.D OK\n";
+    LED_MODE mode;
+    //std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> updatebuffer = {};
+    //uint8_t which = 0;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
     static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
-    }
-
-    template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<InputLimit, InputIt>
-    static auto write_response_into(InputIt buf, InputLimit limit, bool success) -> InputIt {
-        static constexpr const char* prefix = "M998 Success:";
-        auto written =
-            write_string_to_iterpair(buf, limit, prefix);
-        if (written == limit) {
-            return written;
-        }
-        const char* success_chars = success ? "1" : "0";
-        written =
-            write_string_to_iterpair(written, limit, success_chars);
-        if (written == limit) {
-            return written;
-        }
-        static constexpr const char* suffix = " OK\n";
-        return write_string_to_iterpair(written, limit, suffix);
     }
 
     template <typename InputIt, typename Limit>
@@ -730,13 +711,88 @@ struct SetLED { //make sure M998 isn't used. Just use this to turn them on, cycl
         if (!value_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> tempBuffer = {};
-        uint8_t index = static_cast<uint8_t>(value_res.first.value());
-        tempBuffer[index] = (uint8_t)0x30;
-        return std::make_pair(ParseResult(SetLED{.updatebuffer = tempBuffer}),
+        //std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> tempBuffer = {}; //ensure initialized as 12 0's
+        //uint8_t index = static_cast<uint8_t>(value_res.first.value());
+        //tempBuffer[index] = (uint8_t)0x30;
+        LED_MODE tempMode = static_cast<LED_MODE>(value_res.first.value());
+        return std::make_pair(ParseResult(SetLEDDebug{.mode = tempMode}),
                               value_res.second);
         //return std::make_pair(ParseResult(SetLED{.which = index}),
         //                      value_res.second);
+    }
+};
+
+struct IdentifyModuleStartLED {
+    /*
+    ** IdentifyModuleStartLED uses a random gcode, M998, adjacent to the firmware
+    ** update gcode, M997, to start blinking the three white LEDs
+    ** Format: M998
+    ** Example: M998 starts blinking the three white LEDs
+    */
+    using ParseResult = std::optional<IdentifyModuleStartLED>;
+    static constexpr auto prefix = std::array{'M', '9', '9', '8'};
+    static constexpr const char* response = "M998 OK\n";
+    LED_MODE mode;
+    //std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> updatebuffer = {};
+    //uint8_t which = 0;
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(IdentifyModuleStartLED()), working);
+    }
+};
+
+struct IdentifyModuleStopLED {
+    /*
+    ** IdentifyModuleStopLED uses a random gcode, M999, adjacent to the identify
+    ** module start LED gcode, M998, to stop blinking the three white LEDs
+    ** Format: M999
+    ** Example: M999 stops blinking the three white LEDs
+    */
+    using ParseResult = std::optional<IdentifyModuleStopLED>;
+    static constexpr auto prefix = std::array{'M', '9', '9', '9'};
+    static constexpr const char* response = "M999 OK\n";
+    LED_MODE mode;
+    //std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> updatebuffer = {};
+    //uint8_t which = 0;
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(IdentifyModuleStopLED()), working);
     }
 };
 
