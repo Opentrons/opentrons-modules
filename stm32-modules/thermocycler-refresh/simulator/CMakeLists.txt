@@ -1,7 +1,20 @@
-add_executable(${TARGET_MODULE_NAME}-simulator
-  main.cpp)
+add_executable(
+  ${TARGET_MODULE_NAME}-simulator
+  comm_thread.cpp
+  system_thread.cpp 
+  cli_parser.cpp 
+  main.cpp
+  socket_sim_driver.cpp 
+  stdin_sim_driver.cpp
+)
 
-target_link_libraries(${TARGET_MODULE_NAME}-simulator PRIVATE heater-shaker-core Boost::boost pthread)
+target_link_libraries(
+  ${TARGET_MODULE_NAME}-simulator 
+  PRIVATE ${TARGET_MODULE_NAME}-core 
+  Boost::boost pthread
+  Boost::program_options
+  pthread
+)
 target_include_directories(${TARGET_MODULE_NAME}-simulator PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 

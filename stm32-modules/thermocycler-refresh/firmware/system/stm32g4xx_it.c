@@ -23,6 +23,8 @@
 #include "stm32g4xx_it.h"
 
 #include "stm32g4xx_hal.h"
+#include "stm32g4xx_hal_tim.h"
+#include "stm32g4xx_hal_pcd.h"
 
 /** @addtogroup STM32G4xx_HAL_Examples
  * @{
@@ -41,6 +43,7 @@
 /* Private functions ---------------------------------------------------------*/
 
 /* External variables --------------------------------------------------------*/
+extern TIM_HandleTypeDef htim7;
 
 
 /******************************************************************************/
@@ -112,14 +115,20 @@ void DebugMon_Handler(void) {}
 /*  file (startup_stm32g4xxxx.s).                                             */
 /******************************************************************************/
 
+
 /**
- * @brief  This function handles PPP interrupt request.
- * @param  None
- * @retval None
- */
-/*void PPP_IRQHandler(void)
+  * @brief This function handles TIM7 global interrupt.
+  */
+void TIM7_IRQHandler(void)
 {
-}*/
+  /* USER CODE BEGIN TIM7_IRQn 0 */
+
+  /* USER CODE END TIM7_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim7);
+  /* USER CODE BEGIN TIM7_IRQn 1 */
+
+  /* USER CODE END TIM7_IRQn 1 */
+}
 
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
