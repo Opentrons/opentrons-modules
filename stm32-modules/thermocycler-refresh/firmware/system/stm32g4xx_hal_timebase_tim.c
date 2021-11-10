@@ -134,7 +134,7 @@ void HAL_ResumeTick(void)
   */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  static const uint32_t heartbeat_period = 20;
+  static const uint32_t heartbeat_period = 25;
   static uint8_t heartbeat_pwm = 0;
   static uint8_t heartbeat_count = 0;
   static int8_t  heartbeat_direction = 1;
