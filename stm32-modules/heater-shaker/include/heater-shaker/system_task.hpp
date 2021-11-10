@@ -50,7 +50,7 @@ using Message = messages::SystemMessage;
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
 class SystemTask {
-    static constexpr const uint32_t LED_BLINK_WAIT_MS = 500;
+    static constexpr const uint16_t LED_BLINK_WAIT_MS = 500;
     using BootloaderPrepAckCache =
         AckCache<3, messages::SetTemperatureMessage, messages::SetRPMMessage,
                  messages::ForceUSBDisconnectMessage>;
@@ -225,7 +225,7 @@ class SystemTask {
         if (!policy.check_I2C_ready()) {
             response.with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
         } else {
-            response.with_error = policy.start_set_led(LED_MODE::WHITE_OFF);
+            response.with_error = policy.start_set_led(LED_MODE::WHITE_ON);
         }
         led_blink_state.status = LEDBlinkState::BLINK_OFF;
         static_cast<void>(task_registry->comms->get_message_queue().try_send(

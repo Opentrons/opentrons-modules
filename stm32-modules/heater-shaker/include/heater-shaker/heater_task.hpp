@@ -85,6 +85,7 @@ requires MessageQueue<QueueImpl<Message>, Message>
 class HeaterTask {
   public:
     using Queue = QueueImpl<Message>;
+    static constexpr double HOT_TO_TOUCH_THRESHOLD = 48.9;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 100;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 44.2;
     static constexpr uint8_t ADC_BIT_DEPTH = 12;
@@ -168,12 +169,23 @@ class HeaterTask {
     template <typename Policy>
     requires HeaterExecutionPolicy<Policy>
     auto run_once(Policy& policy) -> void {
-        auto message = Message(std::monostate());
+        //set red LEDs on if current temp above hot-to-touch threshold
+        if ((pad_temperature() > HOT_TO_TOUCH_THRESHOLD) && (!hot_LED_set)) {
+            hot_LED_set = true;
+            auto LED_message = messages::SetLEDMessage{.mode = LED_MODE::RED_ON};
+            static_cast<void>(
+                task_registry->system->get_message_queue().try_send(LED_message));
+        } else if ((pad_temperature() < HOT_TO_TOUCH_THRESHOLD) && (hot_LED_set)) {
+            hot_LED_set = false;
+            auto LED_message = messages::SetLEDMessage{.mode = LED_MODE::RED_OFF};
+            static_cast<void>(
+                task_registry->system->get_message_queue().try_send(LED_message));
+        }
 
+        auto message = Message(std::monostate());
         // This is the call down to the provided queue. It will block for
         // anywhere up to the provided timeout, which drives the controller
         // frequency.
-
         static_cast<void>(message_queue.recv(&message));
         std::visit(
             [this, &policy](const auto& msg) -> void {
@@ -456,6 +468,7 @@ class HeaterTask {
     State state;
     PID pid;
     double setpoint;
+    bool hot_LED_set = false;
 };
 
 };  // namespace heater_task
