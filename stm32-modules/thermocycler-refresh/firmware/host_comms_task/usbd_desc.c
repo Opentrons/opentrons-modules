@@ -27,7 +27,7 @@
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 #define USBD_VID                      0x0483
-#define USBD_PID                      0x4853
+#define USBD_PID                      0xED8D
 #define USBD_LANGID_STRING            0x0409  /* Replace '0xbbb' with your device language ID */
 #define USBD_MANUFACTURER_STRING      "Opentrons" /* Add your manufacturer string */
 #define USBD_PRODUCT_HS_STRING        "Thermocycler HS" /* Add your product High Speed string */
