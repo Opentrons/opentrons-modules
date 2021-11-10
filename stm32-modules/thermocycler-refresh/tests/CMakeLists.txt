@@ -5,7 +5,12 @@ include(Catch)
 include(AddBuildAndTestTarget)
 
 add_executable(${TARGET_MODULE_NAME}
-    test_main.cpp)
+    task_builder.cpp
+    test_host_comms_task.cpp
+    test_main.cpp
+    test_system_policy.cpp
+    test_system_task.cpp
+)
 
 target_include_directories(${TARGET_MODULE_NAME} 
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
@@ -29,6 +34,5 @@ target_compile_options(${TARGET_MODULE_NAME}
 target_link_libraries(${TARGET_MODULE_NAME} 
     ${TARGET_MODULE_NAME}-core Catch2::Catch2)
 
-# TO BE ENABLED once tests are actually implemented
-# catch_discover_tests(${TARGET_MODULE_NAME} )
+catch_discover_tests(${TARGET_MODULE_NAME} )
 add_build_and_test_target(${TARGET_MODULE_NAME} )
