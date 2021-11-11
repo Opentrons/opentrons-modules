@@ -41,8 +41,8 @@ extern "C" {
 
 #define BASE_PWM_REGISTER               0x04
 #define UPDATE_REGISTER                 0x13
-#define BASE_WHITE_REGISTER             0x17 //first white LED is on driver channel 4
-#define BASE_RED_REGISTER               0x1A //first red LED is on driver channel 7
+#define BASE_WHITE_REGISTER             0x17 //left white LED is on driver channel 4
+#define BASE_RED_REGISTER               0x1A //right red LED is on driver channel 7
 #define SHUTDOWN_REGISTER               0x00
 #define REGISTER_SIZE                   0x01
 

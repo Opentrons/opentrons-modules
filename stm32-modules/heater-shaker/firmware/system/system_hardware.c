@@ -12,13 +12,13 @@ static TaskHandle_t xTaskToNotify = NULL;
 I2C_HandleTypeDef I2cHandle;
 
 uint8_t PWMInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI};
-uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_OUT_HI, LED_OUT_HI, LED_OUT_HI, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_OUT_HI, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 uint8_t UpdateBuffer[1] = {0};
 uint8_t ShutdownBuffer[1] = {1};
-uint8_t WhiteOnBuffer[3] = {LED_OUT_HI, LED_OUT_HI, LED_OUT_HI};
-uint8_t WhiteOffBuffer[3] = {0x00, 0x00, 0x00};
-uint8_t RedOnBuffer[9] = {LED_OUT_HI, 0x00, 0x00, LED_OUT_HI, 0x00, 0x00, LED_OUT_HI, 0x00, 0x00};
-uint8_t RedOffBuffer[9] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8_t WhiteOnBuffer[1] = {LED_OUT_HI};
+uint8_t WhiteOffBuffer[1] = {0x00};
+uint8_t RedOnBuffer[9] = {LED_OUT_HI};
+uint8_t RedOffBuffer[9] = {0x00};
 
 void system_hardware_setup(void) {
     GPIO_InitTypeDef gpio_init = {
