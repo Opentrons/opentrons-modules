@@ -71,7 +71,7 @@ coverage.xml
 
 # Data from QC tests
 *.csv
-!stm32-modules/heater-shaker/**/*.csv
+!stm32-modules/common/**/*.csv
 
 # Translations
 *.mo
