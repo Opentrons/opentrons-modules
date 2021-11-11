@@ -9,7 +9,6 @@ add_executable(heater-shaker
   test_motor_policy.cpp
   test_heater_policy.cpp
   test_system_policy.cpp
-  test_gcode_parse.cpp
   test_basic_gcodes.cpp
   test_m104.cpp
   test_m104d.cpp
@@ -27,18 +26,15 @@ add_executable(heater-shaker
   test_m242.cpp
   test_m243.cpp
   test_m996.cpp
-  test_pid.cpp
-  test_double_buffer.cpp
   test_host_comms_task.cpp
   test_heater_task.cpp
   test_motor_task.cpp
   test_system_task.cpp
-  test_ack_cache.cpp
   test_errors.cpp
   test_message_passing.cpp
-  test_thermistor_conversions.cpp
   test_main.cpp)
-target_include_directories(heater-shaker PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+target_include_directories(heater-shaker 
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/heater-shaker)
 set_target_properties(heater-shaker
   PROPERTIES
   CXX_STANDARD 20
@@ -54,7 +50,10 @@ target_compile_options(heater-shaker
   -Wextra-semi
   -Wctor-dtor-privacy
   -fno-rtti)
-target_link_libraries(heater-shaker heater-shaker-core Catch2::Catch2)
+target_link_libraries(heater-shaker 
+  heater-shaker-core 
+  common-core
+  Catch2::Catch2)
 
 catch_discover_tests(heater-shaker)
 add_build_and_test_target(heater-shaker)

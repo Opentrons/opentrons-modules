@@ -7,5 +7,6 @@ else()
     find_package(Boost 1.71.0)
 endif()
 
+add_subdirectory(common)
 add_subdirectory(heater-shaker)
 add_subdirectory(thermocycler-refresh)

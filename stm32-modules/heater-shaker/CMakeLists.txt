@@ -11,7 +11,9 @@ endif()
 
 find_package(Clang)
 
-file(GLOB_RECURSE HS_SOURCES_FOR_FORMAT ./*.cpp ./*.hpp ./*.h)
+file(GLOB_RECURSE HS_SOURCES_FOR_FORMAT 
+  ./*.cpp ./*.hpp ./*.h
+  ../include/heater-shaker/*.hpp ../include/heater-shaker/*.h)
 list(FILTER HS_SOURCES_FOR_FORMAT EXCLUDE REGEX ".*MCSDK.*")
 
 # Targets for formatting. These are here rather than in individual target CMakeLists (e.g.

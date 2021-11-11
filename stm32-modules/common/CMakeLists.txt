@@ -1,15 +1,15 @@
-#Thermocycler-Refresh module source tree
+#common module code source tree
 
 # This variable defines the name of the target for this subfolder.
-set(TARGET_MODULE_NAME "thermocycler-refresh")
+set(TARGET_MODULE_NAME "common")
 
 add_subdirectory(src)
 
 if (${CMAKE_CROSSCOMPILING})
-  add_subdirectory(firmware)
+  add_subdirectory(STM32G491)
+  add_subdirectory(STM32F303)
 else()
   add_subdirectory(tests)
-  add_subdirectory(simulator)
 endif()
 
 find_package(Clang)

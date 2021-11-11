@@ -8,6 +8,8 @@ set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(HEATER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/heater_task")
 set(MOTOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/motor_task")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
+set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32F303")
+set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
 
 set(MCSDK_VERSION 5.4.4)
 set(MCSDK_LOCATION "${CMAKE_CURRENT_LIST_DIR}/motor_task/MCSDK_v${MCSDK_VERSION}/MotorControl")
@@ -53,7 +55,6 @@ set(HS_FW_LINTABLE_SRCS
 set(HS_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/system_stm32f3xx.c
   ${SYSTEM_DIR}/stm32f3xx_it.c
-  ${SYSTEM_DIR}/startup_stm32f303xe.s
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
   ${MOTOR_DIR}/motor_hardware.c
@@ -73,20 +74,11 @@ add_executable(heater-shaker
   ${HS_FW_LINTABLE_SRCS}
   ${HS_FW_NONLINTABLE_SRCS})
 
-target_link_options(heater-shaker
-  PRIVATE
-  "LINKER:-T,${SYSTEM_DIR}/STM32F303RETx_FLASH.ld"
-  "LINKER:--print-memory-usage"
-  "LINKER:--error-unresolved-symbols"
-  "LINKER:--gc-sections"
-  "LINKER:-u,_printf_float"
-  "LINKER:-u,_scanf_float")
-
 # Incurs at least a relink when you change the linker file (and a recompile of main
 # but hopefully that's quick)
 set_source_files_properties(${SYSTEM_DIR}/main.cpp
   PROPERTIES
-  OBJECT_DEPENDS "${SYSTEM_DIR}/STM32F303RETx_FLASH.ld")
+  OBJECT_DEPENDS "${COMMON_MCU_DIR}/STM32F303RETx_FLASH.ld")
 
 set_target_properties(heater-shaker
   PROPERTIES CXX_STANDARD 20
@@ -94,9 +86,9 @@ set_target_properties(heater-shaker
              C_STANDARD 11
              C_STANDARD_REQUIRED TRUE)
 
-  target_include_directories(heater-shaker
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    PRIVATE ${MOTOR_DIR})
+target_include_directories(heater-shaker
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/heater-shaker
+  PRIVATE ${MOTOR_DIR})
 
 target_compile_options(heater-shaker
   PUBLIC
@@ -111,8 +103,14 @@ target_compile_options(heater-shaker
 
 
 target_link_libraries(
-  heater-shaker
-  STM32F303BSP_Drivers STM32F303BSP_USB STM32F303BSP_FreeRTOS mc heater-shaker-core)
+  heater-shaker PUBLIC
+  STM32F303BSP_Drivers 
+  STM32F303BSP_USB 
+  STM32F303BSP_FreeRTOS 
+  mc 
+  common-STM32F303
+  heater-shaker-core
+  )
 
 
 target_include_directories(STM32F303BSP_Drivers
@@ -135,10 +133,6 @@ set_target_properties(
 
 find_package(GDBSVDTools)
 
-# Fills in the template with values specified by the find_package(OpenOCD) call above
-configure_file(${SYSTEM_DIR}/gdbinit.template ./gdbinit)
-
-
 find_program(ARM_GDB
   arm-none-eabi-gdb-py
   PATHS "${CrossGCC_BINDIR}"
@@ -150,7 +144,7 @@ message(STATUS "Found svd exe at ${GDBSVDTools_gdbsvd_EXECUTABLE}")
 set_target_properties(heater-shaker
   PROPERTIES
   CROSSCOMPILING_EMULATOR
-  "${ARM_GDB};--command=${CMAKE_CURRENT_BINARY_DIR}/gdbinit")
+  "${ARM_GDB};--command=${COMMON_MCU_DIR}/gdbinit")
 
 find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
   PATHS "${CrossGCC_BINDIR}"

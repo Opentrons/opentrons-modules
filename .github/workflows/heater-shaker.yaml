@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - 'stm32-modules/heater-shaker/**/*'
+      - 'stm32-modules/common/**/*'
+      - 'stm32-modules/include/common/**/*'
+      - 'stm32-modules/include/heater-shaker/**/*'
       - 'cmake/**/*'
       - 'CMakeLists.txt'
       - 'stm32-modules/CMakeLists.txt'
@@ -14,6 +17,9 @@ on:
   push:
     paths:
       - 'stm32-modules/heater-shaker/**/*'
+      - 'stm32-modules/common/**/*'
+      - 'stm32-modules/include/common/**/*'
+      - 'stm32-modules/include/heater-shaker/**/*'
       - 'cmake/**/*'
       - 'CMakeLists.txt'
       - 'stm32-modules/CMakeLists.txt'
@@ -78,7 +84,7 @@ jobs:
           restore-keys: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
       - name: 'Configure'
         run: cmake --preset=stm32-host .
-      - name: 'Build'
-        run: cmake --build ./build-stm32-host --target heater-shaker
-      - name: 'Test'
-        run: cmake --build ./build-stm32-host --target test
+      - name: 'Build Simulator'
+        run: cmake --build ./build-stm32-host --target heater-shaker-simulator
+      - name: 'Build and Test'
+        run: cmake --build ./build-stm32-host --target heater-shaker-build-and-test

@@ -1,4 +1,4 @@
-#include "heater-shaker/version.hpp"
+#include "core/version.hpp"
 
 static constexpr const char* _FW_VERSION_GENERATED = "${heater-shaker_VERSION}";
 static constexpr const char* _HW_VERSION_GENERATED = "Opentrons Heater-Shaker";

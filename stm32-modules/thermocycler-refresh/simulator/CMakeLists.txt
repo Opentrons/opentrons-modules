@@ -1,11 +1,11 @@
 add_executable(
   ${TARGET_MODULE_NAME}-simulator
+  cli_parser.cpp
   comm_thread.cpp
-  system_thread.cpp 
-  cli_parser.cpp 
-  main.cpp
-  socket_sim_driver.cpp 
+  socket_sim_driver.cpp
   stdin_sim_driver.cpp
+  system_thread.cpp 
+  main.cpp
 )
 
 target_link_libraries(
@@ -15,7 +15,10 @@ target_link_libraries(
   Boost::program_options
   pthread
 )
-target_include_directories(${TARGET_MODULE_NAME}-simulator PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(
+  ${TARGET_MODULE_NAME}-simulator 
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
+  )
 
 
 set_target_properties(${TARGET_MODULE_NAME}-simulator

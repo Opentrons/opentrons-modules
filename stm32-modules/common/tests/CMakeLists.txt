@@ -5,15 +5,17 @@ include(Catch)
 include(AddBuildAndTestTarget)
 
 add_executable(${TARGET_MODULE_NAME}
-    task_builder.cpp
-    test_host_comms_task.cpp
     test_main.cpp
-    test_system_policy.cpp
-    test_system_task.cpp
+    test_ack_cache.cpp
+    test_double_buffer.cpp
+    test_gcode_parse.cpp 
+    test_pid.cpp
+    test_thermistor_conversions.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME})
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/common)
 
 set_target_properties(${TARGET_MODULE_NAME}
     PROPERTIES
@@ -32,9 +34,7 @@ target_compile_options(${TARGET_MODULE_NAME}
     -fno-rtti)
 
 target_link_libraries(${TARGET_MODULE_NAME} 
-    ${TARGET_MODULE_NAME}-core 
-    common-core
-    Catch2::Catch2)
+    ${TARGET_MODULE_NAME}-core Catch2::Catch2)
 
 catch_discover_tests(${TARGET_MODULE_NAME} )
 add_build_and_test_target(${TARGET_MODULE_NAME} )

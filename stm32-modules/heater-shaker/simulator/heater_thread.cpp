@@ -5,10 +5,10 @@
 #include <stop_token>
 #include <thread>
 
+#include "core/thermistor_conversion.hpp"
 #include "heater-shaker/heater_task.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
-#include "heater-shaker/thermistor_conversion.hpp"
 
 struct SimHeaterPolicy {
     [[nodiscard]] auto power_good() const -> bool { return true; }
