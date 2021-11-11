@@ -6,12 +6,12 @@
 #include <concepts>
 #include <variant>
 
+#include "core/ack_cache.hpp"
+#include "core/version.hpp"
 #include "hal/message_queue.hpp"
 #include "systemwide.hpp"
-#include "core/ack_cache.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/tasks.hpp"
-#include "core/version.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>

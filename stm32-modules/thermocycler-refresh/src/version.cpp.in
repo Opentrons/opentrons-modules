@@ -1,4 +1,4 @@
-#include "${TARGET_MODULE_NAME}/version.hpp"
+#include "core/version.hpp"
 
 static constexpr const char* _FW_VERSION_GENERATED = "${${TARGET_MODULE_NAME}_VERSION}";
 static constexpr const char* _HW_VERSION_GENERATED = "Opentrons ${TARGET_MODULE_NAME}";

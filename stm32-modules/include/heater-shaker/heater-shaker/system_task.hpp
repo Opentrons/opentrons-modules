@@ -6,11 +6,11 @@
 #include <concepts>
 #include <variant>
 
-#include "hal/message_queue.hpp"
 #include "core/ack_cache.hpp"
+#include "core/version.hpp"
+#include "hal/message_queue.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
-#include "core/version.hpp"
 #include "systemwide.hpp"
 
 namespace tasks {

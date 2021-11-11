@@ -18,10 +18,10 @@
 #include <optional>
 #include <utility>
 
-#include "systemwide.hpp"
-#include "thermocycler-refresh/errors.hpp"
 #include "core/gcode_parser.hpp"
 #include "core/utility.hpp"
+#include "systemwide.hpp"
+#include "thermocycler-refresh/errors.hpp"
 
 namespace gcode {
 
