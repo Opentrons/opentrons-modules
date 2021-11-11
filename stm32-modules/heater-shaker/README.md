@@ -33,6 +33,7 @@ When compiling the firmware using your local compiler (using the `stm32-host` cm
 - Run tests: `cmake --build ./build-stm32-host --target test`
 - Format tests: `cmake --build ./build-stm32-test --target heater-shaker-format`
 - Build simulator: `cmake --build ./build-stm32-host --target heater-shaker-simulator` 
+- Build and Test: `cmake --build ./build-stm32-host --target heater-shaker-build-and-test` 
 
 ### Simulator
 There's a simulator! It host-compiles the core lib with boost for interaction. Right now it just talks over stdin and stdout but it should really learn about arbitrary sockets and whatnot. You can build it with `cmake --build ./build-stm32-host --target heater-shaker-simulator` and then run it with `./build-stm32-host/stm32-modules/heater-shaker/simulator/heater-shaker-simulator`. You can type some gcodes in to stdin. To quit, either interrupt or kill or send EOF (ctrl-d on unixlikes).
@@ -42,7 +43,6 @@ There's a simulator! It host-compiles the core lib with boost for interaction. R
 - `./firmware` contains the code that only runs on the device itself
 - `./simulator` contains the code that runs a local simulator
 - `./src` contains the code that can be either cross- or host-compiled, and therefore can and should be tested
-- `./include` contains all the headers, sorted by subdirectory - e.g. `include/firmware/` is where include files for firmware-specific things live. This is done (rather than the reverse, `firmware/include`) so that code can have liens like `#include "firmware/whatever.hpp"`, which makes it apparent in the code itself what domain the header is in.
 
 ## Style
 
