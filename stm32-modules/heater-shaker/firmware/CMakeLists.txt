@@ -88,7 +88,6 @@ set_target_properties(heater-shaker
 
 target_include_directories(heater-shaker
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/heater-shaker
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/common
   PRIVATE ${MOTOR_DIR})
 
 target_compile_options(heater-shaker

@@ -45,10 +45,11 @@ set_target_properties(${TARGET_MODULE_NAME}-core
   PROPERTIES CXX_STANDARD 20
              CXX_STANDARD_REQUIRED TRUE)
 
+target_link_libraries(${TARGET_MODULE_NAME}-core common-core)
+
 target_include_directories(${TARGET_MODULE_NAME}-core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/common
-  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}  # need to add this to get the generated conversion header
+  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}../../common/src  # need to add this to get the generated conversion header
   )
 
 target_compile_options(${TARGET_MODULE_NAME}-core

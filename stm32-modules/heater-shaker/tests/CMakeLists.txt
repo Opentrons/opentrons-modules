@@ -34,8 +34,7 @@ add_executable(heater-shaker
   test_message_passing.cpp
   test_main.cpp)
 target_include_directories(heater-shaker 
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/heater-shaker
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/common)
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/heater-shaker)
 set_target_properties(heater-shaker
   PROPERTIES
   CXX_STANDARD 20

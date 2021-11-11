@@ -84,5 +84,7 @@ jobs:
           restore-keys: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
       - name: 'Configure'
         run: cmake --preset=stm32-host .
+      - name: 'Build Simulator'
+        run: cmake --build ./build-stm32-host --target thermocycler-refresh-simulator
       - name: 'Build and Test'
         run: cmake --build ./build-stm32-host --target thermocycler-refresh-build-and-test
