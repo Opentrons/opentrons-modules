@@ -33,7 +33,9 @@ target_compile_options(${TARGET_MODULE_NAME}
     -fno-rtti)
 
 target_link_libraries(${TARGET_MODULE_NAME} 
-    ${TARGET_MODULE_NAME}-core Catch2::Catch2)
+    ${TARGET_MODULE_NAME}-core 
+    common-core
+    Catch2::Catch2)
 
 catch_discover_tests(${TARGET_MODULE_NAME} )
 add_build_and_test_target(${TARGET_MODULE_NAME} )

@@ -1,7 +1,7 @@
 #include <cmath>
 
 #include "catch2/catch.hpp"
-#include "heater-shaker/thermistor_conversion.hpp"
+#include "core/thermistor_conversion.hpp"
 
 using namespace thermistor_conversion;
 

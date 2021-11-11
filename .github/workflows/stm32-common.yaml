@@ -1,11 +1,9 @@
-name: 'Thermocycler Refresh build/test'
+name: 'STM32 Common Code build/test'
 on:
   pull_request:
     paths:
-      - 'stm32-modules/thermocycler-refresh/**/*'
       - 'stm32-modules/common/**/*'
       - 'stm32-modules/include/common/**/*'
-      - 'stm32-modules/include/thermocycler-refresh/**/*'
       - 'cmake/**/*'
       - 'CMakeLists.txt'
       - 'stm32-modules/CMakeLists.txt'
@@ -16,23 +14,22 @@ on:
       - 'cmake/Arduino*'
   push:
     paths:
-      - 'stm32-modules/thermocycler-refresh/**/*'
       - 'stm32-modules/common/**/*'
       - 'stm32-modules/include/common/**/*'
-      - 'stm32-modules/include/thermocycler-refresh/**/*'
       - 'cmake/**/*'
       - 'CMakeLists.txt'
       - 'stm32-modules/CMakeLists.txt'
       - 'CMakePresets.json'
       - '.clang-format'
       - '.clang-tidy'
-      - '.github/workflows/thermocycler-refresh.yaml'
+      - '.github/workflows/stm32-common.yaml'
     paths_ignore:
       - 'cmake/Arduino*'
     branches:
       - '*'
     tags:
       - 'thermocycler-refresh@*'
+      - 'heater-shaker@*'
   workflow_dispatch:
 
 
@@ -58,11 +55,9 @@ jobs:
       - name: 'Configure'
         run: cmake --preset=stm32-cross .
       - name: 'Format'
-        run: cmake --build ./build-stm32-cross --target thermocycler-refresh-format-ci
+        run: cmake --build ./build-stm32-cross --target common-format-ci
       - name: 'Lint'
-        run: cmake --build ./build-stm32-cross --target thermocycler-refresh-lint
-      - name: 'Build'
-        run: cmake --build ./build-stm32-cross --target thermocycler-refresh-hex
+        run: cmake --build ./build-stm32-cross --target common-lint
   host-compile-test:
     name: 'Host-Compile/Test'
     runs-on: 'ubuntu-20.04'
@@ -85,4 +80,4 @@ jobs:
       - name: 'Configure'
         run: cmake --preset=stm32-host .
       - name: 'Build and Test'
-        run: cmake --build ./build-stm32-host --target thermocycler-refresh-build-and-test
+        run: cmake --build ./build-stm32-host --target common-build-and-test
