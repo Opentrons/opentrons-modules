@@ -8,6 +8,8 @@ add_STM32G4_usb(${TARGET_MODULE_NAME})
 
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
+set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32G491")
+set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
 
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
@@ -21,7 +23,6 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
 set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/system_stm32g4xx.c
   ${SYSTEM_DIR}/stm32g4xx_it.c
-  ${SYSTEM_DIR}/startup_stm32g491vetx.s
   ${SYSTEM_DIR}/system_hardware.c
   ${SYSTEM_DIR}/stm32g4xx_hal_timebase_tim.c
   ${SYSTEM_DIR}/system_serial_number.c
@@ -33,20 +34,11 @@ add_executable(${TARGET_MODULE_NAME}
   ${${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS}
   ${${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS})
 
-target_link_options(${TARGET_MODULE_NAME}
-  PRIVATE
-  "LINKER:-T,${SYSTEM_DIR}/STM32G491VETx_FLASH.ld"
-  "LINKER:--print-memory-usage"
-  "LINKER:--error-unresolved-symbols"
-  "LINKER:--gc-sections"
-  "LINKER:-u,_printf_float"
-  "LINKER:-u,_scanf_float")
-
 # Incurs at least a relink when you change the linker file (and a recompile of main
 # but hopefully that's quick)
 set_source_files_properties(${SYSTEM_DIR}/main.cpp
   PROPERTIES
-  OBJECT_DEPENDS "${SYSTEM_DIR}/STM32G491VETx_FLASH.ld")
+  OBJECT_DEPENDS "${COMMON_MCU_DIR}/STM32G491VETx_FLASH.ld")
 
 set_target_properties(${TARGET_MODULE_NAME}
   PROPERTIES CXX_STANDARD 20
@@ -72,11 +64,13 @@ target_compile_options(${TARGET_MODULE_NAME}
 
 
 target_link_libraries(
-  ${TARGET_MODULE_NAME}
+  ${TARGET_MODULE_NAME} PUBLIC
   STM32G4xx_Drivers_${TARGET_MODULE_NAME} 
   STM32G4xx_FreeRTOS_${TARGET_MODULE_NAME} 
   STM32G4xx_USB_${TARGET_MODULE_NAME} 
-  ${TARGET_MODULE_NAME}-core)
+  common-STM32G491
+  ${TARGET_MODULE_NAME}-core
+  )
 
 
 target_include_directories(STM32G4xx_Drivers_${TARGET_MODULE_NAME}
@@ -99,13 +93,6 @@ set_target_properties(
 
 find_package(GDBSVDTools)
 
-# Update G4 board file manually as it doesn't seem to be included with OpenOCD
-set(G4_BOARD_FILE_PATH ${SYSTEM_DIR}/stm32g4discovery.cfg)
-
-# Fills in the template with values specified by the find_package(OpenOCD) call above
-configure_file(${SYSTEM_DIR}/gdbinit.template ./gdbinit)
-
-
 find_program(ARM_GDB
   arm-none-eabi-gdb-py
   PATHS "${CrossGCC_BINDIR}"
@@ -117,7 +104,7 @@ message(STATUS "Found svd exe at ${GDBSVDTools_gdbsvd_EXECUTABLE}")
 set_target_properties(${TARGET_MODULE_NAME}
   PROPERTIES
   CROSSCOMPILING_EMULATOR
-  "${ARM_GDB};--command=${CMAKE_CURRENT_BINARY_DIR}/gdbinit")
+  "${ARM_GDB};--command=${COMMON_MCU_DIR}/gdbinit")
 
 find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
   PATHS "${CrossGCC_BINDIR}"
@@ -173,7 +160,7 @@ add_custom_target(${TARGET_MODULE_NAME}-debug
 
 # Runs openocd to flash the board (without using a debugger)
 add_custom_target(${TARGET_MODULE_NAME}-flash
-  COMMAND "${OpenOCD_EXECUTABLE}" "-f" "${SYSTEM_DIR}/stm32g4discovery.cfg" "-c" "program $<TARGET_FILE:${TARGET_MODULE_NAME}>;exit"
+  COMMAND "${OpenOCD_EXECUTABLE}" "-f" "${COMMON_MCU_DIR}/stm32g4discovery.cfg" "-c" "program $<TARGET_FILE:${TARGET_MODULE_NAME}>;exit"
   VERBATIM
   COMMENT "Flashing board"
   DEPENDS ${TARGET_MODULE_NAME})

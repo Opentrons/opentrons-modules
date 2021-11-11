@@ -1,14 +1,13 @@
-add_executable(
-  ${TARGET_MODULE_NAME}-simulator
-  comm_thread.cpp
-  system_thread.cpp 
-  main.cpp
+add_library(
+  ${TARGET_MODULE_NAME}-simulator STATIC
+  cli_parser.cpp 
+  socket_sim_driver.cpp 
+  stdin_sim_driver.cpp
 )
 
 target_link_libraries(
   ${TARGET_MODULE_NAME}-simulator 
   PRIVATE ${TARGET_MODULE_NAME}-core 
-  PUBLIC common-simulator
   Boost::boost pthread
   Boost::program_options
   pthread
@@ -18,7 +17,6 @@ target_include_directories(
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include/common
   )
-
 
 set_target_properties(${TARGET_MODULE_NAME}-simulator
   PROPERTIES CXX_STANDARD 20

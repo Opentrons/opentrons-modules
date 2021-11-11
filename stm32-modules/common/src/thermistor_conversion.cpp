@@ -1,4 +1,4 @@
-#include "heater-shaker/thermistor_conversion.hpp"
+#include "core/thermistor_conversion.hpp"
 
 #include <algorithm>
 #include <cstdint>
