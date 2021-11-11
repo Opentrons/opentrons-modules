@@ -1,7 +1,7 @@
 #include "catch2/catch.hpp"
 #include "heater-shaker/heater_task.hpp"
 #include "heater-shaker/messages.hpp"
-#include "heater-shaker/pid.hpp"
+#include "core/pid.hpp"
 #include "test/task_builder.hpp"
 
 SCENARIO("heater task message passing") {

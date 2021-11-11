@@ -20,8 +20,8 @@
 
 #include "systemwide.hpp"
 #include "thermocycler-refresh/errors.hpp"
-#include "thermocycler-refresh/gcode_parser.hpp"
-#include "thermocycler-refresh/utility.hpp"
+#include "core/gcode_parser.hpp"
+#include "core/utility.hpp"
 
 namespace gcode {
 

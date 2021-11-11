@@ -14,7 +14,9 @@ endif()
 
 find_package(Clang)
 
-file(GLOB_RECURSE TCR_SOURCES_FOR_FORMAT ./*.cpp ./*.hpp ./*.h)
+file(GLOB_RECURSE TCR_SOURCES_FOR_FORMAT
+  ./*.cpp ./*.hpp ./*.h
+  ../include/${TARGET_MODULE_NAME}/*.hpp ../include/${TARGET_MODULE_NAME}/*.h)
 list(FILTER TCR_SOURCES_FOR_FORMAT EXCLUDE REGEX ".*MCSDK.*")
 
 # Targets for formatting. These are here rather than in individual target CMakeLists (e.g.

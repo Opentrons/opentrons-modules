@@ -10,13 +10,13 @@
 #include <variant>
 
 #include "hal/message_queue.hpp"
-#include "heater-shaker/ack_cache.hpp"
+#include "core/ack_cache.hpp"
 #include "heater-shaker/errors.hpp"
-#include "heater-shaker/gcode_parser.hpp"
+#include "core/gcode_parser.hpp"
 #include "heater-shaker/gcodes.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
-#include "heater-shaker/version.hpp"
+#include "core/version.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>

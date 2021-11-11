@@ -1,4 +1,4 @@
-#include "thermocycler-refresh/pid.hpp"
+#include "core/pid.hpp"
 
 #include <algorithm>
 #include <limits>

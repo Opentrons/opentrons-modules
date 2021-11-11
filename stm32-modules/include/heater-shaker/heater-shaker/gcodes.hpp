@@ -19,8 +19,8 @@
 #include <utility>
 
 #include "heater-shaker/errors.hpp"
-#include "heater-shaker/gcode_parser.hpp"
-#include "heater-shaker/utility.hpp"
+#include "core/gcode_parser.hpp"
+#include "core/utility.hpp"
 #include "systemwide.hpp"
 
 namespace gcode {

@@ -2,7 +2,7 @@
 #include <charconv>
 #include <cstdint>
 
-#include "thermocycler-refresh/utility.hpp"
+#include "core/utility.hpp"
 
 namespace errors {
 

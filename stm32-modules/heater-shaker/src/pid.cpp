@@ -1,4 +1,4 @@
-#include "heater-shaker/pid.hpp"
+#include "core/pid.hpp"
 
 #include <algorithm>
 #include <limits>

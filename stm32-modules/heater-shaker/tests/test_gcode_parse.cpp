@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "catch2/catch.hpp"
-#include "heater-shaker/gcode_parser.hpp"
+#include "core/gcode_parser.hpp"
 
 struct G28D2 {
     using ParseResult = std::optional<G28D2>;

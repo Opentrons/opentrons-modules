@@ -7,11 +7,11 @@
 #include <variant>
 
 #include "hal/message_queue.hpp"
-#include "heater-shaker/ack_cache.hpp"
-#include "heater-shaker/messages.hpp"
-#include "heater-shaker/tasks.hpp"
-#include "heater-shaker/version.hpp"
 #include "systemwide.hpp"
+#include "core/ack_cache.hpp"
+#include "thermocycler-refresh/messages.hpp"
+#include "thermocycler-refresh/tasks.hpp"
+#include "core/version.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>
@@ -41,8 +41,7 @@ template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
 class SystemTask {
     using BootloaderPrepAckCache =
-        AckCache<3, messages::SetTemperatureMessage, messages::SetRPMMessage,
-                 messages::ForceUSBDisconnectMessage>;
+        AckCache<3, messages::ForceUSBDisconnectMessage>;
 
   public:
     using Queue = QueueImpl<Message>;
@@ -84,24 +83,6 @@ class SystemTask {
         // booted. We'd like to not abruptly shut off a bunch of hardware when
         // this happens, so let's try and turn off the rest of the hardware
         // nicely just in case.
-        auto stop_message = messages::SetRPMMessage{
-            .id = 0, .target_rpm = 0, .from_system = true};
-        auto stop_id = prep_cache.add(stop_message);
-        stop_message.id = stop_id;
-        if (!task_registry->motor->get_message_queue().try_send(stop_message,
-                                                                1)) {
-            prep_cache.remove_if_present(stop_id);
-        }
-
-        auto cool_message = messages::SetTemperatureMessage{
-            .id = 0, .target_temperature = 0, .from_system = true};
-        auto cool_id = prep_cache.add(cool_message);
-        cool_message.id = cool_id;
-        if (!task_registry->heater->get_message_queue().try_send(cool_message,
-                                                                 1)) {
-            prep_cache.remove_if_present(cool_id);
-        }
-
         auto disconnect_message = messages::ForceUSBDisconnectMessage{.id = 0};
         auto disconnect_id = prep_cache.add(disconnect_message);
         disconnect_message.id = disconnect_id;

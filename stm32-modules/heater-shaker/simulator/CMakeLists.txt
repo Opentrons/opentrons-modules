@@ -18,7 +18,10 @@ target_link_libraries(
         Boost::program_options
         pthread
 )
-target_include_directories(heater-shaker-simulator PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(
+        heater-shaker-simulator 
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include/heater-shaker
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include/common)
 
 
 set_target_properties(heater-shaker-simulator

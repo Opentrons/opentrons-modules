@@ -11,7 +11,7 @@
 #include "hal/message_queue.hpp"
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/messages.hpp"
-#include "heater-shaker/pid.hpp"
+#include "core/pid.hpp"
 #include "heater-shaker/tasks.hpp"
 #include "heater-shaker/thermistor_conversion.hpp"
 

@@ -60,7 +60,8 @@ set_target_properties(heater-shaker-core
              CXX_STANDARD_REQUIRED TRUE)
 
 target_include_directories(heater-shaker-core
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/heater-shaker
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/common
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}  # need to add this to get the generated conversion header
   )
 

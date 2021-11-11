@@ -2,7 +2,7 @@
 #include <vector>
 
 #include "catch2/catch.hpp"
-#include "heater-shaker/pid.hpp"
+#include "core/pid.hpp"
 
 SCENARIO("PID controller") {
     GIVEN("a PID controller initialized with all 0 coeffs") {

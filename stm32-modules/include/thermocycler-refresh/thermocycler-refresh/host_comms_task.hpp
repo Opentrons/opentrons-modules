@@ -10,13 +10,13 @@
 #include <variant>
 
 #include "hal/message_queue.hpp"
-#include "thermocycler-refresh/ack_cache.hpp"
+#include "core/ack_cache.hpp"
 #include "thermocycler-refresh/errors.hpp"
-#include "thermocycler-refresh/gcode_parser.hpp"
+#include "core/gcode_parser.hpp"
 #include "thermocycler-refresh/gcodes.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/tasks.hpp"
-#include "thermocycler-refresh/version.hpp"
+#include "core/version.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>
