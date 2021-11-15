@@ -53,10 +53,11 @@ struct Tasks {
         initialize(comms_in, system_in, thermal_plate);
     }
 
-    auto initialize(host_comms_task::HostCommsTask<QueueImpl>* comms_in,
-            system_task::SystemTask<QueueImpl>* system_in,
-            thermal_plate_task::ThermalPlateTask<QueueImpl>* thermal_plate_in)
-            -> void {
+    auto initialize(
+        host_comms_task::HostCommsTask<QueueImpl>* comms_in,
+        system_task::SystemTask<QueueImpl>* system_in,
+        thermal_plate_task::ThermalPlateTask<QueueImpl>* thermal_plate_in)
+        -> void {
         comms = comms_in;
         system = system_in;
         thermal_plate = thermal_plate_in;

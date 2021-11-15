@@ -4,16 +4,11 @@
  */
 #pragma once
 
-#include "thermocycler-refresh/errors.hpp"
 #include "core/thermistor_conversion.hpp"
+#include "thermocycler-refresh/errors.hpp"
 
 // Enumeration of peltiers on the board
-enum PeltierID {
-    PELTIER_LEFT,
-    PELTIER_CENTER,
-    PELTIER_RIGHT,
-    PELTIER_COUNT
-};
+enum PeltierID { PELTIER_LEFT, PELTIER_CENTER, PELTIER_RIGHT, PELTIER_COUNT };
 
 /** Enumeration of thermistors on the board.
  * This is specifically arranged to keep all of the plate-related

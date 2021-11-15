@@ -23,18 +23,21 @@ struct Tasks;
 };
 
 namespace thermal_plate_task {
-    
+
 template <typename Policy>
 concept ThermalPlateExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // A set_enabled function with inputs of `false` or `true` that
     // sets the enable pin for the peltiers off or on
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-    { p.set_enabled(false)};
+    {p.set_enabled(false)};
 };
 
-constexpr uint16_t thermistorErrorBit(const ThermistorID id) { 
-    if(id > THERM_HEATSINK) { throw std::out_of_range(""); }
-    return (1 << id); 
+/** Just used for initialization assignment of error bits.*/
+constexpr uint16_t thermistorErrorBit(const ThermistorID id) {
+    if (id > THERM_HEATSINK) {
+        throw std::out_of_range("");
+    }
+    return (1 << id);
 }
 
 struct State {
@@ -58,8 +61,7 @@ using Message = messages::ThermalPlateMessage;
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
 class ThermalPlateTask {
-
-public:
+  public:
     using Queue = QueueImpl<Message>;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 50;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 10.0;
@@ -80,68 +82,43 @@ public:
     static constexpr const double CONTROL_PERIOD_SECONDS =
         CONTROL_PERIOD_TICKS * 0.001;
 
-    explicit ThermalPlateTask(Queue& q) :
-        message_queue(q),
-        task_registry(nullptr),
-        peltier_left{
-            .id = PELTIER_LEFT,
-            .enabled = false,
-            .temp_current = 0.0,
-            .temp_target = 0.0
-        },
-        peltier_right{
-            .id = PELTIER_RIGHT,
-            .enabled = false,
-            .temp_current = 0.0,
-            .temp_target = 0.0
-        },
-        peltier_center{
-            .id = PELTIER_CENTER,
-            .enabled = false,
-            .temp_current = 0.0,
-            .temp_target = 0.0
-        },
-        thermistors{ {
-            {
-                .overtemp_limit_c = OVERTEMP_LIMIT_C,
-                .error_bit = thermistorErrorBit(THERM_FRONT_RIGHT)
-            },
-            {
-                .overtemp_limit_c = OVERTEMP_LIMIT_C,
-                .error_bit = thermistorErrorBit(THERM_FRONT_LEFT)
-            },
-            {
-                .overtemp_limit_c = OVERTEMP_LIMIT_C,
-                .error_bit = thermistorErrorBit(THERM_FRONT_CENTER)
-            },
-            {
-                .overtemp_limit_c = OVERTEMP_LIMIT_C,
-                .error_bit = thermistorErrorBit(THERM_BACK_RIGHT)
-            },
-            {
-                .overtemp_limit_c = OVERTEMP_LIMIT_C,
-                .error_bit = thermistorErrorBit(THERM_BACK_LEFT)
-            },
-            {
-                .overtemp_limit_c = OVERTEMP_LIMIT_C,
-                .error_bit = thermistorErrorBit(THERM_BACK_CENTER)
-            },
-            {
-                .overtemp_limit_c = OVERTEMP_LIMIT_C,
-                .error_bit = thermistorErrorBit(THERM_HEATSINK)
-            }
-        } },
-        state{
-            .system_status = State::IDLE,
-            .error_bitmap = 0
-        },
-        plate_pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, 
-            CONTROL_PERIOD_SECONDS, 1.0, -1.0)
-        {}
-    ThermalPlateTask(const ThermalPlateTask &other) = delete;
-    auto operator=(const ThermalPlateTask &other) -> ThermalPlateTask& = delete;
+    explicit ThermalPlateTask(Queue& q)
+        : message_queue(q),
+          task_registry(nullptr),
+          peltier_left{.id = PELTIER_LEFT,
+                       .enabled = false,
+                       .temp_current = 0.0,
+                       .temp_target = 0.0},
+          peltier_right{.id = PELTIER_RIGHT,
+                        .enabled = false,
+                        .temp_current = 0.0,
+                        .temp_target = 0.0},
+          peltier_center{.id = PELTIER_CENTER,
+                         .enabled = false,
+                         .temp_current = 0.0,
+                         .temp_target = 0.0},
+          thermistors{{{.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                        .error_bit = thermistorErrorBit(THERM_FRONT_RIGHT)},
+                       {.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                        .error_bit = thermistorErrorBit(THERM_FRONT_LEFT)},
+                       {.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                        .error_bit = thermistorErrorBit(THERM_FRONT_CENTER)},
+                       {.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                        .error_bit = thermistorErrorBit(THERM_BACK_RIGHT)},
+                       {.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                        .error_bit = thermistorErrorBit(THERM_BACK_LEFT)},
+                       {.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                        .error_bit = thermistorErrorBit(THERM_BACK_CENTER)},
+                       {.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                        .error_bit = thermistorErrorBit(THERM_HEATSINK)}}},
+          state{.system_status = State::IDLE, .error_bitmap = 0},
+          plate_pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS,
+                    1.0, -1.0) {}
+    ThermalPlateTask(const ThermalPlateTask& other) = delete;
+    auto operator=(const ThermalPlateTask& other) -> ThermalPlateTask& = delete;
     ThermalPlateTask(ThermalPlateTask&& other) noexcept = delete;
-    auto operator=(ThermalPlateTask&& other) noexcept -> ThermalPlateTask& = delete;
+    auto operator=(ThermalPlateTask&& other) noexcept
+        -> ThermalPlateTask& = delete;
     ~ThermalPlateTask() = default;
     auto get_message_queue() -> Queue& { return message_queue; }
 
@@ -177,7 +154,8 @@ public:
             },
             message);
     }
-private:
+
+  private:
     template <typename Policy>
     auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
         static_cast<void>(policy);
@@ -185,7 +163,7 @@ private:
     }
 
     template <typename Policy>
-    auto visit_message(const messages::ThermalPlateTempReadComplete& msg, 
+    auto visit_message(const messages::ThermalPlateTempReadComplete& msg,
                        Policy& policy) -> void {
         // TODO fill out this function
     }
@@ -200,5 +178,4 @@ private:
     PID plate_pid;
 };
 
-
-}
+}  // namespace thermal_plate_task

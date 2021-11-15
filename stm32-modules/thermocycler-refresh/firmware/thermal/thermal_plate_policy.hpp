@@ -6,7 +6,7 @@
 #pragma once
 
 class ThermalPlatePolicy {
-public:
+  public:
     ThermalPlatePolicy();
 
     auto set_enabled(bool enabled) -> void;
