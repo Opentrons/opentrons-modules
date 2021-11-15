@@ -10,6 +10,7 @@ set(MOTOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/motor_task")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32F303")
 set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
+set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32F303/gdbinit")
 
 set(MCSDK_VERSION 5.4.4)
 set(MCSDK_LOCATION "${CMAKE_CURRENT_LIST_DIR}/motor_task/MCSDK_v${MCSDK_VERSION}/MotorControl")
@@ -131,8 +132,6 @@ set_target_properties(
   STM32F303BSP_FreeRTOS
   PROPERTIES FREERTOS_HEAP_IMPLEMENTATION "heap_5")
 
-find_package(GDBSVDTools)
-
 find_program(ARM_GDB
   arm-none-eabi-gdb-py
   PATHS "${CrossGCC_BINDIR}"
@@ -144,7 +143,7 @@ message(STATUS "Found svd exe at ${GDBSVDTools_gdbsvd_EXECUTABLE}")
 set_target_properties(heater-shaker
   PROPERTIES
   CROSSCOMPILING_EMULATOR
-  "${ARM_GDB};--command=${COMMON_MCU_DIR}/gdbinit")
+  "${ARM_GDB};--command=${GDBINIT_PATH}")
 
 find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
   PATHS "${CrossGCC_BINDIR}"
@@ -163,8 +162,6 @@ add_custom_command(OUTPUT heater-shaker.bin
   VERBATIM)
 add_custom_target(heater-shaker-bin ALL
   DEPENDS heater-shaker.bin)
-
-find_package(Clang)
 
 # runs clang-tidy https://releases.llvm.org/11.0.1/tools/clang/tools/extra/docs/clang-tidy/index.html
 # which is a catch-all static analyzer/linter
