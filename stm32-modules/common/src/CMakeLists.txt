@@ -57,7 +57,6 @@ target_compile_options(${TARGET_MODULE_NAME}-core
 # in 'common' to be linted. Only want to expose this for cross
 # compilation anyways.
 if (${CMAKE_CROSSCOMPILING})
-  find_package(Clang)
 
   # runs clang-tidy https://releases.llvm.org/11.0.1/tools/clang/tools/extra/docs/clang-tidy/index.html
   # which is a catch-all static analyzer/linter

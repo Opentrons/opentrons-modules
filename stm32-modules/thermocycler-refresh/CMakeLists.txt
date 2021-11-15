@@ -12,8 +12,6 @@ else()
   add_subdirectory(simulator)
 endif()
 
-find_package(Clang)
-
 file(GLOB_RECURSE ${TARGET_MODULE_NAME}_SOURCES_FOR_FORMAT
   ./*.cpp ./*.hpp ./*.h
   ../include/${TARGET_MODULE_NAME}/*.hpp ../include/${TARGET_MODULE_NAME}/*.h)

@@ -8,8 +8,10 @@ add_STM32G4_usb(${TARGET_MODULE_NAME})
 
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
+set(THERMAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thermal")
 set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32G491")
 set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
+set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
 
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
@@ -17,7 +19,12 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${SYSTEM_DIR}/freertos_system_task.cpp
   ${SYSTEM_DIR}/system_policy.cpp
   ${COMMS_DIR}/freertos_comms_task.cpp
-  ${SYSTEM_DIR}/freertos_idle_timer_task.cpp)
+  ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
+  ${THERMAL_DIR}/freertos_thermal_plate_task.cpp
+  ${THERMAL_DIR}/thermal_plate_policy.cpp
+  ${THERMAL_DIR}/freertos_lid_heater_task.cpp
+  ${THERMAL_DIR}/lid_heater_policy.cpp
+  )
 
 # Add source files that should NOT be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
@@ -90,7 +97,6 @@ set_target_properties(
   STM32G4xx_FreeRTOS_${TARGET_MODULE_NAME}
   PROPERTIES FREERTOS_HEAP_IMPLEMENTATION "heap_5")
 
-find_package(GDBSVDTools)
 
 find_program(ARM_GDB
   arm-none-eabi-gdb-py
@@ -103,7 +109,7 @@ message(STATUS "Found svd exe at ${GDBSVDTools_gdbsvd_EXECUTABLE}")
 set_target_properties(${TARGET_MODULE_NAME}
   PROPERTIES
   CROSSCOMPILING_EMULATOR
-  "${ARM_GDB};--command=${COMMON_MCU_DIR}/gdbinit")
+  "${ARM_GDB};--command=${GDBINIT_PATH}")
 
 find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
   PATHS "${CrossGCC_BINDIR}"
@@ -122,8 +128,6 @@ add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.bin
   VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-bin ALL
   DEPENDS ${TARGET_MODULE_NAME}.bin)
-
-find_package(Clang)
 
 # runs clang-tidy https://releases.llvm.org/11.0.1/tools/clang/tools/extra/docs/clang-tidy/index.html
 # which is a catch-all static analyzer/linter

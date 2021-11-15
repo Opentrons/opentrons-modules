@@ -2,11 +2,15 @@
 #include <memory>
 #include <utility>
 
+#include "test/test_lid_heater_policy.hpp"
 #include "test/test_message_queue.hpp"
 #include "test/test_system_policy.hpp"
+#include "test/test_thermal_plate_policy.hpp"
 #include "thermocycler-refresh/host_comms_task.hpp"
+#include "thermocycler-refresh/lid_heater_task.hpp"
 #include "thermocycler-refresh/system_task.hpp"
 #include "thermocycler-refresh/tasks.hpp"
+#include "thermocycler-refresh/thermal_plate_task.hpp"
 
 struct TaskBuilder {
     ~TaskBuilder() = default;
@@ -46,6 +50,12 @@ struct TaskBuilder {
     host_comms_task::HostCommsTask<TestMessageQueue> host_comms_task;
     TestMessageQueue<system_task::Message> system_queue;
     system_task::SystemTask<TestMessageQueue> system_task;
+    TestMessageQueue<thermal_plate_task::Message> thermal_plate_queue;
+    thermal_plate_task::ThermalPlateTask<TestMessageQueue> thermal_plate_task;
+    TestMessageQueue<lid_heater_task::Message> lid_heater_queue;
+    lid_heater_task::LidHeaterTask<TestMessageQueue> lid_heater_task;
     tasks::Tasks<TestMessageQueue> task_aggregator;
     TestSystemPolicy system_policy;
+    TestThermalPlatePolicy thermal_plate_policy;
+    TestLidHeaterPolicy lid_heater_policy;
 };

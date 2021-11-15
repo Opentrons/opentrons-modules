@@ -2,6 +2,8 @@
 
 find_package(GDBSVDTools)
 
+set(G4_BOARD_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/stm32g4discovery.cfg")
+
 # Fills in the template with values specified by the find_package(OpenOCD) call above
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/gdbinit.template ./gdbinit)
 
