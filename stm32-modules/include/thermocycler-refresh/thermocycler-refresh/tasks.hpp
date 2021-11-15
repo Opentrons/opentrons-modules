@@ -7,10 +7,10 @@
 
 #include "hal/message_queue.hpp"
 #include "host_comms_task.hpp"
+#include "lid_heater_task.hpp"
 #include "messages.hpp"
 #include "system_task.hpp"
 #include "thermal_plate_task.hpp"
-#include "lid_heater_task.hpp"
 
 namespace host_comms_task {
 template <template <class> class QueueImpl>
@@ -38,7 +38,7 @@ template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<messages::LidHeaterMessage>,
                       messages::LidHeaterMessage>
 class LidHeaterTask;
-}  // namespace thermal_plate_task
+}  // namespace lid_heater_task
 
 namespace tasks {
 /* Container relating the RTOSTask for the implementation and the portable task
@@ -58,8 +58,10 @@ struct Tasks {
           system_task::SystemTask<QueueImpl>* system_in,
           thermal_plate_task::ThermalPlateTask<QueueImpl>* thermal_plate_in,
           lid_heater_task::LidHeaterTask<QueueImpl>* lid_heater_in)
-        : comms(nullptr), system(nullptr), 
-          thermal_plate(nullptr), lid_heater(nullptr) {
+        : comms(nullptr),
+          system(nullptr),
+          thermal_plate(nullptr),
+          lid_heater(nullptr) {
         initialize(comms_in, system_in, thermal_plate_in, lid_heater_in);
     }
 
@@ -67,8 +69,7 @@ struct Tasks {
         host_comms_task::HostCommsTask<QueueImpl>* comms_in,
         system_task::SystemTask<QueueImpl>* system_in,
         thermal_plate_task::ThermalPlateTask<QueueImpl>* thermal_plate_in,
-        lid_heater_task::LidHeaterTask<QueueImpl>* lid_heater_in)
-        -> void {
+        lid_heater_task::LidHeaterTask<QueueImpl>* lid_heater_in) -> void {
         comms = comms_in;
         system = system_in;
         thermal_plate = thermal_plate_in;

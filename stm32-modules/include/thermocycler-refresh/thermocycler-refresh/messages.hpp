@@ -103,6 +103,5 @@ using HostCommsMessage =
                    GetSystemInfoResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete>;
-using LidHeaterMessage =
-    ::std::variant<std::monostate, LidTempReadComplete>;
+using LidHeaterMessage = ::std::variant<std::monostate, LidTempReadComplete>;
 };  // namespace messages

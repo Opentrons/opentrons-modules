@@ -2,9 +2,11 @@ add_executable(
   ${TARGET_MODULE_NAME}-simulator
   cli_parser.cpp
   comm_thread.cpp
+  lid_heater_thread.cpp
   socket_sim_driver.cpp
   stdin_sim_driver.cpp
   system_thread.cpp 
+  thermal_plate_thread.cpp
   main.cpp
 )
 

@@ -25,7 +25,7 @@ auto main() -> int {
     auto thermal_plate = thermal_plate_control_task::start();
     auto lid_heater = lid_heater_control_task::start();
     tasks_aggregator.initialize(comms.task, system.task, thermal_plate.task,
-        lid_heater.task);
+                                lid_heater.task);
     vTaskStartScheduler();
     return 0;
 }

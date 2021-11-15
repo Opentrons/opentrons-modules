@@ -77,13 +77,12 @@ class LidHeaterTask {
           thermistor{.overtemp_limit_c = OVERTEMP_LIMIT_C,
                      .error_bit = State::LID_THERMISTOR_ERROR},
           state{.system_status = State::IDLE, .error_bitmap = 0},
-          pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS,
-                    1.0, -1.0) {}
+          pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS, 1.0,
+              -1.0) {}
     LidHeaterTask(const LidHeaterTask& other) = delete;
     auto operator=(const LidHeaterTask& other) -> LidHeaterTask& = delete;
     LidHeaterTask(LidHeaterTask&& other) noexcept = delete;
-    auto operator=(LidHeaterTask&& other) noexcept
-        -> LidHeaterTask& = delete;
+    auto operator=(LidHeaterTask&& other) noexcept -> LidHeaterTask& = delete;
     ~LidHeaterTask() = default;
     auto get_message_queue() -> Queue& { return message_queue; }
 
@@ -128,8 +127,8 @@ class LidHeaterTask {
     }
 
     template <typename Policy>
-    auto visit_message(const messages::LidTempReadComplete& msg,
-                       Policy& policy) -> void {
+    auto visit_message(const messages::LidTempReadComplete& msg, Policy& policy)
+        -> void {
         // TODO fill out this function
     }
 

@@ -17,7 +17,7 @@ enum class Notifications : uint8_t {
 static FreeRTOSMessageQueue<lid_heater_task::Message>
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
     _lid_heater_queue(static_cast<uint8_t>(Notifications::INCOMING_MESSAGE),
-                         "Lid Heater Queue");
+                      "Lid Heater Queue");
 
 static auto _task = lid_heater_task::LidHeaterTask(_lid_heater_queue);
 
@@ -43,8 +43,8 @@ static void run(void *param) {
 auto start()
     -> tasks::Task<TaskHandle_t,
                    lid_heater_task::LidHeaterTask<FreeRTOSMessageQueue>> {
-    auto *handle = xTaskCreateStatic(run, "LidHeater", stack.size(), &_task,
-                                     1, stack.data(), &data);
+    auto *handle = xTaskCreateStatic(run, "LidHeater", stack.size(), &_task, 1,
+                                     stack.data(), &data);
     _lid_heater_queue.provide_handle(handle);
     return tasks::Task<TaskHandle_t, decltype(_task)>{.handle = handle,
                                                       .task = &_task};
