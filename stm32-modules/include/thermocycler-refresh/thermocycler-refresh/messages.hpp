@@ -80,6 +80,16 @@ struct IncomingMessageFromHost {
     const char* limit;
 };
 
+struct ThermalPlateTempReadComplete {
+    uint16_t heat_sink;
+    uint16_t front_right;
+    uint16_t front_center;
+    uint16_t front_left;
+    uint16_t back_right;
+    uint16_t back_center;
+    uint16_t back_left;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage>;
@@ -87,4 +97,6 @@ using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, ForceUSBDisconnectMessage,
                    GetSystemInfoResponse>;
+using ThermalPlateMessage =
+    ::std::variant<std::monostate, ThermalPlateTempReadComplete>;
 };  // namespace messages

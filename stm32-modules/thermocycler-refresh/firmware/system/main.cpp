@@ -4,6 +4,7 @@
 #include "firmware/freertos_comms_task.hpp"
 #include "firmware/freertos_message_queue.hpp"
 #include "firmware/freertos_system_task.hpp"
+#include "firmware/freertos_thermal_plate_task.hpp"
 #include "system_stm32g4xx.h"
 #include "thermocycler-refresh/tasks.hpp"
 
@@ -20,7 +21,8 @@ auto main() -> int {
 
     auto system = system_control_task::start();
     auto comms = host_comms_control_task::start();
-    tasks_aggregator.initialize(comms.task, system.task);
+    auto thermal_plate = thermal_plate_control_task::start();
+    tasks_aggregator.initialize(comms.task, system.task, thermal_plate.task);
     vTaskStartScheduler();
     return 0;
 }
