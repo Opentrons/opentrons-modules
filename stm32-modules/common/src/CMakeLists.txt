@@ -9,10 +9,12 @@ find_package(Git QUIET)
 add_custom_command(
   COMMAND Python::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/generate_thermistor_table.py
     ${CMAKE_CURRENT_SOURCE_DIR}/ntcg104ed104dtdsx.csv
+    ${CMAKE_CURRENT_SOURCE_DIR}/ks103j2.csv
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/generate_thermistor_table.py
           ${CMAKE_CURRENT_SOURCE_DIR}/ntcg104ed104dtdsx.csv
+          ${CMAKE_CURRENT_SOURCE_DIR}/ks103j2.csv
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
          ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
