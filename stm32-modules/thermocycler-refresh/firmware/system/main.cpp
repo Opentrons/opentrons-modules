@@ -2,6 +2,7 @@
 
 #include "FreeRTOS.h"
 #include "firmware/freertos_comms_task.hpp"
+#include "firmware/freertos_lid_heater_task.hpp"
 #include "firmware/freertos_message_queue.hpp"
 #include "firmware/freertos_system_task.hpp"
 #include "firmware/freertos_thermal_plate_task.hpp"
@@ -22,7 +23,9 @@ auto main() -> int {
     auto system = system_control_task::start();
     auto comms = host_comms_control_task::start();
     auto thermal_plate = thermal_plate_control_task::start();
-    tasks_aggregator.initialize(comms.task, system.task, thermal_plate.task);
+    auto lid_heater = lid_heater_control_task::start();
+    tasks_aggregator.initialize(comms.task, system.task, thermal_plate.task,
+        lid_heater.task);
     vTaskStartScheduler();
     return 0;
 }

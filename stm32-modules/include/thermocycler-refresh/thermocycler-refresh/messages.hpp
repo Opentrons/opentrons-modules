@@ -90,6 +90,10 @@ struct ThermalPlateTempReadComplete {
     uint16_t back_left;
 };
 
+struct LidTempReadComplete {
+    uint16_t temp;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage>;
@@ -99,4 +103,6 @@ using HostCommsMessage =
                    GetSystemInfoResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete>;
+using LidHeaterMessage =
+    ::std::variant<std::monostate, LidTempReadComplete>;
 };  // namespace messages
