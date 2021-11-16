@@ -278,6 +278,15 @@ class SystemTask {
     }
 
     template <typename Policy>
+    auto visit_message(const messages::HandleLEDSetupError& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.with_error = msg.with_error};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
     requires SystemExecutionPolicy<Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
         static_cast<void>(message);

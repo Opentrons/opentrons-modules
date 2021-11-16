@@ -116,6 +116,10 @@ struct IdentifyModuleStopLEDMessage {
 
 struct CheckLEDBlinkStatusMessage {};
 
+struct HandleLEDSetupError {
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
+};
+
 struct EnterBootloaderMessage {
     uint32_t id;
 };
@@ -257,7 +261,7 @@ using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage, SetLEDMessage,
                    IdentifyModuleStartLEDMessage, IdentifyModuleStopLEDMessage,
-                   CheckLEDBlinkStatusMessage>;
+                   CheckLEDBlinkStatusMessage, HandleLEDSetupError>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,

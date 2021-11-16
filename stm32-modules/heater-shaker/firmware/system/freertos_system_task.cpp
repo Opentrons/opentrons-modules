@@ -11,6 +11,7 @@
 #include "heater-shaker/tasks.hpp"
 #include "system_policy.hpp"
 #include "task.h"
+#include "heater-shaker/errors.hpp"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
@@ -44,6 +45,12 @@ static StaticTask_t
 // to pick the function type
 static void run(void *param) {
     system_hardware_setup();
+    if (!system_hardware_setup_led()) {
+      //throw error?!
+      auto &queue = _task.get_message_queue();
+      auto LED_setup_error_message = messages::HandleLEDSetupError{.with_error = errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR};
+      static_cast<void>(queue.try_send(LED_setup_error_message, 10));
+    }
     static constexpr uint32_t delay_ticks = 100;
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto *task = reinterpret_cast<decltype(_task) *>(param);

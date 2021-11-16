@@ -83,9 +83,9 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c)
     
   /*##-4- Configure the NVIC for I2C ########################################*/   
   /* NVIC for I2Cx */
-  HAL_NVIC_SetPriority(I2Cx_ER_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(I2Cx_ER_IRQn, 12, 0);
   HAL_NVIC_EnableIRQ(I2Cx_ER_IRQn);
-  HAL_NVIC_SetPriority(I2Cx_EV_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(I2Cx_EV_IRQn, 12, 0);
   HAL_NVIC_EnableIRQ(I2Cx_EV_IRQn);
 }
 

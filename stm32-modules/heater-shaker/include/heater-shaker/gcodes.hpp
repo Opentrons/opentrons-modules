@@ -680,14 +680,12 @@ struct SetLEDDebug {
     ** Set LED Debug uses a random gcode, M998.D, adjacent to the firmware
     ** update gcode, M997
     ** Format: M998.D <which_LED_mode>
-    ** Example: M998.D 0 selects WHITE_ON mode and turns the three white LEDs on
+    ** Example: M998.D 0 selects WHITE_ON mode and turns the white LED on
     */
     using ParseResult = std::optional<SetLEDDebug>;
     static constexpr auto prefix = std::array{'M', '9', '9', '8', '.', 'D', ' '};
     static constexpr const char* response = "M998.D OK\n";
     LED_MODE mode;
-    //std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> updatebuffer = {};
-    //uint8_t which = 0;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -711,30 +709,23 @@ struct SetLEDDebug {
         if (!value_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        //std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> tempBuffer = {}; //ensure initialized as 12 0's
-        //uint8_t index = static_cast<uint8_t>(value_res.first.value());
-        //tempBuffer[index] = (uint8_t)0x30;
         LED_MODE tempMode = static_cast<LED_MODE>(value_res.first.value());
         return std::make_pair(ParseResult(SetLEDDebug{.mode = tempMode}),
                               value_res.second);
-        //return std::make_pair(ParseResult(SetLED{.which = index}),
-        //                      value_res.second);
     }
 };
 
 struct IdentifyModuleStartLED {
     /*
     ** IdentifyModuleStartLED uses a random gcode, M998, adjacent to the firmware
-    ** update gcode, M997, to start blinking the three white LEDs
+    ** update gcode, M997, to start blinking the white LED
     ** Format: M998
-    ** Example: M998 starts blinking the three white LEDs
+    ** Example: M998 starts blinking the white LED
     */
     using ParseResult = std::optional<IdentifyModuleStartLED>;
     static constexpr auto prefix = std::array{'M', '9', '9', '8'};
     static constexpr const char* response = "M998 OK\n";
     LED_MODE mode;
-    //std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> updatebuffer = {};
-    //uint8_t which = 0;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -762,16 +753,14 @@ struct IdentifyModuleStartLED {
 struct IdentifyModuleStopLED {
     /*
     ** IdentifyModuleStopLED uses a random gcode, M999, adjacent to the identify
-    ** module start LED gcode, M998, to stop blinking the three white LEDs
+    ** module start LED gcode, M998, to stop blinking the white LED
     ** Format: M999
-    ** Example: M999 stops blinking the three white LEDs
+    ** Example: M999 stops blinking the white LED
     */
     using ParseResult = std::optional<IdentifyModuleStopLED>;
     static constexpr auto prefix = std::array{'M', '9', '9', '9'};
     static constexpr const char* response = "M999 OK\n";
     LED_MODE mode;
-    //std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> updatebuffer = {};
-    //uint8_t which = 0;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&

@@ -59,7 +59,6 @@ void system_hardware_setup(void);
 void system_hardware_enter_bootloader(void);
 bool system_hardware_setup_led(void);
 bool system_hardware_set_led(LED_MODE mode);
-//bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operation);
 bool system_hardware_set_led_send(uint16_t register_address, uint8_t* set_buffer, uint16_t buffer_size);
 bool system_hardware_I2C_ready(void);
 

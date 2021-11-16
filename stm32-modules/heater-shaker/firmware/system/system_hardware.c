@@ -13,8 +13,8 @@ I2C_HandleTypeDef I2cHandle;
 
 uint8_t PWMInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI};
 uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_OUT_HI, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-uint8_t UpdateBuffer[1] = {0};
-uint8_t ShutdownBuffer[1] = {1};
+uint8_t UpdateBuffer[1] = {0x00};
+uint8_t ShutdownBuffer[1] = {0x01};
 uint8_t WhiteOnBuffer[1] = {LED_OUT_HI};
 uint8_t WhiteOffBuffer[1] = {0x00};
 uint8_t RedOnBuffer[9] = {LED_OUT_HI};
@@ -42,10 +42,6 @@ void system_hardware_setup(void) {
 
     HAL_I2C_Init(&I2cHandle);
     HAL_I2CEx_ConfigAnalogFilter(&I2cHandle,I2C_ANALOGFILTER_ENABLE); //do this?
-
-    if (!system_hardware_setup_led()) {
-      //throw error?!
-    }
 }
 
 // This is the start of the sys memory region from the datasheet. It should be the
@@ -95,51 +91,8 @@ asm volatile (
   : "memory"  );
 }
 
-//bool system_hardware_set_led(uint8_t aTxBuffer[SYSTEM_WIDE_TXBUFFERSIZE], I2C_Operations operation) {
-/*bool system_hardware_set_led_original(uint8_t* aTxBuffer, I2C_Operations operation) {
-  //loop thru bits
-  //if bit_previous != bit
-    //if 1, set register high
-    //else set low
-  //enum for bit-to-register table? or just add bit # to base_register?
-  //store current state as previous state
-  
-  //eventually have a enum table at high level for mapping LEDs (and their states) to array index/state
-  //#define LED_OUTPUT_HIGH
-  //have system UpdateLED visit_message first check if I2C ready (policy->system_hardware_I2C_ready),
-    //if not ready, send another UpdateLED message?!
-
-  //check all files in stm32tools template project
-
-  //do transmit like main.c lines 132-154? How does that syntax work?
-  //Should error check. Use HAL_I2C_ErrorCallback()?!
-  //won't callback signal end of transmission?
-  //returns bool for transmit_start_success
-
-  uint16_t base_register = 0;
-
-  switch(operation) {
-    case PWM_Init:
-      base_register = (uint16_t)BASE_PWM_REGISTER;
-      break;
-    case LED_Control:
-      base_register = (uint16_t)BASE_REGISTER;
-      break;
-  }
-
-  //have enum struct w preset LED state arrays (all PRD states). In systemwide?
-  //how to blink LEDs?
-  //write, take, write, take, give in ISR (give error if error callback). ulTaskNotifyTake
-
-  HAL_StatusTypeDef status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, base_register,
-    (uint16_t)REGISTER_SIZE, (uint8_t*)aTxBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
-  //if ((status == HAL_OK) && (operation == LED_Control)) { //only update after LED control transmit at initialization
-  //  status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
-  //    (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
-  //}
-  return (status == HAL_OK); //translate into error/no error at policy level, create Ack Message at end of StartSetLED System_Task function
-}*/
-
+//check all files in stm32tools template project
+//do transmit like main.c lines 132-154? How does that syntax work?
 //does NotifyTake block? Just system task? Just means task set aside until interrupt?
 
 bool system_hardware_setup_led(void) {
@@ -251,13 +204,6 @@ void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *I2cHandle)
   portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
-/**
-  * @brief  I2C error callbacks.
-  * @param  I2cHandle: I2C handle
-  * @note   This example shows a simple way to report transfer error, and you can
-  *         add your own implementation.
-  * @retval None
-  */
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
 {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -266,17 +212,6 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
   xTaskToNotify = NULL;
   portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
-
-//*********** was in example project, but think including is wrong and cause of build errors *************
-/**
-  * @brief  This function handles SysTick Handler.
-  * @param  None
-  * @retval None
-  */
-/*void SysTick_Handler(void)
-{
-  HAL_IncTick();
-}*/
 
 /******************************************************************************/
 /*                 STM32F3xx Peripherals Interrupt Handlers                  */
@@ -288,7 +223,7 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
   * @brief  This function handles I2C event interrupt request.
   * @param  None
   * @retval None
-  * @Note   This function is redefined in "main.h" and related to I2C data transmission
+  * @Note   This function is redefined in "system_hardware.h" and related to I2C data transmission
   */
 void I2Cx_EV_IRQHandler(void)
 {
@@ -299,7 +234,7 @@ void I2Cx_EV_IRQHandler(void)
   * @brief  This function handles I2C error interrupt request.
   * @param  None
   * @retval None
-  * @Note   This function is redefined in "main.h" and related to I2C error
+  * @Note   This function is redefined in "system_hardware.h" and related to I2C error
   */
 void I2Cx_ER_IRQHandler(void)
 {
