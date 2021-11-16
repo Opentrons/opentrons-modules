@@ -16,10 +16,7 @@
 */
 
 namespace thermistor_conversion {
-enum class ThermistorType {
-    NTCG104ED104DTDSX,
-    KS103J2G
-};
+enum class ThermistorType { NTCG104ED104DTDSX, KS103J2G };
 
 enum class Error { OUT_OF_RANGE_LOW, OUT_OF_RANGE_HIGH };
 
@@ -38,12 +35,12 @@ struct Conversion {
      */
     Conversion(ThermistorType thermistor, double bias_resistance_nominal_kohm,
                uint8_t adc_max_bits);
-    /** 
+    /**
      * This initializer builds a converter with a literal bitmap of the
      * max ADC values instead of the number of bits - required when the
      * max voltage of the circuit doesn't match with the ref voltage.
-     * 
-     * NOTE - the param is_signed is ignored for now, but is useful to 
+     *
+     * NOTE - the param is_signed is ignored for now, but is useful to
      * force differentiation between constructors.
      */
     Conversion(ThermistorType thermistor, double bias_resistance_nominal_kohm,
@@ -64,10 +61,13 @@ struct Conversion {
     /**
      * Looks for the first table entry with a resistance GREATER than the input
      */
-    [[nodiscard]] auto resistance_table_lookup(double resistance) const -> TableResult;
+    [[nodiscard]] auto resistance_table_lookup(double resistance) const
+        -> TableResult;
     /**
-     * Looks for the first table entry with a temperature LESS THAN than the input
+     * Looks for the first table entry with a temperature LESS THAN than the
+     * input
      */
-    [[nodiscard]] auto temperature_table_lookup(double temperature) const -> TableResult;
+    [[nodiscard]] auto temperature_table_lookup(double temperature) const
+        -> TableResult;
 };
 };  // namespace thermistor_conversion

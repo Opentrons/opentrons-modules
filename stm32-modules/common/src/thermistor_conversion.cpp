@@ -16,8 +16,9 @@ Conversion::Conversion(ThermistorType thermistor,
       _bias_resistance_kohm(bias_resistance_nominal_kohm),
       _type(thermistor) {}
 
-Conversion::Conversion(ThermistorType thermistor, double bias_resistance_nominal_kohm,
-               uint16_t adc_max_value, bool is_signed)
+Conversion::Conversion(ThermistorType thermistor,
+                       double bias_resistance_nominal_kohm,
+                       uint16_t adc_max_value, bool is_signed)
     : _adc_max(static_cast<double>(adc_max_value)),
       _adc_max_result(
           static_cast<uint16_t>(static_cast<uint32_t>(adc_max_value))),
@@ -47,14 +48,10 @@ Conversion::Conversion(ThermistorType thermistor, double bias_resistance_nominal
 [[nodiscard]] auto Conversion::temperature_from_resistance(
     double resistance) const -> Result {
     auto entries = resistance_table_lookup(resistance);
-    if(std::holds_alternative<TableError>(entries))
-    {
-        if(std::get<TableError>(entries) == TableError::TABLE_END)
-        {
+    if (std::holds_alternative<TableError>(entries)) {
+        if (std::get<TableError>(entries) == TableError::TABLE_END) {
             return Result(Error::OUT_OF_RANGE_HIGH);
-        }
-        else
-        {
+        } else {
             return Result(Error::OUT_OF_RANGE_LOW);
         }
     }
@@ -73,14 +70,10 @@ Conversion::Conversion(ThermistorType thermistor, double bias_resistance_nominal
 [[nodiscard]] auto Conversion::backconvert(double temperature) const
     -> uint16_t {
     auto entries = temperature_table_lookup(temperature);
-    if(std::holds_alternative<TableError>(entries))
-    {
-        if(std::get<TableError>(entries) == TableError::TABLE_END)
-        {
+    if (std::holds_alternative<TableError>(entries)) {
+        if (std::get<TableError>(entries) == TableError::TABLE_END) {
             return _adc_max_result;
-        }
-        else
-        {
+        } else {
             return 0;
         }
     }
@@ -98,83 +91,70 @@ Conversion::Conversion(ThermistorType thermistor, double bias_resistance_nominal
                                  ((_bias_resistance_kohm / resistance) + 1.0));
 }
 
+[[nodiscard]] auto Conversion::resistance_table_lookup(double resistance) const
+    -> TableResult {
+    auto compare = [resistance](auto elem) { return elem.first < resistance; };
 
-[[nodiscard]] auto Conversion::resistance_table_lookup(double resistance) const -> TableResult {
-    auto compare = [resistance](auto elem) { return elem.second < resistance; };
-
-    switch(_type)
-    {
-    case ThermistorType::NTCG104ED104DTDSX: {
-        auto first_less = std::find_if(
-            lookups::NTCG104ED104DTDSX().cbegin(),
-            lookups::NTCG104ED104DTDSX().end(),
-            compare);
-        if(first_less == lookups::NTCG104ED104DTDSX().cbegin())
-        {
-            return TableResult(TableError::TABLE_CBEGIN);
-        }
-        if(first_less == lookups::NTCG104ED104DTDSX().end())
-        {
-            return TableResult(TableError::TABLE_END);
-        }
-        return TableResult(TableEntryPair(*first_less, *(first_less - 1)));
+    switch (_type) {
+        case ThermistorType::NTCG104ED104DTDSX: {
+            auto first_less =
+                std::find_if(lookups::NTCG104ED104DTDSX().cbegin(),
+                             lookups::NTCG104ED104DTDSX().end(), compare);
+            if (first_less == lookups::NTCG104ED104DTDSX().cbegin()) {
+                return TableResult(TableError::TABLE_CBEGIN);
+            }
+            if (first_less == lookups::NTCG104ED104DTDSX().end()) {
+                return TableResult(TableError::TABLE_END);
+            }
+            return TableResult(TableEntryPair(*first_less, *(first_less - 1)));
+        } break;
+        case ThermistorType::KS103J2G: {
+            auto first_less = std::find_if(lookups::KS103J2G().cbegin(),
+                                           lookups::KS103J2G().end(), compare);
+            if (first_less == lookups::KS103J2G().cbegin()) {
+                return TableResult(TableError::TABLE_CBEGIN);
+            }
+            if (first_less == lookups::KS103J2G().end()) {
+                return TableResult(TableError::TABLE_END);
+            }
+            return TableResult(TableEntryPair(*first_less, *(first_less - 1)));
+        } break;
     }
-        break;
-    case ThermistorType::KS103J2G: {
-        auto first_less = std::find_if(
-            lookups::KS103J2G().cbegin(),
-            lookups::KS103J2G().end(),
-            compare);
-        if(first_less == lookups::KS103J2G().cbegin())
-        {
-            return TableResult(TableError::TABLE_CBEGIN);
-        }
-        if(first_less == lookups::KS103J2G().end())
-        {
-            return TableResult(TableError::TABLE_END);
-        }
-        return TableResult(TableEntryPair(*first_less, *(first_less - 1)));
-    }
-        break;
-    }
+    // Should never return here
+    return TableResult(TableError::TABLE_END);
 }
 
-[[nodiscard]] auto Conversion::temperature_table_lookup(double temperature) const -> TableResult {
-    auto compare = [temperature](auto elem) { return elem.second > temperature; };
+[[nodiscard]] auto Conversion::temperature_table_lookup(
+    double temperature) const -> TableResult {
+    auto compare = [temperature](auto elem) {
+        return elem.second > temperature;
+    };
 
-    switch(_type)
-    {
-    case ThermistorType::NTCG104ED104DTDSX: {
-        auto first_less = std::find_if(
-            lookups::NTCG104ED104DTDSX().cbegin(),
-            lookups::NTCG104ED104DTDSX().end(),
-            compare);
-        if(first_less == lookups::NTCG104ED104DTDSX().cbegin())
-        {
-            return TableResult(TableError::TABLE_CBEGIN);
-        }
-        if(first_less == lookups::NTCG104ED104DTDSX().end())
-        {
-            return TableResult(TableError::TABLE_END);
-        }
-        return TableResult(TableEntryPair(*first_less, *(first_less - 1)));
+    switch (_type) {
+        case ThermistorType::NTCG104ED104DTDSX: {
+            auto first_less =
+                std::find_if(lookups::NTCG104ED104DTDSX().cbegin(),
+                             lookups::NTCG104ED104DTDSX().end(), compare);
+            if (first_less == lookups::NTCG104ED104DTDSX().cbegin()) {
+                return TableResult(TableError::TABLE_CBEGIN);
+            }
+            if (first_less == lookups::NTCG104ED104DTDSX().end()) {
+                return TableResult(TableError::TABLE_END);
+            }
+            return TableResult(TableEntryPair(*first_less, *(first_less - 1)));
+        } break;
+        case ThermistorType::KS103J2G: {
+            auto first_less = std::find_if(lookups::KS103J2G().cbegin(),
+                                           lookups::KS103J2G().end(), compare);
+            if (first_less == lookups::KS103J2G().cbegin()) {
+                return TableResult(TableError::TABLE_CBEGIN);
+            }
+            if (first_less == lookups::KS103J2G().end()) {
+                return TableResult(TableError::TABLE_END);
+            }
+            return TableResult(TableEntryPair(*first_less, *(first_less - 1)));
+        } break;
     }
-        break;
-    case ThermistorType::KS103J2G: {
-        auto first_less = std::find_if(
-            lookups::KS103J2G().cbegin(),
-            lookups::KS103J2G().end(),
-            compare);
-        if(first_less == lookups::KS103J2G().cbegin())
-        {
-            return TableResult(TableError::TABLE_CBEGIN);
-        }
-        if(first_less == lookups::KS103J2G().end())
-        {
-            return TableResult(TableError::TABLE_END);
-        }
-        return TableResult(TableEntryPair(*first_less, *(first_less - 1)));
-    }
-        break;
-    }
+    // Should never return here
+    return TableResult(TableError::TABLE_END);
 }
