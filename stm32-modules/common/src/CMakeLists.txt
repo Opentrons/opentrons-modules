@@ -40,6 +40,8 @@ set_target_properties(${TARGET_MODULE_NAME}-core
 
 target_include_directories(${TARGET_MODULE_NAME}-core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
+  # We keep the Binary dir private for common so that other projects linking aginst it don't have
+  # to worry about collisions between different versions of the thermistor table headers.
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}  # need to add this to get the generated conversion header
   )
 

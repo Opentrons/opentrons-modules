@@ -16,7 +16,7 @@ add_executable(${TARGET_MODULE_NAME}
 target_include_directories(${TARGET_MODULE_NAME} 
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/common
-    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/../src  # need to add this to get the generated conversion header)
+    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/../src  # need to add this to get the generated conversion header
 )
 
 set_target_properties(${TARGET_MODULE_NAME}

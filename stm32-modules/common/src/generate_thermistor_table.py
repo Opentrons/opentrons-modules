@@ -182,7 +182,7 @@ class SourceAndHeaderGenerator:
             ])
         return '\n'.join([
             ret,
-            '};',
+            '}',
             ''
         ])
 

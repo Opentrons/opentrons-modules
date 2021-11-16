@@ -1,0 +1,105 @@
+{
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "macFrameworkPath": [],
+            "compilerPath": "/usr/local/bin/gcc-10",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "macos-gcc-x64"
+        },
+        {
+            "name": "Cross",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "macFrameworkPath": [],
+            "compilerPath": "stm32-tools/gcc-arm-embedded/Darwin/bin/arm-none-eabi-g++",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++20",
+            "intelliSenseMode": "macos-gcc-arm"
+        },
+        {
+            "name": "thermocycler-cross",
+            "includePath": [
+                "${workspaceFolder}/stm32-tools/**",
+                "${workspaceFolder}/stm32-modules/common/**",
+                "${workspaceFolder}/stm32-modules/include/common/**",
+                "${workspaceFolder}/stm32-modules/include/thermocycler-refresh/**",
+                "${workspaceFolder}/build-stm32-cross/stm32-modules/common/**",
+                "${workspaceFolder}/stm32-modules/thermocycler-refresh/**"
+            ],
+            "defines": [
+                "STM32G491xx"
+            ],
+            "macFrameworkPath": [],
+            "compilerPath": "${workspaceFolder}/stm32-tools/gcc-arm-embedded/Darwin/bin/arm-none-eabi-g++",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++20",
+            "intelliSenseMode": "macos-gcc-arm"
+        },
+        {
+            "name": "thermocycler-host",
+            "includePath": [
+                "${workspaceFolder}/stm32-tools/**",
+                "${workspaceFolder}/stm32-modules/common/**",
+                "${workspaceFolder}/stm32-modules/include/common/**",
+                "${workspaceFolder}/stm32-modules/include/thermocycler-refresh/**",
+                "${workspaceFolder}/build-stm32-cross/stm32-modules/common/**",
+                "${workspaceFolder}/stm32-modules/thermocycler-refresh/**"
+            ],
+            "defines": [
+                "STM32G491xx"
+            ],
+            "macFrameworkPath": [],
+            "compilerPath": "/usr/local/bin/gcc-10",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++20",
+            "intelliSenseMode": "macos-gcc-x64"
+        },
+        {
+            "name": "heater-shaker-cross",
+            "includePath": [
+                "${workspaceFolder}/stm32-tools/**",
+                "${workspaceFolder}/stm32-modules/common/**",
+                "${workspaceFolder}/stm32-modules/include/common/**",
+                "${workspaceFolder}/stm32-modules/include/heater-shaker/**",
+                "${workspaceFolder}/build-stm32-cross/stm32-modules/common/**",
+                "${workspaceFolder}/stm32-modules/heater-shaker/**"
+            ],
+            "defines": [
+                "STM32G491xx"
+            ],
+            "macFrameworkPath": [],
+            "compilerPath": "${workspaceFolder}/stm32-tools/gcc-arm-embedded/Darwin/bin/arm-none-eabi-g++",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++20",
+            "intelliSenseMode": "macos-gcc-arm"
+        },
+        {
+            "name": "heater-shaker-host",
+            "includePath": [
+                "${workspaceFolder}/stm32-tools/**",
+                "${workspaceFolder}/stm32-modules/common/**",
+                "${workspaceFolder}/stm32-modules/include/common/**",
+                "${workspaceFolder}/stm32-modules/include/heater-shaker/**",
+                "${workspaceFolder}/build-stm32-cross/stm32-modules/common/**",
+                "${workspaceFolder}/stm32-modules/heater-shaker/**"
+            ],
+            "defines": [
+                "STM32G491xx"
+            ],
+            "macFrameworkPath": [],
+            "compilerPath": "/usr/local/bin/gcc-10",
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++20",
+            "intelliSenseMode": "macos-gcc-x64"
+        }
+    ],
+    "version": 4
+}
