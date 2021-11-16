@@ -6,6 +6,24 @@
 find_package(Python)
 find_package(Git QUIET)
 
+# Generate the thermistor table for this project
+set(COMMON_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src)
+
+add_custom_command(
+  COMMAND Python::Interpreter ${COMMON_SRC_DIR}/generate_thermistor_table.py
+    ${COMMON_SRC_DIR}/ntcg104ed104dtdsx.csv
+    ${COMMON_SRC_DIR}/ks103j2.csv
+    "KS"
+    ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
+    ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
+  DEPENDS ${COMMON_SRC_DIR}/generate_thermistor_table.py
+          ${COMMON_SRC_DIR}/ntcg104ed104dtdsx.csv
+          ${COMMON_SRC_DIR}/ks103j2.csv
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
+         ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )
+
 # This is like version for project but works when there aren't any tags yet
 execute_process(COMMAND ${GIT_EXECUTABLE} describe --tags --match "${TARGET_MODULE_NAME}*"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -34,6 +52,7 @@ set(CORE_LINTABLE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/errors.cpp
   )
 set(CORE_NONLINTABLE_SOURCES
+    ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 
 add_library(${TARGET_MODULE_NAME}-core STATIC
@@ -49,7 +68,7 @@ target_link_libraries(${TARGET_MODULE_NAME}-core common-core)
 
 target_include_directories(${TARGET_MODULE_NAME}-core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
-  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}../../common/src  # need to add this to get the generated conversion header
+  PUBLIC ${CMAKE_CURRENT_BINARY_DIR}  # need to add this to get the generated conversion header
   )
 
 target_compile_options(${TARGET_MODULE_NAME}-core

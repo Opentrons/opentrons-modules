@@ -60,32 +60,9 @@ class NTCG104ED104DTDSXGenerator:
 
     def generate_header(self):
         return '\n'.join([
-            f'{self._incremental_space} [[nodiscard]] auto {self.name()}(void) -> const {self.array_type()}&;'
-        ])
-
-    def generate_source(self):
-        output_lines = [f'{{ {self._extractor(l)}, {self.Temp(l)} }}' for l in self._lines]
-        joiner = ',\n' + self._incremental_space + self._start_space
-        output_body = self._start_space + self._incremental_space + joiner.join(output_lines)
-        total = len(output_lines)
-        array_header = f'{self._start_space}{self.array_type()} {self.tablename()} = {{ {{'
-        array_footer = self._start_space + '} };\n'
-        function = '\n'.join([
-            f'[[nodiscard]] auto lookups::{self.name()}(void) -> const {self.array_type()}& {{',
-            f'{self._incremental_space}return {self.tablename()};',
-            '}'
-            ])
-        return '\n'.join([
-            self.includes(),
-            '#include "thermistor_lookups.hpp"',
-            '',
-            '',
-            array_header,
-            output_body,
-            array_footer,
-            '',
-            function,
-            ''
+            f'{self._incremental_space}struct {self.name()}{{',
+            f'{self._incremental_space}{self._incremental_space}[[nodiscard]] auto operator()(void) -> const {self.array_type()}&;',
+            f'{self._incremental_space}}};'
         ])
 
     def generate_table(self):
@@ -103,7 +80,7 @@ class NTCG104ED104DTDSXGenerator:
     
     def generate_function(self):
         return '\n'.join([
-            f'[[nodiscard]] auto lookups::{self.name()}(void) -> const {self.array_type()}& {{',
+            f'[[nodiscard]] auto lookups::{self.name()}::operator()(void) -> const {self.array_type()}& {{',
             f'{self._incremental_space}return {self.tablename()};',
             '}'
             ])
@@ -142,7 +119,9 @@ class KS103J2Generator:
 
     def generate_header(self):
         return '\n'.join([
-            f'{self._incremental_space} [[nodiscard]] auto {self.name()}(void) -> const {self.array_type()}&;'
+            f'{self._incremental_space}struct {self.name()}{{',
+            f'{self._incremental_space}{self._incremental_space}[[nodiscard]] auto operator()(void) -> const {self.array_type()}&;',
+            f'{self._incremental_space}}};'
         ])
     
     def generate_table(self):
@@ -160,7 +139,7 @@ class KS103J2Generator:
     
     def generate_function(self):
         return '\n'.join([
-            f'[[nodiscard]] auto lookups::{self.name()}(void) -> const {self.array_type()}& {{',
+            f'[[nodiscard]] auto lookups::{self.name()}::operator()(void) -> const {self.array_type()}& {{',
             f'{self._incremental_space}return {self.tablename()};',
             '}'
             ])
@@ -169,49 +148,79 @@ class KS103J2Generator:
 # Meta-generator that generates source/header files containing the thermistor
 # table classes from above
 class SourceAndHeaderGenerator:
-    def __init__(self, ntc_file, ks_file,
+    def __init__(self, ntc_file, ks_file, include_opt,
                  at_space_depth = 0,
                  incremental_space_depth = 2):
         self.ntc_generator = NTCG104ED104DTDSXGenerator(ntc_file, 'nominal')
         self.ks_generator = KS103J2Generator(ks_file)
+        self.include_ntc = True 
+        self.include_ks  = True
+        if(include_opt.lower() == 'ntc'):
+            self.include_ks = False
+        elif(include_opt.lower() == 'ks'):
+            self.include_ntc = False
 
     def includes(self):
         return '\n'.join(['#include <cstdint>', '#include <array>', '#include <utility>'])
     
     def generate_header(self):
-        return '\n'.join([
+        ret = '\n'.join([
             '#pragma once',
             '',
             self.includes(),
-            'namespace lookups {',
-            self.ntc_generator.generate_header(),
-            self.ks_generator.generate_header(),
+            'namespace lookups {'
+        ])
+        if(self.include_ntc):
+            ret = '\n'.join([
+                ret,
+                self.ntc_generator.generate_header()
+            ])
+        if(self.include_ks):
+            ret = '\n'.join([
+                ret,
+                self.ks_generator.generate_header()
+            ])
+        return '\n'.join([
+            ret,
             '};',
             ''
         ])
 
     def generate_source(self):
-        return '\n'.join([
+        ret = '\n'.join([
             self.includes(),
             '#include "thermistor_lookups.hpp"',
             '',
             '',
-            self.ntc_generator.generate_table(),
-            '',
-            self.ks_generator.generate_table(),
-            '',
-            self.ntc_generator.generate_function(),
-            '',
-            self.ks_generator.generate_function(),
-            ''
         ])
+        if(self.include_ntc):
+            ret = '\n'.join([
+                ret,
+                self.ntc_generator.generate_table(),
+                '',
+                self.ntc_generator.generate_function(),
+                ''
+            ])
+        if(self.include_ks):
+            ret = '\n'.join([
+                ret,
+                self.ks_generator.generate_table(),
+                '',
+                self.ks_generator.generate_function(),
+                ''
+            ])
+
+        return ret
 
 def get_args():
     parser = argparse.ArgumentParser(__file__, 'Generate a thermistor lookup table')
     parser.add_argument('ntcfile',  metavar='INCSV', type=argparse.FileType('r'),
                         help='The CSV to read NTCG104 info from')
-    parser.add_argument('ksfile',  metavar='INCSV', type=argparse.FileType('r'),
+    parser.add_argument('ksfile',  metavar='INCSV2', type=argparse.FileType('r'),
                         help='The CSV to read KS103j2 info from')
+    parser.add_argument('include', metavar='TABLESELECT',
+                        type=str,
+                        help='Which files to include: NTC, KS, or BOTH')
     parser.add_argument('outheader', metavar='OUTHEADER',
                         type=argparse.FileType('w'),
                         help='The destination path to write the generated header file'
@@ -224,7 +233,7 @@ def get_args():
 def generate(args):
     generator = SourceAndHeaderGenerator(csv.reader(args.ntcfile),
                                          csv.reader(args.ksfile),
-                                         'nominal')
+                                         args.include)
     args.outheader.write(generator.generate_header())
     args.outsource.write(generator.generate_source())
 

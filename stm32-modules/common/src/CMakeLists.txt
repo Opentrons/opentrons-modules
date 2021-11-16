@@ -10,6 +10,7 @@ add_custom_command(
   COMMAND Python::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/generate_thermistor_table.py
     ${CMAKE_CURRENT_SOURCE_DIR}/ntcg104ed104dtdsx.csv
     ${CMAKE_CURRENT_SOURCE_DIR}/ks103j2.csv
+    "BOTH"
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/generate_thermistor_table.py
@@ -23,7 +24,6 @@ add_custom_command(
 # Configure lintable/nonlintable sources here
 set(CORE_LINTABLE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/pid.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/thermistor_conversion.cpp
   )
 set(CORE_NONLINTABLE_SOURCES 
   ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp

@@ -5,6 +5,24 @@
 find_package(Python)
 find_package(Git QUIET)
 
+# Generate the thermistor table for this project
+set(COMMON_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src)
+
+add_custom_command(
+  COMMAND Python::Interpreter ${COMMON_SRC_DIR}/generate_thermistor_table.py
+    ${COMMON_SRC_DIR}/ntcg104ed104dtdsx.csv
+    ${COMMON_SRC_DIR}/ks103j2.csv
+    "NTC"
+    ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
+    ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
+  DEPENDS ${COMMON_SRC_DIR}/generate_thermistor_table.py
+          ${COMMON_SRC_DIR}/ntcg104ed104dtdsx.csv
+          ${COMMON_SRC_DIR}/ks103j2.csv
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
+         ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )
+
 # This is like version for project but works when there aren't any tags yet
 execute_process(COMMAND ${GIT_EXECUTABLE} describe --tags --match "heater-shaker*"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -33,6 +51,7 @@ set(CORE_LINTABLE_SOURCES
   )
 
 set(CORE_NONLINTABLE_SOURCES
+  ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 
 add_library(heater-shaker-core STATIC
@@ -48,7 +67,7 @@ target_link_libraries(heater-shaker-core common-core)
 
 target_include_directories(heater-shaker-core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/heater-shaker
-  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}../../common/src  # need to add this to get the generated conversion header
+  PUBLIC ${CMAKE_CURRENT_BINARY_DIR} # need to add this to get the generated conversion header
   )
 
 target_compile_options(heater-shaker-core
