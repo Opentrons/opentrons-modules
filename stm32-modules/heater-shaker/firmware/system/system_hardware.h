@@ -10,9 +10,8 @@ extern "C" {
 #include "systemwide.h"
 
 #define I2C_ADDRESS        0x6C
-/* I2C TIMING Register define when I2C clock source is SYSCLK */
-/* I2C TIMING is calculated in case of the I2C Clock source is the SYSCLK = 72 MHz */
-/* This example use TIMING to 0x00C4092A to reach 1 MHz speed (Rise time = 26ns, Fall time = 2ns) */
+/* I2C TIMING Register is defined when I2C clock source is SYSCLK (true) */
+/* I2C TIMING is calculated using SYSCLK = 72 MHz, I2C Speed Frequency = 100 KHz, Rise Time = 100ns, and Fall Time = 100ns */
 #define I2C_TIMING      0x00201D2B
 
 /* Definition for I2Cx clock resources */

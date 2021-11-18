@@ -46,7 +46,7 @@ static StaticTask_t
 static void run(void *param) {
     system_hardware_setup();
     if (!system_hardware_setup_led()) {
-      //throw error?!
+      //throw error
       auto &queue = _task.get_message_queue();
       auto LED_setup_error_message = messages::HandleLEDSetupError{.with_error = errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR};
       static_cast<void>(queue.try_send(LED_setup_error_message, 10));

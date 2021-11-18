@@ -4,7 +4,7 @@
 #include "stm32f3xx_hal_cortex.h"
 #include "system_hardware.h"
 #include "systemwide.h"
-#include "FreeRTOS.h" //need?
+#include "FreeRTOS.h"
 #include "task.h"
 #include <string.h>
 
@@ -41,7 +41,7 @@ void system_hardware_setup(void) {
     I2cHandle.Init.NoStretchMode   = I2C_NOSTRETCH_DISABLE;
 
     HAL_I2C_Init(&I2cHandle);
-    HAL_I2CEx_ConfigAnalogFilter(&I2cHandle,I2C_ANALOGFILTER_ENABLE); //do this?
+    HAL_I2CEx_ConfigAnalogFilter(&I2cHandle,I2C_ANALOGFILTER_ENABLE);
 }
 
 // This is the start of the sys memory region from the datasheet. It should be the
@@ -90,10 +90,6 @@ asm volatile (
   : "r" (*sysmem_boot_loc)
   : "memory"  );
 }
-
-//check all files in stm32tools template project
-//do transmit like main.c lines 132-154? How does that syntax work?
-//does NotifyTake block? Just system task? Just means task set aside until interrupt?
 
 bool system_hardware_setup_led(void) {
   uint32_t ulNotificationValue;

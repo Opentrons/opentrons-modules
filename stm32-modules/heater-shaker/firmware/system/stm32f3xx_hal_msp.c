@@ -20,33 +20,12 @@
 /* Includes ------------------------------------------------------------------*/
 #include "system_hardware.h"
 
-/** @addtogroup STM32F3xx_HAL_Examples
-  * @{
-  */
-
-/** @defgroup HAL_MSP
-  * @brief HAL MSP module.
-  * @{
-  */
-
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-/* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
-
-/** @defgroup HAL_MSP_Private_Functions
-  * @{
-  */
-
 /**
   * @brief I2C MSP Initialization 
-  *        This function configures the hardware resources used in this example: 
+  *        This function configures the hardware resources used in our application: 
   *           - Peripheral's clock enable
   *           - Peripheral's GPIO Configuration  
-  *           - DMA configuration for transmission request by peripheral 
-  *           - NVIC configuration for DMA interrupt request enable
+  *           - NVIC configuration for interrupt request enable
   * @param hi2c: I2C handle pointer
   * @retval None
   */
@@ -91,9 +70,9 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c)
 
 /**
   * @brief I2C MSP De-Initialization 
-  *        This function frees the hardware resources used in this example:
+  *        This function frees the hardware resources used in our application:
   *          - Disable the Peripheral's clock
-  *          - Revert GPIO, DMA and NVIC configuration to their default state
+  *          - Revert GPIO and NVIC configuration to their default state
   * @param hi2c: I2C handle pointer
   * @retval None
   */
@@ -114,17 +93,5 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c)
   HAL_NVIC_DisableIRQ(I2Cx_ER_IRQn);
   HAL_NVIC_DisableIRQ(I2Cx_EV_IRQn);
 }
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
