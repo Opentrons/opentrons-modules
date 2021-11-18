@@ -37,10 +37,9 @@ class HostCommsTask {
     using Queue = QueueImpl<Message>;
 
   private:
-    using GCodeParser =
-        gcode::GroupParser<gcode::EnterBootloader, gcode::GetSystemInfo,
-                           gcode::SetSerialNumber, gcode::GetLidTemperatureDebug,
-                           gcode::GetPlateTemperatureDebug>;
+    using GCodeParser = gcode::GroupParser<
+        gcode::EnterBootloader, gcode::GetSystemInfo, gcode::SetSerialNumber,
+        gcode::GetLidTemperatureDebug, gcode::GetPlateTemperatureDebug>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
