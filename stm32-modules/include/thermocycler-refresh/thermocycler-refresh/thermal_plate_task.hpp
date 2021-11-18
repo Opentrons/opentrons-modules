@@ -65,7 +65,7 @@ class ThermalPlateTask {
     using Queue = QueueImpl<Message>;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 50;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 10.0;
-    static constexpr uint8_t ADC_BIT_DEPTH = 16;
+    static constexpr uint16_t ADC_BIT_MAX = 0x5DC1;
     static constexpr uint8_t PLATE_THERM_COUNT = 7;
     // TODO most of these defaults will have to change
     static constexpr double DEFAULT_KI = 0.102;
@@ -83,47 +83,85 @@ class ThermalPlateTask {
         CONTROL_PERIOD_TICKS * 0.001;
 
     explicit ThermalPlateTask(Queue& q)
-        : message_queue(q),
-          task_registry(nullptr),
-          peltier_left{.id = PELTIER_LEFT,
-                       .enabled = false,
-                       .temp_current = 0.0,
-                       .temp_target = 0.0},
-          peltier_right{.id = PELTIER_RIGHT,
+        : _message_queue(q),
+          _task_registry(nullptr),
+          _peltier_left{.id = PELTIER_LEFT,
                         .enabled = false,
                         .temp_current = 0.0,
                         .temp_target = 0.0},
-          peltier_center{.id = PELTIER_CENTER,
+          _peltier_right{.id = PELTIER_RIGHT,
                          .enabled = false,
                          .temp_current = 0.0,
                          .temp_target = 0.0},
-          thermistors{{{.overtemp_limit_c = OVERTEMP_LIMIT_C,
-                        .error_bit = thermistorErrorBit(THERM_FRONT_RIGHT)},
-                       {.overtemp_limit_c = OVERTEMP_LIMIT_C,
-                        .error_bit = thermistorErrorBit(THERM_FRONT_LEFT)},
-                       {.overtemp_limit_c = OVERTEMP_LIMIT_C,
-                        .error_bit = thermistorErrorBit(THERM_FRONT_CENTER)},
-                       {.overtemp_limit_c = OVERTEMP_LIMIT_C,
-                        .error_bit = thermistorErrorBit(THERM_BACK_RIGHT)},
-                       {.overtemp_limit_c = OVERTEMP_LIMIT_C,
-                        .error_bit = thermistorErrorBit(THERM_BACK_LEFT)},
-                       {.overtemp_limit_c = OVERTEMP_LIMIT_C,
-                        .error_bit = thermistorErrorBit(THERM_BACK_CENTER)},
-                       {.overtemp_limit_c = OVERTEMP_LIMIT_C,
-                        .error_bit = thermistorErrorBit(THERM_HEATSINK)}}},
-          state{.system_status = State::IDLE, .error_bitmap = 0},
-          plate_pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS,
-                    1.0, -1.0) {}
+          _peltier_center{.id = PELTIER_CENTER,
+                          .enabled = false,
+                          .temp_current = 0.0,
+                          .temp_target = 0.0},
+          _thermistors{
+              {{.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                .disconnected_error =
+                    errors::ErrorCode::THERMISTOR_FRONT_RIGHT_DISCONNECTED,
+                .short_error = errors::ErrorCode::THERMISTOR_FRONT_RIGHT_SHORT,
+                .overtemp_error =
+                    errors::ErrorCode::THERMISTOR_FRONT_RIGHT_OVERTEMP,
+                .error_bit = thermistorErrorBit(THERM_FRONT_RIGHT)},
+               {.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                .disconnected_error =
+                    errors::ErrorCode::THERMISTOR_FRONT_LEFT_DISCONNECTED,
+                .short_error = errors::ErrorCode::THERMISTOR_FRONT_LEFT_SHORT,
+                .overtemp_error =
+                    errors::ErrorCode::THERMISTOR_FRONT_LEFT_OVERTEMP,
+                .error_bit = thermistorErrorBit(THERM_FRONT_LEFT)},
+               {.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                .disconnected_error =
+                    errors::ErrorCode::THERMISTOR_FRONT_CENTER_DISCONNECTED,
+                .short_error = errors::ErrorCode::THERMISTOR_FRONT_CENTER_SHORT,
+                .overtemp_error =
+                    errors::ErrorCode::THERMISTOR_FRONT_CENTER_OVERTEMP,
+                .error_bit = thermistorErrorBit(THERM_FRONT_CENTER)},
+               {.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                .disconnected_error =
+                    errors::ErrorCode::THERMISTOR_BACK_RIGHT_DISCONNECTED,
+                .short_error = errors::ErrorCode::THERMISTOR_BACK_RIGHT_SHORT,
+                .overtemp_error =
+                    errors::ErrorCode::THERMISTOR_BACK_RIGHT_OVERTEMP,
+                .error_bit = thermistorErrorBit(THERM_BACK_RIGHT)},
+               {.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                .disconnected_error =
+                    errors::ErrorCode::THERMISTOR_BACK_LEFT_DISCONNECTED,
+                .short_error = errors::ErrorCode::THERMISTOR_BACK_LEFT_SHORT,
+                .overtemp_error =
+                    errors::ErrorCode::THERMISTOR_BACK_LEFT_OVERTEMP,
+                .error_bit = thermistorErrorBit(THERM_BACK_LEFT)},
+               {.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                .disconnected_error =
+                    errors::ErrorCode::THERMISTOR_BACK_CENTER_DISCONNECTED,
+                .short_error = errors::ErrorCode::THERMISTOR_BACK_CENTER_SHORT,
+                .overtemp_error =
+                    errors::ErrorCode::THERMISTOR_BACK_CENTER_OVERTEMP,
+                .error_bit = thermistorErrorBit(THERM_BACK_CENTER)},
+               {.overtemp_limit_c = OVERTEMP_LIMIT_C,
+                .disconnected_error =
+                    errors::ErrorCode::THERMISTOR_HEATSINK_DISCONNECTED,
+                .short_error = errors::ErrorCode::THERMISTOR_HEATSINK_SHORT,
+                .overtemp_error =
+                    errors::ErrorCode::THERMISTOR_HEATSINK_OVERTEMP,
+                .error_bit = thermistorErrorBit(THERM_HEATSINK)}}},
+          _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
+                     false),
+          _state{.system_status = State::IDLE, .error_bitmap = 0},
+          _plate_pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS,
+                     1.0, -1.0) {}
     ThermalPlateTask(const ThermalPlateTask& other) = delete;
     auto operator=(const ThermalPlateTask& other) -> ThermalPlateTask& = delete;
     ThermalPlateTask(ThermalPlateTask&& other) noexcept = delete;
     auto operator=(ThermalPlateTask&& other) noexcept
         -> ThermalPlateTask& = delete;
     ~ThermalPlateTask() = default;
-    auto get_message_queue() -> Queue& { return message_queue; }
+    auto get_message_queue() -> Queue& { return _message_queue; }
 
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
-        task_registry = other_tasks;
+        _task_registry = other_tasks;
     }
 
     /**
@@ -147,7 +185,7 @@ class ThermalPlateTask {
         // anywhere up to the provided timeout, which drives the controller
         // frequency.
 
-        static_cast<void>(message_queue.recv(&message));
+        static_cast<void>(_message_queue.recv(&message));
         std::visit(
             [this, &policy](const auto& msg) -> void {
                 this->visit_message(msg, policy);
@@ -157,25 +195,109 @@ class ThermalPlateTask {
 
   private:
     template <typename Policy>
+    requires ThermalPlateExecutionPolicy<Policy>
     auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
         static_cast<void>(policy);
         static_cast<void>(_ignore);
     }
 
     template <typename Policy>
+    requires ThermalPlateExecutionPolicy<Policy>
     auto visit_message(const messages::ThermalPlateTempReadComplete& msg,
                        Policy& policy) -> void {
-        // TODO fill out this function
+        handle_temperature_conversion(msg.front_right,
+                                      _thermistors[THERM_FRONT_RIGHT]);
+        handle_temperature_conversion(msg.front_left,
+                                      _thermistors[THERM_FRONT_LEFT]);
+        handle_temperature_conversion(msg.front_center,
+                                      _thermistors[THERM_FRONT_CENTER]);
+        handle_temperature_conversion(msg.back_right,
+                                      _thermistors[THERM_BACK_RIGHT]);
+        handle_temperature_conversion(msg.back_left,
+                                      _thermistors[THERM_BACK_LEFT]);
+        handle_temperature_conversion(msg.back_center,
+                                      _thermistors[THERM_BACK_CENTER]);
+        handle_temperature_conversion(msg.heat_sink,
+                                      _thermistors[THERM_HEATSINK]);
     }
 
-    Queue& message_queue;
-    tasks::Tasks<QueueImpl>* task_registry;
-    Peltier peltier_left;
-    Peltier peltier_right;
-    Peltier peltier_center;
-    std::array<Thermistor, PLATE_THERM_COUNT> thermistors;
-    State state;
-    PID plate_pid;
+    template <typename Policy>
+    requires ThermalPlateExecutionPolicy<Policy>
+    auto visit_message(const messages::GetPlateTemperatureDebugMessage& msg,
+                       Policy& policy) -> void {
+        auto response = messages::GetPlateTemperatureDebugResponse{
+            .responding_to_id = msg.id,
+            .heat_sink_temp = _thermistors[THERM_HEATSINK].temp_c,
+            .front_right_temp = _thermistors[THERM_FRONT_RIGHT].temp_c,
+            .front_center_temp = _thermistors[THERM_FRONT_CENTER].temp_c,
+            .front_left_temp = _thermistors[THERM_FRONT_LEFT].temp_c,
+            .back_right_temp = _thermistors[THERM_BACK_RIGHT].temp_c,
+            .back_center_temp = _thermistors[THERM_BACK_CENTER].temp_c,
+            .back_left_temp = _thermistors[THERM_BACK_LEFT].temp_c,
+            .heat_sink_adc = _thermistors[THERM_HEATSINK].last_adc,
+            .front_right_adc = _thermistors[THERM_FRONT_RIGHT].last_adc,
+            .front_center_adc = _thermistors[THERM_FRONT_CENTER].last_adc,
+            .front_left_adc = _thermistors[THERM_FRONT_LEFT].last_adc,
+            .back_right_adc = _thermistors[THERM_BACK_RIGHT].last_adc,
+            .back_center_adc = _thermistors[THERM_BACK_CENTER].last_adc,
+            .back_left_adc = _thermistors[THERM_BACK_LEFT].last_adc};
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    auto handle_temperature_conversion(uint16_t conversion_result,
+                                       Thermistor& thermistor) -> void {
+        auto visitor = [this, &thermistor](const auto value) -> void {
+            this->visit_conversion(thermistor, value);
+        };
+
+        thermistor.last_adc = conversion_result;
+        auto old_error = thermistor.error;
+        std::visit(visitor, _converter.convert(conversion_result));
+        if (old_error != thermistor.error) {
+            if (thermistor.error != errors::ErrorCode::NO_ERROR) {
+                _state.error_bitmap |= thermistor.error_bit;
+                auto error_message = messages::HostCommsMessage(
+                    messages::ErrorMessage{.code = thermistor.error});
+                static_cast<void>(
+                    _task_registry->comms->get_message_queue().try_send(
+                        error_message));
+            }
+        }
+    }
+
+    auto visit_conversion(Thermistor& therm,
+                          const thermistor_conversion::Error error) -> void {
+        switch (error) {
+            case thermistor_conversion::Error::OUT_OF_RANGE_LOW: {
+                therm.temp_c = 0;
+                therm.error = therm.short_error;
+            }
+            case thermistor_conversion::Error::OUT_OF_RANGE_HIGH: {
+                therm.temp_c = 0;
+                therm.error = therm.disconnected_error;
+            }
+        }
+    }
+
+    auto visit_conversion(Thermistor& therm, const double temp) -> void {
+        if (temp > therm.overtemp_limit_c) {
+            therm.error = therm.overtemp_error;
+        } else {
+            therm.error = errors::ErrorCode::NO_ERROR;
+        }
+        therm.temp_c = temp;
+    }
+
+    Queue& _message_queue;
+    tasks::Tasks<QueueImpl>* _task_registry;
+    Peltier _peltier_left;
+    Peltier _peltier_right;
+    Peltier _peltier_center;
+    std::array<Thermistor, PLATE_THERM_COUNT> _thermistors;
+    thermistor_conversion::Conversion<lookups::KS103J2G> _converter;
+    State _state;
+    PID _plate_pid;
 };
 
 }  // namespace thermal_plate_task

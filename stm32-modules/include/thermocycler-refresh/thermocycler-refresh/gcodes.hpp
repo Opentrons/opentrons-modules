@@ -182,4 +182,103 @@ struct SetSerialNumber {
     }
 };
 
+struct GetLidTemperatureDebug {
+    /**
+     * GetLidTemperatureDebug uses M141.D, debug version of M141
+     *
+     * - Lid thermistor temperature (LT)
+     * - Lid thermistor last ADC reading (LD)
+     */
+    using ParseResult = std::optional<GetLidTemperatureDebug>;
+    static constexpr auto prefix = std::array{'M', '1', '4', '1', '.', 'D'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit, double lid_temp,
+                                    uint16_t lid_adc) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf), "141.D LT:%0.2f LD:%d OK\n",
+                            static_cast<float>(lid_temp), lid_adc);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetLidTemperatureDebug()), working);
+    }
+};
+
+struct GetPlateTemperatureDebug {
+    /**
+     * GetPlateTemperatureDebug uses M105.D, debug version of M105
+     *
+     * - Heat sink temp (HST)
+     * - Front right temp (FRT)
+     * - Front left temp (FLT)
+     * - Front center temp (FCT)
+     * - Back right temp (BRT)
+     * - Back left temp (BLT)
+     * - Back center temp (BCT)
+     * - Heat sink ADC (HSA)
+     * - Front right adc (FRA)
+     * - Front left adc (FLA)
+     * - Front center adc (FCA)
+     * - Back right adc (BRA)
+     * - Back left adc (BLA)
+     * - Back center adc (BCA)
+     */
+    using ParseResult = std::optional<GetPlateTemperatureDebug>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '5', '.', 'D'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(
+        InputIt buf, InLimit limit, double heat_sink_temp,
+        double front_right_temp, double front_left_temp,
+        double front_center_temp, double back_right_temp, double back_left_temp,
+        double back_center_temp, uint16_t heat_sink_adc,
+        uint16_t front_right_adc, uint16_t front_left_adc,
+        uint16_t front_center_adc, uint16_t back_right_adc,
+        uint16_t back_left_adc, uint16_t back_center_adc) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf),
+                            "M105.D HST:%0.2f FRT:%0.2f FLT:%0.2f FCT:%0.2f "
+                            "BRT:%0.2f BLT:%0.2f BCT:%0.2f HSA:%d FRA:%d "
+                            "FLA:%d FCA:%d BRA:%d BLA:%d BCA:%d OK\n",
+                            static_cast<float>(heat_sink_temp),
+                            static_cast<float>(front_right_temp),
+                            static_cast<float>(front_left_temp),
+                            static_cast<float>(front_center_temp),
+                            static_cast<float>(back_right_temp),
+                            static_cast<float>(back_left_temp),
+                            static_cast<float>(back_center_temp), heat_sink_adc,
+                            front_right_adc, front_left_adc, front_center_adc,
+                            back_right_adc, back_left_adc, back_center_adc);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetPlateTemperatureDebug()), working);
+    }
+};
+
 }  // namespace gcode

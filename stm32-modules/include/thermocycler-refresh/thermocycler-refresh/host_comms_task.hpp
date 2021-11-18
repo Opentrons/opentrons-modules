@@ -39,10 +39,13 @@ class HostCommsTask {
   private:
     using GCodeParser =
         gcode::GroupParser<gcode::EnterBootloader, gcode::GetSystemInfo,
-                           gcode::SetSerialNumber>;
+                           gcode::SetSerialNumber, gcode::GetLidTemperatureDebug,
+                           gcode::GetPlateTemperatureDebug>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
+    using GetLidTempDebugCache = AckCache<8, gcode::GetLidTemperatureDebug>;
+    using GetPlateTempDebugCache = AckCache<8, gcode::GetPlateTemperatureDebug>;
 
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
@@ -53,7 +56,11 @@ class HostCommsTask {
           // builds complain NOLINTNEXTLINE(readability-redundant-member-init)
           ack_only_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          get_system_info_cache() {}
+          get_system_info_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_lid_temp_debug_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_plate_temp_debug_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -255,6 +262,57 @@ class HostCommsTask {
         return tx_into;
     }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(
+        const messages::GetPlateTemperatureDebugResponse& response,
+        InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry = get_plate_temp_debug_cache.remove_if_present(
+            response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.heat_sink_temp,
+                        response.front_right_temp, response.front_left_temp,
+                        response.front_center_temp, response.back_right_temp,
+                        response.back_left_temp, response.back_center_temp,
+                        response.heat_sink_adc, response.front_right_adc,
+                        response.front_left_adc, response.front_center_adc,
+                        response.back_right_adc, response.back_left_adc,
+                        response.back_center_adc);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetLidTemperatureDebugResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry = get_lid_temp_debug_cache.remove_if_present(
+            response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.lid_temp, response.lid_adc);
+                }
+            },
+            cache_entry);
+    }
     /**
      * visit_gcode() is a set of member function overloads, each of which is
      * called when we parse the appropriate gcode out of the receive buffer.
@@ -349,6 +407,56 @@ class HostCommsTask {
         return std::make_pair(true, tx_into);
     }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetLidTemperatureDebug& gcode,
+                     InputIt tx_into, InputLimit tx_limit)
+        -> std::pair<bool, InputIt> {
+        auto id = get_lid_temp_debug_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+
+        auto message = messages::GetLidTemperatureDebugMessage{.id = id};
+        if (!task_registry->lid_heater->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetPlateTemperatureDebug& gcode,
+                     InputIt tx_into, InputLimit tx_limit)
+        -> std::pair<bool, InputIt> {
+        auto id = get_plate_temp_debug_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+
+        auto message = messages::GetPlateTemperatureDebugMessage{.id = id};
+        if (!task_registry->thermal_plate->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+
+        return std::make_pair(true, tx_into);
+    }
+
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -365,6 +473,8 @@ class HostCommsTask {
     tasks::Tasks<QueueImpl>* task_registry;
     AckOnlyCache ack_only_cache;
     GetSystemInfoCache get_system_info_cache;
+    GetLidTempDebugCache get_lid_temp_debug_cache;
+    GetPlateTempDebugCache get_plate_temp_debug_cache;
     bool may_connect_latch = true;
 };
 

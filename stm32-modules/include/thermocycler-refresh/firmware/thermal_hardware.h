@@ -4,19 +4,19 @@
 extern "C" {
 #endif  // __cplusplus
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 /** Defines the interrupt pins available for reading results.*/
-typedef enum {
-    ADC1_ITR,
-    ADC2_ITR
-} ADC_ITR_T;
+typedef enum { ADC1_ITR, ADC2_ITR } ADC_ITR_T;
+
+/** Cloned interrupt to use names for the ADC's.*/
+typedef enum { ADC_FRONT = ADC1_ITR, ADC_REAR = ADC2_ITR } ADC_ID_t;
 
 #define ADC_ITR_NUM (2)
 
 /**
- * Initializes all thermal hardware. Sets a static, thread-safe 
+ * Initializes all thermal hardware. Sets a static, thread-safe
  * variable to indicate completion to thermal_hardware_wait_for_init
  */
 void thermal_hardware_setup(void);
@@ -46,7 +46,7 @@ bool thermal_i2c_write_16(uint16_t addr, uint8_t reg, uint16_t val);
  * task context! It relies on a mutex to lock the commmunication!
  * @param[in] addr The device address to read from
  * @param[in] reg The register address to read from
- * @param[out] val Returns the two-byte value that was read. The MSB is 
+ * @param[out] val Returns the two-byte value that was read. The MSB is
  * the first byte read, and the LSB is the latter byte read.
  * @return true on success, false  on error
  */
@@ -65,7 +65,8 @@ void thermal_arm_adc_for_read(ADC_ITR_T id);
 void thermal_adc_ready_callback(ADC_ITR_T id);
 
 /**
- * @brief This function handles I2C2 event interrupt / I2C2 wake-up interrupt through EXTI line 24.
+ * @brief This function handles I2C2 event interrupt / I2C2 wake-up interrupt
+ * through EXTI line 24.
  */
 void I2C2_EV_IRQHandler(void);
 /**
@@ -76,4 +77,4 @@ void I2C2_ER_IRQHandler(void);
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
-#endif /* THERMAL_HARDWARE_H__ */
+#endif  /* THERMAL_HARDWARE_H__ */

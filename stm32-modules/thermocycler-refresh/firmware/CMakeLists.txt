@@ -18,8 +18,9 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${SYSTEM_DIR}/main.cpp 
   ${SYSTEM_DIR}/freertos_system_task.cpp
   ${SYSTEM_DIR}/system_policy.cpp
-  ${COMMS_DIR}/freertos_comms_task.cpp
   ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
+  ${COMMS_DIR}/freertos_comms_task.cpp
+  ${THERMAL_DIR}/ads1115.cpp
   ${THERMAL_DIR}/freertos_thermal_plate_task.cpp
   ${THERMAL_DIR}/thermal_plate_policy.cpp
   ${THERMAL_DIR}/freertos_lid_heater_task.cpp
@@ -32,9 +33,11 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/stm32g4xx_it.c
   ${SYSTEM_DIR}/system_hardware.c
   ${SYSTEM_DIR}/stm32g4xx_hal_timebase_tim.c
+  ${SYSTEM_DIR}/stm32g4xx_hal_msp.c
   ${SYSTEM_DIR}/system_serial_number.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
+  ${THERMAL_DIR}/thermal_hardware.c
   )
 
 add_executable(${TARGET_MODULE_NAME}

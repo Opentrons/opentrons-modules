@@ -38,6 +38,9 @@ struct Thermistor {
     // in order to capture errors specific to a sensor that require
     // a system restart to rectify
     const double overtemp_limit_c;
+    const errors::ErrorCode disconnected_error;
+    const errors::ErrorCode short_error;
+    const errors::ErrorCode overtemp_error;
     const uint8_t error_bit;
 };
 
