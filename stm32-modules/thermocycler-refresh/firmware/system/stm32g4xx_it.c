@@ -26,6 +26,8 @@
 #include "stm32g4xx_hal_tim.h"
 #include "stm32g4xx_hal_pcd.h"
 
+#include "firmware/thermal_hardware.h"
+
 /** @addtogroup STM32G4xx_HAL_Examples
  * @{
  */
@@ -128,6 +130,23 @@ void TIM7_IRQHandler(void)
   /* USER CODE BEGIN TIM7_IRQn 1 */
 
   /* USER CODE END TIM7_IRQn 1 */
+}
+
+/**
+ * @brief This function handles EXTI9-5 IRQ
+ */
+void EXTI9_5_IRQHandler(void)
+{
+    thermal_adc_ready_callback(ADC1_ITR);
+}
+
+/**
+ * @brief This function handles EXTI10-15 IRQ
+ */
+void EXTI15_10_IRQHandler(void)
+{
+    thermal_adc_ready_callback(ADC2_ITR);
+
 }
 
 

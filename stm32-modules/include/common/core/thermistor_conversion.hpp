@@ -97,7 +97,7 @@ struct Conversion {
     const double _bias_resistance_kohm;
 
     [[nodiscard]] auto resistance_from_adc(uint16_t adc_count) const -> Result {
-        if (adc_count == _adc_max_result) {
+        if (adc_count >= _adc_max_result) {
             return Result(Error::OUT_OF_RANGE_LOW);
         }
         if (adc_count == 0) {

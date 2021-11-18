@@ -91,7 +91,7 @@ struct ThermalPlateTempReadComplete {
 };
 
 struct LidTempReadComplete {
-    uint16_t temp;
+    uint16_t lid_temp;
 };
 
 using SystemMessage =
