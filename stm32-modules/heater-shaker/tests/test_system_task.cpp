@@ -153,7 +153,7 @@ SCENARIO("system task message passing") {
         }
 
         WHEN("sending a set-LED message as if from the host task") {
-            auto message = messages::StartSetLEDMessage{.id = 123};
+            auto message = messages::SetLEDMessage{.id = 123};
             tasks->get_system_queue().backing_deque.push_back(
                 messages::SystemMessage(message));
             tasks->get_system_task().run_once(tasks->get_system_policy());
@@ -173,7 +173,32 @@ SCENARIO("system task message passing") {
                     auto getackresponse =
                         std::get<messages::AcknowledgePrevious>(response);
                     REQUIRE(getackresponse.responding_to_id == message.id);
-                    REQUIRE(getackresponse.with_error == errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY);
+                    REQUIRE(getackresponse.with_error == errors::ErrorCode::NO_ERROR);
+                }
+            }
+        }
+        WHEN("sending a set-LED message as if from the host task") { //test blink routine
+            auto message = messages::SetLEDMessage{.id = 123};
+            tasks->get_system_queue().backing_deque.push_back(
+                messages::SystemMessage(message));
+            tasks->get_system_task().run_once(tasks->get_system_policy());
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_system_queue().backing_deque.empty());
+                AND_THEN(
+                    "the task should respond to the message to the host "
+                    "comms") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto getackresponse =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(getackresponse.responding_to_id == message.id);
+                    REQUIRE(getackresponse.with_error == errors::ErrorCode::NO_ERROR);
                 }
             }
         }

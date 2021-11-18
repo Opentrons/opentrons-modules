@@ -97,7 +97,12 @@ SCENARIO("heater task message passing") {
                     "the task should respond to the message to host comms") {
                     REQUIRE(
                         !tasks->get_host_comms_queue().backing_deque.empty());
-                    REQUIRE(tasks->get_system_queue().backing_deque.empty());
+                    auto system_response =
+                        tasks->get_system_queue().backing_deque.front();
+                    tasks->get_system_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::SetLEDMessage>(
+                            system_response));
                     auto response =
                         tasks->get_host_comms_queue().backing_deque.front();
                     tasks->get_host_comms_queue().backing_deque.pop_front();
@@ -132,9 +137,15 @@ SCENARIO("heater task message passing") {
             tasks->get_heater_queue().backing_deque.push_back(
                 messages::HeaterMessage(message));
             tasks->run_heater_task();
+            tasks->get_system_task().run_once(tasks->get_system_policy()); //handles SetLEDMessage
+            auto host_comms_response =
+                tasks->get_host_comms_queue().backing_deque.front();
+            tasks->get_host_comms_queue().backing_deque.pop_front();
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_heater_queue().backing_deque.empty());
                 AND_THEN("the task should respond to the message to system") {
+                    REQUIRE(std::holds_alternative<
+                            messages::AcknowledgePrevious>(host_comms_response));
                     REQUIRE(
                         tasks->get_host_comms_queue().backing_deque.empty());
                     REQUIRE(!tasks->get_system_queue().backing_deque.empty());

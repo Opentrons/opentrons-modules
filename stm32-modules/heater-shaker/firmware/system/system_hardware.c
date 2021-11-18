@@ -8,6 +8,23 @@
 #include "task.h"
 #include <string.h>
 
+#define BASE_PWM_REGISTER               0x04
+#define UPDATE_REGISTER                 0x13
+#define BASE_WHITE_REGISTER             0x17 //left white LED is on driver channel 4
+#define BASE_RED_REGISTER               0x1A //right red LED is on driver channel 7
+#define SHUTDOWN_REGISTER               0x00
+#define REGISTER_SIZE                   0x01
+
+#define LED_OUT_HI                      0x30 //full current output
+#define LED_PWM_OUT_HI                  0xFF //full pwm output
+#define LED_OUT_MID                     0x13 //low current output
+#define LED_PWM_OUT_MID                 0x4B //low pwm output
+
+#define I2C_ADDRESS        0x6C
+/* I2C TIMING Register is defined when I2C clock source is SYSCLK (true) */
+/* I2C TIMING is calculated using SYSCLK = 72 MHz, I2C Speed Frequency = 100 KHz, Rise Time = 100ns, and Fall Time = 100ns */
+#define I2C_TIMING      0x00201D2B
+
 static TaskHandle_t xTaskToNotify = NULL;
 I2C_HandleTypeDef I2cHandle;
 
@@ -19,6 +36,7 @@ uint8_t WhiteOnBuffer[1] = {LED_OUT_HI};
 uint8_t WhiteOffBuffer[1] = {0x00};
 uint8_t RedOnBuffer[9] = {LED_OUT_HI};
 uint8_t RedOffBuffer[9] = {0x00};
+bool CallbackStatus = false;
 
 void system_hardware_setup(void) {
     GPIO_InitTypeDef gpio_init = {
@@ -92,47 +110,26 @@ asm volatile (
 }
 
 bool system_hardware_setup_led(void) {
-  uint32_t ulNotificationValue;
-  const TickType_t xMaxBlockTime = pdMS_TO_TICKS( 100 );
-  HAL_StatusTypeDef status;
+  bool status;
 
-  configASSERT( xTaskToNotify == NULL );
-  xTaskToNotify = xTaskGetCurrentTaskHandle();
-  status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)SHUTDOWN_REGISTER,
-    (uint16_t)REGISTER_SIZE, (uint8_t*)ShutdownBuffer, (uint16_t)(sizeof(ShutdownBuffer)));
-  ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
-
-  if ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY)) {
-    configASSERT( xTaskToNotify == NULL );
-    xTaskToNotify = xTaskGetCurrentTaskHandle();
-    status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_PWM_REGISTER,
-      (uint16_t)REGISTER_SIZE, (uint8_t*)PWMInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
-    ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
-
-    if ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY)) {
-      configASSERT( xTaskToNotify == NULL );
-      xTaskToNotify = xTaskGetCurrentTaskHandle();
-      status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)BASE_WHITE_REGISTER,
-        (uint16_t)REGISTER_SIZE, (uint8_t*)OutputInitBuffer, (uint16_t)SYSTEM_WIDE_TXBUFFERSIZE);
-      ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
-
-      if ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY)) {
-        configASSERT( xTaskToNotify == NULL );
-        xTaskToNotify = xTaskGetCurrentTaskHandle();
-        status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
-          (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
-        ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
+  status = system_hardware_set_led_send(SHUTDOWN_REGISTER, ShutdownBuffer, sizeof(ShutdownBuffer));
+  if (status) {
+    status = system_hardware_set_led_send(BASE_PWM_REGISTER, PWMInitBuffer, SYSTEM_WIDE_TXBUFFERSIZE);
+    if (status) {
+      status = system_hardware_set_led_send(BASE_WHITE_REGISTER, OutputInitBuffer, SYSTEM_WIDE_TXBUFFERSIZE);
+      if (status) {
+        status = system_hardware_set_led_send(UPDATE_REGISTER, UpdateBuffer, sizeof(UpdateBuffer));
       }
     }
   }
-
-  return ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY));
+  return status;
 }
 
 bool system_hardware_set_led(LED_MODE mode) {
   uint16_t register_address;
   uint8_t* set_buffer;
   uint16_t buffer_size;
+  bool status;
 
   switch (mode) {
     case WHITE_ON:
@@ -162,7 +159,11 @@ bool system_hardware_set_led(LED_MODE mode) {
       break;
   }
 
-  return system_hardware_set_led_send(register_address, set_buffer, buffer_size);
+  status = system_hardware_set_led_send(register_address, set_buffer, buffer_size);
+  if (status) {
+    status = system_hardware_set_led_send(UPDATE_REGISTER, UpdateBuffer, sizeof(UpdateBuffer));
+  }
+  return status;
 }
 
 bool system_hardware_set_led_send(uint16_t register_address, uint8_t* set_buffer, uint16_t buffer_size) {
@@ -170,43 +171,42 @@ bool system_hardware_set_led_send(uint16_t register_address, uint8_t* set_buffer
   const TickType_t xMaxBlockTime = pdMS_TO_TICKS( 100 );
   HAL_StatusTypeDef status;
 
-  configASSERT( xTaskToNotify == NULL );
-  xTaskToNotify = xTaskGetCurrentTaskHandle();
-  status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)register_address,
-    (uint16_t)REGISTER_SIZE, (uint8_t*)set_buffer, (uint16_t)buffer_size);
-  ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
-
-  if ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY)) {
-    configASSERT( xTaskToNotify == NULL );
+  if (xTaskToNotify != NULL) {
+    return false;
+  } else {
     xTaskToNotify = xTaskGetCurrentTaskHandle();
-    status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)UPDATE_REGISTER,
-      (uint16_t)REGISTER_SIZE, (uint8_t*)UpdateBuffer, (uint16_t)(sizeof(UpdateBuffer)));
+    status = HAL_I2C_Mem_Write_IT(&I2cHandle, ((uint16_t)I2C_ADDRESS)<<1, (uint16_t)register_address,
+      (uint16_t)REGISTER_SIZE, (uint8_t*)set_buffer, (uint16_t)buffer_size);
     ulNotificationValue = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
+    return ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY) && (CallbackStatus));
   }
-
-  return ((status == HAL_OK) && (ulNotificationValue == 1) && (I2cHandle.State == HAL_I2C_STATE_READY));
-}
-
-bool system_hardware_I2C_ready(void) {
-  return (HAL_I2C_GetState(&I2cHandle) == HAL_I2C_STATE_READY);
 }
 
 void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 {
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  configASSERT( xTaskToNotify != NULL );
-  vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
-  xTaskToNotify = NULL;
-  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+  system_hardware_handle_i2c_callback();
 }
 
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
 {
+  CallbackStatus = false;
+  system_hardware_handle_i2c_callback();
+}
+
+void system_hardware_handle_i2c_callback(void) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  configASSERT( xTaskToNotify != NULL );
-  vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
-  xTaskToNotify = NULL;
-  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+  if (xTaskToNotify == NULL) {
+    CallbackStatus = false;
+  } else {
+    CallbackStatus = true;
+    vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
+    xTaskToNotify = NULL;
+    portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+  }
+}
+
+bool system_hardware_I2C_ready(void) {
+  return (HAL_I2C_GetState(&I2cHandle) == HAL_I2C_STATE_READY);
 }
 
 /******************************************************************************/

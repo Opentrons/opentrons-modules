@@ -12,7 +12,7 @@ class TestSystemPolicy {
         SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number = {};
     errors::ErrorCode set_serial_number_return = errors::ErrorCode::NO_ERROR;
-    bool test_I2C_ready = false;
+    uint16_t last_delay = 0;
 
   public:
     auto enter_bootloader() -> void;
@@ -23,7 +23,8 @@ class TestSystemPolicy {
         -> errors::ErrorCode;
     auto get_serial_number(void)
         -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
+    auto start_set_led(LED_MODE mode) -> errors::ErrorCode;
     auto check_I2C_ready(void) -> bool;
-    auto start_set_led(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer)
-        -> errors::ErrorCode;
+    auto delay_time_ms(uint16_t time_ms) -> void;
+    [[nodiscard]] auto test_get_last_delay() const -> uint16_t;
 };

@@ -32,15 +32,19 @@ auto TestSystemPolicy::get_serial_number(void)
     }
 }
 
-auto TestSystemPolicy::check_I2C_ready(void) -> bool {
-    if (!test_I2C_ready) {
-        return false;
-    } else {
-        return true;
-    }
-}
-
-auto TestSystemPolicy::start_set_led(std::array<uint8_t, SYSTEM_WIDE_TXBUFFERSIZE> aTxBuffer)
+auto TestSystemPolicy::start_set_led(LED_MODE mode)
     -> errors::ErrorCode {
     return errors::ErrorCode::NO_ERROR;
+}
+
+auto TestSystemPolicy::check_I2C_ready(void) -> bool {
+    return true;
+}
+
+auto TestSystemPolicy::delay_time_ms(uint16_t time_ms) -> void {
+    last_delay = time_ms;
+}
+
+auto TestSystemPolicy::test_get_last_delay() const -> uint16_t {
+    return last_delay;
 }

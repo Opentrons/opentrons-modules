@@ -1,23 +1,3 @@
-/**
-  ******************************************************************************
-  * @file    I2C/I2C_TwoBoards_ComIT/Src/stm32f3xx_hal_msp.c
-  * @author  MCD Application Team
-  * @brief   HAL MSP module.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2016 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
-
-/* Includes ------------------------------------------------------------------*/
 #include "system_hardware.h"
 
 /**
@@ -78,7 +58,6 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c)
   */
 void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c)
 {
-  
   /*##-1- Reset peripherals ##################################################*/
   I2Cx_FORCE_RESET();
   I2Cx_RELEASE_RESET();
@@ -93,5 +72,3 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c)
   HAL_NVIC_DisableIRQ(I2Cx_ER_IRQn);
   HAL_NVIC_DisableIRQ(I2Cx_EV_IRQn);
 }
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
