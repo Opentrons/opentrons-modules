@@ -9,6 +9,7 @@
 #include "heater-shaker/heater_task.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "thermistor_lookups.hpp"
 
 struct SimHeaterPolicy {
     [[nodiscard]] auto power_good() const -> bool { return true; }
@@ -32,8 +33,8 @@ struct heater_thread::TaskControlBlock {
 auto run(std::stop_token st,
          std::shared_ptr<heater_thread::TaskControlBlock> tcb) -> void {
     auto policy = SimHeaterPolicy();
-    auto converter = thermistor_conversion::Conversion(
-        thermistor_conversion::ThermistorType::NTCG104ED104DTDSX,
+    auto converter = thermistor_conversion::Conversion<
+        lookups::NTCG104ED104DTDSX>(
         heater_thread::SimHeaterTask::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
         heater_thread::SimHeaterTask::ADC_BIT_DEPTH);
     tcb->queue.set_stop_token(st);

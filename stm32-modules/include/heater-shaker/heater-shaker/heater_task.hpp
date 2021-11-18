@@ -14,6 +14,7 @@
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "thermistor_lookups.hpp"
 
 /* Need a forward declaration for this because of recursive includes */
 namespace tasks {
@@ -72,7 +73,8 @@ struct TemperatureSensor {
     const errors::ErrorCode short_error;
     const errors::ErrorCode overtemp_error;
     const double overtemp_limit_c;
-    const thermistor_conversion::Conversion conversion;
+    const thermistor_conversion::Conversion<lookups::NTCG104ED104DTDSX>
+        conversion;
     const uint8_t error_bit;
 };
 
@@ -112,9 +114,9 @@ class HeaterTask {
               .short_error = errors::ErrorCode::HEATER_THERMISTOR_A_SHORT,
               .overtemp_error = errors::ErrorCode::HEATER_THERMISTOR_A_OVERTEMP,
               .overtemp_limit_c = HEATER_PAD_OVERTEMP_SAFETY_LIMIT_C,
-              .conversion = thermistor_conversion::Conversion(
-                  thermistor_conversion::ThermistorType::NTCG104ED104DTDSX,
-                  THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
+              .conversion =
+                  thermistor_conversion::Conversion<lookups::NTCG104ED104DTDSX>(
+                      THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
               .error_bit = State::PAD_A_SENSE_ERROR},
           pad_b{
               .disconnected_error =
@@ -122,21 +124,22 @@ class HeaterTask {
               .short_error = errors::ErrorCode::HEATER_THERMISTOR_B_SHORT,
               .overtemp_error = errors::ErrorCode::HEATER_THERMISTOR_B_OVERTEMP,
               .overtemp_limit_c = HEATER_PAD_OVERTEMP_SAFETY_LIMIT_C,
-              .conversion = thermistor_conversion::Conversion(
-                  thermistor_conversion::ThermistorType::NTCG104ED104DTDSX,
-                  THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
+              .conversion =
+                  thermistor_conversion::Conversion<lookups::NTCG104ED104DTDSX>(
+                      THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
               .error_bit = State::PAD_B_SENSE_ERROR,
           },
-          board{.disconnected_error =
-                    errors::ErrorCode::HEATER_THERMISTOR_BOARD_DISCONNECTED,
-                .short_error = errors::ErrorCode::HEATER_THERMISTOR_BOARD_SHORT,
-                .overtemp_error =
-                    errors::ErrorCode::HEATER_THERMISTOR_BOARD_OVERTEMP,
-                .overtemp_limit_c = BOARD_OVERTEMP_SAFETY_LIMIT_C,
-                .conversion = thermistor_conversion::Conversion(
-                    thermistor_conversion::ThermistorType::NTCG104ED104DTDSX,
-                    THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
-                .error_bit = State::BOARD_SENSE_ERROR},
+          board{
+              .disconnected_error =
+                  errors::ErrorCode::HEATER_THERMISTOR_BOARD_DISCONNECTED,
+              .short_error = errors::ErrorCode::HEATER_THERMISTOR_BOARD_SHORT,
+              .overtemp_error =
+                  errors::ErrorCode::HEATER_THERMISTOR_BOARD_OVERTEMP,
+              .overtemp_limit_c = BOARD_OVERTEMP_SAFETY_LIMIT_C,
+              .conversion =
+                  thermistor_conversion::Conversion<lookups::NTCG104ED104DTDSX>(
+                      THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
+              .error_bit = State::BOARD_SENSE_ERROR},
           state{.system_status = State::IDLE, .error_bitmap = 0},
           pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_S, 1.0, -1.0),
           setpoint(0) {}

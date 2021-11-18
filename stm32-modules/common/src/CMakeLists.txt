@@ -9,10 +9,13 @@ find_package(Git QUIET)
 add_custom_command(
   COMMAND Python::Interpreter ${CMAKE_CURRENT_SOURCE_DIR}/generate_thermistor_table.py
     ${CMAKE_CURRENT_SOURCE_DIR}/ntcg104ed104dtdsx.csv
+    ${CMAKE_CURRENT_SOURCE_DIR}/ks103j2.csv
+    "BOTH"
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/generate_thermistor_table.py
           ${CMAKE_CURRENT_SOURCE_DIR}/ntcg104ed104dtdsx.csv
+          ${CMAKE_CURRENT_SOURCE_DIR}/ks103j2.csv
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
          ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -21,7 +24,6 @@ add_custom_command(
 # Configure lintable/nonlintable sources here
 set(CORE_LINTABLE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/pid.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/thermistor_conversion.cpp
   )
 set(CORE_NONLINTABLE_SOURCES 
   ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
@@ -38,6 +40,8 @@ set_target_properties(${TARGET_MODULE_NAME}-core
 
 target_include_directories(${TARGET_MODULE_NAME}-core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
+  # We keep the Binary dir private for common so that other projects linking aginst it don't have
+  # to worry about collisions between different versions of the thermistor table headers.
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}  # need to add this to get the generated conversion header
   )
 
