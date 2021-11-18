@@ -108,7 +108,8 @@ class KS103J2Generator:
     
     @staticmethod
     def Resistance(elems) -> float:
-        return elems[1]
+        # Need to return kilohms
+        return float(elems[1]) / 1000
     
     def name(self):
         return 'KS103J2G'
