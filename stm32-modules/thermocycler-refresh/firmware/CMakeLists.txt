@@ -151,7 +151,7 @@ add_custom_target(${TARGET_MODULE_NAME}-lint
   COMMENT "Linting"
   ALL
   COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS} ${CORE_LINTABLE_SOURCES} --config=
-  DEPENDS heater-shaker-core # Required to include the thermistor_lookups file, and possibly generate it if not present
+  DEPENDS thermocycler-refresh-core # Required to include the thermistor_lookups file, and possibly generate it if not present
 )
 
 # Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an
