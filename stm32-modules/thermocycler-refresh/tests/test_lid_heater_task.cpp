@@ -1,5 +1,5 @@
 #include "catch2/catch.hpp"
-#include "systemwide.hpp"
+#include "systemwide.h"
 #include "test/task_builder.hpp"
 #include "thermocycler-refresh/errors.hpp"
 #include "thermocycler-refresh/lid_heater_task.hpp"
