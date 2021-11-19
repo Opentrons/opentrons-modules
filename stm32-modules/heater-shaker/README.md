@@ -31,7 +31,7 @@ That means you can do stuff like
 When compiling the firmware using your local compiler (using the `stm32-host` cmake preset, running `cmake --build ./build-stm32-host`), you can
 - Build tests: `cmake --build ./build-stm32-host --target heater-shaker-tests`
 - Run tests: `cmake --build ./build-stm32-host --target test`
-- Format tests: `cmake --build ./build-stm32-test --target heater-shaker-format`
+- Format tests: `cmake --build ./build-stm32-host --target heater-shaker-format`
 - Build simulator: `cmake --build ./build-stm32-host --target heater-shaker-simulator` 
 - Build and Test: `cmake --build ./build-stm32-host --target heater-shaker-build-and-test` 
 
