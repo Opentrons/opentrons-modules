@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <variant>
 
-/** 
+/**
  * @file thermistor_conversion.hpp
  * @details
  * thermistor_conversion is a general-purpose c++ struct that can be
@@ -12,9 +12,9 @@
  * this struct calculates what it can at compile time and pushes the rest of
  * the parameter generation to the constructor to make the actual conversion
  * fast.
- * 
+ *
  * This class is meant to calculate the resistance of the \e second resistor
- * in a resistor ladder, AKA the resistor connected to ground. The 
+ * in a resistor ladder, AKA the resistor connected to ground. The
  * \c Conversion constructor assumes that the specified max ADC reading
  * equates to an R2 value of infinity, while an ADC reading of 0 would
  * equate to a shorted R2. The actual maximum voltage of the circuit doesn't
@@ -67,8 +67,8 @@ struct Conversion {
           _adc_max_result(
               static_cast<uint16_t>(static_cast<uint32_t>(adc_max_value))),
           _bias_resistance_kohm(bias_resistance_nominal_kohm) {
-              static_cast<void>(is_signed);
-          }
+        static_cast<void>(is_signed);
+    }
 
     Conversion() = delete;
 
@@ -156,7 +156,8 @@ struct Conversion {
         if (first_less == GetTable()().end()) {
             return TableResult(TableError::TABLE_END);
         }
-        return TableResult(TableEntryPair(*first_less, *std::prev(first_less, 1)));
+        return TableResult(
+            TableEntryPair(*first_less, *std::prev(first_less, 1)));
     }
 
     /**
@@ -177,7 +178,8 @@ struct Conversion {
         if (first_more == GetTable()().end()) {
             return TableResult(TableError::TABLE_END);
         }
-        return TableResult(TableEntryPair(*first_more, *std::prev(first_more, 1)));
+        return TableResult(
+            TableEntryPair(*first_more, *std::prev(first_more, 1)));
     }
 };
 };  // namespace thermistor_conversion
