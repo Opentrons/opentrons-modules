@@ -1,7 +1,7 @@
 #pragma once
 #include <array>
 
-#include "systemwide.hpp"
+#include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
 
 class TestSystemPolicy {
@@ -9,7 +9,7 @@ class TestSystemPolicy {
     bool entered = false;
     bool serial_number_set = false;
     static constexpr std::size_t SYSTEM_SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number = {};
     errors::ErrorCode set_serial_number_return = errors::ErrorCode::NO_ERROR;
 
