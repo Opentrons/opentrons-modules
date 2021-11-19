@@ -2,13 +2,23 @@
 #include <cstdint>
 #include <variant>
 
-/** thermistor_conversion is a general-purpose c++ struct that can be
+/** 
+ * @file thermistor_conversion.hpp
+ * @details
+ * thermistor_conversion is a general-purpose c++ struct that can be
  * parametrized with the real-world configuration values of an NTC
  * thermistor circuit. While the standard library doesn't implement compile
  * time math for a variety of reasons mostly having to do with error handling,
  * this struct calculates what it can at compile time and pushes the rest of
  * the parameter generation to the constructor to make the actual conversion
  * fast.
+ * 
+ * This class is meant to calculate the resistance of the \e second resistor
+ * in a resistor ladder, AKA the resistor connected to ground. The 
+ * \c Conversion constructor assumes that the specified max ADC reading
+ * equates to an R2 value of infinity, while an ADC reading of 0 would
+ * equate to a shorted R2. The actual maximum voltage of the circuit doesn't
+ * matter.
  */
 
 namespace thermistor_conversion {

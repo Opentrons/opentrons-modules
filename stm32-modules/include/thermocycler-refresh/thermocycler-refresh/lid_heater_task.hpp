@@ -56,7 +56,7 @@ class LidHeaterTask {
     using Queue = QueueImpl<Message>;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 100;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 10.0;
-    static constexpr uint16_t ADC_BIT_MAX = 0x5DC1;
+    static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
     // TODO most of these defaults will have to change
     static constexpr double DEFAULT_KI = 0.102;
     static constexpr double DEFAULT_KP = 0.97;
@@ -182,11 +182,13 @@ class LidHeaterTask {
         switch (error) {
             case thermistor_conversion::Error::OUT_OF_RANGE_LOW: {
                 therm.temp_c = 0;
-                therm.error = therm.short_error;
+                therm.error = therm.disconnected_error;
+                break;
             }
             case thermistor_conversion::Error::OUT_OF_RANGE_HIGH: {
                 therm.temp_c = 0;
-                therm.error = therm.disconnected_error;
+                therm.error = therm.short_error;
+                break;
             }
         }
     }
