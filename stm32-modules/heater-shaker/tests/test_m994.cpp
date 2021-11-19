@@ -6,7 +6,8 @@
 #include "heater-shaker/gcodes.hpp"
 #pragma GCC diagnostic pop
 
-SCENARIO("IdentifyModuleStartLED (M994) response works", "[gcode][parse][M994]") {
+SCENARIO("IdentifyModuleStartLED (M994) response works",
+         "[gcode][parse][M994]") {
     GIVEN("a response buffer large enough for the formatted response") {
         std::string buffer(64, 'c');
         WHEN("filling response") {
