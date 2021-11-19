@@ -9,7 +9,7 @@
 #include "core/ack_cache.hpp"
 #include "core/version.hpp"
 #include "hal/message_queue.hpp"
-#include "systemwide.hpp"
+#include "systemwide.h"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 
@@ -24,12 +24,12 @@ template <typename Policy>
 concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.enter_bootloader()};
     {
-        p.set_serial_number(std::array<char, systemwide::SERIAL_NUMBER_LENGTH>{
+        p.set_serial_number(std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>{
             "TESTSNXxxxxxxxxxxxxxxxx"})
         } -> std::same_as<errors::ErrorCode>;
     {
         p.get_serial_number()
-        } -> std::same_as<std::array<char, systemwide::SERIAL_NUMBER_LENGTH>>;
+        } -> std::same_as<std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>>;
 };
 
 using Message = messages::SystemMessage;
