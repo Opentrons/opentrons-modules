@@ -37,28 +37,39 @@ struct TaskBuilder {
     auto get_system_task() -> system_task::SystemTask<TestMessageQueue>& {
         return system_task;
     }
-    auto get_thermal_plate_queue() -> TestMessageQueue<thermal_plate_task::Message>& {
+    auto get_thermal_plate_queue()
+        -> TestMessageQueue<thermal_plate_task::Message>& {
         return thermal_plate_queue;
     }
-    auto get_thermal_plate_task() -> thermal_plate_task::ThermalPlateTask<TestMessageQueue>& {
+    auto get_thermal_plate_task()
+        -> thermal_plate_task::ThermalPlateTask<TestMessageQueue>& {
         return thermal_plate_task;
     }
     auto get_lid_heater_queue() -> TestMessageQueue<lid_heater_task::Message>& {
         return lid_heater_queue;
     }
-    auto get_lid_heater_task() -> lid_heater_task::LidHeaterTask<TestMessageQueue>& {
+    auto get_lid_heater_task()
+        -> lid_heater_task::LidHeaterTask<TestMessageQueue>& {
         return lid_heater_task;
     }
     auto get_tasks_aggregator() -> tasks::Tasks<TestMessageQueue>& {
         return task_aggregator;
     }
     auto get_system_policy() -> TestSystemPolicy& { return system_policy; }
-    auto get_thermal_plate_policy() -> TestThermalPlatePolicy& { return thermal_plate_policy; }
-    auto get_lid_heater_policy() -> TestLidHeaterPolicy& { return lid_heater_policy; }
+    auto get_thermal_plate_policy() -> TestThermalPlatePolicy& {
+        return thermal_plate_policy;
+    }
+    auto get_lid_heater_policy() -> TestLidHeaterPolicy& {
+        return lid_heater_policy;
+    }
 
     auto run_system_task() -> void { system_task.run_once(system_policy); }
-    auto run_thermal_plate_task() -> void { thermal_plate_task.run_once(thermal_plate_policy); }
-    auto run_lid_heater_task() -> void { lid_heater_task.run_once(lid_heater_policy); }
+    auto run_thermal_plate_task() -> void {
+        thermal_plate_task.run_once(thermal_plate_policy);
+    }
+    auto run_lid_heater_task() -> void {
+        lid_heater_task.run_once(lid_heater_policy);
+    }
 
   private:
     TaskBuilder();

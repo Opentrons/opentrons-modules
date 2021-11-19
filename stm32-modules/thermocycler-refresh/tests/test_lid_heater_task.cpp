@@ -27,11 +27,17 @@ SCENARIO("lid heater task message passing") {
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_lid_heater_queue().backing_deque.empty());
                 AND_THEN("the task should respond to the messsage") {
-                    REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response = tasks->get_host_comms_queue().backing_deque.front();
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
                     tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(std::holds_alternative<messages::GetLidTemperatureDebugResponse>(response));
-                    auto gettemp = std::get<messages::GetLidTemperatureDebugResponse>(response);
+                    REQUIRE(std::holds_alternative<
+                            messages::GetLidTemperatureDebugResponse>(
+                        response));
+                    auto gettemp =
+                        std::get<messages::GetLidTemperatureDebugResponse>(
+                            response);
                     REQUIRE(gettemp.responding_to_id == message.id);
                     REQUIRE_THAT(gettemp.lid_temp,
                                  Catch::Matchers::WithinAbs(_valid_temp, 0.1));
@@ -49,7 +55,8 @@ SCENARIO("lid heater task message passing") {
         tasks->run_lid_heater_task();
         CHECK(std::holds_alternative<messages::ErrorMessage>(
             tasks->get_host_comms_queue().backing_deque.front()));
-        auto error_msg = std::get<messages::ErrorMessage>(tasks->get_host_comms_queue().backing_deque.front());
+        auto error_msg = std::get<messages::ErrorMessage>(
+            tasks->get_host_comms_queue().backing_deque.front());
         CHECK(error_msg.code == errors::ErrorCode::THERMISTOR_LID_SHORT);
         tasks->get_host_comms_queue().backing_deque.pop_front();
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
@@ -63,7 +70,8 @@ SCENARIO("lid heater task message passing") {
         tasks->run_lid_heater_task();
         CHECK(std::holds_alternative<messages::ErrorMessage>(
             tasks->get_host_comms_queue().backing_deque.front()));
-        auto error_msg = std::get<messages::ErrorMessage>(tasks->get_host_comms_queue().backing_deque.front());
+        auto error_msg = std::get<messages::ErrorMessage>(
+            tasks->get_host_comms_queue().backing_deque.front());
         CHECK(error_msg.code == errors::ErrorCode::THERMISTOR_LID_DISCONNECTED);
         tasks->get_host_comms_queue().backing_deque.pop_front();
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
