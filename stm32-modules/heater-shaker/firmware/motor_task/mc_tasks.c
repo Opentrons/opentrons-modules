@@ -335,6 +335,11 @@ void TSK_MediumFrequencyTaskM1(void)
     STC_ForceSpeedReferenceToCurrentSpeed( pSTC[M1] ); /* Init the reference speed to current speed */
     MCI_ExecBufferedCommands( oMCInterface[M1] ); /* Exec the speed ramp after changing of the speed sensor */
 
+    if( !IsSpeedReliable )
+    {
+      STM_FaultProcessing( &STM[M1], MC_SPEED_FDBK, 0 );
+    }
+
     break;
 
   case RUN:
