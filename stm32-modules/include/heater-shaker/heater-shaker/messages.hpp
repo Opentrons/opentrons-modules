@@ -5,7 +5,7 @@
 #include <variant>
 
 #include "heater-shaker/errors.hpp"
-#include "systemwide.hpp"
+#include "systemwide.h"
 
 namespace messages {
 
@@ -97,8 +97,27 @@ struct SetPowerTestMessage {
 struct SetSerialNumberMessage {
     uint32_t id;
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
+};
+
+struct SetLEDMessage {
+    uint32_t id;
+    LED_MODE mode;
+};
+
+struct IdentifyModuleStartLEDMessage {
+    uint32_t id;
+};
+
+struct IdentifyModuleStopLEDMessage {
+    uint32_t id;
+};
+
+struct CheckLEDBlinkStatusMessage {};
+
+struct HandleLEDSetupError {
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
 struct EnterBootloaderMessage {
@@ -197,7 +216,7 @@ struct GetRPMResponse {
 struct GetSystemInfoResponse {
     uint32_t responding_to_id;
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
     const char* fw_version;
     const char* hw_version;
@@ -240,7 +259,9 @@ using MotorMessage = ::std::variant<
     CheckPlateLockStatusMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
-                   SetSerialNumberMessage, GetSystemInfoMessage>;
+                   SetSerialNumberMessage, GetSystemInfoMessage, SetLEDMessage,
+                   IdentifyModuleStartLEDMessage, IdentifyModuleStopLEDMessage,
+                   CheckLEDBlinkStatusMessage, HandleLEDSetupError>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,
