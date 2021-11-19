@@ -38,7 +38,7 @@ static std::array<adc_hardware, ADC_ITR_NUM> _adc_hardware;
 
 ADC::ADC(uint8_t addr, ADC_ITR_T id) : _addr(addr), _id(id), _last_result(0) {}
 
-void ADC::initialize(void) {
+void ADC::initialize() {
     bool initialization_started =
         _adc_hardware[_id]._initialization_started.exchange(true);
     if (initialization_started == true) {
@@ -63,7 +63,7 @@ void ADC::initialize(void) {
     }
 }
 
-ADC::ReadVal ADC::read(uint16_t pin) {
+auto ADC::read(uint16_t pin) -> ADC::ReadVal {
     uint32_t notification_val = 0;
     bool i2c_ret;
     const TickType_t max_block_time = pdMS_TO_TICKS(500);
@@ -79,7 +79,7 @@ ADC::ReadVal ADC::read(uint16_t pin) {
     }
 
     i2c_ret = thermal_arm_adc_for_read(_id);
-    if(i2c_ret == false) {
+    if (i2c_ret == false) {
         static_cast<void>(release_lock());
         return ReadVal(Error::ADCTimeout);
     }
@@ -107,11 +107,11 @@ ADC::ReadVal ADC::read(uint16_t pin) {
     return ReadVal(_last_result);
 }
 
-bool ADC::initialized(void) {
+auto ADC::initialized() -> bool {
     return (_adc_hardware[_id]._initialization_done == true);
 }
 
-bool ADC::get_lock(void) {
+auto ADC::get_lock() -> bool {
     if (!initialized()) {
         return false;
     }
@@ -119,7 +119,7 @@ bool ADC::get_lock(void) {
                           pdMS_TO_TICKS(max_semaphor_wait)) == pdTRUE;
 }
 
-bool ADC::release_lock(void) {
+auto ADC::release_lock() -> bool {
     if (!initialized()) {
         return false;
     }

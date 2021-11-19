@@ -33,7 +33,7 @@ concept ThermalPlateExecutionPolicy = requires(Policy& p, const Policy& cp) {
 };
 
 /** Just used for initialization assignment of error bits.*/
-constexpr uint16_t thermistorErrorBit(const ThermistorID id) {
+constexpr auto thermistorErrorBit(const ThermistorID id) -> uint16_t {
     if (id > THERM_HEATSINK) {
         throw std::out_of_range("");
     }
@@ -205,6 +205,7 @@ class ThermalPlateTask {
     requires ThermalPlateExecutionPolicy<Policy>
     auto visit_message(const messages::ThermalPlateTempReadComplete& msg,
                        Policy& policy) -> void {
+        static_cast<void>(policy);
         handle_temperature_conversion(msg.front_right,
                                       _thermistors[THERM_FRONT_RIGHT]);
         handle_temperature_conversion(msg.front_left,
@@ -225,6 +226,7 @@ class ThermalPlateTask {
     requires ThermalPlateExecutionPolicy<Policy>
     auto visit_message(const messages::GetPlateTemperatureDebugMessage& msg,
                        Policy& policy) -> void {
+        static_cast<void>(policy);
         auto response = messages::GetPlateTemperatureDebugResponse{
             .responding_to_id = msg.id,
             .heat_sink_temp = _thermistors[THERM_HEATSINK].temp_c,

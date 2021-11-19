@@ -66,7 +66,9 @@ struct Conversion {
         : _adc_max(static_cast<double>(adc_max_value)),
           _adc_max_result(
               static_cast<uint16_t>(static_cast<uint32_t>(adc_max_value))),
-          _bias_resistance_kohm(bias_resistance_nominal_kohm) {}
+          _bias_resistance_kohm(bias_resistance_nominal_kohm) {
+              static_cast<void>(is_signed);
+          }
 
     Conversion() = delete;
 
@@ -83,9 +85,8 @@ struct Conversion {
         if (std::holds_alternative<TableError>(entries)) {
             if (std::get<TableError>(entries) == TableError::TABLE_END) {
                 return _adc_max_result;
-            } else {
-                return 0;
             }
+            return 0;
         }
         auto entry_pair = std::get<TableEntryPair>(entries);
 
@@ -123,9 +124,8 @@ struct Conversion {
         if (std::holds_alternative<TableError>(entries)) {
             if (std::get<TableError>(entries) == TableError::TABLE_END) {
                 return Result(Error::OUT_OF_RANGE_HIGH);
-            } else {
-                return Result(Error::OUT_OF_RANGE_LOW);
             }
+            return Result(Error::OUT_OF_RANGE_LOW);
         }
         auto entry_pair = std::get<TableEntryPair>(entries);
 
@@ -156,7 +156,7 @@ struct Conversion {
         if (first_less == GetTable()().end()) {
             return TableResult(TableError::TABLE_END);
         }
-        return TableResult(TableEntryPair(*first_less, *(first_less - 1)));
+        return TableResult(TableEntryPair(*first_less, *std::prev(first_less, 1)));
     }
 
     /**
@@ -177,7 +177,7 @@ struct Conversion {
         if (first_more == GetTable()().end()) {
             return TableResult(TableError::TABLE_END);
         }
-        return TableResult(TableEntryPair(*first_more, *(first_more - 1)));
+        return TableResult(TableEntryPair(*first_more, *std::prev(first_more, 1)));
     }
 };
 };  // namespace thermistor_conversion

@@ -23,8 +23,7 @@ class ADC {
   public:
     using ReadVal = std::variant<uint16_t, Error>;
 
-    ADC(void) = delete;
-    ADC(const ADC&) = delete;
+    ADC() = delete;
     /**
      * @brief Construct a new ADS1115 ADC
      * @param[in] addr The I2C address of the ADC
@@ -40,7 +39,7 @@ class ADC {
      * @note Thread safe
      * @warning Only call this from a FreeRTOS thread context.
      */
-    void initialize(void);
+    void initialize();
     /**
      * @brief Read a value from the ADC.
      * @note Thread safe
@@ -49,21 +48,21 @@ class ADC {
      * [0, \ref pin_count)
      * @return The value read by the ADC in ADC counts, or an error.
      */
-    ReadVal read(uint16_t pin);
+    auto read(uint16_t pin) -> ReadVal;
 
     /**
      * @brief Check if this ADC is initialized
      * @return True if initialized, false if not.
      */
-    bool initialized(void);
+    auto initialized() -> bool;
 
   private:
     uint8_t _addr;
     ADC_ITR_T _id;
     uint16_t _last_result;
 
-    bool get_lock(void);
-    bool release_lock(void);
+    auto get_lock() -> bool;
+    auto release_lock() -> bool;
 
     static constexpr uint8_t conversion_addr = 0x00;
     static constexpr uint8_t config_addr = 0x01;

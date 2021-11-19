@@ -148,6 +148,7 @@ class LidHeaterTask {
     requires LidHeaterExecutionPolicy<Policy>
     auto visit_message(const messages::GetLidTemperatureDebugMessage& msg,
                        Policy& policy) -> void {
+        static_cast<void>(policy);
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         auto response = messages::GetLidTemperatureDebugResponse{
             .responding_to_id = msg.id,
