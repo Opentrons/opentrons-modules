@@ -10,7 +10,7 @@
 
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/tasks.hpp"
-#include "systemwide.hpp"
+#include "systemwide.h"
 
 using namespace system_thread;
 
@@ -18,9 +18,10 @@ struct SimSystemPolicy {
   private:
     bool serial_number_set = false;
     static constexpr std::size_t SYSTEM_SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number = {};
     errors::ErrorCode set_serial_number_return = errors::ErrorCode::NO_ERROR;
+    uint16_t last_delay = 0;
 
   public:
     auto enter_bootloader() -> void { std::terminate(); }
@@ -47,6 +48,15 @@ struct SimSystemPolicy {
             return empty_serial_number;
         }
     }
+    auto start_set_led(LED_MODE mode) -> errors::ErrorCode {
+        return errors::ErrorCode::NO_ERROR;
+    }
+
+    auto check_I2C_ready(void) -> bool { return true; }
+
+    auto delay_time_ms(uint16_t time_ms) -> void { last_delay = time_ms; }
+
+    auto test_get_last_delay() const -> uint16_t { return last_delay; }
 };
 
 struct system_thread::TaskControlBlock {

@@ -69,6 +69,7 @@ set(HS_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/system_hardware.c
   ${HEATER_DIR}/heater_hardware.c
   ${SYSTEM_DIR}/system_serial_number.c
+  ${SYSTEM_DIR}/stm32f3xx_hal_msp.c
   )
 
 add_executable(heater-shaker
