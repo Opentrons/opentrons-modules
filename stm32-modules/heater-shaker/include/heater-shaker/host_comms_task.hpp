@@ -45,16 +45,16 @@ class HostCommsTask {
         gcode::SetSerialNumber, gcode::Home, gcode::ActuateSolenoid,
         gcode::DebugControlPlateLockMotor, gcode::OpenPlateLock,
         gcode::ClosePlateLock, gcode::GetPlateLockState,
-        gcode::GetPlateLockStateDebug, gcode::SetLEDDebug, gcode::IdentifyModuleStartLED,
-        gcode::IdentifyModuleStopLED>;
+        gcode::GetPlateLockStateDebug, gcode::SetLEDDebug,
+        gcode::IdentifyModuleStartLED, gcode::IdentifyModuleStopLED>;
     using AckOnlyCache =
         AckCache<8, gcode::SetRPM, gcode::SetTemperature,
                  gcode::SetAcceleration, gcode::SetPIDConstants,
                  gcode::SetHeaterPowerTest, gcode::EnterBootloader, gcode::Home,
                  gcode::ActuateSolenoid, gcode::DebugControlPlateLockMotor,
                  gcode::OpenPlateLock, gcode::ClosePlateLock,
-                 gcode::SetSerialNumber, gcode::SetLEDDebug, gcode::IdentifyModuleStartLED,
-                 gcode::IdentifyModuleStopLED>;
+                 gcode::SetSerialNumber, gcode::SetLEDDebug,
+                 gcode::IdentifyModuleStartLED, gcode::IdentifyModuleStopLED>;
     using GetTempCache = AckCache<8, gcode::GetTemperature>;
     using GetTempDebugCache = AckCache<8, gcode::GetTemperatureDebug>;
     using GetRPMCache = AckCache<8, gcode::GetRPM>;
@@ -486,8 +486,7 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message = messages::SetLEDMessage{
-            .id = id, .mode = gcode.mode};
+        auto message = messages::SetLEDMessage{.id = id, .mode = gcode.mode};
         if (!task_registry->system->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
@@ -501,8 +500,9 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_gcode(const gcode::IdentifyModuleStartLED& gcode, InputIt tx_into,
-                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+    auto visit_gcode(const gcode::IdentifyModuleStartLED& gcode,
+                     InputIt tx_into, InputLimit tx_limit)
+        -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(

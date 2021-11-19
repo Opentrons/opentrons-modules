@@ -30,7 +30,7 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {
         p.get_serial_number()
         } -> std::same_as<std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>>;
-    {p.start_set_led(LED_MODE::WHITE_ON)} -> std::same_as<errors::ErrorCode>;
+    { p.start_set_led(LED_MODE::WHITE_ON) } -> std::same_as<errors::ErrorCode>;
 };
 
 struct LEDBlinkState {
@@ -69,6 +69,10 @@ class SystemTask {
     auto operator=(SystemTask&& other) noexcept -> SystemTask& = delete;
     ~SystemTask() = default;
     auto get_message_queue() -> Queue& { return message_queue; }
+    [[nodiscard]] auto get_led_blink_state() const
+        -> LEDBlinkState::LEDBlinkTaskStatus {
+        return led_blink_state.status;
+    }
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
         task_registry = other_tasks;
     }
@@ -186,8 +190,8 @@ class SystemTask {
     }
 
     template <typename Policy>
-    auto visit_message(const messages::SetLEDMessage& msg,
-                       Policy& policy) -> void {
+    auto visit_message(const messages::SetLEDMessage& msg, Policy& policy)
+        -> void {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (!policy.check_I2C_ready()) {
@@ -236,36 +240,45 @@ class SystemTask {
     auto visit_message(const messages::CheckLEDBlinkStatusMessage& msg,
                        Policy& policy) -> void {
         bool bStatus = true;
-        if ((led_blink_state.status == LEDBlinkState::BLINK_ON_WAITING) || (led_blink_state.status == LEDBlinkState::BLINK_OFF_WAITING)) {
+        if ((led_blink_state.status == LEDBlinkState::BLINK_ON_WAITING) ||
+            (led_blink_state.status == LEDBlinkState::BLINK_OFF_WAITING)) {
             if (!policy.check_I2C_ready()) {
                 bStatus = false;
                 static_cast<void>(
                     task_registry->comms->get_message_queue().try_send(
                         messages::AcknowledgePrevious{
-                            .with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY}));
+                            .with_error =
+                                errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY}));
             }
             if (bStatus) {
                 if (led_blink_state.status == LEDBlinkState::BLINK_ON_WAITING) {
-                    if (policy.start_set_led(LED_MODE::WHITE_OFF) != errors::ErrorCode::NO_ERROR) {
+                    if (policy.start_set_led(LED_MODE::WHITE_OFF) !=
+                        errors::ErrorCode::NO_ERROR) {
                         bStatus = false;
                         static_cast<void>(
                             task_registry->comms->get_message_queue().try_send(
                                 messages::AcknowledgePrevious{
-                                    .with_error = errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR}));
+                                    .with_error = errors::ErrorCode::
+                                        SYSTEM_LED_TRANSMIT_ERROR}));
                     }
                     if (bStatus) {
-                        led_blink_state.status = LEDBlinkState::BLINK_OFF_WAITING;
+                        led_blink_state.status =
+                            LEDBlinkState::BLINK_OFF_WAITING;
                     }
-                } else if (led_blink_state.status == LEDBlinkState::BLINK_OFF_WAITING) {
-                    if (policy.start_set_led(LED_MODE::WHITE_ON) != errors::ErrorCode::NO_ERROR) {
+                } else if (led_blink_state.status ==
+                           LEDBlinkState::BLINK_OFF_WAITING) {
+                    if (policy.start_set_led(LED_MODE::WHITE_ON) !=
+                        errors::ErrorCode::NO_ERROR) {
                         bStatus = false;
                         static_cast<void>(
                             task_registry->comms->get_message_queue().try_send(
                                 messages::AcknowledgePrevious{
-                                    .with_error = errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR}));
+                                    .with_error = errors::ErrorCode::
+                                        SYSTEM_LED_TRANSMIT_ERROR}));
                     }
                     if (bStatus) {
-                        led_blink_state.status = LEDBlinkState::BLINK_ON_WAITING;
+                        led_blink_state.status =
+                            LEDBlinkState::BLINK_ON_WAITING;
                     }
                 }
                 if (bStatus) {
@@ -278,8 +291,8 @@ class SystemTask {
     }
 
     template <typename Policy>
-    auto visit_message(const messages::HandleLEDSetupError& msg,
-                       Policy& policy) -> void {
+    auto visit_message(const messages::HandleLEDSetupError& msg, Policy& policy)
+        -> void {
         auto response =
             messages::AcknowledgePrevious{.with_error = msg.with_error};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(

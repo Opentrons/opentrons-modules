@@ -17,9 +17,10 @@ TEMPLATE_TEST_CASE("gcode basic parsing", "[gcode][parse]", gcode::SetRPM,
                    gcode::SetPIDConstants, gcode::SetHeaterPowerTest,
                    gcode::EnterBootloader, gcode::GetSystemInfo, gcode::Home,
                    gcode::ActuateSolenoid, gcode::DebugControlPlateLockMotor,
-                   gcode::OpenPlateLock, gcode::ClosePlateLock, gcode::GetPlateLockState,
-                   gcode::GetPlateLockStateDebug, gcode::SetSerialNumber,
-                   gcode::SetLEDDebug, gcode::IdentifyModuleStartLED,
+                   gcode::OpenPlateLock, gcode::ClosePlateLock,
+                   gcode::GetPlateLockState, gcode::GetPlateLockStateDebug,
+                   gcode::SetSerialNumber, gcode::SetLEDDebug,
+                   gcode::IdentifyModuleStartLED,
                    gcode::IdentifyModuleStopLED) {
     SECTION("attempting to parse an empty string fails") {
         std::string to_parse = "";
@@ -76,7 +77,8 @@ TEMPLATE_TEST_CASE("gcode responses without parameters generate",
                    gcode::SetAcceleration, gcode::EnterBootloader, gcode::Home,
                    gcode::ActuateSolenoid, gcode::DebugControlPlateLockMotor,
                    gcode::SetSerialNumber, gcode::OpenPlateLock,
-                   gcode::ClosePlateLock, gcode::SetLEDDebug, gcode::IdentifyModuleStartLED,
+                   gcode::ClosePlateLock, gcode::SetLEDDebug,
+                   gcode::IdentifyModuleStartLED,
                    gcode::IdentifyModuleStopLED) {
     SECTION("responses won't write into zero-size buffers") {
         std::string buffer(10, 'c');

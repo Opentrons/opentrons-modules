@@ -498,16 +498,16 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
                 AND_WHEN("sending a good response back to the comms task") {
                     auto response = messages::HostCommsMessage(
-                        messages::AcknowledgePrevious{
-                            .responding_to_id = set_led_message.id});
+                        messages::AcknowledgePrevious{.responding_to_id =
+                                                          set_led_message.id});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
-                        REQUIRE_THAT(tx_buf,
-                                     Catch::Matchers::StartsWith("M994.D OK\n"));
+                        REQUIRE_THAT(
+                            tx_buf, Catch::Matchers::StartsWith("M994.D OK\n"));
                         REQUIRE(written_secondpass != tx_buf.begin());
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
@@ -516,8 +516,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 AND_WHEN("sending a bad response back to the comms task") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{
-                            .responding_to_id =
-                                set_led_message.id + 1});
+                            .responding_to_id = set_led_message.id + 1});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -536,8 +535,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{
                             .responding_to_id = set_led_message.id,
-                            .with_error = errors::ErrorCode::
-                                SYSTEM_LED_TRANSMIT_ERROR});
+                            .with_error =
+                                errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -547,7 +546,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                         REQUIRE_THAT(
                             tx_buf,
                             Catch::Matchers::StartsWith(
-                                "ERR304:system:LED I2C transmission or FreeRTOS notification passing failed\n"));
+                                "ERR304:system:LED I2C transmission or "
+                                "FreeRTOS notification passing failed\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                         REQUIRE(written_secondpass != tx_buf.begin());
@@ -570,14 +570,15 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 auto system_message =
                     tasks->get_system_queue().backing_deque.front();
                 auto set_led_message =
-                    std::get<messages::IdentifyModuleStartLEDMessage>(system_message);
+                    std::get<messages::IdentifyModuleStartLEDMessage>(
+                        system_message);
                 tasks->get_system_queue().backing_deque.pop_front();
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
                 AND_WHEN("sending a good response back to the comms task") {
                     auto response = messages::HostCommsMessage(
-                        messages::AcknowledgePrevious{
-                            .responding_to_id = set_led_message.id});
+                        messages::AcknowledgePrevious{.responding_to_id =
+                                                          set_led_message.id});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -594,8 +595,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 AND_WHEN("sending a bad response back to the comms task") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{
-                            .responding_to_id =
-                                set_led_message.id + 1});
+                            .responding_to_id = set_led_message.id + 1});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -614,8 +614,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{
                             .responding_to_id = set_led_message.id,
-                            .with_error = errors::ErrorCode::
-                                SYSTEM_LED_TRANSMIT_ERROR});
+                            .with_error =
+                                errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -625,7 +625,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                         REQUIRE_THAT(
                             tx_buf,
                             Catch::Matchers::StartsWith(
-                                "ERR304:system:LED I2C transmission or FreeRTOS notification passing failed\n"));
+                                "ERR304:system:LED I2C transmission or "
+                                "FreeRTOS notification passing failed\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                         REQUIRE(written_secondpass != tx_buf.begin());
@@ -648,14 +649,15 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 auto system_message =
                     tasks->get_system_queue().backing_deque.front();
                 auto set_led_message =
-                    std::get<messages::IdentifyModuleStopLEDMessage>(system_message);
+                    std::get<messages::IdentifyModuleStopLEDMessage>(
+                        system_message);
                 tasks->get_system_queue().backing_deque.pop_front();
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
                 AND_WHEN("sending a good response back to the comms task") {
                     auto response = messages::HostCommsMessage(
-                        messages::AcknowledgePrevious{
-                            .responding_to_id = set_led_message.id});
+                        messages::AcknowledgePrevious{.responding_to_id =
+                                                          set_led_message.id});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -672,8 +674,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 AND_WHEN("sending a bad response back to the comms task") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{
-                            .responding_to_id =
-                                set_led_message.id + 1});
+                            .responding_to_id = set_led_message.id + 1});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -692,8 +693,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{
                             .responding_to_id = set_led_message.id,
-                            .with_error = errors::ErrorCode::
-                                SYSTEM_LED_TRANSMIT_ERROR});
+                            .with_error =
+                                errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -703,7 +704,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                         REQUIRE_THAT(
                             tx_buf,
                             Catch::Matchers::StartsWith(
-                                "ERR304:system:LED I2C transmission or FreeRTOS notification passing failed\n"));
+                                "ERR304:system:LED I2C transmission or "
+                                "FreeRTOS notification passing failed\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                         REQUIRE(written_secondpass != tx_buf.begin());

@@ -7,11 +7,11 @@
 
 #include "FreeRTOS.h"
 #include "firmware/freertos_message_queue.hpp"
+#include "heater-shaker/errors.hpp"
 #include "heater-shaker/system_task.hpp"
 #include "heater-shaker/tasks.hpp"
 #include "system_policy.hpp"
 #include "task.h"
-#include "heater-shaker/errors.hpp"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
@@ -46,10 +46,11 @@ static StaticTask_t
 static void run(void *param) {
     system_hardware_setup();
     if (!system_hardware_setup_led()) {
-      //throw error
-      auto &queue = _task.get_message_queue();
-      auto LED_setup_error_message = messages::HandleLEDSetupError{.with_error = errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR};
-      static_cast<void>(queue.try_send(LED_setup_error_message, 10));
+        // throw error
+        auto &queue = _task.get_message_queue();
+        auto LED_setup_error_message = messages::HandleLEDSetupError{
+            .with_error = errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR};
+        static_cast<void>(queue.try_send(LED_setup_error_message, 10));
     }
     static constexpr uint32_t delay_ticks = 100;
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)

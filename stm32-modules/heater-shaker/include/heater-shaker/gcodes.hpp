@@ -556,7 +556,8 @@ struct GetSystemInfo {
      * */
     using ParseResult = std::optional<GetSystemInfo>;
     static constexpr auto prefix = std::array{'M', '1', '1', '5'};
-    static constexpr std::size_t SERIAL_NUMBER_LENGTH = SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -682,7 +683,8 @@ struct SetLEDDebug {
     ** Example: M994.D 0 selects WHITE_ON mode and turns the white LED on
     */
     using ParseResult = std::optional<SetLEDDebug>;
-    static constexpr auto prefix = std::array{'M', '9', '9', '4', '.', 'D', ' '};
+    static constexpr auto prefix =
+        std::array{'M', '9', '9', '4', '.', 'D', ' '};
     static constexpr const char* response = "M994.D OK\n";
     LED_MODE mode;
 
@@ -716,7 +718,8 @@ struct SetLEDDebug {
 
 struct IdentifyModuleStartLED {
     /*
-    ** IdentifyModuleStartLED uses a random gcode, M994, to start blinking the white LED
+    ** IdentifyModuleStartLED uses a random gcode, M994, to start blinking the
+    *white LED
     ** Format: M994
     ** Example: M994 starts blinking the white LED
     */
@@ -750,7 +753,8 @@ struct IdentifyModuleStartLED {
 
 struct IdentifyModuleStopLED {
     /*
-    ** IdentifyModuleStopLED uses a random gcode, M995, to stop blinking the white LED
+    ** IdentifyModuleStopLED uses a random gcode, M995, to stop blinking the
+    *white LED
     ** Format: M995
     ** Example: M995 stops blinking the white LED
     */

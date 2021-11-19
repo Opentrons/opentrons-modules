@@ -32,14 +32,11 @@ auto TestSystemPolicy::get_serial_number(void)
     }
 }
 
-auto TestSystemPolicy::start_set_led(LED_MODE mode)
-    -> errors::ErrorCode {
+auto TestSystemPolicy::start_set_led(LED_MODE mode) -> errors::ErrorCode {
     return errors::ErrorCode::NO_ERROR;
 }
 
-auto TestSystemPolicy::check_I2C_ready(void) -> bool {
-    return true;
-}
+auto TestSystemPolicy::check_I2C_ready(void) -> bool { return true; }
 
 auto TestSystemPolicy::delay_time_ms(uint16_t time_ms) -> void {
     last_delay = time_ms;

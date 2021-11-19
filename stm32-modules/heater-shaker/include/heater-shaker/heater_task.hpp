@@ -169,17 +169,22 @@ class HeaterTask {
     template <typename Policy>
     requires HeaterExecutionPolicy<Policy>
     auto run_once(Policy& policy) -> void {
-        //set red LEDs on if current temp above hot-to-touch threshold
+        // set red LEDs on if current temp above hot-to-touch threshold
         if ((pad_temperature() > HOT_TO_TOUCH_THRESHOLD) && (!hot_LED_set)) {
             hot_LED_set = true;
-            auto LED_message = messages::SetLEDMessage{.mode = LED_MODE::RED_ON};
+            auto LED_message =
+                messages::SetLEDMessage{.mode = LED_MODE::RED_ON};
             static_cast<void>(
-                task_registry->system->get_message_queue().try_send(LED_message));
-        } else if ((pad_temperature() < HOT_TO_TOUCH_THRESHOLD) && (hot_LED_set)) {
+                task_registry->system->get_message_queue().try_send(
+                    LED_message));
+        } else if ((pad_temperature() < HOT_TO_TOUCH_THRESHOLD) &&
+                   (hot_LED_set)) {
             hot_LED_set = false;
-            auto LED_message = messages::SetLEDMessage{.mode = LED_MODE::RED_OFF};
+            auto LED_message =
+                messages::SetLEDMessage{.mode = LED_MODE::RED_OFF};
             static_cast<void>(
-                task_registry->system->get_message_queue().try_send(LED_message));
+                task_registry->system->get_message_queue().try_send(
+                    LED_message));
         }
 
         auto message = Message(std::monostate());
