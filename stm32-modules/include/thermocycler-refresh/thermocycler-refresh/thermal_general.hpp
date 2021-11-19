@@ -29,7 +29,7 @@ enum ThermistorID {
 
 // Disabled lint warning because we specifically want the rest
 // of the parameters to be initialized by the task constructor
-//NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct Thermistor {
     // Last converted temperature (0 if invalid)
     double temp_c = 0;
