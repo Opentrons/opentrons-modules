@@ -4,7 +4,7 @@
 #include "catch2/catch.hpp"
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/messages.hpp"
-#include "systemwide.hpp"
+#include "systemwide.h"
 #include "test/task_builder.hpp"
 
 SCENARIO("usb message parsing") {
@@ -332,7 +332,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 auto set_serial_number_message =
                     std::get<messages::SetSerialNumberMessage>(system_message);
                 tasks->get_system_queue().backing_deque.pop_front();
-                std::array<char, systemwide::SERIAL_NUMBER_LENGTH> Test_SN = {
+                std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> Test_SN = {
                     "TESTSN2xxxxxxxxxxxxxxxx"};
                 REQUIRE(set_serial_number_message.serial_number == Test_SN);
                 REQUIRE(written_firstpass == tx_buf.begin());
@@ -468,6 +468,244 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                             tx_buf,
                             Catch::Matchers::StartsWith(
                                 "ERR123:main motor:not home (required)\n"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                        REQUIRE(written_secondpass != tx_buf.begin());
+                    }
+                }
+            }
+        }
+
+        WHEN("sending a set-led-debug") {
+            auto message_text = std::string("M994.D 0\n");
+            auto message_obj =
+                messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                    &*message_text.begin(), &*message_text.end()));
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            auto written_firstpass = tasks->get_host_comms_task().run_once(
+                tx_buf.begin(), tx_buf.end());
+            THEN(
+                "the task should pass the message on to the system and not "
+                "immediately ack") {
+                REQUIRE(tasks->get_system_queue().backing_deque.size() != 0);
+                auto system_message =
+                    tasks->get_system_queue().backing_deque.front();
+                auto set_led_message =
+                    std::get<messages::SetLEDMessage>(system_message);
+                tasks->get_system_queue().backing_deque.pop_front();
+                REQUIRE(set_led_message.mode == WHITE_ON);
+                REQUIRE(written_firstpass == tx_buf.begin());
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                AND_WHEN("sending a good response back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{.responding_to_id =
+                                                          set_led_message.id});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("the task should ack the previous message") {
+                        REQUIRE_THAT(
+                            tx_buf, Catch::Matchers::StartsWith("M994.D OK\n"));
+                        REQUIRE(written_secondpass != tx_buf.begin());
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN("sending a bad response back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = set_led_message.id + 1});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN(
+                        "the task should pull the message and print an error") {
+                        REQUIRE(written_secondpass > tx_buf.begin());
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN("sending an ack with error back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = set_led_message.id,
+                            .with_error =
+                                errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("the task should print the error rather than ack") {
+                        REQUIRE_THAT(
+                            tx_buf,
+                            Catch::Matchers::StartsWith(
+                                "ERR304:system:LED I2C transmission or "
+                                "FreeRTOS notification passing failed\n"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                        REQUIRE(written_secondpass != tx_buf.begin());
+                    }
+                }
+            }
+        }
+        WHEN("sending an identify-module-start-led") {
+            auto message_text = std::string("M994\n");
+            auto message_obj =
+                messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                    &*message_text.begin(), &*message_text.end()));
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            auto written_firstpass = tasks->get_host_comms_task().run_once(
+                tx_buf.begin(), tx_buf.end());
+            THEN(
+                "the task should pass the message on to the system and not "
+                "immediately ack") {
+                REQUIRE(tasks->get_system_queue().backing_deque.size() != 0);
+                auto system_message =
+                    tasks->get_system_queue().backing_deque.front();
+                auto set_led_message =
+                    std::get<messages::IdentifyModuleStartLEDMessage>(
+                        system_message);
+                tasks->get_system_queue().backing_deque.pop_front();
+                REQUIRE(written_firstpass == tx_buf.begin());
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                AND_WHEN("sending a good response back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{.responding_to_id =
+                                                          set_led_message.id});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("the task should ack the previous message") {
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("M994 OK\n"));
+                        REQUIRE(written_secondpass != tx_buf.begin());
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN("sending a bad response back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = set_led_message.id + 1});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN(
+                        "the task should pull the message and print an error") {
+                        REQUIRE(written_secondpass > tx_buf.begin());
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN("sending an ack with error back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = set_led_message.id,
+                            .with_error =
+                                errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("the task should print the error rather than ack") {
+                        REQUIRE_THAT(
+                            tx_buf,
+                            Catch::Matchers::StartsWith(
+                                "ERR304:system:LED I2C transmission or "
+                                "FreeRTOS notification passing failed\n"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                        REQUIRE(written_secondpass != tx_buf.begin());
+                    }
+                }
+            }
+        }
+        WHEN("sending an identify-module-stop-led") {
+            auto message_text = std::string("M995\n");
+            auto message_obj =
+                messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                    &*message_text.begin(), &*message_text.end()));
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            auto written_firstpass = tasks->get_host_comms_task().run_once(
+                tx_buf.begin(), tx_buf.end());
+            THEN(
+                "the task should pass the message on to the system and not "
+                "immediately ack") {
+                REQUIRE(tasks->get_system_queue().backing_deque.size() != 0);
+                auto system_message =
+                    tasks->get_system_queue().backing_deque.front();
+                auto set_led_message =
+                    std::get<messages::IdentifyModuleStopLEDMessage>(
+                        system_message);
+                tasks->get_system_queue().backing_deque.pop_front();
+                REQUIRE(written_firstpass == tx_buf.begin());
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                AND_WHEN("sending a good response back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{.responding_to_id =
+                                                          set_led_message.id});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("the task should ack the previous message") {
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("M995 OK\n"));
+                        REQUIRE(written_secondpass != tx_buf.begin());
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN("sending a bad response back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = set_led_message.id + 1});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN(
+                        "the task should pull the message and print an error") {
+                        REQUIRE(written_secondpass > tx_buf.begin());
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN("sending an ack with error back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = set_led_message.id,
+                            .with_error =
+                                errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("the task should print the error rather than ack") {
+                        REQUIRE_THAT(
+                            tx_buf,
+                            Catch::Matchers::StartsWith(
+                                "ERR304:system:LED I2C transmission or "
+                                "FreeRTOS notification passing failed\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                         REQUIRE(written_secondpass != tx_buf.begin());
@@ -794,7 +1032,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                             .responding_to_id = get_system_info_message.id,
                             .serial_number =
                                 std::array<char,
-                                           systemwide::SERIAL_NUMBER_LENGTH>{
+                                           SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>{
                                     "TESTSN8"},
                             .fw_version = "v1.0.1",
                             .hw_version = "v1.0.1"});
@@ -819,7 +1057,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                             .responding_to_id = get_system_info_message.id + 1,
                             .serial_number =
                                 std::array<char,
-                                           systemwide::SERIAL_NUMBER_LENGTH>{
+                                           SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>{
                                     "TESTSN8"},
                             .fw_version = "v1.0.1",
                             .hw_version = "v1.0.1"});

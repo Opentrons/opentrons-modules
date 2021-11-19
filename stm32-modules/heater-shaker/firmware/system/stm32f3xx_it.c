@@ -20,6 +20,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "system_hardware.h"
 #include "stm32f3xx_it.h"
 
 /** @addtogroup STM32F3xx_HAL_Examples
