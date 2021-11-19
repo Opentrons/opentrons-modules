@@ -45,14 +45,16 @@ class HostCommsTask {
         gcode::SetSerialNumber, gcode::Home, gcode::ActuateSolenoid,
         gcode::DebugControlPlateLockMotor, gcode::OpenPlateLock,
         gcode::ClosePlateLock, gcode::GetPlateLockState,
-        gcode::GetPlateLockStateDebug>;
+        gcode::GetPlateLockStateDebug, gcode::SetLEDDebug,
+        gcode::IdentifyModuleStartLED, gcode::IdentifyModuleStopLED>;
     using AckOnlyCache =
         AckCache<8, gcode::SetRPM, gcode::SetTemperature,
                  gcode::SetAcceleration, gcode::SetPIDConstants,
                  gcode::SetHeaterPowerTest, gcode::EnterBootloader, gcode::Home,
                  gcode::ActuateSolenoid, gcode::DebugControlPlateLockMotor,
                  gcode::OpenPlateLock, gcode::ClosePlateLock,
-                 gcode::SetSerialNumber>;
+                 gcode::SetSerialNumber, gcode::SetLEDDebug,
+                 gcode::IdentifyModuleStartLED, gcode::IdentifyModuleStopLED>;
     using GetTempCache = AckCache<8, gcode::GetTemperature>;
     using GetTempDebugCache = AckCache<8, gcode::GetTemperatureDebug>;
     using GetRPMCache = AckCache<8, gcode::GetRPM>;
@@ -463,6 +465,73 @@ class HostCommsTask {
         }
         auto message = messages::SetSerialNumberMessage{
             .id = id, .serial_number = gcode.serial_number};
+        if (!task_registry->system->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetLEDDebug& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::SetLEDMessage{.id = id, .mode = gcode.mode};
+        if (!task_registry->system->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::IdentifyModuleStartLED& gcode,
+                     InputIt tx_into, InputLimit tx_limit)
+        -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::IdentifyModuleStartLEDMessage{.id = id};
+        if (!task_registry->system->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::IdentifyModuleStopLED& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::IdentifyModuleStopLEDMessage{.id = id};
         if (!task_registry->system->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(

@@ -2,6 +2,8 @@
 #include <iterator>
 #include <ranges>
 
+#include "FreeRTOS.h"
+#include "task.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
 #include "system_hardware.h"
@@ -53,4 +55,20 @@ auto SystemPolicy::get_serial_number(void)
         }
     }
     return serial_number_array;
+}
+
+auto SystemPolicy::start_set_led(LED_MODE mode) -> errors::ErrorCode {
+    if (!system_hardware_set_led(mode)) {
+        return errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR;
+    }
+    return errors::ErrorCode::NO_ERROR;
+}
+
+auto SystemPolicy::check_I2C_ready(void) -> bool {
+    return (system_hardware_I2C_ready());
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto SystemPolicy::delay_time_ms(uint16_t time_ms) -> void {
+    vTaskDelay(pdMS_TO_TICKS(time_ms));
 }

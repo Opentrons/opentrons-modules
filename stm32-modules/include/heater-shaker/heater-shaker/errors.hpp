@@ -59,6 +59,8 @@ enum class ErrorCode {
     HEATER_CONSTANT_OUT_OF_RANGE = 212,
     SYSTEM_SERIAL_NUMBER_INVALID = 301,
     SYSTEM_SERIAL_NUMBER_HAL_ERROR = 302,
+    SYSTEM_LED_I2C_NOT_READY = 303,
+    SYSTEM_LED_TRANSMIT_ERROR = 304,
 };
 
 auto from_motor_error(uint16_t error_bitmap, MotorErrorOffset which)

@@ -21,7 +21,7 @@
 #include "core/gcode_parser.hpp"
 #include "core/utility.hpp"
 #include "heater-shaker/errors.hpp"
-#include "systemwide.hpp"
+#include "systemwide.h"
 
 namespace gcode {
 
@@ -557,7 +557,7 @@ struct GetSystemInfo {
     using ParseResult = std::optional<GetSystemInfo>;
     static constexpr auto prefix = std::array{'M', '1', '1', '5'};
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -623,7 +623,7 @@ struct SetSerialNumber {
     static constexpr auto prefix = std::array{'M', '9', '9', '6', ' '};
     static constexpr const char* response = "M996 OK\n";
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SERIAL_NUMBER_LENGTH> serial_number = {};
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 
@@ -673,6 +673,116 @@ struct SetSerialNumber {
         } else {
             return std::make_pair(ParseResult(), input);
         }
+    }
+};
+
+struct SetLEDDebug {
+    /*
+    ** Set LED Debug uses a random gcode, M994.D
+    ** Format: M994.D <which_LED_mode>
+    ** Example: M994.D 0 selects WHITE_ON mode and turns the white LED on
+    */
+    using ParseResult = std::optional<SetLEDDebug>;
+    static constexpr auto prefix =
+        std::array{'M', '9', '9', '4', '.', 'D', ' '};
+    static constexpr const char* response = "M994.D OK\n";
+    LED_MODE mode;
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto value_res = parse_value<uint8_t>(working, limit);
+
+        if (!value_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        LED_MODE tempMode = static_cast<LED_MODE>(value_res.first.value());
+        return std::make_pair(ParseResult(SetLEDDebug{.mode = tempMode}),
+                              value_res.second);
+    }
+};
+
+struct IdentifyModuleStartLED {
+    /*
+    ** IdentifyModuleStartLED uses a random gcode, M994, to start blinking the
+    *white LED
+    ** Format: M994
+    ** Example: M994 starts blinking the white LED
+    */
+    using ParseResult = std::optional<IdentifyModuleStartLED>;
+    static constexpr auto prefix = std::array{'M', '9', '9', '4'};
+    static constexpr const char* response = "M994 OK\n";
+    LED_MODE mode;
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(IdentifyModuleStartLED()), working);
+    }
+};
+
+struct IdentifyModuleStopLED {
+    /*
+    ** IdentifyModuleStopLED uses a random gcode, M995, to stop blinking the
+    *white LED
+    ** Format: M995
+    ** Example: M995 stops blinking the white LED
+    */
+    using ParseResult = std::optional<IdentifyModuleStopLED>;
+    static constexpr auto prefix = std::array{'M', '9', '9', '5'};
+    static constexpr const char* response = "M995 OK\n";
+    LED_MODE mode;
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(IdentifyModuleStopLED()), working);
     }
 };
 
@@ -834,7 +944,7 @@ struct GetPlateLockState {
 struct GetPlateLockStateDebug {
     /*
     ** GetPlateLockStateDebug keys off a random gcode and returns plate lock
-    *state *and state of the open and closed plate lock optical switches
+    ** state and state of the open and closed plate lock optical switches
     ** Format: M241.D
     ** Example: M241.D
     */

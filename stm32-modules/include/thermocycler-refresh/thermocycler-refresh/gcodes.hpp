@@ -20,7 +20,7 @@
 
 #include "core/gcode_parser.hpp"
 #include "core/utility.hpp"
-#include "systemwide.hpp"
+#include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
 
 namespace gcode {
@@ -63,7 +63,7 @@ struct GetSystemInfo {
     using ParseResult = std::optional<GetSystemInfo>;
     static constexpr auto prefix = std::array{'M', '1', '1', '5'};
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -129,7 +129,7 @@ struct SetSerialNumber {
     static constexpr auto prefix = std::array{'M', '9', '9', '6', ' '};
     static constexpr const char* response = "M996 OK\n";
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SERIAL_NUMBER_LENGTH> serial_number = {};
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 

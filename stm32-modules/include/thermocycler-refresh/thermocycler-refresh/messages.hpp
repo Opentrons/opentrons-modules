@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <variant>
 
-#include "systemwide.hpp"
+#include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
 
 namespace messages {
@@ -45,7 +45,7 @@ struct GetSystemInfoMessage {
 struct SetSerialNumberMessage {
     uint32_t id;
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
 };
 
@@ -64,7 +64,7 @@ struct ErrorMessage {
 struct GetSystemInfoResponse {
     uint32_t responding_to_id;
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
     const char* fw_version;
     const char* hw_version;

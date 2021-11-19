@@ -41,9 +41,6 @@ class FreeRTOSMessageQueue {
     [[nodiscard]] auto try_send(const Message& message,
                                 const uint32_t timeout_ticks = 0) -> bool {
         auto sent = xQueueSendToBack(queue, &message, timeout_ticks) == pdTRUE;
-        if (sent) {
-            xTaskNotify(receiver_handle, 1 << sent_bit, eSetBits);
-        }
         return sent;
     }
 

@@ -3,7 +3,7 @@
 #include <chrono>
 #include <stop_token>
 
-#include "systemwide.hpp"
+#include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 

@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include "systemwide.hpp"
+#include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
 
 #pragma GCC diagnostic push
@@ -14,7 +14,7 @@
 class SystemPolicy {
   private:
     static constexpr std::size_t SYSTEM_SERIAL_NUMBER_LENGTH =
-        systemwide::SERIAL_NUMBER_LENGTH;
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     static constexpr uint8_t ADDRESS_LENGTH = 8;
     static constexpr uint8_t ADDRESSES =
         SYSTEM_SERIAL_NUMBER_LENGTH / ADDRESS_LENGTH;
