@@ -147,10 +147,11 @@ set(CLANG_EXTRA_ARGS ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
 # This helps with clang accepting what GCC accepts around the implementations of the message queue
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
+list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Werror=implicit-fallthrough")
 add_custom_target(${TARGET_MODULE_NAME}-lint
   COMMENT "Linting"
   ALL
-  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS} ${CORE_LINTABLE_SOURCES} --config=
+  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS} ${CORE_LINTABLE_SOURCES}
   DEPENDS thermocycler-refresh-core # Required to include the thermistor_lookups file, and possibly generate it if not present
 )
 

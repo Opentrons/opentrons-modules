@@ -187,7 +187,7 @@ struct GetLidTemperatureDebug {
      * GetLidTemperatureDebug uses M141.D, debug version of M141
      *
      * - Lid thermistor temperature (LT)
-     * - Lid thermistor last ADC reading (LD)
+     * - Lid thermistor last ADC reading (LA)
      */
     using ParseResult = std::optional<GetLidTemperatureDebug>;
     static constexpr auto prefix = std::array{'M', '1', '4', '1', '.', 'D'};
@@ -197,7 +197,7 @@ struct GetLidTemperatureDebug {
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit, double lid_temp,
                                     uint16_t lid_adc) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "141.D LT:%0.2f LD:%d OK\n",
+        auto res = snprintf(&*buf, (limit - buf), "M141.D LT:%0.2f LA:%d OK\n",
                             static_cast<float>(lid_temp), lid_adc);
         if (res <= 0) {
             return buf;

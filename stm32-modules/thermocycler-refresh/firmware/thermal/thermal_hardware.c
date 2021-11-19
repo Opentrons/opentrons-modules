@@ -160,10 +160,15 @@ bool thermal_i2c_write_16(uint16_t addr, uint8_t reg, uint16_t val) {
     HAL_StatusTypeDef hal_ret;
 
     sem_ret = xSemaphoreTake(_i2c_semaphore, portMAX_DELAY);
-    configASSERT(sem_ret == pdTRUE);
+    if(sem_ret != pdTRUE) {
+        return false;
+    }
 
     // Set up notification info
-    configASSERT(_i2c_task_to_notify == NULL);
+    if(_i2c_task_to_notify != NULL) {
+        xSemaphoreGive(_i2c_semaphore);
+        return false;
+    }
     _i2c_task_to_notify = xTaskGetCurrentTaskHandle();
 
     // Prepare buffer & send it
@@ -177,8 +182,8 @@ bool thermal_i2c_write_16(uint16_t addr, uint8_t reg, uint16_t val) {
         notification_val = ulTaskNotifyTake(pdTRUE, max_block_time);
     }
 
-    sem_ret = xSemaphoreGive(_i2c_semaphore);
-    configASSERT(sem_ret == pdTRUE);
+    // Ignore return, we would not return an error here even if it fails
+    (void)xSemaphoreGive(_i2c_semaphore);
 
     return (notification_val == 1) && (hal_ret == HAL_OK);
 }
@@ -190,13 +195,16 @@ bool thermal_i2c_read_16(uint16_t addr, uint8_t reg, uint16_t *val) {
     uint32_t notification_val;
     HAL_StatusTypeDef hal_ret;
 
-    configASSERT(val != NULL);
-
     sem_ret = xSemaphoreTake(_i2c_semaphore, portMAX_DELAY);
-    configASSERT(sem_ret == pdTRUE);
-
+    if(sem_ret != pdTRUE) {
+        return false;
+    }
+    
     // Set up notification info
-    configASSERT(_i2c_task_to_notify == NULL);
+    if(_i2c_task_to_notify != NULL) {
+        xSemaphoreGive(_i2c_semaphore);
+        return false;
+    }
     _i2c_task_to_notify = xTaskGetCurrentTaskHandle();
     
     hal_ret = HAL_I2C_Mem_Read_IT(&_i2c_handle, addr, (uint16_t)reg,
@@ -211,15 +219,18 @@ bool thermal_i2c_read_16(uint16_t addr, uint8_t reg, uint16_t *val) {
         }
     }
 
-    sem_ret = xSemaphoreGive(_i2c_semaphore);
-    configASSERT(sem_ret == pdTRUE);
+    // Ignore return, we would not return an error here even if it fails
+    (void)xSemaphoreGive(_i2c_semaphore);
 
     return (notification_val == 1) && (hal_ret == HAL_OK);
 }
 
-void thermal_arm_adc_for_read(ADC_ITR_T id) {
-    configASSERT(_gpio_task_to_notify[id] == NULL);
+bool thermal_arm_adc_for_read(ADC_ITR_T id) {
+    if(_gpio_task_to_notify[id] != NULL) {
+        return false;
+    }
     _gpio_task_to_notify[id] = xTaskGetCurrentTaskHandle();
+    return true;
 }
 
 void thermal_adc_ready_callback(ADC_ITR_T id) {
@@ -243,7 +254,9 @@ void thermal_adc_ready_callback(ADC_ITR_T id) {
 void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *i2c_handle)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    configASSERT( _i2c_task_to_notify != NULL );
+    if( _i2c_task_to_notify == NULL ) {
+        return;
+    }
     vTaskNotifyGiveFromISR( _i2c_task_to_notify, &xHigherPriorityTaskWoken );
     _i2c_task_to_notify = NULL;
     portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
@@ -252,7 +265,9 @@ void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *i2c_handle)
 void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *i2c_handle)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    configASSERT( _i2c_task_to_notify != NULL );
+    if( _i2c_task_to_notify == NULL ) {
+        return;
+    }
     vTaskNotifyGiveFromISR( _i2c_task_to_notify, &xHigherPriorityTaskWoken );
     _i2c_task_to_notify = NULL;
     portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
@@ -262,7 +277,9 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *i2c_handle)
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *i2c_handle)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    configASSERT( _i2c_task_to_notify != NULL );
+    if( _i2c_task_to_notify == NULL ) {
+        return;
+    }
     vTaskNotifyGiveFromISR( _i2c_task_to_notify, &xHigherPriorityTaskWoken );
     _i2c_task_to_notify = NULL;
     portYIELD_FROM_ISR( xHigherPriorityTaskWoken );

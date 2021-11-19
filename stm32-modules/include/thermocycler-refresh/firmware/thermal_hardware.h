@@ -57,7 +57,7 @@ bool thermal_i2c_read_16(uint16_t addr, uint8_t reg, uint16_t *val);
  * to signal the correct task after a conversion-complete signals is raised.
  * @param[in] id The ADC to arm the callback for.
  */
-void thermal_arm_adc_for_read(ADC_ITR_T id);
+bool thermal_arm_adc_for_read(ADC_ITR_T id);
 
 /**
  * @brief Callback when an ADC READY pin interrupt is triggered (falling edge)
