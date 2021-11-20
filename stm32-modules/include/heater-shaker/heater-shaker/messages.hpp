@@ -44,6 +44,13 @@ struct SetRPMMessage {
     bool from_system = false;
 };
 
+struct CheckMotorStartMessage {
+    uint32_t responding_to_id;
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
+    bool from_system = false;
+    int16_t target_rpm;
+};
+
 struct SetTemperatureMessage {
     uint32_t id;
     double target_temperature;
@@ -256,7 +263,7 @@ using MotorMessage = ::std::variant<
     ActuateSolenoidMessage, SetPlateLockPowerMessage, OpenPlateLockMessage,
     ClosePlateLockMessage, SetPIDConstantsMessage, PlateLockComplete,
     GetPlateLockStateMessage, GetPlateLockStateDebugMessage,
-    CheckPlateLockStatusMessage>;
+    CheckPlateLockStatusMessage, CheckMotorStartMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage, SetLEDMessage,

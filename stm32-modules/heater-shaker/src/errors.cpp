@@ -21,6 +21,7 @@ const char* const MOTOR_BLDC_OVERCURRENT = "ERR107:main motor:overcurrent\n";
 const char* const MOTOR_BLDC_DRIVER_ERROR = "ERR108:main motor:driver error\n";
 const char* const MOTOR_SPURIOUS_ERROR = "ERR109:main motor:spurious error\n";
 const char* const MOTOR_UNKNOWN_ERROR = "ERR110:main motor:unknown error\n";
+const char* const MOTOR_UNABLE_TO_MOVE = "ERR111:main motor:unable to move\n";
 const char* const MOTOR_ILLEGAL_SPEED = "ERR120:main motor:illegal speed\n";
 const char* const MOTOR_ILLEGAL_RAMP_RATE =
     "ERR121:main motor:illegal ramp rate\n";
@@ -88,6 +89,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(MOTOR_BLDC_DRIVER_ERROR);
         HANDLE_CASE(MOTOR_SPURIOUS_ERROR);
         HANDLE_CASE(MOTOR_UNKNOWN_ERROR);
+        HANDLE_CASE(MOTOR_UNABLE_TO_MOVE);
         HANDLE_CASE(MOTOR_ILLEGAL_SPEED);
         HANDLE_CASE(MOTOR_ILLEGAL_RAMP_RATE);
         HANDLE_CASE(MOTOR_BAD_HOME);
