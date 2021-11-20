@@ -166,19 +166,26 @@ class MotorTask {
         } else {
             policy.homing_solenoid_disengage();
             auto error = policy.set_rpm(msg.target_rpm);
-            policy.delay_ticks(200); //make local constant
-            static_cast<void>(get_message_queue().try_send(
-                messages::CheckMotorStartMessage{.responding_to_id = msg.id, .with_error = error, .from_system = msg.from_system, .target_rpm = msg.target_rpm}));
+            policy.delay_ticks(200);  // make local constant
+            static_cast<void>(
+                get_message_queue().try_send(messages::CheckMotorStartMessage{
+                    .responding_to_id = msg.id,
+                    .with_error = error,
+                    .from_system = msg.from_system,
+                    .target_rpm = msg.target_rpm}));
         }
     }
 
     template <typename Policy>
-    auto visit_message(const messages::CheckMotorStartMessage& msg, Policy& policy)
-        -> void {
-        int16_t lower_threshold = -5; //make local constant
-        int16_t upper_threshold = 5; //make local constant
+    auto visit_message(const messages::CheckMotorStartMessage& msg,
+                       Policy& policy) -> void {
+        int16_t lower_threshold =
+            -5;  // make local constant. Just use one +/- variable?
+        int16_t upper_threshold = 5;  // make local constant
         auto error = msg.with_error;
-        if ((msg.target_rpm != 0) && (policy.get_current_rpm() > lower_threshold) && (policy.get_current_rpm() < upper_threshold)) {
+        if ((msg.target_rpm != 0) &&
+            (policy.get_current_rpm() > lower_threshold) &&
+            (policy.get_current_rpm() < upper_threshold)) {
             error = errors::ErrorCode::MOTOR_UNABLE_TO_MOVE;
         } else {
             state.status = State::RUNNING;
