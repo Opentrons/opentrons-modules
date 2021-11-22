@@ -1,70 +1,159 @@
 {
-  "version": 1,
-  "cmakeMinimumRequired": {
-    "major": 3,
-    "minor": 19,
-    "patch": 0
-  },
-  "configurePresets": [
-    {
-      "name": "arduino",
-      "displayName": "Arduino modules",
-      "description": "Build modules firmwares that use Arduino compilers (tempdeck, magdeck, thermocycler)",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build-arduino/",
-      "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/ArduinoToolchain.cmake",
-        "ARDUINO_IDE_VERSION": "1.8.10",
-        "OPENTRONS_BOARDS_VERSION": "1.3.0",
-        "OPENTRONS_SAMD_BOARDS_VERSION": "1.1.0",
-        "ARDUINO_SAMD_VESION": "1.6.21",
-        "CMAKE_FIND_APPBUNDLE": "NEVER",
-        "TC_DUMMY_BOARD": false,
-        "TC_LID_WARNING": false,
-        "TC_HFQ_PWM": false,
-        "TC_HW_VERSION": "4",
-        "TC_RGBW_NEO": true,
-        "TC_VOLUME_DEPENDENCY": true,
-        "TC_LID_TESTING": false,
-        "MODULE_TYPE": "arduino",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/dist"
-      }
+    "version": 2,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 20,
+        "patch": 0
     },
-    {
-      "name": "stm32-cross",
-      "displayName": "STM32 module cross-compilation",
-      "description": "Build module application firmware for modules that use STM32, for flashing onto boards",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build-stm32-cross",
-      "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
-        "CMAKE_MODULE_PATH": "${sourceDir}/cmake",
-        "MODULE_TYPE": "stm32",
-        "CMAKE_FIND_APPBUNDLE": "NEVER",
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/STM32CortexM4GCCCrossToolchain.cmake",
-        "CMAKE_BUILD_CONFIG": "MinSizeRel"
-      }
-    },
-    {
-      "name": "stm32-host",
-      "displayName": "STM32 module host compilation for tests",
-      "description": "Build module libraries and test executables for modules that use STM32",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build-stm32-host",
-      "cacheVariables": {
-        "MODULE_TYPE": "stm32",
-        "CMAKE_FIND_APPBUNDLE": "NEVER",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": true
-      }
-    },
-    {
-      "name": "stm32-host-gcc10",
-      "inherits": "stm32-host",
-      "displayName": "STM32 module host builds forcing g++",
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "gcc-10",
-        "CMAKE_CXX_COMPILER": "g++-10"
-      }
-    }
-  ]
+    "configurePresets": [
+        {
+            "name": "arduino",
+            "displayName": "Arduino modules",
+            "description": "Build modules firmwares that use Arduino compilers (tempdeck, magdeck, thermocycler)",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build-arduino/",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/ArduinoToolchain.cmake",
+                "ARDUINO_IDE_VERSION": "1.8.10",
+                "OPENTRONS_BOARDS_VERSION": "1.3.0",
+                "OPENTRONS_SAMD_BOARDS_VERSION": "1.1.0",
+                "ARDUINO_SAMD_VESION": "1.6.21",
+                "CMAKE_FIND_APPBUNDLE": "NEVER",
+                "TC_DUMMY_BOARD": false,
+                "TC_LID_WARNING": false,
+                "TC_HFQ_PWM": false,
+                "TC_HW_VERSION": "4",
+                "TC_RGBW_NEO": true,
+                "TC_VOLUME_DEPENDENCY": true,
+                "TC_LID_TESTING": false,
+                "MODULE_TYPE": "arduino",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/dist"
+            }
+        },
+        {
+            "name": "stm32-cross",
+            "displayName": "STM32 module cross-compilation",
+            "description": "Build module application firmware for modules that use STM32, for flashing onto boards",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build-stm32-cross",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+                "CMAKE_MODULE_PATH": "${sourceDir}/cmake",
+                "MODULE_TYPE": "stm32",
+                "CMAKE_FIND_APPBUNDLE": "NEVER",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/STM32CortexM4GCCCrossToolchain.cmake",
+                "CMAKE_BUILD_CONFIG": "MinSizeRel"
+            }
+        },
+        {
+            "name": "stm32-host",
+            "displayName": "STM32 module host compilation for tests",
+            "description": "Build module libraries and test executables for modules that use STM32",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build-stm32-host",
+            "cacheVariables": {
+                "MODULE_TYPE": "stm32",
+                "CMAKE_FIND_APPBUNDLE": "NEVER",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true
+            }
+        },
+        {
+            "name": "stm32-host-gcc10",
+            "inherits": "stm32-host",
+            "displayName": "STM32 module host builds forcing g++",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "gcc-10",
+                "CMAKE_CXX_COMPILER": "g++-10"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "thermocycler-refresh-binary",
+            "displayName": "thermocycler refresh binary",
+            "description": "Build the thermocycler-refresh cross binary",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "thermocycler-refresh"
+            ]
+        },
+        {
+            "name": "thermocycler-refresh-debug",
+            "displayName": "thermocycler refresh debug",
+            "description": "Build the thermocycler-refresh cross debug",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "thermocycler-refresh-debug"
+            ]
+        },
+        {
+            "name": "heater-shaker-binary",
+            "displayName": "heater/shaker binary",
+            "description": "Build the heater-shaker cross binary",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "heater-shaker"
+            ]
+        },
+        {
+            "name": "heater-shaker-debug",
+            "displayName": "heater/shaker debug",
+            "description": "Build the heater-shaker cross debug",
+            "configurePreset": "stm32-cross",
+            "targets": [
+                "heater-shaker-debug"
+            ]
+        },
+        {
+            "name": "lint",
+            "displayName": "lint all",
+            "description": "Runs clang-tidy on all targets",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "heater-shaker-lint",
+                "common-lint",
+                "thermocycler-refresh-lint"
+            ]
+        },
+        {
+            "name": "format-firmware",
+            "displayName": "format  firmware",
+            "description": "Runs clang-format on all targets",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "heater-shaker-format",
+                "common-format",
+                "thermocycler-refresh-format"
+            ]
+        },
+        {
+            "name": "format-host",
+            "displayName": "format host",
+            "description": "Runs clang-format on all targets",
+            "configurePreset": "stm32-host",
+            "jobs": 4,
+            "targets": [
+                "heater-shaker-format",
+                "common-format",
+                "thermocycler-refresh-format"
+            ]
+        },
+        {
+            "name": "tests",
+            "displayName": "tests",
+            "description": "Runs build-and-test target for all subprojects",
+            "configurePreset": "stm32-host",
+            "jobs": 4,
+            "targets": [
+                "heater-shaker-build-and-test",
+                "common-build-and-test",
+                "thermocycler-refresh-build-and-test"
+            ]
+        }
+    ]
 }
