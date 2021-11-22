@@ -6,5 +6,3 @@
 
 /* size of array for setting serial number */
 #define SYSTEM_WIDE_SERIAL_NUMBER_LENGTH 24
-
-typedef enum { WHITE_ON, WHITE_OFF, RED_ON, RED_OFF } LED_MODE;

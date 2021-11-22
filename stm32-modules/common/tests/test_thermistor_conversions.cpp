@@ -43,7 +43,7 @@ SCENARIO("thermistor conversion boundary cases") {
         }
     }
     GIVEN("a KS103J2 converter") {
-        auto converter = Conversion<lookups::KS103J2G>(10000, 0x5DC0, false);
+        auto converter = Conversion<lookups::KS103J2G>(10.0, 0x5DC0, false);
         WHEN("sending a 0 result") {
             auto converted = converter.convert(0);
             THEN(
@@ -93,7 +93,7 @@ SCENARIO("thermistor conversions normal operation") {
     GIVEN("a KS103J2 converter") {
         // At temp 50C, resistance is 3602.00 ohms, which converts to
         // a voltage of 0.3972 volts, which is ADC 6360
-        auto converter = Conversion<lookups::KS103J2G>(10000, 0x5DC0, false);
+        auto converter = Conversion<lookups::KS103J2G>(10.0, 0x5DC0, false);
         WHEN("sending a valid reading") {
             auto converted = converter.convert(6360);
             THEN("the result should be reasonable") {
@@ -119,7 +119,7 @@ SCENARIO("thermistor backconversion") {
         }
     }
     GIVEN("a KS103J2 converter and some test temps") {
-        auto converter = Conversion<lookups::KS103J2G>(10000, 0x5DC0, false);
+        auto converter = Conversion<lookups::KS103J2G>(10.0, 0x5DC0, false);
         auto test_vals = std::array{10.0, 25.0, 50.0, 70.0, 90.0, 100.0};
         for (auto val : test_vals) {
             WHEN("through-converting a temperature") {

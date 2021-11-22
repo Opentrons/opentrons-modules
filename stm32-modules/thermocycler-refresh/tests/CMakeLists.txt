@@ -7,9 +7,14 @@ include(AddBuildAndTestTarget)
 add_executable(${TARGET_MODULE_NAME}
     task_builder.cpp
     test_host_comms_task.cpp
+    test_lid_heater_task.cpp
     test_main.cpp
     test_system_policy.cpp
     test_system_task.cpp
+    test_thermal_plate_task.cpp
+    # GCode parse tests
+    test_m105d.cpp
+    test_m141d.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 

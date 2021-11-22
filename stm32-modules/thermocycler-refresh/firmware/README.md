@@ -25,6 +25,14 @@ Pin | Use
 PA11 | USB DM
 PA12 | USB DP
 
+### Thermal System
+Pin | Use
+--- | ---
+PC4 | ADC I2C SCL (I2C2)
+PA8 | ADC I2C SDA (I2C2)
+PA9 | ADC 1 Alert (interrupt)
+PA10 | ADC 2 Alert (interrupt)
+
 ### Misc
 Pin | Use
 --- | ---
