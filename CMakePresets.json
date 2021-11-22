@@ -117,9 +117,20 @@
         },
         {
             "name": "format-firmware",
-            "displayName": "format all firmware",
+            "displayName": "format  firmware",
             "description": "Runs clang-format on all targets",
             "configurePreset": "stm32-cross",
+            "targets": [
+                "heater-shaker-format",
+                "common-format",
+                "thermocycler-refresh-format"
+            ]
+        },
+        {
+            "name": "format-host",
+            "displayName": "format host",
+            "description": "Runs clang-format on all targets",
+            "configurePreset": "stm32-host",
             "targets": [
                 "heater-shaker-format",
                 "common-format",
