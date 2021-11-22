@@ -14,9 +14,8 @@ SCENARIO("GetLidTemperatureDebug (M141.D) parser works",
             auto written = gcode::GetLidTemperatureDebug::write_response_into(
                 buffer.begin(), buffer.end(), 10.0, 40);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::StartsWith(
-                                "M141.D LT:10.00 LA:40 OK\n"));
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
+                                         "M141.D LT:10.00 LA:40 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
