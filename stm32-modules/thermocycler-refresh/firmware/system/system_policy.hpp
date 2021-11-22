@@ -24,6 +24,5 @@ class SystemPolicy {
     auto set_serial_number(
         std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number)
         -> errors::ErrorCode;
-    auto get_serial_number(void)
-        -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
+    auto get_serial_number() -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
 };

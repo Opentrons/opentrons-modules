@@ -2,13 +2,23 @@
 #include <cstdint>
 #include <variant>
 
-/** thermistor_conversion is a general-purpose c++ struct that can be
+/**
+ * @file thermistor_conversion.hpp
+ * @details
+ * thermistor_conversion is a general-purpose c++ struct that can be
  * parametrized with the real-world configuration values of an NTC
  * thermistor circuit. While the standard library doesn't implement compile
  * time math for a variety of reasons mostly having to do with error handling,
  * this struct calculates what it can at compile time and pushes the rest of
  * the parameter generation to the constructor to make the actual conversion
  * fast.
+ *
+ * This class is meant to calculate the resistance of the \e second resistor
+ * in a resistor ladder, AKA the resistor connected to ground. The
+ * \c Conversion constructor assumes that the specified max ADC reading
+ * equates to an R2 value of infinity, while an ADC reading of 0 would
+ * equate to a shorted R2. The actual maximum voltage of the circuit doesn't
+ * matter.
  */
 
 namespace thermistor_conversion {
@@ -56,7 +66,9 @@ struct Conversion {
         : _adc_max(static_cast<double>(adc_max_value)),
           _adc_max_result(
               static_cast<uint16_t>(static_cast<uint32_t>(adc_max_value))),
-          _bias_resistance_kohm(bias_resistance_nominal_kohm) {}
+          _bias_resistance_kohm(bias_resistance_nominal_kohm) {
+        static_cast<void>(is_signed);
+    }
 
     Conversion() = delete;
 
@@ -73,9 +85,8 @@ struct Conversion {
         if (std::holds_alternative<TableError>(entries)) {
             if (std::get<TableError>(entries) == TableError::TABLE_END) {
                 return _adc_max_result;
-            } else {
-                return 0;
             }
+            return 0;
         }
         auto entry_pair = std::get<TableEntryPair>(entries);
 
@@ -97,7 +108,7 @@ struct Conversion {
     const double _bias_resistance_kohm;
 
     [[nodiscard]] auto resistance_from_adc(uint16_t adc_count) const -> Result {
-        if (adc_count == _adc_max_result) {
+        if (adc_count >= _adc_max_result) {
             return Result(Error::OUT_OF_RANGE_LOW);
         }
         if (adc_count == 0) {
@@ -113,9 +124,8 @@ struct Conversion {
         if (std::holds_alternative<TableError>(entries)) {
             if (std::get<TableError>(entries) == TableError::TABLE_END) {
                 return Result(Error::OUT_OF_RANGE_HIGH);
-            } else {
-                return Result(Error::OUT_OF_RANGE_LOW);
             }
+            return Result(Error::OUT_OF_RANGE_LOW);
         }
         auto entry_pair = std::get<TableEntryPair>(entries);
 
@@ -146,7 +156,8 @@ struct Conversion {
         if (first_less == GetTable()().end()) {
             return TableResult(TableError::TABLE_END);
         }
-        return TableResult(TableEntryPair(*first_less, *(first_less - 1)));
+        return TableResult(
+            TableEntryPair(*first_less, *std::prev(first_less, 1)));
     }
 
     /**
@@ -167,7 +178,8 @@ struct Conversion {
         if (first_more == GetTable()().end()) {
             return TableResult(TableError::TABLE_END);
         }
-        return TableResult(TableEntryPair(*first_more, *(first_more - 1)));
+        return TableResult(
+            TableEntryPair(*first_more, *std::prev(first_more, 1)));
     }
 };
 };  // namespace thermistor_conversion

@@ -77,10 +77,11 @@ if (${CMAKE_CROSSCOMPILING})
   list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
   # This helps with clang accepting what GCC accepts around the implementations of the message queue
   list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
+  list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Werror=implicit-fallthrough")
   add_custom_target(${TARGET_MODULE_NAME}-lint
     COMMENT "Linting"
     ALL
-    COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${CORE_LINTABLE_SOURCES} --config=
+    COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${CORE_LINTABLE_SOURCES}
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
     )
   

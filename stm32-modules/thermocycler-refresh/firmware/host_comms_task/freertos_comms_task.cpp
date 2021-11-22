@@ -98,15 +98,17 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
     // stm32g4xx-bsp/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c:159
     // for annotated descriptor definitions
 
-    uint16_t len;
+    uint16_t len = 0;
     auto *usb_hs_desc = USBD_CDC.GetHSConfigDescriptor(&len);
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     if ((usb_hs_desc != nullptr) && (len > 30)) {
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-bounds-pointer-arithmetic)
         usb_hs_desc[30] = 0;
     }
     auto *usb_fs_desc = USBD_CDC.GetFSConfigDescriptor(&len);
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     if ((usb_fs_desc != nullptr) && (len > 30)) {
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,cppcoreguidelines-pro-bounds-pointer-arithmetic)
         usb_fs_desc[30] = 0;
     }
     USBD_Init(&local_task->usb_handle, &CDC_Desc, 0);
