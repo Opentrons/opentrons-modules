@@ -7,7 +7,7 @@
 
 class LidHeaterPolicy {
   public:
-    LidHeaterPolicy();
+    LidHeaterPolicy() = default;
 
     auto set_enabled(bool enabled) -> void;
 };
