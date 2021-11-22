@@ -152,33 +152,29 @@ struct SetSerialNumber {
 
         auto after = working;
         bool found = false;
-        for (int index = 0; (index != (limit - working + 1)) && (!found);
-             index++) {
-            if (std::isspace(*(working + index)) ||
-                ((*(working + index)) == '\0')) {
-                after = (working + index);
+        for (auto index = working; index != limit && (!found); index++) {
+            if (std::isspace(*index) || (*index == '\0')) {
+                after = index;
                 found = true;
             }
         }
-        if (((after - working) > 0) &&
-            ((after - working) < static_cast<int>(SERIAL_NUMBER_LENGTH))) {
+        if ((after != working) && (std::distance(working, after) <
+                                   static_cast<int>(SERIAL_NUMBER_LENGTH))) {
             std::array<char, SERIAL_NUMBER_LENGTH> serial_number_res = {};
-            std::copy(working, (working + (after - working)),
-                      serial_number_res.begin());
+            std::copy(working, after, serial_number_res.begin());
             return std::make_pair(ParseResult(SetSerialNumber{
                                       .serial_number = serial_number_res}),
                                   after);
-        } else if (((after - working) > 0) &&
-                   ((after - working) >=
-                    static_cast<int>(SERIAL_NUMBER_LENGTH))) {
+        }
+        if (std::distance(working, after) >
+            static_cast<int>(SERIAL_NUMBER_LENGTH)) {
             return std::make_pair(
                 ParseResult(SetSerialNumber{
                     .with_error =
                         errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID}),
                 input);
-        } else {
-            return std::make_pair(ParseResult(), input);
         }
+        return std::make_pair(ParseResult(), input);
     }
 };
 

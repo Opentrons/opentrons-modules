@@ -35,21 +35,23 @@ struct adc_hardware {
         freertos_synchronization::FreeRTOSMutex();
 };
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::array<adc_hardware, ADC_ITR_NUM> _adc_hardware;
 
 ADC::ADC(uint8_t addr, ADC_ITR_T id) : _addr(addr), _id(id), _last_result(0) {}
 
 void ADC::initialize() {
     bool initialization_started =
-        _adc_hardware[_id]._initialization_started.exchange(true);
-    if (initialization_started == true) {
+        _adc_hardware.at(_id)._initialization_started.exchange(true);
+    if (initialization_started) {
         // Spin until initialization is completed by other thread
-        while (initialized() != true) {
+        while (!initialized()) {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast)
             taskYIELD();
         }
     } else {
         // Check that the mutex is configured fine
-        configASSERT(_adc_hardware[_id]._mutex.get_count() == 1);
+        configASSERT(_adc_hardware.at(_id)._mutex.get_count() == 1);
 
         // Write to the Lo and Hi threshold registers first to enable the ALERT
         // pin
@@ -58,13 +60,13 @@ void ADC::initialize() {
 
         thermal_i2c_write_16(_addr, config_addr, config_default);
 
-        _adc_hardware[_id]._initialization_done = true;
+        _adc_hardware.at(_id)._initialization_done = true;
     }
 }
 
 auto ADC::read(uint16_t pin) -> ADC::ReadVal {
     uint32_t notification_val = 0;
-    bool i2c_ret;
+    bool i2c_ret = false;
     const TickType_t max_block_time = pdMS_TO_TICKS(500);
     if (!initialized()) {
         return ReadVal(Error::ADCInit);
@@ -73,12 +75,12 @@ auto ADC::read(uint16_t pin) -> ADC::ReadVal {
         return ReadVal(Error::ADCPin);
     }
 
-    if (get_lock() == false) {
+    if (!get_lock()) {
         return ReadVal(Error::ADCTimeout);
     }
 
     i2c_ret = thermal_arm_adc_for_read(_id);
-    if (i2c_ret == false) {
+    if (!i2c_ret) {
         static_cast<void>(release_lock());
         return ReadVal(Error::ADCTimeout);
     }
@@ -87,7 +89,7 @@ auto ADC::read(uint16_t pin) -> ADC::ReadVal {
         _addr, config_addr,
         config_default | (pin << config_mux_shift) | config_start_read);
 
-    if (i2c_ret == true) {
+    if (i2c_ret) {
         // thermal_hardware.c will notify this task once the correct GPIO sends
         // a pulse indicating ADC READY.
         notification_val = ulTaskNotifyTake(pdTRUE, max_block_time);
@@ -99,7 +101,7 @@ auto ADC::read(uint16_t pin) -> ADC::ReadVal {
     }
 
     static_cast<void>(release_lock());
-    if ((i2c_ret == false) || (notification_val == 0)) {
+    if ((!i2c_ret) || (notification_val == 0)) {
         return ReadVal(Error::ADCTimeout);
     }
 
@@ -107,14 +109,14 @@ auto ADC::read(uint16_t pin) -> ADC::ReadVal {
 }
 
 auto ADC::initialized() -> bool {
-    return (_adc_hardware[_id]._initialization_done == true);
+    return (_adc_hardware.at(_id)._initialization_done);
 }
 
 auto ADC::get_lock() -> bool {
     if (!initialized()) {
         return false;
     }
-    _adc_hardware[_id]._mutex.acquire();
+    _adc_hardware.at(_id)._mutex.acquire();
     return true;
 }
 
@@ -122,7 +124,7 @@ auto ADC::release_lock() -> bool {
     if (!initialized()) {
         return false;
     }
-    _adc_hardware[_id]._mutex.release();
+    _adc_hardware.at(_id)._mutex.release();
     return true;
 }
 

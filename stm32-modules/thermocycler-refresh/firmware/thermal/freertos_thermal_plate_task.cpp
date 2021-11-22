@@ -34,6 +34,7 @@ static FreeRTOSMessageQueue<thermal_plate_task::Message>
     _thermal_plate_queue(static_cast<uint8_t>(Notifications::INCOMING_MESSAGE),
                          "Thermal Plate Queue");
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _main_task =
     thermal_plate_task::ThermalPlateTask(_thermal_plate_queue);
 
@@ -75,13 +76,13 @@ static StaticTask_t
  * @return The value read by the ADC in counts. Will return 0 if the
  * ADC cannot be read.
  */
-static uint16_t read_thermistor(const ADCPinMap &pin) {
-    auto result = _adc[static_cast<uint8_t>(pin.adc_index)].read(pin.adc_pin);
+static auto read_thermistor(const ADCPinMap &pin) -> uint16_t {
+    auto result =
+        _adc.at(static_cast<uint8_t>(pin.adc_index)).read(pin.adc_pin);
     if (std::holds_alternative<ADS1115::Error>(result)) {
         return 0;
-    } else {
-        return std::get<uint16_t>(result);
     }
+    return std::get<uint16_t>(result);
 }
 
 static void run(void *param) {
@@ -100,11 +101,12 @@ static void run(void *param) {
  * the message sent by updating its control loop.
  */
 static void run_thermistor_task(void *param) {
+    static_cast<void>(param);
     thermal_hardware_setup();
     _adc[ADC_FRONT].initialize();
     _adc[ADC_REAR].initialize();
     auto last_wake_time = xTaskGetTickCount();
-    messages::ThermalPlateTempReadComplete readings;
+    messages::ThermalPlateTempReadComplete readings{};
     while (true) {
         vTaskDelayUntil(
             &last_wake_time,

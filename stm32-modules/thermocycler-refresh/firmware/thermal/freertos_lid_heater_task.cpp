@@ -25,6 +25,7 @@ static FreeRTOSMessageQueue<lid_heater_task::Message>
     _lid_heater_queue(static_cast<uint8_t>(Notifications::INCOMING_MESSAGE),
                       "Lid Heater Queue");
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _main_task = lid_heater_task::LidHeaterTask(_lid_heater_queue);
 
 static constexpr uint32_t _stack_size = 500;
@@ -59,11 +60,12 @@ static void run(void *param) {
  * the message sent by updating its control loop.
  */
 static void run_thermistor_task(void *param) {
+    static_cast<void>(param);
     thermal_hardware_setup();
     ADS1115::ADC adc(_adc_address, ADC2_ITR);
     adc.initialize();
     auto last_wake_time = xTaskGetTickCount();
-    messages::LidTempReadComplete readings;
+    messages::LidTempReadComplete readings{};
     while (true) {
         vTaskDelayUntil(
             &last_wake_time,
