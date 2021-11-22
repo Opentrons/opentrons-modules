@@ -14,6 +14,7 @@
 #include <atomic>
 
 #include "FreeRTOS.h"
+#include "firmware/freertos_synchronization.hpp"
 #include "semphr.h"
 #include "task.h"
 
@@ -30,8 +31,8 @@ struct adc_hardware {
     std::atomic<bool> _initialization_started = false;
     bool _initialization_done = false;
     // Semaphore information for the ADC
-    SemaphoreHandle_t _semaphore = nullptr;
-    StaticSemaphore_t _semaphore_buffer = {};
+    freertos_synchronization::FreeRTOSMutex _mutex =
+        freertos_synchronization::FreeRTOSMutex();
 };
 
 static std::array<adc_hardware, ADC_ITR_NUM> _adc_hardware;
@@ -47,10 +48,8 @@ void ADC::initialize() {
             taskYIELD();
         }
     } else {
-        // Set up the semaphore for this ADC.
-        _adc_hardware[_id]._semaphore = xSemaphoreCreateMutexStatic(
-            &(_adc_hardware[_id]._semaphore_buffer));
-        configASSERT(_adc_hardware[_id]._semaphore != NULL);
+        // Check that the mutex is configured fine
+        configASSERT(_adc_hardware[_id]._mutex.get_count() == 1);
 
         // Write to the Lo and Hi threshold registers first to enable the ALERT
         // pin
@@ -115,15 +114,16 @@ auto ADC::get_lock() -> bool {
     if (!initialized()) {
         return false;
     }
-    return xSemaphoreTake(_adc_hardware[_id]._semaphore,
-                          pdMS_TO_TICKS(max_semaphor_wait)) == pdTRUE;
+    _adc_hardware[_id]._mutex.acquire();
+    return true;
 }
 
 auto ADC::release_lock() -> bool {
     if (!initialized()) {
         return false;
     }
-    return xSemaphoreGive(_adc_hardware[_id]._semaphore) == pdTRUE;
+    _adc_hardware[_id]._mutex.release();
+    return true;
 }
 
 }  // namespace ADS1115
