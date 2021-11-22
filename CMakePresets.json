@@ -73,6 +73,7 @@
             "displayName": "thermocycler refresh binary",
             "description": "Build the thermocycler-refresh cross binary",
             "configurePreset": "stm32-cross",
+            "jobs": 4,
             "targets": [
                 "thermocycler-refresh"
             ]
@@ -82,6 +83,7 @@
             "displayName": "thermocycler refresh debug",
             "description": "Build the thermocycler-refresh cross debug",
             "configurePreset": "stm32-cross",
+            "jobs": 4,
             "targets": [
                 "thermocycler-refresh-debug"
             ]
@@ -91,6 +93,7 @@
             "displayName": "heater/shaker binary",
             "description": "Build the heater-shaker cross binary",
             "configurePreset": "stm32-cross",
+            "jobs": 4,
             "targets": [
                 "heater-shaker"
             ]
@@ -109,6 +112,7 @@
             "displayName": "lint all",
             "description": "Runs clang-tidy on all targets",
             "configurePreset": "stm32-cross",
+            "jobs": 4,
             "targets": [
                 "heater-shaker-lint",
                 "common-lint",
@@ -120,6 +124,7 @@
             "displayName": "format  firmware",
             "description": "Runs clang-format on all targets",
             "configurePreset": "stm32-cross",
+            "jobs": 4,
             "targets": [
                 "heater-shaker-format",
                 "common-format",
@@ -131,6 +136,7 @@
             "displayName": "format host",
             "description": "Runs clang-format on all targets",
             "configurePreset": "stm32-host",
+            "jobs": 4,
             "targets": [
                 "heater-shaker-format",
                 "common-format",
@@ -142,6 +148,7 @@
             "displayName": "tests",
             "description": "Runs build-and-test target for all subprojects",
             "configurePreset": "stm32-host",
+            "jobs": 4,
             "targets": [
                 "heater-shaker-build-and-test",
                 "common-build-and-test",
