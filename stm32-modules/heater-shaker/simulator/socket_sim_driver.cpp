@@ -17,8 +17,9 @@ std::unique_ptr<boost::asio::ip::tcp::socket> connect_to_socket(
     std::string host, int port) {
     boost::asio::io_service io_context;
     boost::asio::ip::tcp::resolver resolver(io_context);
-    auto endpoints  = resolver.resolve(host, std::to_string(port));
-    std::string parsed_host = endpoints.begin()->endpoint().address().to_string();
+    auto endpoints = resolver.resolve(host, std::to_string(port));
+    std::string parsed_host =
+        endpoints.begin()->endpoint().address().to_string();
 
     auto socket = std::make_unique<boost::asio::ip::tcp::socket>(io_context);
     boost::asio::ip::tcp::endpoint endpoint(
