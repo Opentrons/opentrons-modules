@@ -7,7 +7,7 @@
 
 class ThermalPlatePolicy {
   public:
-    ThermalPlatePolicy();
+    ThermalPlatePolicy() = default;
 
     auto set_enabled(bool enabled) -> void;
 };

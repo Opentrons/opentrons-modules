@@ -18,8 +18,9 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${SYSTEM_DIR}/main.cpp 
   ${SYSTEM_DIR}/freertos_system_task.cpp
   ${SYSTEM_DIR}/system_policy.cpp
-  ${COMMS_DIR}/freertos_comms_task.cpp
   ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
+  ${COMMS_DIR}/freertos_comms_task.cpp
+  ${THERMAL_DIR}/ads1115.cpp
   ${THERMAL_DIR}/freertos_thermal_plate_task.cpp
   ${THERMAL_DIR}/thermal_plate_policy.cpp
   ${THERMAL_DIR}/freertos_lid_heater_task.cpp
@@ -32,9 +33,11 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/stm32g4xx_it.c
   ${SYSTEM_DIR}/system_hardware.c
   ${SYSTEM_DIR}/stm32g4xx_hal_timebase_tim.c
+  ${SYSTEM_DIR}/stm32g4xx_hal_msp.c
   ${SYSTEM_DIR}/system_serial_number.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
+  ${THERMAL_DIR}/thermal_hardware.c
   )
 
 add_executable(${TARGET_MODULE_NAME}
@@ -144,11 +147,12 @@ set(CLANG_EXTRA_ARGS ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
 # This helps with clang accepting what GCC accepts around the implementations of the message queue
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
+list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Werror=implicit-fallthrough")
 add_custom_target(${TARGET_MODULE_NAME}-lint
   COMMENT "Linting"
   ALL
-  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS} ${CORE_LINTABLE_SOURCES} --config=
-  DEPENDS heater-shaker-core # Required to include the thermistor_lookups file, and possibly generate it if not present
+  COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS} ${CORE_LINTABLE_SOURCES}
+  DEPENDS thermocycler-refresh-core # Required to include the thermistor_lookups file, and possibly generate it if not present
 )
 
 # Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an

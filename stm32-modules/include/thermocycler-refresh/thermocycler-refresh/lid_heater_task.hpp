@@ -11,6 +11,7 @@
 #include "core/pid.hpp"
 #include "core/thermistor_conversion.hpp"
 #include "hal/message_queue.hpp"
+#include "thermistor_lookups.hpp"
 #include "thermocycler-refresh/errors.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/tasks.hpp"
@@ -55,7 +56,7 @@ class LidHeaterTask {
     using Queue = QueueImpl<Message>;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 100;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 10.0;
-    static constexpr uint8_t ADC_BIT_DEPTH = 16;
+    static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
     // TODO most of these defaults will have to change
     static constexpr double DEFAULT_KI = 0.102;
     static constexpr double DEFAULT_KP = 0.97;
@@ -72,22 +73,29 @@ class LidHeaterTask {
         CONTROL_PERIOD_TICKS * 0.001;
 
     explicit LidHeaterTask(Queue& q)
-        : message_queue(q),
-          task_registry(nullptr),
-          thermistor{.overtemp_limit_c = OVERTEMP_LIMIT_C,
-                     .error_bit = State::LID_THERMISTOR_ERROR},
-          state{.system_status = State::IDLE, .error_bitmap = 0},
-          pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS, 1.0,
-              -1.0) {}
+        : _message_queue(q),
+          _task_registry(nullptr),
+          _thermistor{
+              .overtemp_limit_c = OVERTEMP_LIMIT_C,
+              .disconnected_error =
+                  errors::ErrorCode::THERMISTOR_LID_DISCONNECTED,
+              .short_error = errors::ErrorCode::THERMISTOR_LID_SHORT,
+              .overtemp_error = errors::ErrorCode::THERMISTOR_LID_OVERTEMP,
+              .error_bit = State::LID_THERMISTOR_ERROR},
+          _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
+                     false),
+          _state{.system_status = State::IDLE, .error_bitmap = 0},
+          _pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS, 1.0,
+               -1.0) {}
     LidHeaterTask(const LidHeaterTask& other) = delete;
     auto operator=(const LidHeaterTask& other) -> LidHeaterTask& = delete;
     LidHeaterTask(LidHeaterTask&& other) noexcept = delete;
     auto operator=(LidHeaterTask&& other) noexcept -> LidHeaterTask& = delete;
     ~LidHeaterTask() = default;
-    auto get_message_queue() -> Queue& { return message_queue; }
+    auto get_message_queue() -> Queue& { return _message_queue; }
 
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
-        task_registry = other_tasks;
+        _task_registry = other_tasks;
     }
 
     /**
@@ -111,7 +119,7 @@ class LidHeaterTask {
         // anywhere up to the provided timeout, which drives the controller
         // frequency.
 
-        static_cast<void>(message_queue.recv(&message));
+        static_cast<void>(_message_queue.recv(&message));
         std::visit(
             [this, &policy](const auto& msg) -> void {
                 this->visit_message(msg, policy);
@@ -121,22 +129,86 @@ class LidHeaterTask {
 
   private:
     template <typename Policy>
+    requires LidHeaterExecutionPolicy<Policy>
     auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
         static_cast<void>(policy);
         static_cast<void>(_ignore);
     }
 
     template <typename Policy>
+    requires LidHeaterExecutionPolicy<Policy>
     auto visit_message(const messages::LidTempReadComplete& msg, Policy& policy)
         -> void {
-        // TODO fill out this function
+        static_cast<void>(policy);
+
+        handle_temperature_conversion(msg.lid_temp, _thermistor);
     }
 
-    Queue& message_queue;
-    tasks::Tasks<QueueImpl>* task_registry;
-    Thermistor thermistor;
-    State state;
-    PID pid;
+    template <typename Policy>
+    requires LidHeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::GetLidTemperatureDebugMessage& msg,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        auto response = messages::GetLidTemperatureDebugResponse{
+            .responding_to_id = msg.id,
+            .lid_temp = _thermistor.temp_c,
+            .lid_adc = _thermistor.last_adc};
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    auto handle_temperature_conversion(uint16_t conversion_result,
+                                       Thermistor& thermistor) -> void {
+        auto visitor = [this, &thermistor](const auto value) -> void {
+            this->visit_conversion(thermistor, value);
+        };
+        thermistor.last_adc = conversion_result;
+        auto old_error = thermistor.error;
+        std::visit(visitor, _converter.convert(conversion_result));
+        if (old_error != thermistor.error) {
+            if (thermistor.error != errors::ErrorCode::NO_ERROR) {
+                _state.error_bitmap |= thermistor.error_bit;
+                auto error_message = messages::HostCommsMessage(
+                    messages::ErrorMessage{.code = thermistor.error});
+                static_cast<void>(
+                    _task_registry->comms->get_message_queue().try_send(
+                        error_message));
+            }
+        }
+    }
+
+    auto visit_conversion(Thermistor& therm,
+                          const thermistor_conversion::Error error) -> void {
+        switch (error) {
+            case thermistor_conversion::Error::OUT_OF_RANGE_LOW: {
+                therm.temp_c = 0;
+                therm.error = therm.disconnected_error;
+                break;
+            }
+            case thermistor_conversion::Error::OUT_OF_RANGE_HIGH: {
+                therm.temp_c = 0;
+                therm.error = therm.short_error;
+                break;
+            }
+        }
+    }
+
+    auto visit_conversion(Thermistor& therm, const double temp) -> void {
+        if (temp > therm.overtemp_limit_c) {
+            therm.error = therm.overtemp_error;
+        } else {
+            therm.error = errors::ErrorCode::NO_ERROR;
+        }
+        therm.temp_c = temp;
+    }
+
+    Queue& _message_queue;
+    tasks::Tasks<QueueImpl>* _task_registry;
+    Thermistor _thermistor;
+    thermistor_conversion::Conversion<lookups::KS103J2G> _converter;
+    State _state;
+    PID _pid;
 };
 
 }  // namespace lid_heater_task

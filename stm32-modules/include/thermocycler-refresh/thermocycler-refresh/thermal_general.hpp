@@ -27,6 +27,9 @@ enum ThermistorID {
     THERM_COUNT
 };
 
+// Disabled lint warning because we specifically want the rest
+// of the parameters to be initialized by the task constructor
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct Thermistor {
     // Last converted temperature (0 if invalid)
     double temp_c = 0;
@@ -38,6 +41,9 @@ struct Thermistor {
     // in order to capture errors specific to a sensor that require
     // a system restart to rectify
     const double overtemp_limit_c;
+    const errors::ErrorCode disconnected_error;
+    const errors::ErrorCode short_error;
+    const errors::ErrorCode overtemp_error;
     const uint8_t error_bit;
 };
 
