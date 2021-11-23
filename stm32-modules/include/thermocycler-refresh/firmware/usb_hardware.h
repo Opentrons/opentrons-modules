@@ -31,7 +31,7 @@ typedef uint8_t *(*usb_rx_callback_t)(uint8_t *, uint32_t *);
  * @brief Function pointer used for specifying callback
  * for CDC initialization
  * @details
- * - Should return a pointer to the buffer to store RX packets
+ * - Should return a pointer to a buffer to store RX packets
  */
 typedef uint8_t *(*usb_cdc_init_callback_t)();
 
@@ -42,8 +42,11 @@ typedef uint8_t *(*usb_cdc_init_callback_t)();
 typedef void (*usb_cdc_deinit_callback_t)();
 
 /**
- * @brief Initializes the USB hardware on the system
- * @param[in] cb The function to call when a USB packet arrives
+ * @brief Initializes the USB hardware on the system. Provides function
+ * pointers to the C code that will be invoked upon certain USB CDC events.
+ * @param[in] rx_cb The function to call when a USB packet arrives
+ * @param[in] cdc_init_cb Function to call when initializing CDC 
+ * @param[in] cdc_deinit_cb Function to call when deinitializing CDC
  */
 void usb_hw_init(usb_rx_callback_t rx_cb, usb_cdc_init_callback_t cdc_init_cb,
                  usb_cdc_deinit_callback_t cdc_deinit_cb);
