@@ -151,11 +151,13 @@ static int8_t CDC_Control(uint8_t cmd, uint8_t *pbuf, uint16_t length) {
 }
 
 static int8_t CDC_Receive(uint8_t *Buf, uint32_t *Len) {
-    uint8_t *new_buf = _local_config.rx_callback(Buf, Len); // C++ handles most logic here
-    USBD_CDC_SetRxBuffer(
-        &_local_config.usb_handle,
-        new_buf);
-    USBD_CDC_ReceivePacket(&_local_config.usb_handle);
+    if(_local_config.rx_callback != NULL) {
+        uint8_t *new_buf = _local_config.rx_callback(Buf, Len); // C++ handles most logic here
+        USBD_CDC_SetRxBuffer(
+            &_local_config.usb_handle,
+            new_buf);
+        USBD_CDC_ReceivePacket(&_local_config.usb_handle);        
+    }
 
     return USBD_OK;
 }
