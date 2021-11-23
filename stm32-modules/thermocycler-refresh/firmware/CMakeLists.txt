@@ -37,6 +37,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/system_serial_number.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
+  ${COMMS_DIR}/usb_hardware.c
   ${THERMAL_DIR}/thermal_hardware.c
   )
 

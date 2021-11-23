@@ -1,14 +1,11 @@
+#include "system_policy.hpp"
+
 #include <array>
 #include <iterator>
 #include <ranges>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvolatile"
 #include "system_hardware.h"
 #include "system_serial_number.h"
-#pragma GCC diagnostic pop
-
-#include "system_policy.hpp"
 #include "thermocycler-refresh/errors.hpp"
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

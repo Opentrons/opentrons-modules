@@ -2,14 +2,10 @@
 
 #include <array>
 
-#include "systemwide.h"
-#include "thermocycler-refresh/errors.hpp"
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvolatile"
 #include "system_hardware.h"
 #include "system_serial_number.h"
-#pragma GCC diagnostic pop
+#include "systemwide.h"
+#include "thermocycler-refresh/errors.hpp"
 
 class SystemPolicy {
   private:
