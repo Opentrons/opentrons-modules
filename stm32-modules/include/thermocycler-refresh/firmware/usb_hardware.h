@@ -1,6 +1,5 @@
 /**
  * @file usb_hardware.h
- * @author Frank Sinapi (frank.sinapi@opentrons.com)
  * @brief Header with forward definitions of functions
  * for firmware-specific USB control code.
  */

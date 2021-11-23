@@ -1,6 +1,5 @@
 /**
  * @file usb_hardware.c
- * @author Frank Sinapi (frank.sinapi@opentrons.com)
  * @brief Firmware-specific USB HAL control code
  * @details This file exists to act as a thin wrapper around STM32 HAL
  * libraries for USB control. The goal is for each function to handle
