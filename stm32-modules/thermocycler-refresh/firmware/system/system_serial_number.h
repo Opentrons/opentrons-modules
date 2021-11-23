@@ -7,6 +7,7 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 struct writable_serial {
     uint64_t contents[3];
