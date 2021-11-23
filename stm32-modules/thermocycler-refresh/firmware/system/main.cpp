@@ -6,13 +6,9 @@
 #include "firmware/freertos_message_queue.hpp"
 #include "firmware/freertos_system_task.hpp"
 #include "firmware/freertos_thermal_plate_task.hpp"
+#include "system_hardware.h"
 #include "system_stm32g4xx.h"
 #include "thermocycler-refresh/tasks.hpp"
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvolatile"
-#include "system_hardware.h"
-#pragma GCC diagnostic pop
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 tasks::Tasks<FreeRTOSMessageQueue> tasks_aggregator;
