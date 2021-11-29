@@ -16,7 +16,7 @@ motor_hardware_handles *MOTOR_HW_HANDLE = NULL;
   */
 static void MX_GPIO_Init(void)
 {
-  /* Enable GPIOE clock */
+  /* Enable GPIOD clock */
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
