@@ -7,6 +7,8 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "firmware/thermal_peltier_hardware.h"
+
 /** Defines the interrupt pins available for reading results.*/
 typedef enum { ADC1_ITR, ADC2_ITR } ADC_ITR_T;
 

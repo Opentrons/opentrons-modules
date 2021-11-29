@@ -154,6 +154,36 @@
                 "common-build-and-test",
                 "thermocycler-refresh-build-and-test"
             ]
+        },
+        {
+            "name": "thermocycler-refresh-tests",
+            "displayName": "tests",
+            "description": "Runs build-and-test target for all subprojects",
+            "configurePreset": "stm32-host",
+            "jobs": 4,
+            "targets": [
+                "thermocycler-refresh-build-and-test"
+            ]
+        },
+        {
+            "name": "heater-shaker-tests",
+            "displayName": "tests",
+            "description": "Runs build-and-test target for all subprojects",
+            "configurePreset": "stm32-host",
+            "jobs": 4,
+            "targets": [
+                "heater-shaker-build-and-test"
+            ]
+        },
+        {
+            "name": "common-tests",
+            "displayName": "tests",
+            "description": "Runs build-and-test target for all subprojects",
+            "configurePreset": "stm32-host",
+            "jobs": 4,
+            "targets": [
+                "common-build-and-test"
+            ]
         }
     ]
 }

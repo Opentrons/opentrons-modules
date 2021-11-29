@@ -39,6 +39,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${COMMS_DIR}/usbd_desc.c
   ${COMMS_DIR}/usb_hardware.c
   ${THERMAL_DIR}/thermal_hardware.c
+  ${THERMAL_DIR}/thermal_peltier_hardware.c
   )
 
 add_executable(${TARGET_MODULE_NAME}

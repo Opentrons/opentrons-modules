@@ -178,6 +178,121 @@ struct SetSerialNumber {
     }
 };
 
+struct SetPeltierDebug {
+    /**
+     * SetPeltierDebug uses M104.D, debug version of M104. Sets the
+     * PWM as a percentage between 0 and 1, and sets the direction
+     * as either HEAT or COOL
+     *
+     * M104.D <L,R,C,A> P[0.0,1.0] <H,C>
+     *
+     * The power will be maintained at the specified level until either
+     * - An error occurs
+     * - An M104 is sent
+     * - Another M104.D is sent
+     *
+     */
+    using ParseResult = std::optional<SetPeltierDebug>;
+    static constexpr auto prefix =
+        std::array{'M', '1', '0', '4', '.', 'D', ' '};
+    static constexpr const char* response = "M104.D OK\n";
+
+    double power;
+    PeltierDirection direction;
+    PeltierSelection peltier_selection;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        // Get the next non-whitespace character for peltier selection
+        working = gobble_whitespace(working, limit);
+        if (working == limit) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto selection_char = *working;
+        PeltierSelection selection = ALL;
+        std::advance(working, 1);
+        switch (selection_char) {
+            case 'L':
+                selection = PeltierSelection::LEFT;
+                break;
+            case 'R':
+                selection = PeltierSelection::RIGHT;
+                break;
+            case 'C':
+                selection = PeltierSelection::CENTER;
+                break;
+            case 'A':
+                selection = PeltierSelection::ALL;
+                break;
+            default:
+                // Invalid peltier selection
+                return std::make_pair(ParseResult(), input);
+        }
+
+        // Get the next non-whitespace character for temperature selection
+        working = gobble_whitespace(working, limit);
+        if (working == limit) {
+            return std::make_pair(ParseResult(), input);
+        }
+        // Skip prefix (P)
+        std::advance(working, 1);
+        if (working == limit) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto power = parse_value<float>(working, limit);
+        if (!power.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto power_val = power.first.value();
+        if ((power_val < 0) || (power_val > 1.0)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        working = power.second;
+
+        // Get the next non-whitespace character for peltier selection
+        working = gobble_whitespace(working, limit);
+        if (working == limit) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto direction_char = *working;
+        std::advance(working, 1);
+        PeltierDirection dir = PELTIER_HEATING;
+        switch (direction_char) {
+            case 'H':
+                dir = PELTIER_HEATING;
+                break;
+            case 'C':
+                dir = PELTIER_COOLING;
+                break;
+            default:
+                // Invalid direction selection
+                return std::make_pair(ParseResult(), input);
+        }
+
+        return std::make_pair(
+            ParseResult(SetPeltierDebug{.power = power_val,
+                                        .direction = dir,
+                                        .peltier_selection = selection}),
+            working);
+    }
+};
+
 struct GetLidTemperatureDebug {
     /**
      * GetLidTemperatureDebug uses M141.D, debug version of M141

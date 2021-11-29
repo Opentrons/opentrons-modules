@@ -127,6 +127,14 @@ struct GetPlateTemperatureDebugResponse {
     uint16_t back_left_adc;
 };
 
+struct SetPeltierDebugMessage {
+    uint32_t id;
+
+    double power;
+    PeltierDirection direction;
+    PeltierSelection selection;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage>;
@@ -137,7 +145,7 @@ using HostCommsMessage =
                    GetPlateTemperatureDebugResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
-                   GetPlateTemperatureDebugMessage>;
+                   GetPlateTemperatureDebugMessage, SetPeltierDebugMessage>;
 using LidHeaterMessage = ::std::variant<std::monostate, LidTempReadComplete,
                                         GetLidTemperatureDebugMessage>;
 };  // namespace messages

@@ -15,6 +15,7 @@ add_executable(${TARGET_MODULE_NAME}
     # GCode parse tests
     test_m105d.cpp
     test_m141d.cpp
+    test_m104d.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 

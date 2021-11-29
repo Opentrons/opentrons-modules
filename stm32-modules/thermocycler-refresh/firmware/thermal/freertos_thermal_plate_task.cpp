@@ -9,7 +9,7 @@
 #include "FreeRTOS.h"
 #include "firmware/ads1115.hpp"
 #include "firmware/thermal_hardware.h"
-#include "thermal_plate_policy.hpp"
+#include "firmware/thermal_plate_policy.hpp"
 #include "thermocycler-refresh/thermal_general.hpp"
 #include "thermocycler-refresh/thermal_plate_task.hpp"
 
