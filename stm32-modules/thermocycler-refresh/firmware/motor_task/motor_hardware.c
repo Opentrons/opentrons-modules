@@ -16,13 +16,15 @@ motor_hardware_handles *MOTOR_HW_HANDLE = NULL;
   */
 static void MX_GPIO_Init(void)
 {
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  /* Enable GPIOE clock */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
 
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
   memset(&GPIO_InitStruct, 0, sizeof(GPIO_InitStruct));
   GPIO_InitStruct.Pin = SOLENOID_Pin;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(SOLENOID_Port, &GPIO_InitStruct);
   HAL_GPIO_WritePin(SOLENOID_Port, SOLENOID_Pin, GPIO_PIN_RESET);
 }
