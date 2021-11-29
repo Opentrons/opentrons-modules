@@ -30,6 +30,8 @@ SCENARIO("thermal plate task message passing") {
             messages::ThermalPlateMessage(read_message));
         tasks->run_thermal_plate_task();
 
+        REQUIRE(!tasks->get_thermal_plate_policy()._enabled);
+
         WHEN("sending a get-lid-temperature-debug message") {
             auto message = messages::GetPlateTemperatureDebugMessage{.id = 123};
             tasks->get_thermal_plate_queue().backing_deque.push_back(
@@ -82,6 +84,93 @@ SCENARIO("thermal plate task message passing") {
                 }
             }
         }
+        WHEN("sending a SetPeltierDebug message to turn on all peltiers") {
+            auto message = messages::SetPeltierDebugMessage{
+                .id = 123,
+                .power = 0.5F,
+                .direction = PeltierDirection::PELTIER_COOLING,
+                .selection = PeltierSelection::ALL};
+            tasks->get_thermal_plate_queue().backing_deque.push_back(
+                messages::ThermalPlateMessage(message));
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.empty());
+
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
+                    response));
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .responding_to_id == 123);
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .with_error == errors::ErrorCode::NO_ERROR);
+                auto policy = tasks->get_thermal_plate_policy();
+                REQUIRE(policy._enabled);
+                REQUIRE(policy._left.power == 0.5F);
+                REQUIRE(policy._left.direction ==
+                        PeltierDirection::PELTIER_COOLING);
+                REQUIRE(policy._right.power == 0.5F);
+                REQUIRE(policy._right.direction ==
+                        PeltierDirection::PELTIER_COOLING);
+                REQUIRE(policy._center.power == 0.5F);
+                REQUIRE(policy._center.direction ==
+                        PeltierDirection::PELTIER_COOLING);
+
+                WHEN(
+                    "sending a SetPeltierDebug message to disable one of the "
+                    "peltiers") {
+                    message = messages::SetPeltierDebugMessage{
+                        .id = 124,
+                        .power = 0.0F,
+                        .direction = PeltierDirection::PELTIER_HEATING,
+                        .selection = PeltierSelection::LEFT};
+                    tasks->get_thermal_plate_queue().backing_deque.push_back(
+                        messages::ThermalPlateMessage(message));
+                    tasks->run_thermal_plate_task();
+                    THEN("the other peltiers are still enabled") {
+                        policy = tasks->get_thermal_plate_policy();
+                        REQUIRE(policy._enabled);
+                        REQUIRE(policy._left.power == 0.0F);
+                        REQUIRE(policy._left.direction ==
+                                PeltierDirection::PELTIER_HEATING);
+                        REQUIRE(policy._right.power == 0.5F);
+                        REQUIRE(policy._right.direction ==
+                                PeltierDirection::PELTIER_COOLING);
+                        REQUIRE(policy._center.power == 0.5F);
+                        REQUIRE(policy._center.direction ==
+                                PeltierDirection::PELTIER_COOLING);
+                    }
+                }
+
+                WHEN(
+                    "sending a SetPeltierDebug message to disable all of the "
+                    "peltiers") {
+                    message = messages::SetPeltierDebugMessage{
+                        .id = 124,
+                        .power = 0.0F,
+                        .direction = PeltierDirection::PELTIER_HEATING,
+                        .selection = PeltierSelection::ALL};
+                    tasks->get_thermal_plate_queue().backing_deque.push_back(
+                        messages::ThermalPlateMessage(message));
+                    tasks->run_thermal_plate_task();
+                    THEN("all peltiers are disabled") {
+                        policy = tasks->get_thermal_plate_policy();
+                        REQUIRE(!policy._enabled);
+                        REQUIRE(policy._left.power == 0.0F);
+                        REQUIRE(policy._left.direction ==
+                                PeltierDirection::PELTIER_HEATING);
+                        REQUIRE(policy._right.power == 0.0F);
+                        REQUIRE(policy._right.direction ==
+                                PeltierDirection::PELTIER_HEATING);
+                        REQUIRE(policy._center.power == 0.0F);
+                        REQUIRE(policy._center.direction ==
+                                PeltierDirection::PELTIER_HEATING);
+                    }
+                }
+            }
+        }
     }
     GIVEN("a thermal plate task with shorted thermistors") {
         auto tasks = TaskBuilder::build();
@@ -120,6 +209,31 @@ SCENARIO("thermal plate task message passing") {
             errors.erase(error_itr);
         }
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+
+        WHEN("trying to send a SetPeltierDebug message to turn on peltiers") {
+            auto message = messages::SetPeltierDebugMessage{
+                .id = 123,
+                .power = 0.5F,
+                .direction = PeltierDirection::PELTIER_COOLING,
+                .selection = PeltierSelection::ALL};
+            tasks->get_thermal_plate_queue().backing_deque.push_back(
+                messages::ThermalPlateMessage(message));
+            tasks->run_thermal_plate_task();
+            THEN("the task should respond with an error") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.empty());
+
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
+                    response));
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .responding_to_id == 123);
+                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
+                            .with_error != errors::ErrorCode::NO_ERROR);
+            }
+        }
     }
     GIVEN("a thermal plate task with disconnected thermistors") {
         auto tasks = TaskBuilder::build();
