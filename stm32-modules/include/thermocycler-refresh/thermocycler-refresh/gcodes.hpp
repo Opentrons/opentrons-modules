@@ -277,4 +277,43 @@ struct GetPlateTemperatureDebug {
     }
 };
 
+struct ActuateSolenoid {
+    /*
+    ** Actuate solenoid is a debug command that lets you activate or deactivate
+    ** the solenoid. It uses G28.D x where x is a bool and 1 engages and 0
+    ** disengages the solenoid.
+    */
+    using ParseResult = std::optional<ActuateSolenoid>;
+    static constexpr auto prefix =
+        std::array{'G', '2', '8', '.', 'D', ' '};
+    static constexpr const char* response = "G28.D OK\n";
+
+    bool engage;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto engage_parse = parse_value<uint16_t>(working, limit);
+        if (!engage_parse.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        bool tempEngage = static_cast<bool>(engage_parse.first.value());
+        return std::make_pair(ParseResult(ActuateSolenoid{.engage = tempEngage}),
+            engage_parse.second);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 }  // namespace gcode

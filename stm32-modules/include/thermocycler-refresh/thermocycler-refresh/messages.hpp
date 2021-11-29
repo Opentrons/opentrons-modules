@@ -127,6 +127,11 @@ struct GetPlateTemperatureDebugResponse {
     uint16_t back_left_adc;
 };
 
+struct ActuateSolenoidMessage {
+    uint32_t id;
+    bool engage;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage>;
@@ -140,4 +145,5 @@ using ThermalPlateMessage =
                    GetPlateTemperatureDebugMessage>;
 using LidHeaterMessage = ::std::variant<std::monostate, LidTempReadComplete,
                                         GetLidTemperatureDebugMessage>;
+using MotorMessage = ::std::variant<std::monostate, ActuateSolenoidMessage>;
 };  // namespace messages
