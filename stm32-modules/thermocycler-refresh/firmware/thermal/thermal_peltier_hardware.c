@@ -74,16 +74,19 @@ static struct Peltiers _peltiers = {
     .initialized = false,
     .enabled = false,
     .peltiers = {
+        // Right
         {.power = 0.0f,
          .direction = PELTIER_HEATING,
          .channel = TIM_CHANNEL_1,
          .direction_port = GPIOA,
          .direction_pin = GPIO_PIN_7},
+        // Center
         {.power = 0.0f,
          .direction = PELTIER_HEATING,
          .channel = TIM_CHANNEL_2,
          .direction_port = GPIOB,
          .direction_pin = GPIO_PIN_0},
+        // Left
         {.power = 0.0f,
          .direction = PELTIER_HEATING,
          .channel = TIM_CHANNEL_3,
@@ -104,8 +107,8 @@ static void _update_outputs(Peltier_t *peltier) {
     GPIO_PinState dir_val = GPIO_PIN_RESET;
 
     if(pwm > MAX_PWM) { pwm = MAX_PWM; }
-    // If we're cooling, have to reverse the polarity of the pwm
-    if(peltier->direction == PELTIER_COOLING) {
+    // If we're heating, have to reverse the polarity of the pwm
+    if(peltier->direction == PELTIER_HEATING) {
         dir_val = GPIO_PIN_SET;
         pwm = MAX_PWM - pwm;
     }

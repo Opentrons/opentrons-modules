@@ -57,8 +57,9 @@ static std::array<ADS1115::ADC, ADC_ITR_NUM> _adc = {
 
 // This array follows the definition of the ThermistorID enumeration
 static constexpr std::array<ADCPinMap, ThermistorID::THERM_LID> _adc_map = {{
-    {ADC_FRONT, 1},  // Front right
-    {ADC_FRONT, 3},  // Front left
+    // On rev1 boards, net names for right/left are swapped
+    {ADC_FRONT, 3},  // Front right
+    {ADC_FRONT, 1},  // Front left
     {ADC_FRONT, 2},  // Front center
     {ADC_REAR, 2},   // Back right
     {ADC_REAR, 0},   // Back left
