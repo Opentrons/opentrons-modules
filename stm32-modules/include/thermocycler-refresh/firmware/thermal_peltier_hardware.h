@@ -35,8 +35,9 @@ bool thermal_peltier_get_enable(void);
  * from 0 to 1.0 inclusive.
  * @param[in] direction The direction to control the peltier, either
  * PELTIER_HEATING or PELTIER_COOLING
+ * @return True on success, false if an error occurred
  */
-void thermal_peltier_set_power(const PeltierID id, double power,
+bool thermal_peltier_set_power(const PeltierID id, double power,
                                const PeltierDirection direction);
 
 /**

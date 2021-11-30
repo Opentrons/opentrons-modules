@@ -9,6 +9,9 @@ import serial
 
 ser = serial.Serial
 
+def closeGraph():
+    pp.close()
+
 # Callback should accept the current temperature in this order:
 #   lid, heatsink, right, left, center
 def graphTemperatures(ser_in : serial.Serial = None, _callback = None):

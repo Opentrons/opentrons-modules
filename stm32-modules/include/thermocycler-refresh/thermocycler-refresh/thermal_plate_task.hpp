@@ -288,20 +288,27 @@ class ThermalPlateTask {
                 _task_registry->comms->get_message_queue().try_send(response));
             return;
         }
-        if (msg.power > 0.0F) {
-            policy.set_enabled(true);
-        }
+        bool ok = true;
         if (msg.selection == PeltierSelection::LEFT ||
             msg.selection == PeltierSelection::ALL) {
-            policy.set_peltier(_peltier_left.id, msg.power, msg.direction);
+            if (!policy.set_peltier(_peltier_left.id, msg.power,
+                                    msg.direction)) {
+                ok = false;
+            }
         }
         if (msg.selection == PeltierSelection::RIGHT ||
             msg.selection == PeltierSelection::ALL) {
-            policy.set_peltier(_peltier_right.id, msg.power, msg.direction);
+            if (!policy.set_peltier(_peltier_right.id, msg.power,
+                                    msg.direction)) {
+                ok = false;
+            }
         }
         if (msg.selection == PeltierSelection::CENTER ||
             msg.selection == PeltierSelection::ALL) {
-            policy.set_peltier(_peltier_center.id, msg.power, msg.direction);
+            if (!policy.set_peltier(_peltier_center.id, msg.power,
+                                    msg.direction)) {
+                ok = false;
+            }
         }
         // Check if we turned off everything
         auto left_pwr = policy.get_peltier(_peltier_left.id);
@@ -309,8 +316,16 @@ class ThermalPlateTask {
         auto center_pwr = policy.get_peltier(_peltier_center.id);
         bool enabled = ((left_pwr.second > 0.0F) || (right_pwr.second > 0.0F) ||
                         (center_pwr.second > 0.0F));
+        // If setting a peltier failed somehow, turn everything off
+        if (!ok) {
+            enabled = false;
+        }
         policy.set_enabled(enabled);
         _state.system_status = (enabled) ? State::PWM_TEST : State::IDLE;
+
+        if (!ok) {
+            response.with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR;
+        }
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));

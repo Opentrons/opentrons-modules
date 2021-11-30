@@ -285,18 +285,15 @@ bool thermal_peltier_get_enable(void) {
     return _peltiers.enabled;
 }
 
-void thermal_peltier_set_power(const PeltierID id, 
+bool thermal_peltier_set_power(const PeltierID id, 
                                double power,
                                const PeltierDirection direction) {
     if(!(id < PELTIER_NUMBER)) {
-        return;
-    }
-    if(!_peltiers.enabled) {
-        return;
+        return false;
     }
     if((direction != PELTIER_COOLING) && 
        (direction != PELTIER_HEATING)) {
-        return;
+        return false;
     }
     // Power is a percentage. Just clamp it instead of complaining.
     if(power < 0.0f) { power = 0.0f; }
@@ -307,6 +304,7 @@ void thermal_peltier_set_power(const PeltierID id,
     peltier->direction = direction;
 
     _update_outputs(peltier);
+    return true;
 }
 
 bool thermal_peltier_get_power(const PeltierID id, double *power,

@@ -11,24 +11,17 @@ auto ThermalPlatePolicy::set_enabled(bool enabled) -> void {
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPlatePolicy::set_peltier(PeltierID peltier, double power,
                                      PeltierDirection direction) -> bool {
-    if (!thermal_peltier_get_enable()) {
-        return false;
-    }
     if (peltier == PELTIER_NUMBER) {
         return false;
     }
 
-    thermal_peltier_set_power(peltier, power, direction);
-    return true;
+    return thermal_peltier_set_power(peltier, power, direction);
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPlatePolicy::get_peltier(PeltierID peltier)
     -> std::pair<PeltierDirection, double> {
     using RT = std::pair<PeltierDirection, double>;
-    if (!thermal_peltier_get_enable()) {
-        return RT(PeltierDirection::PELTIER_HEATING, 0.0F);
-    }
     if (peltier == PELTIER_NUMBER) {
         return RT(PeltierDirection::PELTIER_HEATING, 0.0F);
     }
