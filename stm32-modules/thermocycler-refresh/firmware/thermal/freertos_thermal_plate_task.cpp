@@ -116,8 +116,8 @@ static void run_thermistor_task(void *param) {
         readings.front_right = read_thermistor(_adc_map[THERM_FRONT_RIGHT]);
         readings.front_left = read_thermistor(_adc_map[THERM_FRONT_LEFT]);
         readings.front_center = read_thermistor(_adc_map[THERM_FRONT_CENTER]);
-        readings.back_left = read_thermistor(_adc_map[THERM_BACK_RIGHT]);
-        readings.back_right = read_thermistor(_adc_map[THERM_BACK_LEFT]);
+        readings.back_left = read_thermistor(_adc_map[THERM_BACK_LEFT]);
+        readings.back_right = read_thermistor(_adc_map[THERM_BACK_RIGHT]);
         readings.back_center = read_thermistor(_adc_map[THERM_BACK_CENTER]);
         readings.heat_sink = read_thermistor(_adc_map[THERM_HEATSINK]);
 
