@@ -178,6 +178,60 @@ struct SetSerialNumber {
     }
 };
 
+struct SetFanManual {
+    /**
+     * SetFanManual uses M106. Sets the PWM of the fans as a percentage
+     * between 0 and 1.
+     * 
+     * M106 S[power]
+     * 
+     * Power will be maintained at the specified level until:
+     * - An error occurs
+     * - Another M106 is set
+     * - A Set Fan Auto command is sent
+     * - The heatsink temperature exceeds the safety limit
+     */
+    using ParseResult = std::optional<SetFanManual>;
+    static constexpr auto prefix =
+        std::array{'M', '1', '0', '6', ' ', 'S'};
+    static constexpr const char* response = "M106 OK\n";
+
+    double power;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+
+        auto working = prefix_matches(input, limit, prefix);
+        if(working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto power_res = parse_value<float>(working, limit);
+
+        if(!power_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto power_val = power_res.first.value();
+        if ((power_val < 0.0) || (power_val > 1.0)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        working = power_res.second;
+        return std::make_pair(
+            ParseResult(SetFanManual{.power = power_val}),
+            working);
+    }
+};
+
 struct SetPeltierDebug {
     /**
      * SetPeltierDebug uses M104.D, debug version of M104. Sets the
