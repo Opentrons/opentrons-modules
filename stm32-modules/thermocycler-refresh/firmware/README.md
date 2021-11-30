@@ -34,12 +34,12 @@ PC4 | I2C2 SCL| ADC SCL
 PA8 | I2C2 SDA | ADC SDA
 PA9 | Rising Interrupt w/ pullup | ADC 1 Alert
 PA10 | Rising Interrupt w/ pullup | ADC 2 Alert
-PC0 | TIM1 CH1 PWM | Left Peltier Drive
-PA7 | GPIO Out | Left Peltier Direction
+PC0 | TIM1 CH1 PWM | Right Peltier Drive
+PA7 | GPIO Out | Right Peltier Direction
 PC1 | TIM1 CH2 PWM | Center Peltier Drive
 PB0 | GPIO Out | Center Peltier Direction
-PC2 | TIM1 CH3 PWM | Right Peltier Drive
-PB1 | GPIO Out | Right Peltier Direction
+PC2 | TIM1 CH3 PWM | Left Peltier Drive
+PB1 | GPIO Out | Left Peltier Direction
 PE7 | GPIO Out | Peltier enable (active __high__)
 PA2 | TIM15 CH1 PWM | Heater Drive
 PD7 | GPIO Out | Heater enable (active __high__)

@@ -7,15 +7,15 @@
  * Each peltier is controlled by three signals:
  * - An enable pin, which is shared between all drivers and can disable
  * power to all peltiers
- * - A PWM channel, connected to the \b heating side of the differential
+ * - A PWM channel, connected to the \b cooling side of the differential
  * driver for the peltier
- * - A simple GPIO output, connected to the \b cooling side of the differential
+ * - A simple GPIO output, connected to the \b heating side of the differential
  * driver for the peltier. This is the \b direction \b pin
  * 
  * The peltier is controlled by setting the direction pin to either low or high
- * for heating or cooling, respectively, and then setting the pulse width of
+ * for cooling or heating, respectively, and then setting the pulse width of
  * the PWM channel to a percentage correlating linearly to the power. Note
- * that, when \e cooling a peltier, the PWM is actually inversely correlated
+ * that, when \b heating a peltier, the PWM is actually \b inversely correlated
  * with the power output. This is because the control is differential, so
  * if the direction pin is high then a 100% PWM will be the same as effectively
  * turning off the peltier.
