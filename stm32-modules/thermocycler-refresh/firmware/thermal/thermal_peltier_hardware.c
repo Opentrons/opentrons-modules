@@ -109,10 +109,19 @@ static void _update_outputs(Peltier_t *peltier) {
         dir_val = GPIO_PIN_SET;
         pwm = MAX_PWM - pwm;
     }
-    HAL_GPIO_WritePin(peltier->direction_port,
-                      peltier->direction_pin,
-                      dir_val);
-    __HAL_TIM_SET_COMPARE(&_peltiers.timer, peltier->channel, pwm);
+    if(pwm > 0) {
+        HAL_GPIO_WritePin(peltier->direction_port,
+                        peltier->direction_pin,
+                        dir_val);
+        __HAL_TIM_SET_COMPARE(&_peltiers.timer, peltier->channel, pwm);
+        HAL_TIM_PWM_Start(&_peltiers.timer, peltier->channel);
+    } else {
+        HAL_GPIO_WritePin(peltier->direction_port,
+                        peltier->direction_pin,
+                        GPIO_PIN_RESET);
+        HAL_TIM_PWM_Stop(&_peltiers.timer, peltier->channel);
+    }
+    
 }
 
 // This is the way STM32CubeMX generates the function. Note that, unlike
@@ -256,6 +265,7 @@ void thermal_peltier_set_enable(const bool enable) {
                       PELTIER_ENABLE_PIN,
                       enable_val);
     if(!enable) {
+        __HAL_TIM_DISABLE(&_peltiers.timer);
         // Set all peltiers to 0 power and update their outputs
         for(size_t i = 0; i < PELTIER_NUMBER; ++i) {
             Peltier_t *peltier = &_peltiers.peltiers[i];
@@ -263,6 +273,8 @@ void thermal_peltier_set_enable(const bool enable) {
             peltier->direction = PELTIER_HEATING;
             _update_outputs(peltier);
         }
+    } else {
+        __HAL_TIM_ENABLE(&_peltiers.timer);
     }
 }
 

@@ -288,6 +288,9 @@ class ThermalPlateTask {
                 _task_registry->comms->get_message_queue().try_send(response));
             return;
         }
+        if (msg.power > 0.0F) {
+            policy.set_enabled(true);
+        }
         if (msg.selection == PeltierSelection::LEFT ||
             msg.selection == PeltierSelection::ALL) {
             policy.set_peltier(_peltier_left.id, msg.power, msg.direction);
@@ -300,7 +303,7 @@ class ThermalPlateTask {
             msg.selection == PeltierSelection::ALL) {
             policy.set_peltier(_peltier_center.id, msg.power, msg.direction);
         }
-        // Check if we're turning off everything
+        // Check if we turned off everything
         auto left_pwr = policy.get_peltier(_peltier_left.id);
         auto right_pwr = policy.get_peltier(_peltier_right.id);
         auto center_pwr = policy.get_peltier(_peltier_center.id);
