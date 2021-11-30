@@ -6,8 +6,8 @@
 
 #include "FreeRTOS.h"
 #include "firmware/ads1115.hpp"
+#include "firmware/lid_heater_policy.hpp"
 #include "firmware/thermal_hardware.h"
-#include "lid_heater_policy.hpp"
 #include "thermocycler-refresh/lid_heater_task.hpp"
 
 namespace lid_heater_control_task {

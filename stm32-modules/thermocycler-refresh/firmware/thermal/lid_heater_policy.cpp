@@ -1,4 +1,4 @@
-#include "lid_heater_policy.hpp"
+#include "firmware/lid_heater_policy.hpp"
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto LidHeaterPolicy::set_enabled(bool enabled) -> void {

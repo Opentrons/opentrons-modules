@@ -4,11 +4,10 @@
  */
 #pragma once
 
+#include "core/pid.hpp"
 #include "core/thermistor_conversion.hpp"
+#include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
-
-// Enumeration of peltiers on the board
-enum PeltierID { PELTIER_LEFT, PELTIER_CENTER, PELTIER_RIGHT, PELTIER_COUNT };
 
 /** Enumeration of thermistors on the board.
  * This is specifically arranged to keep all of the plate-related
@@ -49,11 +48,11 @@ struct Thermistor {
 
 struct Peltier {
     // ID to match to hardware - set at initialization
-    const PeltierID id;
-    // Whether this is currently enabled
-    bool enabled;
+    const PeltierID id = PELTIER_NUMBER;
     // Current temperature
-    double temp_current;
+    double temp_current = 0.0F;
     // Target temperature
-    double temp_target;
+    double temp_target = 0.0F;
+    // Current PID loop
+    PID pid;
 };

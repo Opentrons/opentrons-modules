@@ -174,6 +174,8 @@ class LidHeaterTask {
                 static_cast<void>(
                     _task_registry->comms->get_message_queue().try_send(
                         error_message));
+            } else {
+                _state.error_bitmap &= ~thermistor.error_bit;
             }
         }
     }

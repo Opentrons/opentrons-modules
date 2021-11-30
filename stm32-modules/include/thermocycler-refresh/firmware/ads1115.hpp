@@ -83,7 +83,7 @@ class ADC {
     /** Set this bit to start a read.*/
     static constexpr uint16_t config_start_read = 0x8000;
     /** Shift the pin setting by this many bits to set the input pin.*/
-    static constexpr uint16_t config_mux_shift = 13;
+    static constexpr uint16_t config_mux_shift = 12;
     /** Number of pins on the ADC.*/
     static constexpr uint16_t pin_count = 4;
     /** Maximum time to wait for the semaphor, in milliseconds.*/
