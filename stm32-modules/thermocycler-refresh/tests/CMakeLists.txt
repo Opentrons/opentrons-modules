@@ -17,6 +17,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_m141d.cpp
     test_m104d.cpp
     test_m106.cpp
+    test_m140d.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 

@@ -88,3 +88,14 @@ def set_fans_manual(power: float, ser: serial.Serial):
     res = ser.readline()
     guard_error(res, b'M106 OK')
     print(res)
+
+# Sets heater PWM as a percentage.
+def set_heater_debug(power: float, ser: serial.Serial):
+    if(power< 0.0 or power > 1.0):
+        raise RuntimeError(f'Invalid power input: {power}')
+    
+    print(f'Setting heater PWM to {power}%')
+    ser.write(f'M140.D S{power}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M140.D OK')
+    print(res)

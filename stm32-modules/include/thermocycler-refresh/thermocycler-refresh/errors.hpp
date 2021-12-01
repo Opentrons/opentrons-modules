@@ -46,6 +46,8 @@ enum class ErrorCode {
     THERMAL_PLATE_BUSY = 401,
     THERMAL_PELTIER_ERROR = 402,
     THERMAL_HEATSINK_FAN_ERROR = 403,
+    THERMAL_LID_BUSY = 404,
+    THERMAL_HEATER_ERROR = 405,
 };
 
 auto errorstring(ErrorCode code) -> const char*;
