@@ -8,7 +8,8 @@ SCENARIO("SetHeaterDebug (M140.D) parser works", "[gcode][parse][m140d]") {
             auto written = gcode::SetHeaterDebug::write_response_into(
                 buffer.begin(), buffer.end());
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith("M140.D OK\n"));
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::StartsWith("M140.D OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }

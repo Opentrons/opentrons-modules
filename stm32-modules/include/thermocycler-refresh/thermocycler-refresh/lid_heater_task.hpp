@@ -31,7 +31,7 @@ concept LidHeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // a percentage from 0 to 1.0. Automatically toggles the Enable
     // pin.
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-    {p.set_heater_power(1.0)} -> std::same_as<bool>;
+    { p.set_heater_power(1.0) } -> std::same_as<bool>;
 };
 
 struct State {
@@ -142,8 +142,8 @@ class LidHeaterTask {
         -> void {
         auto old_error_bitmap = _state.error_bitmap;
         handle_temperature_conversion(msg.lid_temp, _thermistor);
-        if(old_error_bitmap != _state.error_bitmap) {
-            if(_state.error_bitmap != 0) {
+        if (old_error_bitmap != _state.error_bitmap) {
+            if (_state.error_bitmap != 0) {
                 // We entered an error state. Disable power output.
                 _state.system_status = State::ERROR;
                 policy.set_heater_power(0.0F);
@@ -168,11 +168,12 @@ class LidHeaterTask {
             messages::HostCommsMessage(response)));
     }
 
-    template <LidHeaterExecutionPolicy Policy> 
+    template <LidHeaterExecutionPolicy Policy>
     auto visit_message(const messages::SetHeaterDebugMessage& msg,
                        Policy& policy) -> void {
-        auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        if(_state.system_status == State::ERROR) {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_state.system_status == State::ERROR) {
             response.with_error = most_relevant_error();
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(response));
@@ -186,7 +187,7 @@ class LidHeaterTask {
             return;
         }
 
-        if(!policy.set_heater_power(msg.power)) {
+        if (!policy.set_heater_power(msg.power)) {
             response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
         }
 
@@ -247,8 +248,8 @@ class LidHeaterTask {
         // separately, but we also sometimes want to respond with just one error
         // condition that sums everything up. This method is used by code that
         // wants the single most relevant code for the current error condition.
-        if((_state.error_bitmap & _thermistor.error_bit) 
-                == _thermistor.error_bit) {
+        if ((_state.error_bitmap & _thermistor.error_bit) ==
+            _thermistor.error_bit) {
             return _thermistor.error;
         }
 

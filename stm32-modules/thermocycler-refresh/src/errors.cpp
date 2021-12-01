@@ -64,9 +64,8 @@ const char* const THERMAL_PELTIER_ERROR =
     "ERR402:thermal:Could not activate peltier\n";
 const char* const THERMAL_HEATSINK_FAN_ERROR =
     "ERR403:thermal:Could not control heatsink fan\n";
-const char* const THERMAL_LID_BUSY =
-    "ERR404:thermal:Lid heater is busy\n";
-const char* const THERMAL_HEATER_ERROR = 
+const char* const THERMAL_LID_BUSY = "ERR404:thermal:Lid heater is busy\n";
+const char* const THERMAL_HEATER_ERROR =
     "ERR405:thermal:Error controlling lid heater";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";

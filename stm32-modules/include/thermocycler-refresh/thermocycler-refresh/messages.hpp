@@ -157,7 +157,7 @@ using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
                    SetFanManualMessage>;
-using LidHeaterMessage = ::std::variant<std::monostate, LidTempReadComplete,
-                                        GetLidTemperatureDebugMessage,
-                                        SetHeaterDebugMessage>;
+using LidHeaterMessage =
+    ::std::variant<std::monostate, LidTempReadComplete,
+                   GetLidTemperatureDebugMessage, SetHeaterDebugMessage>;
 };  // namespace messages

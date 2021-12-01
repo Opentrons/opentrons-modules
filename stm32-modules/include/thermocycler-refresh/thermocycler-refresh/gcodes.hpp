@@ -231,7 +231,7 @@ struct SetFanManual {
 
 struct SetHeaterDebug {
     /**
-     * SetHeaterDebug uses M140.D, debug version of M140. 
+     * SetHeaterDebug uses M140.D, debug version of M140.
      * Sets the PWM of the heater as a percentage between 0 and 1.
      *
      * M140.D S[power]
@@ -242,7 +242,8 @@ struct SetHeaterDebug {
      * - A SetLid command is sent
      */
     using ParseResult = std::optional<SetHeaterDebug>;
-    static constexpr auto prefix = std::array{'M', '1', '4', '0', '.', 'D', ' ', 'S'};
+    static constexpr auto prefix =
+        std::array{'M', '1', '4', '0', '.', 'D', ' ', 'S'};
     static constexpr const char* response = "M140.D OK\n";
 
     double power;
