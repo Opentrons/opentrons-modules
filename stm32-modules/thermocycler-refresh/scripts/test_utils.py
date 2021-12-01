@@ -77,3 +77,14 @@ def set_peltier_debug(power: float, direction: str, peltiers: str, ser: serial.S
     res = ser.readline()
     guard_error(res, b'M104.D OK')
     print(res)
+
+# Sets fan PWM as a percentage. Loud.
+def set_fans_manual(power: float, ser: serial.Serial):
+    if(power< 0.0 or power > 1.0):
+        raise RuntimeError(f'Invalid power input: {power}')
+    
+    print(f'Setting fan PWM to {power}%')
+    ser.write(f'M106 S{power}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M106 OK')
+    print(res)
