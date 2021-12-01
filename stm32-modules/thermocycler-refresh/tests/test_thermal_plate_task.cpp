@@ -171,6 +171,33 @@ SCENARIO("thermal plate task message passing") {
                 }
             }
         }
+        WHEN("sending a SetFanManual message to turn on the fan") {
+            auto message =
+                messages::SetFanManualMessage{.id = 123, .power = 0.5};
+            tasks->get_thermal_plate_queue().backing_deque.push_back(
+                messages::ThermalPlateMessage(message));
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.empty());
+                AND_THEN("the task should act on the message") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto response_msg =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(response_msg.responding_to_id == 123);
+                    REQUIRE(response_msg.with_error ==
+                            errors::ErrorCode::NO_ERROR);
+                    REQUIRE(tasks->get_thermal_plate_policy()._fan_power ==
+                            0.5);
+                }
+            }
+        }
     }
     GIVEN("a thermal plate task with shorted thermistors") {
         auto tasks = TaskBuilder::build();
@@ -232,6 +259,33 @@ SCENARIO("thermal plate task message passing") {
                             .responding_to_id == 123);
                 REQUIRE(std::get<messages::AcknowledgePrevious>(response)
                             .with_error != errors::ErrorCode::NO_ERROR);
+            }
+        }
+        WHEN("sending a SetFanManual message to turn on the fan") {
+            auto message =
+                messages::SetFanManualMessage{.id = 123, .power = 0.5};
+            tasks->get_thermal_plate_queue().backing_deque.push_back(
+                messages::ThermalPlateMessage(message));
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.empty());
+                AND_THEN("the task should respond with an error") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto response_msg =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(response_msg.responding_to_id == 123);
+                    REQUIRE(response_msg.with_error !=
+                            errors::ErrorCode::NO_ERROR);
+                    REQUIRE(tasks->get_thermal_plate_policy()._fan_power ==
+                            0.0);
+                }
             }
         }
     }

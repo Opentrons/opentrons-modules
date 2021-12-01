@@ -1,5 +1,6 @@
 #include "firmware/thermal_plate_policy.hpp"
 
+#include "firmware/thermal_fan_hardware.h"
 #include "firmware/thermal_peltier_hardware.h"
 #include "systemwide.h"
 
@@ -33,4 +34,10 @@ auto ThermalPlatePolicy::get_peltier(PeltierID peltier)
     }
 
     return RT(PeltierDirection::PELTIER_HEATING, 0.0F);
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto ThermalPlatePolicy::set_fan(double power) -> bool {
+    power = std::clamp(power, (double)0.0F, (double)1.0F);
+    return thermal_fan_set_power(power);
 }

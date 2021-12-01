@@ -20,6 +20,7 @@ Timer | Use | Notes
 TIM1 | Peltier PWM (CH1, CH2, and CH3) | 25kHz
 TIM7 | System base timer | 1000Hz (milliseconds timer)
 TIM15 | Heater PWM (CH1) | 25kHz
+TIM16 | Fan PWM (Ch1) | 25kHz
 
 ### USB
 Pin | Use
@@ -43,6 +44,8 @@ PB1 | GPIO Out | Left Peltier Direction
 PE7 | GPIO Out | Peltier enable (active __high__)
 PA2 | TIM15 CH1 PWM | Heater Drive
 PD7 | GPIO Out | Heater enable (active __high__)
+PD1 | GPIO Out | Fan 12V Buck Enable (active __high__)
+PA6 | TIM16 CH1 PWM | Fan Drive
 
 ### Misc
 Pin | Use
