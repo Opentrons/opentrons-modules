@@ -39,6 +39,10 @@ concept ThermalPlateExecutionPolicy = requires(Policy& p, PeltierID id,
     // A get_peltier function to return the current direction and
     // power of a peltier.
     { p.get_peltier(id) } -> std::same_as<std::pair<PeltierDirection, double>>;
+    // A set_fan function to set the power of the heatsink fan as
+    // a percentage from 0 to 1.0
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    { p.set_fan(1.0F) } -> std::same_as<bool>;
 };
 
 /** Just used for initialization assignment of error bits.*/
@@ -325,6 +329,25 @@ class ThermalPlateTask {
 
         if (!ok) {
             response.with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR;
+        }
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::SetFanManualMessage& msg, Policy& policy)
+        -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+        if (!policy.set_fan(msg.power)) {
+            response.with_error = errors::ErrorCode::THERMAL_HEATSINK_FAN_ERROR;
         }
 
         static_cast<void>(

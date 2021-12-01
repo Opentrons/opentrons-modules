@@ -182,9 +182,9 @@ struct SetFanManual {
     /**
      * SetFanManual uses M106. Sets the PWM of the fans as a percentage
      * between 0 and 1.
-     * 
+     *
      * M106 S[power]
-     * 
+     *
      * Power will be maintained at the specified level until:
      * - An error occurs
      * - Another M106 is set
@@ -192,8 +192,7 @@ struct SetFanManual {
      * - The heatsink temperature exceeds the safety limit
      */
     using ParseResult = std::optional<SetFanManual>;
-    static constexpr auto prefix =
-        std::array{'M', '1', '0', '6', ' ', 'S'};
+    static constexpr auto prefix = std::array{'M', '1', '0', '6', ' ', 'S'};
     static constexpr const char* response = "M106 OK\n";
 
     double power;
@@ -210,15 +209,14 @@ struct SetFanManual {
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-
         auto working = prefix_matches(input, limit, prefix);
-        if(working == input) {
+        if (working == input) {
             return std::make_pair(ParseResult(), input);
         }
 
         auto power_res = parse_value<float>(working, limit);
 
-        if(!power_res.first.has_value()) {
+        if (!power_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
         auto power_val = power_res.first.value();
@@ -226,9 +224,8 @@ struct SetFanManual {
             return std::make_pair(ParseResult(), input);
         }
         working = power_res.second;
-        return std::make_pair(
-            ParseResult(SetFanManual{.power = power_val}),
-            working);
+        return std::make_pair(ParseResult(SetFanManual{.power = power_val}),
+                              working);
     }
 };
 

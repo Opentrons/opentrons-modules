@@ -48,10 +48,17 @@ class TestThermalPlatePolicy {
         return RT(handle.value().get().direction, handle.value().get().power);
     }
 
+    auto set_fan(double power) -> bool {
+        power = std::clamp(power, (double)0.0F, (double)1.0F);
+        _fan_power = power;
+        return true;
+    }
+
     bool _enabled = false;
     TestPeltier _left = TestPeltier();
     TestPeltier _center = TestPeltier();
     TestPeltier _right = TestPeltier();
+    double _fan_power = 0.0F;
 
   private:
     using GetPeltierT = std::optional<std::reference_wrapper<TestPeltier>>;

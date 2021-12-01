@@ -27,6 +27,7 @@ struct SimThermalPlatePolicy {
     SimPeltier _left = SimPeltier();
     SimPeltier _center = SimPeltier();
     SimPeltier _right = SimPeltier();
+    double _fan_power = 0.0F;
 
     using GetPeltierT = std::optional<std::reference_wrapper<SimPeltier>>;
     auto get_peltier_from_id(PeltierID peltier) -> GetPeltierT {
@@ -73,6 +74,12 @@ struct SimThermalPlatePolicy {
             return RT(PeltierDirection::PELTIER_COOLING, 0.0F);
         }
         return RT(handle.value().get().direction, handle.value().get().power);
+    }
+
+    auto set_fan(double power) -> bool {
+        power = std::clamp(power, (double)0.0F, (double)1.0F);
+        _fan_power = power;
+        return true;
     }
 };
 

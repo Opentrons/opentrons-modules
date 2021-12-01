@@ -17,4 +17,6 @@ class ThermalPlatePolicy {
                      PeltierDirection direction) -> bool;
 
     auto get_peltier(PeltierID peltier) -> std::pair<PeltierDirection, double>;
+
+    auto set_fan(double power) -> bool;
 };

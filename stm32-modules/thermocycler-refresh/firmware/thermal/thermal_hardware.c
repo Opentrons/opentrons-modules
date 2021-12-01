@@ -39,6 +39,7 @@
 #include "task.h"
 
 // Local includes
+#include "firmware/thermal_fan_hardware.h"
 #include "firmware/thermal_peltier_hardware.h"
 
 /** Private definitions */
@@ -143,6 +144,7 @@ void thermal_hardware_setup(void) {
         thermal_gpio_init();
         thermal_i2c_init();
         thermal_peltier_initialize();
+        thermal_fan_initialize();
 
         _initialization_done = true;
     }
