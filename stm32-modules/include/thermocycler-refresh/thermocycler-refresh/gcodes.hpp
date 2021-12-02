@@ -229,6 +229,57 @@ struct SetFanManual {
     }
 };
 
+struct SetHeaterDebug {
+    /**
+     * SetHeaterDebug uses M140.D, debug version of M140.
+     * Sets the PWM of the heater as a percentage between 0 and 1.
+     *
+     * M140.D S[power]
+     *
+     * Power will be maintained at the specified level until:
+     * - An error occurs
+     * - Another M140.D is set
+     * - A SetLid command is sent
+     */
+    using ParseResult = std::optional<SetHeaterDebug>;
+    static constexpr auto prefix =
+        std::array{'M', '1', '4', '0', '.', 'D', ' ', 'S'};
+    static constexpr const char* response = "M140.D OK\n";
+
+    double power;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto power_res = parse_value<float>(working, limit);
+
+        if (!power_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto power_val = power_res.first.value();
+        if ((power_val < 0.0) || (power_val > 1.0)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        working = power_res.second;
+        return std::make_pair(ParseResult(SetHeaterDebug{.power = power_val}),
+                              working);
+    }
+};
+
 struct SetPeltierDebug {
     /**
      * SetPeltierDebug uses M104.D, debug version of M104. Sets the

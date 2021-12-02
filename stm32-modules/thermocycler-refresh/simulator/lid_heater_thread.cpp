@@ -9,12 +9,15 @@
 
 using namespace lid_heater_thread;
 
-struct SimLidHeaterPolicy {
+class SimLidHeaterPolicy {
   private:
-    bool _enabled = false;
+    double _power = 0.0F;
 
   public:
-    auto set_enabled(bool enabled) -> void { _enabled = enabled; }
+    auto set_heater_power(double power) -> bool {
+        _power = std::clamp(power, (double)0.0F, (double)1.0F);
+        return true;
+    }
 };
 
 struct lid_heater_thread::TaskControlBlock {

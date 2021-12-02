@@ -27,10 +27,11 @@ namespace lid_heater_task {
 
 template <typename Policy>
 concept LidHeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
-    // A set_enabled function with inputs of `false` or `true` that
-    // sets the enable pin for the peltiers off or on
+    // A set_heater_power function to set the power of the heater as
+    // a percentage from 0 to 1.0. Automatically toggles the Enable
+    // pin.
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-    {p.set_enabled(false)};
+    { p.set_heater_power(1.0) } -> std::same_as<bool>;
 };
 
 struct State {
@@ -139,9 +140,18 @@ class LidHeaterTask {
     requires LidHeaterExecutionPolicy<Policy>
     auto visit_message(const messages::LidTempReadComplete& msg, Policy& policy)
         -> void {
-        static_cast<void>(policy);
-
+        auto old_error_bitmap = _state.error_bitmap;
         handle_temperature_conversion(msg.lid_temp, _thermistor);
+        if (old_error_bitmap != _state.error_bitmap) {
+            if (_state.error_bitmap != 0) {
+                // We entered an error state. Disable power output.
+                _state.system_status = State::ERROR;
+                policy.set_heater_power(0.0F);
+            } else {
+                // We went from an error state to no error state... so go idle
+                _state.system_status = State::IDLE;
+            }
+        }
     }
 
     template <typename Policy>
@@ -156,6 +166,33 @@ class LidHeaterTask {
             .lid_adc = _thermistor.last_adc};
         static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::SetHeaterDebugMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+        if (_state.system_status == State::CONTROLLING) {
+            // Send busy error
+            response.with_error = errors::ErrorCode::THERMAL_LID_BUSY;
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+
+        if (!policy.set_heater_power(msg.power)) {
+            response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
+        }
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
     }
 
     auto handle_temperature_conversion(uint16_t conversion_result,
@@ -203,6 +240,20 @@ class LidHeaterTask {
             therm.error = errors::ErrorCode::NO_ERROR;
         }
         therm.temp_c = temp;
+    }
+
+    [[nodiscard]] auto most_relevant_error() const -> errors::ErrorCode {
+        // Sometimes more than one error can occur at the same time; sometimes,
+        // that means that one has caused the other. We want to track them
+        // separately, but we also sometimes want to respond with just one error
+        // condition that sums everything up. This method is used by code that
+        // wants the single most relevant code for the current error condition.
+        if ((_state.error_bitmap & _thermistor.error_bit) ==
+            _thermistor.error_bit) {
+            return _thermistor.error;
+        }
+
+        return errors::ErrorCode::NO_ERROR;
     }
 
     Queue& _message_queue;
