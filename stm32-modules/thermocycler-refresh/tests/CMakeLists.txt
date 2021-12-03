@@ -13,11 +13,13 @@ add_executable(${TARGET_MODULE_NAME}
     test_system_task.cpp
     test_thermal_plate_task.cpp
     # GCode parse tests
+    test_m105.cpp
     test_m105d.cpp
     test_m141d.cpp
     test_m104d.cpp
     test_m106.cpp
     test_m140d.cpp
+    test_m141.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 

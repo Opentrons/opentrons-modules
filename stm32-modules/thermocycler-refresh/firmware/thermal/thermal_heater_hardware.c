@@ -162,6 +162,10 @@ bool thermal_heater_set_power(double power) {
     return true;
 }
 
+double thermal_heater_get_power(void) {
+    return _heater.power;
+}
+
 // Local function implementations
 
 static bool thermal_heater_set_enable(bool enabled) {

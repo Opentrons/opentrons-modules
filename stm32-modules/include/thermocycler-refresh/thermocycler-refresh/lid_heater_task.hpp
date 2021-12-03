@@ -32,13 +32,17 @@ concept LidHeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // pin.
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     { p.set_heater_power(1.0) } -> std::same_as<bool>;
+    // A get_heater_power function to get the power of the heater as
+    // a percentage from 0 to 1.0.
+    { p.get_heater_power() } -> std::same_as<double>;
 };
 
 struct State {
     enum Status {
-        IDLE,
-        ERROR,
-        CONTROLLING,
+        IDLE,        /**< Not doing anything.*/
+        ERROR,       /**< Experiencing an error.*/
+        CONTROLLING, /**< Controlling temperature (PID).*/
+        HEATER_TEST  /**< Testing PWM output (debug command).*/
     };
     Status system_status;
     uint16_t error_bitmap;
@@ -87,7 +91,8 @@ class LidHeaterTask {
                      false),
           _state{.system_status = State::IDLE, .error_bitmap = 0},
           _pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS, 1.0,
-               -1.0) {}
+               -1.0),
+          _setpoint_c(0.0F) {}
     LidHeaterTask(const LidHeaterTask& other) = delete;
     auto operator=(const LidHeaterTask& other) -> LidHeaterTask& = delete;
     LidHeaterTask(LidHeaterTask&& other) noexcept = delete;
@@ -168,6 +173,21 @@ class LidHeaterTask {
             messages::HostCommsMessage(response)));
     }
 
+    template <typename Policy>
+    requires LidHeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::GetLidTempMessage& msg, Policy& policy)
+        -> void {
+        auto response =
+            messages::GetLidTempResponse{.responding_to_id = msg.id,
+                                         .current_temp = _thermistor.temp_c,
+                                         .set_temp = _setpoint_c};
+        if (_state.system_status != State::CONTROLLING) {
+            response.set_temp = 0.0F;
+        }
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
     template <LidHeaterExecutionPolicy Policy>
     auto visit_message(const messages::SetHeaterDebugMessage& msg,
                        Policy& policy) -> void {
@@ -187,8 +207,12 @@ class LidHeaterTask {
             return;
         }
 
-        if (!policy.set_heater_power(msg.power)) {
+        if (policy.set_heater_power(msg.power)) {
+            _state.system_status =
+                (msg.power > 0.0) ? State::HEATER_TEST : State::IDLE;
+        } else {
             response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
+            _state.system_status = State::IDLE;
         }
 
         static_cast<void>(
@@ -262,6 +286,7 @@ class LidHeaterTask {
     thermistor_conversion::Conversion<lookups::KS103J2G> _converter;
     State _state;
     PID _pid;
+    double _setpoint_c;
 };
 
 }  // namespace lid_heater_task

@@ -10,4 +10,6 @@ class LidHeaterPolicy {
     LidHeaterPolicy() = default;
 
     auto set_heater_power(double power) -> bool;
+
+    auto get_heater_power() const -> double;
 };

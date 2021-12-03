@@ -82,8 +82,8 @@ def set_peltier_debug(power: float, direction: str, peltiers: str, ser: serial.S
 def set_fans_manual(power: float, ser: serial.Serial):
     if(power< 0.0 or power > 1.0):
         raise RuntimeError(f'Invalid power input: {power}')
-    
-    print(f'Setting fan PWM to {power}%')
+    percent = power * 100
+    print(f'Setting fan PWM to {percent}%')
     ser.write(f'M106 S{power}\n'.encode())
     res = ser.readline()
     guard_error(res, b'M106 OK')
@@ -93,8 +93,8 @@ def set_fans_manual(power: float, ser: serial.Serial):
 def set_heater_debug(power: float, ser: serial.Serial):
     if(power< 0.0 or power > 1.0):
         raise RuntimeError(f'Invalid power input: {power}')
-    
-    print(f'Setting heater PWM to {power}%')
+    percent = power * 100
+    print(f'Setting heater PWM to {percent}%')
     ser.write(f'M140.D S{power}\n'.encode())
     res = ser.readline()
     guard_error(res, b'M140.D OK')

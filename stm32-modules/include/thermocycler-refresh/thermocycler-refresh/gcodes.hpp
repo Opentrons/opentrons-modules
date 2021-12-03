@@ -178,6 +178,108 @@ struct SetSerialNumber {
     }
 };
 
+// TODO this message needs to be expanded to include more info like on the
+// arduino codebase. Will add after timeouts etc are included in control
+// loops.
+struct GetPlateTemp {
+    /*
+    ** GetPlateTemp keys off a standard get-tool-temperature gcode, M105
+    ** Format: M105
+    ** Example: M105
+    **
+    ** Returns the setpoint temperature T and the current temperature C
+    **
+    ** Returns T:none if the plate is off (setpoint = 0)
+    */
+    using ParseResult = std::optional<GetPlateTemp>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '5'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double current_temperature,
+                                    double setpoint_temperature) -> InputIt {
+        int res = 0;
+        if (setpoint_temperature == 0.0F) {
+            res = snprintf(&*buf, (limit - buf), "M105 T:none C:%0.2f OK\n",
+                           static_cast<float>(current_temperature));
+        } else {
+            res = snprintf(&*buf, (limit - buf), "M105 T:%0.2f C:%0.2f OK\n",
+                           static_cast<float>(setpoint_temperature),
+                           static_cast<float>(current_temperature));
+        }
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetPlateTemp()), working);
+    }
+};
+
+struct GetLidTemp {
+    /*
+    ** GetLidTemp uses gcode M141
+    ** Format: M141
+    ** Example: M141
+    **
+    ** Returns the setpoint temperature T and the current temperature C
+    **
+    ** Returns T:none if the plate is off (setpoint = 0)
+    */
+    using ParseResult = std::optional<GetLidTemp>;
+    static constexpr auto prefix = std::array{'M', '1', '4', '1'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double current_temperature,
+                                    double setpoint_temperature) -> InputIt {
+        int res = 0;
+        if (setpoint_temperature == 0.0F) {
+            res = snprintf(&*buf, (limit - buf), "M141 T:none C:%0.2f OK\n",
+                           static_cast<float>(current_temperature));
+        } else {
+            res = snprintf(&*buf, (limit - buf), "M141 T:%0.2f C:%0.2f OK\n",
+                           static_cast<float>(setpoint_temperature),
+                           static_cast<float>(current_temperature));
+        }
+
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetLidTemp()), working);
+    }
+};
+
 struct SetFanManual {
     /**
      * SetFanManual uses M106. Sets the PWM of the fans as a percentage

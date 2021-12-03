@@ -32,7 +32,7 @@ SCENARIO("thermal plate task message passing") {
 
         REQUIRE(!tasks->get_thermal_plate_policy()._enabled);
 
-        WHEN("sending a get-lid-temperature-debug message") {
+        WHEN("sending a get-plate-temperature-debug message") {
             auto message = messages::GetPlateTemperatureDebugMessage{.id = 123};
             tasks->get_thermal_plate_queue().backing_deque.push_back(
                 messages::ThermalPlateMessage(message));
@@ -81,6 +81,33 @@ SCENARIO("thermal plate task message passing") {
                     REQUIRE_THAT(gettemp.back_left_temp,
                                  Catch::Matchers::WithinAbs(_valid_temp, 0.1));
                     REQUIRE(gettemp.back_left_adc == _valid_adc);
+                }
+            }
+        }
+        WHEN("sending a get-plate-temperature message") {
+            auto message = messages::GetPlateTempMessage{.id = 123};
+            tasks->get_thermal_plate_queue().backing_deque.push_back(
+                messages::ThermalPlateMessage(message));
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.empty());
+                AND_THEN("the task should respond to the messsage") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(std::holds_alternative<
+                            messages::GetPlateTempResponse>(
+                        response));
+                    auto gettemp =
+                        std::get<messages::GetPlateTempResponse>(
+                            response);
+                    REQUIRE(gettemp.responding_to_id == message.id);
+                    REQUIRE_THAT(gettemp.current_temp,
+                                 Catch::Matchers::WithinAbs(_valid_temp, 0.1));
+                    REQUIRE_THAT(gettemp.set_temp,
+                                 Catch::Matchers::WithinAbs(0.0, 0.1));
                 }
             }
         }
@@ -237,6 +264,33 @@ SCENARIO("thermal plate task message passing") {
         }
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
 
+        WHEN("sending a get-plate-temperature message") {
+            auto message = messages::GetPlateTempMessage{.id = 123};
+            tasks->get_thermal_plate_queue().backing_deque.push_back(
+                messages::ThermalPlateMessage(message));
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.empty());
+                AND_THEN("the task should respond with a temp of 0.0") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(std::holds_alternative<
+                            messages::GetPlateTempResponse>(
+                        response));
+                    auto gettemp =
+                        std::get<messages::GetPlateTempResponse>(
+                            response);
+                    REQUIRE(gettemp.responding_to_id == message.id);
+                    REQUIRE_THAT(gettemp.current_temp,
+                                 Catch::Matchers::WithinAbs(0.0, 0.1));
+                    REQUIRE_THAT(gettemp.set_temp,
+                                 Catch::Matchers::WithinAbs(0.0, 0.1));
+                }
+            }
+        }
         WHEN("trying to send a SetPeltierDebug message to turn on peltiers") {
             auto message = messages::SetPeltierDebugMessage{
                 .id = 123,
