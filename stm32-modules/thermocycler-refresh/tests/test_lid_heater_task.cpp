@@ -148,11 +148,11 @@ SCENARIO("lid heater task message passing") {
                     messages::LidHeaterMessage(tempMessage));
                 tasks->run_lid_heater_task();
                 THEN("the task should respond to the message") {
-                    REQUIRE(!tasks->get_host_comms_queue()
-                            .backing_deque.empty());
-                    REQUIRE(std::get<messages::AcknowledgePrevious>(
-                            tasks->get_host_comms_queue()
-                                .backing_deque.front())
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(
+                        std::get<messages::AcknowledgePrevious>(
+                            tasks->get_host_comms_queue().backing_deque.front())
                             .responding_to_id == 321);
                     tasks->get_host_comms_queue().backing_deque.pop_front();
                     AND_WHEN("sending a GetLidTemp query") {
