@@ -165,6 +165,15 @@ struct SetHeaterDebugMessage {
     double power;
 };
 
+struct SetLidTemperatureMessage {
+    uint32_t id;
+    double setpoint;
+};
+
+struct DeactivateLidHeatingMessage {
+    uint32_t id;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage>;
@@ -181,5 +190,6 @@ using ThermalPlateMessage =
 using LidHeaterMessage =
     ::std::variant<std::monostate, LidTempReadComplete,
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
-                   GetLidTempMessage>;
+                   GetLidTempMessage, SetLidTemperatureMessage,
+                   DeactivateLidHeatingMessage>;
 };  // namespace messages

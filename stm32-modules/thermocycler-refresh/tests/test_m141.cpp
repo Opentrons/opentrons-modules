@@ -7,8 +7,7 @@
 #include "thermocycler-refresh/gcodes.hpp"
 #pragma GCC diagnostic pop
 
-SCENARIO("GetLidTemperature (M141) parser works",
-         "[gcode][parse][M141]") {
+SCENARIO("GetLidTemperature (M141) parser works", "[gcode][parse][M141]") {
     GIVEN("a response buffer large enough for the formatted response") {
         std::string buffer(256, 'c');
         WHEN("filling response") {

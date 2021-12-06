@@ -278,6 +278,7 @@ class ThermalPlateTask {
     template <ThermalPlateExecutionPolicy Policy>
     auto visit_message(const messages::GetPlateTempMessage& msg, Policy& policy)
         -> void {
+        static_cast<void>(policy);
         auto response =
             messages::GetPlateTempResponse{.responding_to_id = msg.id,
                                            .current_temp = average_plate_temp(),
@@ -438,7 +439,7 @@ class ThermalPlateTask {
                 _thermistors[THERM_BACK_LEFT].temp_c +
                 _thermistors[THERM_FRONT_CENTER].temp_c +
                 _thermistors[THERM_BACK_CENTER].temp_c) /
-               6.0F;
+               ((double)(PLATE_THERM_COUNT - 1));
     }
 
     Queue& _message_queue;

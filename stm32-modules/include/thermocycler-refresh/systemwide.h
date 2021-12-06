@@ -20,3 +20,5 @@ typedef enum PeltierDirection {
 } PeltierDirection;
 
 enum PeltierSelection { LEFT, CENTER, RIGHT, ALL };
+
+enum PidSelection { HEATER, PELTIERS, FANS };

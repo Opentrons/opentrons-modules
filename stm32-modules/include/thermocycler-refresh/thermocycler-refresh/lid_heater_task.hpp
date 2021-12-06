@@ -157,6 +157,19 @@ class LidHeaterTask {
                 _state.system_status = State::IDLE;
             }
         }
+
+        // If we're in a controlling state, we now update the heater output
+        if (_state.system_status == State::CONTROLLING) {
+            auto ret = policy.set_heater_power(
+                _pid.compute(_setpoint_c - _thermistor.temp_c));
+            if (!ret) {
+                policy.set_heater_power(0.0F);
+                _state.system_status = State::ERROR;
+                _state.error_bitmap |= State::HEATER_POWER_ERROR;
+            }
+        } else if (_state.system_status != State::HEATER_TEST) {
+            policy.set_heater_power(0.0F);
+        }
     }
 
     template <typename Policy>
@@ -177,6 +190,7 @@ class LidHeaterTask {
     requires LidHeaterExecutionPolicy<Policy>
     auto visit_message(const messages::GetLidTempMessage& msg, Policy& policy)
         -> void {
+        static_cast<void>(policy);
         auto response =
             messages::GetLidTempResponse{.responding_to_id = msg.id,
                                          .current_temp = _thermistor.temp_c,
@@ -212,7 +226,71 @@ class LidHeaterTask {
                 (msg.power > 0.0) ? State::HEATER_TEST : State::IDLE;
         } else {
             response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
+            _state.system_status = State::ERROR;
+            _state.error_bitmap |= State::HEATER_POWER_ERROR;
+        }
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::SetLidTemperatureMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+        if (_state.system_status == State::HEATER_TEST) {
+            auto ret = policy.set_heater_power(0.0F);
+            if (!ret) {
+                response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
+                _state.system_status = State::ERROR;
+                _state.error_bitmap |= State::HEATER_POWER_ERROR;
+                static_cast<void>(
+                    _task_registry->comms->get_message_queue().try_send(
+                        response));
+                return;
+            }
+        }
+
+        if (msg.setpoint <= 0.0F) {
+            _setpoint_c = 0.0F;
             _state.system_status = State::IDLE;
+        } else {
+            _setpoint_c = msg.setpoint;
+            _state.system_status = State::CONTROLLING;
+            _pid.arm_integrator_reset(_setpoint_c - _thermistor.temp_c);
+        }
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::DeactivateLidHeatingMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+
+        auto ret = policy.set_heater_power(0.0F);
+        _state.system_status = State::IDLE;
+
+        if (!ret) {
+            response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
+            _state.system_status = State::ERROR;
+            _state.error_bitmap |= State::HEATER_POWER_ERROR;
         }
 
         static_cast<void>(
@@ -275,6 +353,10 @@ class LidHeaterTask {
         if ((_state.error_bitmap & _thermistor.error_bit) ==
             _thermistor.error_bit) {
             return _thermistor.error;
+        }
+        if ((_state.error_bitmap & State::HEATER_POWER_ERROR) ==
+            State::HEATER_POWER_ERROR) {
+            return errors::ErrorCode::THERMAL_HEATER_ERROR;
         }
 
         return errors::ErrorCode::NO_ERROR;

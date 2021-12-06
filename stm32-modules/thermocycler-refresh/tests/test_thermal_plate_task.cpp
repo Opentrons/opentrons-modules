@@ -97,12 +97,11 @@ SCENARIO("thermal plate task message passing") {
                     auto response =
                         tasks->get_host_comms_queue().backing_deque.front();
                     tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(std::holds_alternative<
-                            messages::GetPlateTempResponse>(
-                        response));
+                    REQUIRE(
+                        std::holds_alternative<messages::GetPlateTempResponse>(
+                            response));
                     auto gettemp =
-                        std::get<messages::GetPlateTempResponse>(
-                            response);
+                        std::get<messages::GetPlateTempResponse>(response);
                     REQUIRE(gettemp.responding_to_id == message.id);
                     REQUIRE_THAT(gettemp.current_temp,
                                  Catch::Matchers::WithinAbs(_valid_temp, 0.1));
@@ -277,12 +276,11 @@ SCENARIO("thermal plate task message passing") {
                     auto response =
                         tasks->get_host_comms_queue().backing_deque.front();
                     tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(std::holds_alternative<
-                            messages::GetPlateTempResponse>(
-                        response));
+                    REQUIRE(
+                        std::holds_alternative<messages::GetPlateTempResponse>(
+                            response));
                     auto gettemp =
-                        std::get<messages::GetPlateTempResponse>(
-                            response);
+                        std::get<messages::GetPlateTempResponse>(response);
                     REQUIRE(gettemp.responding_to_id == message.id);
                     REQUIRE_THAT(gettemp.current_temp,
                                  Catch::Matchers::WithinAbs(0.0, 0.1));
