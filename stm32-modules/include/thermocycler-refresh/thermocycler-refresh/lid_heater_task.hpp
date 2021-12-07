@@ -300,6 +300,7 @@ class LidHeaterTask {
     template <LidHeaterExecutionPolicy Policy>
     auto visit_message(const messages::SetPIDConstantsMessage& msg,
                        Policy& policy) -> void {
+        static_cast<void>(policy);
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
 
