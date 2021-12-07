@@ -174,6 +174,14 @@ struct DeactivateLidHeatingMessage {
     uint32_t id;
 };
 
+struct SetPIDConstantsMessage {
+    uint32_t id;
+    PidSelection selection;
+    double p;
+    double i;
+    double d;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage>;
@@ -191,5 +199,5 @@ using LidHeaterMessage =
     ::std::variant<std::monostate, LidTempReadComplete,
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
                    GetLidTempMessage, SetLidTemperatureMessage,
-                   DeactivateLidHeatingMessage>;
+                   DeactivateLidHeatingMessage, SetPIDConstantsMessage>;
 };  // namespace messages

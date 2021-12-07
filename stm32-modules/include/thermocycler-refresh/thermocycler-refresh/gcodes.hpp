@@ -679,4 +679,117 @@ struct DeactivateLidHeating {
     }
 };
 
+struct SetPIDConstants {
+    /**
+     * SetPIDConstants uses M301. It has three parameters, along with
+     * an optional preceding parameter (optional for backwards
+     * compatability).
+     *
+     * M301 [S<selection>] P<proportional> I<integral> D<derivative>
+     *
+     * Selection may be:
+     * - H = heater
+     * - P = peltiers
+     * - F = fans
+     * [following options TBD]
+     * - L = left peltier
+     * - C = center peltier
+     * - R = right peltier
+     */
+    using ParseResult = std::optional<SetPIDConstants>;
+    static constexpr auto prefix = std::array{'M', '3', '0', '1'};
+    static constexpr auto prefix_with_selection =
+        std::array{'M', '3', '0', '1', ' ', 'S'};
+    static constexpr auto prefix_p = std::array{' ', 'P'};
+    static constexpr auto prefix_i = std::array{' ', 'I'};
+    static constexpr auto prefix_d = std::array{' ', 'D'};
+    static constexpr const char* response = "M301 OK\n";
+
+    PidSelection selection;
+    double const_p;
+    double const_i;
+    double const_d;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        // For backwards compatability, default selection is Peltiers
+        PidSelection selection_val = PidSelection::PELTIERS;
+        auto working = prefix_matches(input, limit, prefix_with_selection);
+        if (working == input) {
+            // User skipped the selection
+            working = prefix_matches(input, limit, prefix);
+            if (working == input) {
+                return std::make_pair(ParseResult(), input);
+            }
+        } else {
+            // User made a selection
+            switch (*working) {
+                case 'H':
+                    selection_val = PidSelection::HEATER;
+                    break;
+                case 'P':
+                    selection_val = PidSelection::PELTIERS;
+                    break;
+                case 'F':
+                    selection_val = PidSelection::FANS;
+                    break;
+                default:
+                    return std::make_pair(ParseResult(), input);
+            }
+            std::advance(working, 1);
+            if (working == limit) {
+                return std::make_pair(ParseResult(), input);
+            }
+        }
+
+        auto old_working = working;
+        working = prefix_matches(old_working, limit, prefix_p);
+        if (working == old_working) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto p = parse_value<float>(working, limit);
+        if (!p.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        old_working = p.second;
+
+        working = prefix_matches(old_working, limit, prefix_i);
+        if (working == old_working) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto i = parse_value<float>(working, limit);
+        if (!p.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        old_working = i.second;
+
+        working = prefix_matches(old_working, limit, prefix_d);
+        if (working == old_working) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto d = parse_value<float>(working, limit);
+        if (!p.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        working = d.second;
+
+        return std::make_pair(
+            ParseResult(SetPIDConstants{.selection = selection_val,
+                                        .const_p = p.first.value(),
+                                        .const_i = i.first.value(),
+                                        .const_d = d.first.value()}),
+            working);
+    }
+};
+
 }  // namespace gcode

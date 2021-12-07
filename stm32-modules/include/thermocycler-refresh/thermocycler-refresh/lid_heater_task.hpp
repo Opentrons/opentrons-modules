@@ -297,6 +297,30 @@ class LidHeaterTask {
             _task_registry->comms->get_message_queue().try_send(response));
     }
 
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::SetPIDConstantsMessage& msg, Policy& policy) -> void {
+        auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        
+        if(_state.system_status == State::CONTROLLING) {
+            response.with_error = errors::ErrorCode::THERMAL_LID_BUSY;
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+        if ((msg.p < KP_MIN) || (msg.p > KP_MAX) || (msg.i < KI_MIN) ||
+            (msg.i > KI_MAX) || (msg.d < KD_MIN) || (msg.d > KD_MAX)) {
+            response.with_error =
+                errors::ErrorCode::THERMAL_CONSTANT_OUT_OF_RANGE;
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        } 
+
+        _pid = PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
     auto handle_temperature_conversion(uint16_t conversion_result,
                                        Thermistor& thermistor) -> void {
         auto visitor = [this, &thermistor](const auto value) -> void {
