@@ -67,6 +67,8 @@ const char* const THERMAL_HEATSINK_FAN_ERROR =
 const char* const THERMAL_LID_BUSY = "ERR404:thermal:Lid heater is busy\n";
 const char* const THERMAL_HEATER_ERROR =
     "ERR405:thermal:Error controlling lid heater";
+const char* const THERMAL_CONSTANT_OUT_OF_RANGE =
+    "ERR406:thermal:PID constant(s) out of range";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -114,6 +116,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(THERMAL_HEATSINK_FAN_ERROR);
         HANDLE_CASE(THERMAL_LID_BUSY);
         HANDLE_CASE(THERMAL_HEATER_ERROR);
+        HANDLE_CASE(THERMAL_CONSTANT_OUT_OF_RANGE);
     }
     return UNKNOWN_ERROR;
 }

@@ -178,6 +178,108 @@ struct SetSerialNumber {
     }
 };
 
+// TODO this message needs to be expanded to include more info like on the
+// arduino codebase. Will add after timeouts etc are included in control
+// loops.
+struct GetPlateTemp {
+    /*
+    ** GetPlateTemp keys off a standard get-tool-temperature gcode, M105
+    ** Format: M105
+    ** Example: M105
+    **
+    ** Returns the setpoint temperature T and the current temperature C
+    **
+    ** Returns T:none if the plate is off (setpoint = 0)
+    */
+    using ParseResult = std::optional<GetPlateTemp>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '5'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double current_temperature,
+                                    double setpoint_temperature) -> InputIt {
+        int res = 0;
+        if (setpoint_temperature == 0.0F) {
+            res = snprintf(&*buf, (limit - buf), "M105 T:none C:%0.2f OK\n",
+                           static_cast<float>(current_temperature));
+        } else {
+            res = snprintf(&*buf, (limit - buf), "M105 T:%0.2f C:%0.2f OK\n",
+                           static_cast<float>(setpoint_temperature),
+                           static_cast<float>(current_temperature));
+        }
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetPlateTemp()), working);
+    }
+};
+
+struct GetLidTemp {
+    /*
+    ** GetLidTemp uses gcode M141
+    ** Format: M141
+    ** Example: M141
+    **
+    ** Returns the setpoint temperature T and the current temperature C
+    **
+    ** Returns T:none if the plate is off (setpoint = 0)
+    */
+    using ParseResult = std::optional<GetLidTemp>;
+    static constexpr auto prefix = std::array{'M', '1', '4', '1'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double current_temperature,
+                                    double setpoint_temperature) -> InputIt {
+        int res = 0;
+        if (setpoint_temperature == 0.0F) {
+            res = snprintf(&*buf, (limit - buf), "M141 T:none C:%0.2f OK\n",
+                           static_cast<float>(current_temperature));
+        } else {
+            res = snprintf(&*buf, (limit - buf), "M141 T:%0.2f C:%0.2f OK\n",
+                           static_cast<float>(setpoint_temperature),
+                           static_cast<float>(current_temperature));
+        }
+
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetLidTemp()), working);
+    }
+};
+
 struct SetFanManual {
     /**
      * SetFanManual uses M106. Sets the PWM of the fans as a percentage
@@ -491,6 +593,202 @@ struct GetPlateTemperatureDebug {
             return std::make_pair(ParseResult(), input);
         }
         return std::make_pair(ParseResult(GetPlateTemperatureDebug()), working);
+    }
+};
+
+struct SetLidTemperature {
+    /**
+     * SetLidTemperature uses M140. Only parameter is optional and it is
+     * the temperature to heat to. If not defined, the temperature target
+     * will be 105 degrees
+     *
+     * M140 S44\n
+     */
+    using ParseResult = std::optional<SetLidTemperature>;
+    static constexpr auto prefix = std::array{'M', '1', '4', '0'};
+    static constexpr auto prefix_with_temp =
+        std::array{'M', '1', '4', '0', ' ', 'S'};
+    static constexpr const char* response = "M140 OK\n";
+
+    static constexpr double default_setpoint = 105.0F;
+
+    double setpoint;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix_with_temp);
+        if (working == input) {
+            // NO TEMP SETTING but it might just be a bare command
+            working = prefix_matches(input, limit, prefix);
+            if (working == input) {
+                return std::make_pair(ParseResult(), input);
+            }
+            // Return a struct with default temperature
+            return std::make_pair(
+                ParseResult(SetLidTemperature{.setpoint = default_setpoint}),
+                working);
+        }
+        // We are expecting a temperature setting
+        auto temperature = parse_value<float>(working, limit);
+        if (!temperature.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto temperature_val = temperature.first.value();
+        return std::make_pair(
+            ParseResult(SetLidTemperature{.setpoint = temperature_val}),
+            temperature.second);
+    }
+};
+
+struct DeactivateLidHeating {
+    /**
+     * DeactivateLidHeating uses M108. It has no parameters and just
+     * deactivates the lid heater.
+     */
+    using ParseResult = std::optional<DeactivateLidHeating>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '8'};
+    static constexpr const char* response = "M108 OK\n";
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(DeactivateLidHeating()), working);
+    }
+};
+
+struct SetPIDConstants {
+    /**
+     * SetPIDConstants uses M301. It has three parameters, along with
+     * an optional preceding parameter (optional for backwards
+     * compatability).
+     *
+     * M301 [S<selection>] P<proportional> I<integral> D<derivative>
+     *
+     * Selection may be:
+     * - H = heater
+     * - P = peltiers
+     * - F = fans
+     * [following options TBD]
+     * - L = left peltier
+     * - C = center peltier
+     * - R = right peltier
+     */
+    using ParseResult = std::optional<SetPIDConstants>;
+    static constexpr auto prefix = std::array{'M', '3', '0', '1'};
+    static constexpr auto prefix_with_selection =
+        std::array{'M', '3', '0', '1', ' ', 'S'};
+    static constexpr auto prefix_p = std::array{' ', 'P'};
+    static constexpr auto prefix_i = std::array{' ', 'I'};
+    static constexpr auto prefix_d = std::array{' ', 'D'};
+    static constexpr const char* response = "M301 OK\n";
+
+    PidSelection selection;
+    double const_p;
+    double const_i;
+    double const_d;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        // For backwards compatability, default selection is Peltiers
+        PidSelection selection_val = PidSelection::PELTIERS;
+        auto working = prefix_matches(input, limit, prefix_with_selection);
+        if (working == input) {
+            // User skipped the selection
+            working = prefix_matches(input, limit, prefix);
+            if (working == input) {
+                return std::make_pair(ParseResult(), input);
+            }
+        } else {
+            // User made a selection
+            switch (*working) {
+                case 'H':
+                    selection_val = PidSelection::HEATER;
+                    break;
+                case 'P':
+                    selection_val = PidSelection::PELTIERS;
+                    break;
+                case 'F':
+                    selection_val = PidSelection::FANS;
+                    break;
+                default:
+                    return std::make_pair(ParseResult(), input);
+            }
+            std::advance(working, 1);
+            if (working == limit) {
+                return std::make_pair(ParseResult(), input);
+            }
+        }
+
+        auto old_working = working;
+        working = prefix_matches(old_working, limit, prefix_p);
+        if (working == old_working) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto p = parse_value<float>(working, limit);
+        if (!p.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        old_working = p.second;
+
+        working = prefix_matches(old_working, limit, prefix_i);
+        if (working == old_working) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto i = parse_value<float>(working, limit);
+        if (!p.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        old_working = i.second;
+
+        working = prefix_matches(old_working, limit, prefix_d);
+        if (working == old_working) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto d = parse_value<float>(working, limit);
+        if (!p.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        working = d.second;
+
+        return std::make_pair(
+            ParseResult(SetPIDConstants{.selection = selection_val,
+                                        .const_p = p.first.value(),
+                                        .const_i = i.first.value(),
+                                        .const_d = d.first.value()}),
+            working);
     }
 };
 

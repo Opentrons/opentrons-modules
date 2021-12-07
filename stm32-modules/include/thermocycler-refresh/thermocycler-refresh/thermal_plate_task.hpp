@@ -90,7 +90,7 @@ class ThermalPlateTask {
     static constexpr double KI_MAX = 200;
     static constexpr double KD_MIN = -200;
     static constexpr double KD_MAX = 200;
-    static constexpr double OVERTEMP_LIMIT_C = 105;
+    static constexpr double OVERTEMP_LIMIT_C = 115;
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     static constexpr const double CONTROL_PERIOD_SECONDS =
         CONTROL_PERIOD_TICKS * 0.001;
@@ -165,7 +165,8 @@ class ThermalPlateTask {
                 .error_bit = thermistorErrorBit(THERM_HEATSINK)}}},
           _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
                      false),
-          _state{.system_status = State::IDLE, .error_bitmap = 0} {}
+          _state{.system_status = State::IDLE, .error_bitmap = 0},
+          _setpoint_c(0) {}
     ThermalPlateTask(const ThermalPlateTask& other) = delete;
     auto operator=(const ThermalPlateTask& other) -> ThermalPlateTask& = delete;
     ThermalPlateTask(ThermalPlateTask&& other) noexcept = delete;
@@ -270,6 +271,21 @@ class ThermalPlateTask {
             .back_right_adc = _thermistors[THERM_BACK_RIGHT].last_adc,
             .back_center_adc = _thermistors[THERM_BACK_CENTER].last_adc,
             .back_left_adc = _thermistors[THERM_BACK_LEFT].last_adc};
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::GetPlateTempMessage& msg, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        auto response =
+            messages::GetPlateTempResponse{.responding_to_id = msg.id,
+                                           .current_temp = average_plate_temp(),
+                                           .set_temp = _setpoint_c};
+        if (_state.system_status != State::CONTROLLING) {
+            response.set_temp = 0.0F;
+        }
         static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
@@ -416,6 +432,16 @@ class ThermalPlateTask {
         return errors::ErrorCode::NO_ERROR;
     }
 
+    [[nodiscard]] auto average_plate_temp() const -> double {
+        return (_thermistors[THERM_FRONT_RIGHT].temp_c +
+                _thermistors[THERM_BACK_RIGHT].temp_c +
+                _thermistors[THERM_FRONT_LEFT].temp_c +
+                _thermistors[THERM_BACK_LEFT].temp_c +
+                _thermistors[THERM_FRONT_CENTER].temp_c +
+                _thermistors[THERM_BACK_CENTER].temp_c) /
+               ((double)(PLATE_THERM_COUNT - 1));
+    }
+
     Queue& _message_queue;
     tasks::Tasks<QueueImpl>* _task_registry;
     Peltier _peltier_left;
@@ -424,6 +450,7 @@ class ThermalPlateTask {
     std::array<Thermistor, PLATE_THERM_COUNT> _thermistors;
     thermistor_conversion::Conversion<lookups::KS103J2G> _converter;
     State _state;
+    double _setpoint_c;
 };
 
 }  // namespace thermal_plate_task

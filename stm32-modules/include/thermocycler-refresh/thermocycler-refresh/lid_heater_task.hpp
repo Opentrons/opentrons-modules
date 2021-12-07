@@ -32,13 +32,17 @@ concept LidHeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // pin.
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     { p.set_heater_power(1.0) } -> std::same_as<bool>;
+    // A get_heater_power function to get the power of the heater as
+    // a percentage from 0 to 1.0.
+    { p.get_heater_power() } -> std::same_as<double>;
 };
 
 struct State {
     enum Status {
-        IDLE,
-        ERROR,
-        CONTROLLING,
+        IDLE,        /**< Not doing anything.*/
+        ERROR,       /**< Experiencing an error.*/
+        CONTROLLING, /**< Controlling temperature (PID).*/
+        HEATER_TEST  /**< Testing PWM output (debug command).*/
     };
     Status system_status;
     uint16_t error_bitmap;
@@ -68,7 +72,7 @@ class LidHeaterTask {
     static constexpr double KI_MAX = 200;
     static constexpr double KD_MIN = -200;
     static constexpr double KD_MAX = 200;
-    static constexpr double OVERTEMP_LIMIT_C = 95;
+    static constexpr double OVERTEMP_LIMIT_C = 115;
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     static constexpr const double CONTROL_PERIOD_SECONDS =
         CONTROL_PERIOD_TICKS * 0.001;
@@ -87,7 +91,8 @@ class LidHeaterTask {
                      false),
           _state{.system_status = State::IDLE, .error_bitmap = 0},
           _pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS, 1.0,
-               -1.0) {}
+               -1.0),
+          _setpoint_c(0.0F) {}
     LidHeaterTask(const LidHeaterTask& other) = delete;
     auto operator=(const LidHeaterTask& other) -> LidHeaterTask& = delete;
     LidHeaterTask(LidHeaterTask&& other) noexcept = delete;
@@ -152,6 +157,19 @@ class LidHeaterTask {
                 _state.system_status = State::IDLE;
             }
         }
+
+        // If we're in a controlling state, we now update the heater output
+        if (_state.system_status == State::CONTROLLING) {
+            auto ret = policy.set_heater_power(
+                _pid.compute(_setpoint_c - _thermistor.temp_c));
+            if (!ret) {
+                policy.set_heater_power(0.0F);
+                _state.system_status = State::ERROR;
+                _state.error_bitmap |= State::HEATER_POWER_ERROR;
+            }
+        } else if (_state.system_status != State::HEATER_TEST) {
+            policy.set_heater_power(0.0F);
+        }
     }
 
     template <typename Policy>
@@ -164,6 +182,22 @@ class LidHeaterTask {
             .responding_to_id = msg.id,
             .lid_temp = _thermistor.temp_c,
             .lid_adc = _thermistor.last_adc};
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    requires LidHeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::GetLidTempMessage& msg, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        auto response =
+            messages::GetLidTempResponse{.responding_to_id = msg.id,
+                                         .current_temp = _thermistor.temp_c,
+                                         .set_temp = _setpoint_c};
+        if (_state.system_status != State::CONTROLLING) {
+            response.set_temp = 0.0F;
+        }
         static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
@@ -187,10 +221,105 @@ class LidHeaterTask {
             return;
         }
 
-        if (!policy.set_heater_power(msg.power)) {
+        if (policy.set_heater_power(msg.power)) {
+            _state.system_status =
+                (msg.power > 0.0) ? State::HEATER_TEST : State::IDLE;
+        } else {
             response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
+            _state.system_status = State::ERROR;
+            _state.error_bitmap |= State::HEATER_POWER_ERROR;
         }
 
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::SetLidTemperatureMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+        if (_state.system_status == State::HEATER_TEST) {
+            auto ret = policy.set_heater_power(0.0F);
+            if (!ret) {
+                response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
+                _state.system_status = State::ERROR;
+                _state.error_bitmap |= State::HEATER_POWER_ERROR;
+                static_cast<void>(
+                    _task_registry->comms->get_message_queue().try_send(
+                        response));
+                return;
+            }
+        }
+
+        if (msg.setpoint <= 0.0F) {
+            _setpoint_c = 0.0F;
+            _state.system_status = State::IDLE;
+        } else {
+            _setpoint_c = msg.setpoint;
+            _state.system_status = State::CONTROLLING;
+            _pid.arm_integrator_reset(_setpoint_c - _thermistor.temp_c);
+        }
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::DeactivateLidHeatingMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+
+        auto ret = policy.set_heater_power(0.0F);
+        _state.system_status = State::IDLE;
+
+        if (!ret) {
+            response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
+            _state.system_status = State::ERROR;
+            _state.error_bitmap |= State::HEATER_POWER_ERROR;
+        }
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::SetPIDConstantsMessage& msg,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        if (_state.system_status == State::CONTROLLING) {
+            response.with_error = errors::ErrorCode::THERMAL_LID_BUSY;
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+        if ((msg.p < KP_MIN) || (msg.p > KP_MAX) || (msg.i < KI_MIN) ||
+            (msg.i > KI_MAX) || (msg.d < KD_MIN) || (msg.d > KD_MAX)) {
+            response.with_error =
+                errors::ErrorCode::THERMAL_CONSTANT_OUT_OF_RANGE;
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+
+        _pid = PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));
     }
@@ -252,6 +381,10 @@ class LidHeaterTask {
             _thermistor.error_bit) {
             return _thermistor.error;
         }
+        if ((_state.error_bitmap & State::HEATER_POWER_ERROR) ==
+            State::HEATER_POWER_ERROR) {
+            return errors::ErrorCode::THERMAL_HEATER_ERROR;
+        }
 
         return errors::ErrorCode::NO_ERROR;
     }
@@ -262,6 +395,7 @@ class LidHeaterTask {
     thermistor_conversion::Conversion<lookups::KS103J2G> _converter;
     State _state;
     PID _pid;
+    double _setpoint_c;
 };
 
 }  // namespace lid_heater_task

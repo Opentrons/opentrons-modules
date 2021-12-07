@@ -23,6 +23,13 @@ void thermal_heater_initialize(void);
  */
 bool thermal_heater_set_power(double power);
 
+/**
+ * @brief Returns the power level of the heater
+ *
+ * @return The thermal heater power as a percentage from 0 to 1.0
+ */
+double thermal_heater_get_power(void);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
