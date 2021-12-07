@@ -102,58 +102,66 @@ SCENARIO("lid heater task message passing") {
             }
         }
         WHEN("Sending a SetPIDConstants to configure the lid constants") {
-            auto message = 
-            messages::SetPIDConstantsMessage{.id = 123, .selection = PidSelection::HEATER,
-                .p = 1, .i = 1, .d = 1};
-            tasks->get_lid_heater_queue().backing_deque.push_back(messages::LidHeaterMessage(message));
+            auto message = messages::SetPIDConstantsMessage{
+                .id = 123,
+                .selection = PidSelection::HEATER,
+                .p = 1,
+                .i = 1,
+                .d = 1};
+            tasks->get_lid_heater_queue().backing_deque.push_back(
+                messages::LidHeaterMessage(message));
             tasks->run_lid_heater_task();
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_lid_heater_queue().backing_deque.empty());
                 AND_THEN("the task should act on the message") {
-                REQUIRE(
-                    tasks->get_thermal_plate_queue().backing_deque.empty());
+                    REQUIRE(
+                        tasks->get_thermal_plate_queue().backing_deque.empty());
 
-                REQUIRE(
-                    !tasks->get_host_comms_queue().backing_deque.empty());
-                auto response =
-                    tasks->get_host_comms_queue().backing_deque.front();
-                tasks->get_host_comms_queue().backing_deque.pop_front();
-                REQUIRE(
-                    std::holds_alternative<messages::AcknowledgePrevious>(
-                        response));
-                auto response_msg =
-                    std::get<messages::AcknowledgePrevious>(response);
-                REQUIRE(response_msg.responding_to_id == 123);
-                REQUIRE(response_msg.with_error ==
-                        errors::ErrorCode::NO_ERROR);
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto response_msg =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(response_msg.responding_to_id == 123);
+                    REQUIRE(response_msg.with_error ==
+                            errors::ErrorCode::NO_ERROR);
                 }
             }
         }
         WHEN("Sending a SetPIDConstants with invalid constants") {
-            auto message = 
-            messages::SetPIDConstantsMessage{.id = 555, .selection = PidSelection::HEATER,
-                .p = 1000, .i = 1, .d = 1};
-            tasks->get_lid_heater_queue().backing_deque.push_back(messages::LidHeaterMessage(message));
+            auto message = messages::SetPIDConstantsMessage{
+                .id = 555,
+                .selection = PidSelection::HEATER,
+                .p = 1000,
+                .i = 1,
+                .d = 1};
+            tasks->get_lid_heater_queue().backing_deque.push_back(
+                messages::LidHeaterMessage(message));
             tasks->run_lid_heater_task();
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_lid_heater_queue().backing_deque.empty());
                 AND_THEN("the task should act on the message") {
-                REQUIRE(
-                    tasks->get_thermal_plate_queue().backing_deque.empty());
+                    REQUIRE(
+                        tasks->get_thermal_plate_queue().backing_deque.empty());
 
-                REQUIRE(
-                    !tasks->get_host_comms_queue().backing_deque.empty());
-                auto response =
-                    tasks->get_host_comms_queue().backing_deque.front();
-                tasks->get_host_comms_queue().backing_deque.pop_front();
-                REQUIRE(
-                    std::holds_alternative<messages::AcknowledgePrevious>(
-                        response));
-                auto response_msg =
-                    std::get<messages::AcknowledgePrevious>(response);
-                REQUIRE(response_msg.responding_to_id == 555);
-                REQUIRE(response_msg.with_error ==
-                        errors::ErrorCode::THERMAL_CONSTANT_OUT_OF_RANGE);
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto response_msg =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(response_msg.responding_to_id == 555);
+                    REQUIRE(response_msg.with_error ==
+                            errors::ErrorCode::THERMAL_CONSTANT_OUT_OF_RANGE);
                 }
             }
         }
@@ -228,32 +236,37 @@ SCENARIO("lid heater task message passing") {
                     }
                 }
             }
-            AND_WHEN("Sending a SetPIDConstants to configure the lid constants") {
+            AND_WHEN(
+                "Sending a SetPIDConstants to configure the lid constants") {
                 tasks->get_host_comms_queue().backing_deque.pop_front();
-                auto message = 
-                    messages::SetPIDConstantsMessage{.id = 808, .selection = PidSelection::HEATER,
-                        .p = 1, .i = 1, .d = 1};
-                tasks->get_lid_heater_queue().backing_deque.push_back(messages::LidHeaterMessage(message));
+                auto message = messages::SetPIDConstantsMessage{
+                    .id = 808,
+                    .selection = PidSelection::HEATER,
+                    .p = 1,
+                    .i = 1,
+                    .d = 1};
+                tasks->get_lid_heater_queue().backing_deque.push_back(
+                    messages::LidHeaterMessage(message));
                 tasks->run_lid_heater_task();
                 THEN("the task should get the message") {
-                    REQUIRE(tasks->get_lid_heater_queue().backing_deque.empty());
+                    REQUIRE(
+                        tasks->get_lid_heater_queue().backing_deque.empty());
                     AND_THEN("the task should respond with a busy error") {
-                    REQUIRE(
-                        tasks->get_thermal_plate_queue().backing_deque.empty());
+                        REQUIRE(tasks->get_thermal_plate_queue()
+                                    .backing_deque.empty());
 
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            response));
-                    auto response_msg =
-                        std::get<messages::AcknowledgePrevious>(response);
-                    REQUIRE(response_msg.responding_to_id == 808);
-                    REQUIRE(response_msg.with_error ==
-                            errors::ErrorCode::THERMAL_LID_BUSY);
+                        REQUIRE(!tasks->get_host_comms_queue()
+                                     .backing_deque.empty());
+                        auto response =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        tasks->get_host_comms_queue().backing_deque.pop_front();
+                        REQUIRE(std::holds_alternative<
+                                messages::AcknowledgePrevious>(response));
+                        auto response_msg =
+                            std::get<messages::AcknowledgePrevious>(response);
+                        REQUIRE(response_msg.responding_to_id == 808);
+                        REQUIRE(response_msg.with_error ==
+                                errors::ErrorCode::THERMAL_LID_BUSY);
                     }
                 }
             }

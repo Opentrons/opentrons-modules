@@ -1,5 +1,4 @@
 #include "catch2/catch.hpp"
-
 #include "systemwide.h"
 // Push this diagnostic to avoid a compiler error about printing to too
 // small of a buffer... which we're doing on purpose!
@@ -15,8 +14,7 @@ SCENARIO("SetPIDConstants (M301) parser works", "[gcode][parse][m301]") {
             auto written = gcode::SetPIDConstants::write_response_into(
                 buffer.begin(), buffer.end());
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
-                                         "M301 OK\n"));
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith("M301 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
@@ -36,7 +34,8 @@ SCENARIO("SetPIDConstants (M301) parser works", "[gcode][parse][m301]") {
     GIVEN("valid input without a target specifier") {
         std::string buffer = "M301 P10.0 I-4 D75\n";
         WHEN("parsing the command") {
-            auto parsed = gcode::SetPIDConstants::parse(buffer.begin(), buffer.end());
+            auto parsed =
+                gcode::SetPIDConstants::parse(buffer.begin(), buffer.end());
             THEN("a valid command is produced") {
                 REQUIRE(parsed.first.has_value());
                 REQUIRE(parsed.second != buffer.begin());
@@ -51,7 +50,8 @@ SCENARIO("SetPIDConstants (M301) parser works", "[gcode][parse][m301]") {
     GIVEN("valid input specifying the peltiers") {
         std::string buffer = "M301 SP P10.0 I-4 D75\n";
         WHEN("parsing the command") {
-            auto parsed = gcode::SetPIDConstants::parse(buffer.begin(), buffer.end());
+            auto parsed =
+                gcode::SetPIDConstants::parse(buffer.begin(), buffer.end());
             THEN("a valid command is produced") {
                 REQUIRE(parsed.first.has_value());
                 REQUIRE(parsed.second != buffer.begin());
@@ -66,7 +66,8 @@ SCENARIO("SetPIDConstants (M301) parser works", "[gcode][parse][m301]") {
     GIVEN("valid input specifying the fans") {
         std::string buffer = "M301 SF P10.0 I-4 D75\n";
         WHEN("parsing the command") {
-            auto parsed = gcode::SetPIDConstants::parse(buffer.begin(), buffer.end());
+            auto parsed =
+                gcode::SetPIDConstants::parse(buffer.begin(), buffer.end());
             THEN("a valid command is produced") {
                 REQUIRE(parsed.first.has_value());
                 REQUIRE(parsed.second != buffer.begin());
@@ -81,7 +82,8 @@ SCENARIO("SetPIDConstants (M301) parser works", "[gcode][parse][m301]") {
     GIVEN("valid input specifying the heater") {
         std::string buffer = "M301 SH P10.0 I-4 D75\n";
         WHEN("parsing the command") {
-            auto parsed = gcode::SetPIDConstants::parse(buffer.begin(), buffer.end());
+            auto parsed =
+                gcode::SetPIDConstants::parse(buffer.begin(), buffer.end());
             THEN("a valid command is produced") {
                 REQUIRE(parsed.first.has_value());
                 REQUIRE(parsed.second != buffer.begin());
@@ -96,7 +98,8 @@ SCENARIO("SetPIDConstants (M301) parser works", "[gcode][parse][m301]") {
     GIVEN("input with invalid target specifier") {
         std::string buffer = "M301 SW P10.0 I-4 D75\n";
         WHEN("parsing the command") {
-            auto parsed = gcode::SetPIDConstants::parse(buffer.begin(), buffer.end());
+            auto parsed =
+                gcode::SetPIDConstants::parse(buffer.begin(), buffer.end());
             THEN("no valid command is produced") {
                 REQUIRE(!parsed.first.has_value());
                 REQUIRE(parsed.second == buffer.begin());
@@ -106,7 +109,8 @@ SCENARIO("SetPIDConstants (M301) parser works", "[gcode][parse][m301]") {
     GIVEN("invalid input") {
         std::string buffer = "M301 Px IW ABCDEFG\n";
         WHEN("parsing the command") {
-            auto parsed = gcode::SetPIDConstants::parse(buffer.begin(), buffer.end());
+            auto parsed =
+                gcode::SetPIDConstants::parse(buffer.begin(), buffer.end());
             THEN("no valid command is produced") {
                 REQUIRE(!parsed.first.has_value());
                 REQUIRE(parsed.second == buffer.begin());

@@ -457,8 +457,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{
                             .responding_to_id = set_lid_temp_message.id,
-                            .with_error =
-                                errors::ErrorCode::THERMAL_LID_BUSY});
+                            .with_error = errors::ErrorCode::THERMAL_LID_BUSY});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =

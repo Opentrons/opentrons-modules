@@ -298,10 +298,12 @@ class LidHeaterTask {
     }
 
     template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::SetPIDConstantsMessage& msg, Policy& policy) -> void {
-        auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        
-        if(_state.system_status == State::CONTROLLING) {
+    auto visit_message(const messages::SetPIDConstantsMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        if (_state.system_status == State::CONTROLLING) {
             response.with_error = errors::ErrorCode::THERMAL_LID_BUSY;
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(response));
@@ -314,7 +316,7 @@ class LidHeaterTask {
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(response));
             return;
-        } 
+        }
 
         _pid = PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
         static_cast<void>(

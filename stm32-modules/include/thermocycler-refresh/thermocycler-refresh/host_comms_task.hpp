@@ -702,12 +702,12 @@ class HostCommsTask {
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
 
-        auto message = messages::SetPIDConstantsMessage{
-            .id = id,
-            .selection = gcode.selection,
-            .p = gcode.const_p,
-            .i = gcode.const_i,
-            .d = gcode.const_d};
+        auto message =
+            messages::SetPIDConstantsMessage{.id = id,
+                                             .selection = gcode.selection,
+                                             .p = gcode.const_p,
+                                             .i = gcode.const_i,
+                                             .d = gcode.const_d};
         // TODO when PID is added to the peltiers and fans, will have to
         // switch the target queue based on the selection in the message.
         if (!task_registry->lid_heater->get_message_queue().try_send(
@@ -720,7 +720,6 @@ class HostCommsTask {
 
         return std::make_pair(true, tx_into);
     }
-
 
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>
