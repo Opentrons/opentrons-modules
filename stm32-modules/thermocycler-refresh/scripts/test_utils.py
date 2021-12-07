@@ -41,16 +41,17 @@ def guard_error(res: bytes, prefix: bytes=  None):
         raise RuntimeError(f'incorrect response: {res} (expected prefix {prefix})')
 
 
-_TEMP_RE = re.compile('^M141.D LT:(?P<temp>.+) LA.*OK\n')
+_TEMP_RE = re.compile('^M141 T:(?P<target>.+) C:(?P<temp>.+) OK\n')
 def get_lid_temperature(ser: serial.Serial) -> float:
-    ser.write(b'M141.D\n')
+    ser.write(b'M141\n')
     res = ser.readline()
-    guard_error(res, b'M141.D')
+    guard_error(res, b'M141')
     res_s = res.decode()
     match = re.match(_TEMP_RE, res_s)
     return float(match.group('temp'))
 
 _TEMP_DEBUG_RE = re.compile('^M105.D HST:(?P<HST>.+) FRT:(?P<FRT>.+) FLT:(?P<FLT>.+) FCT:(?P<FCT>.+) BRT:(?P<BRT>.+) BLT:(?P<BLT>.+) BCT:(?P<BCT>.+) HSA.* OK\n')
+# Returns: Heatsink, Right Plate, Left Plate, Center Plate
 def get_plate_temperatures(ser: serial.Serial) -> Tuple[float, float, float, float]:
     ser.write(b'M105.D\n')
     res = ser.readline()
@@ -62,6 +63,16 @@ def get_plate_temperatures(ser: serial.Serial) -> Tuple[float, float, float, flo
     temp_l = (float(match.group('FLT')) + float(match.group('BLT'))) / 2.0
     temp_hs = float(match.group('HST'))
     return temp_hs, temp_r, temp_l, temp_c
+
+_PLATE_TEMP_RE = re.compile('^M105 T:(?P<target>.+) C:(?P<temp>.+) OK\n')
+# JUST gets the base temperature of the plate
+def get_plate_temperature(ser: serial.Serial) -> float:
+    ser.write(b'M105\n')
+    res = ser.readline()
+    guard_error(res, b'M105')
+    res_s = res.decode()
+    match = re.match(_PLATE_TEMP_RE, res_s)
+    return float(match.group('temp'))
 
 # Sets peltier PWM as a percentage. Be careful!!!!!
 def set_peltier_debug(power: float, direction: str, peltiers: str, ser: serial.Serial):
@@ -98,4 +109,20 @@ def set_heater_debug(power: float, ser: serial.Serial):
     ser.write(f'M140.D S{power}\n'.encode())
     res = ser.readline()
     guard_error(res, b'M140.D OK')
+    print(res)
+
+# Sets the heater target as a temperature in celsius
+def set_lid_temperature(temperature: float, ser: serial.Serial):
+    print(f'Setting lid temperature target to {temperature}C')
+    ser.write(f'M140 S{temperature}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M140 OK')
+    print(res)
+
+# Turn off the heater!
+def deactivate_lid(ser: serial.Serial):
+    print('Deactivating heater')
+    ser.write('M108\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M108 OK')
     print(res)

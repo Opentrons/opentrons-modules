@@ -90,7 +90,7 @@ class ThermalPlateTask {
     static constexpr double KI_MAX = 200;
     static constexpr double KD_MIN = -200;
     static constexpr double KD_MAX = 200;
-    static constexpr double OVERTEMP_LIMIT_C = 105;
+    static constexpr double OVERTEMP_LIMIT_C = 115;
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     static constexpr const double CONTROL_PERIOD_SECONDS =
         CONTROL_PERIOD_TICKS * 0.001;

@@ -330,8 +330,8 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetLidTempResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry = get_lid_temp_debug_cache.remove_if_present(
-            response.responding_to_id);
+        auto cache_entry =
+            get_lid_temp_cache.remove_if_present(response.responding_to_id);
         return std::visit(
             [tx_into, tx_limit, response](auto cache_element) {
                 using T = std::decay_t<decltype(cache_element)>;
@@ -353,8 +353,8 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetPlateTempResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry = get_lid_temp_debug_cache.remove_if_present(
-            response.responding_to_id);
+        auto cache_entry =
+            get_plate_temp_cache.remove_if_present(response.responding_to_id);
         return std::visit(
             [tx_into, tx_limit, response](auto cache_element) {
                 using T = std::decay_t<decltype(cache_element)>;
