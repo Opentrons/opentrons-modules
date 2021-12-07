@@ -126,3 +126,11 @@ def deactivate_lid(ser: serial.Serial):
     res = ser.readline()
     guard_error(res, b'M108 OK')
     print(res)
+
+# Set the heater PID constants
+def set_heater_pid(p: float, i: float, d: float, ser: serial.Serial):
+    print(f'Setting heater PID to P={p} I={i} D={d}')
+    ser.write(f'M301 SH P{p} I{i} D{d}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M301 OK')
+    print(res)
