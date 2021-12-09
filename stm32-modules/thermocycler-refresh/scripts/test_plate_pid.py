@@ -8,21 +8,6 @@ COOL_TARGET = 10
 
 if __name__ == '__main__':
     ser = test_utils.build_serial()
-
-    def update_heating(lid, heatsink, right, left, center):
-        if(center > HEAT_TARGET):
-            test_utils.deactivate_plate(ser)
-            plot_temp.closeGraph()
-            print('Turned off plate')
-        return
-    
-    def update_cooling(lid, heatsink, right, left, center):
-        if(center < COOL_TARGET):
-            test_utils.deactivate_plate(ser)
-            plot_temp.closeGraph()
-            print('Turned off plate')
-        return
-    
     direction = int(1)
 
     def update_cb(lid, heatsink, right, left, center):
