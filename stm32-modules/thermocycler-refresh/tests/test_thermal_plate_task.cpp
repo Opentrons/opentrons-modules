@@ -327,6 +327,31 @@ SCENARIO("thermal plate task message passing") {
                         }
                     }
                 }
+                AND_WHEN("sending updated temperatures below target") {
+                    tasks->get_thermal_plate_queue().backing_deque.push_back(
+                        messages::ThermalPlateMessage(read_message));
+                    tasks->run_thermal_plate_task();
+                    THEN("the peltiers should be enabled") {
+                        auto p_right =
+                            tasks->get_thermal_plate_policy().get_peltier(
+                                PeltierID::PELTIER_RIGHT);
+                        REQUIRE(p_right.first ==
+                                PeltierDirection::PELTIER_HEATING);
+                        REQUIRE(p_right.second > 0.0F);
+                        auto p_left =
+                            tasks->get_thermal_plate_policy().get_peltier(
+                                PeltierID::PELTIER_LEFT);
+                        REQUIRE(p_left.first ==
+                                PeltierDirection::PELTIER_HEATING);
+                        REQUIRE(p_left.second > 0.0F);
+                        auto p_center =
+                            tasks->get_thermal_plate_policy().get_peltier(
+                                PeltierID::PELTIER_CENTER);
+                        REQUIRE(p_center.first ==
+                                PeltierDirection::PELTIER_HEATING);
+                        REQUIRE(p_center.second > 0.0F);
+                    }
+                }
             }
             AND_WHEN("sending a DeactivatePlate command") {
                 tasks->get_host_comms_queue().backing_deque.pop_front();
