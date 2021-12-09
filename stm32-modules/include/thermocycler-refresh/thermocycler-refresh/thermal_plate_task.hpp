@@ -265,11 +265,20 @@ class ThermalPlateTask {
         if (_state.system_status == State::CONTROLLING) {
             policy.set_enabled(true);
             // Each of the peltiers has its own PID loop, as does the fan
-            update_peltier_pid(_peltier_left, policy);
-            update_peltier_pid(_peltier_right, policy);
-            update_peltier_pid(_peltier_center, policy);
-        } else if (_state.system_status == State::ERROR) {
-            // Can't be too safe about disabling outputs!
+            auto ret = update_peltier_pid(_peltier_left, policy);
+            if (ret) {
+                ret = update_peltier_pid(_peltier_right, policy);
+            }
+            if (ret) {
+                ret = update_peltier_pid(_peltier_center, policy);
+            }
+            if (!ret) {
+                _state.system_status = State::ERROR;
+                _state.error_bitmap |= State::PELTIER_ERROR;
+            }
+        }
+        // Not an `else` so we can immediately resolve any issue setting outputs
+        if (_state.system_status == State::ERROR) {
             policy.set_enabled(false);
         }
     }
