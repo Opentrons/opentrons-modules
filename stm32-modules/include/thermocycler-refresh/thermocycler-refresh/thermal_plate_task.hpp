@@ -438,9 +438,12 @@ class ThermalPlateTask {
         } else {
             _setpoint_c = msg.setpoint;
             _state.system_status = State::CONTROLLING;
-            _peltier_left.pid.arm_integrator_reset(_setpoint_c - _peltier_left.temp_current);
-            _peltier_right.pid.arm_integrator_reset(_setpoint_c - _peltier_right.temp_current);
-            _peltier_center.pid.arm_integrator_reset(_setpoint_c - _peltier_center.temp_current);
+            _peltier_left.pid.arm_integrator_reset(_setpoint_c -
+                                                   _peltier_left.temp_current);
+            _peltier_right.pid.arm_integrator_reset(
+                _setpoint_c - _peltier_right.temp_current);
+            _peltier_center.pid.arm_integrator_reset(
+                _setpoint_c - _peltier_center.temp_current);
             _peltier_left.temp_target = _setpoint_c;
             _peltier_right.temp_target = _setpoint_c;
             _peltier_center.temp_target = _setpoint_c;
@@ -598,7 +601,8 @@ class ThermalPlateTask {
      */
     template <ThermalPlateExecutionPolicy Policy>
     auto update_peltier_pid(Peltier& peltier, Policy& policy) -> bool {
-        auto power = peltier.pid.compute(peltier.temp_target - peltier.temp_current);
+        auto power =
+            peltier.pid.compute(peltier.temp_target - peltier.temp_current);
         auto direction = PeltierDirection::PELTIER_HEATING;
         if (power < 0.0F) {
             // The set_peltier function takes a *positive* percentage and a
