@@ -174,6 +174,16 @@ struct DeactivateLidHeatingMessage {
     uint32_t id;
 };
 
+struct SetPlateTemperatureMessage {
+    uint32_t id;
+    double setpoint;
+    double hold_time;
+};
+
+struct DeactivatePlateMessage {
+    uint32_t id;
+};
+
 struct SetPIDConstantsMessage {
     uint32_t id;
     PidSelection selection;
@@ -194,7 +204,9 @@ using HostCommsMessage =
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
-                   SetFanManualMessage, GetPlateTempMessage>;
+                   SetFanManualMessage, GetPlateTempMessage,
+                   SetPlateTemperatureMessage, DeactivatePlateMessage,
+                   SetPIDConstantsMessage>;
 using LidHeaterMessage =
     ::std::variant<std::monostate, LidTempReadComplete,
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,

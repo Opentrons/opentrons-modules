@@ -679,6 +679,96 @@ struct DeactivateLidHeating {
     }
 };
 
+struct SetPlateTemperature {
+    /**
+     * SetPlateTemperature uses M104. Parameters:
+     * - S - setpoint temperature
+     * - H - hold time (optional)
+     *
+     * M104 S44\n
+     */
+    using ParseResult = std::optional<SetPlateTemperature>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '4', ' ', 'S'};
+    static constexpr auto hold_prefix = std::array{' ', 'H'};
+    static constexpr const char* response = "M104 OK\n";
+
+    // 0 seconds means infinite hold time
+    constexpr static double infinite_hold = 0.0F;
+
+    double setpoint;
+    double hold_time;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        // We are expecting a temperature setting
+        auto temperature = parse_value<float>(working, limit);
+        if (!temperature.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto temperature_val = temperature.first.value();
+
+        auto hold_val = infinite_hold;
+        working = prefix_matches(temperature.second, limit, hold_prefix);
+        if (working != temperature.second) {
+            // This command specified a hold temperature
+            auto hold = parse_value<float>(working, limit);
+            if (!hold.first.has_value()) {
+                return std::make_pair(ParseResult(), input);
+            }
+            hold_val = hold.first.value();
+            working = hold.second;
+        }
+
+        return std::make_pair(
+            ParseResult(SetPlateTemperature{.setpoint = temperature_val,
+                                            .hold_time = hold_val}),
+            working);
+    }
+};
+
+struct DeactivatePlate {
+    /**
+     * DeactivatePlate uses M14. It has no parameters and just
+     * deactivates the plate peltiers + fan.
+     */
+    using ParseResult = std::optional<DeactivatePlate>;
+    static constexpr auto prefix = std::array{'M', '1', '4'};
+    static constexpr const char* response = "M14 OK\n";
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(DeactivatePlate()), working);
+    }
+};
+
 struct SetPIDConstants {
     /**
      * SetPIDConstants uses M301. It has three parameters, along with

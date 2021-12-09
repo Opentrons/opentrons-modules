@@ -203,6 +203,16 @@ SCENARIO("lid heater task message passing") {
                         }
                     }
                 }
+                AND_WHEN("sending updated temperatures below target") {
+                    tasks->get_lid_heater_queue().backing_deque.push_back(
+                        messages::LidHeaterMessage(read_message));
+                    tasks->run_lid_heater_task();
+                    THEN("the peltiers should be enabled") {
+                        auto power =
+                            tasks->get_lid_heater_policy().get_heater_power();
+                        REQUIRE(power > 0.0F);
+                    }
+                }
             }
             AND_WHEN("sending a DeactivateLidHeating command") {
                 tasks->get_host_comms_queue().backing_deque.pop_front();

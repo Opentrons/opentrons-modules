@@ -224,6 +224,203 @@ SCENARIO("thermal plate task message passing") {
                 }
             }
         }
+        WHEN("Sending a SetPIDConstants to configure the plate constants") {
+            auto message = messages::SetPIDConstantsMessage{
+                .id = 123,
+                .selection = PidSelection::PELTIERS,
+                .p = 1,
+                .i = 1,
+                .d = 1};
+            tasks->get_thermal_plate_queue().backing_deque.push_back(
+                messages::ThermalPlateMessage(message));
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.empty());
+                AND_THEN("the task should act on the message") {
+                    REQUIRE(
+                        tasks->get_thermal_plate_queue().backing_deque.empty());
+
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto response_msg =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(response_msg.responding_to_id == 123);
+                    REQUIRE(response_msg.with_error ==
+                            errors::ErrorCode::NO_ERROR);
+                }
+            }
+        }
+        WHEN("Sending a SetPIDConstants with invalid constants") {
+            auto message = messages::SetPIDConstantsMessage{
+                .id = 555,
+                .selection = PidSelection::PELTIERS,
+                .p = 1000,
+                .i = 1,
+                .d = 1};
+            tasks->get_thermal_plate_queue().backing_deque.push_back(
+                messages::ThermalPlateMessage(message));
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.empty());
+                AND_THEN("the task should act on the message") {
+                    REQUIRE(
+                        tasks->get_thermal_plate_queue().backing_deque.empty());
+
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto response_msg =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(response_msg.responding_to_id == 555);
+                    REQUIRE(response_msg.with_error ==
+                            errors::ErrorCode::THERMAL_CONSTANT_OUT_OF_RANGE);
+                }
+            }
+        }
+        WHEN("Sending a SetPlateTemperature message to enable the plate") {
+            auto message = messages::SetPlateTemperatureMessage{
+                .id = 123, .setpoint = 90.0F, .hold_time = 10.0F};
+            tasks->get_thermal_plate_queue().backing_deque.push_back(
+                messages::ThermalPlateMessage(message));
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.empty());
+                AND_THEN("the task should respond to the message") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto response_msg =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(response_msg.responding_to_id == 123);
+                    REQUIRE(response_msg.with_error ==
+                            errors::ErrorCode::NO_ERROR);
+                    AND_WHEN("sending a GetPlateTemp query") {
+                        auto tempMessage =
+                            messages::GetPlateTempMessage{.id = 555};
+                        tasks->get_thermal_plate_queue()
+                            .backing_deque.push_back(
+                                messages::ThermalPlateMessage(tempMessage));
+                        tasks->run_thermal_plate_task();
+                        THEN("the response should have the new setpoint") {
+                            REQUIRE(!tasks->get_host_comms_queue()
+                                         .backing_deque.empty());
+                            REQUIRE(std::get<messages::GetPlateTempResponse>(
+                                        tasks->get_host_comms_queue()
+                                            .backing_deque.front())
+                                        .set_temp == message.setpoint);
+                        }
+                    }
+                }
+                AND_WHEN("sending updated temperatures below target") {
+                    tasks->get_thermal_plate_queue().backing_deque.push_back(
+                        messages::ThermalPlateMessage(read_message));
+                    tasks->run_thermal_plate_task();
+                    THEN("the peltiers should be enabled") {
+                        auto p_right =
+                            tasks->get_thermal_plate_policy().get_peltier(
+                                PeltierID::PELTIER_RIGHT);
+                        REQUIRE(p_right.first ==
+                                PeltierDirection::PELTIER_HEATING);
+                        REQUIRE(p_right.second > 0.0F);
+                        auto p_left =
+                            tasks->get_thermal_plate_policy().get_peltier(
+                                PeltierID::PELTIER_LEFT);
+                        REQUIRE(p_left.first ==
+                                PeltierDirection::PELTIER_HEATING);
+                        REQUIRE(p_left.second > 0.0F);
+                        auto p_center =
+                            tasks->get_thermal_plate_policy().get_peltier(
+                                PeltierID::PELTIER_CENTER);
+                        REQUIRE(p_center.first ==
+                                PeltierDirection::PELTIER_HEATING);
+                        REQUIRE(p_center.second > 0.0F);
+                    }
+                }
+            }
+            AND_WHEN("sending a DeactivatePlate command") {
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                auto tempMessage = messages::DeactivatePlateMessage{.id = 321};
+                tasks->get_thermal_plate_queue().backing_deque.push_back(
+                    messages::ThermalPlateMessage(tempMessage));
+                tasks->run_thermal_plate_task();
+                THEN("the task should respond to the message") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(
+                        std::get<messages::AcknowledgePrevious>(
+                            tasks->get_host_comms_queue().backing_deque.front())
+                            .responding_to_id == 321);
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    AND_WHEN("sending a GetPlateTemp query") {
+                        auto tempMessage =
+                            messages::GetPlateTempMessage{.id = 555};
+                        tasks->get_thermal_plate_queue()
+                            .backing_deque.push_back(
+                                messages::ThermalPlateMessage(tempMessage));
+                        tasks->run_thermal_plate_task();
+                        THEN("the response should have no setpoint") {
+                            REQUIRE(!tasks->get_host_comms_queue()
+                                         .backing_deque.empty());
+                            REQUIRE(std::get<messages::GetPlateTempResponse>(
+                                        tasks->get_host_comms_queue()
+                                            .backing_deque.front())
+                                        .set_temp == 0.0F);
+                        }
+                    }
+                }
+            }
+            AND_WHEN(
+                "Sending a SetPIDConstants to configure the peltier "
+                "constants") {
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                auto message = messages::SetPIDConstantsMessage{
+                    .id = 808,
+                    .selection = PidSelection::PELTIERS,
+                    .p = 1,
+                    .i = 1,
+                    .d = 1};
+                tasks->get_thermal_plate_queue().backing_deque.push_back(
+                    messages::ThermalPlateMessage(message));
+                tasks->run_thermal_plate_task();
+                THEN("the task should get the message") {
+                    REQUIRE(
+                        tasks->get_thermal_plate_queue().backing_deque.empty());
+                    AND_THEN("the task should respond with a busy error") {
+                        REQUIRE(tasks->get_thermal_plate_queue()
+                                    .backing_deque.empty());
+
+                        REQUIRE(!tasks->get_host_comms_queue()
+                                     .backing_deque.empty());
+                        auto response =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        tasks->get_host_comms_queue().backing_deque.pop_front();
+                        REQUIRE(std::holds_alternative<
+                                messages::AcknowledgePrevious>(response));
+                        auto response_msg =
+                            std::get<messages::AcknowledgePrevious>(response);
+                        REQUIRE(response_msg.responding_to_id == 808);
+                        REQUIRE(response_msg.with_error ==
+                                errors::ErrorCode::THERMAL_PLATE_BUSY);
+                    }
+                }
+            }
+        }
     }
     GIVEN("a thermal plate task with shorted thermistors") {
         auto tasks = TaskBuilder::build();
@@ -337,6 +534,47 @@ SCENARIO("thermal plate task message passing") {
                             errors::ErrorCode::NO_ERROR);
                     REQUIRE(tasks->get_thermal_plate_policy()._fan_power ==
                             0.0);
+                }
+            }
+        }
+        WHEN("Sending a SetPlateTemperature message to enable the lid") {
+            auto message = messages::SetPlateTemperatureMessage{
+                .id = 123, .setpoint = 68.0F, .hold_time = 111};
+            tasks->get_thermal_plate_queue().backing_deque.push_back(
+                messages::ThermalPlateMessage(message));
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.empty());
+                AND_THEN("the task should respond with an error") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto response_msg =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(response_msg.responding_to_id == 123);
+                    REQUIRE(response_msg.with_error !=
+                            errors::ErrorCode::NO_ERROR);
+                    AND_WHEN("sending a GetPlateTemp query") {
+                        auto tempMessage =
+                            messages::GetPlateTempMessage{.id = 555};
+                        tasks->get_thermal_plate_queue()
+                            .backing_deque.push_back(
+                                messages::ThermalPlateMessage(tempMessage));
+                        tasks->run_thermal_plate_task();
+                        THEN("the response should have a setpoint of 0") {
+                            REQUIRE(!tasks->get_host_comms_queue()
+                                         .backing_deque.empty());
+                            REQUIRE(std::get<messages::GetPlateTempResponse>(
+                                        tasks->get_host_comms_queue()
+                                            .backing_deque.front())
+                                        .set_temp == 0.0F);
+                        }
+                    }
                 }
             }
         }

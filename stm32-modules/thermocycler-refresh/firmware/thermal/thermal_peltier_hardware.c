@@ -112,7 +112,7 @@ static void _update_outputs(Peltier_t *peltier) {
         dir_val = GPIO_PIN_SET;
         pwm = MAX_PWM - pwm;
     }
-    if(pwm > 0) {
+    if(peltier->power > 0) {
         HAL_GPIO_WritePin(peltier->direction_port,
                         peltier->direction_pin,
                         dir_val);
