@@ -134,3 +134,27 @@ def set_heater_pid(p: float, i: float, d: float, ser: serial.Serial):
     res = ser.readline()
     guard_error(res, b'M301 OK')
     print(res)
+
+# Sets the plate target as a temperature in celsius
+def set_plate_temperature(temperature: float, ser: serial.Serial):
+    print(f'Setting plate temperature target to {temperature}C')
+    ser.write(f'M104 S{temperature}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M104 OK')
+    print(res)
+
+# Turn off the plate!
+def deactivate_plate(ser: serial.Serial):
+    print('Deactivating plate')
+    ser.write('M14\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M14 OK')
+    print(res)
+
+# Set the peltier PID constants
+def set_peltier_pid(p: float, i: float, d: float, ser: serial.Serial):
+    print(f'Setting peltier PID to P={p} I={i} D={d}')
+    ser.write(f'M301 SP P{p} I{i} D{d}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M301 OK')
+    print(res)
