@@ -4,10 +4,16 @@
  */
 #pragma once
 
+#include <tuple>
+
 #include "core/pid.hpp"
 #include "core/thermistor_conversion.hpp"
 #include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
+
+namespace thermal_general {
+
+static constexpr double thermistor_pair_delta_max = 4.0;
 
 /** Enumeration of thermistors on the board.
  * This is specifically arranged to keep all of the plate-related
@@ -47,12 +53,41 @@ struct Thermistor {
 };
 
 struct Peltier {
-    // ID to match to hardware - set at initialization
-    const PeltierID id = PELTIER_NUMBER;
-    // Current temperature
-    double temp_current = 0.0F;
+    using ThermistorPair = std::pair<Thermistor &, Thermistor &>;
     // Target temperature
     double temp_target = 0.0F;
+    // ID to match to hardware - set at initialization
+    const PeltierID id;
+    // Links to the front & back thermistors
+    ThermistorPair thermistors;
     // Current PID loop
     PID pid;
+
+    /** Get the current temperature of this peltier.*/
+    auto current_temp() -> double {
+        return (thermistors.first.temp_c + thermistors.second.temp_c) / 2;
+    }
+    /**
+     * Get the difference in temperature between the front/back thermistors
+     * for this peltier.
+     */
+    auto current_temp_delta() -> double {
+        return std::abs(thermistors.first.temp_c + thermistors.second.temp_c);
+    }
 };
+
+struct HeatsinkFan {
+    // Target temperature
+    double temp_target = 0.0F;
+    // Current state (manual or automatic)
+    bool manual_control = false;
+    // Thermistor for reading temperature
+    Thermistor &thermistor;
+    // Current PID loop
+    PID pid;
+
+    /** Get the current temperature of the heatsink.*/
+    auto current_temp() -> double { return thermistor.temp_c; }
+};
+
+}  // namespace thermal_general

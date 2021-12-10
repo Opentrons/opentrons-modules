@@ -25,6 +25,8 @@ struct Tasks;
 
 namespace lid_heater_task {
 
+using namespace thermal_general;
+
 template <typename Policy>
 concept LidHeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // A set_heater_power function to set the power of the heater as

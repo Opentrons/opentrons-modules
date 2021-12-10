@@ -49,6 +49,7 @@ enum class ErrorCode {
     THERMAL_LID_BUSY = 404,
     THERMAL_HEATER_ERROR = 405,
     THERMAL_CONSTANT_OUT_OF_RANGE = 406,
+    THERMAL_TARGET_BAD = 407,
 };
 
 auto errorstring(ErrorCode code) -> const char*;
