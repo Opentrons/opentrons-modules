@@ -60,10 +60,16 @@ StaticTask_t main_data;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static MotorTaskFreeRTOS _local_task;
 
+static void handle_lid_stepper() {
+    static_cast<void>(_task.get_message_queue().try_send_from_isr(
+        messages::MotorMessage(messages::LidStepperComplete{})));
+}
+
 // Actual function that runs inside the task
 void run(void *param) {
     static_cast<void>(param);
     memset(&_local_task.handles, 0, sizeof(_local_task.handles));
+    _local_task.handles.lid_stepper_complete = handle_lid_stepper;
     motor_hardware_setup(&_local_task.handles);
     auto policy = MotorPolicy(&_local_task.handles);
 

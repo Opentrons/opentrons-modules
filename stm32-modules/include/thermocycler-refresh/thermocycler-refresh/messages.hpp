@@ -132,6 +132,17 @@ struct ActuateSolenoidMessage {
     bool engage;
 };
 
+struct LidStepperDebugMessage {
+    uint32_t id;
+    double angle;
+};
+
+struct LidStepperCompleteCheckMessage {
+    uint32_t responding_to_id;
+};
+
+struct LidStepperComplete {};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage>;
@@ -145,5 +156,7 @@ using ThermalPlateMessage =
                    GetPlateTemperatureDebugMessage>;
 using LidHeaterMessage = ::std::variant<std::monostate, LidTempReadComplete,
                                         GetLidTemperatureDebugMessage>;
-using MotorMessage = ::std::variant<std::monostate, ActuateSolenoidMessage>;
+using MotorMessage = ::std::variant<std::monostate, ActuateSolenoidMessage,
+                    LidStepperDebugMessage, LidStepperCompleteCheckMessage,
+                    LidStepperComplete>;
 };  // namespace messages

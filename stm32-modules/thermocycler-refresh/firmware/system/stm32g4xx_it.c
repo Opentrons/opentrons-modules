@@ -27,6 +27,7 @@
 #include "stm32g4xx_hal_pcd.h"
 
 #include "firmware/thermal_hardware.h"
+#include "../motor_task/motor_hardware.h"
 
 /** @addtogroup STM32G4xx_HAL_Examples
  * @{
@@ -46,7 +47,7 @@
 
 /* External variables --------------------------------------------------------*/
 extern TIM_HandleTypeDef htim7;
-
+extern TIM_HandleTypeDef htim2;
 
 /******************************************************************************/
 /*            Cortex-M4 Processor Exceptions Handlers                         */
@@ -131,6 +132,11 @@ void TIM7_IRQHandler(void)
 
   /* USER CODE END TIM7_IRQn 1 */
 }
+
+/**
+ * @brief This function handles TIM2 global interrupt.
+ */
+void TIM2_IRQHandler(void) { HAL_TIM_IRQHandler(&htim2); }
 
 /**
  * @brief This function handles EXTI9-5 IRQ

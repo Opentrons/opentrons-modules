@@ -10,6 +10,11 @@
 #include "hal/message_queue.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/tasks.hpp"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wvolatile"
+#pragma GCC diagnostic pop
+
 namespace tasks {
 template <template <class> class QueueImpl>
 struct Tasks;
@@ -44,7 +49,15 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.delay_ticks(10)};
 };
 
-//constexpr size_t RESPONSE_LENGTH = 128;
+struct LidStepperState {
+    enum LidStepperTaskStatus {
+        IDLE = 0,
+        MOVING = 1,
+        MOVE_COMPLETE = 2
+    };
+    LidStepperTaskStatus status;
+};
+
 using Message = ::messages::MotorMessage;
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
@@ -54,7 +67,8 @@ class MotorTask {
     using Queue = QueueImpl<Message>;
     explicit MotorTask(Queue& q)
         : message_queue(q),
-          task_registry(nullptr) {}
+          task_registry(nullptr),
+          lid_stepper_state{.status = LidStepperState::IDLE} {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -90,6 +104,40 @@ class MotorTask {
     }
 
     template <typename Policy>
+    auto visit_message(const messages::LidStepperDebugMessage& msg,
+                       Policy& policy) -> void {
+        //check for errors
+        policy.lid_stepper_set_vref(48); //test
+        policy.lid_stepper_start(msg.angle);
+        lid_stepper_state.status = LidStepperState::MOVING;
+        auto complete_check_message =
+            messages::LidStepperCompleteCheckMessage{.responding_to_id = msg.id};
+        static_cast<void>(get_message_queue().try_send(complete_check_message));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::LidStepperCompleteCheckMessage& msg,
+                       Policy& policy) -> void {
+        if (lid_stepper_state.status == LidStepperState::MOVE_COMPLETE) {
+            auto response =
+                messages::AcknowledgePrevious{.responding_to_id = msg.responding_to_id};
+            static_cast<void>(task_registry->comms->get_message_queue().try_send(
+                messages::HostCommsMessage(response)));
+        } else {
+            policy.delay_ticks(200); //blocks task, ok since no other motor subtasks needed to run simultaneously
+            static_cast<void>(get_message_queue().try_send(
+                messages::LidStepperCompleteCheckMessage{
+                    .responding_to_id = msg.responding_to_id}));
+        }
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::LidStepperComplete& msg, Policy& policy)
+        -> void {
+        lid_stepper_state.status = LidStepperState::MOVE_COMPLETE;
+    }
+
+    template <typename Policy>
     auto visit_message(const messages::ActuateSolenoidMessage& msg,
                        Policy& policy) -> void {
         if (msg.engage) {
@@ -105,6 +153,7 @@ class MotorTask {
 
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
+    LidStepperState lid_stepper_state;
 };
 
 };  // namespace motor_task

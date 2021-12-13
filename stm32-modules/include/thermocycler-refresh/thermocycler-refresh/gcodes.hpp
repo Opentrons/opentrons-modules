@@ -316,4 +316,44 @@ struct ActuateSolenoid {
     }
 };
 
+struct ActuateLidStepperDebug {
+    /*
+    ** Actuate lid stepper is a debug command that lets you move the lid
+    ** stepper a desired angle. A positive value opens and negative value
+    ** closes the lid stepper a desired angle.
+    ** Format: M240.D <angle>
+    ** Example: M240.D 20 opens lid stepper 20 degrees
+    */
+    using ParseResult = std::optional<ActuateLidStepperDebug>;
+    static constexpr auto prefix =
+        std::array{'M', '2', '4', '0', '.', 'D', ' '};
+    static constexpr const char* response = "M240.D OK\n";
+
+    double angle;
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto value_res = parse_value<float>(working, limit);
+        if (!value_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(ActuateLidStepperDebug{.angle = value_res.first.value()}),
+            value_res.second);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 }  // namespace gcode
