@@ -12,6 +12,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_system_policy.cpp
     test_system_task.cpp
     test_thermal_plate_task.cpp
+    test_plate_control.cpp
     # GCode parse tests
     test_m14.cpp
     test_m104.cpp

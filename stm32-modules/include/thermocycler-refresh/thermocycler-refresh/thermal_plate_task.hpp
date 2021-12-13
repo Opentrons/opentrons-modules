@@ -409,7 +409,7 @@ class ThermalPlateTask {
             return;
         }
         if (policy.set_fan(msg.power)) {
-            _fans.manual_control = (msg.power > 0.0F) ? true : false;
+            _fans.manual_control = (msg.power > 0.0F);
         } else {
             response.with_error = errors::ErrorCode::THERMAL_HEATSINK_FAN_ERROR;
         }

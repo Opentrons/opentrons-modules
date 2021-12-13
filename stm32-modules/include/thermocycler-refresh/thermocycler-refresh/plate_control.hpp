@@ -47,6 +47,8 @@ class PlateControl {
     static constexpr double FAN_SETPOINT_OFFSET = (-2.0F);
 
     PlateControl() = delete;
+    PlateControl(PlateControl &) = delete;
+    PlateControl(PlateControl &&) = delete;
     /**
      * @brief Construct a new Plate Control object
      * @param[in] left Left peltier reference
