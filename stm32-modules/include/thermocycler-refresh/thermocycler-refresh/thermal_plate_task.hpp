@@ -25,11 +25,24 @@ struct Tasks;
 namespace thermal_plate_task {
 
 template <typename Policy>
-concept ThermalPlateExecutionPolicy = requires(Policy& p, const Policy& cp) {
+concept ThermalPlateExecutionPolicy = requires(Policy& p, PeltierID id,
+                                               PeltierDirection direction) {
     // A set_enabled function with inputs of `false` or `true` that
     // sets the enable pin for the peltiers off or on
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.set_enabled(false)};
+    // A set_peltier function with inputs to select a peltier,
+    // set a power (from 0 to 1.0), and set a direction (heating or
+    // cooling)
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    { p.set_peltier(id, 1.0F, direction) } -> std::same_as<bool>;
+    // A get_peltier function to return the current direction and
+    // power of a peltier.
+    { p.get_peltier(id) } -> std::same_as<std::pair<PeltierDirection, double>>;
+    // A set_fan function to set the power of the heatsink fan as
+    // a percentage from 0 to 1.0
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    { p.set_fan(1.0F) } -> std::same_as<bool>;
 };
 
 /** Just used for initialization assignment of error bits.*/
@@ -42,16 +55,17 @@ constexpr auto thermistorErrorBit(const ThermistorID id) -> uint16_t {
 
 struct State {
     enum Status {
-        IDLE,
-        ERROR,
-        CONTROLLING,
+        IDLE,        /**< Not doing anything.*/
+        ERROR,       /**< Experiencing an error*/
+        CONTROLLING, /**< Controlling temperature (PID)*/
+        PWM_TEST     /**< Testing PWM output (debug command)*/
     };
     Status system_status;
     uint16_t error_bitmap;
-    // NOTE - these values are defined assuming the max thermistor error is
-    // (1 << 6), for the heat sink
-    static constexpr uint16_t OVERTEMP_PLATE_ERROR = (1 << 7);
-    static constexpr uint16_t OVERTEMP_HEATSINK_ERROR = (1 << 7);
+    // NOTE - thermistor error bits are defined in the thermistor array
+    // initializor. Additional errors are defined assuming the max thermistor
+    // error is (1 << 6), for the heat sink
+    static constexpr uint16_t PELTIER_ERROR = (1 << 7);
 };
 
 // By using a template template parameter here, we allow the code instantiating
@@ -77,7 +91,7 @@ class ThermalPlateTask {
     static constexpr double KI_MAX = 200;
     static constexpr double KD_MIN = -200;
     static constexpr double KD_MAX = 200;
-    static constexpr double OVERTEMP_LIMIT_C = 105;
+    static constexpr double OVERTEMP_LIMIT_C = 115;
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     static constexpr const double CONTROL_PERIOD_SECONDS =
         CONTROL_PERIOD_TICKS * 0.001;
@@ -86,17 +100,20 @@ class ThermalPlateTask {
         : _message_queue(q),
           _task_registry(nullptr),
           _peltier_left{.id = PELTIER_LEFT,
-                        .enabled = false,
                         .temp_current = 0.0,
-                        .temp_target = 0.0},
+                        .temp_target = 0.0,
+                        .pid = PID(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD,
+                                   CONTROL_PERIOD_SECONDS, 1.0, -1.0)},
           _peltier_right{.id = PELTIER_RIGHT,
-                         .enabled = false,
                          .temp_current = 0.0,
-                         .temp_target = 0.0},
+                         .temp_target = 0.0,
+                         .pid = PID(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD,
+                                    CONTROL_PERIOD_SECONDS, 1.0, -1.0)},
           _peltier_center{.id = PELTIER_CENTER,
-                          .enabled = false,
                           .temp_current = 0.0,
-                          .temp_target = 0.0},
+                          .temp_target = 0.0,
+                          .pid = PID(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD,
+                                     CONTROL_PERIOD_SECONDS, 1.0, -1.0)},
           _thermistors{
               {{.overtemp_limit_c = OVERTEMP_LIMIT_C,
                 .disconnected_error =
@@ -150,8 +167,10 @@ class ThermalPlateTask {
           _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
                      false),
           _state{.system_status = State::IDLE, .error_bitmap = 0},
-          _plate_pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS,
-                     1.0, -1.0) {}
+          _setpoint_c(0),
+          _fans_pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS,
+                    1.0, -1.0),
+          _hold_time(0) {}
     ThermalPlateTask(const ThermalPlateTask& other) = delete;
     auto operator=(const ThermalPlateTask& other) -> ThermalPlateTask& = delete;
     ThermalPlateTask(ThermalPlateTask&& other) noexcept = delete;
@@ -205,7 +224,8 @@ class ThermalPlateTask {
     requires ThermalPlateExecutionPolicy<Policy>
     auto visit_message(const messages::ThermalPlateTempReadComplete& msg,
                        Policy& policy) -> void {
-        static_cast<void>(policy);
+        constexpr double thermistors_per_peltier = 2;
+        auto old_error_bitmap = _state.error_bitmap;
         handle_temperature_conversion(msg.front_right,
                                       _thermistors[THERM_FRONT_RIGHT]);
         handle_temperature_conversion(msg.front_left,
@@ -220,6 +240,47 @@ class ThermalPlateTask {
                                       _thermistors[THERM_BACK_CENTER]);
         handle_temperature_conversion(msg.heat_sink,
                                       _thermistors[THERM_HEATSINK]);
+
+        if (old_error_bitmap != _state.error_bitmap) {
+            if (_state.error_bitmap != 0) {
+                // We entered an error state. Disable power output.
+                _state.system_status = State::ERROR;
+                policy.set_enabled(false);
+            } else {
+                // We went from an error state to no error state... so go idle
+                _state.system_status = State::IDLE;
+            }
+        }
+
+        _peltier_left.temp_current = (_thermistors[THERM_FRONT_LEFT].temp_c +
+                                      _thermistors[THERM_BACK_LEFT].temp_c) /
+                                     thermistors_per_peltier;
+        _peltier_right.temp_current = (_thermistors[THERM_FRONT_RIGHT].temp_c +
+                                       _thermistors[THERM_BACK_RIGHT].temp_c) /
+                                      thermistors_per_peltier;
+        _peltier_center.temp_current =
+            (_thermistors[THERM_FRONT_CENTER].temp_c +
+             _thermistors[THERM_BACK_CENTER].temp_c) /
+            thermistors_per_peltier;
+        if (_state.system_status == State::CONTROLLING) {
+            policy.set_enabled(true);
+            // Each of the peltiers has its own PID loop, as does the fan
+            auto ret = update_peltier_pid(_peltier_left, policy);
+            if (ret) {
+                ret = update_peltier_pid(_peltier_right, policy);
+            }
+            if (ret) {
+                ret = update_peltier_pid(_peltier_center, policy);
+            }
+            if (!ret) {
+                _state.system_status = State::ERROR;
+                _state.error_bitmap |= State::PELTIER_ERROR;
+            }
+        }
+        // Not an `else` so we can immediately resolve any issue setting outputs
+        if (_state.system_status == State::ERROR) {
+            policy.set_enabled(false);
+        }
     }
 
     template <typename Policy>
@@ -247,6 +308,220 @@ class ThermalPlateTask {
             messages::HostCommsMessage(response)));
     }
 
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::GetPlateTempMessage& msg, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        auto response =
+            messages::GetPlateTempResponse{.responding_to_id = msg.id,
+                                           .current_temp = average_plate_temp(),
+                                           .set_temp = _setpoint_c};
+        if (_state.system_status != State::CONTROLLING) {
+            response.set_temp = 0.0F;
+        }
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::SetPeltierDebugMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+        if (_state.system_status == State::CONTROLLING) {
+            // Send busy error
+            response.with_error = errors::ErrorCode::THERMAL_PLATE_BUSY;
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+        bool ok = true;
+        if (msg.selection == PeltierSelection::LEFT ||
+            msg.selection == PeltierSelection::ALL) {
+            if (!policy.set_peltier(_peltier_left.id, msg.power,
+                                    msg.direction)) {
+                ok = false;
+            }
+        }
+        if (msg.selection == PeltierSelection::RIGHT ||
+            msg.selection == PeltierSelection::ALL) {
+            if (!policy.set_peltier(_peltier_right.id, msg.power,
+                                    msg.direction)) {
+                ok = false;
+            }
+        }
+        if (msg.selection == PeltierSelection::CENTER ||
+            msg.selection == PeltierSelection::ALL) {
+            if (!policy.set_peltier(_peltier_center.id, msg.power,
+                                    msg.direction)) {
+                ok = false;
+            }
+        }
+        // Check if we turned off everything
+        auto left_pwr = policy.get_peltier(_peltier_left.id);
+        auto right_pwr = policy.get_peltier(_peltier_right.id);
+        auto center_pwr = policy.get_peltier(_peltier_center.id);
+        bool enabled = ((left_pwr.second > 0.0F) || (right_pwr.second > 0.0F) ||
+                        (center_pwr.second > 0.0F));
+        // If setting a peltier failed somehow, turn everything off
+        if (!ok) {
+            enabled = false;
+        }
+        policy.set_enabled(enabled);
+        _state.system_status = (enabled) ? State::PWM_TEST : State::IDLE;
+
+        if (!ok) {
+            response.with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR;
+            _state.system_status = State::ERROR;
+            _state.error_bitmap |= State::PELTIER_ERROR;
+        }
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::SetFanManualMessage& msg, Policy& policy)
+        -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+        if (!policy.set_fan(msg.power)) {
+            response.with_error = errors::ErrorCode::THERMAL_HEATSINK_FAN_ERROR;
+        }
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::SetPlateTemperatureMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+        if (_state.system_status == State::PWM_TEST) {
+            // Reset all peltiers
+            auto ret = policy.set_peltier(_peltier_left.id, 0.0F,
+                                          PeltierDirection::PELTIER_HEATING);
+            if (ret) {
+                ret = policy.set_peltier(_peltier_right.id, 0.0F,
+                                         PeltierDirection::PELTIER_HEATING);
+            }
+            if (ret) {
+                ret = policy.set_peltier(_peltier_center.id, 0.0F,
+                                         PeltierDirection::PELTIER_HEATING);
+            }
+            if (!ret) {
+                policy.set_enabled(false);
+                response.with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR;
+                _state.system_status = State::ERROR;
+                _state.error_bitmap |= State::PELTIER_ERROR;
+                static_cast<void>(
+                    _task_registry->comms->get_message_queue().try_send(
+                        response));
+                return;
+            }
+        }
+
+        if (msg.setpoint <= 0.0F) {
+            _setpoint_c = 0.0F;
+            _state.system_status = State::IDLE;
+            policy.set_enabled(false);
+        } else {
+            _setpoint_c = msg.setpoint;
+            _state.system_status = State::CONTROLLING;
+            _peltier_left.pid.arm_integrator_reset(_setpoint_c -
+                                                   _peltier_left.temp_current);
+            _peltier_right.pid.arm_integrator_reset(
+                _setpoint_c - _peltier_right.temp_current);
+            _peltier_center.pid.arm_integrator_reset(
+                _setpoint_c - _peltier_center.temp_current);
+            _peltier_left.temp_target = _setpoint_c;
+            _peltier_right.temp_target = _setpoint_c;
+            _peltier_center.temp_target = _setpoint_c;
+            _hold_time = msg.hold_time;
+        }
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::DeactivatePlateMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+
+        policy.set_enabled(false);
+        _state.system_status = State::IDLE;
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::SetPIDConstantsMessage& msg,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        if (_state.system_status == State::CONTROLLING) {
+            response.with_error = errors::ErrorCode::THERMAL_PLATE_BUSY;
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+        if ((msg.p < KP_MIN) || (msg.p > KP_MAX) || (msg.i < KI_MIN) ||
+            (msg.i > KI_MAX) || (msg.d < KD_MIN) || (msg.d > KD_MAX)) {
+            response.with_error =
+                errors::ErrorCode::THERMAL_CONSTANT_OUT_OF_RANGE;
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+
+        if (msg.selection == PidSelection::FANS) {
+            _fans_pid =
+                PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
+        } else {
+            // For now, all peltiers share the same PID values...
+            _peltier_right.pid =
+                PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
+            _peltier_left.pid =
+                PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
+            _peltier_center.pid =
+                PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
+        }
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
     auto handle_temperature_conversion(uint16_t conversion_result,
                                        Thermistor& thermistor) -> void {
         auto visitor = [this, &thermistor](const auto value) -> void {
@@ -264,6 +539,8 @@ class ThermalPlateTask {
                 static_cast<void>(
                     _task_registry->comms->get_message_queue().try_send(
                         error_message));
+            } else {
+                _state.error_bitmap &= ~thermistor.error_bit;
             }
         }
     }
@@ -293,6 +570,60 @@ class ThermalPlateTask {
         therm.temp_c = temp;
     }
 
+    [[nodiscard]] auto most_relevant_error() const -> errors::ErrorCode {
+        // Sometimes more than one error can occur at the same time; sometimes,
+        // that means that one has caused the other. We want to track them
+        // separately, but we also sometimes want to respond with just one error
+        // condition that sums everything up. This method is used by code that
+        // wants the single most relevant code for the current error condition.
+        if ((_state.error_bitmap & State::PELTIER_ERROR) ==
+            State::PELTIER_ERROR) {
+            return errors::ErrorCode::THERMAL_PELTIER_ERROR;
+        }
+        for (auto therm : _thermistors) {
+            if ((_state.error_bitmap & therm.error_bit) == therm.error_bit) {
+                return therm.error;
+            }
+        }
+        return errors::ErrorCode::NO_ERROR;
+    }
+
+    [[nodiscard]] auto average_plate_temp() const -> double {
+        return (_thermistors[THERM_FRONT_RIGHT].temp_c +
+                _thermistors[THERM_BACK_RIGHT].temp_c +
+                _thermistors[THERM_FRONT_LEFT].temp_c +
+                _thermistors[THERM_BACK_LEFT].temp_c +
+                _thermistors[THERM_FRONT_CENTER].temp_c +
+                _thermistors[THERM_BACK_CENTER].temp_c) /
+               ((double)(PLATE_THERM_COUNT - 1));
+    }
+
+    /**
+     * @brief Updates the power of a peltier. Calculates a new PID value and
+     * updates the power output. The \c temp_current field in the peltier
+     * must be updated before invoking this function.
+     *
+     * @tparam Policy Provides platform-specific control mechanisms
+     * @param[in] peltier The peltier to update
+     * @param[in] policy Instance of the platform policy
+     * @return True on success, false if an error occurs
+     */
+    template <ThermalPlateExecutionPolicy Policy>
+    auto update_peltier_pid(Peltier& peltier, Policy& policy) -> bool {
+        auto power =
+            peltier.pid.compute(peltier.temp_target - peltier.temp_current);
+        auto direction = PeltierDirection::PELTIER_HEATING;
+        if (power < 0.0F) {
+            // The set_peltier function takes a *positive* percentage and a
+            // direction
+            power = std::abs(power);
+            direction = PeltierDirection::PELTIER_COOLING;
+        }
+        return policy.set_peltier(peltier.id,
+                                  std::clamp(power, (double)0.0F, (double)1.0F),
+                                  direction);
+    }
+
     Queue& _message_queue;
     tasks::Tasks<QueueImpl>* _task_registry;
     Peltier _peltier_left;
@@ -301,7 +632,9 @@ class ThermalPlateTask {
     std::array<Thermistor, PLATE_THERM_COUNT> _thermistors;
     thermistor_conversion::Conversion<lookups::KS103J2G> _converter;
     State _state;
-    PID _plate_pid;
+    double _setpoint_c;
+    PID _fans_pid;
+    double _hold_time;
 };
 
 }  // namespace thermal_plate_task

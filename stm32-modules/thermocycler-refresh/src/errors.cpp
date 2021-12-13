@@ -59,6 +59,16 @@ const char* const SYSTEM_SERIAL_NUMBER_INVALID =
     "ERR301:system:serial number invalid format\n";
 const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
     "ERR302:system:HAL error, busy, or timeout\n";
+const char* const THERMAL_PLATE_BUSY = "ERR401:thermal:Thermal plate busy\n";
+const char* const THERMAL_PELTIER_ERROR =
+    "ERR402:thermal:Could not activate peltier\n";
+const char* const THERMAL_HEATSINK_FAN_ERROR =
+    "ERR403:thermal:Could not control heatsink fan\n";
+const char* const THERMAL_LID_BUSY = "ERR404:thermal:Lid heater is busy\n";
+const char* const THERMAL_HEATER_ERROR =
+    "ERR405:thermal:Error controlling lid heater";
+const char* const THERMAL_CONSTANT_OUT_OF_RANGE =
+    "ERR406:thermal:PID constant(s) out of range";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -101,6 +111,12 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(THERMISTOR_LID_OVERTEMP);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_INVALID);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
+        HANDLE_CASE(THERMAL_PLATE_BUSY);
+        HANDLE_CASE(THERMAL_PELTIER_ERROR);
+        HANDLE_CASE(THERMAL_HEATSINK_FAN_ERROR);
+        HANDLE_CASE(THERMAL_LID_BUSY);
+        HANDLE_CASE(THERMAL_HEATER_ERROR);
+        HANDLE_CASE(THERMAL_CONSTANT_OUT_OF_RANGE);
     }
     return UNKNOWN_ERROR;
 }

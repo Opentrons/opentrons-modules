@@ -104,6 +104,16 @@ struct GetLidTemperatureDebugResponse {
     uint16_t lid_adc;
 };
 
+struct GetLidTempMessage {
+    uint32_t id;
+};
+
+struct GetLidTempResponse {
+    uint32_t responding_to_id;
+    double current_temp;
+    double set_temp;
+};
+
 struct GetPlateTemperatureDebugMessage {
     uint32_t id;
 };
@@ -127,6 +137,61 @@ struct GetPlateTemperatureDebugResponse {
     uint16_t back_left_adc;
 };
 
+struct GetPlateTempMessage {
+    uint32_t id;
+};
+
+struct GetPlateTempResponse {
+    uint32_t responding_to_id;
+    double current_temp;
+    double set_temp;
+};
+
+struct SetPeltierDebugMessage {
+    uint32_t id;
+
+    double power;
+    PeltierDirection direction;
+    PeltierSelection selection;
+};
+
+struct SetFanManualMessage {
+    uint32_t id;
+    double power;
+};
+
+struct SetHeaterDebugMessage {
+    uint32_t id;
+    double power;
+};
+
+struct SetLidTemperatureMessage {
+    uint32_t id;
+    double setpoint;
+};
+
+struct DeactivateLidHeatingMessage {
+    uint32_t id;
+};
+
+struct SetPlateTemperatureMessage {
+    uint32_t id;
+    double setpoint;
+    double hold_time;
+};
+
+struct DeactivatePlateMessage {
+    uint32_t id;
+};
+
+struct SetPIDConstantsMessage {
+    uint32_t id;
+    PidSelection selection;
+    double p;
+    double i;
+    double d;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage>;
@@ -134,10 +199,17 @@ using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, ForceUSBDisconnectMessage,
                    GetSystemInfoResponse, GetLidTemperatureDebugResponse,
-                   GetPlateTemperatureDebugResponse>;
+                   GetPlateTemperatureDebugResponse, GetPlateTempResponse,
+                   GetLidTempResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
-                   GetPlateTemperatureDebugMessage>;
-using LidHeaterMessage = ::std::variant<std::monostate, LidTempReadComplete,
-                                        GetLidTemperatureDebugMessage>;
+                   GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
+                   SetFanManualMessage, GetPlateTempMessage,
+                   SetPlateTemperatureMessage, DeactivatePlateMessage,
+                   SetPIDConstantsMessage>;
+using LidHeaterMessage =
+    ::std::variant<std::monostate, LidTempReadComplete,
+                   GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
+                   GetLidTempMessage, SetLidTemperatureMessage,
+                   DeactivateLidHeatingMessage, SetPIDConstantsMessage>;
 };  // namespace messages

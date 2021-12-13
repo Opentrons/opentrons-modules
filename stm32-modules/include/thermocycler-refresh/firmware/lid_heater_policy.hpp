@@ -9,5 +9,7 @@ class LidHeaterPolicy {
   public:
     LidHeaterPolicy() = default;
 
-    auto set_enabled(bool enabled) -> void;
+    auto set_heater_power(double power) -> bool;
+
+    [[nodiscard]] auto get_heater_power() const -> double;
 };
