@@ -20,17 +20,6 @@ struct PlateControlVals {
     double left_power, right_power, center_power, fan_power;
 };
 
-// A TemperatureElement is a struct that has a current temperature,
-// a goal temperature, and a PID controller.
-template <typename E>
-concept TemperatureElement = requires(E &e, double err) {
-    requires std::same_as<decltype(e.temp_target), double>;
-    requires std::same_as<decltype(e.pid), PID>;
-    {e.temp_target};
-    {e.pid};
-    { e.current_temp() } -> std::same_as<double>;
-};
-
 class PlateControl {
   public:
     using UpdateRet = std::optional<PlateControlVals>;
@@ -40,15 +29,41 @@ class PlateControl {
     static constexpr double RAMP_INFINITE = (0.0F);
     /** This hold time means there's no timer for holding.*/
     static constexpr double HOLD_INFINITE = (0.0F);
+    /** Number of peltiers on system.*/
     static constexpr double PELTIER_COUNT = 3.0F;
-    // Max ∆T to be considered "at" the setpoint
+    /** Max ∆T to be considered "at" the setpoint.*/
     static constexpr double SETPOINT_THRESHOLD = 0.5F;
-    // Degrees C *under* the threshold to set the fan
+
+    /** Degrees C *under* the threshold to set the fan.*/
     static constexpr double FAN_SETPOINT_OFFSET = (-2.0F);
+    /** Below this temperature, an idle fan should be off.*/
+    static constexpr double IDLE_FAN_INACTIVE_THRESHOLD = 68.0F;
+    /** Above this temperature, an idle fan should be set to 80%.*/
+    static constexpr double IDLE_FAN_DANGER_THRESHOLD = 75.0F;
+    /** When fan is between INACTIVE_THRESHOLD and DANGER_THRESHOLD, multiply
+     * temperature by this constant to set the power*/
+    static constexpr double IDLE_FAN_POWER_SLOPE = (1.0F / 100.0F);
+    /** Power to set a fan when temp exceeds DANGER_THRESHOLD.*/
+    static constexpr double IDLE_FAN_DANGER_POWER = (0.8F);
+    /** Power to set when ramping down to cold temperature.*/
+    static constexpr double FAN_POWER_RAMP_COLD = 0.7F;
+    /** Temperature to hold on heatsink when holding at cold temperature.*/
+    static constexpr double FAN_TARGET_TEMP_COLD = 60.0F;
+    /** Min & max power settings when holding at a cold temp.*/
+    static constexpr std::pair<double, double> FAN_POWER_LIMITS_COLD{0.35, 0.7};
+    /** Fan power when ramping down to a non-cold temperature.*/
+    static constexpr double FAN_POWER_RAMP_DOWN_NON_COLD = 0.55;
+    /** Safety threshold of heatsink at warm/hot temperature.*/
+    static constexpr double HEATSINK_SAFETY_THRESHOLD_WARM = 70.0F;
+    /** Fan power when under safety threshold in warm/hot zone.*/
+    static constexpr double FAN_POWER_UNDER_WARM_THRESHOLD = 0.15F;
+    /** Min & max power settings when holding at a warm temp.*/
+    static constexpr std::pair<double, double> FAN_POWER_LIMITS_WARM{0.35,
+                                                                     0.55};
+    /** Min & max power settings when holding at a hot temp.*/
+    static constexpr std::pair<double, double> FAN_POWER_LIMITS_HOT{0.30, 0.55};
 
     PlateControl() = delete;
-    PlateControl(PlateControl &) = delete;
-    PlateControl(PlateControl &&) = delete;
     /**
      * @brief Construct a new Plate Control object
      * @param[in] left Left peltier reference
@@ -73,6 +88,9 @@ class PlateControl {
      * temperature of each Peltier & the Heatsink should be set \b before
      * calling this function, and then the power variables for each element
      * will be updated accordingly.
+     * @note After executing this function, check the status of the
+     * \c manual_control variable in the fan handle. This function will set the
+     * flag to \c false if the fan temperature exceeds a safety thershold.
      * @pre Update the current temperature of each thermistor for each peltier
      * @param setpoint The setpoint to drive the peltiers towards
      * @return A set of updated power outputs, or nothing if an error occurs
@@ -101,49 +119,58 @@ class PlateControl {
     auto set_new_target(double setpoint, double ramp_rate, double hold_time)
         -> bool;
 
+    /**
+     * @brief This function will return the correct fan PWM to be set if
+     * the fan is in idle mode, as a percentage from 0 to 1.0.
+     * @note After executing this function, check the status of the
+     * \c manual_control variable in the fan handle. This function will set the
+     * flag to \c false if the fan temperature exceeds a safety thershold.
+     * @return The fan power that should be set, based off of the current
+     * temperature of the heatsink.
+     */
+    [[nodiscard]] auto fan_idle_power() const -> double;
+
     /** Return the current temperature target.*/
     [[nodiscard]] auto setpoint() const -> double { return _setpoint; }
     /** Return the current average temperature of the plate.*/
     [[nodiscard]] auto plate_temp() const -> double;
+    /** Return the current PlateStatus.*/
+    [[nodiscard]] auto status() const -> PlateStatus { return _status; }
+    /** Get the TemperatureZone that a temperature falls into.*/
+    [[nodiscard]] auto temperature_zone(double temp) const -> TemperatureZone;
 
   private:
     /**
      * @brief Apply a ramp to the target temperature of an element.
-     * @param[in] element The element to ramp target temperature of
+     * @param[in] peltier The peltier to ramp target temperature of
      */
-    template <TemperatureElement Element>
-    auto update_ramp(Element &element) -> void {
-        if (_ramp_rate == RAMP_INFINITE) {
-            element.temp_target = _setpoint;
-        }
-        if (element.temp_target < _setpoint) {
-            element.temp_target =
-                std::min(element.temp_target + _ramp_rate, _setpoint);
-        } else if (element.temp_target > _setpoint) {
-            element.temp_target =
-                std::max(element.temp_target - _ramp_rate, _setpoint);
-        }
-    }
+    auto update_ramp(thermal_general::Peltier &peltier) -> void;
     /**
-     * @brief Update the PID control of a single temperature element
-     * (fan or peltier).
-     * @param[in] element The temperature element (peltier or fan) to update
+     * @brief Update the PID control of a single peltier
+     * @param[in] peltier The peltier to update
      * @return The new power value for the element
      */
-    template <TemperatureElement Element>
-    auto update_pid(Element &element) -> double {
-        return element.pid.compute(element.temp_target -
-                                   element.current_temp());
-    }
+    auto update_pid(thermal_general::Peltier &peltier) -> double;
     /**
-     * @brief Reset a temperature element for a new setpoint
-     * @param[in] element The element to reset control for
+     * @brief Update the control of the heatsink fan during active control
+     * @return The new power value for the fan
      */
-    template <TemperatureElement Element>
-    auto reset_control(Element &element) -> void {
-        element.pid.arm_integrator_reset(element.temp_target -
-                                         element.current_temp);
-    }
+    auto update_fan() -> double;
+    /**
+     * @brief Reset a peltier for a new setpoint. Sets the target
+     * temperature to the current average plate temperature and
+     * adjusts the PID to prepare for a new ramp.
+     * @pre Set the new setpoint and hold time configurations
+     * @param[in] peltier The peltier to reset control for.
+     */
+    auto reset_control(thermal_general::Peltier &peltier) -> void;
+    /**
+     * @brief Reset a fan for a new setpoint. Adjusts the PID
+     * to prepare for a new ramp.
+     * @pre Set the new setpoint and hold time configurations
+     * @param[in] fan The fan to reset control for.
+     */
+    auto reset_control(thermal_general::HeatsinkFan &fan) -> void;
     /**
      * @brief Checks if the current plate temperature is within the acceptable
      * bounds for the setpoint
@@ -152,7 +179,7 @@ class PlateControl {
      */
     [[nodiscard]] auto temp_within_setpoint() const -> bool;
 
-    PlateStatus _status = PlateStatus::STEADY_STATE;
+    PlateStatus _status = PlateStatus::STEADY_STATE;  // State machine for plate
     thermal_general::Peltier &_left;
     thermal_general::Peltier &_right;
     thermal_general::Peltier &_center;

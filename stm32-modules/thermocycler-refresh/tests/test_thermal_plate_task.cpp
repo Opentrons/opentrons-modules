@@ -2,30 +2,36 @@
 #include <list>
 
 #include "catch2/catch.hpp"
+#include "core/thermistor_conversion.hpp"
 #include "systemwide.h"
 #include "test/task_builder.hpp"
 #include "thermocycler-refresh/errors.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/thermal_plate_task.hpp"
 
-constexpr int _valid_adc = 6360;  // Gives 50C
-constexpr double _valid_temp = 50.0;
+constexpr double _valid_temp = 25.0;
 constexpr int _shorted_adc = 0;
 constexpr int _disconnected_adc = 0x5DC0;
+
+static auto _converter = thermistor_conversion::Conversion<lookups::KS103J2G>(
+    thermal_plate_task::ThermalPlateTask<
+        TestMessageQueue>::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
+    thermal_plate_task::ThermalPlateTask<TestMessageQueue>::ADC_BIT_MAX, false);
 
 using ErrorList = std::list<errors::ErrorCode>;
 
 SCENARIO("thermal plate task message passing") {
     GIVEN("a thermal plate task with valid temps") {
         auto tasks = TaskBuilder::build();
+        auto valid_adc = _converter.backconvert(_valid_temp);
         auto read_message =
-            messages::ThermalPlateTempReadComplete{.heat_sink = _valid_adc,
-                                                   .front_right = _valid_adc,
-                                                   .front_center = _valid_adc,
-                                                   .front_left = _valid_adc,
-                                                   .back_right = _valid_adc,
-                                                   .back_center = _valid_adc,
-                                                   .back_left = _valid_adc};
+            messages::ThermalPlateTempReadComplete{.heat_sink = valid_adc,
+                                                   .front_right = valid_adc,
+                                                   .front_center = valid_adc,
+                                                   .front_left = valid_adc,
+                                                   .back_right = valid_adc,
+                                                   .back_center = valid_adc,
+                                                   .back_left = valid_adc};
         tasks->get_thermal_plate_queue().backing_deque.push_back(
             messages::ThermalPlateMessage(read_message));
         tasks->run_thermal_plate_task();
@@ -56,31 +62,47 @@ SCENARIO("thermal plate task message passing") {
 
                     REQUIRE_THAT(gettemp.heat_sink_temp,
                                  Catch::Matchers::WithinAbs(_valid_temp, 0.1));
-                    REQUIRE(gettemp.heat_sink_adc == _valid_adc);
+                    REQUIRE(gettemp.heat_sink_adc == valid_adc);
 
                     REQUIRE_THAT(gettemp.front_right_temp,
                                  Catch::Matchers::WithinAbs(_valid_temp, 0.1));
-                    REQUIRE(gettemp.front_right_adc == _valid_adc);
+                    REQUIRE(gettemp.front_right_adc == valid_adc);
 
                     REQUIRE_THAT(gettemp.front_center_temp,
                                  Catch::Matchers::WithinAbs(_valid_temp, 0.1));
-                    REQUIRE(gettemp.front_center_adc == _valid_adc);
+                    REQUIRE(gettemp.front_center_adc == valid_adc);
 
                     REQUIRE_THAT(gettemp.front_left_temp,
                                  Catch::Matchers::WithinAbs(_valid_temp, 0.1));
-                    REQUIRE(gettemp.front_left_adc == _valid_adc);
+                    REQUIRE(gettemp.front_left_adc == valid_adc);
 
                     REQUIRE_THAT(gettemp.back_right_temp,
                                  Catch::Matchers::WithinAbs(_valid_temp, 0.1));
-                    REQUIRE(gettemp.back_right_adc == _valid_adc);
+                    REQUIRE(gettemp.back_right_adc == valid_adc);
 
                     REQUIRE_THAT(gettemp.back_center_temp,
                                  Catch::Matchers::WithinAbs(_valid_temp, 0.1));
-                    REQUIRE(gettemp.back_center_adc == _valid_adc);
+                    REQUIRE(gettemp.back_center_adc == valid_adc);
 
                     REQUIRE_THAT(gettemp.back_left_temp,
                                  Catch::Matchers::WithinAbs(_valid_temp, 0.1));
-                    REQUIRE(gettemp.back_left_adc == _valid_adc);
+                    REQUIRE(gettemp.back_left_adc == valid_adc);
+                }
+            }
+            THEN("the fan should be disabled") {
+                REQUIRE(tasks->get_thermal_plate_policy()._fan_power == 0.0F);
+                AND_WHEN("the heatsink is an unsafe temperature") {
+                    read_message.heat_sink = _converter.backconvert(80.0F);
+                    tasks->get_thermal_plate_queue().backing_deque.push_back(
+                        messages::ThermalPlateMessage(read_message));
+                    tasks->run_thermal_plate_task();
+                    REQUIRE(
+                        tasks->get_thermal_plate_queue().backing_deque.empty());
+                    THEN("the fan should be at 0.8 power") {
+                        REQUIRE_THAT(
+                            tasks->get_thermal_plate_policy()._fan_power,
+                            Catch::Matchers::WithinAbs(0.8, 0.01));
+                    }
                 }
             }
         }
@@ -446,6 +468,7 @@ SCENARIO("thermal plate task message passing") {
             messages::ThermalPlateMessage(read_message));
         tasks->run_thermal_plate_task();
         // Check that each error is reported
+#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
         while (!errors.empty()) {
             CHECK(!tasks->get_host_comms_queue().backing_deque.empty());
             CHECK(std::holds_alternative<messages::ErrorMessage>(
@@ -458,6 +481,7 @@ SCENARIO("thermal plate task message passing") {
             tasks->get_host_comms_queue().backing_deque.pop_front();
             errors.erase(error_itr);
         }
+#endif
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
 
         WHEN("sending a get-plate-temperature message") {
@@ -603,6 +627,7 @@ SCENARIO("thermal plate task message passing") {
             messages::ThermalPlateMessage(read_message));
         tasks->run_thermal_plate_task();
         // Check that each error is reported
+#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
         while (!errors.empty()) {
             CHECK(!tasks->get_host_comms_queue().backing_deque.empty());
             CHECK(std::holds_alternative<messages::ErrorMessage>(
@@ -615,6 +640,7 @@ SCENARIO("thermal plate task message passing") {
             tasks->get_host_comms_queue().backing_deque.pop_front();
             errors.erase(error_itr);
         }
+#endif
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
     }
 }

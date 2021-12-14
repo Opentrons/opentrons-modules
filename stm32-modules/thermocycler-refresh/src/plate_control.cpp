@@ -1,7 +1,7 @@
 /**
  * @file plate_control.cpp
  * @brief Defines the PlateControl class, which implements control logic for
- * the thermal plate elements on the Thermocycler.
+ * the thermal plate peltiers on the Thermocycler.
  * @details This class exists to separate the actual feedback control system
  * for the thermal plate from the logical control of it. The class provides
  * functions to set the parameters of a thermal control step, and then it will
@@ -42,8 +42,17 @@ auto PlateControl::update_control() -> UpdateRet {
     values.left_power = update_pid(_left);
     values.right_power = update_pid(_right);
     values.center_power = update_pid(_center);
+
+    // Caller should check whether fan is manual after this function runs
+    if (_fan.manual_control) {
+        values.fan_power = 0.0F;
+        // If we exceed this threshold, force the fan out of manual mode
+        if (_fan.current_temp() > IDLE_FAN_INACTIVE_THRESHOLD) {
+            _fan.manual_control = false;
+        }
+    }
     if (!_fan.manual_control) {
-        values.fan_power = update_pid(_fan);
+        values.fan_power = update_fan();
     }
 
     return UpdateRet(values);
@@ -55,17 +64,10 @@ auto PlateControl::set_new_target(double setpoint, double ramp_rate,
     _hold_time = hold_time;
     _setpoint = setpoint;
 
-    if (ramp_rate == RAMP_INFINITE) {
-        _left.temp_target = _setpoint;
-        _right.temp_target = _setpoint;
-        _center.temp_target = _setpoint;
-    } else {
-        _left.temp_target = plate_temp();
-        _right.temp_target = plate_temp();
-        _center.temp_target = plate_temp();
-    }
-    // The fan always just targets the target temperature w/ an offset
-    _fan.temp_target = _setpoint + FAN_SETPOINT_OFFSET;
+    reset_control(_left);
+    reset_control(_right);
+    reset_control(_center);
+    reset_control(_fan);
 
     // For heating vs cooling, go based off of the average plate. Might
     // have to reconsider this, see how it works for small changes.
@@ -74,10 +76,120 @@ auto PlateControl::set_new_target(double setpoint, double ramp_rate,
     return true;
 }
 
+[[nodiscard]] auto PlateControl::fan_idle_power() const -> double {
+    auto temp = _fan.current_temp();
+    if (temp < IDLE_FAN_INACTIVE_THRESHOLD) {
+        return 0.0F;
+    }
+    if (temp > IDLE_FAN_DANGER_THRESHOLD) {
+        // Force the fan out of manual mode
+        _fan.manual_control = false;
+        return IDLE_FAN_DANGER_POWER;
+    }
+    return temp * IDLE_FAN_POWER_SLOPE;
+}
+
+auto PlateControl::update_ramp(thermal_general::Peltier &peltier) -> void {
+    if (_ramp_rate == RAMP_INFINITE) {
+        peltier.temp_target = _setpoint;
+    }
+    if (peltier.temp_target < _setpoint) {
+        peltier.temp_target =
+            std::min(peltier.temp_target + _ramp_rate, _setpoint);
+    } else if (peltier.temp_target > _setpoint) {
+        peltier.temp_target =
+            std::max(peltier.temp_target - _ramp_rate, _setpoint);
+    }
+}
+
+auto PlateControl::update_pid(thermal_general::Peltier &peltier) -> double {
+    return peltier.pid.compute(peltier.temp_target - peltier.current_temp());
+}
+
+auto PlateControl::update_fan() -> double {
+    // First check is simple... if heatsink is over 75º we have to
+    // crank the fans hard.
+    if (_fan.current_temp() > IDLE_FAN_DANGER_THRESHOLD) {
+        return IDLE_FAN_DANGER_POWER;
+    }
+    // Note that all error calculations are the inverse of peltiers. We have
+    // to use the current temperature MINUS the target temperature because
+    // fans need to drive with a positive magnitude to lower the temperature.
+    auto target_zone = temperature_zone(setpoint());
+    if (target_zone == TemperatureZone::COLD) {
+        if (_status == PlateStatus::INITIAL_COOL) {
+            // Ramping down to a cold temp is always 70% drive
+            return FAN_POWER_RAMP_COLD;
+        } else {
+            // Holding at a cold temp is PID controlling the heatsink to 60ºC
+            if (_fan.temp_target != FAN_TARGET_TEMP_COLD) {
+                _fan.temp_target = FAN_TARGET_TEMP_COLD;
+                _fan.pid.arm_integrator_reset(_fan.current_temp() -
+                                              FAN_TARGET_TEMP_COLD);
+            }
+            // Power is clamped in range [0.35,0.7]
+            auto power =
+                _fan.pid.compute(_fan.current_temp() - _fan.temp_target);
+            return std::clamp(power, FAN_POWER_LIMITS_COLD.first,
+                              FAN_POWER_LIMITS_COLD.second);
+        }
+    }
+    if (_status == PlateStatus::INITIAL_COOL) {
+        // Ramping down to a non-cold temp is always just 55% drive
+        return FAN_POWER_RAMP_DOWN_NON_COLD;
+    }
+    // Ramping up OR holding at a warm/hot temperature means we want to
+    // regulate the heatsink to stay under (setpoint - 2)º.
+    // There is also a safety threshold of 70º.
+    auto threshold =
+        std::min(HEATSINK_SAFETY_THRESHOLD_WARM, setpoint() - 2.0F);
+    if (_fan.current_temp() < threshold) {
+        return FAN_POWER_UNDER_WARM_THRESHOLD;
+    }
+    if (_fan.temp_target != threshold) {
+        _fan.temp_target = threshold;
+        _fan.pid.arm_integrator_reset(_fan.current_temp() - _fan.temp_target);
+    }
+    auto power = _fan.pid.compute(_fan.current_temp() - _fan.temp_target);
+    if (target_zone == TemperatureZone::HOT) {
+        return std::clamp(power, FAN_POWER_LIMITS_HOT.first,
+                          FAN_POWER_LIMITS_HOT.second);
+    }
+    return std::clamp(power, FAN_POWER_LIMITS_WARM.first,
+                      FAN_POWER_LIMITS_WARM.second);
+}
+
+auto PlateControl::reset_control(thermal_general::Peltier &peltier) -> void {
+    if (_ramp_rate == RAMP_INFINITE) {
+        peltier.temp_target = setpoint();
+    } else {
+        peltier.temp_target = plate_temp();
+    }
+    peltier.pid.arm_integrator_reset(peltier.temp_target -
+                                     peltier.current_temp());
+}
+
+auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
+    // The fan always just targets the target temperature w/ an offset
+    fan.temp_target = _setpoint + FAN_SETPOINT_OFFSET;
+    fan.pid.arm_integrator_reset(fan.current_temp() - fan.temp_target);
+}
+
 [[nodiscard]] auto PlateControl::plate_temp() const -> double {
     return (_left.current_temp() + _right.current_temp() +
             _center.current_temp()) /
            PELTIER_COUNT;
+}
+
+[[nodiscard]] auto PlateControl::temperature_zone(double temp) const
+    -> TemperatureZone {
+    if (temp < (double)TemperatureZone::COLD) {
+        return TemperatureZone::COLD;
+    }
+    if (temp < (double)TemperatureZone::HOT) {
+        return TemperatureZone::WARM;
+    }
+    return TemperatureZone::HOT;
 }
 
 [[nodiscard]] auto PlateControl::temp_within_setpoint() const -> bool {

@@ -69,6 +69,7 @@ struct State {
     // initializor. Additional errors are defined assuming the max thermistor
     // error is (1 << 6), for the heat sink
     static constexpr uint16_t PELTIER_ERROR = (1 << 7);
+    static constexpr uint16_t FAN_ERROR = (1 << 8);
 };
 
 // By using a template template parameter here, we allow the code instantiating
@@ -265,27 +266,14 @@ class ThermalPlateTask {
         }
 
         if (_state.system_status == State::CONTROLLING) {
-            policy.set_enabled(true);
-            auto values = _plate_control.update_control();
-            auto ret = values.has_value();
-            if (ret) {
-                ret = set_peltier_power(_peltier_left,
-                                        values.value().left_power, policy);
-            }
-            if (ret) {
-                ret = set_peltier_power(_peltier_right,
-                                        values.value().right_power, policy);
-            }
-            if (ret) {
-                ret = set_peltier_power(_peltier_center,
-                                        values.value().center_power, policy);
-            }
-            if (ret && !_fans.manual_control) {
-                ret = policy.set_fan(values.value().fan_power);
-            }
-            if (!ret) {
-                _state.system_status = State::ERROR;
-                _state.error_bitmap |= State::PELTIER_ERROR;
+            update_control(policy);
+        } else if (_state.system_status == State::IDLE) {
+            auto fan_power = _plate_control.fan_idle_power();
+            if (!_fans.manual_control) {
+                if (!policy.set_fan(fan_power)) {
+                    _state.system_status = State::ERROR;
+                    _state.error_bitmap |= State::FAN_ERROR;
+                }
             }
         }
         // Not an `else` so we can immediately resolve any issue setting outputs
@@ -539,11 +527,13 @@ class ThermalPlateTask {
         if (old_error != thermistor.error) {
             if (thermistor.error != errors::ErrorCode::NO_ERROR) {
                 _state.error_bitmap |= thermistor.error_bit;
+#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
                 auto error_message = messages::HostCommsMessage(
                     messages::ErrorMessage{.code = thermistor.error});
                 static_cast<void>(
                     _task_registry->comms->get_message_queue().try_send(
                         error_message));
+#endif
             } else {
                 _state.error_bitmap &= ~thermistor.error_bit;
             }
@@ -585,6 +575,10 @@ class ThermalPlateTask {
             State::PELTIER_ERROR) {
             return errors::ErrorCode::THERMAL_PELTIER_ERROR;
         }
+        if ((_state.error_bitmap & State::FAN_ERROR) == State::FAN_ERROR) {
+            return errors::ErrorCode::THERMAL_HEATSINK_FAN_ERROR;
+        }
+
         for (auto therm : _thermistors) {
             if ((_state.error_bitmap & therm.error_bit) == therm.error_bit) {
                 return therm.error;
@@ -601,6 +595,47 @@ class ThermalPlateTask {
                 _thermistors[THERM_FRONT_CENTER].temp_c +
                 _thermistors[THERM_BACK_CENTER].temp_c) /
                ((double)(PLATE_THERM_COUNT - 1));
+    }
+
+    /**
+     * @brief Update control of the peltiers + fan when the system is in
+     * closed-loop-control mode. Call this when the state is CONTROLLING
+     * and new temperatures have been stored in the thermistor handles.
+     * @param[in] policy The thermal plate policy
+     * @return True if outputs are updated fine, false if any error occurs
+     */
+    template <ThermalPlateExecutionPolicy Policy>
+    auto update_control(Policy& policy) -> bool {
+        policy.set_enabled(true);
+        auto values = _plate_control.update_control();
+        auto ret = values.has_value();
+        if (ret) {
+            ret = set_peltier_power(_peltier_left, values.value().left_power,
+                                    policy);
+        }
+        if (ret) {
+            ret = set_peltier_power(_peltier_right, values.value().right_power,
+                                    policy);
+        }
+        if (ret) {
+            ret = set_peltier_power(_peltier_center,
+                                    values.value().center_power, policy);
+        }
+        if (!ret) {
+            _state.system_status = State::ERROR;
+            _state.error_bitmap |= State::PELTIER_ERROR;
+            return false;
+        }
+        if (!_fans.manual_control) {
+            ret = policy.set_fan(values.value().fan_power);
+
+            if (!ret) {
+                _state.system_status = State::ERROR;
+                _state.error_bitmap |= State::FAN_ERROR;
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
