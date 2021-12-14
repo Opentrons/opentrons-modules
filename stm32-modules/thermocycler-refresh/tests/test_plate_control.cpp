@@ -274,6 +274,11 @@ SCENARIO("PlateControl active fan control works") {
                 ctrl = plateControl.update_control();
                 REQUIRE(ctrl.has_value());
                 THEN("the fan is driven between 0.35 and 0.55") {
+                    REQUIRE_THAT(fan.temp_target,
+                                 Catch::Matchers::WithinAbs(
+                                     WARM_TEMP + plate_control::PlateControl::
+                                                     FAN_SETPOINT_OFFSET,
+                                     0.1));
                     REQUIRE(ctrl.value().fan_power >= 0.35);
                     REQUIRE(ctrl.value().fan_power <= 0.55);
                 }
@@ -294,6 +299,8 @@ SCENARIO("PlateControl active fan control works") {
                 ctrl = plateControl.update_control();
                 REQUIRE(ctrl.has_value());
                 THEN("the fan is driven between 0.30 and 0.55") {
+                    REQUIRE_THAT(fan.temp_target,
+                                 Catch::Matchers::WithinAbs(70.0F, 0.1));
                     REQUIRE(ctrl.value().fan_power >= 0.30);
                     REQUIRE(ctrl.value().fan_power <= 0.55);
                 }
