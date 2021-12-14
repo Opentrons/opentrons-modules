@@ -407,6 +407,30 @@ class ThermalPlateTask {
     }
 
     template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::SetFanAutomaticMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+            return;
+        }
+        // If we aren't actively in a control loop, deactivate fan
+        if (_state.system_status == State::IDLE) {
+            auto err = policy.set_fan(0.0F);
+            if (!err) {
+                response.with_error =
+                    errors::ErrorCode::THERMAL_HEATSINK_FAN_ERROR;
+            }
+        }
+        _fans.manual_control = false;
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
     auto visit_message(const messages::SetPlateTemperatureMessage& msg,
                        Policy& policy) -> void {
         auto response =

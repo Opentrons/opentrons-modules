@@ -100,6 +100,14 @@ def set_fans_manual(power: float, ser: serial.Serial):
     guard_error(res, b'M106 OK')
     print(res)
 
+# Turns fans to automatic mode
+def set_fans_automatic(ser: serial.Serial):
+    print(f'Setting fans to automatic mode')
+    ser.write(f'M107\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M107 OK')
+    print(res)
+
 # Sets heater PWM as a percentage.
 def set_heater_debug(power: float, ser: serial.Serial):
     if(power< 0.0 or power > 1.0):

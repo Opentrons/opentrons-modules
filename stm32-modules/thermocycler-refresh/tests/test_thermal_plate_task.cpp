@@ -245,6 +245,33 @@ SCENARIO("thermal plate task message passing") {
                             0.5);
                 }
             }
+            AND_WHEN("sending a SetFanAutomatic to turn the fans off") {
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                auto set_fan_auto = messages::SetFanAutomaticMessage{.id = 555};
+                tasks->get_thermal_plate_queue().backing_deque.push_back(
+                    messages::ThermalPlateMessage(set_fan_auto));
+                tasks->run_thermal_plate_task();
+                THEN("the task should get the message") {
+                    REQUIRE(
+                        tasks->get_thermal_plate_queue().backing_deque.empty());
+                    AND_THEN("the task should act on the message") {
+                        REQUIRE(!tasks->get_host_comms_queue()
+                                     .backing_deque.empty());
+                        auto response =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        tasks->get_host_comms_queue().backing_deque.pop_front();
+                        REQUIRE(std::holds_alternative<
+                                messages::AcknowledgePrevious>(response));
+                        auto response_msg =
+                            std::get<messages::AcknowledgePrevious>(response);
+                        REQUIRE(response_msg.responding_to_id == 555);
+                        REQUIRE(response_msg.with_error ==
+                                errors::ErrorCode::NO_ERROR);
+                        REQUIRE(tasks->get_thermal_plate_policy()._fan_power ==
+                                0.0F);
+                    }
+                }
+            }
         }
         WHEN("Sending a SetPIDConstants to configure the plate constants") {
             auto message = messages::SetPIDConstantsMessage{
