@@ -1,3 +1,5 @@
+#include "FreeRTOS.h"
+#include "task.h"
 #include "motor_hardware.h"
 #include <string.h>  // for memset
 #include <math.h> // for fabs
@@ -26,48 +28,28 @@ static void MX_GPIO_Init(void)
   memset(&GPIO_InitStruct, 0, sizeof(GPIO_InitStruct));
   GPIO_InitStruct.Pin = SOLENOID_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(SOLENOID_Port, &GPIO_InitStruct);
   HAL_GPIO_WritePin(SOLENOID_Port, SOLENOID_Pin, GPIO_PIN_RESET);
-
-  //reset pin init
   GPIO_InitStruct.Pin = LID_STEPPER_RESET_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL; //correct?
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH; //correct? Confirm based on timer freq
   HAL_GPIO_Init(LID_STEPPER_ENABLE_Port, &GPIO_InitStruct);
-  HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin, GPIO_PIN_SET); //enable
-  //enable pin init
+  HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin, GPIO_PIN_SET);
   GPIO_InitStruct.Pin = LID_STEPPER_ENABLE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL; //correct?
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH; //correct? Confirm based on timer freq
   HAL_GPIO_Init(LID_STEPPER_ENABLE_Port, &GPIO_InitStruct);
-  HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_ENABLE_Pin, GPIO_PIN_SET); //disable output at init
-  //fault pin init
+  HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_ENABLE_Pin, GPIO_PIN_RESET); //enable output at init
   GPIO_InitStruct.Pin = LID_STEPPER_FAULT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
-  GPIO_InitStruct.Pull = GPIO_NOPULL; //correct?
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH; //correct? Confirm based on timer freq
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(LID_STEPPER_ENABLE_Port, &GPIO_InitStruct);
-  //vref pin init
   GPIO_InitStruct.Pin = LID_STEPPER_VREF_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH; //need?
   HAL_GPIO_Init(LID_STEPPER_CONTROL_Port, &GPIO_InitStruct);
-  //lid stepper direction pin init
   GPIO_InitStruct.Pin = LID_STEPPER_DIR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL; //correct?
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH; //correct? Confirm based on timer freq
   HAL_GPIO_Init(LID_STEPPER_CONTROL_Port, &GPIO_InitStruct);
-  //lid stepper step pin init
   GPIO_InitStruct.Pin = LID_STEPPER_STEP_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL; //correct?
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH; //correct? Confirm based on timer freq
   GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
   HAL_GPIO_Init(LID_STEPPER_CONTROL_Port, &GPIO_InitStruct);
 }
@@ -103,7 +85,7 @@ void MX_OC_Init(TIM_HandleTypeDef* htim, TIM_OC_InitTypeDef* htim_oc) {
   uint32_t uwTimClock = HAL_RCC_GetPCLK1Freq();
   /* Compute the prescaler value to have TIM2 counter clock equal to 1MHz */
   uint32_t uwPrescalerValue = (uint32_t) ((uwTimClock / 1000000U) - 1U);
-  uint32_t uwPeriodValue = __HAL_TIM_CALC_PERIOD(uwTimClock, uwPrescalerValue, 64000); //64000Hz for 75rpm in toggle mode
+  uint32_t uwPeriodValue = __HAL_TIM_CALC_PERIOD(uwTimClock, uwPrescalerValue, 32000); //75rpm, from TC1
   
   htim->Instance = TIM2;
   htim->Init.Prescaler = uwPrescalerValue;
@@ -136,12 +118,12 @@ void motor_hardware_setup(motor_hardware_handles* handles) {
 //control via increment_step in motor_task.hpp?
 //handle end switch IT start and stop
 void motor_hardware_lid_stepper_start(float angle) {
+  //check for fault
   MOTOR_HW_HANDLE->lid_stepper.step_count = 0;
-  int32_t step_target_scalar = ((128 * 200) / 360) * (99.5);
-  MOTOR_HW_HANDLE->lid_stepper.step_target = angle * step_target_scalar; //(angle) * ((microsteps/rev) * (gear ratio))
+  int32_t step_target_scalar = ((32 * 200) / 360) * (99.5) * (2); //(microsteps/rev) * (gear ratio) * (2, for toggle mode)
+  MOTOR_HW_HANDLE->lid_stepper.step_target = fabs(angle) * step_target_scalar;
 
   //MX_OC_Init(); //will need to call this with alternate period once lid seal stepper implemented
-  HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_ENABLE_Pin, GPIO_PIN_RESET); //enable output
 
   if (angle > 0) {
     HAL_GPIO_WritePin(LID_STEPPER_CONTROL_Port, LID_STEPPER_DIR_Pin, GPIO_PIN_SET);
@@ -154,7 +136,6 @@ void motor_hardware_lid_stepper_start(float angle) {
 
 void motor_hardware_lid_stepper_stop() {
   HAL_TIM_OC_Stop_IT(&htim2, LID_STEPPER_STEP_Channel);
-  HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_ENABLE_Pin, GPIO_PIN_SET); //disable output
 }
 
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
@@ -176,13 +157,19 @@ void motor_hardware_lid_stepper_set_dac(uint8_t dacval) {
   HAL_DAC_SetValue(&MOTOR_HW_HANDLE->dac1, LID_STEPPER_VREF_CHANNEL, DAC_ALIGN_8B_R, dacval);
 }
 
+bool motor_hardware_lid_stepper_check_fault(void) {
+  return (HAL_GPIO_ReadPin(LID_STEPPER_ENABLE_Port, LID_STEPPER_FAULT_Pin) == GPIO_PIN_RESET) ? true : false;
+}
+
 bool motor_hardware_lid_stepper_reset(void) {
-  bool bStatus = false;
-  HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin, GPIO_PIN_RESET);
-  //check that fault cleared
-  //this will be called by a gcode, return false if unsuccessful
-  HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin, GPIO_PIN_SET);
-  return bStatus;
+  //if fault, try resetting
+  if (motor_hardware_lid_stepper_check_fault()) {
+    HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin, GPIO_PIN_RESET);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin, GPIO_PIN_SET);
+  }
+  //return false if fault persists
+  return (motor_hardware_lid_stepper_check_fault() == true) ? false : true;
 }
 
 void motor_hardware_solenoid_engage() { //engage to clear/unlock sliding locking plate

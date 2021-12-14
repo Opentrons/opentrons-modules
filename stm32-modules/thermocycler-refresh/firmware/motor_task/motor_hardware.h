@@ -29,6 +29,7 @@ void motor_hardware_lid_stepper_start(float angle);
 void motor_hardware_lid_stepper_stop();
 void motor_hardware_increment_step();
 void motor_hardware_lid_stepper_set_dac(uint8_t dacval);
+bool motor_hardware_lid_stepper_check_fault(void);
 bool motor_hardware_lid_stepper_reset(void);
 void motor_hardware_solenoid_engage();
 void motor_hardware_solenoid_release();

@@ -44,6 +44,14 @@ auto MotorPolicy::lid_stepper_stop() -> void {
     motor_hardware_lid_stepper_stop();
 }
 
+auto MotorPolicy::lid_stepper_check_fault() -> bool {
+    return motor_hardware_lid_stepper_check_fault();
+}
+
+auto MotorPolicy::lid_stepper_reset() -> bool {
+    return motor_hardware_lid_stepper_reset();
+}
+
 auto MotorPolicy::lid_solenoid_disengage() -> void {
     motor_hardware_solenoid_release();
 }

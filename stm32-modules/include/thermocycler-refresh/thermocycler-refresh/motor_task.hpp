@@ -119,6 +119,7 @@ class MotorTask {
     auto visit_message(const messages::LidStepperCompleteCheckMessage& msg,
                        Policy& policy) -> void {
         if (lid_stepper_state.status == LidStepperState::MOVE_COMPLETE) {
+            policy.lid_stepper_set_vref(0);
             auto response =
                 messages::AcknowledgePrevious{.responding_to_id = msg.responding_to_id};
             static_cast<void>(task_registry->comms->get_message_queue().try_send(
@@ -135,6 +136,26 @@ class MotorTask {
     auto visit_message(const messages::LidStepperComplete& msg, Policy& policy)
         -> void {
         lid_stepper_state.status = LidStepperState::MOVE_COMPLETE;
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::LidStepperCheckFaultMessage& msg,
+                       Policy& policy) -> void {
+        bool fault = policy.lid_stepper_check_fault();
+        auto response =
+            messages::LidStepperCheckFaultResponse{.responding_to_id = msg.id, .fault = fault};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::LidStepperResetMessage& msg,
+                       Policy& policy) -> void {
+        bool fault_gone = policy.lid_stepper_reset();
+        auto response =
+            messages::LidStepperResetResponse{.responding_to_id = msg.id, .fault_gone = fault_gone};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
     }
 
     template <typename Policy>
