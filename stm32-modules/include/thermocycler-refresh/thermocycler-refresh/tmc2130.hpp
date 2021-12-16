@@ -87,24 +87,27 @@ struct GConf {
         return ret;
     }
 
-    auto set(uint64_t reg) -> void {
-        i_scale_analog = pop_bits<1>(reg);
-        internal_rsense = pop_bits<1>(reg);
-        en_pwm_mode = pop_bits<1>(reg);
+    static auto create(uint64_t reg) -> GConf {
+        GConf gconf;
+        gconf.i_scale_analog = pop_bits<1>(reg);
+        gconf.internal_rsense = pop_bits<1>(reg);
+        gconf.en_pwm_mode = pop_bits<1>(reg);
         static_cast<void>(pop_bits<1>(reg));
-        shaft = pop_bits<1>(reg);
-        diag0_error = pop_bits<1>(reg);
-        diag0_otpw = pop_bits<1>(reg);
-        diag0_stall = pop_bits<1>(reg);
-        diag1_stall = pop_bits<1>(reg);
-        diag1_index = pop_bits<1>(reg);
-        diag1_onstate = pop_bits<1>(reg);
-        diag1_steps_skipped = pop_bits<1>(reg);
-        diag0_int_pushpull = pop_bits<1>(reg);
-        diag1_pushpull = pop_bits<1>(reg);
-        small_hysteresis = pop_bits<1>(reg);
-        stop_enable = pop_bits<1>(reg);
-        direct_mode = pop_bits<1>(reg);
+        gconf.shaft = pop_bits<1>(reg);
+        gconf.diag0_error = pop_bits<1>(reg);
+        gconf.diag0_otpw = pop_bits<1>(reg);
+        gconf.diag0_stall = pop_bits<1>(reg);
+        gconf.diag1_stall = pop_bits<1>(reg);
+        gconf.diag1_index = pop_bits<1>(reg);
+        gconf.diag1_onstate = pop_bits<1>(reg);
+        gconf.diag1_steps_skipped = pop_bits<1>(reg);
+        gconf.diag0_int_pushpull = pop_bits<1>(reg);
+        gconf.diag1_pushpull = pop_bits<1>(reg);
+        gconf.small_hysteresis = pop_bits<1>(reg);
+        gconf.stop_enable = pop_bits<1>(reg);
+        gconf.direct_mode = pop_bits<1>(reg);
+
+        return gconf;
     }
 
     uint8_t i_scale_analog : 1 = 0;
@@ -145,25 +148,25 @@ concept TMC2130Register = requires (Reg& r, uint64_t value) {
     // Struct has a serialize() function
     { r.serialize() } -> std::same_as<uint64_t>;
     // Struct has a constructor from a serialized value
-    { r.set(value) } -> std::same_as<void>;
+    { Reg::create(value) } -> std::same_as<Reg>;
 };
 
 class TMC2130 {
   public:
 
-    template <TMC2130Policy Policy, TMC2130Register Reg>
+    template <TMC2130Register Reg, TMC2130Policy Policy>
     auto set_register(Policy& policy, Reg& reg) -> bool {
         return policy.write_register(reg.address, reg.serialize());
     }
 
-    template <TMC2130Policy Policy, TMC2130Register Reg>
-    auto get_register(Policy& policy, Reg& reg) -> std::optional<Reg> {
+    template <TMC2130Register Reg, TMC2130Policy Policy>
+    auto get_register(Policy& policy) -> std::optional<Reg> {
         using RT = std::optional<Reg>;
-        auto ret = policy.read_register(reg.address);
+        auto ret = policy.read_register(Reg::address);
         if(!ret.has_value()) {
             return RT();
         }
-        return RT(reg.set(ret.value()));
+        return RT(Reg::create(ret.value()));
     }
 };
 }

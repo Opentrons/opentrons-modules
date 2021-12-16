@@ -35,5 +35,30 @@ SCENARIO("tmc2130 register logic works") {
                 REQUIRE(reg_val.value() == 0);
             }
         }
+        WHEN("setting gconfig register to have some nonzero elements") {
+            tmc2130::GConf gconf {
+                .i_scale_analog = 1,
+                .diag0_error = 1,
+                .direct_mode = 1
+            };
+            auto ret = tmc.set_register(policy, gconf);
+            REQUIRE(ret);
+            THEN("the register reads correctly") {
+                auto reg_val = policy.read_register(tmc2130::Registers::general_config);
+                REQUIRE(reg_val.has_value());
+                static constexpr uint64_t expected = 0x10021;
+                REQUIRE(reg_val.value() == expected);
+            }
+            AND_WHEN("reading back the register") {
+                auto readback = tmc.get_register<tmc2130::GConf>(policy);
+                REQUIRE(readback.has_value());
+                auto readback_val = readback.value();
+                REQUIRE(readback_val.i_scale_analog == 1);
+                REQUIRE(readback_val.diag0_error == 1);
+                REQUIRE(readback_val.direct_mode == 1);
+                REQUIRE(readback_val.stop_enable == 0);
+                REQUIRE(readback_val.shaft == 0);
+            }
+        }
     }
 }
