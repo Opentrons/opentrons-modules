@@ -6,7 +6,6 @@
 
 class TestTMC2130Policy {
   public:
-
     using ReadRT = std::optional<uint64_t>;
 
     TestTMC2130Policy() : _registers() {
@@ -24,7 +23,7 @@ class TestTMC2130Policy {
     }
 
     auto write_register(tmc2130::Registers addr, uint64_t value) -> bool {
-        if(_registers.count((uint8_t)addr) == 0) {
+        if (_registers.count((uint8_t)addr) == 0) {
             return false;
         }
         _registers[(uint8_t)addr] = value;
@@ -32,7 +31,7 @@ class TestTMC2130Policy {
     }
 
     auto read_register(tmc2130::Registers addr) -> ReadRT {
-        if(_registers.count((uint8_t)addr) == 0) {
+        if (_registers.count((uint8_t)addr) == 0) {
             return ReadRT();
         }
         return ReadRT(_registers[(uint8_t)addr]);
