@@ -6,7 +6,7 @@
 
 class TestTMC2130Policy {
   public:
-    using ReadRT = std::optional<uint64_t>;
+    using ReadRT = std::optional<tmc2130::RegisterSerializedType>;
 
     TestTMC2130Policy() : _registers() {
         _registers[(uint8_t)tmc2130::Registers::GCONF] = 0;
@@ -42,7 +42,8 @@ class TestTMC2130Policy {
         _registers[(uint8_t)tmc2130::Registers::LOST_STEPS] = 0;
     }
 
-    auto write_register(tmc2130::Registers addr, uint64_t value) -> bool {
+    auto write_register(tmc2130::Registers addr,
+                        tmc2130::RegisterSerializedType value) -> bool {
         if (_registers.count((uint8_t)addr) == 0) {
             return false;
         }
@@ -58,6 +59,6 @@ class TestTMC2130Policy {
     }
 
   private:
-    using RegMap = std::map<uint8_t, uint64_t>;
+    using RegMap = std::map<uint8_t, tmc2130::RegisterSerializedType>;
     RegMap _registers;
 };
