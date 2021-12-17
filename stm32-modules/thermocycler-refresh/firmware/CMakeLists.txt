@@ -25,6 +25,7 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${THERMAL_DIR}/thermal_plate_policy.cpp
   ${THERMAL_DIR}/freertos_lid_heater_task.cpp
   ${THERMAL_DIR}/lid_heater_policy.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/motor_task/motor_spi_hardware.c
   )
 
 # Add source files that should NOT be checked by clang-tidy here

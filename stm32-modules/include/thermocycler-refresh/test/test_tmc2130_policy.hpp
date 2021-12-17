@@ -53,9 +53,6 @@ class TestTMC2130Policy {
         iter = bit_utils::bytes_to_int(iter, data.end(), addr);
         iter = bit_utils::bytes_to_int(iter, data.end(), value);
 
-        std::cout << "Set address 0x" << std::hex << addr << " to val 0x"
-                  << value << std::endl;
-
         auto mode = addr & 0x80;
         addr &= ~0x80;
 
@@ -75,12 +72,13 @@ class TestTMC2130Policy {
         return RT(ret);
     }
 
-    auto read_register(tmc2130::Registers reg) -> std::optional<uint32_t> {
+    /** Primarily for test integration.*/
+    auto read_register(tmc2130::Registers reg) -> ReadRT {
         auto addr = static_cast<uint8_t>(reg);
         if (_registers.count(addr) == 0) {
-            return std::optional<uint32_t>(0);
+            return ReadRT(0);
         }
-        return std::optional<uint32_t>(_registers[addr]);
+        return ReadRT(_registers[addr]);
     }
 
   private:
