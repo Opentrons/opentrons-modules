@@ -2,7 +2,7 @@
  * @file tmc2130_registers.hpp
  * @brief Contains register mapping information for the TMC2130 motor
  * driver IC.
- * 
+ *
  */
 #pragma once
 
@@ -46,7 +46,6 @@ enum class Registers {
     PWM_SCALE = 0x71,
     LOST_STEPS = 0x73,
 };
-
 
 /** Template concept to constrain what structures encapsulate registers.*/
 template <typename Reg>
@@ -378,4 +377,4 @@ struct TMC2130RegisterMap {
 // Registers are all 32 bits
 using RegisterSerializedType = uint32_t;
 
-}
+}  // namespace tmc2130

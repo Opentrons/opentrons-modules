@@ -1,7 +1,9 @@
 #pragma once
 
+#include <iostream>
 #include <map>
 
+#include "core/bit_utils.hpp"
 #include "thermocycler-refresh/tmc2130.hpp"
 
 class TestTMC2130Policy {
@@ -42,23 +44,49 @@ class TestTMC2130Policy {
         _registers[(uint8_t)tmc2130::Registers::LOST_STEPS] = 0;
     }
 
-    auto write_register(tmc2130::Registers addr,
-                        tmc2130::RegisterSerializedType value) -> bool {
-        if (_registers.count((uint8_t)addr) == 0) {
-            return false;
+    auto transmit_receive(tmc2130::MessageT& data)
+        -> std::optional<tmc2130::MessageT> {
+        using RT = std::optional<tmc2130::MessageT>;
+        auto iter = data.begin();
+        uint8_t addr;
+        tmc2130::RegisterSerializedType value;
+        iter = bit_utils::bytes_to_int(iter, data.end(), addr);
+        iter = bit_utils::bytes_to_int(iter, data.end(), value);
+
+        std::cout << "Set address 0x" << std::hex << addr << " to val 0x"
+                  << value << std::endl;
+
+        auto mode = addr & 0x80;
+        addr &= ~0x80;
+
+        // Check this is a valid register
+        if (_registers.count(addr) == 0) {
+            return RT();
         }
-        _registers[(uint8_t)addr] = value;
-        return true;
+        if (mode == static_cast<uint8_t>(tmc2130::WriteFlag::WRITE)) {
+            // This is a write, so overwrite the register value
+            _registers[addr] = value;
+        }
+        tmc2130::MessageT ret;
+        iter = ret.begin();
+        iter = bit_utils::int_to_bytes(get_status(), iter, ret.end());
+        iter = bit_utils::int_to_bytes(_cache, iter, ret.end());
+        _cache = _registers[addr];
+        return RT(ret);
     }
 
-    auto read_register(tmc2130::Registers addr) -> ReadRT {
-        if (_registers.count((uint8_t)addr) == 0) {
-            return ReadRT();
+    auto read_register(tmc2130::Registers reg) -> std::optional<uint32_t> {
+        auto addr = static_cast<uint8_t>(reg);
+        if (_registers.count(addr) == 0) {
+            return std::optional<uint32_t>(0);
         }
-        return ReadRT(_registers[(uint8_t)addr]);
+        return std::optional<uint32_t>(_registers[addr]);
     }
 
   private:
+    auto get_status() -> uint8_t { return 0x00; }
+
     using RegMap = std::map<uint8_t, tmc2130::RegisterSerializedType>;
     RegMap _registers;
+    tmc2130::RegisterSerializedType _cache = 0;
 };

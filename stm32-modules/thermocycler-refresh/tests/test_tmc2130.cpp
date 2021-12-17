@@ -5,6 +5,55 @@
 #include "test/test_tmc2130_policy.hpp"
 #include "thermocycler-refresh/tmc2130.hpp"
 
+SCENARIO("tmc2130 interface class API works") {
+    GIVEN("a tmc2130 interface and a blank register map") {
+        tmc2130::TMC2130Interface spi;
+        TestTMC2130Policy policy;
+        REQUIRE(policy.read_register(tmc2130::Registers::GCONF).has_value());
+        WHEN("constructing a read message") {
+            auto ret = spi.build_message(tmc2130::Registers::GCONF,
+                                         tmc2130::WriteFlag::READ, 0);
+            REQUIRE(ret.has_value());
+            THEN("the message is constructed correctly") {
+                auto buf = ret.value();
+                REQUIRE((buf[0] & 0x80) == 0x00);
+                REQUIRE((buf[0] & ~0x80) ==
+                        static_cast<uint8_t>(tmc2130::Registers::GCONF));
+            }
+        }
+        WHEN("constructing a write message") {
+            auto ret = spi.build_message(tmc2130::Registers::GCONF,
+                                         tmc2130::WriteFlag::WRITE, 0xABCDEF01);
+            REQUIRE(ret.has_value());
+            THEN("the message is constructed correctly") {
+                auto buf = ret.value();
+                REQUIRE((buf[0] & 0x80) == 0x80);
+                REQUIRE((buf[0] & ~0x80) ==
+                        static_cast<uint8_t>(tmc2130::Registers::GCONF));
+                REQUIRE(buf[1] == 0xAB);
+                REQUIRE(buf[2] == 0xCD);
+                REQUIRE(buf[3] == 0xEF);
+                REQUIRE(buf[4] == 0x01);
+            }
+        }
+        WHEN("Writing to a register") {
+            spi.write(tmc2130::Registers::GCONF, 0xABCDEF01, policy);
+            THEN("the value in the policy is updated") {
+                auto ret = policy.read_register(tmc2130::Registers::GCONF);
+                REQUIRE(ret.has_value());
+                REQUIRE(ret.value() == 0xABCDEF01);
+            }
+            AND_WHEN("Reading from that register") {
+                auto ret = spi.read(tmc2130::Registers::GCONF, policy);
+                THEN("the value in the policy is returned") {
+                    REQUIRE(ret.has_value());
+                    REQUIRE(ret.value() == 0xABCDEF01);
+                }
+            }
+        }
+    }
+}
+
 SCENARIO("tmc2130 register API works") {
     GIVEN("a tmc2130 and a blank TMC2130 register map") {
         tmc2130::TMC2130 tmc;

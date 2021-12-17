@@ -8,41 +8,19 @@
 #include <cstdint>
 #include <optional>
 
+#include "core/bit_utils.hpp"
 #include "systemwide.h"
+#include "thermocycler-refresh/tmc2130_interface.hpp"
 #include "thermocycler-refresh/tmc2130_registers.hpp"
 
 namespace tmc2130 {
 
 /** Hardware abstraction policy for the TMC2130 communication.*/
 template <typename Policy>
-concept TMC2130Policy = requires(Policy& p, Registers addr,
-                                 RegisterSerializedType value) {
-    // A function to write to a register
-    { p.write_register(addr, value) } -> std::same_as<bool>;
-    // A function to read from a register
-    {
-        p.read_register(addr)
-        } -> std::same_as<std::optional<RegisterSerializedType>>;
-    // TODO a function to commence a movement
-};
-
-#if 0
-/** Hardware abstraction policy for the TMC2130 communication.*/
-template <typename Policy>
-concept TMC2130Policy = requires(Policy& p, Registers addr, RegisterSerializedType value) {
-    // A function to read & write to a register. addr should include the
-    // read/write bit.
-    {
-        p.transmit_receive(addr, value)
-        } -> std::same_as<std::optional<tmc2130::RegisterSerializedType>>;
-    // TODO a function to commence a movement
-};
-#endif
+concept TMC2130Policy = TMC2130InterfacePolicy<Policy>;
 
 class TMC2130 {
   public:
-    enum class WriteFlag { READ = 0x00, WRITE = 0x80 };
-
     // FUNCTIONS TO SET INDIVIDUAL REGISTERS
 
     /**
@@ -213,9 +191,9 @@ class TMC2130 {
     template <TMC2130Register Reg, TMC2130Policy Policy>
     auto set_register(Policy& policy, Reg& reg) -> bool {
         static_assert(Reg::writable);
-        auto serialized = *reinterpret_cast<RegisterSerializedType*>(&reg);
-        serialized &= ((RegisterSerializedType)1 << Reg::bitlen) - 1;
-        return policy.write_register(reg.address, serialized);
+        auto value = *reinterpret_cast<RegisterSerializedType*>(&reg);
+        value &= ((RegisterSerializedType)1 << Reg::bitlen) - 1;
+        return _spi.write(Reg::address, value, policy);
     }
     /**
      * @brief Read a register on the TMC2130
@@ -230,7 +208,7 @@ class TMC2130 {
     auto read_register(Policy& policy) -> std::optional<Reg> {
         using RT = std::optional<Reg>;
         static_assert(Reg::readable);
-        auto ret = policy.read_register(Reg::address);
+        auto ret = _spi.read(Reg::address, policy);
         if (!ret.has_value()) {
             return RT();
         }
@@ -238,5 +216,6 @@ class TMC2130 {
     }
 
     TMC2130RegisterMap _registers = {};
+    TMC2130Interface _spi = {};
 };
 }  // namespace tmc2130
