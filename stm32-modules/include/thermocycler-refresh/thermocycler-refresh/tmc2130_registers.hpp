@@ -93,9 +93,9 @@ struct GStatus {
     static constexpr bool writable = false;
     static constexpr uint64_t bitlen = 3;
 
-    uint8_t reset : 1 = 0;
-    uint8_t driver_error : 1 = 0;
     uint8_t undervoltage_error : 1 = 0;
+    uint8_t driver_error : 1 = 0;
+    uint8_t reset : 1 = 0;
 } __attribute__((packed));
 
 /**

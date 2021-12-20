@@ -55,6 +55,18 @@ class TMC2130 {
     }
 
     /**
+     * @brief Get the general status register
+     */
+    template <TMC2130Policy Policy>
+    [[nodiscard]] auto get_gstatus(Policy& policy) -> GStatus { 
+        auto ret = read_register<GStatus>(policy);
+        if(ret.has_value()) {
+            return ret.value();
+        }
+        return GStatus { .driver_error = 1 };
+    }
+
+    /**
      * @brief Update IHOLDIRUN register
      * @param reg New configuration register to set
      * @param policy Instance of abstraction policy to use

@@ -5,6 +5,17 @@
 #include "test/test_tmc2130_policy.hpp"
 #include "thermocycler-refresh/tmc2130.hpp"
 
+SCENARIO("tmc2130 register structures are defined correctly") {
+    REQUIRE(sizeof(tmc2130::GConfig) <= sizeof(uint32_t));
+    REQUIRE(sizeof(tmc2130::GStatus) <= sizeof(uint32_t));
+    REQUIRE(sizeof(tmc2130::CurrentControl) <= sizeof(uint32_t));
+    REQUIRE(sizeof(tmc2130::PowerDownDelay) <= sizeof(uint32_t));
+    REQUIRE(sizeof(tmc2130::TCoolThreshold) <= sizeof(uint32_t));
+    REQUIRE(sizeof(tmc2130::THigh) <= sizeof(uint32_t));
+    REQUIRE(sizeof(tmc2130::ChopConfig) <= sizeof(uint32_t));
+    REQUIRE(sizeof(tmc2130::CoolConfig) <= sizeof(uint32_t));
+}
+
 SCENARIO("tmc2130 interface class API works") {
     GIVEN("a tmc2130 interface and a blank register map") {
         tmc2130::TMC2130Interface spi;
@@ -81,7 +92,7 @@ SCENARIO("tmc2130 register API works") {
                 REQUIRE(reg_val.value() == expected);
             }
             AND_WHEN("reading back the register") {
-                auto readback = tmc.get_gconf();
+                auto readback = tmc.get_gconf(policy);
                 REQUIRE(readback.i_scale_analog == 1);
                 REQUIRE(readback.diag0_error == 1);
                 REQUIRE(readback.direct_mode == 1);
@@ -91,7 +102,7 @@ SCENARIO("tmc2130 register API works") {
                     readback.en_pwm_mode = 1;
                     REQUIRE(tmc.set_gconf(readback, policy));
                     THEN("the updated value should be reflected") {
-                        gconf = tmc.get_gconf();
+                        gconf = tmc.get_gconf(policy);
                         REQUIRE(gconf.en_pwm_mode == 1);
                         REQUIRE(readback.i_scale_analog == 1);
                         REQUIRE(readback.diag0_error == 1);
