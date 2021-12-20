@@ -84,7 +84,7 @@ class TMC2130 {
         return true;
     }
 
-    // FUNCTIONS TO SET/GET INDIVIDUAL REGISTERS
+    // FUNCTIONS TO SET INDIVIDUAL REGISTERS
 
     /**
      * @brief Update GCONF register
@@ -94,39 +94,13 @@ class TMC2130 {
      */
     template <TMC2130Policy Policy>
     auto set_gconf(GConfig reg, Policy& policy) -> bool {
-        // Assert that bits that MUST be 0 are actually 0
-        if ((reg.enc_commutation != 0) || (reg.test_mode != 0)) {
-            return false;
-        }
+        reg.enc_commutation = 0;
+        reg.test_mode = 0;
         if (set_register(policy, reg)) {
             _registers.gconfig = reg;
             return true;
         }
         return false;
-    }
-    /**
-     * @brief Get the current GCONF register status. This register can
-     * be read, so this function gets it from the actual device.
-     */
-    template <TMC2130Policy Policy>
-    [[nodiscard]] auto get_gconf(Policy& policy) -> GConfig {
-        auto ret = read_register<GConfig>(policy);
-        if (ret.has_value()) {
-            _registers.gconfig = ret.value();
-        }
-        return _registers.gconfig;
-    }
-
-    /**
-     * @brief Get the general status register
-     */
-    template <TMC2130Policy Policy>
-    [[nodiscard]] auto get_gstatus(Policy& policy) -> GStatus {
-        auto ret = read_register<GStatus>(policy);
-        if (ret.has_value()) {
-            return ret.value();
-        }
-        return GStatus{.driver_error = 1};
     }
 
     /**
@@ -137,23 +111,14 @@ class TMC2130 {
      */
     template <TMC2130Policy Policy>
     auto set_current_control(CurrentControl reg, Policy& policy) -> bool {
-        // Assert that bits that MUST be 0 are actually 0
-        if ((reg.bit_padding_1 != 0) || (reg.bit_padding_2 != 0)) {
-            return false;
-        }
+        reg.bit_padding_1 = 0;
+        reg.bit_padding_2 = 0;
         if (set_register(policy, reg)) {
             _registers.ihold_irun = reg;
             return true;
         }
         return false;
     }
-    /**
-     * @brief Get the current IHOLDIRUN register status
-     */
-    [[nodiscard]] auto get_current_control() const -> CurrentControl {
-        return _registers.ihold_irun;
-    }
-
     /**
      * @brief Update TPOWERDOWN register
      * @param reg New configuration register to set
@@ -169,12 +134,6 @@ class TMC2130 {
             return true;
         }
         return false;
-    }
-    /**
-     * @brief Get current power down delay in \b seconds
-     */
-    [[nodiscard]] auto get_power_down_delay() const -> double {
-        return PowerDownDelay::reg_to_seconds(_registers.tpowerdown.time);
     }
 
     /**
@@ -192,13 +151,6 @@ class TMC2130 {
         return false;
     }
     /**
-     * @brief Get the current TCOOLTHRSH register status
-     */
-    [[nodiscard]] auto get_cool_threshold() const -> TCoolThreshold {
-        return _registers.tcoolthrs;
-    }
-
-    /**
      * @brief Update THIGH register
      * @param reg New configuration register to set
      * @param policy Instance of abstraction policy to use
@@ -212,10 +164,6 @@ class TMC2130 {
         }
         return false;
     }
-    /**
-     * @brief Get the current THIGH register status
-     */
-    [[nodiscard]] auto get_thigh() const -> THigh { return _registers.thigh; }
 
     /**
      * @brief Update CHOPCONF register
@@ -230,12 +178,6 @@ class TMC2130 {
             return true;
         }
         return false;
-    }
-    /**
-     * @brief Get the current CHOPCONF register status
-     */
-    [[nodiscard]] auto get_chop_config() const -> ChopConfig {
-        return _registers.chopconf;
     }
 
     /**
@@ -257,11 +199,48 @@ class TMC2130 {
         }
         return false;
     }
+
     /**
-     * @brief Get the current COOLCONF register status
+     * @brief Get the current GCONF register status. This register can
+     * be read, so this function gets it from the actual device.
      */
-    [[nodiscard]] auto get_cool_config() const -> CoolConfig {
-        return _registers.coolconf;
+    template <TMC2130Policy Policy>
+    [[nodiscard]] auto get_gconf(Policy& policy) -> std::optional<GConfig> {
+        auto ret = read_register<GConfig>(policy);
+        if (ret.has_value()) {
+            _registers.gconfig = ret.value();
+        }
+        return ret;
+    }
+    /**
+     * @brief Get the general status register
+     */
+    template <TMC2130Policy Policy>
+    [[nodiscard]] auto get_gstatus(Policy& policy) -> GStatus {
+        auto ret = read_register<GStatus>(policy);
+        if (ret.has_value()) {
+            return ret.value();
+        }
+        return GStatus{.driver_error = 1};
+    }
+    /**
+     * @brief Get the current CHOPCONF register status. This register can
+     * be read, so this function gets it from the actual device.
+     */
+    template <TMC2130Policy Policy>
+    [[nodiscard]] auto get_chop_config(Policy& policy)
+        -> std::optional<ChopConfig> {
+        auto ret = read_register<ChopConfig>(policy);
+        if (ret.has_value()) {
+            _registers.chopconf = ret.value();
+        }
+        return ret;
+    }
+    /**
+     * @brief Get the register map
+     */
+    [[nodiscard]] auto get_register_map() -> TMC2130RegisterMap& {
+        return _registers;
     }
 
   private:
@@ -277,13 +256,13 @@ class TMC2130 {
      * assertion.
      */
     template <TMC2130Register Reg, TMC2130Policy Policy>
+    requires WritableRegister<Reg>
     auto set_register(Policy& policy, Reg reg) -> bool {
-        static_assert(Reg::writable);
         // Ignore the typical linter warning because we're only using
         // this on __packed structures that mimic hardware registers
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         auto value = *reinterpret_cast<RegisterSerializedTypeA*>(&reg);
-        value &= (static_cast<RegisterSerializedType>(1) << Reg::bitlen) - 1;
+        value &= Reg::value_mask;
         return _spi.write(Reg::address, value, policy);
     }
     /**
@@ -296,10 +275,9 @@ class TMC2130 {
      * can't be read.
      */
     template <TMC2130Register Reg, TMC2130Policy Policy>
+    requires ReadableRegister<Reg>
     auto read_register(Policy& policy) -> std::optional<Reg> {
         using RT = std::optional<Reg>;
-        // using RegA = __attribute__((__may_alias__)) Reg;
-        static_assert(Reg::readable);
         auto ret = _spi.read(Reg::address, policy);
         if (!ret.has_value()) {
             return RT();

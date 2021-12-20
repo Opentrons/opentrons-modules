@@ -13,7 +13,7 @@ namespace tmc2130 {
 
 // Register mapping
 
-enum class Registers: uint8_t {
+enum class Registers : uint8_t {
     GCONF = 0x00,
     GSTAT = 0x01,
     IOIN = 0x04,
@@ -52,20 +52,26 @@ template <typename Reg>
 concept TMC2130Register = requires(Reg& r, uint64_t value) {
     // Struct has a valid register address
     std::same_as<decltype(Reg::address), Registers&>;
-    // Struct has a bool saying whether it can be read
-    std::same_as<decltype(Reg::readable), bool>;
-    // Struct has a bool saying whether it can be written
-    std::same_as<decltype(Reg::writable), bool>;
     // Struct has an integer with the total number of bits in a register.
     // This is used to mask the 64-bit value before writing to the IC.
-    std::integral<decltype(Reg::bitlen)>;
+    std::integral<decltype(Reg::value_mask)>;
+};
+
+template <typename Reg>
+concept WritableRegister = requires() {
+    {Reg::writable};
+};
+
+template <typename Reg>
+concept ReadableRegister = requires() {
+    {Reg::readable};
 };
 
 struct __attribute__((packed, __may_alias__)) GConfig {
     static constexpr Registers address = Registers::GCONF;
     static constexpr bool readable = true;
     static constexpr bool writable = true;
-    static constexpr uint64_t bitlen = 17;
+    static constexpr uint32_t value_mask = (1 << 17) - 1;
 
     uint8_t i_scale_analog : 1 = 0;
     uint8_t internal_rsense : 1 = 0;
@@ -90,8 +96,7 @@ struct __attribute__((packed, __may_alias__)) GConfig {
 struct __attribute__((packed, __may_alias__)) GStatus {
     static constexpr Registers address = Registers::GSTAT;
     static constexpr bool readable = true;
-    static constexpr bool writable = false;
-    static constexpr uint64_t bitlen = 3;
+    static constexpr uint32_t value_mask = (1 << 3) - 1;
 
     uint8_t undervoltage_error : 1 = 0;
     uint8_t driver_error : 1 = 0;
@@ -103,9 +108,8 @@ struct __attribute__((packed, __may_alias__)) GStatus {
  */
 struct __attribute__((packed, __may_alias__)) CurrentControl {
     static constexpr Registers address = Registers::IHOLD_IRUN;
-    static constexpr bool readable = false;
     static constexpr bool writable = true;
-    static constexpr uint64_t bitlen = 20;
+    static constexpr uint32_t value_mask = (1 << 20) - 1;
 
     // Arbitrary scale from 0-31
     uint8_t hold_current : 5 = 0;
@@ -123,9 +127,8 @@ struct __attribute__((packed, __may_alias__)) CurrentControl {
  */
 struct __attribute__((packed, __may_alias__)) PowerDownDelay {
     static constexpr Registers address = Registers::TPOWERDOWN;
-    static constexpr bool readable = false;
     static constexpr bool writable = true;
-    static constexpr uint64_t bitlen = 8;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
 
     static constexpr double max_time = 4.0F;
     static constexpr uint64_t max_val = 0xFF;
@@ -151,9 +154,8 @@ struct __attribute__((packed, __may_alias__)) PowerDownDelay {
  */
 struct __attribute__((packed, __may_alias__)) TCoolThreshold {
     static constexpr Registers address = Registers::TCOOLTHRS;
-    static constexpr bool readable = false;
     static constexpr bool writable = true;
-    static constexpr uint64_t bitlen = 20;
+    static constexpr uint32_t value_mask = (1 << 20) - 1;
 
     uint32_t threshold : 20 = 0;
 };
@@ -165,9 +167,8 @@ struct __attribute__((packed, __may_alias__)) TCoolThreshold {
  */
 struct __attribute__((packed, __may_alias__)) THigh {
     static constexpr Registers address = Registers::THIGH;
-    static constexpr bool readable = false;
     static constexpr bool writable = true;
-    static constexpr uint64_t bitlen = 20;
+    static constexpr uint32_t value_mask = (1 << 20) - 1;
 
     uint32_t threshold : 20 = 0;
 };
@@ -178,9 +179,9 @@ struct __attribute__((packed, __may_alias__)) THigh {
  */
 struct __attribute__((packed, __may_alias__)) ChopConfig {
     static constexpr Registers address = Registers::CHOPCONF;
-    static constexpr bool readable = false;
+    static constexpr bool readable = true;
     static constexpr bool writable = true;
-    static constexpr uint64_t bitlen = 31;
+    static constexpr uint32_t value_mask = 0x7FFFFFFF;
 
     /** 0 = Driver disable
      *  1 = "use only with TBL >= 2"
@@ -291,9 +292,8 @@ struct __attribute__((packed, __may_alias__)) ChopConfig {
  */
 struct __attribute__((packed, __may_alias__)) CoolConfig {
     static constexpr Registers address = Registers::COOLCONF;
-    static constexpr bool readable = false;
     static constexpr bool writable = true;
-    static constexpr uint64_t bitlen = 25;
+    static constexpr uint32_t value_mask = (1 << 25) - 1;
 
     /**
      * Minimum SG value for smart current control & smart current enable.

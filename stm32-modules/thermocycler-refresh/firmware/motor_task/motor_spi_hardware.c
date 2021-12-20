@@ -26,8 +26,6 @@
 #define EMPTY_WRITE (0x00)
 /** Length of an entire message is 5 bytes: status byte + 4 register bytes.*/
 #define TMC_MESSAGE_SIZE (1 + 4)
-/** Default register to read from if we don't care about return.*/
-#define READ_REG_DEFAULT (0x00 | FLAG_READ)
 
 /** Port for the enable pin.*/
 #define MOTOR_SPI_ENABLE_PORT (GPIOE)
@@ -149,13 +147,7 @@ bool motor_set_output_enable(bool enable) {
 
 void SPI2_IRQHandler(void)
 {
-  /* USER CODE BEGIN SPI2_IRQn 0 */
-
-  /* USER CODE END SPI2_IRQn 0 */
   HAL_SPI_IRQHandler(&_spi.handle);
-  /* USER CODE BEGIN SPI2_IRQn 1 */
-
-  /* USER CODE END SPI2_IRQn 1 */
 }
 
 // STATIC FUNCTION IMPLEMENTATION

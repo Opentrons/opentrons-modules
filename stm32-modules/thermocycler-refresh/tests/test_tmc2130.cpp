@@ -92,7 +92,7 @@ SCENARIO("tmc2130 register API works") {
                 REQUIRE(reg_val.value() == expected);
             }
             AND_WHEN("reading back the register") {
-                auto readback = tmc.get_gconf(policy);
+                auto readback = tmc.get_gconf(policy).value();
                 REQUIRE(readback.i_scale_analog == 1);
                 REQUIRE(readback.diag0_error == 1);
                 REQUIRE(readback.direct_mode == 1);
@@ -102,7 +102,7 @@ SCENARIO("tmc2130 register API works") {
                     readback.en_pwm_mode = 1;
                     REQUIRE(tmc.set_gconf(readback, policy));
                     THEN("the updated value should be reflected") {
-                        gconf = tmc.get_gconf(policy);
+                        gconf = tmc.get_gconf(policy).value();
                         REQUIRE(gconf.en_pwm_mode == 1);
                         REQUIRE(readback.i_scale_analog == 1);
                         REQUIRE(readback.diag0_error == 1);
@@ -127,7 +127,7 @@ SCENARIO("tmc2130 register API works") {
                 REQUIRE(reg_val.value() == expected);
             }
             AND_WHEN("reading back the register") {
-                auto readback = tmc.get_current_control();
+                auto readback = tmc.get_register_map().ihold_irun;
                 THEN("the register should be the same") {
                     REQUIRE(readback.hold_current == reg.hold_current);
                     REQUIRE(readback.run_current == reg.run_current);
@@ -142,7 +142,10 @@ SCENARIO("tmc2130 register API works") {
                                         .run_current = 0x1E,
                                         .hold_current_delay = 0xF};
             auto ret = tmc.set_current_control(reg, policy);
-            THEN("an error is returned") { REQUIRE(!ret); }
+            THEN("the written value doesn't have the padding set") {
+                REQUIRE(ret);
+                REQUIRE(tmc.get_register_map().ihold_irun.bit_padding_1 == 0);
+            }
         }
         WHEN("setting PowerDownDelay to max time / 2") {
             auto settime = tmc2130::PowerDownDelay::max_time / 2.0F;
@@ -155,8 +158,7 @@ SCENARIO("tmc2130 register API works") {
                 REQUIRE(reg_val.value() == expected_reg);
             }
             THEN("reading back the time should give the right time") {
-                REQUIRE_THAT(tmc.get_power_down_delay(),
-                             Catch::Matchers::WithinAbs(settime, 0.1));
+                REQUIRE(tmc.get_register_map().tpowerdown.time == expected_reg);
             }
         }
         WHEN("setting a PowerDownDelay structure time") {
@@ -179,7 +181,7 @@ SCENARIO("tmc2130 register API works") {
                 REQUIRE(reg_val.value() == expected);
             }
             AND_WHEN("reading back the register") {
-                auto readback = tmc.get_cool_threshold();
+                auto readback = tmc.get_register_map().tcoolthrs;
                 THEN("the register should be updated") {
                     REQUIRE(readback.threshold == 0xABCDE);
                 }
@@ -196,7 +198,7 @@ SCENARIO("tmc2130 register API works") {
                 REQUIRE(reg_val.value() == expected);
             }
             AND_WHEN("reading back the register") {
-                auto readback = tmc.get_thigh();
+                auto readback = tmc.get_register_map().thigh;
                 THEN("the register should be updated") {
                     REQUIRE(readback.threshold == 0xABCDE);
                 }
@@ -229,7 +231,7 @@ SCENARIO("tmc2130 register API works") {
                 REQUIRE(reg_val.value() == expected);
             }
             AND_WHEN("reading back the register") {
-                auto readback = tmc.get_chop_config();
+                auto readback = tmc.get_chop_config(policy).value();
                 THEN("the register should be updated") {
                     REQUIRE(readback.toff == chop.toff);
                     REQUIRE(readback.hstrt == chop.hstrt);
@@ -258,7 +260,7 @@ SCENARIO("tmc2130 register API works") {
                 REQUIRE(reg_val.value() == expected);
             }
             AND_WHEN("reading back the register") {
-                auto readback = tmc.get_cool_config();
+                auto readback = tmc.get_register_map().coolconf;
                 THEN("the register should be updated") {
                     REQUIRE(readback.semin == cool.semin);
                     REQUIRE(readback.seup == cool.seup);
@@ -274,7 +276,7 @@ SCENARIO("tmc2130 register API works") {
                 ret = tmc.set_cool_config(cool, policy);
                 THEN("the writing fails and the register is left alone") {
                     REQUIRE(!ret);
-                    REQUIRE(tmc.get_cool_config().padding_1 == 0);
+                    REQUIRE(tmc.get_register_map().coolconf.padding_1 == 0);
                 }
             }
         }
@@ -295,20 +297,21 @@ SCENARIO("tmc2130 register API works") {
         WHEN("writing configuration registers") {
             tmc.write_config(policy);
             THEN("registers are modified appropriately") {
-                REQUIRE(tmc.get_gconf(policy).en_pwm_mode == 1);
-                REQUIRE(tmc.get_gconf(policy).diag0_int_pushpull == 0);
-                REQUIRE(tmc.get_current_control().hold_current == 0);
-                REQUIRE(tmc.get_current_control().run_current == 2);
-                REQUIRE(tmc.get_current_control().hold_current_delay == 7);
-                REQUIRE(tmc.get_power_down_delay() == 0.0F);
-                REQUIRE(tmc.get_cool_threshold().threshold == 0);
-                REQUIRE(tmc.get_thigh().threshold == 0xFFFFF);
-                REQUIRE(tmc.get_chop_config().toff == 5);
-                REQUIRE(tmc.get_chop_config().hstrt == 5);
-                REQUIRE(tmc.get_chop_config().hend == 3);
-                REQUIRE(tmc.get_chop_config().tbl == 2);
-                REQUIRE(tmc.get_chop_config().mres == 4);
-                REQUIRE(tmc.get_cool_config().sgt == 6);
+                REQUIRE(tmc.get_gconf(policy).value().en_pwm_mode == 1);
+                REQUIRE(tmc.get_gconf(policy).value().diag0_int_pushpull == 0);
+                REQUIRE(tmc.get_register_map().ihold_irun.hold_current == 0);
+                REQUIRE(tmc.get_register_map().ihold_irun.run_current == 2);
+                REQUIRE(tmc.get_register_map().ihold_irun.hold_current_delay ==
+                        7);
+                REQUIRE(tmc.get_register_map().tpowerdown.time == 0.0F);
+                REQUIRE(tmc.get_register_map().tcoolthrs.threshold == 0);
+                REQUIRE(tmc.get_register_map().thigh.threshold == 0xFFFFF);
+                REQUIRE(tmc.get_chop_config(policy).value().toff == 5);
+                REQUIRE(tmc.get_chop_config(policy).value().hstrt == 5);
+                REQUIRE(tmc.get_chop_config(policy).value().hend == 3);
+                REQUIRE(tmc.get_chop_config(policy).value().tbl == 2);
+                REQUIRE(tmc.get_chop_config(policy).value().mres == 4);
+                REQUIRE(tmc.get_register_map().coolconf.sgt == 6);
             }
         }
         AND_WHEN("overwriting configuration registers") {
@@ -317,20 +320,21 @@ SCENARIO("tmc2130 register API works") {
                                    tmc2130::PowerDownDelay::seconds_to_reg(2)}};
             tmc.write_config(registers_2, policy);
             THEN("registers are modified appropriately") {
-                REQUIRE(tmc.get_gconf(policy).en_pwm_mode == 0);
-                REQUIRE(tmc.get_gconf(policy).diag0_int_pushpull == 0);
-                REQUIRE(tmc.get_current_control().hold_current == 0);
-                REQUIRE(tmc.get_current_control().run_current == 0);
-                REQUIRE(tmc.get_current_control().hold_current_delay == 0);
-                REQUIRE_THAT(tmc.get_power_down_delay(),
-                             Catch::Matchers::WithinAbs(2.0F, 0.1));
-                REQUIRE(tmc.get_cool_threshold().threshold == 0);
-                REQUIRE(tmc.get_thigh().threshold == 0);
-                REQUIRE(tmc.get_chop_config().toff == 0);
-                REQUIRE(tmc.get_chop_config().hstrt == 0);
-                REQUIRE(tmc.get_chop_config().hend == 0);
-                REQUIRE(tmc.get_chop_config().mres == 0);
-                REQUIRE(tmc.get_cool_config().sgt == 0);
+                REQUIRE(tmc.get_gconf(policy).value().en_pwm_mode == 0);
+                REQUIRE(tmc.get_gconf(policy).value().diag0_int_pushpull == 0);
+                REQUIRE(tmc.get_register_map().ihold_irun.hold_current == 0);
+                REQUIRE(tmc.get_register_map().ihold_irun.run_current == 0);
+                REQUIRE(tmc.get_register_map().ihold_irun.hold_current_delay ==
+                        0);
+                REQUIRE(tmc.get_register_map().tpowerdown.time ==
+                        tmc2130::PowerDownDelay::seconds_to_reg(2));
+                REQUIRE(tmc.get_register_map().tcoolthrs.threshold == 0);
+                REQUIRE(tmc.get_register_map().thigh.threshold == 0);
+                REQUIRE(tmc.get_chop_config(policy).value().toff == 0);
+                REQUIRE(tmc.get_chop_config(policy).value().hstrt == 0);
+                REQUIRE(tmc.get_chop_config(policy).value().hend == 0);
+                REQUIRE(tmc.get_chop_config(policy).value().mres == 0);
+                REQUIRE(tmc.get_register_map().coolconf.sgt == 0);
             }
         }
     }
