@@ -108,7 +108,7 @@ void motor_spi_initialize(void) {
         HAL_GPIO_Init(MOTOR_SPI_NSS_PORT, &gpio);
         spi_set_nss(false);
 
-        motor_spi_set_enable(false);
+        motor_set_output_enable(false);
     }
 }
 

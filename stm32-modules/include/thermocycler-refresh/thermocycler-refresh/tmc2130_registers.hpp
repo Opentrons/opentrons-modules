@@ -85,7 +85,7 @@ struct GConfig {
     uint8_t stop_enable : 1 = 0;
     uint8_t direct_mode : 1 = 0;
     uint8_t test_mode : 1 = 0;  // MUST be 0
-} __attribute__((packed));
+} __attribute__((packed)) __attribute__((__may_alias__));
 
 struct GStatus {
     static constexpr Registers address = Registers::GSTAT;
@@ -96,7 +96,7 @@ struct GStatus {
     uint8_t undervoltage_error : 1 = 0;
     uint8_t driver_error : 1 = 0;
     uint8_t reset : 1 = 0;
-} __attribute__((packed));
+} __attribute__((packed)) __attribute__((__may_alias__));
 
 /**
  * This register sets the control current for holding and running.
@@ -115,7 +115,7 @@ struct CurrentControl {
     uint8_t bit_padding_2 : 3 = 0;
     // Motor powers down after (hold_current_delay * (2^18)) clock cycles
     uint8_t hold_current_delay : 4 = 0;
-} __attribute__((packed));
+} __attribute__((packed)) __attribute__((__may_alias__));
 
 /**
  * This is the time to delay between ending a movement and moving to power-down
@@ -144,7 +144,7 @@ struct PowerDownDelay {
 
     uint8_t time = 0;
 
-} __attribute__((packed));
+} __attribute__((packed)) __attribute__((__may_alias__));
 
 /**
  * This is the threshold velocity for switching on smart energy coolStep
@@ -157,7 +157,7 @@ struct TCoolThreshold {
     static constexpr uint64_t bitlen = 20;
 
     uint32_t threshold : 20 = 0;
-} __attribute__((packed));
+} __attribute__((packed)) __attribute__((__may_alias__));
 
 /**
  * This is the velocity threshold at which the controller will automatically
@@ -171,7 +171,7 @@ struct THigh {
     static constexpr uint64_t bitlen = 20;
 
     uint32_t threshold : 20 = 0;
-} __attribute__((packed));
+} __attribute__((packed)) __attribute__((__may_alias__));
 
 /**
  * The CHOPCONFIG register contains a number of configuration options for the
@@ -284,7 +284,7 @@ struct ChopConfig {
      * 1 = short to gnd protection disabled
      */
     uint8_t diss2g : 1 = 0;
-} __attribute__((packed));
+} __attribute__((packed)) __attribute__((__may_alias__));
 
 /**
  * COOLCONF contains information to configure the Coolstep and Smartguard (SG)
@@ -360,7 +360,7 @@ struct CoolConfig {
      * 1 = filtered mode, SG signal updated for each 4 full steps
      */
     uint8_t sfilt : 1 = 0;
-} __attribute__((packed));
+} __attribute__((packed)) __attribute__((__may_alias__));
 
 // Encapsulates all of the registers that should be configured by software
 struct TMC2130RegisterMap {
