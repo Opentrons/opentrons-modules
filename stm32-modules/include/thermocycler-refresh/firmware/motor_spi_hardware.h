@@ -30,7 +30,7 @@ bool motor_spi_sendreceive(uint8_t *in, uint8_t *out, size_t len);
  * @param[in] enable True to enable, false to disable the TMC
  * @return True if the enable pin was set, false if it couldn't be set
  */
-bool motor_spi_set_enable(bool enable);
+bool motor_set_output_enable(bool enable);
 
 /** @brief This function handles SPI2 global interrupt. */
 void SPI2_IRQHandler(void);

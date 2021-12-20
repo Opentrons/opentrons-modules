@@ -69,11 +69,16 @@ class TestTMC2130Policy {
         iter = bit_utils::int_to_bytes(get_status(), iter, ret.end());
         iter = bit_utils::int_to_bytes(_cache, iter, ret.end());
         _cache = _registers[addr];
-        if(addr == static_cast<uint8_t>(tmc2130::Registers::GSTAT)) {
+        if (addr == static_cast<uint8_t>(tmc2130::Registers::GSTAT)) {
             // This register is cleared upon read, so clear it here
             _registers[addr] = 0x00;
         }
         return RT(ret);
+    }
+
+    auto set_enable(bool enable) -> bool {
+        _enable = enable;
+        return true;
     }
 
     // Primarily for test integration.
@@ -84,7 +89,7 @@ class TestTMC2130Policy {
         }
         return ReadRT(_registers[addr]);
     }
-    
+
     // Testing function to be able to set a fake error flag
     auto set_gstat_error() -> void {
         _registers[static_cast<uint8_t>(tmc2130::Registers::GSTAT)] |= 0x2;
@@ -96,4 +101,5 @@ class TestTMC2130Policy {
     using RegMap = std::map<uint8_t, tmc2130::RegisterSerializedType>;
     RegMap _registers;
     tmc2130::RegisterSerializedType _cache = 0;
+    bool _enable = false;
 };

@@ -139,7 +139,7 @@ bool motor_spi_sendreceive(uint8_t *in, uint8_t *out, size_t len) {
     return true;
 }
 
-bool motor_spi_set_enable(bool enable) {
+bool motor_set_output_enable(bool enable) {
     if(!_spi.initialized) { return false; }
     _spi.enabled = enable;
     HAL_GPIO_WritePin(MOTOR_SPI_ENABLE_PORT, MOTOR_SPI_ENABLE_PIN, 

@@ -17,11 +17,74 @@ namespace tmc2130 {
 
 /** Hardware abstraction policy for the TMC2130 communication.*/
 template <typename Policy>
-concept TMC2130Policy = TMC2130InterfacePolicy<Policy>;
+concept TMC2130Policy = TMC2130InterfacePolicy<Policy> && requires(Policy& p) {
+    { p.set_enable(true) } -> std::same_as<bool>;
+};
 
 class TMC2130 {
   public:
-    // FUNCTIONS TO SET INDIVIDUAL REGISTERS
+    TMC2130() = delete;
+    TMC2130(const TMC2130RegisterMap& registers)
+        : _registers(registers), _spi() {}
+
+    template <TMC2130Policy Policy>
+    auto write_config(Policy& policy) -> bool {
+        if (!set_gconf(_registers.gconfig, policy)) {
+            return false;
+        }
+        if (!set_current_control(_registers.ihold_irun, policy)) {
+            return false;
+        }
+        if (!set_power_down_delay(
+                PowerDownDelay::reg_to_seconds(_registers.tpowerdown.time),
+                policy)) {
+            return false;
+        }
+        if (!set_cool_threshold(_registers.tcoolthrs, policy)) {
+            return false;
+        }
+        if (!set_thigh(_registers.thigh, policy)) {
+            return false;
+        }
+        if (!set_chop_config(_registers.chopconf, policy)) {
+            return false;
+        }
+        if (!set_cool_config(_registers.coolconf, policy)) {
+            return false;
+        }
+        return true;
+    }
+
+    template <TMC2130Policy Policy>
+    auto write_config(const TMC2130RegisterMap& registers, Policy& policy)
+        -> bool {
+        if (!set_gconf(registers.gconfig, policy)) {
+            return false;
+        }
+        if (!set_current_control(registers.ihold_irun, policy)) {
+            return false;
+        }
+        if (!set_power_down_delay(
+                PowerDownDelay::reg_to_seconds(registers.tpowerdown.time),
+                policy)) {
+            return false;
+        }
+        if (!set_cool_threshold(registers.tcoolthrs, policy)) {
+            return false;
+        }
+        if (!set_thigh(registers.thigh, policy)) {
+            return false;
+        }
+        if (!set_chop_config(registers.chopconf, policy)) {
+            return false;
+        }
+        if (!set_cool_config(registers.coolconf, policy)) {
+            return false;
+        }
+        return true;
+    }
+
+    // FUNCTIONS TO SET/GET INDIVIDUAL REGISTERS
 
     /**
      * @brief Update GCONF register
@@ -46,9 +109,9 @@ class TMC2130 {
      * be read, so this function gets it from the actual device.
      */
     template <TMC2130Policy Policy>
-    auto get_gconf(Policy& policy) -> GConfig { 
+    [[nodiscard]] auto get_gconf(Policy& policy) -> GConfig {
         auto ret = read_register<GConfig>(policy);
-        if(ret.has_value()) {
+        if (ret.has_value()) {
             _registers.gconfig = ret.value();
         }
         return _registers.gconfig;
@@ -58,12 +121,12 @@ class TMC2130 {
      * @brief Get the general status register
      */
     template <TMC2130Policy Policy>
-    [[nodiscard]] auto get_gstatus(Policy& policy) -> GStatus { 
+    [[nodiscard]] auto get_gstatus(Policy& policy) -> GStatus {
         auto ret = read_register<GStatus>(policy);
-        if(ret.has_value()) {
+        if (ret.has_value()) {
             return ret.value();
         }
-        return GStatus { .driver_error = 1 };
+        return GStatus{.driver_error = 1};
     }
 
     /**
@@ -87,7 +150,7 @@ class TMC2130 {
     /**
      * @brief Get the current IHOLDIRUN register status
      */
-    auto get_current_control() -> CurrentControl {
+    [[nodiscard]] auto get_current_control() const -> CurrentControl {
         return _registers.ihold_irun;
     }
 
@@ -99,20 +162,19 @@ class TMC2130 {
      */
     template <TMC2130Policy Policy>
     auto set_power_down_delay(double time, Policy& policy) -> bool {
-        PowerDownDelay temp_reg;
-        if (temp_reg.set_time(time)) {
-            if (set_register(policy, temp_reg)) {
-                _registers.tpowerdown = temp_reg;
-                return true;
-            }
+        PowerDownDelay temp_reg = {.time =
+                                       PowerDownDelay::seconds_to_reg(time)};
+        if (set_register(policy, temp_reg)) {
+            _registers.tpowerdown = temp_reg;
+            return true;
         }
         return false;
     }
     /**
      * @brief Get current power down delay in \b seconds
      */
-    auto get_power_down_delay() -> double {
-        return _registers.tpowerdown.seconds();
+    [[nodiscard]] auto get_power_down_delay() const -> double {
+        return PowerDownDelay::reg_to_seconds(_registers.tpowerdown.time);
     }
 
     /**
@@ -132,7 +194,9 @@ class TMC2130 {
     /**
      * @brief Get the current TCOOLTHRSH register status
      */
-    auto get_cool_threshold() -> TCoolThreshold { return _registers.tcoolthrs; }
+    [[nodiscard]] auto get_cool_threshold() const -> TCoolThreshold {
+        return _registers.tcoolthrs;
+    }
 
     /**
      * @brief Update THIGH register
@@ -151,7 +215,7 @@ class TMC2130 {
     /**
      * @brief Get the current THIGH register status
      */
-    auto get_thigh() -> THigh { return _registers.thigh; }
+    [[nodiscard]] auto get_thigh() const -> THigh { return _registers.thigh; }
 
     /**
      * @brief Update CHOPCONF register
@@ -170,7 +234,9 @@ class TMC2130 {
     /**
      * @brief Get the current CHOPCONF register status
      */
-    auto get_chop_config() -> ChopConfig { return _registers.chopconf; }
+    [[nodiscard]] auto get_chop_config() const -> ChopConfig {
+        return _registers.chopconf;
+    }
 
     /**
      * @brief Update COOLCONF register
@@ -194,7 +260,9 @@ class TMC2130 {
     /**
      * @brief Get the current COOLCONF register status
      */
-    auto get_cool_config() -> CoolConfig { return _registers.coolconf; }
+    [[nodiscard]] auto get_cool_config() const -> CoolConfig {
+        return _registers.coolconf;
+    }
 
   private:
     /**
@@ -209,8 +277,11 @@ class TMC2130 {
      * assertion.
      */
     template <TMC2130Register Reg, TMC2130Policy Policy>
-    auto set_register(Policy& policy, Reg& reg) -> bool {
+    auto set_register(Policy& policy, Reg reg) -> bool {
         static_assert(Reg::writable);
+        // Ignore the typical linter warning because we're only using
+        // this on __packed structures that mimic hardware registers
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         auto value = *reinterpret_cast<RegisterSerializedType*>(&reg);
         value &= ((RegisterSerializedType)1 << Reg::bitlen) - 1;
         return _spi.write(Reg::address, value, policy);
@@ -232,6 +303,9 @@ class TMC2130 {
         if (!ret.has_value()) {
             return RT();
         }
+        // Ignore the typical linter warning because we're only using
+        // this on __packed structures that mimic hardware registers
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         return RT(*reinterpret_cast<Reg*>(&ret.value()));
     }
 

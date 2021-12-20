@@ -1,7 +1,7 @@
 /**
  * @file tmc2130_interface.hpp
  * @brief Provides a templatized SPI interface to talk to the TMC2130
- * 
+ *
  */
 #pragma once
 
@@ -11,8 +11,10 @@
 
 namespace tmc2130 {
 
+static constexpr size_t MESSAGE_LEN = 5;
+
 // The type of a single TMC2130 message.
-using MessageT = std::array<uint8_t, 5>;
+using MessageT = std::array<uint8_t, MESSAGE_LEN>;
 
 // Flag for whether this is a read or write
 enum class WriteFlag { READ = 0x00, WRITE = 0x80 };
@@ -39,11 +41,12 @@ class TMC2130Interface {
      * @return An array with the contents of the message, or nothing if
      * there was an error
      */
-    auto build_message(Registers addr, WriteFlag mode,
-                       RegisterSerializedType val) -> std::optional<MessageT> {
+    static auto build_message(Registers addr, WriteFlag mode,
+                              RegisterSerializedType val)
+        -> std::optional<MessageT> {
         using RT = std::optional<MessageT>;
         MessageT buffer = {0};
-        auto iter = buffer.begin();
+        auto* iter = buffer.begin();
         auto addr_byte = static_cast<uint8_t>(addr);
         addr_byte |= static_cast<uint8_t>(mode);
         iter = bit_utils::int_to_bytes(addr_byte, iter, buffer.end());
@@ -98,10 +101,10 @@ class TMC2130Interface {
         if (!ret.has_value()) {
             return RT();
         }
-        auto iter = ret.value().begin();
+        auto* iter = ret.value().begin();
         std::advance(iter, 1);
 
-        RegisterSerializedType retval;
+        RegisterSerializedType retval = 0;
         iter = bit_utils::bytes_to_int(iter, ret.value().end(), retval);
         return RT(retval);
     }

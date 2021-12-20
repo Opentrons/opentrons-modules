@@ -130,17 +130,16 @@ struct PowerDownDelay {
     static constexpr double max_time = 4.0F;
     static constexpr uint64_t max_val = 0xFF;
 
-    auto seconds() -> double {
-        return (static_cast<double>(time) / static_cast<double>(max_val)) *
+    [[nodiscard]] static auto reg_to_seconds(uint8_t reg) -> double {
+        return (static_cast<double>(reg) / static_cast<double>(max_val)) *
                max_time;
     }
-    auto set_time(double seconds) -> bool {
+    static auto seconds_to_reg(double seconds) -> uint8_t {
         if (seconds > max_time) {
-            return false;
+            return max_val;
         }
-        time = static_cast<uint8_t>((seconds / max_time) *
+        return static_cast<uint8_t>((seconds / max_time) *
                                     static_cast<double>(max_val));
-        return true;
     }
 
     uint8_t time = 0;
