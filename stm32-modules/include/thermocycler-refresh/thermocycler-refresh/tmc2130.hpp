@@ -42,9 +42,17 @@ class TMC2130 {
         return false;
     }
     /**
-     * @brief Get the current GCONF register status
+     * @brief Get the current GCONF register status. This register can
+     * be read, so this function gets it from the actual device.
      */
-    auto get_gconf() -> GConfig { return _registers.gconfig; }
+    template <TMC2130Policy Policy>
+    auto get_gconf(Policy& policy) -> GConfig { 
+        auto ret = read_register<GConfig>(policy);
+        if(ret.has_value()) {
+            _registers.gconfig = ret.value();
+        }
+        return _registers.gconfig;
+    }
 
     /**
      * @brief Update IHOLDIRUN register

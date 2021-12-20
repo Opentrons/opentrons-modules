@@ -7,6 +7,8 @@
 // HAL includes
 #include "stm32g4xx_hal_dma.h" // Required to link to hal_spi
 #include "stm32g4xx_hal_spi.h"
+#include "stm32g4xx_hal_gpio.h"
+#include "stm32g4xx_hal_rcc.h"
 // FreeRTOS includes
 #include "FreeRTOS.h"
 #include "semphr.h"
@@ -25,6 +27,11 @@
 /** Default register to read from if we don't care about return.*/
 #define READ_REG_DEFAULT (0x00 | FLAG_READ)
 
+/** Port for the enable pin.*/
+#define MOTOR_SPI_ENABLE_PORT (GPIOE)
+/** Pin for enable pin.*/
+#define MOTOR_SPI_ENABLE_PIN (GPIO_PIN_15)
+
 /** Get a single byte out of a 64 bit value. Higher values are
  *  more significant (0 = LSB, 3 = MSB)*/
 #define GET_BYTE(val, byte) ((uint8_t)((val >> (byte * 8)) & 0xFF))
@@ -35,6 +42,7 @@
 struct motor_spi_hardware {
     SPI_HandleTypeDef handle;
     TaskHandle_t task_to_notify;
+    bool enabled;
     bool initialized;
 };
 
@@ -42,6 +50,7 @@ struct motor_spi_hardware {
 static struct motor_spi_hardware _spi = {
     .handle = {0},
     .task_to_notify =  NULL,
+    .enabled = false,
     .initialized = false
 };
 
@@ -60,7 +69,7 @@ void motor_spi_initialize(void) {
         _spi.handle.Init.CLKPolarity = SPI_POLARITY_HIGH;
         _spi.handle.Init.CLKPhase = SPI_PHASE_2EDGE;
         _spi.handle.Init.NSS = SPI_NSS_HARD_OUTPUT;
-        _spi.handle.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+        _spi.handle.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
         _spi.handle.Init.FirstBit = SPI_FIRSTBIT_MSB;
         _spi.handle.Init.TIMode = SPI_TIMODE_DISABLE;
         _spi.handle.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -69,7 +78,18 @@ void motor_spi_initialize(void) {
         _spi.handle.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
         ret = HAL_SPI_Init(&_spi.handle);
         configASSERT(ret == HAL_OK);
+
+        // Initialize the GPIO
+        __HAL_RCC_GPIOE_CLK_ENABLE();
+        GPIO_InitTypeDef gpio = {0};
+        gpio.Pin = MOTOR_SPI_ENABLE_PIN;
+        gpio.Mode = GPIO_MODE_OUTPUT_PP;
+        gpio.Pull = GPIO_NOPULL;
+        gpio.Speed = GPIO_SPEED_LOW;
+        HAL_GPIO_Init(MOTOR_SPI_ENABLE_PORT, &gpio);
         _spi.initialized = true;
+
+        motor_spi_set_enable(false);
     }
 }
 
@@ -93,6 +113,14 @@ bool motor_spi_sendreceive(uint8_t *in, uint8_t *out, size_t len) {
         _spi.task_to_notify = NULL;
         return false;
     }
+    return true;
+}
+
+bool motor_spi_set_enable(bool enable) {
+    if(!_spi.initialized) { return false; }
+    _spi.enabled = enable;
+    HAL_GPIO_WritePin(MOTOR_SPI_ENABLE_PORT, MOTOR_SPI_ENABLE_PIN, 
+        (enable) ? GPIO_PIN_RESET : GPIO_PIN_SET);
     return true;
 }
 

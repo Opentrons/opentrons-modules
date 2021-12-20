@@ -1,3 +1,8 @@
+/**
+ * @file tmc2130_interface.hpp
+ * @brief Provides a templatized SPI interface to talk to the TMC2130
+ * 
+ */
 #pragma once
 
 #include <optional>

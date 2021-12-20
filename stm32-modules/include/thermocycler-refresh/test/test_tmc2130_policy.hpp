@@ -69,16 +69,25 @@ class TestTMC2130Policy {
         iter = bit_utils::int_to_bytes(get_status(), iter, ret.end());
         iter = bit_utils::int_to_bytes(_cache, iter, ret.end());
         _cache = _registers[addr];
+        if(addr == static_cast<uint8_t>(tmc2130::Registers::GSTAT)) {
+            // This register is cleared upon read, so clear it here
+            _registers[addr] = 0x00;
+        }
         return RT(ret);
     }
 
-    /** Primarily for test integration.*/
+    // Primarily for test integration.
     auto read_register(tmc2130::Registers reg) -> ReadRT {
         auto addr = static_cast<uint8_t>(reg);
         if (_registers.count(addr) == 0) {
             return ReadRT(0);
         }
         return ReadRT(_registers[addr]);
+    }
+    
+    // Testing function to be able to set a fake error flag
+    auto set_gstat_error() -> void {
+        _registers[static_cast<uint8_t>(tmc2130::Registers::GSTAT)] |= 0x2;
     }
 
   private:
