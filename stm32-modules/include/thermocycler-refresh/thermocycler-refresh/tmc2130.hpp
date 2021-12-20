@@ -282,8 +282,8 @@ class TMC2130 {
         // Ignore the typical linter warning because we're only using
         // this on __packed structures that mimic hardware registers
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-        auto value = *reinterpret_cast<RegisterSerializedType*>(&reg);
-        value &= ((RegisterSerializedType)1 << Reg::bitlen) - 1;
+        auto value = *reinterpret_cast<RegisterSerializedTypeA*>(&reg);
+        value &= (static_cast<RegisterSerializedType>(1) << Reg::bitlen) - 1;
         return _spi.write(Reg::address, value, policy);
     }
     /**
@@ -298,6 +298,7 @@ class TMC2130 {
     template <TMC2130Register Reg, TMC2130Policy Policy>
     auto read_register(Policy& policy) -> std::optional<Reg> {
         using RT = std::optional<Reg>;
+        // using RegA = __attribute__((__may_alias__)) Reg;
         static_assert(Reg::readable);
         auto ret = _spi.read(Reg::address, policy);
         if (!ret.has_value()) {
