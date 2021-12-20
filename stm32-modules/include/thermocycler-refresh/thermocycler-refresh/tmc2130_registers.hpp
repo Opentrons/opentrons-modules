@@ -13,7 +13,7 @@ namespace tmc2130 {
 
 // Register mapping
 
-enum class Registers {
+enum class Registers: uint8_t {
     GCONF = 0x00,
     GSTAT = 0x01,
     IOIN = 0x04,
