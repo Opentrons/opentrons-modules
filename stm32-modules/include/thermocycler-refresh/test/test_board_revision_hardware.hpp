@@ -5,8 +5,10 @@
 #pragma once
 
 #include <array>
+
 #include "thermocycler-refresh/board_revision.hpp"
 
 namespace board_revision {
-auto set_pin_values(const std::array<TrinaryInput_t, BOARD_REV_PIN_COUNT> inputs) -> void;
+auto set_pin_values(
+    const std::array<TrinaryInput_t, BOARD_REV_PIN_COUNT> inputs) -> void;
 }

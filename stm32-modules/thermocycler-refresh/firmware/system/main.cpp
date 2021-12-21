@@ -18,7 +18,8 @@ auto main() -> int {
     HardwareInit();
     // Read the board revision here to make sure it's cached for the rest
     // of program execution
-    static_cast<void>(board_revision::BoardRevisionIface::get());
+    auto revision = board_revision::BoardRevisionIface::get();
+    configASSERT(revision != board_revision::BoardRevision::BOARD_REV_INVALID);
 
     auto system = system_control_task::start();
     auto comms = host_comms_control_task::start();
