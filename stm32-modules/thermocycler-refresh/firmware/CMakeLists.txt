@@ -35,7 +35,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/stm32g4xx_hal_timebase_tim.c
   ${SYSTEM_DIR}/stm32g4xx_hal_msp.c
   ${SYSTEM_DIR}/system_serial_number.c
-  ${SYSTEM_DIR}/board_revision.c
+  ${SYSTEM_DIR}/board_revision_hardware.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
   ${COMMS_DIR}/usb_hardware.c

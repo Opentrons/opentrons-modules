@@ -10,7 +10,6 @@
 #include "core/version.hpp"
 #include "hal/message_queue.hpp"
 #include "systemwide.h"
-#include "thermocycler-refresh/board_revision.h"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 
@@ -50,8 +49,7 @@ class SystemTask {
         : message_queue(q),
           task_registry(nullptr),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          prep_cache(),
-          board_revision(board_revision_get()) {}
+          prep_cache() {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
     SystemTask(SystemTask&& other) noexcept = delete;
@@ -167,7 +165,6 @@ class SystemTask {
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
     BootloaderPrepAckCache prep_cache;
-    BoardRevision board_revision;
 };
 
 };  // namespace system_task
