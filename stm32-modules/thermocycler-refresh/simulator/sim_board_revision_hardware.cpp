@@ -2,7 +2,7 @@
  * @file sim_board_revision_hardware.c
  * @brief Provides an implementation of the board_revision_get function
  * for Simulator targets
- * 
+ *
  */
 
 #include "thermocycler-refresh/board_revision_hardware.h"
