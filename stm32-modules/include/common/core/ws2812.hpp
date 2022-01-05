@@ -35,7 +35,7 @@ namespace ws2812 {
  * integer type
  */
 template <typename Policy, typename BufferT>
-concept WS2812Policy = requires(Policy& p, BufferT b) {
+concept WS2812Policy = requires(Policy& p, BufferT& b) {
     // Function to start sending a buffer. Accepts a buffer b
     { p.start_send(b) } -> std::same_as<bool>;
     // Function to end the data transmission. Cannot fail.

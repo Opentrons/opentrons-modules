@@ -8,6 +8,7 @@
 
 #include "core/ack_cache.hpp"
 #include "core/version.hpp"
+#include "core/ws2812.hpp"
 #include "hal/message_queue.hpp"
 #include "systemwide.h"
 #include "thermocycler-refresh/messages.hpp"
@@ -20,6 +21,11 @@ struct Tasks;
 
 namespace system_task {
 
+typedef uint16_t PWM_T;
+static constexpr size_t LED_COUNT = 16;
+static constexpr size_t LED_BUFFER_COUNT = 24 * 2;
+typedef std::array<PWM_T, LED_BUFFER_COUNT> PWM_BUFFER_T;
+
 template <typename Policy>
 concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.enter_bootloader()};
@@ -30,7 +36,8 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {
         p.get_serial_number()
         } -> std::same_as<std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>>;
-};
+}
+&&ws2812::WS2812Policy<Policy, PWM_BUFFER_T>;
 
 using Message = messages::SystemMessage;
 
@@ -46,18 +53,19 @@ class SystemTask {
   public:
     using Queue = QueueImpl<Message>;
     explicit SystemTask(Queue& q)
-        : message_queue(q),
-          task_registry(nullptr),
+        : _message_queue(q),
+          _task_registry(nullptr),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          prep_cache() {}
+          _prep_cache(),
+          _leds() {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
     SystemTask(SystemTask&& other) noexcept = delete;
     auto operator=(SystemTask&& other) noexcept -> SystemTask& = delete;
     ~SystemTask() = default;
-    auto get_message_queue() -> Queue& { return message_queue; }
+    auto get_message_queue() -> Queue& { return _message_queue; }
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
-        task_registry = other_tasks;
+        _task_registry = other_tasks;
     }
 
     template <typename Policy>
@@ -65,7 +73,9 @@ class SystemTask {
     auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
 
-        message_queue.recv(&message);
+        _leds.set_all(ws2812::WS2812{.g = 0xF, .r = 0xF, .b = 0 });
+        _leds.write(policy);
+        _message_queue.recv(&message);
 
         auto visit_helper = [this, &policy](auto& message) -> void {
             this->visit_message(message, policy);
@@ -84,21 +94,21 @@ class SystemTask {
         // this happens, so let's try and turn off the rest of the hardware
         // nicely just in case.
         auto disconnect_message = messages::ForceUSBDisconnectMessage{.id = 0};
-        auto disconnect_id = prep_cache.add(disconnect_message);
+        auto disconnect_id = _prep_cache.add(disconnect_message);
         disconnect_message.id = disconnect_id;
-        if (!task_registry->comms->get_message_queue().try_send(
+        if (!_task_registry->comms->get_message_queue().try_send(
                 disconnect_message, 1)) {
-            prep_cache.remove_if_present(disconnect_id);
+            _prep_cache.remove_if_present(disconnect_id);
         }
 
         auto ack_message =
             messages::AcknowledgePrevious{.responding_to_id = message.id};
-        static_cast<void>(
-            task_registry->comms->get_message_queue().try_send(ack_message, 1));
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            ack_message, 1));
 
         // Somehow we couldn't send any of the messages, maybe system deadlock?
         // Enter bootloader regardless
-        if (prep_cache.empty()) {
+        if (_prep_cache.empty()) {
             policy.enter_bootloader();
         }
     }
@@ -109,7 +119,7 @@ class SystemTask {
                        Policy& policy) -> void {
         // handle an acknowledgement for one of the prep tasks we've dispatched
         auto cache_entry =
-            prep_cache.remove_if_present(message.responding_to_id);
+            _prep_cache.remove_if_present(message.responding_to_id);
         // See if the ack has an error in it so we can forward if necessary
         auto error_result = std::visit(
             [&policy, &message](auto cache_element) -> errors::ErrorCode {
@@ -123,11 +133,11 @@ class SystemTask {
         if (error_result != errors::ErrorCode::NO_ERROR) {
             auto error_message = messages::ErrorMessage{.code = error_result};
             static_cast<void>(
-                task_registry->comms->get_message_queue().try_send(
+                _task_registry->comms->get_message_queue().try_send(
                     error_message, 1));
         }
         // No remaining setup tasks, enter bootloader
-        if (prep_cache.empty()) {
+        if (_prep_cache.empty()) {
             policy.enter_bootloader();
         }
     }
@@ -138,7 +148,7 @@ class SystemTask {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         response.with_error = policy.set_serial_number(msg.serial_number);
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
 
@@ -150,7 +160,7 @@ class SystemTask {
             .serial_number = policy.get_serial_number(),
             .fw_version = version::fw_version(),
             .hw_version = version::hw_version()};
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
 
@@ -162,9 +172,10 @@ class SystemTask {
     }
 
   private:
-    Queue& message_queue;
-    tasks::Tasks<QueueImpl>* task_registry;
-    BootloaderPrepAckCache prep_cache;
+    Queue& _message_queue;
+    tasks::Tasks<QueueImpl>* _task_registry;
+    BootloaderPrepAckCache _prep_cache;
+    ws2812::WS2812String<PWM_T, LED_COUNT> _leds;
 };
 
 };  // namespace system_task

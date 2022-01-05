@@ -14,11 +14,18 @@ class SystemPolicy {
     static constexpr uint8_t ADDRESS_LENGTH = 8;
     static constexpr uint8_t ADDRESSES =
         SYSTEM_SERIAL_NUMBER_LENGTH / ADDRESS_LENGTH;
+    static constexpr std::size_t LED_BUFFER_SIZE = 2 * 24;
 
   public:
+    using LedBuffer = std::array<uint16_t, LED_BUFFER_SIZE>;
     auto enter_bootloader() -> void;
     auto set_serial_number(
         std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number)
         -> errors::ErrorCode;
     auto get_serial_number() -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
+    // Functions for WS2812 setting
+    auto start_send(LedBuffer& buffer) -> bool;
+    auto end_send() -> void;
+    auto wait_for_interrupt(uint32_t timeout_ms) -> bool;
+    [[nodiscard]] auto get_max_pwm() -> uint16_t;
 };
