@@ -7,6 +7,9 @@
  * directly to the WS2812. The WS2812 follows a single-wire protocol at
  * 800kHz (1.25 uS) using PWM to control each bit. A 1 is represented by a
  * PWM of  56%, while a 0 is represented by a PWM of 28%.
+ * 
+ * The WS2812 also supports a 400kHz protocol (2.5 uS) wherein the PWM values
+ * become 20% and 48% for 0 and 1, respectively.
  *
  * Storing the full buffer of pixel data would use a large amount of RAM.
  * Each pixel requires 24 PWM values, and with a 16-bit PWM register the
@@ -27,6 +30,10 @@
 #include <optional>
 
 namespace ws2812 {
+
+
+// 8 bits per color, 4 colors
+static constexpr size_t SINGLE_PIXEL_BUF_SIZE = 32;
 
 /**
  * @brief Policy for writing to the WS2812 over DMA
@@ -66,10 +73,6 @@ template <typename PWM, size_t N>
 requires std::unsigned_integral<PWM>
 class WS2812String {
   public:
-    // 8 bits per color, 3 colors
-    static constexpr size_t SINGLE_PIXEL_BUF_SIZE = 8 * 3;
-    // Two pixels of data
-    static constexpr size_t DOUBLE_PIXEL_BUF_SIZE = SINGLE_PIXEL_BUF_SIZE * 2;
     // To send a logical 1, set PWM to this value
     static constexpr double PWM_ON_PERCENTAGE = 0.56;
     // To send a logical 0, set PWM to this value
@@ -81,7 +84,8 @@ class WS2812String {
     // Type of the array of pixels
     using PixelBuffer = std::array<WS2812, N>;
     // Type of the output buffer (raw register values for DMA)
-    using OutputBuffer = std::array<PWM, DOUBLE_PIXEL_BUF_SIZE>;
+    // Includes enough space for every pixel + a 0 to turn off PWM
+    using OutputBuffer = std::array<PWM, (SINGLE_PIXEL_BUF_SIZE * N) + 1>;
     // Type of an iterator on the output buffer
     using OutputBufferItr = OutputBuffer::iterator;
 
@@ -99,58 +103,21 @@ class WS2812String {
     auto write(Policy& policy) -> bool {
         // Get the max PWM value (whatever represents 100%)
         _max_pwm = policy.get_max_pwm();
-        for (auto& pwm : _pwm_buffer) {
-            pwm = PWM_STOP_VALUE;
-        }
-        // First write the first two pixels
         auto itr = _pwm_buffer.begin();
-        if (N > 0) {
-            auto ret = serialize_pixel(_pixels.at(0), itr);
-            if (!ret.has_value()) {
+        for(auto &pixel : _pixels) {
+            auto ret = serialize_pixel(pixel, itr);
+            if(!ret.has_value()) {
                 return false;
             }
-            if (N > 1) {
-                ret = serialize_pixel(_pixels.at(1), ret.value());
-                if (!ret.has_value()) {
-                    return false;
-                }
-            }
-            itr = _pwm_buffer.begin();
+            itr = ret.value();
         }
-        if (!policy.start_send(_pwm_buffer)) {
+        *itr = PWM_STOP_VALUE;
+        if(!policy.start_send(_pwm_buffer)) {
             return false;
         }
-        // For each pixel, we get one interrupt completion.
-        // After the interrupt, overwrite the data in the part of the buffer
-        // that was just sent.
-        for (size_t i = 1; i < N; ++i) {
-            if (!policy.wait_for_interrupt(INTERRUPT_DELAY_MAX)) {
-                policy.end_send();
-                return false;
-            }
-            if (i < N - 1) {
-                auto ret = serialize_pixel(_pixels.at(i + 1), itr);
-                if (!ret.has_value()) {
-                    policy.end_send();
-                    return false;
-                }
-                itr = ret.value();
-                if (itr == _pwm_buffer.end()) {
-                    itr = _pwm_buffer.begin();
-                }
-            }
-        }
-        // Once we send the last pixel, stop sending new ones.
-        // The protocl on the LEDs is that the first packet is for the
-        // first pixel, the second packet for the second pixel, etc. So
-        // if stopping is too slow and some extra bytes get sent, it is
-        // okay.
-        if (!policy.wait_for_interrupt(INTERRUPT_DELAY_MAX)) {
-            policy.end_send();
-            return false;
-        }
+        auto ret = policy.wait_for_interrupt(INTERRUPT_DELAY_MAX);
         policy.end_send();
-        return true;
+        return ret;
     }
 
     /**
@@ -181,7 +148,7 @@ class WS2812String {
      * @return OutputBufferItr pointing to one after the last location
      * written to, or an empty return if the end is reached prematurely
      */
-    auto serialize_pixel(WS2812& pixel, OutputBufferItr itr)
+    auto serialize_pixel(const WS2812& pixel, OutputBufferItr itr)
         -> std::optional<OutputBufferItr> {
         using RT = std::optional<OutputBufferItr>;
         if (itr == _pwm_buffer.end()) {
@@ -196,6 +163,11 @@ class WS2812String {
             return RT();
         }
         ret = serialize_byte(pixel.b, ret.value());
+        if (!ret.has_value()) {
+            return RT();
+        }
+        // W is always 0
+        ret = serialize_byte(0, ret.value());
         return ret;
     }
 

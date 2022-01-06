@@ -24,10 +24,9 @@
 
 #define PULSE_WIDTH_FREQ (800000)
 #define TIMER_CLOCK_FREQ (170000000)
-// These two together give close to an 800kHz pulse width.
-// Actual frequency is 798122.0657 Hz
+// These two together give a 400kHz total period
 #define TIM17_PRESCALER (0)
-#define TIM17_RELOAD (212)
+#define TIM17_RELOAD (213)
 // PWM should be scaled from 0 to MAX_PWM, inclusive
 #define MAX_PWM (TIM17_RELOAD + 1)
 
@@ -131,10 +130,10 @@ void system_led_msp_init(void) {
     _leds.dma.Init.Direction = DMA_MEMORY_TO_PERIPH;
     _leds.dma.Init.PeriphInc = DMA_PINC_DISABLE;
     _leds.dma.Init.MemInc = DMA_MINC_ENABLE;
-    _leds.dma.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    _leds.dma.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
     _leds.dma.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
-    _leds.dma.Init.Mode = DMA_CIRCULAR;
-    _leds.dma.Init.Priority = DMA_PRIORITY_MEDIUM;
+    _leds.dma.Init.Mode = DMA_NORMAL;
+    _leds.dma.Init.Priority = DMA_PRIORITY_HIGH;
     if (HAL_DMA_Init(&_leds.dma) != HAL_OK)
     {
       Error_Handler();
@@ -172,7 +171,7 @@ bool system_led_start_send(uint16_t *buffer, size_t len) {
 }
 
 void system_led_stop(void) {
-    HAL_TIM_PWM_Stop_DMA(&_leds.tim, _leds.tim_channel);
+    (void)HAL_TIM_PWM_Stop_DMA(&_leds.tim, _leds.tim_channel);
     _leds.task_to_notify = NULL;
 }
 
@@ -187,22 +186,14 @@ bool system_led_wait_for_interrupt(uint32_t timeout) {
     }
     uint32_t notification_val = ulTaskNotifyTake(pdFALSE, max_block_time);
 
-    // Notification val just has to have been greater than 0, it is ok if
-    // multiple notifications have queued up
-    return (notification_val > 0);
+    return (notification_val == 1);
 }
 
 /**
   * @brief This function handles DMA1 channel1 global interrupt.
   */
 void DMA1_Channel1_IRQHandler(void) {
-  /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
-
-  /* USER CODE END DMA1_Channel1_IRQn 0 */
-  HAL_DMA_IRQHandler(&_leds.dma);
-  /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel1_IRQn 1 */
+    HAL_DMA_IRQHandler(&_leds.dma);
 }
 
 void system_led_pulse_callback(void) {
@@ -217,5 +208,6 @@ void system_led_pulse_callback(void) {
         return;
     }
     vTaskNotifyGiveFromISR( _leds.task_to_notify, &xHigherPriorityTaskWoken );
+    _leds.task_to_notify = NULL;
     portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }

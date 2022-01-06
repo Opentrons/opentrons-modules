@@ -6,6 +6,7 @@
 #include "system_serial_number.h"
 #include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
+#include "core/ws2812.hpp"
 
 class SystemPolicy {
   private:
@@ -14,7 +15,7 @@ class SystemPolicy {
     static constexpr uint8_t ADDRESS_LENGTH = 8;
     static constexpr uint8_t ADDRESSES =
         SYSTEM_SERIAL_NUMBER_LENGTH / ADDRESS_LENGTH;
-    static constexpr std::size_t LED_BUFFER_SIZE = 2 * 24;
+    static constexpr std::size_t LED_BUFFER_SIZE = (SYSTEM_LED_COUNT * ws2812::SINGLE_PIXEL_BUF_SIZE) + 1;
 
   public:
     using LedBuffer = std::array<uint16_t, LED_BUFFER_SIZE>;

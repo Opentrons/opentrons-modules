@@ -160,7 +160,8 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim) 
 {
     if(htim->Instance == TIM17) {
-        system_led_pulse_callback();
+        // The half-complete interrupt isn't used for this application
+        return;
     }
 }
 
