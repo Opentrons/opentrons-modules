@@ -36,13 +36,13 @@ bool system_led_start_send(uint16_t *buffer, size_t len);
 
 /**
  * @brief Ends any active timer activity. The output line
- * will be set to \c 0V and will indicate to the WS2812 string
+ * will be set to \c 0V and will indicate to the XT1511 string
  * that there is no more data to read.
  */
 void system_led_stop(void);
 
 /**
- * @brief Get the maximum PWM value that can be used for the WS2812 control
+ * @brief Get the maximum PWM value that can be used for the XT1511 control
  * @return The maximum 16-bit PWM compare value that corresponds to 100% on
  */
 uint16_t system_led_max_pwm(void);

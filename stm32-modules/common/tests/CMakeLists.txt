@@ -11,7 +11,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_gcode_parse.cpp 
     test_pid.cpp
     test_thermistor_conversions.cpp
-    test_ws2812.cpp
+    test_xt1511.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 

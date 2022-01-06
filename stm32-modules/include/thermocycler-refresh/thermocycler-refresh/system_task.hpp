@@ -8,7 +8,7 @@
 
 #include "core/ack_cache.hpp"
 #include "core/version.hpp"
-#include "core/ws2812.hpp"
+#include "core/xt1511.hpp"
 #include "hal/message_queue.hpp"
 #include "systemwide.h"
 #include "thermocycler-refresh/messages.hpp"
@@ -22,9 +22,6 @@ struct Tasks;
 namespace system_task {
 
 typedef uint16_t PWM_T;
-static constexpr size_t LED_COUNT = 16;
-static constexpr size_t LED_BUFFER_COUNT = 24 * 2;
-typedef std::array<PWM_T, LED_BUFFER_COUNT> PWM_BUFFER_T;
 
 template <typename Policy>
 concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
@@ -36,8 +33,7 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {
         p.get_serial_number()
         } -> std::same_as<std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>>;
-}
-&&ws2812::WS2812Policy<Policy, PWM_BUFFER_T>;
+};
 
 using Message = messages::SystemMessage;
 
@@ -73,7 +69,7 @@ class SystemTask {
     auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
 
-        _leds.set_all(ws2812::WS2812{.g = 0xF, .r = 0xF, .b = 0 });
+        _leds.set_all(xt1511::XT1511());
         _leds.write(policy);
         _message_queue.recv(&message);
 
@@ -175,7 +171,7 @@ class SystemTask {
     Queue& _message_queue;
     tasks::Tasks<QueueImpl>* _task_registry;
     BootloaderPrepAckCache _prep_cache;
-    ws2812::WS2812String<PWM_T, LED_COUNT> _leds;
+    xt1511::XT1511String<PWM_T, SYSTEM_LED_COUNT> _leds;
 };
 
 };  // namespace system_task

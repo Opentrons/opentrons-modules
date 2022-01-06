@@ -1,14 +1,14 @@
 /**
- * @file ws2812.hpp
- * @brief Provides a class for controlling WS2812 integrated light sources,
+ * @file xt1511.hpp
+ * @brief Provides a class for controlling XT1511 integrated light sources,
  * also known as Neopixels.
- * @details The WS2812 structure encapsulates the configuration of a single
- * pixel on a string of WS2812's, but the 24-bit value cannot just be sent
- * directly to the WS2812. The WS2812 follows a single-wire protocol at
+ * @details The XT1511 structure encapsulates the configuration of a single
+ * pixel on a string of XT1511's, but the 32-bit value cannot just be sent
+ * directly to the XT1511. The XT1511 follows a single-wire protocol at
  * 800kHz (1.25 uS) using PWM to control each bit. A 1 is represented by a
  * PWM of  56%, while a 0 is represented by a PWM of 28%.
  * 
- * The WS2812 also supports a 400kHz protocol (2.5 uS) wherein the PWM values
+ * The XT1511 also supports a 400kHz protocol (2.5 uS) wherein the PWM values
  * become 20% and 48% for 0 and 1, respectively.
  *
  * Storing the full buffer of pixel data would use a large amount of RAM.
@@ -20,7 +20,7 @@
  * interrupt is triggered, either the first or second half (respectively)
  * of the buffer is loaded with the next pixel of data. This repeats until
  * the entire chain of pixels has been sent, at which point the PWM output
- * is disabled to mark to the WS2812 chain that the message is completed.
+ * is disabled to mark to the XT1511 chain that the message is completed.
  */
 #pragma once
 
@@ -29,20 +29,20 @@
 #include <cstdint>
 #include <optional>
 
-namespace ws2812 {
+namespace xt1511 {
 
 
 // 8 bits per color, 4 colors
 static constexpr size_t SINGLE_PIXEL_BUF_SIZE = 32;
 
 /**
- * @brief Policy for writing to the WS2812 over DMA
+ * @brief Policy for writing to the XT1511 over DMA
  * @tparam Policy Class that provides the types
  * @tparam Buffer Should be an std::array of an unsigned
  * integer type
  */
 template <typename Policy, typename BufferT>
-concept WS2812Policy = requires(Policy& p, BufferT& b) {
+concept XT1511Policy = requires(Policy& p, BufferT& b) {
     // Function to start sending a buffer. Accepts a buffer b
     { p.start_send(b) } -> std::same_as<bool>;
     // Function to end the data transmission. Cannot fail.
@@ -56,22 +56,22 @@ concept WS2812Policy = requires(Policy& p, BufferT& b) {
     std::unsigned_integral<typename BufferT::value_type>;
 };
 
-// This class represents a single WS2812
-struct WS2812 {
-    // Data is sent in the order G, R, B
-    uint8_t g = 0, r = 0, b = 0;
+// This class represents a single XT1511
+struct XT1511 {
+    // Data is sent in the order G, R, B, W
+    uint8_t g = 0, r = 0, b = 0, w = 0;
 };
 
 /**
- * @brief Class encapsulating a string of connected WS2812 elements.
+ * @brief Class encapsulating a string of connected XT1511 elements.
  *
  * @tparam PWM The type of the register that controls PWM width. Must
  * be an integral type
- * @tparam N The number of WS2812 elements in the string
+ * @tparam N The number of XT1511 elements in the string
  */
 template <typename PWM, size_t N>
 requires std::unsigned_integral<PWM>
-class WS2812String {
+class XT1511String {
   public:
     // To send a logical 1, set PWM to this value
     static constexpr double PWM_ON_PERCENTAGE = 0.56;
@@ -82,24 +82,24 @@ class WS2812String {
     // Time to wait for an interrupt in milliseconds
     static constexpr uint32_t INTERRUPT_DELAY_MAX = 100;
     // Type of the array of pixels
-    using PixelBuffer = std::array<WS2812, N>;
+    using PixelBuffer = std::array<XT1511, N>;
     // Type of the output buffer (raw register values for DMA)
     // Includes enough space for every pixel + a 0 to turn off PWM
     using OutputBuffer = std::array<PWM, (SINGLE_PIXEL_BUF_SIZE * N) + 1>;
     // Type of an iterator on the output buffer
     using OutputBufferItr = OutputBuffer::iterator;
 
-    WS2812String() : _pixels(), _pwm_buffer(), _max_pwm(0) {}
+    XT1511String() : _pixels(), _pwm_buffer(), _max_pwm(0) {}
 
     /**
-     * @brief Write the current pixel buffer to a string of WS2812
+     * @brief Write the current pixel buffer to a string of XT1511
      *
      * @tparam Policy Hardware abstraction layer to send PWM data
      * @param policy Instance of the hardware abstraction policy
      * @return True if the data could be sent, false otherwise.
      */
     template <typename Policy>
-    requires WS2812Policy<Policy, OutputBuffer>
+    requires XT1511Policy<Policy, OutputBuffer>
     auto write(Policy& policy) -> bool {
         // Get the max PWM value (whatever represents 100%)
         _max_pwm = policy.get_max_pwm();
@@ -124,16 +124,16 @@ class WS2812String {
      * @brief Obtain a reference to a pixel at index \c i
      *
      * @param i The index to get a pixel from
-     * @return WS2812& Reference to the pixel
+     * @return XT1511& Reference to the pixel
      */
-    [[nodiscard]] auto pixel(size_t i) -> WS2812& { return _pixels.at(i); }
+    [[nodiscard]] auto pixel(size_t i) -> XT1511& { return _pixels.at(i); }
 
     /**
      * @brief Set all of the pixels to the same color value
      *
      * @param val Color value to set all pixels to
      */
-    auto set_all(WS2812 val) -> void {
+    auto set_all(XT1511 val) -> void {
         for (auto& pixel : _pixels) {
             pixel = val;
         }
@@ -148,7 +148,7 @@ class WS2812String {
      * @return OutputBufferItr pointing to one after the last location
      * written to, or an empty return if the end is reached prematurely
      */
-    auto serialize_pixel(const WS2812& pixel, OutputBufferItr itr)
+    auto serialize_pixel(const XT1511& pixel, OutputBufferItr itr)
         -> std::optional<OutputBufferItr> {
         using RT = std::optional<OutputBufferItr>;
         if (itr == _pwm_buffer.end()) {
@@ -166,8 +166,7 @@ class WS2812String {
         if (!ret.has_value()) {
             return RT();
         }
-        // W is always 0
-        ret = serialize_byte(0, ret.value());
+        ret = serialize_byte(pixel.w, ret.value());
         return ret;
     }
 
@@ -202,4 +201,4 @@ class WS2812String {
     PWM _max_pwm;
 };
 
-}  // namespace ws2812
+}  // namespace xt1511
