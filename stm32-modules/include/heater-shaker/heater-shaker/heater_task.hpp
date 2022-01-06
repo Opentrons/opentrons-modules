@@ -212,6 +212,19 @@ class HeaterTask {
     }
 
     template <typename Policy>
+    auto visit_message(const messages::HandleNTCSetupError& msg, Policy& policy)
+        -> void {
+        auto error_message =
+            messages::HostCommsMessage(messages::ErrorMessage{
+                .code = errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH});
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(
+                error_message));
+        state.system_status = State::ERROR;
+        setpoint = 0;
+    }
+
+    template <typename Policy>
     requires HeaterExecutionPolicy<Policy>
     auto visit_message(const messages::SetTemperatureMessage& msg,
                        Policy& policy) -> void {
