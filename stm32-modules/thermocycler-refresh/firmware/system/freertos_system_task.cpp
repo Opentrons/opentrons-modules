@@ -7,8 +7,9 @@
 
 #include "FreeRTOS.h"
 #include "firmware/freertos_message_queue.hpp"
-#include "system_hardware.h"
-#include "system_policy.hpp"
+#include "firmware/system_hardware.h"
+#include "firmware/system_led_hardware.h"
+#include "firmware/system_policy.hpp"
 #include "task.h"
 #include "thermocycler-refresh/system_task.hpp"
 #include "thermocycler-refresh/tasks.hpp"
@@ -40,6 +41,7 @@ static StaticTask_t
 // to pick the function type
 static void run(void *param) {
     system_hardware_setup();
+    system_led_iniitalize();
     static constexpr uint32_t delay_ticks = 100;
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto *task = reinterpret_cast<decltype(_task) *>(param);

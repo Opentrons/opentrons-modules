@@ -2,9 +2,10 @@
 #include <array>
 
 #include "systemwide.h"
+#include "test/test_xt1511_policy.hpp"
 #include "thermocycler-refresh/errors.hpp"
 
-class TestSystemPolicy {
+class TestSystemPolicy : public TestXT1511Policy<16> {
   private:
     bool entered = false;
     bool serial_number_set = false;
@@ -14,6 +15,7 @@ class TestSystemPolicy {
     errors::ErrorCode set_serial_number_return = errors::ErrorCode::NO_ERROR;
 
   public:
+    TestSystemPolicy() : TestXT1511Policy<16>(213) {}
     auto enter_bootloader() -> void;
     auto reset_bootloader_entered() -> void;
     auto bootloader_entered() const -> bool;

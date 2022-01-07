@@ -32,6 +32,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/system_stm32g4xx.c
   ${SYSTEM_DIR}/stm32g4xx_it.c
   ${SYSTEM_DIR}/system_hardware.c
+  ${SYSTEM_DIR}/system_led_hardware.c
   ${SYSTEM_DIR}/stm32g4xx_hal_timebase_tim.c
   ${SYSTEM_DIR}/stm32g4xx_hal_msp.c
   ${SYSTEM_DIR}/system_serial_number.c

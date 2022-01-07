@@ -6,7 +6,7 @@
 #include "firmware/freertos_message_queue.hpp"
 #include "firmware/freertos_system_task.hpp"
 #include "firmware/freertos_thermal_plate_task.hpp"
-#include "system_hardware.h"
+#include "firmware/system_hardware.h"
 #include "system_stm32g4xx.h"
 #include "thermocycler-refresh/board_revision.hpp"
 #include "thermocycler-refresh/tasks.hpp"
