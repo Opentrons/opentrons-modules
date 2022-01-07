@@ -6,6 +6,7 @@ include(AddBuildAndTestTarget)
 
 add_executable(${TARGET_MODULE_NAME}
     test_main.cpp
+    test_bit_utils.cpp
     test_ack_cache.cpp
     test_double_buffer.cpp
     test_gcode_parse.cpp 

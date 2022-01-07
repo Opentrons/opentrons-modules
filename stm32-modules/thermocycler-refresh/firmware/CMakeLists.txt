@@ -43,6 +43,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${THERMAL_DIR}/thermal_peltier_hardware.c
   ${THERMAL_DIR}/thermal_fan_hardware.c
   ${THERMAL_DIR}/thermal_heater_hardware.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/motor_task/motor_spi_hardware.c
   )
 
 add_executable(${TARGET_MODULE_NAME}
