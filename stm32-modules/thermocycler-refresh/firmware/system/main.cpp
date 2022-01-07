@@ -8,6 +8,7 @@
 #include "firmware/freertos_thermal_plate_task.hpp"
 #include "system_hardware.h"
 #include "system_stm32g4xx.h"
+#include "thermocycler-refresh/board_revision.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -15,6 +16,10 @@ tasks::Tasks<FreeRTOSMessageQueue> tasks_aggregator;
 
 auto main() -> int {
     HardwareInit();
+    // Read the board revision here to make sure it's cached for the rest
+    // of program execution
+    auto revision = board_revision::BoardRevisionIface::get();
+    configASSERT(revision != board_revision::BoardRevision::BOARD_REV_INVALID);
 
     auto system = system_control_task::start();
     auto comms = host_comms_control_task::start();
