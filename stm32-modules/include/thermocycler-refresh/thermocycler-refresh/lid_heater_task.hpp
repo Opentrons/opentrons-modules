@@ -25,6 +25,8 @@ struct Tasks;
 
 namespace lid_heater_task {
 
+using namespace thermal_general;
+
 template <typename Policy>
 concept LidHeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // A set_heater_power function to set the power of the heater as
@@ -335,11 +337,13 @@ class LidHeaterTask {
         if (old_error != thermistor.error) {
             if (thermistor.error != errors::ErrorCode::NO_ERROR) {
                 _state.error_bitmap |= thermistor.error_bit;
+#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
                 auto error_message = messages::HostCommsMessage(
                     messages::ErrorMessage{.code = thermistor.error});
                 static_cast<void>(
                     _task_registry->comms->get_message_queue().try_send(
                         error_message));
+#endif
             } else {
                 _state.error_bitmap &= ~thermistor.error_bit;
             }

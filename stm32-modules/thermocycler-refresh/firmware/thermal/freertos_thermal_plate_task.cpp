@@ -56,16 +56,17 @@ static std::array<ADS1115::ADC, ADC_ITR_NUM> _adc = {
     ADS1115::ADC(static_cast<uint8_t>(ADCAddress::ADC_REAR), ADC2_ITR)};
 
 // This array follows the definition of the ThermistorID enumeration
-static constexpr std::array<ADCPinMap, ThermistorID::THERM_LID> _adc_map = {{
-    // On rev1 boards, net names for right/left are swapped
-    {ADC_FRONT, 3},  // Front right
-    {ADC_FRONT, 1},  // Front left
-    {ADC_FRONT, 2},  // Front center
-    {ADC_REAR, 2},   // Back right
-    {ADC_REAR, 0},   // Back left
-    {ADC_REAR, 3},   // Back center
-    {ADC_FRONT, 0}   // Heat sink
-}};
+static constexpr std::array<ADCPinMap, thermal_general::ThermistorID::THERM_LID>
+    _adc_map = {{
+        // On rev1 boards, net names for right/left are swapped
+        {ADC_FRONT, 3},  // Front right
+        {ADC_FRONT, 1},  // Front left
+        {ADC_FRONT, 2},  // Front center
+        {ADC_REAR, 2},   // Back right
+        {ADC_REAR, 0},   // Back left
+        {ADC_REAR, 3},   // Back center
+        {ADC_FRONT, 0}   // Heat sink
+    }};
 
 // Internal FreeRTOS data structure for the task
 static StaticTask_t
@@ -114,13 +115,20 @@ static void run_thermistor_task(void *param) {
             // NOLINTNEXTLINE(readability-static-accessed-through-instance)
             _main_task.CONTROL_PERIOD_TICKS);
 
-        readings.front_right = read_thermistor(_adc_map[THERM_FRONT_RIGHT]);
-        readings.front_left = read_thermistor(_adc_map[THERM_FRONT_LEFT]);
-        readings.front_center = read_thermistor(_adc_map[THERM_FRONT_CENTER]);
-        readings.back_left = read_thermistor(_adc_map[THERM_BACK_LEFT]);
-        readings.back_right = read_thermistor(_adc_map[THERM_BACK_RIGHT]);
-        readings.back_center = read_thermistor(_adc_map[THERM_BACK_CENTER]);
-        readings.heat_sink = read_thermistor(_adc_map[THERM_HEATSINK]);
+        readings.front_right = read_thermistor(
+            _adc_map[thermal_general::ThermistorID::THERM_FRONT_RIGHT]);
+        readings.front_left = read_thermistor(
+            _adc_map[thermal_general::ThermistorID::THERM_FRONT_LEFT]);
+        readings.front_center = read_thermistor(
+            _adc_map[thermal_general::ThermistorID::THERM_FRONT_CENTER]);
+        readings.back_left = read_thermistor(
+            _adc_map[thermal_general::ThermistorID::THERM_BACK_LEFT]);
+        readings.back_right = read_thermistor(
+            _adc_map[thermal_general::ThermistorID::THERM_BACK_RIGHT]);
+        readings.back_center = read_thermistor(
+            _adc_map[thermal_general::ThermistorID::THERM_BACK_CENTER]);
+        readings.heat_sink = read_thermistor(
+            _adc_map[thermal_general::ThermistorID::THERM_HEATSINK]);
 
         auto send_ret = _main_task.get_message_queue().try_send(readings);
         static_cast<void>(

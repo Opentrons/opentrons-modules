@@ -289,12 +289,14 @@ SCENARIO("lid heater task message passing") {
         tasks->get_lid_heater_queue().backing_deque.push_back(
             messages::LidHeaterMessage(read_message));
         tasks->run_lid_heater_task();
+#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
         CHECK(std::holds_alternative<messages::ErrorMessage>(
             tasks->get_host_comms_queue().backing_deque.front()));
         auto error_msg = std::get<messages::ErrorMessage>(
             tasks->get_host_comms_queue().backing_deque.front());
         CHECK(error_msg.code == errors::ErrorCode::THERMISTOR_LID_SHORT);
         tasks->get_host_comms_queue().backing_deque.pop_front();
+#endif
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
 
         WHEN("Sending a SetHeaterDebug message to enable the heater") {
@@ -401,12 +403,14 @@ SCENARIO("lid heater task message passing") {
         tasks->get_lid_heater_queue().backing_deque.push_back(
             messages::LidHeaterMessage(read_message));
         tasks->run_lid_heater_task();
+#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
         CHECK(std::holds_alternative<messages::ErrorMessage>(
             tasks->get_host_comms_queue().backing_deque.front()));
         auto error_msg = std::get<messages::ErrorMessage>(
             tasks->get_host_comms_queue().backing_deque.front());
         CHECK(error_msg.code == errors::ErrorCode::THERMISTOR_LID_DISCONNECTED);
         tasks->get_host_comms_queue().backing_deque.pop_front();
+#endif
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
 
         WHEN("Sending a SetHeaterDebug message to enable the heater") {
