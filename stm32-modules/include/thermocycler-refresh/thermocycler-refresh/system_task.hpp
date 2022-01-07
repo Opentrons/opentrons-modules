@@ -21,7 +21,7 @@ struct Tasks;
 
 namespace system_task {
 
-typedef uint16_t PWM_T;
+using PWM_T = uint16_t;
 
 template <typename Policy>
 concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
@@ -53,6 +53,7 @@ class SystemTask {
           _task_registry(nullptr),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _prep_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
           _leds() {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
@@ -67,9 +68,10 @@ class SystemTask {
     template <typename Policy>
     requires SystemExecutionPolicy<Policy>
     auto run_once(Policy& policy) -> void {
+        constexpr uint8_t default_white = 0x8;
         auto message = Message(std::monostate());
 
-        _leds.set_all(xt1511::XT1511());
+        _leds.set_all(xt1511::XT1511{.w = default_white});
         _leds.write(policy);
         _message_queue.recv(&message);
 

@@ -2,11 +2,11 @@
 
 #include <array>
 
+#include "core/xt1511.hpp"
 #include "system_hardware.h"
 #include "system_serial_number.h"
 #include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
-#include "core/xt1511.hpp"
 
 class SystemPolicy {
   private:
@@ -15,7 +15,8 @@ class SystemPolicy {
     static constexpr uint8_t ADDRESS_LENGTH = 8;
     static constexpr uint8_t ADDRESSES =
         SYSTEM_SERIAL_NUMBER_LENGTH / ADDRESS_LENGTH;
-    static constexpr std::size_t LED_BUFFER_SIZE = (SYSTEM_LED_COUNT * xt1511::SINGLE_PIXEL_BUF_SIZE) + 1;
+    static constexpr std::size_t LED_BUFFER_SIZE =
+        (SYSTEM_LED_COUNT * xt1511::SINGLE_PIXEL_BUF_SIZE) + 1;
 
   public:
     using LedBuffer = std::array<uint16_t, LED_BUFFER_SIZE>;

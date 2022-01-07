@@ -7,7 +7,7 @@
  * directly to the XT1511. The XT1511 follows a single-wire protocol at
  * 800kHz (1.25 uS) using PWM to control each bit. A 1 is represented by a
  * PWM of  56%, while a 0 is represented by a PWM of 28%.
- * 
+ *
  * The XT1511 also supports a 400kHz protocol (2.5 uS) wherein the PWM values
  * become 20% and 48% for 0 and 1, respectively.
  *
@@ -31,7 +31,6 @@
 
 namespace xt1511 {
 
-
 // 8 bits per color, 4 colors
 static constexpr size_t SINGLE_PIXEL_BUF_SIZE = 32;
 
@@ -49,6 +48,7 @@ concept XT1511Policy = requires(Policy& p, BufferT& b) {
     {p.end_send()};
     // Function to delay for a DMA interrupt. Accepts a timeout
     // in milliseconds.
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     { p.wait_for_interrupt(100) } -> std::same_as<bool>;
     // Function to get the max PWM configured for the timer. Should
     // be in the same byte format as the PWM buffer type passed in.
@@ -87,7 +87,7 @@ class XT1511String {
     // Includes enough space for every pixel + a 0 to turn off PWM
     using OutputBuffer = std::array<PWM, (SINGLE_PIXEL_BUF_SIZE * N) + 1>;
     // Type of an iterator on the output buffer
-    using OutputBufferItr = OutputBuffer::iterator;
+    using OutputBufferItr = typename OutputBuffer::iterator;
 
     XT1511String() : _pixels(), _pwm_buffer(), _max_pwm(0) {}
 
@@ -103,16 +103,16 @@ class XT1511String {
     auto write(Policy& policy) -> bool {
         // Get the max PWM value (whatever represents 100%)
         _max_pwm = policy.get_max_pwm();
-        auto itr = _pwm_buffer.begin();
-        for(auto &pixel : _pixels) {
+        auto* itr = _pwm_buffer.begin();
+        for (auto& pixel : _pixels) {
             auto ret = serialize_pixel(pixel, itr);
-            if(!ret.has_value()) {
+            if (!ret.has_value()) {
                 return false;
             }
             itr = ret.value();
         }
         *itr = PWM_STOP_VALUE;
-        if(!policy.start_send(_pwm_buffer)) {
+        if (!policy.start_send(_pwm_buffer)) {
             return false;
         }
         auto ret = policy.wait_for_interrupt(INTERRUPT_DELAY_MAX);
@@ -181,6 +181,7 @@ class XT1511String {
     auto serialize_byte(uint8_t byte, OutputBufferItr itr)
         -> std::optional<OutputBufferItr> {
         using RT = std::optional<OutputBufferItr>;
+        constexpr uint8_t msb_mask = 0x80;
         if (itr == _pwm_buffer.end()) {
             return RT();
         }
@@ -188,8 +189,9 @@ class XT1511String {
             if (itr == _pwm_buffer.end()) {
                 return RT();
             }
-            auto percentage = ((byte & 0x80) == 0x80) ? PWM_ON_PERCENTAGE
-                                                      : PWM_OFF_PERCENTAGE;
+            auto percentage = ((byte & msb_mask) == msb_mask)
+                                  ? PWM_ON_PERCENTAGE
+                                  : PWM_OFF_PERCENTAGE;
             *itr = static_cast<PWM>(percentage * static_cast<double>(_max_pwm));
             std::advance(itr, 1);
         }
