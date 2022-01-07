@@ -7,9 +7,6 @@
 /* size of array for setting serial number */
 #define SYSTEM_WIDE_SERIAL_NUMBER_LENGTH 24
 
-/* Uncomment this to include aynchronous error messages */
-//#define SYSTEM_ALLOW_ASYNC_ERRORS
-
 typedef enum PeltierID {
     PELTIER_RIGHT,
     PELTIER_CENTER,

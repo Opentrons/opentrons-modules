@@ -646,6 +646,7 @@ class ThermalPlateTask {
                                     values.value().center_power, policy);
         }
         if (!ret) {
+            policy.set_enabled(false);
             _state.system_status = State::ERROR;
             _state.error_bitmap |= State::PELTIER_ERROR;
             return false;
@@ -654,6 +655,7 @@ class ThermalPlateTask {
             ret = policy.set_fan(values.value().fan_power);
 
             if (!ret) {
+                policy.set_enabled(false);
                 _state.system_status = State::ERROR;
                 _state.error_bitmap |= State::FAN_ERROR;
                 return false;

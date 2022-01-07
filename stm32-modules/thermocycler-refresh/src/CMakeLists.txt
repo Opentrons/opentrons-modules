@@ -47,6 +47,12 @@ set(${TARGET_MODULE_NAME}_VERSION "${VERSION}-${HASH}")
 
 configure_file(./version.cpp.in ./version.cpp)
 
+option(ALLOW_ASYNC_ERRORS "Select whether asynchronous errors are sent by firmware")
+
+if(ALLOW_ASYNC_ERRORS) 
+    add_definitions(-DSYSTEM_ALLOW_ASYNC_ERRORS)
+endif()
+
 # Configure lintable/nonlintable sources here
 set(CORE_LINTABLE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/errors.cpp

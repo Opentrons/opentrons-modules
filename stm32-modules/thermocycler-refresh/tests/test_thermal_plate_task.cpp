@@ -588,7 +588,7 @@ SCENARIO("thermal plate task message passing") {
                 }
             }
         }
-        WHEN("Sending a SetPlateTemperature message to enable the lid") {
+        WHEN("Sending a SetPlateTemperature message to enable the plate") {
             auto message = messages::SetPlateTemperatureMessage{
                 .id = 123, .setpoint = 68.0F, .hold_time = 111};
             tasks->get_thermal_plate_queue().backing_deque.push_back(
