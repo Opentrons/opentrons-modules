@@ -331,6 +331,35 @@ struct SetFanManual {
     }
 };
 
+struct SetFanAutomatic {
+    /**
+     * SetFanAutomatic uses M107. It has no parameters and just
+     * activates automatic fan control.
+     */
+    using ParseResult = std::optional<SetFanAutomatic>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '7'};
+    static constexpr const char* response = "M107 OK\n";
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(SetFanAutomatic()), working);
+    }
+};
+
 struct SetHeaterDebug {
     /**
      * SetHeaterDebug uses M140.D, debug version of M140.

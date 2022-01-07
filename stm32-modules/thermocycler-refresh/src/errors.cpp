@@ -69,6 +69,8 @@ const char* const THERMAL_HEATER_ERROR =
     "ERR405:thermal:Error controlling lid heater";
 const char* const THERMAL_CONSTANT_OUT_OF_RANGE =
     "ERR406:thermal:PID constant(s) out of range";
+const char* const THERMAL_TARGET_BAD =
+    "ERR407:thermal:Invalid target temperature";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -117,6 +119,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(THERMAL_LID_BUSY);
         HANDLE_CASE(THERMAL_HEATER_ERROR);
         HANDLE_CASE(THERMAL_CONSTANT_OUT_OF_RANGE);
+        HANDLE_CASE(THERMAL_TARGET_BAD);
     }
     return UNKNOWN_ERROR;
 }

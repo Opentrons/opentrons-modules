@@ -4,10 +4,16 @@
  */
 #pragma once
 
+#include <tuple>
+
 #include "core/pid.hpp"
 #include "core/thermistor_conversion.hpp"
 #include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
+
+namespace thermal_general {
+
+static constexpr double thermistor_pair_delta_max = 4.0;
 
 /** Enumeration of thermistors on the board.
  * This is specifically arranged to keep all of the plate-related
@@ -47,12 +53,42 @@ struct Thermistor {
 };
 
 struct Peltier {
-    // ID to match to hardware - set at initialization
-    const PeltierID id = PELTIER_NUMBER;
-    // Current temperature
-    double temp_current = 0.0F;
-    // Target temperature
-    double temp_target = 0.0F;
-    // Current PID loop
-    PID pid;
+    using ThermistorPair = std::pair<Thermistor &, Thermistor &>;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    double temp_target = 0.0F;  // Target temperature
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    const PeltierID id;  // ID to match to hardware - set at initialization
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    ThermistorPair thermistors;  // Links to the front & back thermistors
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    PID pid;  // Current PID loop
+
+    /** Get the current temperature of this peltier.*/
+    [[nodiscard]] auto current_temp() const -> double {
+        return (thermistors.first.temp_c + thermistors.second.temp_c) / 2;
+    }
+    /**
+     * Get the difference in temperature between the front/back thermistors
+     * for this peltier.
+     */
+    [[nodiscard]] auto current_temp_delta() const -> double {
+        return std::abs(thermistors.first.temp_c + thermistors.second.temp_c);
+    }
 };
+
+struct HeatsinkFan {
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    double temp_target = 0.0F;  // Target temperature
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    bool manual_control = false;  // Current state (manual or automatic)
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    Thermistor &thermistor;  // Thermistor for reading temperature
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    PID pid;  // Current PID loop
+    /** Get the current temperature of the heatsink.*/
+    [[nodiscard]] auto current_temp() const -> double {
+        return thermistor.temp_c;
+    }
+};
+
+}  // namespace thermal_general

@@ -180,6 +180,10 @@ struct SetPlateTemperatureMessage {
     double hold_time;
 };
 
+struct SetFanAutomaticMessage {
+    uint32_t id;
+};
+
 struct DeactivatePlateMessage {
     uint32_t id;
 };
@@ -206,7 +210,7 @@ using ThermalPlateMessage =
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
                    SetFanManualMessage, GetPlateTempMessage,
                    SetPlateTemperatureMessage, DeactivatePlateMessage,
-                   SetPIDConstantsMessage>;
+                   SetPIDConstantsMessage, SetFanAutomaticMessage>;
 using LidHeaterMessage =
     ::std::variant<std::monostate, LidTempReadComplete,
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
