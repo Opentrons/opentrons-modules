@@ -42,7 +42,7 @@
         "MODULE_TYPE": "stm32",
         "CMAKE_FIND_APPBUNDLE": "NEVER",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/STM32CortexM4GCCCrossToolchain.cmake",
-        "CMAKE_BUILD_CONFIG": "RelWithDebInfo"
+        "CMAKE_BUILD_CONFIG": "MinSizeRel"
       }
     },
     {

@@ -72,7 +72,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 #define M1_OCP_GPIO_Port GPIOC
 #define M1_BUS_VOLTAGE_Pin GPIO_PIN_5
 #define M1_BUS_VOLTAGE_GPIO_Port GPIOC
-#define M1_OCP_DAC_CHANNEL DAC_CHANNEL_1
+//#define M1_OCP_DAC_CHANNEL DAC_CHANNEL_1
 
 // Hall sensor pins that sense the mechanical phase angle of the rotor
 #define M1_HALL_H1_Pin GPIO_PIN_3

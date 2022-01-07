@@ -484,13 +484,13 @@ static void DAC_Init(DAC_HandleTypeDef* dac) {
   HAL_DAC_Start(dac, SOLENOID_DAC_CHANNEL);
   HAL_DAC_SetValue(dac, SOLENOID_DAC_CHANNEL, DAC_ALIGN_8B_R, 0);
 
-  DAC_ChannelConfTypeDef chan_config_2 = {
+  /*DAC_ChannelConfTypeDef chan_config_2 = {
      .DAC_Trigger = DAC_TRIGGER_NONE,
      .DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE,
   };
   HAL_DAC_ConfigChannel(dac, &chan_config_2, M1_OCP_DAC_CHANNEL);
   HAL_DAC_Start(dac, M1_OCP_DAC_CHANNEL);
-  HAL_DAC_SetValue(dac, M1_OCP_DAC_CHANNEL, DAC_ALIGN_8B_R, 0);
+  HAL_DAC_SetValue(dac, M1_OCP_DAC_CHANNEL, DAC_ALIGN_8B_R, 0);*/
 }
 
 
@@ -698,8 +698,8 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     PA11     ------> TIM1_BKIN2
     */
     GPIO_InitStruct.Pin = M1_OCP_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP; //OD output from driver
-    GPIO_InitStruct.Pull = GPIO_PULLUP; //need? Have external. Break input may never trigger, but motor would stop in fault state. How big are driver internal resistors?
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD; //OD output from driver
+    GPIO_InitStruct.Pull = GPIO_NOPULL; //need? Have external. Break input may never trigger, but motor would stop in fault state. How big are driver internal resistors?
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF6_TIM1;
     HAL_GPIO_Init(M1_OCP_GPIO_Port, &GPIO_InitStruct);
