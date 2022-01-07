@@ -22,6 +22,16 @@ typedef enum PeltierDirection {
     PELTIER_HEATING
 } PeltierDirection;
 
+// Enumeration of GPIO input types - can be pulled up/down OR left floating
+typedef enum TrinaryInput {
+    INPUT_PULLDOWN,
+    INPUT_PULLUP,
+    INPUT_FLOATING
+} TrinaryInput_t;
+
+// Number of pins that define the board revision
+#define BOARD_REV_PIN_COUNT (3)
+
 enum PeltierSelection { LEFT, CENTER, RIGHT, ALL };
 
 enum PidSelection { HEATER, PELTIERS, FANS };
