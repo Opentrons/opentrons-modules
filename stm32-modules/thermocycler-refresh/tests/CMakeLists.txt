@@ -16,6 +16,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_tmc2130.cpp
     test_board_revision_hardware.cpp
     test_board_revision.cpp
+    test_colors.cpp
     # GCode parse tests
     test_m14.cpp
     test_m104.cpp
