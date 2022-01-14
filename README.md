@@ -10,7 +10,7 @@ Magnetic Module (Magdeck) and Thermocycler.
 ## setup
 
 This repo uses [CMake](https://cmake.org) as a configuration and build management tool. It requires
-CMake 3.19 since it uses [presets](https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html)
+CMake 3.20 since it uses [presets](https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html)
 to manage cross-compilation and project configuration options. If you want to interact with the STM32 hardware, you should also install [st-link](https://github.com/stlink-org/stlink). 
 
 First, clone the repository and change into the directory:

@@ -1,8 +1,12 @@
+#include "firmware/system_hardware.h"
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_rcc.h"
 #include "stm32g4xx_hal_cortex.h"
-#include "system_hardware.h"
 #include "stm32g4xx_hal_tim.h"
+
+/** Private definitions.*/
+#define DBG_LED_PIN GPIO_PIN_6
+#define DBG_LED_PORT GPIOE
 
 /** Global variable instantiation */
 

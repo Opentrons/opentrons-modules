@@ -87,4 +87,4 @@ jobs:
       - name: 'Build Simulator'
         run: cmake --build ./build-stm32-host --target thermocycler-refresh-simulator
       - name: 'Build and Test'
-        run: cmake --build ./build-stm32-host --target thermocycler-refresh-build-and-test
+        run: cmake --build --preset thermocycler-refresh-tests

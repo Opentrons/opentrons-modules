@@ -35,13 +35,20 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/system_stm32g4xx.c
   ${SYSTEM_DIR}/stm32g4xx_it.c
   ${SYSTEM_DIR}/system_hardware.c
+  ${SYSTEM_DIR}/system_led_hardware.c
   ${SYSTEM_DIR}/stm32g4xx_hal_timebase_tim.c
   ${SYSTEM_DIR}/stm32g4xx_hal_msp.c
   ${SYSTEM_DIR}/system_serial_number.c
+  ${SYSTEM_DIR}/board_revision_hardware.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
+  ${COMMS_DIR}/usb_hardware.c
   ${THERMAL_DIR}/thermal_hardware.c
   ${MOTOR_DIR}/motor_hardware.c
+  ${THERMAL_DIR}/thermal_peltier_hardware.c
+  ${THERMAL_DIR}/thermal_fan_hardware.c
+  ${THERMAL_DIR}/thermal_heater_hardware.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/motor_task/motor_spi_hardware.c
   )
 
 add_executable(${TARGET_MODULE_NAME}
