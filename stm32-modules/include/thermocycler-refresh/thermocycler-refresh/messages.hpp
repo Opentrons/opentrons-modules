@@ -5,6 +5,7 @@
 #include <variant>
 
 #include "systemwide.h"
+#include "thermocycler-refresh/colors.hpp"
 #include "thermocycler-refresh/errors.hpp"
 
 namespace messages {
@@ -196,9 +197,19 @@ struct SetPIDConstantsMessage {
     double d;
 };
 
+struct UpdateUIMessage {
+    // Empty struct
+};
+
+struct SetLedMode {
+    colors::Colors color;
+    colors::Mode mode;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
-                   SetSerialNumberMessage, GetSystemInfoMessage>;
+                   SetSerialNumberMessage, GetSystemInfoMessage,
+                   UpdateUIMessage, SetLedMode>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, ForceUSBDisconnectMessage,

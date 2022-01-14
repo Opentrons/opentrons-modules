@@ -11,6 +11,7 @@
 #include "core/xt1511.hpp"
 #include "hal/message_queue.hpp"
 #include "systemwide.h"
+#include "thermocycler-refresh/colors.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 
@@ -35,6 +36,16 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
         } -> std::same_as<std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>>;
 };
 
+struct LedState {
+    // Configured color of the LED, assuming
+    xt1511::XT1511 color = colors::get_color(colors::Colors::SOFT_WHITE);
+    colors::Mode mode = colors::Mode::SOLID;
+    // Utility counter for updating state in non-solid modes
+    uint32_t counter = 0;
+    // Period for movement in MS
+    uint32_t period = 0;
+};
+
 using Message = messages::SystemMessage;
 
 // By using a template template parameter here, we allow the code instantiating
@@ -48,13 +59,23 @@ class SystemTask {
 
   public:
     using Queue = QueueImpl<Message>;
+    // Time between each write to the LED strip
+    static constexpr uint32_t LED_UPDATE_PERIOD_MS = 13;
+    // Time that each full "pulse" action should take (sine wave)
+    static constexpr uint32_t LED_PULSE_PERIOD_MS = 1000;
+    // Max brightness to set for automatic LED actions
+    static constexpr uint8_t LED_MAX_BRIGHTNESS = 0x20;
     explicit SystemTask(Queue& q)
         : _message_queue(q),
           _task_registry(nullptr),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _prep_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          _leds() {}
+          _leds(xt1511::Speed::HALF),
+          _led_state{.color = colors::get_color(colors::Colors::SOFT_WHITE),
+                     .mode = colors::Mode::SOLID,
+                     .counter = 0,
+                     .period = LED_PULSE_PERIOD_MS} {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
     SystemTask(SystemTask&& other) noexcept = delete;
@@ -68,11 +89,7 @@ class SystemTask {
     template <typename Policy>
     requires SystemExecutionPolicy<Policy>
     auto run_once(Policy& policy) -> void {
-        constexpr uint8_t default_white = 0x8;
         auto message = Message(std::monostate());
-
-        _leds.set_all(xt1511::XT1511{.w = default_white});
-        _leds.write(policy);
         _message_queue.recv(&message);
 
         auto visit_helper = [this, &policy](auto& message) -> void {
@@ -164,16 +181,101 @@ class SystemTask {
 
     template <typename Policy>
     requires SystemExecutionPolicy<Policy>
+    auto visit_message(const messages::UpdateUIMessage& message, Policy& policy)
+        -> void {
+        static_cast<void>(message);
+        static constexpr double TWO = 2.0F;
+        _led_state.counter += LED_UPDATE_PERIOD_MS;
+        if (_led_state.counter > _led_state.period) {
+            _led_state.counter = 0;
+        }
+
+        switch (_led_state.mode) {
+            case colors::Mode::SOLID:
+                // Don't bother with timer
+                _leds.set_all(_led_state.color);
+                break;
+            case colors::Mode::PULSING: {
+                // Set color as a triangle wave
+                double brightness = 0.0F;
+                if (_led_state.counter < (_led_state.period / 2)) {
+                    brightness = static_cast<double>(_led_state.counter) /
+                                 (static_cast<double>(_led_state.period) / TWO);
+                } else {
+                    auto inverse_count =
+                        std::abs(static_cast<int>(_led_state.period) -
+                                 static_cast<int>(_led_state.counter));
+                    brightness = static_cast<double>(inverse_count) /
+                                 (static_cast<double>(_led_state.period) / TWO);
+                }
+                auto color = _led_state.color;
+                color.set_scale(brightness);
+                _leds.set_all(color);
+                break;
+            }
+            case colors::Mode::BLINKING:
+                // Turn on color for half of the duty cycle, off for the other
+                // half
+                if (_led_state.counter < (_led_state.period / 2)) {
+                    _leds.set_all(_led_state.color);
+                } else {
+                    _leds.set_all(xt1511::XT1511{});
+                }
+                break;
+            case colors::Mode::WIPE: {
+                static constexpr size_t trail_length = SYSTEM_LED_COUNT;
+                static constexpr size_t head_max = (SYSTEM_LED_COUNT * 2);
+                auto percent_done = static_cast<double>(_led_state.counter) /
+                                    static_cast<double>(_led_state.period);
+                auto head_position = static_cast<size_t>(
+                    static_cast<double>(head_max) * percent_done);
+                for (size_t i = 0; i < SYSTEM_LED_COUNT; ++i) {
+                    if ((i < head_position -
+                                 std::min(trail_length, head_position)) ||
+                        (i > head_position)) {
+                        _leds.pixel(i) = xt1511::XT1511{};
+                    } else {
+                        _leds.pixel(i) = _led_state.color;
+                    }
+                }
+                break;
+            }
+        }
+        static_cast<void>(_leds.write(policy));
+    }
+
+    template <SystemExecutionPolicy Policy>
+    auto visit_message(const messages::SetLedMode& message, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        _led_state.color = colors::get_color(message.color);
+        _led_state.mode = message.mode;
+        _led_state.counter = 0;
+    }
+
+    template <typename Policy>
+    requires SystemExecutionPolicy<Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
         static_cast<void>(message);
         static_cast<void>(policy);
     }
+
+    // Should be provided to LED Timer to send LED Update messages. Ensure that
+    // the timer implementation does NOT execute in an interrupt context.
+    auto led_timer_callback() -> void {
+        static_cast<void>(
+            get_message_queue().try_send(messages::UpdateUIMessage()));
+    }
+
+    // To be used for tests
+    [[nodiscard]] auto get_led_state() -> LedState& { return _led_state; }
 
   private:
     Queue& _message_queue;
     tasks::Tasks<QueueImpl>* _task_registry;
     BootloaderPrepAckCache _prep_cache;
     xt1511::XT1511String<PWM_T, SYSTEM_LED_COUNT> _leds;
+    LedState _led_state;
 };
 
 };  // namespace system_task
