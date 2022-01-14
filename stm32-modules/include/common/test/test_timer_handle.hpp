@@ -70,7 +70,7 @@ class TestTimerHandle {
         }
     }
 
-    auto const active() -> bool { return _active; }
+    auto active() const -> bool { return _active; }
 
     auto remaining_time() -> uint32_t { return _remaining_time; }
 

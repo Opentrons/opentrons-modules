@@ -60,6 +60,17 @@ concept XT1511Policy = requires(Policy& p, BufferT& b) {
 struct XT1511 {
     // Data is sent in the order G, R, B, W
     uint8_t g = 0, r = 0, b = 0, w = 0;
+    auto set_scale(double scale) {
+        g *= scale;
+        r *= scale;
+        b *= scale;
+        w *= scale;
+    }
+};
+
+enum class Speed {
+    FULL, /**< 800kHz.*/
+    HALF, /**< 400kHz.*/
 };
 
 /**
@@ -74,9 +85,13 @@ requires std::unsigned_integral<PWM>
 class XT1511String {
   public:
     // To send a logical 1, set PWM to this value
-    static constexpr double PWM_ON_PERCENTAGE = 0.56;
+    static constexpr double PWM_ON_FULL_SPEED = 0.56;
     // To send a logical 0, set PWM to this value
-    static constexpr double PWM_OFF_PERCENTAGE = 0.28;
+    static constexpr double PWM_OFF_FULL_SPEED = 0.28;
+    // To send a logical 1, set PWM to this value
+    static constexpr double PWM_ON_HALF_SPEED = 0.48;
+    // To send a logical 0, set PWM to this value
+    static constexpr double PWM_OFF_HALF_SPEED = 0.20;
     // To send a logical STOP, set PWM to this value
     static constexpr PWM PWM_STOP_VALUE = 0;
     // Time to wait for an interrupt in milliseconds
@@ -89,7 +104,8 @@ class XT1511String {
     // Type of an iterator on the output buffer
     using OutputBufferItr = typename OutputBuffer::iterator;
 
-    XT1511String() : _pixels(), _pwm_buffer(), _max_pwm(0) {}
+    XT1511String(Speed speed = Speed::FULL)
+        : _pixels(), _pwm_buffer(), _max_pwm(0), _speed(speed) {}
 
     /**
      * @brief Write the current pixel buffer to a string of XT1511
@@ -137,6 +153,20 @@ class XT1511String {
         for (auto& pixel : _pixels) {
             pixel = val;
         }
+    }
+
+    [[nodiscard]] auto inline pwm_on_percentage() const -> double {
+        if (_speed == Speed::FULL) {
+            return PWM_ON_FULL_SPEED;
+        }
+        return PWM_ON_HALF_SPEED;
+    }
+
+    [[nodiscard]] auto inline pwm_off_percentage() const -> double {
+        if (_speed == Speed::FULL) {
+            return PWM_OFF_FULL_SPEED;
+        }
+        return PWM_OFF_HALF_SPEED;
     }
 
   private:
@@ -190,8 +220,8 @@ class XT1511String {
                 return RT();
             }
             auto percentage = ((byte & msb_mask) == msb_mask)
-                                  ? PWM_ON_PERCENTAGE
-                                  : PWM_OFF_PERCENTAGE;
+                                  ? pwm_on_percentage()
+                                  : pwm_off_percentage();
             *itr = static_cast<PWM>(percentage * static_cast<double>(_max_pwm));
             std::advance(itr, 1);
         }
@@ -201,6 +231,7 @@ class XT1511String {
     PixelBuffer _pixels;
     OutputBuffer _pwm_buffer;
     PWM _max_pwm;
+    const Speed _speed;
 };
 
 }  // namespace xt1511

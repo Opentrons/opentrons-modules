@@ -43,7 +43,7 @@ class GenericTimer {
 
     auto start() -> bool { return _handle.start(); }
     auto stop() -> bool { return _handle.stop(); }
-    [[nodiscard]] auto const active() -> bool { return _handle.active(); }
+    [[nodiscard]] auto active() const -> bool { return _handle.active(); }
 
     auto callback() -> void { _callback(); }
 

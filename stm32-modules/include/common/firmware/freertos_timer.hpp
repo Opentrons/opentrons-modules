@@ -7,42 +7,49 @@
 
 namespace freertos_timer {
 
-// pdMS_TO_TICKS converts milliseconds to ticks. This can only be used for
-// FreeRTOS tick rates less than 1000 Hz.
-template <TickType_t timer_period = pdMS_TO_TICKS(1)>
 class FreeRTOSTimer {
   public:
     /*
      * A software timer class. The priority of software timers in FreeRTOS is
-     * currently set to 6. Any tasks utilizing this timer should have either the
-     * same priority or higher priority than 6 for execution.
+     * customizable, and any tasks utilizing this timer should have either the
+     * same priority or higher priority than them for execution.
      */
     using Callback = std::function<void()>;
-    FreeRTOSTimer(const char* name, Callback callback)
-        : callback{std::move(callback)} {
-        timer = xTimerCreateStatic(name, timer_period, auto_reload, this,
-                                   timer_callback, &timer_buffer);
+    FreeRTOSTimer(const char* name, uint32_t time_ms, bool autoreload,
+                  Callback callback)
+        : _callback{std::move(callback)} {
+        // pdMS_TO_TICKS converts milliseconds to ticks. This can only be used
+        // for FreeRTOS tick rates less than 1000 Hz.
+        _timer_period = pdMS_TO_TICKS(time_ms);
+        _auto_reload = (autoreload) ? pdTRUE : pdFALSE;
+        _timer = xTimerCreateStatic(name, _timer_period, _auto_reload, this,
+                                    timer_callback, &_timer_buffer);
     }
     auto operator=(FreeRTOSTimer&) -> FreeRTOSTimer& = delete;
     auto operator=(FreeRTOSTimer&&) -> FreeRTOSTimer&& = delete;
     FreeRTOSTimer(FreeRTOSTimer&) = delete;
     FreeRTOSTimer(FreeRTOSTimer&&) = delete;
-    ~FreeRTOSTimer() { xTimerDelete(timer, 0); }
+    ~FreeRTOSTimer() { xTimerDelete(_timer, 0); }
 
-    void start() { xTimerStart(timer, 0); }
+    auto start() -> bool { return xTimerStart(_timer, 0) == pdPASS; }
 
-    void stop() { xTimerStop(timer, 0); }
+    auto stop() -> bool { return xTimerStop(_timer, 0) == pdPASS; }
+
+    [[nodiscard]] auto active() const -> bool {
+        return xTimerIsTimerActive(_timer) != pdFALSE;
+    }
 
   private:
-    TimerHandle_t timer{};
-    Callback callback;
-    StaticTimer_t timer_buffer{};
-    UBaseType_t auto_reload = pdTRUE;
+    TimerHandle_t _timer{};
+    Callback _callback;
+    StaticTimer_t _timer_buffer{};
+    UBaseType_t _auto_reload = pdTRUE;
+    TickType_t _timer_period = 0;
 
     static void timer_callback(TimerHandle_t xTimer) {
         auto* timer_id = pvTimerGetTimerID(xTimer);
-        auto instance = static_cast<FreeRTOSTimer<timer_period>*>(timer_id);
-        instance->callback();
+        auto instance = static_cast<FreeRTOSTimer*>(timer_id);
+        instance->_callback();
     }
 };
 
