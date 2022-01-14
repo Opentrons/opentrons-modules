@@ -10,21 +10,21 @@
 #include "stm32g4xx_hal.h"
 #pragma GCC diagnostic pop
 
-#include "thermocycler-refresh/errors.hpp"
 #include "motor_policy.hpp"
+#include "thermocycler-refresh/errors.hpp"
 
 using namespace errors;
 
 MotorPolicy::MotorPolicy(motor_hardware_handles* handles)
     : hw_handles(handles) {}
 
-//bool return for error checking?
+// bool return for error checking?
 auto MotorPolicy::lid_stepper_set_vref(uint16_t target_vref_mV) -> void {
     // hardware has a 1ohm sense resistor and the driver has an implicit 10x
     // divider. the dac can express a max of 3.3V, so the maximum current we can
     // drive is 330mA at 3.3V/dac fullscale of 255. we can therefore clamp the
     // current input to 330
-    //current_ma =
+    // current_ma =
     //    ((current_ma > MAX_SOLENOID_CURRENT_MA) ? MAX_SOLENOID_CURRENT_MA
     //                                            : current_ma);
     // and then rescale into 8 bits with 330 ending up at 255

@@ -49,18 +49,19 @@ class HostCommsTask {
         gcode::SetFanAutomatic>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
-        gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
-        gcode::SetPeltierDebug, gcode::SetFanManual,
-        gcode::SetHeaterDebug, gcode::SetLidTemperature,
-        gcode::DeactivateLidHeating, gcode::SetPIDConstants,
-        gcode::SetPlateTemperature, gcode::DeactivatePlate,
-        gcode::SetFanAutomatic>;
+                 gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
+                 gcode::SetPeltierDebug, gcode::SetFanManual,
+                 gcode::SetHeaterDebug, gcode::SetLidTemperature,
+                 gcode::DeactivateLidHeating, gcode::SetPIDConstants,
+                 gcode::SetPlateTemperature, gcode::DeactivatePlate,
+                 gcode::SetFanAutomatic>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetLidTempDebugCache = AckCache<8, gcode::GetLidTemperatureDebug>;
     using GetPlateTempDebugCache = AckCache<8, gcode::GetPlateTemperatureDebug>;
     using GetPlateTempCache = AckCache<8, gcode::GetPlateTemp>;
     using GetLidTempCache = AckCache<8, gcode::GetLidTemp>;
-    using LidStepperCheckFaultCache = AckCache<8, gcode::LidStepperCheckFaultDebug>;
+    using LidStepperCheckFaultCache =
+        AckCache<8, gcode::LidStepperCheckFaultDebug>;
     using LidStepperResetCache = AckCache<8, gcode::LidStepperResetDebug>;
 
   public:
@@ -353,8 +354,8 @@ class HostCommsTask {
                         tx_into, tx_limit,
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
                 } else {
-                    return cache_element.write_response_into(
-                        tx_into, tx_limit, response.fault);
+                    return cache_element.write_response_into(tx_into, tx_limit,
+                                                             response.fault);
                 }
             },
             cache_entry);
@@ -382,7 +383,7 @@ class HostCommsTask {
             },
             cache_entry);
     }
-    
+
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
@@ -920,9 +921,8 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_gcode(const gcode::LidStepperResetDebug& gcode,
-                     InputIt tx_into, InputLimit tx_limit)
-        -> std::pair<bool, InputIt> {
+    auto visit_gcode(const gcode::LidStepperResetDebug& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = lid_stepper_reset_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(

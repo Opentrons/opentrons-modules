@@ -3,9 +3,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
+#include <stdbool.h>
+
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_tim.h"
-#include <stdbool.h>
 
 typedef struct {
     int32_t step_count;
@@ -13,9 +14,9 @@ typedef struct {
 } motor_hardware_status;
 
 typedef struct {
-    //update
-    //TIM_HandleTypeDef tim2;
-    //TIM_OC_InitTypeDef tim2_oc;
+    // update
+    // TIM_HandleTypeDef tim2;
+    // TIM_OC_InitTypeDef tim2_oc;
     DAC_HandleTypeDef dac1;
     motor_hardware_status lid_stepper;
     void (*lid_stepper_complete)();

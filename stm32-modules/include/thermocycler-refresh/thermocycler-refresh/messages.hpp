@@ -248,9 +248,9 @@ using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, ForceUSBDisconnectMessage,
                    GetSystemInfoResponse, GetLidTemperatureDebugResponse,
-                   GetPlateTemperatureDebugResponse, LidStepperCheckFaultResponse,
-                   LidStepperResetResponse, GetPlateTempResponse,
-                   GetLidTempResponse>;
+                   GetPlateTemperatureDebugResponse,
+                   LidStepperCheckFaultResponse, LidStepperResetResponse,
+                   GetPlateTempResponse, GetLidTempResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
@@ -262,8 +262,9 @@ using LidHeaterMessage =
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
                    GetLidTempMessage, SetLidTemperatureMessage,
                    DeactivateLidHeatingMessage, SetPIDConstantsMessage>;
-using MotorMessage = ::std::variant<std::monostate, ActuateSolenoidMessage,
-                    LidStepperDebugMessage, LidStepperCompleteCheckMessage,
-                    LidStepperComplete, LidStepperCheckFaultMessage,
-                    LidStepperResetMessage>;
+using MotorMessage =
+    ::std::variant<std::monostate, ActuateSolenoidMessage,
+                   LidStepperDebugMessage, LidStepperCompleteCheckMessage,
+                   LidStepperComplete, LidStepperCheckFaultMessage,
+                   LidStepperResetMessage>;
 };  // namespace messages

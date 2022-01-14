@@ -632,8 +632,7 @@ struct ActuateSolenoid {
     ** disengages the solenoid.
     */
     using ParseResult = std::optional<ActuateSolenoid>;
-    static constexpr auto prefix =
-        std::array{'G', '2', '8', '.', 'D', ' '};
+    static constexpr auto prefix = std::array{'G', '2', '8', '.', 'D', ' '};
     static constexpr const char* response = "G28.D OK\n";
 
     bool engage;
@@ -652,7 +651,8 @@ struct ActuateSolenoid {
             return std::make_pair(ParseResult(), input);
         }
         bool tempEngage = static_cast<bool>(engage_parse.first.value());
-        return std::make_pair(ParseResult(ActuateSolenoid{.engage = tempEngage}),
+        return std::make_pair(
+            ParseResult(ActuateSolenoid{.engage = tempEngage}),
             engage_parse.second);
     }
 
@@ -692,8 +692,9 @@ struct ActuateLidStepperDebug {
         if (!value_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        return std::make_pair(ParseResult(ActuateLidStepperDebug{.angle = value_res.first.value()}),
-            value_res.second);
+        return std::make_pair(ParseResult(ActuateLidStepperDebug{
+                                  .angle = value_res.first.value()}),
+                              value_res.second);
     }
 
     template <typename InputIt, typename InputLimit>
@@ -707,29 +708,27 @@ struct ActuateLidStepperDebug {
 struct LidStepperCheckFaultDebug {
     /*
     ** Lid stepper check fault is a debug command that lets you check
-    ** the fault status of the lid stepper motor. True indicates a fault is present and
+    ** the fault status of the lid stepper motor. True indicates a fault is
+    *present and
     ** the lid stepper reset command  should be called.
     ** Input: M241.D
     ** Example Output: M241.D 1 indicates a fault is present
     */
     using ParseResult = std::optional<LidStepperCheckFaultDebug>;
-    static constexpr auto prefix =
-        std::array{'M', '2', '4', '1', '.', 'D'};
+    static constexpr auto prefix = std::array{'M', '2', '4', '1', '.', 'D'};
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
-    static auto write_response_into(InputIt buf, InLimit limit, bool fault
-                                    ) -> InputIt {
+    static auto write_response_into(InputIt buf, InLimit limit, bool fault)
+        -> InputIt {
         static constexpr const char* write_prefix = "M241.D Fault: ";
-        auto written =
-            write_string_to_iterpair(buf, limit, write_prefix);
+        auto written = write_string_to_iterpair(buf, limit, write_prefix);
         if (written == limit) {
             return written;
         }
         const char* fault_chars = fault ? "true" : "false";
-        written =
-            write_string_to_iterpair(written, limit, fault_chars);
+        written = write_string_to_iterpair(written, limit, fault_chars);
         if (written == limit) {
             return written;
         }
@@ -746,36 +745,35 @@ struct LidStepperCheckFaultDebug {
         if (working == input) {
             return std::make_pair(ParseResult(), input);
         }
-        return std::make_pair(ParseResult(LidStepperCheckFaultDebug()), working);
+        return std::make_pair(ParseResult(LidStepperCheckFaultDebug()),
+                              working);
     }
 };
 
 struct LidStepperResetDebug {
     /*
     ** Lid stepper reset is a debug command that lets you check reset the lid
-    ** stepper motor driver. True indicates the motor has been successfully reset,
+    ** stepper motor driver. True indicates the motor has been successfully
+    *reset,
     ** false indicates the fault persists.
     ** Input: M242.D
     ** Example Output: M242.D 1 indicates the stepper driver has been reset
     */
     using ParseResult = std::optional<LidStepperResetDebug>;
-    static constexpr auto prefix =
-        std::array{'M', '2', '4', '2', '.', 'D'};
+    static constexpr auto prefix = std::array{'M', '2', '4', '2', '.', 'D'};
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
-    static auto write_response_into(InputIt buf, InLimit limit, bool fault_gone
-                                    ) -> InputIt {
+    static auto write_response_into(InputIt buf, InLimit limit, bool fault_gone)
+        -> InputIt {
         static constexpr const char* write_prefix = "M242.D Fault Gone: ";
-        auto written =
-            write_string_to_iterpair(buf, limit, write_prefix);
+        auto written = write_string_to_iterpair(buf, limit, write_prefix);
         if (written == limit) {
             return written;
         }
         const char* fault_gone_chars = fault_gone ? "true" : "false";
-        written =
-            write_string_to_iterpair(written, limit, fault_gone_chars);
+        written = write_string_to_iterpair(written, limit, fault_gone_chars);
         if (written == limit) {
             return written;
         }
@@ -849,7 +847,6 @@ struct SetLidTemperature {
             temperature.second);
     }
 };
-
 
 struct DeactivateLidHeating {
     /**

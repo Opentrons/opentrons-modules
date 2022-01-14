@@ -9,9 +9,9 @@
 #include "host_comms_task.hpp"
 #include "lid_heater_task.hpp"
 #include "messages.hpp"
+#include "motor_task.hpp"
 #include "system_task.hpp"
 #include "thermal_plate_task.hpp"
-#include "motor_task.hpp"
 
 namespace host_comms_task {
 template <template <class> class QueueImpl>
@@ -43,8 +43,7 @@ class LidHeaterTask;
 
 namespace motor_task {
 template <template <class> class QueueImpl>
-requires MessageQueue<QueueImpl<messages::MotorMessage>,
-                      messages::MotorMessage>
+requires MessageQueue<QueueImpl<messages::MotorMessage>, messages::MotorMessage>
 class MotorTask;
 }  // namespace motor_task
 
@@ -72,7 +71,8 @@ struct Tasks {
           thermal_plate(nullptr),
           lid_heater(nullptr),
           motor(nullptr) {
-        initialize(comms_in, system_in, thermal_plate_in, lid_heater_in, motor_in);
+        initialize(comms_in, system_in, thermal_plate_in, lid_heater_in,
+                   motor_in);
     }
 
     auto initialize(

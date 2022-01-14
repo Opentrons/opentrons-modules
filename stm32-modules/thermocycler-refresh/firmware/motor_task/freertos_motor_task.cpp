@@ -17,16 +17,16 @@ extern "C" {
 #pragma GCC diagnostic pop
 
 #include "firmware/freertos_message_queue.hpp"
-#include "thermocycler-refresh/motor_task.hpp"
-#include "thermocycler-refresh/tasks.hpp"
 #include "motor_hardware.h"
 #include "motor_policy.hpp"
+#include "thermocycler-refresh/motor_task.hpp"
+#include "thermocycler-refresh/tasks.hpp"
 
 namespace motor_control_task {
 
 struct MotorTaskFreeRTOS {
     TaskHandle_t main_task;
-    //TaskHandle_t control_task;
+    // TaskHandle_t control_task;
     motor_hardware_handles handles;
 };
 
@@ -43,10 +43,10 @@ static FreeRTOSMessageQueue<motor_task::Message>
 static auto _task = motor_task::MotorTask(_motor_queue);
 
 static constexpr uint32_t main_stack_size = 500;
-//static constexpr uint32_t mc_stack_size = 128;
+// static constexpr uint32_t mc_stack_size = 128;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-//std::array<StackType_t, mc_stack_size> control_task_stack;
+// std::array<StackType_t, mc_stack_size> control_task_stack;
 // Stack as a std::array because why not
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::array<StackType_t, main_stack_size> stack;
@@ -55,7 +55,7 @@ std::array<StackType_t, main_stack_size> stack;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 StaticTask_t main_data;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-//StaticTask_t control_task_data;
+// StaticTask_t control_task_data;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static MotorTaskFreeRTOS _local_task;

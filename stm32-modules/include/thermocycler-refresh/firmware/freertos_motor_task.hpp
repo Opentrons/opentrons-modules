@@ -5,9 +5,9 @@
 #pragma once
 #include "FreeRTOS.h"
 #include "firmware/freertos_message_queue.hpp"
+#include "task.h"
 #include "thermocycler-refresh/motor_task.hpp"
 #include "thermocycler-refresh/tasks.hpp"
-#include "task.h"
 
 namespace motor_control_task {
 
