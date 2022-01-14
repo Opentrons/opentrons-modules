@@ -36,10 +36,9 @@ class GenericTimer {
   public:
     using Callback = std::function<void()>;
     GenericTimer(const char* name, uint32_t period_ms, bool autoreload,
-                 Callback callback)
-        : _callback(std::move(callback)),
-          _handle(name, period_ms, autoreload,
-                  std::bind(&GenericTimer<Handle>::callback, this)) {}
+                 Callback callback_in)
+        : _callback(std::move(callback_in)),
+          _handle(name, period_ms, autoreload, [this] { callback(); }) {}
 
     auto start() -> bool { return _handle.start(); }
     auto stop() -> bool { return _handle.stop(); }

@@ -48,7 +48,7 @@ class FreeRTOSTimer {
 
     static void timer_callback(TimerHandle_t xTimer) {
         auto* timer_id = pvTimerGetTimerID(xTimer);
-        auto instance = static_cast<FreeRTOSTimer*>(timer_id);
+        auto* instance = static_cast<FreeRTOSTimer*>(timer_id);
         instance->_callback();
     }
 };

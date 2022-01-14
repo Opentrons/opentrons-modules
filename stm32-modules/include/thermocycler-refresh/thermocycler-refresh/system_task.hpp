@@ -38,12 +38,12 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
 
 struct LedState {
     // Configured color of the LED, assuming
-    xt1511::XT1511 color;
-    colors::Mode mode;
+    xt1511::XT1511 color = colors::get_color(colors::Colors::SOFT_WHITE);
+    colors::Mode mode = colors::Mode::SOLID;
     // Utility counter for updating state in non-solid modes
-    uint32_t counter;
+    uint32_t counter = 0;
     // Period for movement in MS
-    uint32_t period;
+    uint32_t period = 0;
 };
 
 using Message = messages::SystemMessage;
@@ -184,6 +184,7 @@ class SystemTask {
     auto visit_message(const messages::UpdateUIMessage& message, Policy& policy)
         -> void {
         static_cast<void>(message);
+        static constexpr double TWO = 2.0F;
         _led_state.counter += LED_UPDATE_PERIOD_MS;
         if (_led_state.counter > _led_state.period) {
             _led_state.counter = 0;
@@ -198,14 +199,14 @@ class SystemTask {
                 // Set color as a triangle wave
                 double brightness = 0.0F;
                 if (_led_state.counter < (_led_state.period / 2)) {
-                    brightness = static_cast<float>(_led_state.counter) /
-                                 static_cast<float>(_led_state.period / 2);
+                    brightness = static_cast<double>(_led_state.counter) /
+                                 (static_cast<double>(_led_state.period) / TWO);
                 } else {
                     auto inverse_count =
                         std::abs(static_cast<int>(_led_state.period) -
                                  static_cast<int>(_led_state.counter));
                     brightness = static_cast<double>(inverse_count) /
-                                 static_cast<double>(_led_state.period / 2);
+                                 (static_cast<double>(_led_state.period) / TWO);
                 }
                 auto color = _led_state.color;
                 color.set_scale(brightness);

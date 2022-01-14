@@ -40,9 +40,10 @@ static StaticTask_t
     data;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 // Periodic timer for UI updates
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static timer::GenericTimer<freertos_timer::FreeRTOSTimer> _led_timer(
-    "led timer", _task.LED_UPDATE_PERIOD_MS, true,
-    std::bind(&decltype(_task)::led_timer_callback, &_task));
+    "led timer", decltype(_task)::LED_UPDATE_PERIOD_MS, true,
+    [ObjectPtr = &_task] { ObjectPtr->led_timer_callback(); });
 
 // Actual function that runs inside the task, unused param because we don't get
 // to pick the function type

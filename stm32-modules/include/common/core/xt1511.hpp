@@ -59,12 +59,13 @@ concept XT1511Policy = requires(Policy& p, BufferT& b) {
 // This class represents a single XT1511
 struct XT1511 {
     // Data is sent in the order G, R, B, W
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     uint8_t g = 0, r = 0, b = 0, w = 0;
     auto set_scale(double scale) {
-        g *= scale;
-        r *= scale;
-        b *= scale;
-        w *= scale;
+        g = static_cast<uint8_t>(static_cast<double>(g) * scale);
+        r = static_cast<uint8_t>(static_cast<double>(r) * scale);
+        b = static_cast<uint8_t>(static_cast<double>(b) * scale);
+        w = static_cast<uint8_t>(static_cast<double>(w) * scale);
     }
 };
 
