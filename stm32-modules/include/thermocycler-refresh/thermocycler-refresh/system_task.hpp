@@ -266,6 +266,9 @@ class SystemTask {
             get_message_queue().try_send(messages::UpdateUIMessage()));
     }
 
+    // To be used for tests
+    [[nodiscard]] auto get_led_state() -> LedState& { return _led_state; }
+
   private:
     Queue& _message_queue;
     tasks::Tasks<QueueImpl>* _task_registry;

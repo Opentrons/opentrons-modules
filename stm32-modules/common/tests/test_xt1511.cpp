@@ -31,6 +31,18 @@ SCENARIO("XT1511 structure works") {
     }
 }
 
+SCENARIO("XT1511 equals operator works") {
+    GIVEN("two unequal XT1511 structs") {
+        XT1511 left{.w = 10};
+        XT1511 right{.w = 100};
+        THEN("they should evaluate not equal") { REQUIRE(left != right); }
+    }
+    GIVEN("two equal XT1511 structs") {
+        XT1511 left{}, right{};
+        THEN("they should evaluate equal") { REQUIRE(left == right); }
+    }
+}
+
 SCENARIO("XT1511String driver works") {
     GIVEN("an XT1511String with 1 pixels, half-speed, 16-bit PWM values") {
         constexpr size_t led_count = 1;

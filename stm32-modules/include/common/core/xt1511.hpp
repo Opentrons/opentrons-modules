@@ -68,6 +68,8 @@ struct XT1511 {
     }
 };
 
+auto operator==(const XT1511& l, const XT1511& r) -> bool;
+
 enum class Speed {
     FULL, /**< 800kHz.*/
     HALF, /**< 400kHz.*/
