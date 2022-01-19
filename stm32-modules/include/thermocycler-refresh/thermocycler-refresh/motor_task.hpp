@@ -43,7 +43,21 @@ namespace motor_task {
  */
 template <typename Policy>
 concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
+    // A function to set the stepper drive current in mV
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    {p.lid_stepper_set_vref(1)};
+    // A function to start a stepper movement
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    {p.lid_stepper_start(1.0F)};
+    // A function to stop a stepper movement
+    {p.lid_stepper_stop()};
+    // A function to check for a fault in the stepper movement
+    {p.lid_stepper_check_fault()} -> std::same_as<bool>;
+    // A function to reset the stepper driver
+    {p.lid_stepper_reset()};
+    // A function to disengage the solenoid
     {p.lid_solenoid_disengage()};
+    // A function to engage the solenoid
     {p.lid_solenoid_engage()};
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.delay_ticks(10)};

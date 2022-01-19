@@ -6,11 +6,13 @@
 #include "test/test_message_queue.hpp"
 #include "test/test_system_policy.hpp"
 #include "test/test_thermal_plate_policy.hpp"
+#include "test/test_motor_policy.hpp"
 #include "thermocycler-refresh/host_comms_task.hpp"
 #include "thermocycler-refresh/lid_heater_task.hpp"
 #include "thermocycler-refresh/system_task.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 #include "thermocycler-refresh/thermal_plate_task.hpp"
+#include "thermocycler-refresh/motor_task.hpp"
 
 struct TaskBuilder {
     ~TaskBuilder() = default;
@@ -81,8 +83,11 @@ struct TaskBuilder {
     thermal_plate_task::ThermalPlateTask<TestMessageQueue> thermal_plate_task;
     TestMessageQueue<lid_heater_task::Message> lid_heater_queue;
     lid_heater_task::LidHeaterTask<TestMessageQueue> lid_heater_task;
+    TestMessageQueue<motor_task::Message> motor_queue;
+    motor_task::MotorTask<TestMessageQueue> motor_task;
     tasks::Tasks<TestMessageQueue> task_aggregator;
     TestSystemPolicy system_policy;
     TestThermalPlatePolicy thermal_plate_policy;
     TestLidHeaterPolicy lid_heater_policy;
+    TestMotorPolicy motor_policy;
 };
