@@ -27,7 +27,7 @@
 #include "stm32g4xx_hal_pcd.h"
 
 #include "firmware/thermal_hardware.h"
-#include "../motor_task/motor_hardware.h"
+#include "firmware/motor_hardware.h"
 #include "firmware/system_led_hardware.h"
 
 /** @addtogroup STM32G4xx_HAL_Examples

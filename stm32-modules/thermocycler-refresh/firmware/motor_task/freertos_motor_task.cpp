@@ -17,8 +17,8 @@ extern "C" {
 #pragma GCC diagnostic pop
 
 #include "firmware/freertos_message_queue.hpp"
-#include "motor_hardware.h"
-#include "motor_policy.hpp"
+#include "firmware/motor_hardware.h"
+#include "firmware/motor_policy.hpp"
 #include "thermocycler-refresh/motor_task.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 
@@ -77,19 +77,6 @@ void run(void *param) {
         _task.run_once(policy);
     }
 }
-
-/*void run_control_task(void *param) {
-    static_cast<void>(param);
-    while (true) {
-        vTaskDelay(1);
-        uint16_t code = MC_RunMotorControlTasks();
-        if (code != 0) {
-            auto &queue = _task.get_message_queue();
-            static_cast<void>(queue.try_send(messages::MotorMessage(
-                messages::MotorSystemErrorMessage{.errors = code})));
-        }
-    }
-}*/
 
 // Starter function that creates and spins off the task
 auto start()

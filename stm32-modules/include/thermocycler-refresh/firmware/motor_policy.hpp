@@ -7,8 +7,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
 #pragma GCC diagnostic ignored "-Wregister"
-#include "motor_hardware.h"
-#include "stm32g4xx_hal.h"
+#include "firmware/motor_hardware.h"
 #pragma GCC diagnostic pop
 
 class MotorPolicy {

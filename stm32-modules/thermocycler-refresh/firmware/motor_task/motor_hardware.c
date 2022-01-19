@@ -1,6 +1,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
-#include "motor_hardware.h"
+#include "firmware/motor_hardware.h"
 #include <string.h>  // for memset
 #include <math.h> // for fabs
 

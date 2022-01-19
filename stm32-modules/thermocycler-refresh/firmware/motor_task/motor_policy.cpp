@@ -6,11 +6,10 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
 #pragma GCC diagnostic ignored "-Wregister"
-#include "motor_hardware.h"
-#include "stm32g4xx_hal.h"
-#pragma GCC diagnostic pop
+#include "firmware/motor_hardware.h"
 
-#include "motor_policy.hpp"
+#include "firmware/motor_policy.hpp"
+#pragma GCC diagnostic pop
 #include "thermocycler-refresh/errors.hpp"
 
 using namespace errors;
