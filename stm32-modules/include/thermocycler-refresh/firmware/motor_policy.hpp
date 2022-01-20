@@ -12,9 +12,6 @@
 
 class MotorPolicy {
   public:
-    MotorPolicy() = delete;
-    explicit MotorPolicy(motor_hardware_handles* handles);
-
     auto lid_stepper_set_vref(uint16_t target_vref_mV) -> void;
     auto lid_stepper_start(float angle) -> void;
     auto lid_stepper_stop() -> void;
@@ -24,7 +21,4 @@ class MotorPolicy {
     auto lid_solenoid_engage() -> void;
 
     auto delay_ticks(uint16_t ticks) -> void;
-
-  private:
-    motor_hardware_handles* hw_handles;
 };

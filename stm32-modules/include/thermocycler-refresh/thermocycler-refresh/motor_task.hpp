@@ -52,7 +52,7 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // A function to stop a stepper movement
     {p.lid_stepper_stop()};
     // A function to check for a fault in the stepper movement
-    {p.lid_stepper_check_fault()} -> std::same_as<bool>;
+    { p.lid_stepper_check_fault() } -> std::same_as<bool>;
     // A function to reset the stepper driver
     {p.lid_stepper_reset()};
     // A function to disengage the solenoid

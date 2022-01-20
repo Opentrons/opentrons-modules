@@ -4,7 +4,6 @@
 
 class TestMotorPolicy {
   public:
-
     // Functionality to fulfill concept
 
     auto lid_stepper_set_vref(uint16_t target_vref_mV) -> void {
@@ -12,17 +11,15 @@ class TestMotorPolicy {
     }
     auto lid_stepper_start(float angle) -> void {
         // Simulate jumping right to the end
-        if(_lid_fault) { return; }
+        if (_lid_fault) {
+            return;
+        }
         _actual_angle = angle;
         _moving = false;
     }
-    auto lid_stepper_stop() -> void {
-        _moving = false;
-    }
+    auto lid_stepper_stop() -> void { _moving = false; }
 
-    auto lid_stepper_check_fault() -> bool {
-        return _lid_fault;
-    }
+    auto lid_stepper_check_fault() -> bool { return _lid_fault; }
 
     auto lid_stepper_reset() -> bool {
         _moving = false;
@@ -31,9 +28,12 @@ class TestMotorPolicy {
         return true;
     }
 
-    auto lid_solenoid_disengage() -> void { _solenoid_engaged = false; }  
-    auto lid_solenoid_engage() -> void { _solenoid_engaged = true; }  
-    auto delay_ticks(uint32_t ms) -> void { static_cast<void>(ms); return; }
+    auto lid_solenoid_disengage() -> void { _solenoid_engaged = false; }
+    auto lid_solenoid_engage() -> void { _solenoid_engaged = true; }
+    auto delay_ticks(uint32_t ms) -> void {
+        static_cast<void>(ms);
+        return;
+    }
 
     // Test-specific functions
 

@@ -6,29 +6,14 @@
 #include <array>
 
 #include "FreeRTOS.h"
-#include "task.h"
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvolatile"
-#pragma GCC diagnostic ignored "-Wregister"
-extern "C" {
-#include "stm32g4xx_hal.h"
-}
-#pragma GCC diagnostic pop
-
 #include "firmware/freertos_message_queue.hpp"
 #include "firmware/motor_hardware.h"
 #include "firmware/motor_policy.hpp"
+#include "task.h"
 #include "thermocycler-refresh/motor_task.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 
 namespace motor_control_task {
-
-struct MotorTaskFreeRTOS {
-    TaskHandle_t main_task;
-    // TaskHandle_t control_task;
-    motor_hardware_handles handles;
-};
 
 enum class Notifications : uint8_t {
     INCOMING_MESSAGE = 1,
@@ -43,10 +28,7 @@ static FreeRTOSMessageQueue<motor_task::Message>
 static auto _task = motor_task::MotorTask(_motor_queue);
 
 static constexpr uint32_t main_stack_size = 500;
-// static constexpr uint32_t mc_stack_size = 128;
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-// std::array<StackType_t, mc_stack_size> control_task_stack;
 // Stack as a std::array because why not
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::array<StackType_t, main_stack_size> stack;
@@ -54,11 +36,9 @@ std::array<StackType_t, main_stack_size> stack;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 StaticTask_t main_data;
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-// StaticTask_t control_task_data;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static MotorTaskFreeRTOS _local_task;
+static TaskHandle_t _local_task;
 
 static void handle_lid_stepper() {
     static_cast<void>(_task.get_message_queue().try_send_from_isr(
@@ -68,10 +48,12 @@ static void handle_lid_stepper() {
 // Actual function that runs inside the task
 void run(void *param) {
     static_cast<void>(param);
-    memset(&_local_task.handles, 0, sizeof(_local_task.handles));
-    _local_task.handles.lid_stepper_complete = handle_lid_stepper;
-    motor_hardware_setup(&_local_task.handles);
-    auto policy = MotorPolicy(&_local_task.handles);
+
+    motor_hardware_callbacks callbacks = {.lid_stepper_complete =
+                                              handle_lid_stepper};
+    motor_hardware_setup(&callbacks);
+
+    auto policy = MotorPolicy();
 
     while (true) {
         _task.run_once(policy);
@@ -83,11 +65,7 @@ auto start()
     -> tasks::Task<TaskHandle_t, motor_task::MotorTask<FreeRTOSMessageQueue>> {
     auto *handle = xTaskCreateStatic(run, "MotorControl", stack.size(), &_task,
                                      1, stack.data(), &main_data);
-    /*auto *control_task_handle = xTaskCreateStatic(
-        run_control_task, "MCControl", control_task_stack.size(), nullptr, 2,
-        control_task_stack.data(), &control_task_data);*/
-    //_local_task.control_task = control_task_handle;
-    _local_task.main_task = handle;
+    _local_task = handle;
     _motor_queue.provide_handle(handle);
     return tasks::Task<TaskHandle_t, decltype(_task)>{.handle = handle,
                                                       .task = &_task};

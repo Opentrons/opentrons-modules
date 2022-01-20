@@ -4,15 +4,15 @@
 
 #include "test/test_lid_heater_policy.hpp"
 #include "test/test_message_queue.hpp"
+#include "test/test_motor_policy.hpp"
 #include "test/test_system_policy.hpp"
 #include "test/test_thermal_plate_policy.hpp"
-#include "test/test_motor_policy.hpp"
 #include "thermocycler-refresh/host_comms_task.hpp"
 #include "thermocycler-refresh/lid_heater_task.hpp"
+#include "thermocycler-refresh/motor_task.hpp"
 #include "thermocycler-refresh/system_task.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 #include "thermocycler-refresh/thermal_plate_task.hpp"
-#include "thermocycler-refresh/motor_task.hpp"
 
 struct TaskBuilder {
     ~TaskBuilder() = default;

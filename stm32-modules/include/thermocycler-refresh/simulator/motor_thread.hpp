@@ -11,4 +11,3 @@ using SimMotorTask = motor_task::MotorTask<SimulatorMessageQueue>;
 struct TaskControlBlock;
 auto build() -> tasks::Task<std::unique_ptr<std::jthread>, SimMotorTask>;
 };  // namespace motor_thread
-

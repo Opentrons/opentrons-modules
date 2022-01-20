@@ -1,21 +1,14 @@
+#include "firmware/motor_policy.hpp"
+
 #include <algorithm>
 #include <cstdlib>
 
 #include "FreeRTOS.h"
-#include "task.h"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvolatile"
-#pragma GCC diagnostic ignored "-Wregister"
 #include "firmware/motor_hardware.h"
-
-#include "firmware/motor_policy.hpp"
-#pragma GCC diagnostic pop
+#include "task.h"
 #include "thermocycler-refresh/errors.hpp"
 
 using namespace errors;
-
-MotorPolicy::MotorPolicy(motor_hardware_handles* handles)
-    : hw_handles(handles) {}
 
 // bool return for error checking?
 auto MotorPolicy::lid_stepper_set_vref(uint16_t target_vref_mV) -> void {
