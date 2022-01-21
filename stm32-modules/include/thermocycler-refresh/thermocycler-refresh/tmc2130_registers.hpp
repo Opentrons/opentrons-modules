@@ -73,24 +73,24 @@ struct __attribute__((packed, __may_alias__)) GConfig {
     static constexpr bool writable = true;
     static constexpr uint32_t value_mask = (1 << 17) - 1;
 
-    uint8_t i_scale_analog : 1 = 0;
-    uint8_t internal_rsense : 1 = 0;
-    uint8_t en_pwm_mode : 1 = 0;
-    uint8_t enc_commutation : 1 = 0;  // MUST be 0
-    uint8_t shaft : 1 = 0;
-    uint8_t diag0_error : 1 = 0;
-    uint8_t diag0_otpw : 1 = 0;
-    uint8_t diag0_stall : 1 = 0;
-    uint8_t diag1_stall : 1 = 0;
-    uint8_t diag1_index : 1 = 0;
-    uint8_t diag1_onstate : 1 = 0;
-    uint8_t diag1_steps_skipped : 1 = 0;
-    uint8_t diag0_int_pushpull : 1 = 0;
-    uint8_t diag1_pushpull : 1 = 0;
-    uint8_t small_hysteresis : 1 = 0;
-    uint8_t stop_enable : 1 = 0;
-    uint8_t direct_mode : 1 = 0;
-    uint8_t test_mode : 1 = 0;  // MUST be 0
+    uint32_t i_scale_analog : 1 = 0;
+    uint32_t internal_rsense : 1 = 0;
+    uint32_t en_pwm_mode : 1 = 0;
+    uint32_t enc_commutation : 1 = 0;  // MUST be 0
+    uint32_t shaft : 1 = 0;
+    uint32_t diag0_error : 1 = 0;
+    uint32_t diag0_otpw : 1 = 0;
+    uint32_t diag0_stall : 1 = 0;
+    uint32_t diag1_stall : 1 = 0;
+    uint32_t diag1_index : 1 = 0;
+    uint32_t diag1_onstate : 1 = 0;
+    uint32_t diag1_steps_skipped : 1 = 0;
+    uint32_t diag0_int_pushpull : 1 = 0;
+    uint32_t diag1_pushpull : 1 = 0;
+    uint32_t small_hysteresis : 1 = 0;
+    uint32_t stop_enable : 1 = 0;
+    uint32_t direct_mode : 1 = 0;
+    uint32_t test_mode : 1 = 0;  // MUST be 0
 };
 
 struct __attribute__((packed, __may_alias__)) GStatus {
@@ -98,9 +98,9 @@ struct __attribute__((packed, __may_alias__)) GStatus {
     static constexpr bool readable = true;
     static constexpr uint32_t value_mask = (1 << 3) - 1;
 
-    uint8_t undervoltage_error : 1 = 0;
-    uint8_t driver_error : 1 = 0;
-    uint8_t reset : 1 = 0;
+    uint32_t undervoltage_error : 1 = 0;
+    uint32_t driver_error : 1 = 0;
+    uint32_t reset : 1 = 0;
 };
 
 /**
@@ -112,13 +112,13 @@ struct __attribute__((packed, __may_alias__)) CurrentControl {
     static constexpr uint32_t value_mask = (1 << 20) - 1;
 
     // Arbitrary scale from 0-31
-    uint8_t hold_current : 5 = 0;
-    uint8_t bit_padding_1 : 3 = 0;
+    uint32_t hold_current : 5 = 0;
+    uint32_t bit_padding_1 : 3 = 0;
     // Arbitrary scale from 0-31
-    uint8_t run_current : 5 = 0;
-    uint8_t bit_padding_2 : 3 = 0;
+    uint32_t run_current : 5 = 0;
+    uint32_t bit_padding_2 : 3 = 0;
     // Motor powers down after (hold_current_delay * (2^18)) clock cycles
-    uint8_t hold_current_delay : 4 = 0;
+    uint32_t hold_current_delay : 4 = 0;
 };
 
 /**
@@ -131,7 +131,7 @@ struct __attribute__((packed, __may_alias__)) PowerDownDelay {
     static constexpr uint32_t value_mask = (1 << 8) - 1;
 
     static constexpr double max_time = 4.0F;
-    static constexpr uint64_t max_val = 0xFF;
+    static constexpr uint32_t max_val = 0xFF;
 
     [[nodiscard]] static auto reg_to_seconds(uint8_t reg) -> double {
         return (static_cast<double>(reg) / static_cast<double>(max_val)) *
@@ -141,11 +141,11 @@ struct __attribute__((packed, __may_alias__)) PowerDownDelay {
         if (seconds > max_time) {
             return max_val;
         }
-        return static_cast<uint8_t>((seconds / max_time) *
-                                    static_cast<double>(max_val));
+        return static_cast<uint32_t>((seconds / max_time) *
+                                     static_cast<double>(max_val));
     }
 
-    uint8_t time = 0;
+    uint32_t time : 8 = 0;
 };
 
 /**
@@ -188,7 +188,7 @@ struct __attribute__((packed, __may_alias__)) ChopConfig {
      *  2...15 sets duration of slow decay phase:
      * Nclk = 12 + 32 * TOFF
      */
-    uint8_t toff : 4 = 0;
+    uint32_t toff : 4 = 0;
     /**
      * CHM = 0: sets hysteresis start value added to HEND
      *  - Add 1,2,...,8 to hysteresis low value HEND
@@ -196,7 +196,7 @@ struct __attribute__((packed, __may_alias__)) ChopConfig {
      * CHM = 1: sets fast decay time, TFD :
      *  - Nclk = 32*HSTRT
      */
-    uint8_t hstrt : 3 = 0;
+    uint32_t hstrt : 3 = 0;
     /**
      * CHM = 0: Hysteresis is -3, -2, -1, ... 12. This is the hysteresis
      * value used for the hysteresis chopper
@@ -204,47 +204,47 @@ struct __attribute__((packed, __may_alias__)) ChopConfig {
      * CHM = 1: Sine wave offset. 1/512 of the val gets added to abs of each
      * sine wave entry
      */
-    uint8_t hend : 4 = 0;
+    uint32_t hend : 4 = 0;
     /**
      * CHM = 1: MSB of fast decay time setting TFD
      */
-    uint8_t fd3 : 1 = 0;
+    uint32_t fd3 : 1 = 0;
     /**
      * CHM = 1: Fast decay mode. Set to 1 to disable current comparator
      * usage for termination of fast decay cycle.
      */
-    uint8_t disfdcc : 1 = 0;
+    uint32_t disfdcc : 1 = 0;
     /**
      * 0 = chopper OFF time fixed as set by TOFF (aka hstrt and fd3)
      *
      * 1 = Random mode, TOFF is modulated by [-12,3] clocks
      */
-    uint8_t rndtf : 1 = 0;
+    uint32_t rndtf : 1 = 0;
     /**
      * Chopper mode. 0 = standard mode, 1 = constant off-time with fast decay.
      */
-    uint8_t chm : 1 = 0;
+    uint32_t chm : 1 = 0;
     /**
      * Blank Time Select. Sets comparator blank time to 16,24,36,54
      */
-    uint8_t tbl : 2 = 2;
+    uint32_t tbl : 2 = 2;
     /**
      * 0 = low sensitivity, high sense resistor voltage
      *
      * 1 = high sensitivity, low sense resistor voltage
      */
-    uint8_t vsense : 1 = 0;
+    uint32_t vsense : 1 = 0;
     /**
      * High velocity fullstep selection: Enables switching to fullstep when
      * VHIGH is exceeded. Only switches at 45º position.
      */
-    uint8_t vhighfs : 1 = 0;
+    uint32_t vhighfs : 1 = 0;
     /**
      * High Velocity Chopper Mode: Enables switching to chm=1 and fd=0 when
      * VHIGH is exceeded. If set, the TOFF setting automatically becomes
      * doubled during high velocity operation.
      */
-    uint8_t vhighchm : 1 = 0;
+    uint32_t vhighchm : 1 = 0;
     /**
      * SYNC PWM synchronization clock: Allows synchroniation of the chopper
      * for both phases of a two phase motor to avoid occurrence of a beat.
@@ -254,7 +254,7 @@ struct __attribute__((packed, __may_alias__)) ChopConfig {
      *
      * 1...15 = synchronized with fsync = fclk/(sync*64)
      */
-    uint8_t sync : 4 = 0;
+    uint32_t sync : 4 = 0;
     /**
      * Microstep resolution:
      *
@@ -265,17 +265,17 @@ struct __attribute__((packed, __may_alias__)) ChopConfig {
      * Reduced microstep resolution for STEP/DIR operation. Resolution gives
      * the number of microstep entries per sine quarter wave.
      */
-    uint8_t mres : 4 = 0;
+    uint32_t mres : 4 = 0;
     /**
      * Interpolation to 256 microsteps: If set, the actual MRES becomes
      * extrapolated to 256 usteps for smoothest motor operation
      */
-    uint8_t intpol : 1 = 0;
+    uint32_t intpol : 1 = 0;
     /**
      * Enable double edge step pulses: If set, enable step impulse at each
      * step edge to reduce step frequency requirement
      */
-    uint8_t dedge : 1 = 0;
+    uint32_t dedge : 1 = 0;
     /**
      * Short to GND protectino disable:
      *
@@ -283,7 +283,7 @@ struct __attribute__((packed, __may_alias__)) ChopConfig {
      *
      * 1 = short to gnd protection disabled
      */
-    uint8_t diss2g : 1 = 0;
+    uint32_t diss2g : 1 = 0;
 };
 
 /**
@@ -305,21 +305,21 @@ struct __attribute__((packed, __may_alias__)) CoolConfig {
      *
      * 1..15 = set threshold value
      */
-    uint8_t semin : 4 = 0;
-    uint8_t padding_1 : 1 = 0;
+    uint32_t semin : 4 = 0;
+    uint32_t padding_1 : 1 = 0;
     /**
      * Current up step width: Current increment steps per measured SG value:
      *
      * 1,2,4,8
      */
-    uint8_t seup : 2 = 0;
-    uint8_t padding_2 : 1 = 0;
+    uint32_t seup : 2 = 0;
+    uint32_t padding_2 : 1 = 0;
     /**
      * If the SG result is >= (SEMIN+SEMAX+1)*32, motor current decreases
      * to save energy.
      */
-    uint8_t semax : 4 = 0;
-    uint8_t padding_3 : 1 = 0;
+    uint32_t semax : 4 = 0;
+    uint32_t padding_3 : 1 = 0;
     /**
      * Current down step speed:
      *
@@ -331,7 +331,7 @@ struct __attribute__((packed, __may_alias__)) CoolConfig {
      *
      * 3: for each SG value, decrease by one
      */
-    uint8_t sedn : 2 = 0;
+    uint32_t sedn : 2 = 0;
     /**
      * Minimum current for smart current control:
      *
@@ -339,7 +339,7 @@ struct __attribute__((packed, __may_alias__)) CoolConfig {
      *
      * 1 = 1/4 of current setting in IRUN
      */
-    uint8_t seimin : 1 = 0;
+    uint32_t seimin : 1 = 0;
     /**
      * SG Threshold Value: This signed value controlls SG level for stall
      * output and sets optimum measurement range for readout. A lower val
@@ -349,8 +349,8 @@ struct __attribute__((packed, __may_alias__)) CoolConfig {
      * -64 to +63: Higher value makes SG less sensitive and requires more
      * torque to indicate a stall
      */
-    int8_t sgt : 7 = 0;
-    uint8_t padding_4 : 1 = 0;
+    int32_t sgt : 7 = 0;
+    uint32_t padding_4 : 1 = 0;
     /**
      * SG filter enable:
      *
@@ -358,7 +358,7 @@ struct __attribute__((packed, __may_alias__)) CoolConfig {
      *
      * 1 = filtered mode, SG signal updated for each 4 full steps
      */
-    uint8_t sfilt : 1 = 0;
+    uint32_t sfilt : 1 = 0;
 };
 
 // Encapsulates all of the registers that should be configured by software
