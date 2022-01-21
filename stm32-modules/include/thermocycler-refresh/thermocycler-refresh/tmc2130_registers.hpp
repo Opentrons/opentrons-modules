@@ -142,7 +142,7 @@ struct __attribute__((packed, __may_alias__)) PowerDownDelay {
             return max_val;
         }
         return static_cast<uint32_t>((seconds / max_time) *
-                                    static_cast<double>(max_val));
+                                     static_cast<double>(max_val));
     }
 
     uint32_t time : 8 = 0;
