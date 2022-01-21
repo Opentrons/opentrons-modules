@@ -148,29 +148,7 @@ struct LidStepperDebugMessage {
     double angle;
 };
 
-struct LidStepperCompleteCheckMessage {
-    uint32_t responding_to_id;
-};
-
 struct LidStepperComplete {};
-
-struct LidStepperCheckFaultMessage {
-    uint32_t id;
-};
-
-struct LidStepperResetMessage {
-    uint32_t id;
-};
-
-struct LidStepperCheckFaultResponse {
-    uint32_t responding_to_id;
-    bool fault;
-};
-
-struct LidStepperResetResponse {
-    uint32_t responding_to_id;
-    bool fault_gone;
-};
 
 struct GetPlateTempMessage {
     uint32_t id;
@@ -249,7 +227,6 @@ using HostCommsMessage =
                    ErrorMessage, ForceUSBDisconnectMessage,
                    GetSystemInfoResponse, GetLidTemperatureDebugResponse,
                    GetPlateTemperatureDebugResponse,
-                   LidStepperCheckFaultResponse, LidStepperResetResponse,
                    GetPlateTempResponse, GetLidTempResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
@@ -264,7 +241,5 @@ using LidHeaterMessage =
                    DeactivateLidHeatingMessage, SetPIDConstantsMessage>;
 using MotorMessage =
     ::std::variant<std::monostate, ActuateSolenoidMessage,
-                   LidStepperDebugMessage, LidStepperCompleteCheckMessage,
-                   LidStepperComplete, LidStepperCheckFaultMessage,
-                   LidStepperResetMessage>;
+                   LidStepperDebugMessage, LidStepperComplete>;
 };  // namespace messages

@@ -51,6 +51,3 @@ auto MotorPolicy::lid_solenoid_disengage() -> void {
 auto MotorPolicy::lid_solenoid_engage() -> void {
     motor_hardware_solenoid_engage();
 }
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::delay_ticks(uint16_t ticks) -> void { vTaskDelay(ticks); }

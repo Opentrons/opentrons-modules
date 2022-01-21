@@ -34,10 +34,6 @@ class SimMotorPolicy {
 
     auto lid_solenoid_disengage() -> void { _solenoid_engaged = false; }
     auto lid_solenoid_engage() -> void { _solenoid_engaged = true; }
-    auto delay_ticks(uint32_t ms) -> void {
-        static_cast<void>(ms);
-        return;
-    }
 
     // Test-specific functions
 

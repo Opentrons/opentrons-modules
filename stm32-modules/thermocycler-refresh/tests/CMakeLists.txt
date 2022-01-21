@@ -17,6 +17,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_board_revision_hardware.cpp
     test_board_revision.cpp
     test_colors.cpp
+    test_motor_task.cpp
     # GCode parse tests
     test_m14.cpp
     test_m104.cpp
@@ -31,6 +32,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_m140d.cpp
     test_m141.cpp
     test_m301.cpp
+    test_g28d.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 

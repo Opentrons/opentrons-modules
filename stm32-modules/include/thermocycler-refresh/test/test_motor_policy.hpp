@@ -9,7 +9,7 @@ class TestMotorPolicy {
     auto lid_stepper_set_vref(uint16_t target_vref_mV) -> void {
         _target_vref = target_vref_mV;
     }
-    auto lid_stepper_start(float angle) -> void {
+    auto lid_stepper_start(double angle) -> void {
         // Simulate jumping right to the end
         if (_lid_fault) {
             return;
@@ -30,16 +30,17 @@ class TestMotorPolicy {
 
     auto lid_solenoid_disengage() -> void { _solenoid_engaged = false; }
     auto lid_solenoid_engage() -> void { _solenoid_engaged = true; }
-    auto delay_ticks(uint32_t ms) -> void {
-        static_cast<void>(ms);
-        return;
-    }
 
     // Test-specific functions
 
     auto solenoid_engaged() -> bool { return _solenoid_engaged; }
 
+    /** Next movement will be an error.*/
     auto trigger_lid_fault() -> void { _lid_fault = true; }
+
+    auto get_vref() -> uint16_t { return _target_vref; }
+
+    auto get_angle() -> double { return _actual_angle; }
 
   private:
     // Solenoid is engaged when unpowered

@@ -41,7 +41,6 @@ class HostCommsTask {
         gcode::EnterBootloader, gcode::GetSystemInfo, gcode::SetSerialNumber,
         gcode::GetLidTemperatureDebug, gcode::GetPlateTemperatureDebug,
         gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
-        gcode::LidStepperCheckFaultDebug, gcode::LidStepperResetDebug,
         gcode::SetPeltierDebug, gcode::SetFanManual, gcode::SetHeaterDebug,
         gcode::GetPlateTemp, gcode::GetLidTemp, gcode::SetLidTemperature,
         gcode::DeactivateLidHeating, gcode::SetPIDConstants,
@@ -60,9 +59,6 @@ class HostCommsTask {
     using GetPlateTempDebugCache = AckCache<8, gcode::GetPlateTemperatureDebug>;
     using GetPlateTempCache = AckCache<8, gcode::GetPlateTemp>;
     using GetLidTempCache = AckCache<8, gcode::GetLidTemp>;
-    using LidStepperCheckFaultCache =
-        AckCache<8, gcode::LidStepperCheckFaultDebug>;
-    using LidStepperResetCache = AckCache<8, gcode::LidStepperResetDebug>;
 
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
@@ -78,10 +74,6 @@ class HostCommsTask {
           get_lid_temp_debug_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_plate_temp_debug_cache(),
-          // NOLINTNEXTLINE(readability-redundant-member-init)
-          lid_stepper_check_fault_cache(),
-          // NOLINTNEXTLINE(readability-redundant-member-init)
-          lid_stepper_reset_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_plate_temp_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
@@ -342,28 +334,6 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_message(const messages::LidStepperCheckFaultResponse& response,
-                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry = lid_stepper_check_fault_cache.remove_if_present(
-            response.responding_to_id);
-        return std::visit(
-            [tx_into, tx_limit, response](auto cache_element) {
-                using T = std::decay_t<decltype(cache_element)>;
-                if constexpr (std::is_same_v<std::monostate, T>) {
-                    return errors::write_into(
-                        tx_into, tx_limit,
-                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
-                } else {
-                    return cache_element.write_response_into(tx_into, tx_limit,
-                                                             response.fault);
-                }
-            },
-            cache_entry);
-    }
-
-    template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetLidTempResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
         auto cache_entry =
@@ -379,28 +349,6 @@ class HostCommsTask {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.current_temp,
                         response.set_temp);
-                }
-            },
-            cache_entry);
-    }
-
-    template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_message(const messages::LidStepperResetResponse& response,
-                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry = lid_stepper_reset_cache.remove_if_present(
-            response.responding_to_id);
-        return std::visit(
-            [tx_into, tx_limit, response](auto cache_element) {
-                using T = std::decay_t<decltype(cache_element)>;
-                if constexpr (std::is_same_v<std::monostate, T>) {
-                    return errors::write_into(
-                        tx_into, tx_limit,
-                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
-                } else {
-                    return cache_element.write_response_into(
-                        tx_into, tx_limit, response.fault_gone);
                 }
             },
             cache_entry);
@@ -895,51 +843,6 @@ class HostCommsTask {
         return std::make_pair(true, tx_into);
     }
 
-    template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_gcode(const gcode::LidStepperCheckFaultDebug& gcode,
-                     InputIt tx_into, InputLimit tx_limit)
-        -> std::pair<bool, InputIt> {
-        auto id = lid_stepper_check_fault_cache.add(gcode);
-        if (id == 0) {
-            return std::make_pair(
-                false, errors::write_into(tx_into, tx_limit,
-                                          errors::ErrorCode::GCODE_CACHE_FULL));
-        }
-        auto message = messages::LidStepperCheckFaultMessage{.id = id};
-        if (!task_registry->motor->get_message_queue().try_send(
-                message, TICKS_TO_WAIT_ON_SEND)) {
-            auto wrote_to = errors::write_into(
-                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            ack_only_cache.remove_if_present(id);
-            return std::make_pair(false, wrote_to);
-        }
-        return std::make_pair(true, tx_into);
-    }
-
-    template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_gcode(const gcode::LidStepperResetDebug& gcode, InputIt tx_into,
-                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
-        auto id = lid_stepper_reset_cache.add(gcode);
-        if (id == 0) {
-            return std::make_pair(
-                false, errors::write_into(tx_into, tx_limit,
-                                          errors::ErrorCode::GCODE_CACHE_FULL));
-        }
-        auto message = messages::LidStepperResetMessage{.id = id};
-        if (!task_registry->motor->get_message_queue().try_send(
-                message, TICKS_TO_WAIT_ON_SEND)) {
-            auto wrote_to = errors::write_into(
-                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            ack_only_cache.remove_if_present(id);
-            return std::make_pair(false, wrote_to);
-        }
-        return std::make_pair(true, tx_into);
-    }
-
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -958,8 +861,6 @@ class HostCommsTask {
     GetSystemInfoCache get_system_info_cache;
     GetLidTempDebugCache get_lid_temp_debug_cache;
     GetPlateTempDebugCache get_plate_temp_debug_cache;
-    LidStepperCheckFaultCache lid_stepper_check_fault_cache;
-    LidStepperResetCache lid_stepper_reset_cache;
     GetPlateTempCache get_plate_temp_cache;
     GetLidTempCache get_lid_temp_cache;
     bool may_connect_latch = true;

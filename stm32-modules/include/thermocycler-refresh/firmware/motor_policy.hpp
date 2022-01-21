@@ -19,6 +19,4 @@ class MotorPolicy {
     auto lid_stepper_reset() -> bool;
     auto lid_solenoid_disengage() -> void;
     auto lid_solenoid_engage() -> void;
-
-    auto delay_ticks(uint16_t ticks) -> void;
 };

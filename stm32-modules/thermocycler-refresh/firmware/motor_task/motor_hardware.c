@@ -20,15 +20,6 @@ extern "C" {
 // ----------------------------------------------------------------------------
 // Local definitions
 
-// The homing solenoid is driven by an integrated package h-bridge controller
-// Allegro A4950KLJTR-T. It has two input pins that in theory control both
-// direction and power; here, really only one direction matters. Pin 2 is
-// held low at all times; pin 1 is driven high to send energy (with the amount
-// controlled by a DAC setting the current limit to the driver rather than
-// PWMing) to move the solenoid, and driven low to put the driver into coast
-// mode and let the solenoid's spring retract it.
-
-// fix comment
 #define SOLENOID_Port GPIOD
 #define SOLENOID_Pin GPIO_PIN_8
 #define LID_STEPPER_ENABLE_Port GPIOE
@@ -51,9 +42,13 @@ typedef struct {
 } motor_hardware_status;
 
 typedef struct {
+    // Handle for the lid current control DAC
     DAC_HandleTypeDef lid_dac;
+    // Current status of the lid stepper
     motor_hardware_status lid_stepper;
+    // Handle for the timer used for the lid stepper motor
     TIM_HandleTypeDef lid_timer;
+    // Callback for completion of a lid stepper movement
     void (*lid_stepper_complete)();
 } motor_hardware_handles;
 

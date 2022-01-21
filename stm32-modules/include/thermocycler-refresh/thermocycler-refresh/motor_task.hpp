@@ -59,13 +59,14 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.lid_solenoid_disengage()};
     // A function to engage the solenoid
     {p.lid_solenoid_engage()};
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-    {p.delay_ticks(10)};
 };
 
 struct LidStepperState {
-    enum LidStepperTaskStatus { IDLE = 0, MOVING = 1, MOVE_COMPLETE = 2 };
+    enum LidStepperTaskStatus { IDLE = 0, MOVING = 1 };
+    // Current status of the lid stepper
     LidStepperTaskStatus status;
+    // When a movement is complete, respond to this ID
+    uint32_t response_id;
 };
 
 using Message = ::messages::MotorMessage;
@@ -119,54 +120,21 @@ class MotorTask {
         policy.lid_stepper_set_vref(48);  // test
         policy.lid_stepper_start(msg.angle);
         lid_stepper_state.status = LidStepperState::MOVING;
-        auto complete_check_message = messages::LidStepperCompleteCheckMessage{
-            .responding_to_id = msg.id};
-        static_cast<void>(get_message_queue().try_send(complete_check_message));
-    }
-
-    template <typename Policy>
-    auto visit_message(const messages::LidStepperCompleteCheckMessage& msg,
-                       Policy& policy) -> void {
-        if (lid_stepper_state.status == LidStepperState::MOVE_COMPLETE) {
-            policy.lid_stepper_set_vref(0);
-            auto response = messages::AcknowledgePrevious{
-                .responding_to_id = msg.responding_to_id};
-            static_cast<void>(
-                task_registry->comms->get_message_queue().try_send(
-                    messages::HostCommsMessage(response)));
-        } else {
-            policy.delay_ticks(200);  // blocks task, ok since no other motor
-                                      // subtasks needed to run simultaneously
-            static_cast<void>(get_message_queue().try_send(
-                messages::LidStepperCompleteCheckMessage{
-                    .responding_to_id = msg.responding_to_id}));
-        }
+        lid_stepper_state.response_id = msg.id;
     }
 
     template <typename Policy>
     auto visit_message(const messages::LidStepperComplete& msg, Policy& policy)
         -> void {
-        lid_stepper_state.status = LidStepperState::MOVE_COMPLETE;
-    }
-
-    template <typename Policy>
-    auto visit_message(const messages::LidStepperCheckFaultMessage& msg,
-                       Policy& policy) -> void {
-        bool fault = policy.lid_stepper_check_fault();
-        auto response = messages::LidStepperCheckFaultResponse{
-            .responding_to_id = msg.id, .fault = fault};
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
-    }
-
-    template <typename Policy>
-    auto visit_message(const messages::LidStepperResetMessage& msg,
-                       Policy& policy) -> void {
-        bool fault_gone = policy.lid_stepper_reset();
-        auto response = messages::LidStepperResetResponse{
-            .responding_to_id = msg.id, .fault_gone = fault_gone};
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
+        if(lid_stepper_state.status == LidStepperState::MOVING) {
+            lid_stepper_state.status = LidStepperState::IDLE;
+            policy.lid_stepper_set_vref(0);
+            auto response = messages::AcknowledgePrevious{
+                .responding_to_id = lid_stepper_state.response_id};
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    messages::HostCommsMessage(response)));    
+        }
     }
 
     template <typename Policy>

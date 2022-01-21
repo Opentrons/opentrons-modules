@@ -54,6 +54,15 @@ struct TaskBuilder {
         -> lid_heater_task::LidHeaterTask<TestMessageQueue>& {
         return lid_heater_task;
     }
+
+    auto get_motor_queue() -> TestMessageQueue<motor_task::Message>& {
+        return motor_queue;
+    }
+    auto get_motor_task()
+        -> motor_task::MotorTask<TestMessageQueue>& {
+        return motor_task;
+    }
+
     auto get_tasks_aggregator() -> tasks::Tasks<TestMessageQueue>& {
         return task_aggregator;
     }
@@ -65,6 +74,10 @@ struct TaskBuilder {
         return lid_heater_policy;
     }
 
+    auto get_motor_policy() -> TestMotorPolicy& {
+        return motor_policy;
+    }
+
     auto run_system_task() -> void { system_task.run_once(system_policy); }
     auto run_thermal_plate_task() -> void {
         thermal_plate_task.run_once(thermal_plate_policy);
@@ -72,6 +85,8 @@ struct TaskBuilder {
     auto run_lid_heater_task() -> void {
         lid_heater_task.run_once(lid_heater_policy);
     }
+
+    auto run_motor_task() -> void { motor_task.run_once(motor_policy); }
 
   private:
     TaskBuilder();
