@@ -77,7 +77,7 @@ class MotorTask {
   public:
     using Queue = QueueImpl<Message>;
 
-    // Default current to set for the lid stepper, in millivolts
+    // Default current to set for the lid stepper, in milliamperes
     static constexpr double LID_STEPPER_DEFAULT_CURRENT = 48;
 
     explicit MotorTask(Queue& q)
@@ -122,12 +122,27 @@ class MotorTask {
     auto visit_message(const messages::LidStepperDebugMessage& msg,
                        Policy& policy) -> void {
         // check for errors
-        policy.lid_stepper_set_dac(motor_util::LidStepper::current_to_dac(
-            LID_STEPPER_DEFAULT_CURRENT));
-        policy.lid_stepper_start(
-            motor_util::LidStepper::angle_to_microsteps(msg.angle));
-        lid_stepper_state.status = LidStepperState::MOVING;
-        lid_stepper_state.response_id = msg.id;
+        auto error = errors::ErrorCode::NO_ERROR;
+        if (lid_stepper_state.status == LidStepperState::MOVING) {
+            error = errors::ErrorCode::LID_MOTOR_BUSY;
+        } else if (policy.lid_stepper_check_fault()) {
+            error = errors::ErrorCode::LID_MOTOR_FAULT;
+        }
+        if (error == errors::ErrorCode::NO_ERROR) {
+            // Start movement and cache the id for later
+            policy.lid_stepper_set_dac(motor_util::LidStepper::current_to_dac(
+                LID_STEPPER_DEFAULT_CURRENT));
+            policy.lid_stepper_start(
+                motor_util::LidStepper::angle_to_microsteps(msg.angle));
+            lid_stepper_state.status = LidStepperState::MOVING;
+            lid_stepper_state.response_id = msg.id;
+        } else {
+            auto response = messages::AcknowledgePrevious{
+                .responding_to_id = msg.id, .with_error = error};
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    messages::HostCommsMessage(response)));
+        }
     }
 
     template <typename Policy>

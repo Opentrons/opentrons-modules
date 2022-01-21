@@ -52,6 +52,24 @@ SCENARIO("motor task message passing") {
                 REQUIRE(motor_queue.backing_deque.empty());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
             }
+            AND_WHEN("sending another one") {
+                message.id = 999;
+                motor_queue.backing_deque.push_back(message);
+                tasks->run_motor_task();
+                THEN("the second message is ACKed with an error") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto ack =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            ack));
+                    auto ack_msg = std::get<messages::AcknowledgePrevious>(ack);
+                    REQUIRE(ack_msg.responding_to_id == 999);
+                    REQUIRE(ack_msg.with_error ==
+                            errors::ErrorCode::LID_MOTOR_BUSY);
+                }
+            }
             AND_WHEN("receiving a LidStepperComplete message") {
                 auto done_msg = messages::LidStepperComplete();
                 motor_queue.backing_deque.push_back(done_msg);
@@ -68,6 +86,32 @@ SCENARIO("motor task message passing") {
                             ack));
                     auto ack_msg = std::get<messages::AcknowledgePrevious>(ack);
                     REQUIRE(ack_msg.responding_to_id == 123);
+                }
+            }
+        }
+        GIVEN("a lid motor fault") {
+            motor_policy.trigger_lid_fault();
+            WHEN("sending a LidStepperDebugMessage") {
+                static constexpr double ANGLE = 10.0F;
+                auto message =
+                    messages::LidStepperDebugMessage{.id = 123, .angle = ANGLE};
+                motor_queue.backing_deque.push_back(message);
+                tasks->run_motor_task();
+                THEN("the message is ACKed with an error") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto ack =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            ack));
+                    auto ack_msg = std::get<messages::AcknowledgePrevious>(ack);
+                    REQUIRE(ack_msg.responding_to_id == 123);
+                    REQUIRE(ack_msg.with_error ==
+                            errors::ErrorCode::LID_MOTOR_FAULT);
+                }
+                THEN("no motion is started") {
+                    REQUIRE(motor_policy.get_vref() == 0);
                 }
             }
         }
