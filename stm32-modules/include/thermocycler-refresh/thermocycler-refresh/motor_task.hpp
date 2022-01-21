@@ -12,10 +12,6 @@
 #include "thermocycler-refresh/motor_utils.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvolatile"
-#pragma GCC diagnostic pop
-
 namespace tasks {
 template <template <class> class QueueImpl>
 struct Tasks;

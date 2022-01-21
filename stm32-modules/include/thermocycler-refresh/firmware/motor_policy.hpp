@@ -2,13 +2,8 @@
 
 #include <cstdint>
 
-#include "thermocycler-refresh/errors.hpp"
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvolatile"
-#pragma GCC diagnostic ignored "-Wregister"
 #include "firmware/motor_hardware.h"
-#pragma GCC diagnostic pop
+#include "thermocycler-refresh/errors.hpp"
 
 class MotorPolicy {
   public:
