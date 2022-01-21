@@ -3,6 +3,7 @@
 #include "test/task_builder.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/motor_task.hpp"
+#include "thermocycler-refresh/motor_utils.hpp"
 
 SCENARIO("motor task message passing") {
     GIVEN("a motor task") {
@@ -46,7 +47,8 @@ SCENARIO("motor task message passing") {
             tasks->run_motor_task();
             THEN("the message is received but no response is sent yet") {
                 REQUIRE(motor_policy.get_vref() > 0);
-                REQUIRE(motor_policy.get_angle() == ANGLE);
+                REQUIRE(motor_policy.get_angle() ==
+                        motor_util::LidStepper::angle_to_microsteps(ANGLE));
                 REQUIRE(motor_queue.backing_deque.empty());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
             }

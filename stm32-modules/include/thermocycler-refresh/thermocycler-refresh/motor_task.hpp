@@ -9,6 +9,7 @@
 
 #include "hal/message_queue.hpp"
 #include "thermocycler-refresh/messages.hpp"
+#include "thermocycler-refresh/motor_utils.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 
 #pragma GCC diagnostic push
@@ -43,12 +44,12 @@ namespace motor_task {
  */
 template <typename Policy>
 concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
-    // A function to set the stepper drive current in mV
+    // A function to set the stepper DAC as a register value
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-    {p.lid_stepper_set_vref(1)};
+    {p.lid_stepper_set_dac(1)};
     // A function to start a stepper movement
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-    {p.lid_stepper_start(1.0F)};
+    {p.lid_stepper_start(1)};
     // A function to stop a stepper movement
     {p.lid_stepper_stop()};
     // A function to check for a fault in the stepper movement
@@ -75,6 +76,10 @@ requires MessageQueue<QueueImpl<Message>, Message>
 class MotorTask {
   public:
     using Queue = QueueImpl<Message>;
+
+    // Default current to set for the lid stepper, in millivolts
+    static constexpr double LID_STEPPER_DEFAULT_CURRENT = 48;
+
     explicit MotorTask(Queue& q)
         : message_queue(q),
           task_registry(nullptr),
@@ -117,8 +122,10 @@ class MotorTask {
     auto visit_message(const messages::LidStepperDebugMessage& msg,
                        Policy& policy) -> void {
         // check for errors
-        policy.lid_stepper_set_vref(48);  // test
-        policy.lid_stepper_start(msg.angle);
+        policy.lid_stepper_set_dac(motor_util::LidStepper::current_to_dac(
+            LID_STEPPER_DEFAULT_CURRENT));
+        policy.lid_stepper_start(
+            motor_util::LidStepper::angle_to_microsteps(msg.angle));
         lid_stepper_state.status = LidStepperState::MOVING;
         lid_stepper_state.response_id = msg.id;
     }
@@ -126,9 +133,10 @@ class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::LidStepperComplete& msg, Policy& policy)
         -> void {
+        static_cast<void>(msg);
         if (lid_stepper_state.status == LidStepperState::MOVING) {
             lid_stepper_state.status = LidStepperState::IDLE;
-            policy.lid_stepper_set_vref(0);
+            policy.lid_stepper_set_dac(0);
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = lid_stepper_state.response_id};
             static_cast<void>(

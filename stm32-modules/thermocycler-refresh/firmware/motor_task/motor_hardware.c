@@ -5,7 +5,7 @@
 #include "firmware/motor_hardware.h"
 
 #include <string.h>  // for memset
-#include <math.h> // for fabs
+#include <stdlib.h> // for abs
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -80,20 +80,20 @@ void motor_hardware_setup(const motor_hardware_callbacks* callbacks) {
     MX_GPIO_Init();
     MX_DAC_Init(&_motor_hardware.lid_dac);
     MX_OC_Init(&_motor_hardware.lid_timer);
+    
+    motor_hardware_lid_stepper_reset();
 }
 
 //PA0/PA1/PB10/PB11 = TIM2CH1/2/3/4 (all GPIO_AF1_TIM2)
 //control via increment_step in motor_task.hpp?
 //handle end switch IT start and stop
-void motor_hardware_lid_stepper_start(float angle) {
+void motor_hardware_lid_stepper_start(int32_t steps) {
     //check for fault
     _motor_hardware.lid_stepper.step_count = 0;
-    int32_t step_target_scalar = ((32 * 200) / 360) * (99.5) * (2); //(microsteps/rev) * (gear ratio) * (2, for toggle mode)
-    _motor_hardware.lid_stepper.step_target = fabs(angle) * step_target_scalar;
+    // Multiply number of steps by 2 because the timer is in toggle mode (2 interrupts = 1 microstep)
+    _motor_hardware.lid_stepper.step_target = abs(steps) * 2;
 
-    //MX_OC_Init(); //will need to call this with alternate period once lid seal stepper implemented
-
-    if (angle > 0) {
+    if (steps > 0) {
         HAL_GPIO_WritePin(LID_STEPPER_CONTROL_Port, LID_STEPPER_DIR_Pin, GPIO_PIN_SET);
     } else {
         HAL_GPIO_WritePin(LID_STEPPER_CONTROL_Port, LID_STEPPER_DIR_Pin, GPIO_PIN_RESET);
@@ -161,35 +161,41 @@ void motor_hardware_solenoid_release() {
   */
 static void MX_GPIO_Init(void)
 {
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    
     /* Enable GPIOx clocks */
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOE_CLK_ENABLE();
 
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    memset(&GPIO_InitStruct, 0, sizeof(GPIO_InitStruct));
     GPIO_InitStruct.Pin = SOLENOID_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     HAL_GPIO_Init(SOLENOID_Port, &GPIO_InitStruct);
     HAL_GPIO_WritePin(SOLENOID_Port, SOLENOID_Pin, GPIO_PIN_RESET);
+
     GPIO_InitStruct.Pin = LID_STEPPER_RESET_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     HAL_GPIO_Init(LID_STEPPER_ENABLE_Port, &GPIO_InitStruct);
     HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin, GPIO_PIN_SET);
+
     GPIO_InitStruct.Pin = LID_STEPPER_ENABLE_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     HAL_GPIO_Init(LID_STEPPER_ENABLE_Port, &GPIO_InitStruct);
     HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_ENABLE_Pin, GPIO_PIN_RESET); //enable output at init
+
     GPIO_InitStruct.Pin = LID_STEPPER_FAULT_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(LID_STEPPER_ENABLE_Port, &GPIO_InitStruct);
+
     GPIO_InitStruct.Pin = LID_STEPPER_VREF_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     HAL_GPIO_Init(LID_STEPPER_CONTROL_Port, &GPIO_InitStruct);
+
     GPIO_InitStruct.Pin = LID_STEPPER_DIR_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     HAL_GPIO_Init(LID_STEPPER_CONTROL_Port, &GPIO_InitStruct);
+
     GPIO_InitStruct.Pin = LID_STEPPER_STEP_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;

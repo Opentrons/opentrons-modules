@@ -20,7 +20,7 @@ typedef struct {
 
 void motor_hardware_setup(const motor_hardware_callbacks* callbacks);
 
-void motor_hardware_lid_stepper_start(float angle);
+void motor_hardware_lid_stepper_start(int32_t steps);
 void motor_hardware_lid_stepper_stop();
 void motor_hardware_increment_step();
 void motor_hardware_lid_stepper_set_dac(uint8_t dacval);
