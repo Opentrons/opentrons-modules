@@ -29,7 +29,8 @@ SCENARIO("gcode g28.d works", "[gcode][parse][g28d]") {
     GIVEN("command to turn on solenoid") {
         std::string buffer = "G28.D 1\n";
         WHEN("parsing the command") {
-            auto parsed = gcode::ActuateSolenoid::parse(buffer.begin(), buffer.end());
+            auto parsed =
+                gcode::ActuateSolenoid::parse(buffer.begin(), buffer.end());
             THEN("engage should be true") {
                 REQUIRE(parsed.second != buffer.begin());
                 REQUIRE(parsed.first.has_value());
@@ -41,7 +42,8 @@ SCENARIO("gcode g28.d works", "[gcode][parse][g28d]") {
     GIVEN("command to turn off solenoid") {
         std::string buffer = "G28.D 0\n";
         WHEN("parsing the command") {
-            auto parsed = gcode::ActuateSolenoid::parse(buffer.begin(), buffer.end());
+            auto parsed =
+                gcode::ActuateSolenoid::parse(buffer.begin(), buffer.end());
             THEN("engage should be false") {
                 REQUIRE(parsed.second != buffer.begin());
                 REQUIRE(parsed.first.has_value());
@@ -52,7 +54,8 @@ SCENARIO("gcode g28.d works", "[gcode][parse][g28d]") {
     GIVEN("invalid input") {
         std::string buffer = "G28.D hello";
         WHEN("parsing the command") {
-            auto parsed = gcode::ActuateSolenoid::parse(buffer.begin(), buffer.end());
+            auto parsed =
+                gcode::ActuateSolenoid::parse(buffer.begin(), buffer.end());
             THEN("parsing should fail") {
                 REQUIRE(parsed.second == buffer.begin());
                 REQUIRE(!parsed.first.has_value());

@@ -58,8 +58,7 @@ struct TaskBuilder {
     auto get_motor_queue() -> TestMessageQueue<motor_task::Message>& {
         return motor_queue;
     }
-    auto get_motor_task()
-        -> motor_task::MotorTask<TestMessageQueue>& {
+    auto get_motor_task() -> motor_task::MotorTask<TestMessageQueue>& {
         return motor_task;
     }
 
@@ -74,9 +73,7 @@ struct TaskBuilder {
         return lid_heater_policy;
     }
 
-    auto get_motor_policy() -> TestMotorPolicy& {
-        return motor_policy;
-    }
+    auto get_motor_policy() -> TestMotorPolicy& { return motor_policy; }
 
     auto run_system_task() -> void { system_task.run_once(system_policy); }
     auto run_thermal_plate_task() -> void {

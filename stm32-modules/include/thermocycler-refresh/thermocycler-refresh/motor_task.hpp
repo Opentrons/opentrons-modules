@@ -126,14 +126,14 @@ class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::LidStepperComplete& msg, Policy& policy)
         -> void {
-        if(lid_stepper_state.status == LidStepperState::MOVING) {
+        if (lid_stepper_state.status == LidStepperState::MOVING) {
             lid_stepper_state.status = LidStepperState::IDLE;
             policy.lid_stepper_set_vref(0);
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = lid_stepper_state.response_id};
             static_cast<void>(
                 task_registry->comms->get_message_queue().try_send(
-                    messages::HostCommsMessage(response)));    
+                    messages::HostCommsMessage(response)));
         }
     }
 
