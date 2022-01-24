@@ -10,9 +10,12 @@ extern "C" {
 // ----------------------------------------------------------------------------
 // Type definitions
 
+// Void return and no parameters
+typedef void (*lid_callback_t)(void);
+
 // This structure is used to define callbacks out of motor interrupts
 typedef struct {
-    void (*lid_stepper_complete)();
+    lid_callback_t lid_stepper_complete;
 } motor_hardware_callbacks;
 
 // ----------------------------------------------------------------------------

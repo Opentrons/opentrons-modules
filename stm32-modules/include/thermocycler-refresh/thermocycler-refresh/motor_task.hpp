@@ -75,6 +75,8 @@ class MotorTask {
 
     // Default current to set for the lid stepper, in milliamperes
     static constexpr double LID_STEPPER_DEFAULT_CURRENT = 48;
+    // Default current to set for lid stepper for holding, in milliamperes
+    static constexpr double LID_STEPPER_HOLD_CURRENT = 0;
 
     explicit MotorTask(Queue& q)
         : message_queue(q),
@@ -147,7 +149,8 @@ class MotorTask {
         static_cast<void>(msg);
         if (lid_stepper_state.status == LidStepperState::MOVING) {
             lid_stepper_state.status = LidStepperState::IDLE;
-            policy.lid_stepper_set_dac(0);
+            policy.lid_stepper_set_dac(motor_util::LidStepper::current_to_dac(
+                LID_STEPPER_HOLD_CURRENT));
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = lid_stepper_state.response_id};
             static_cast<void>(

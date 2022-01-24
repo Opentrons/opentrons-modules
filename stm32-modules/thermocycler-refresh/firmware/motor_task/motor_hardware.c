@@ -49,7 +49,7 @@ typedef struct {
     // Handle for the timer used for the lid stepper motor
     TIM_HandleTypeDef lid_timer;
     // Callback for completion of a lid stepper movement
-    void (*lid_stepper_complete)();
+    motor_hardware_callbacks callbacks;
 } motor_hardware_handles;
 
 // Local variables
@@ -58,7 +58,7 @@ static motor_hardware_handles _motor_hardware = {
     .lid_dac = {0},
     .lid_stepper = {0},
     .lid_timer = {0},
-    .lid_stepper_complete = NULL
+    .callbacks.lid_stepper_complete = NULL
 };
 
 // ----------------------------------------------------------------------------
@@ -74,8 +74,9 @@ static void MX_OC_Init(TIM_HandleTypeDef* htim);
 
 void motor_hardware_setup(const motor_hardware_callbacks* callbacks) {
     configASSERT(callbacks != NULL);
+    configASSERT(callbacks->lid_stepper_complete != NULL);
 
-    _motor_hardware.lid_stepper_complete = callbacks->lid_stepper_complete;
+    memcpy(&_motor_hardware.callbacks, callbacks, sizeof(_motor_hardware.callbacks));
 
     MX_GPIO_Init();
     MX_DAC_Init(&_motor_hardware.lid_dac);
@@ -117,7 +118,7 @@ void motor_hardware_increment_step() {
     _motor_hardware.lid_stepper.step_count++;
     if (_motor_hardware.lid_stepper.step_count > (_motor_hardware.lid_stepper.step_target - 1)) {
         motor_hardware_lid_stepper_stop();
-        _motor_hardware.lid_stepper_complete();
+        _motor_hardware.callbacks.lid_stepper_complete();
     }
 }
 
