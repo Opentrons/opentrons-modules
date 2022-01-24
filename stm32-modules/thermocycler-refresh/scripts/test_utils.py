@@ -166,3 +166,22 @@ def set_peltier_pid(p: float, i: float, d: float, ser: serial.Serial):
     res = ser.readline()
     guard_error(res, b'M301 OK')
     print(res)
+
+# Debug command to move the hinge motor
+def move_lid_angle(angle: float, ser: serial.Serial):
+    print(f'Moving lid by {angle}º')
+    ser.write(f'M240.D {angle}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M240.D OK')
+    print(res)
+
+# Debug command to engage/disengage the solenoid.
+def set_solenoid(engaged: bool, ser: serial.Serial):
+    value = 1
+    if not engaged:
+        value = 0
+    print(f'Setting solenoid to {engaged}')
+    ser.write(f'G28.D {value}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'G28.D OK')
+    print(res)

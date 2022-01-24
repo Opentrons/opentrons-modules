@@ -4,6 +4,7 @@
 #include "firmware/freertos_comms_task.hpp"
 #include "firmware/freertos_lid_heater_task.hpp"
 #include "firmware/freertos_message_queue.hpp"
+#include "firmware/freertos_motor_task.hpp"
 #include "firmware/freertos_system_task.hpp"
 #include "firmware/freertos_thermal_plate_task.hpp"
 #include "firmware/system_hardware.h"
@@ -25,8 +26,9 @@ auto main() -> int {
     auto comms = host_comms_control_task::start();
     auto thermal_plate = thermal_plate_control_task::start();
     auto lid_heater = lid_heater_control_task::start();
+    auto motor = motor_control_task::start();
     tasks_aggregator.initialize(comms.task, system.task, thermal_plate.task,
-                                lid_heater.task);
+                                lid_heater.task, motor.task);
     vTaskStartScheduler();
     return 0;
 }

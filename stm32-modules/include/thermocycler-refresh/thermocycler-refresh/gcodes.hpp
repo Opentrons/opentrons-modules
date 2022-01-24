@@ -625,6 +625,86 @@ struct GetPlateTemperatureDebug {
     }
 };
 
+struct ActuateSolenoid {
+    /*
+    ** Actuate solenoid is a debug command that lets you activate or deactivate
+    ** the solenoid. It uses G28.D x where x is a bool and 1 engages and 0
+    ** disengages the solenoid.
+    */
+    using ParseResult = std::optional<ActuateSolenoid>;
+    static constexpr auto prefix = std::array{'G', '2', '8', '.', 'D', ' '};
+    static constexpr const char* response = "G28.D OK\n";
+
+    bool engage;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto engage_parse = parse_value<uint16_t>(working, limit);
+        if (!engage_parse.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        bool tempEngage = static_cast<bool>(engage_parse.first.value());
+        return std::make_pair(
+            ParseResult(ActuateSolenoid{.engage = tempEngage}),
+            engage_parse.second);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct ActuateLidStepperDebug {
+    /*
+    ** Actuate lid stepper is a debug command that lets you move the lid
+    ** stepper a desired angle. A positive value opens and negative value
+    ** closes the lid stepper a desired angle.
+    ** Format: M240.D <angle>
+    ** Example: M240.D 20 opens lid stepper 20 degrees
+    */
+    using ParseResult = std::optional<ActuateLidStepperDebug>;
+    static constexpr auto prefix =
+        std::array{'M', '2', '4', '0', '.', 'D', ' '};
+    static constexpr const char* response = "M240.D OK\n";
+
+    double angle;
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto value_res = parse_value<float>(working, limit);
+        if (!value_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(ActuateLidStepperDebug{
+                                  .angle = value_res.first.value()}),
+                              value_res.second);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 struct SetLidTemperature {
     /**
      * SetLidTemperature uses M140. Only parameter is optional and it is

@@ -138,6 +138,18 @@ struct GetPlateTemperatureDebugResponse {
     uint16_t back_left_adc;
 };
 
+struct ActuateSolenoidMessage {
+    uint32_t id;
+    bool engage;
+};
+
+struct LidStepperDebugMessage {
+    uint32_t id;
+    double angle;
+};
+
+struct LidStepperComplete {};
+
 struct GetPlateTempMessage {
     uint32_t id;
 };
@@ -227,4 +239,6 @@ using LidHeaterMessage =
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
                    GetLidTempMessage, SetLidTemperatureMessage,
                    DeactivateLidHeatingMessage, SetPIDConstantsMessage>;
+using MotorMessage = ::std::variant<std::monostate, ActuateSolenoidMessage,
+                                    LidStepperDebugMessage, LidStepperComplete>;
 };  // namespace messages

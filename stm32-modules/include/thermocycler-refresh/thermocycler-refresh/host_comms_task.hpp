@@ -40,6 +40,7 @@ class HostCommsTask {
     using GCodeParser = gcode::GroupParser<
         gcode::EnterBootloader, gcode::GetSystemInfo, gcode::SetSerialNumber,
         gcode::GetLidTemperatureDebug, gcode::GetPlateTemperatureDebug,
+        gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
         gcode::SetPeltierDebug, gcode::SetFanManual, gcode::SetHeaterDebug,
         gcode::GetPlateTemp, gcode::GetLidTemp, gcode::SetLidTemperature,
         gcode::DeactivateLidHeating, gcode::SetPIDConstants,
@@ -47,6 +48,7 @@ class HostCommsTask {
         gcode::SetFanAutomatic>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
+                 gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
                  gcode::SetPeltierDebug, gcode::SetFanManual,
                  gcode::SetHeaterDebug, gcode::SetLidTemperature,
                  gcode::DeactivateLidHeating, gcode::SetPIDConstants,
@@ -546,15 +548,33 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_gcode(const gcode::GetPlateTemp& gcode, InputIt tx_into,
-                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
-        auto id = get_plate_temp_cache.add(gcode);
+    auto visit_gcode(const gcode::ActuateSolenoid& solenoid_gcode,
+                     InputIt tx_into, InputLimit tx_limit)
+        -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(solenoid_gcode);
         if (id == 0) {
             return std::make_pair(
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
+        auto message = messages::ActuateSolenoidMessage{
+            .id = id, .engage = solenoid_gcode.engage};
+        if (!task_registry->motor->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetPlateTemp& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_plate_temp_cache.add(gcode);
         auto message = messages::GetPlateTempMessage{.id = id};
         if (!task_registry->thermal_plate->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
@@ -665,7 +685,6 @@ class HostCommsTask {
             ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
-
         return std::make_pair(true, tx_into);
     }
 
@@ -690,7 +709,6 @@ class HostCommsTask {
             ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
-
         return std::make_pair(true, tx_into);
     }
 
@@ -714,7 +732,6 @@ class HostCommsTask {
             ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
-
         return std::make_pair(true, tx_into);
     }
 
@@ -799,7 +816,30 @@ class HostCommsTask {
             ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
+        return std::make_pair(true, tx_into);
+    }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::ActuateLidStepperDebug& lid_stepper_gcode,
+                     InputIt tx_into, InputLimit tx_limit)
+        -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(lid_stepper_gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::LidStepperDebugMessage{
+            .id = id, .angle = lid_stepper_gcode.angle};
+        if (!task_registry->motor->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
         return std::make_pair(true, tx_into);
     }
 
