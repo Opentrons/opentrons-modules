@@ -435,10 +435,12 @@ class HeaterTask {
                     sensor.temp_c = 0;
                     sensor.error = sensor.disconnected_error;
                 }
+                break;
             }
             case thermistor_conversion::Error::OUT_OF_RANGE_HIGH: {
                 sensor.temp_c = 0;
                 sensor.error = sensor.short_error;
+                break;
             }
         }
     }

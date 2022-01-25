@@ -45,7 +45,6 @@ struct Conversion {
     /** First is After, second is Before (after - 1) */
     using TableEntryPair = std::pair<TableEntry, TableEntry>;
     using TableResult = std::variant<TableEntryPair, TableError>;
-    static constexpr double HEATER_PAD_DISCONNECT_SAFETY_LIMIT_ADC = 3642.3; //0C equivalent
     /**
      * Build a converter. The resistance should be in kiloohms to match the
      * tables.
@@ -108,6 +107,7 @@ struct Conversion {
     const double _adc_max;
     const uint16_t _adc_max_result;
     const double _bias_resistance_kohm;
+    static constexpr uint16_t HEATER_PAD_DISCONNECT_SAFETY_LIMIT_ADC = 3642; //0C equivalent
 
     [[nodiscard]] auto resistance_from_adc(uint16_t adc_count) const -> Result {
         if (adc_count >= HEATER_PAD_DISCONNECT_SAFETY_LIMIT_ADC) {
