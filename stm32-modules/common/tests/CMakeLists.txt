@@ -9,6 +9,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_bit_utils.cpp
     test_ack_cache.cpp
     test_double_buffer.cpp
+    test_fixed_point.cpp
     test_gcode_parse.cpp 
     test_generic_timer.cpp
     test_pid.cpp
