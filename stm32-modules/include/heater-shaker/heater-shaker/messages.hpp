@@ -120,6 +120,8 @@ struct HandleLEDSetupError {
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
+struct HandleNTCSetupError {};
+
 struct EnterBootloaderMessage {
     uint32_t id;
 };
@@ -249,7 +251,8 @@ struct IncomingMessageFromHost {
 using HeaterMessage =
     ::std::variant<std::monostate, SetTemperatureMessage, GetTemperatureMessage,
                    TemperatureConversionComplete, GetTemperatureDebugMessage,
-                   SetPIDConstantsMessage, SetPowerTestMessage>;
+                   SetPIDConstantsMessage, SetPowerTestMessage,
+                   HandleNTCSetupError>;
 using MotorMessage = ::std::variant<
     std::monostate, MotorSystemErrorMessage, SetRPMMessage, GetRPMMessage,
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,

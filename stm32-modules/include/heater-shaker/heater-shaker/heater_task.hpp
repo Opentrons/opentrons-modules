@@ -91,6 +91,8 @@ class HeaterTask {
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 100;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 44.2;
     static constexpr uint8_t ADC_BIT_DEPTH = 12;
+    static constexpr uint16_t HEATER_PAD_NTC_DISCONNECT_THRESHOLD_ADC =
+        3642;  // 0C equivalent
     static constexpr double HEATER_PAD_OVERTEMP_SAFETY_LIMIT_C = 100;
     static constexpr double BOARD_OVERTEMP_SAFETY_LIMIT_C = 60;
     static constexpr double DEFAULT_KI = 0.102;
@@ -117,7 +119,8 @@ class HeaterTask {
               .overtemp_limit_c = HEATER_PAD_OVERTEMP_SAFETY_LIMIT_C,
               .conversion =
                   thermistor_conversion::Conversion<lookups::NTCG104ED104DTDSX>(
-                      THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
+                      THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH,
+                      HEATER_PAD_NTC_DISCONNECT_THRESHOLD_ADC),
               .error_bit = State::PAD_A_SENSE_ERROR},
           pad_b{
               .disconnected_error =
@@ -127,7 +130,8 @@ class HeaterTask {
               .overtemp_limit_c = HEATER_PAD_OVERTEMP_SAFETY_LIMIT_C,
               .conversion =
                   thermistor_conversion::Conversion<lookups::NTCG104ED104DTDSX>(
-                      THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
+                      THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH,
+                      HEATER_PAD_NTC_DISCONNECT_THRESHOLD_ADC),
               .error_bit = State::PAD_B_SENSE_ERROR,
           },
           board{
@@ -139,7 +143,8 @@ class HeaterTask {
               .overtemp_limit_c = BOARD_OVERTEMP_SAFETY_LIMIT_C,
               .conversion =
                   thermistor_conversion::Conversion<lookups::NTCG104ED104DTDSX>(
-                      THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH),
+                      THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH,
+                      HEATER_PAD_NTC_DISCONNECT_THRESHOLD_ADC),
               .error_bit = State::BOARD_SENSE_ERROR},
           state{.system_status = State::IDLE, .error_bitmap = 0},
           pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_S, 1.0, -1.0),
@@ -209,6 +214,17 @@ class HeaterTask {
     auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
         static_cast<void>(policy);
         static_cast<void>(_ignore);
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::HandleNTCSetupError& msg, Policy& policy)
+        -> void {
+        auto error_message = messages::HostCommsMessage(messages::ErrorMessage{
+            .code = errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH});
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(error_message));
+        state.system_status = State::ERROR;
+        setpoint = 0;
     }
 
     template <typename Policy>
@@ -418,12 +434,16 @@ class HeaterTask {
                           TemperatureSensor& sensor) -> void {
         switch (error) {
             case thermistor_conversion::Error::OUT_OF_RANGE_LOW: {
-                sensor.temp_c = 0;
-                sensor.error = sensor.short_error;
+                if ((state.error_bitmap & State::POWER_GOOD_ERROR) != 0) {
+                    sensor.temp_c = 0;
+                    sensor.error = sensor.disconnected_error;
+                }
+                break;
             }
             case thermistor_conversion::Error::OUT_OF_RANGE_HIGH: {
                 sensor.temp_c = 0;
-                sensor.error = sensor.disconnected_error;
+                sensor.error = sensor.short_error;
+                break;
             }
         }
     }
