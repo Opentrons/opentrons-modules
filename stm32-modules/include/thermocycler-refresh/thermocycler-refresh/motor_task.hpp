@@ -74,7 +74,7 @@ class MotorTask {
     using Queue = QueueImpl<Message>;
 
     // Default current to set for the lid stepper, in milliamperes
-    static constexpr double LID_STEPPER_DEFAULT_CURRENT = 48;
+    static constexpr double LID_STEPPER_DEFAULT_VOLTAGE = 1200;
     // Default current to set for lid stepper for holding, in milliamperes
     static constexpr double LID_STEPPER_HOLD_CURRENT = 0;
 
@@ -111,12 +111,14 @@ class MotorTask {
 
   private:
     template <typename Policy>
+    requires MotorExecutionPolicy<Policy>
     auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
         static_cast<void>(_ignore);
         static_cast<void>(policy);
     }
 
     template <typename Policy>
+    requires MotorExecutionPolicy<Policy>
     auto visit_message(const messages::LidStepperDebugMessage& msg,
                        Policy& policy) -> void {
         // check for errors
@@ -129,7 +131,7 @@ class MotorTask {
         if (error == errors::ErrorCode::NO_ERROR) {
             // Start movement and cache the id for later
             policy.lid_stepper_set_dac(motor_util::LidStepper::current_to_dac(
-                LID_STEPPER_DEFAULT_CURRENT));
+                LID_STEPPER_DEFAULT_VOLTAGE));
             policy.lid_stepper_start(
                 motor_util::LidStepper::angle_to_microsteps(msg.angle));
             lid_stepper_state.status = LidStepperState::MOVING;
@@ -144,6 +146,7 @@ class MotorTask {
     }
 
     template <typename Policy>
+    requires MotorExecutionPolicy<Policy>
     auto visit_message(const messages::LidStepperComplete& msg, Policy& policy)
         -> void {
         static_cast<void>(msg);
@@ -160,6 +163,7 @@ class MotorTask {
     }
 
     template <typename Policy>
+    requires MotorExecutionPolicy<Policy>
     auto visit_message(const messages::ActuateSolenoidMessage& msg,
                        Policy& policy) -> void {
         if (msg.engage) {

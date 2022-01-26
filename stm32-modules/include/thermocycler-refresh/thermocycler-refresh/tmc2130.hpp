@@ -6,6 +6,7 @@
 
 #include <concepts>
 #include <cstdint>
+#include <functional>
 #include <optional>
 
 #include "core/bit_utils.hpp"
@@ -18,7 +19,12 @@ namespace tmc2130 {
 /** Hardware abstraction policy for the TMC2130 communication.*/
 template <typename Policy>
 concept TMC2130Policy = TMC2130InterfacePolicy<Policy> && requires(Policy& p) {
-    { p.set_enable(true) } -> std::same_as<bool>;
+    // Configure the TMC to either enabled or not
+    { p.tmc2130_set_enable(true) } -> std::same_as<bool>;
+    // Function to set direction. true = forward, false = backwards.
+    { p.tmc2130_set_direction(true) } -> std::same_as<bool>;
+    // Function to pulse the step output
+    { p.tmc2130_step_pulse() } -> std::same_as<bool>;
 };
 
 class TMC2130 {

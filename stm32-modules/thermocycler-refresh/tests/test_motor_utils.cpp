@@ -4,8 +4,8 @@
 using namespace motor_util;
 
 SCENARIO("Lid stepper current conversion works") {
-    GIVEN("a target current 330 mA") {
-        double current = 330.0;
+    GIVEN("a target current 8.25 amps") {
+        double current = 8250.0;
         WHEN("converting") {
             auto result = LidStepper::current_to_dac(current);
             THEN("result should be the max DAC value") {
@@ -20,8 +20,8 @@ SCENARIO("Lid stepper current conversion works") {
             THEN("result should be 0") { REQUIRE(result == 0); }
         }
     }
-    GIVEN("a target current 500 mA") {
-        double current = 550.0;
+    GIVEN("a target current 10 A") {
+        double current = 10000.0;
         WHEN("converting") {
             auto result = LidStepper::current_to_dac(current);
             THEN("result should be clamped down to max DAC value") {
@@ -29,8 +29,8 @@ SCENARIO("Lid stepper current conversion works") {
             }
         }
     }
-    GIVEN("a target current 165 mA") {
-        double current = 330.0 / 2.0;
+    GIVEN("a target current 8.25/2 A") {
+        double current = 8250.0 / 2.0;
         WHEN("converting") {
             auto result = LidStepper::current_to_dac(current);
             THEN("result should be half of the max DAC value") {

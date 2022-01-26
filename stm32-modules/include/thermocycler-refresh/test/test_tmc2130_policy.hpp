@@ -44,7 +44,7 @@ class TestTMC2130Policy {
         _registers[(uint8_t)tmc2130::Registers::LOST_STEPS] = 0;
     }
 
-    auto transmit_receive(tmc2130::MessageT& data)
+    auto tmc2130_transmit_receive(tmc2130::MessageT& data)
         -> std::optional<tmc2130::MessageT> {
         using RT = std::optional<tmc2130::MessageT>;
         auto iter = data.begin();
@@ -76,8 +76,18 @@ class TestTMC2130Policy {
         return RT(ret);
     }
 
-    auto set_enable(bool enable) -> bool {
+    auto tmc2130_set_enable(bool enable) -> bool {
         _enable = enable;
+        return true;
+    }
+
+    auto tmc2130_set_direction(bool direction) -> bool {
+        _direction = (direction) ? 1 : -1;
+        return true;
+    }
+
+    auto tmc2130_step_pulse() -> bool {
+        _steps += _direction;
         return true;
     }
 
@@ -102,4 +112,6 @@ class TestTMC2130Policy {
     RegMap _registers;
     tmc2130::RegisterSerializedType _cache = 0;
     bool _enable = false;
+    signed int _direction = 1;
+    long _steps = 0;
 };

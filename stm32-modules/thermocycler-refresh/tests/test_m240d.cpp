@@ -32,7 +32,7 @@ SCENARIO("gcode m240.d works", "[gcode][parse][m240d]") {
         WHEN("parsing the command") {
             auto parsed = gcode::ActuateLidStepperDebug::parse(buffer.begin(),
                                                                buffer.end());
-            THEN("engage should be true") {
+            THEN("the angle should be correct") {
                 REQUIRE(parsed.second != buffer.begin());
                 REQUIRE(parsed.first.has_value());
                 REQUIRE_THAT(parsed.first.value().angle,
@@ -46,7 +46,7 @@ SCENARIO("gcode m240.d works", "[gcode][parse][m240d]") {
         WHEN("parsing the command") {
             auto parsed = gcode::ActuateLidStepperDebug::parse(buffer.begin(),
                                                                buffer.end());
-            THEN("engage should be false") {
+            THEN("the angle should be correct") {
                 REQUIRE(parsed.second != buffer.begin());
                 REQUIRE(parsed.first.has_value());
                 REQUIRE_THAT(parsed.first.value().angle,

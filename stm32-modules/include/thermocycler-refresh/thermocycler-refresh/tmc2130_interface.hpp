@@ -24,8 +24,7 @@ template <typename Policy>
 concept TMC2130InterfacePolicy = requires(Policy& p, MessageT& data) {
     // A function to read & write to a register. addr should include the
     // read/write bit.
-    { p.transmit_receive(data) } -> std::same_as<std::optional<MessageT>>;
-    // TODO a function to commence a movement
+    { p.tmc2130_transmit_receive(data) } -> std::same_as<std::optional<MessageT>>;
 };
 
 /**
@@ -73,7 +72,7 @@ class TMC2130Interface {
         if (!buffer.has_value()) {
             return false;
         }
-        return policy.transmit_receive(buffer.value()).has_value();
+        return policy.tmc2130_transmit_receive(buffer.value()).has_value();
     }
 
     /**
@@ -93,11 +92,11 @@ class TMC2130Interface {
         if (!buffer.has_value()) {
             return RT();
         }
-        auto ret = policy.transmit_receive(buffer.value());
+        auto ret = policy.tmc2130_transmit_receive(buffer.value());
         if (!ret.has_value()) {
             return RT();
         }
-        ret = policy.transmit_receive(buffer.value());
+        ret = policy.tmc2130_transmit_receive(buffer.value());
         if (!ret.has_value()) {
             return RT();
         }
