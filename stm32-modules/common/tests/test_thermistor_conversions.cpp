@@ -8,7 +8,9 @@ using namespace thermistor_conversion;
 
 SCENARIO("thermistor conversion boundary cases") {
     GIVEN("a converter") {
-        auto converter = Conversion<lookups::NTCG104ED104DTDSX>(2000, 10);
+        auto converter = Conversion<lookups::NTCG104ED104DTDSX>(
+            static_cast<double>(44.2), static_cast<uint8_t>(12),
+            static_cast<uint16_t>(3642));
         WHEN("sending a 0 result") {
             auto converted = converter.convert(0);
             THEN(
@@ -26,7 +28,7 @@ SCENARIO("thermistor conversion boundary cases") {
             }
         }
         WHEN("sending a result equal to adc max") {
-            auto converted = converter.convert((1U << 10) - 1);
+            auto converted = converter.convert((1U << 12) - 1);
             THEN(
                 "the result should be off-scale low (more resistance - lower "
                 "temp)") {
@@ -34,7 +36,7 @@ SCENARIO("thermistor conversion boundary cases") {
             }
         }
         WHEN("sending a result above valid but not statically-incorrect") {
-            auto converted = converter.convert((1U << 10) - 2);
+            auto converted = converter.convert((1U << 12) - 2);
             THEN(
                 "the result should be off-scale low (more resistance - lower "
                 "temp)") {
@@ -81,7 +83,9 @@ SCENARIO("thermistor conversion boundary cases") {
 
 SCENARIO("thermistor conversions normal operation") {
     GIVEN("a converter") {
-        auto converter = Conversion<lookups::NTCG104ED104DTDSX>(10000, 10);
+        auto converter = Conversion<lookups::NTCG104ED104DTDSX>(
+            static_cast<double>(10000), static_cast<uint8_t>(10),
+            static_cast<uint16_t>(3642));
         WHEN("sending a valid reading") {
             auto converted = converter.convert(1U << 5);
             THEN("the result should be reasonable") {
@@ -106,7 +110,9 @@ SCENARIO("thermistor conversions normal operation") {
 
 SCENARIO("thermistor backconversion") {
     GIVEN("a converter and some test temps") {
-        auto converter = Conversion<lookups::NTCG104ED104DTDSX>(1000, 10);
+        auto converter = Conversion<lookups::NTCG104ED104DTDSX>(
+            static_cast<double>(1000), static_cast<uint8_t>(10),
+            static_cast<uint16_t>(3642));
         auto test_vals = std::array{10.0, 25.0, 50.0, 70.0, 90.0};
         for (auto val : test_vals) {
             WHEN("through-converting a temperature") {
