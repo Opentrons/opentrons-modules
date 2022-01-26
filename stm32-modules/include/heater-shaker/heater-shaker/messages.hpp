@@ -251,7 +251,8 @@ struct IncomingMessageFromHost {
 using HeaterMessage =
     ::std::variant<std::monostate, SetTemperatureMessage, GetTemperatureMessage,
                    TemperatureConversionComplete, GetTemperatureDebugMessage,
-                   SetPIDConstantsMessage, SetPowerTestMessage, HandleNTCSetupError>;
+                   SetPIDConstantsMessage, SetPowerTestMessage,
+                   HandleNTCSetupError>;
 using MotorMessage = ::std::variant<
     std::monostate, MotorSystemErrorMessage, SetRPMMessage, GetRPMMessage,
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,

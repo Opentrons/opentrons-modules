@@ -319,7 +319,7 @@ SCENARIO("heater task error handling") {
             "setting both thermistors to an error state and setting the "
             "latch") {
             auto one_error_message = messages::TemperatureConversionComplete{
-                .pad_a = 0, .pad_b = ((1U << 12)-1), .board = (1U << 11)};
+                .pad_a = 0, .pad_b = ((1U << 12) - 1), .board = (1U << 11)};
             tasks->get_heater_policy().set_power_good(false);
             tasks->get_heater_queue().backing_deque.push_back(
                 messages::HeaterMessage(one_error_message));

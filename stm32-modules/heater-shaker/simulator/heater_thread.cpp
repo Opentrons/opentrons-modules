@@ -36,7 +36,8 @@ auto run(std::stop_token st,
     auto converter = thermistor_conversion::Conversion<
         lookups::NTCG104ED104DTDSX>(
         heater_thread::SimHeaterTask::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
-        heater_thread::SimHeaterTask::ADC_BIT_DEPTH);
+        heater_thread::SimHeaterTask::ADC_BIT_DEPTH,
+        heater_thread::SimHeaterTask::HEATER_PAD_NTC_DISCONNECT_THRESHOLD_ADC);
     tcb->queue.set_stop_token(st);
     auto conversion_message = messages::TemperatureConversionComplete{
         .pad_a = converter.backconvert(25.0),
