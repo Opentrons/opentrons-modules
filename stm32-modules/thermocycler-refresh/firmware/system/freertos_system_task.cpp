@@ -6,9 +6,12 @@
 #include <array>
 
 #include "FreeRTOS.h"
+#include "core/timer.hpp"
 #include "firmware/freertos_message_queue.hpp"
-#include "system_hardware.h"
-#include "system_policy.hpp"
+#include "firmware/freertos_timer.hpp"
+#include "firmware/system_hardware.h"
+#include "firmware/system_led_hardware.h"
+#include "firmware/system_policy.hpp"
 #include "task.h"
 #include "thermocycler-refresh/system_task.hpp"
 #include "thermocycler-refresh/tasks.hpp"
@@ -36,17 +39,23 @@ static std::array<StackType_t, stack_size> stack;
 static StaticTask_t
     data;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
+// Periodic timer for UI updates
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static timer::GenericTimer<freertos_timer::FreeRTOSTimer> _led_timer(
+    "led timer", decltype(_task)::LED_UPDATE_PERIOD_MS, true,
+    [ObjectPtr = &_task] { ObjectPtr->led_timer_callback(); });
+
 // Actual function that runs inside the task, unused param because we don't get
 // to pick the function type
 static void run(void *param) {
     system_hardware_setup();
-    static constexpr uint32_t delay_ticks = 100;
+    system_led_iniitalize();
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto *task = reinterpret_cast<decltype(_task) *>(param);
     auto policy = SystemPolicy();
+    _led_timer.start();
     while (true) {
         task->run_once(policy);
-        vTaskDelay(delay_ticks);
     }
 }
 
@@ -54,7 +63,7 @@ static void run(void *param) {
 auto start() -> tasks::Task<TaskHandle_t,
                             system_task::SystemTask<FreeRTOSMessageQueue>> {
     auto *handle = xTaskCreateStatic(run, "SystemControl", stack.size(), &_task,
-                                     1, stack.data(), &data);
+                                     3, stack.data(), &data);
     _system_queue.provide_handle(handle);
     return tasks::Task<TaskHandle_t, decltype(_task)>{.handle = handle,
                                                       .task = &_task};

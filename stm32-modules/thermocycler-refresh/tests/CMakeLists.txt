@@ -12,6 +12,13 @@ add_executable(${TARGET_MODULE_NAME}
     test_system_policy.cpp
     test_system_task.cpp
     test_thermal_plate_task.cpp
+    test_plate_control.cpp
+    test_tmc2130.cpp
+    test_board_revision_hardware.cpp
+    test_board_revision.cpp
+    test_colors.cpp
+    test_motor_task.cpp
+    test_motor_utils.cpp
     # GCode parse tests
     test_m14.cpp
     test_m104.cpp
@@ -20,11 +27,14 @@ add_executable(${TARGET_MODULE_NAME}
     test_m141d.cpp
     test_m104d.cpp
     test_m106.cpp
+    test_m107.cpp
     test_m108.cpp
     test_m140.cpp
     test_m140d.cpp
     test_m141.cpp
     test_m301.cpp
+    test_g28d.cpp
+    test_m240d.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 

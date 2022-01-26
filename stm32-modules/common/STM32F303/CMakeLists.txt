@@ -5,9 +5,19 @@ find_package(GDBSVDTools)
 # Fills in the template with values specified by the find_package(OpenOCD) call above
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/gdbinit.template ./gdbinit)
 
+set(STM_HAL_PREFIX "stm32f3xx")
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include/common/firmware/hal_util.h.in 
+    firmware/hal_util.h)
+
+
 add_library(${TARGET_MODULE_NAME}-STM32F303 STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/startup_stm32f303xe.s)
 
+target_include_directories(
+    ${TARGET_MODULE_NAME}-STM32F303 PUBLIC
+    ${CMAKE_CURRENT_BINARY_DIR})
+    
 target_link_libraries(${TARGET_MODULE_NAME}-STM32F303
     PUBLIC ${TARGET_MODULE_NAME}-core)
 

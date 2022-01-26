@@ -6,11 +6,14 @@ include(AddBuildAndTestTarget)
 
 add_executable(${TARGET_MODULE_NAME}
     test_main.cpp
+    test_bit_utils.cpp
     test_ack_cache.cpp
     test_double_buffer.cpp
     test_gcode_parse.cpp 
+    test_generic_timer.cpp
     test_pid.cpp
     test_thermistor_conversions.cpp
+    test_xt1511.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 

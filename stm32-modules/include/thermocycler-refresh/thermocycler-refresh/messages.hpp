@@ -5,6 +5,7 @@
 #include <variant>
 
 #include "systemwide.h"
+#include "thermocycler-refresh/colors.hpp"
 #include "thermocycler-refresh/errors.hpp"
 
 namespace messages {
@@ -137,6 +138,18 @@ struct GetPlateTemperatureDebugResponse {
     uint16_t back_left_adc;
 };
 
+struct ActuateSolenoidMessage {
+    uint32_t id;
+    bool engage;
+};
+
+struct LidStepperDebugMessage {
+    uint32_t id;
+    double angle;
+};
+
+struct LidStepperComplete {};
+
 struct GetPlateTempMessage {
     uint32_t id;
 };
@@ -180,6 +193,10 @@ struct SetPlateTemperatureMessage {
     double hold_time;
 };
 
+struct SetFanAutomaticMessage {
+    uint32_t id;
+};
+
 struct DeactivatePlateMessage {
     uint32_t id;
 };
@@ -192,9 +209,19 @@ struct SetPIDConstantsMessage {
     double d;
 };
 
+struct UpdateUIMessage {
+    // Empty struct
+};
+
+struct SetLedMode {
+    colors::Colors color;
+    colors::Mode mode;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
-                   SetSerialNumberMessage, GetSystemInfoMessage>;
+                   SetSerialNumberMessage, GetSystemInfoMessage,
+                   UpdateUIMessage, SetLedMode>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, ForceUSBDisconnectMessage,
@@ -206,10 +233,12 @@ using ThermalPlateMessage =
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
                    SetFanManualMessage, GetPlateTempMessage,
                    SetPlateTemperatureMessage, DeactivatePlateMessage,
-                   SetPIDConstantsMessage>;
+                   SetPIDConstantsMessage, SetFanAutomaticMessage>;
 using LidHeaterMessage =
     ::std::variant<std::monostate, LidTempReadComplete,
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
                    GetLidTempMessage, SetLidTemperatureMessage,
                    DeactivateLidHeatingMessage, SetPIDConstantsMessage>;
+using MotorMessage = ::std::variant<std::monostate, ActuateSolenoidMessage,
+                                    LidStepperDebugMessage, LidStepperComplete>;
 };  // namespace messages
