@@ -7,6 +7,8 @@ add_executable(
   stdin_sim_driver.cpp
   system_thread.cpp 
   thermal_plate_thread.cpp
+  sim_board_revision_hardware.cpp
+  motor_thread.cpp
   main.cpp
 )
 

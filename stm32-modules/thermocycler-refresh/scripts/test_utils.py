@@ -100,6 +100,14 @@ def set_fans_manual(power: float, ser: serial.Serial):
     guard_error(res, b'M106 OK')
     print(res)
 
+# Turns fans to automatic mode
+def set_fans_automatic(ser: serial.Serial):
+    print(f'Setting fans to automatic mode')
+    ser.write(f'M107\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M107 OK')
+    print(res)
+
 # Sets heater PWM as a percentage.
 def set_heater_debug(power: float, ser: serial.Serial):
     if(power< 0.0 or power > 1.0):
@@ -157,4 +165,23 @@ def set_peltier_pid(p: float, i: float, d: float, ser: serial.Serial):
     ser.write(f'M301 SP P{p} I{i} D{d}\n'.encode())
     res = ser.readline()
     guard_error(res, b'M301 OK')
+    print(res)
+
+# Debug command to move the hinge motor
+def move_lid_angle(angle: float, ser: serial.Serial):
+    print(f'Moving lid by {angle}º')
+    ser.write(f'M240.D {angle}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M240.D OK')
+    print(res)
+
+# Debug command to engage/disengage the solenoid.
+def set_solenoid(engaged: bool, ser: serial.Serial):
+    value = 1
+    if not engaged:
+        value = 0
+    print(f'Setting solenoid to {engaged}')
+    ser.write(f'G28.D {value}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'G28.D OK')
     print(res)

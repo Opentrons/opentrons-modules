@@ -27,6 +27,8 @@
 #include "stm32g4xx_hal_pcd.h"
 
 #include "firmware/thermal_hardware.h"
+#include "firmware/motor_hardware.h"
+#include "firmware/system_led_hardware.h"
 
 /** @addtogroup STM32G4xx_HAL_Examples
  * @{
@@ -46,7 +48,6 @@
 
 /* External variables --------------------------------------------------------*/
 extern TIM_HandleTypeDef htim7;
-
 
 /******************************************************************************/
 /*            Cortex-M4 Processor Exceptions Handlers                         */
@@ -149,5 +150,19 @@ void EXTI15_10_IRQHandler(void)
 
 }
 
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) 
+{
+    if(htim->Instance == TIM17) {
+        system_led_pulse_callback();
+    }
+}
+
+void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim) 
+{
+    if(htim->Instance == TIM17) {
+        // The half-complete interrupt isn't used for this application
+        return;
+    }
+}
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
