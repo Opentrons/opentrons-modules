@@ -453,6 +453,8 @@ class HeaterTask {
             sensor.error = sensor.overtemp_error;
         } else if ((value > (sensor.overtemp_limit_c - 1)) && ((state.error_bitmap & State::POWER_GOOD_ERROR) != 0)) {
             sensor.error = sensor.overtemp_error;
+        } else if ((sensor.error == sensor.overtemp_error) && (value > (sensor.overtemp_limit_c - 5))) {
+            sensor.error = sensor.overtemp_error;
         } else {
             sensor.error = errors::ErrorCode::NO_ERROR;
         }
