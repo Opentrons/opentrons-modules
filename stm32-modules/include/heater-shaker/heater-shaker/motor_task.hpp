@@ -166,13 +166,26 @@ class MotorTask {
         } else {
             policy.homing_solenoid_disengage();
             auto error = policy.set_rpm(msg.target_rpm);
-            policy.delay_ticks(5000);  // make local constant
-            static_cast<void>(
-                get_message_queue().try_send(messages::CheckMotorStartMessage{
-                    .responding_to_id = msg.id,
-                    .with_error = error,
-                    .from_system = msg.from_system,
-                    .target_rpm = msg.target_rpm}));
+            state.status = State::RUNNING;
+            auto response = messages::AcknowledgePrevious{
+                .responding_to_id = msg.id, .with_error = error};
+            if (msg.from_system) {
+                static_cast<void>(
+                    task_registry->system->get_message_queue().try_send(
+                        messages::SystemMessage(response)));
+
+            } else {
+                static_cast<void>(
+                    task_registry->comms->get_message_queue().try_send(
+                        messages::HostCommsMessage(response)));
+            }
+            // policy.delay_ticks(5000);  // make local constant
+            // static_cast<void>(
+            //     get_message_queue().try_send(messages::CheckMotorStartMessage{
+            //         .responding_to_id = msg.id,
+            //         .with_error = error,
+            //         .from_system = msg.from_system,
+            //         .target_rpm = msg.target_rpm}));
         }
     }
 

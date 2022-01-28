@@ -86,7 +86,7 @@ const R3_2_Params_t R3_2_ParamsM1 =
  .pwm_en_w_pin       = M1_PWM_EN_W_Pin,
 
 /* Emergency input (BKIN2) signal initialization -----------------------------*/
-  .BKIN2Mode     = EXT_MODE,
+  .BKIN2Mode     = INT_MODE,
 
 /* Internal OPAMP common settings --------------------------------------------*/
   .OPAMPParams     = MC_NULL,
