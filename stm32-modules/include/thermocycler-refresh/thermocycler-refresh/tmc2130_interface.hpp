@@ -24,7 +24,9 @@ template <typename Policy>
 concept TMC2130InterfacePolicy = requires(Policy& p, MessageT& data) {
     // A function to read & write to a register. addr should include the
     // read/write bit.
-    { p.tmc2130_transmit_receive(data) } -> std::same_as<std::optional<MessageT>>;
+    {
+        p.tmc2130_transmit_receive(data)
+        } -> std::same_as<std::optional<MessageT>>;
 };
 
 /**

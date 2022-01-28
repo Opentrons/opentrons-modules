@@ -13,6 +13,8 @@
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_tim.h"
 
+#include "firmware/motor_spi_hardware.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -33,41 +35,96 @@ extern "C" {
 #define LID_STEPPER_VREF_CHANNEL DAC_CHANNEL_1
 #define LID_STEPPER_STEP_Channel TIM_CHANNEL_1
 
+/** Port for the step pulse pin.*/
+#define SEAL_STEPPER_STEP_PORT (GPIOB)
+/** Pin for the step pulse pin.*/
+#define SEAL_STEPPER_STEP_PIN (GPIO_PIN_10)
+/** Port for the step direction port.*/
+#define SEAL_STEPPER_DIRECTION_PORT (GPIOB)
+/** Pin for the step direction pin.*/
+#define SEAL_STEPPER_DIRECTION_PIN (GPIO_PIN_11)
+/** Port for the enable pin.*/
+#define SEAL_STEPPER_ENABLE_PORT (GPIOE)
+/** Pin for enable pin.*/
+#define SEAL_STEPPER_ENABLE_PIN (GPIO_PIN_15)
+
+/** Frequency of the driving clock for TIM6 is 170MHz.*/
+#define TIM6_APB_FREQ (170000000)
+/** Preload for APB to give a 10MHz clock.*/
+#define TIM6_PRELOAD (16)
+/** Calculated TIM6 period.*/
+#define TIM6_PERIOD (((TIM6_APB_FREQ/(TIM6_PRELOAD + 1)) / MOTOR_INTERRUPT_FREQ) - 1)
+
 // ----------------------------------------------------------------------------
 // Local typedefs
 
-typedef struct {
+typedef struct lid_hardware_struct {
+    // Whether the lid motor is moving
+    bool moving;
+    // Current step count for the lid
     int32_t step_count;
+    // Target step count for the lid
     int32_t step_target;
-} motor_hardware_status;
+} lid_hardware_t;
 
-typedef struct {
+typedef struct seal_hardware_struct {
+    // Whether the seal motor driver is enabled
+    bool enabled;
+    // Is there a movement in progress?
+    bool moving;
+    // Current direction of the seal stepper.
+    // True = forwards, False = backwards
+    bool direction;
+    // Timer handle for the seal stepper
+    TIM_HandleTypeDef timer;
+} seal_hardware_t;
+
+typedef struct motor_hardware_struct {
+    // Whether this driver has been initialized
+    bool initialized;
     // Handle for the lid current control DAC
     DAC_HandleTypeDef lid_dac;
     // Current status of the lid stepper
     motor_hardware_status lid_stepper;
-    // Handle for the timer used for the lid stepper motor
-    TIM_HandleTypeDef lid_timer;
+    // Handle for the timer used for the stepper motors
+    TIM_HandleTypeDef motor_timer;
     // Callback for completion of a lid stepper movement
     motor_hardware_callbacks callbacks;
-} motor_hardware_handles;
+    // Encapsulates seal motor information
+    seal_hardware_t seal;
+} motor_hardware_t;
 
 // Local variables
 
-static motor_hardware_handles _motor_hardware = {
+static motor_hardware_t _motor_hardware = {
+    .initialized = false
     .lid_dac = {0},
-    .lid_stepper = {0},
-    .lid_timer = {0},
-    .callbacks.lid_stepper_complete = NULL
+    .lid_stepper = {
+        .moving = false,
+        .step_count = 0,
+        .step_target = 0
+    },
+    .motor_timer = {0},
+    .callbacks = {
+        .lid_stepper_complete = NULL,
+        .seal_stepper_tick = NULL
+    },
+    .seal = {
+        .enabled = false,
+        .moving = false,
+        .direction = false,
+        .timer = {0}
+    }
 };
 
 // ----------------------------------------------------------------------------
 // Local function declaration
 
-static void MX_GPIO_Init(void);
+static void init_motor_gpio(void);
 void HAL_TIM_OC_MspInit(TIM_HandleTypeDef* htim);
-static void MX_DAC_Init(DAC_HandleTypeDef* hdac);
-static void MX_OC_Init(TIM_HandleTypeDef* htim);
+static void init_dac1(DAC_HandleTypeDef* hdac);
+static void init_tim2(TIM_HandleTypeDef* htim);
+static void init_tim6(TIM_HandleTypeDef* htim);
 
 // ----------------------------------------------------------------------------
 // Public function implementation
@@ -75,14 +132,22 @@ static void MX_OC_Init(TIM_HandleTypeDef* htim);
 void motor_hardware_setup(const motor_hardware_callbacks* callbacks) {
     configASSERT(callbacks != NULL);
     configASSERT(callbacks->lid_stepper_complete != NULL);
+    configASSERT(callbacks->seal_stepper_tick != NULL);
 
     memcpy(&_motor_hardware.callbacks, callbacks, sizeof(_motor_hardware.callbacks));
 
-    MX_GPIO_Init();
-    MX_DAC_Init(&_motor_hardware.lid_dac);
-    MX_OC_Init(&_motor_hardware.lid_timer);
-    
+    if(!_motor_hardware.initialized) {
+        init_motor_gpio();
+        init_dac1(&_motor_hardware.lid_dac);
+        init_tim2(&_motor_hardware.motor_timer);
+        init_tim6(&_motor_hardware.seal.timer);
+        motor_spi_initialize();
+    }
+
     motor_hardware_lid_stepper_reset();
+    motor_hardware_set_seal_enable(false);
+
+    _motor_hardware.initialized = true;
 }
 
 //PA0/PA1/PB10/PB11 = TIM2CH1/2/3/4 (all GPIO_AF1_TIM2)
@@ -100,21 +165,14 @@ void motor_hardware_lid_stepper_start(int32_t steps) {
         HAL_GPIO_WritePin(LID_STEPPER_CONTROL_Port, LID_STEPPER_DIR_Pin, GPIO_PIN_RESET);
     }
 
-    HAL_TIM_OC_Start_IT(&_motor_hardware.lid_timer, LID_STEPPER_STEP_Channel);
+    HAL_TIM_OC_Start_IT(&_motor_hardware.motor_timer, LID_STEPPER_STEP_Channel);
 }
 
 void motor_hardware_lid_stepper_stop() {
-    HAL_TIM_OC_Stop_IT(&_motor_hardware.lid_timer, LID_STEPPER_STEP_Channel);
+    HAL_TIM_OC_Stop_IT(&_motor_hardware.motor_timer, LID_STEPPER_STEP_Channel);
 }
 
-void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
-{
-    if (htim->Instance == TIM2) {
-        motor_hardware_increment_step();
-    }
-}
-
-void motor_hardware_increment_step() {
+void motor_hardware_lid_increment() {
     _motor_hardware.lid_stepper.step_count++;
     if (_motor_hardware.lid_stepper.step_count > (_motor_hardware.lid_stepper.step_target - 1)) {
         motor_hardware_lid_stepper_stop();
@@ -141,6 +199,40 @@ bool motor_hardware_lid_stepper_reset(void) {
     return (motor_hardware_lid_stepper_check_fault() == true) ? false : true;
 }
 
+
+bool motor_hardware_set_seal_enable(bool enable) {
+    // Active low
+    HAL_GPIO_WritePin(SEAL_STEPPER_ENABLE_PORT, SEAL_STEPPER_ENABLE_PIN, 
+        (enable) ? GPIO_PIN_RESET : GPIO_PIN_SET);
+    return true;
+}
+
+bool motor_hardware_set_seal_direction(bool direction) {
+    _motor_hardware.seal.direction = direction;
+    HAL_GPIO_WritePin(SEAL_STEPPER_DIRECTION_PORT, SEAL_STEPPER_DIRECTION_PIN, 
+        direction ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    return true;
+}
+
+bool motor_hardware_start_seal_movement(void) {
+    HAL_TIM_Base_Start(&_motor_hardware.seal.timer);
+}
+
+bool motor_hardware_stop_seal_movement(void) {
+    HAL_TIM_Base_Stop(&_motor_hardware.seal.timer);
+}
+
+void motor_hardware_seal_interrupt(void) {
+    _motor_hardware.callbacks.seal_stepper_tick();
+}
+
+void motor_hardware_seal_step_pulse(void) {
+    HAL_GPIO_WritePin(SEAL_STEPPER_STEP_PORT, SEAL_STEPPER_STEP_PIN, 
+                      GPIO_PIN_SET);
+    HAL_GPIO_WritePin(SEAL_STEPPER_STEP_PORT, SEAL_STEPPER_STEP_PIN, 
+                      GPIO_PIN_RESET);
+}
+
 void motor_hardware_solenoid_engage() { //engage to clear/unlock sliding locking plate
     //check to confirm lid closed before engaging solenoid
     HAL_GPIO_WritePin(SOLENOID_Port, SOLENOID_Pin, GPIO_PIN_SET);
@@ -160,12 +252,13 @@ void motor_hardware_solenoid_release() {
   * @param None
   * @retval None
   */
-static void MX_GPIO_Init(void)
+static void init_motor_gpio(void)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     
     /* Enable GPIOx clocks */
     __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOE_CLK_ENABLE();
 
@@ -191,20 +284,40 @@ static void MX_GPIO_Init(void)
 
     GPIO_InitStruct.Pin = LID_STEPPER_VREF_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(LID_STEPPER_CONTROL_Port, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = LID_STEPPER_DIR_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(LID_STEPPER_CONTROL_Port, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = LID_STEPPER_STEP_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
     HAL_GPIO_Init(LID_STEPPER_CONTROL_Port, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = SEAL_STEPPER_ENABLE_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    HAL_GPIO_Init(SEAL_STEPPER_ENABLE_PORT, &gpio);
+
+    GPIO_InitStruct.Pin = SEAL_STEPPER_DIRECTION_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    HAL_GPIO_Init(SEAL_STEPPER_DIRECTION_PORT, &gpio);
+
+    GPIO_InitStruct.Pin = SEAL_STEPPER_STEP_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    HAL_GPIO_Init(SEAL_STEPPER_STEP_PORT, &gpio);
 }
 
 void HAL_TIM_OC_MspInit(TIM_HandleTypeDef* htim) {
-    if (htim == &_motor_hardware.lid_timer) {
+    if (htim == &_motor_hardware.motor_timer) {
         /* Peripheral clock enable */
         __HAL_RCC_TIM2_CLK_ENABLE();
 
@@ -214,7 +327,7 @@ void HAL_TIM_OC_MspInit(TIM_HandleTypeDef* htim) {
     }
 }
 
-static void MX_DAC_Init(DAC_HandleTypeDef* hdac) {
+static void init_dac1(DAC_HandleTypeDef* hdac) {
     HAL_StatusTypeDef hal_ret;
 
     __HAL_RCC_DAC1_CLK_ENABLE();
@@ -234,9 +347,10 @@ static void MX_DAC_Init(DAC_HandleTypeDef* hdac) {
     configASSERT(hal_ret == HAL_OK);
 }
 
-static void MX_OC_Init(TIM_HandleTypeDef* htim) {
+static void init_tim2(TIM_HandleTypeDef* htim) {
     HAL_StatusTypeDef hal_ret;
     TIM_OC_InitTypeDef htim_oc;
+    configASSERT(htim != NULL);
     /* Compute TIM2 clock */
     uint32_t uwTimClock = HAL_RCC_GetPCLK1Freq();
     /* Compute the prescaler value to have TIM2 counter clock equal to 1MHz */
@@ -261,6 +375,26 @@ static void MX_OC_Init(TIM_HandleTypeDef* htim) {
     configASSERT(hal_ret == HAL_OK);
 }
 
+
+static void init_tim6(TIM_HandleTypeDef* htim) {
+    HAL_StatusTypeDef hal_ret;
+    TIM_MasterConfigTypeDef config = {0};
+    configASSERT(htim != NULL);
+
+    htim->Instance = TIM6;
+    htim->Init.Prescaler = TIM6_PRELOAD;
+    htim->Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim->Init.Period = TIM6_PERIOD;
+    htim->Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    hal_ret = HAL_TIM_Base_Init(htim);
+    configASSERT(hal_ret == HAL_OK);
+
+    config.MasterOutputTrigger = TIM_TRGO_RESET;
+    config.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    hal_ret = HAL_TIMEx_MasterConfigSynchronization(htim, &config);
+    configASSERT(hal_ret == HAL_OK);
+}
+
 // ----------------------------------------------------------------------------
 // Overwritten HAL functions
 
@@ -268,7 +402,16 @@ static void MX_OC_Init(TIM_HandleTypeDef* htim) {
   * @brief This function handles TIM2 global interrupt (used for
   * Lid Stepper control)
   */
-void TIM2_IRQHandler(void) { HAL_TIM_IRQHandler(&_motor_hardware.lid_timer); }
+void TIM2_IRQHandler(void) { 
+    HAL_TIM_IRQHandler(&_motor_hardware.motor_timer); 
+}
+
+/**
+  * @brief This function handles TIM6 global interrupt.
+  */
+void TIM6_DAC_IRQHandler(void) {
+    HAL_TIM_IRQHandler(&_motor_hardware.seal.timer);
+}
 
 
 #ifdef __cplusplus

@@ -1,10 +1,11 @@
 /**
  * @file tmc2130_policy.hpp
- * @brief Implements SPI 
- * 
+ * @brief Implements SPI
+ *
  */
 #pragma once
 
+#include "firmware/motor_hardware.h"
 #include "firmware/motor_spi_hardware.h"
 #include "thermocycler-refresh/tmc2130.hpp"
 
@@ -21,6 +22,6 @@ class MotorSpiPolicy {
     }
     // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
     auto tmc2130_set_enable(bool enable) -> bool {
-        return motor_set_output_enable(enable);
+        return motor_hardware_set_seal_enable(enable);
     }
 };

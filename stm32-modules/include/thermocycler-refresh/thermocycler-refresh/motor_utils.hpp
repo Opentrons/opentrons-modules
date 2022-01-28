@@ -68,6 +68,12 @@ class LidStepper {
     }
 };
 
+/** The end condition for this movement.*/
+enum class MovementType {
+    FixedDistance,  // This movement goes for a fixed number of steps.
+    SoftStop,       // This movement goes until a stop switch is hit
+};
+
 template <uint32_t ticks_per_second>
 class MovementProfile {
   public:
@@ -81,14 +87,8 @@ class MovementProfile {
     static constexpr int radix = 31;
 
     // Frequency of ticks must be a positive number
-    static_assert(ticks_per_second > 0, 
+    static_assert(ticks_per_second > 0,
                   "Frequency of movement ticks must be positive");
-
-    /** The end condition for this movement.*/
-    enum class MovementType {
-        FixedDistance,  // This movement goes for a fixed number of steps.
-        SoftStop,       // This movement goes until a stop switch is hit
-    };
 
     struct TickReturn {
         bool done;  // If true, this movement is done
@@ -97,29 +97,31 @@ class MovementProfile {
 
     /**
      * @brief Construct a new Movement Profile object
-     * 
+     *
      * @param[in] start_velocity Starting velocity in steps per second
      * @param[in] peak_velocity Max velocity in steps per second
-     * @param[in] end_velocity Ending velocity in steps per second
      * @param[in] acceleration Acceleration in steps per second^2. Set to 0
-     *                         for instant acceleration.
-     * @param[in] deceleration Deceleration in steps per second^2. Set to 0
-     *                         for instant deceleration.
-     * @param[in] type The type of movement to perform. A FixedDistance 
+     *                         or lower for instant acceleration.
+     * @param[in] type The type of movement to perform. A FixedDistance
      *                 movement will have no deceleration profile.
      * @param[in] distance The number of ticks to move. Irrelevant for
      *                     SoftStop movements.
      */
-    MovementProfile(double start_velocity, double peak_velocity, 
-                    double acceleration, MovementType type,
-                    ticks distance) :
-            _type(type),
-            _target_distance(distance) {
-        _start_velocity = convert_to_fixed_point(start_velocity / tick_freq, radix);
-        _peak_velocity = convert_to_fixed_point(peak_velocity / tick_freq, radix);
-        _acceleration = convert_to_fixed_point(acceleration / (tick_freq * tick_freq), radix);
+    MovementProfile(double start_velocity, double peak_velocity,
+                    double acceleration, MovementType type, ticks distance)
+        : _type(type), _target_distance(distance) {
+        // Clamp the peak velocity so it is not under start velocity
+        start_velocity = std::max(start_velocity, static_cast<double>(0.0F));
+        acceleration = std::max(acceleration, static_cast<double>(0.0F));
+        peak_velocity = std::max(start_velocity, peak_velocity);
+        _start_velocity =
+            convert_to_fixed_point(start_velocity / tick_freq, radix);
+        _peak_velocity =
+            convert_to_fixed_point(peak_velocity / tick_freq, radix);
+        _acceleration = convert_to_fixed_point(
+            acceleration / (tick_freq * tick_freq), radix);
 
-        if(_acceleration == 0) {
+        if (_acceleration <= 0) {
             _start_velocity = _peak_velocity;
         }
 
@@ -138,15 +140,15 @@ class MovementProfile {
      * @note If called after a movement is completed, steps will keep being
      * generated. The caller should monitor the return value to know when
      * to stop calling tick()
-     * 
+     *
      * @return TickReturn with information for how hardware driver should act
      */
     auto tick() -> TickReturn {
         bool step = false;
         // Acceleration
-        if(_velocity < _peak_velocity) {
+        if (_velocity < _peak_velocity) {
             _velocity += _acceleration;
-            if(_velocity > _peak_velocity) {
+            if (_velocity > _peak_velocity) {
                 _velocity = _peak_velocity;
             }
         }
@@ -154,21 +156,28 @@ class MovementProfile {
         _tick_tracker += _velocity;
         // The bit _tick_flag represents a "whole" step. Once this flips,
         // the code signals that a step should occur
-        if((old_tick_track ^ _tick_tracker) & _tick_flag) {
+        if ((old_tick_track ^ _tick_tracker) & _tick_flag) {
             step = true;
+            ++_current_distance;
         }
-        return TickReturn{.done = (_current_distance >= _target_distance), .step = step};
+        return TickReturn{.done = (_current_distance >= _target_distance &&
+                                   _type == MovementType::FixedDistance),
+                          .step = step};
+    }
+
+    [[nodiscard]] auto current_velocity() -> steps_per_tick {
+        return _velocity;
     }
 
   private:
-    steps_per_tick _velocity = 0; // Current velocity
-    steps_per_tick _start_velocity = 0; // Velocity to start a movement
-    steps_per_tick _peak_velocity = 0; // Velocity to ramp up to
-    steps_per_tick_sq _acceleration = 0; // Acceleration in steps/tick^2
-    MovementType _type; // Type of movement
-    ticks _target_distance; // Distance for the movement
-    ticks _current_distance = 0; // Distance this movement has reached
-    q31_31 _tick_tracker = 0; // Running tracker for the tick motion
+    steps_per_tick _velocity = 0;         // Current velocity
+    steps_per_tick _start_velocity = 0;   // Velocity to start a movement
+    steps_per_tick _peak_velocity = 0;    // Velocity to ramp up to
+    steps_per_tick_sq _acceleration = 0;  // Acceleration in steps/tick^2
+    MovementType _type;                   // Type of movement
+    ticks _target_distance;               // Distance for the movement
+    ticks _current_distance = 0;          // Distance this movement has reached
+    q31_31 _tick_tracker = 0;             // Running tracker for the tick motion
 
     // When incrementing position tracker, if this bit changes then
     // a step should take place.
