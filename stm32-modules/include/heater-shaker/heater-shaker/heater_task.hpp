@@ -93,6 +93,8 @@ class HeaterTask {
     static constexpr uint8_t ADC_BIT_DEPTH = 12;
     static constexpr uint16_t HEATER_PAD_NTC_DISCONNECT_THRESHOLD_ADC =
         3642;  // 0C equivalent
+    static constexpr uint8_t HEATER_PAD_HARDWARE_OVERTEMP_OFFSET_C = 1;
+    static constexpr uint8_t HEATER_PAD_LATCH_RESET_OFFSET_C = 5;
     static constexpr double HEATER_PAD_OVERTEMP_SAFETY_LIMIT_C = 100;
     static constexpr double BOARD_OVERTEMP_SAFETY_LIMIT_C = 60;
     static constexpr double DEFAULT_KI = 0.102;
@@ -451,11 +453,13 @@ class HeaterTask {
     auto visit_conversion(double value, TemperatureSensor& sensor) -> void {
         if (value > sensor.overtemp_limit_c) {
             sensor.error = sensor.overtemp_error;
-        } else if ((value > (sensor.overtemp_limit_c - 1)) &&
+        } else if ((value > (sensor.overtemp_limit_c -
+                             HEATER_PAD_HARDWARE_OVERTEMP_OFFSET_C)) &&
                    ((state.error_bitmap & State::POWER_GOOD_ERROR) != 0)) {
             sensor.error = sensor.overtemp_error;
         } else if ((sensor.error == sensor.overtemp_error) &&
-                   (value > (sensor.overtemp_limit_c - 5))) {
+                   (value > (sensor.overtemp_limit_c -
+                             HEATER_PAD_LATCH_RESET_OFFSET_C))) {
             sensor.error = sensor.overtemp_error;
         } else {
             sensor.error = errors::ErrorCode::NO_ERROR;
