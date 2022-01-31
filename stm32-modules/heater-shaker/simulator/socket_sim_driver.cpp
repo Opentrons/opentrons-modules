@@ -75,8 +75,7 @@ void socket_sim_driver::SocketSimDriver::write(const std::string& message) {
 }
 
 int has_char(const char* char_array, const char* end, char value_to_find) {
-    const char* position =
-        std::find(char_array, end, value_to_find);
+    const char* position = std::find(char_array, end, value_to_find);
     return end != position;
 }
 
@@ -99,7 +98,8 @@ void socket_sim_driver::SocketSimDriver::read(
             std::copy(reinterpret_cast<char*>(buff.data()),
                       reinterpret_cast<char*>(buff.data()) + l, end_of_input);
         if (has_char(data, end_of_input, '\n')) {
-            std::cout << "Received complete message: " << write_buffer->accessible()->data() << std::endl;
+            std::cout << "Received complete message: "
+                      << write_buffer->accessible()->data() << std::endl;
             auto message = messages::IncomingMessageFromHost(
                 std::begin(*write_buffer->accessible()), end_of_input);
             static_cast<void>(
