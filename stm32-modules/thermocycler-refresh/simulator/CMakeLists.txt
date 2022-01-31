@@ -22,6 +22,7 @@ target_link_libraries(
 target_include_directories(
   ${TARGET_MODULE_NAME}-simulator 
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include/common
   )
 
 
