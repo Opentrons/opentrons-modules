@@ -93,6 +93,8 @@ class HeaterTask {
     static constexpr uint8_t ADC_BIT_DEPTH = 12;
     static constexpr uint16_t HEATER_PAD_NTC_DISCONNECT_THRESHOLD_ADC =
         3642;  // 0C equivalent
+    static constexpr double HEATER_PAD_HARDWARE_OVERTEMP_OFFSET_C = 1;
+    static constexpr double HEATER_PAD_LATCH_RESET_OFFSET_C = 5;
     static constexpr double HEATER_PAD_OVERTEMP_SAFETY_LIMIT_C = 100;
     static constexpr double BOARD_OVERTEMP_SAFETY_LIMIT_C = 60;
     static constexpr double DEFAULT_KI = 0.102;
@@ -449,12 +451,43 @@ class HeaterTask {
     }
 
     auto visit_conversion(double value, TemperatureSensor& sensor) -> void {
+        // overtemp error may be detected by software or hardware (threshold is
+        // currently between 99 and 100 degrees C), and should not be reset
+        // until the hardware latch can successfully be reset (threshold of 95
+        // degrees C to be safe)
         if (value > sensor.overtemp_limit_c) {
+            sensor.error = sensor.overtemp_error;
+        } else if (is_hardware_overtemp(value, sensor, state.error_bitmap)) {
+            sensor.error = sensor.overtemp_error;
+        } else if (is_reset_unavailable(value, sensor)) {
             sensor.error = sensor.overtemp_error;
         } else {
             sensor.error = errors::ErrorCode::NO_ERROR;
         }
         sensor.temp_c = value;
+    }
+
+    static inline bool is_hardware_overtemp(double value,
+                                            TemperatureSensor& sensor,
+                                            uint8_t bitmap) {
+        if (value >
+            (sensor.overtemp_limit_c - HEATER_PAD_HARDWARE_OVERTEMP_OFFSET_C)) {
+            if ((bitmap & State::POWER_GOOD_ERROR) != 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static inline bool is_reset_unavailable(double value,
+                                            TemperatureSensor& sensor) {
+        if (value >
+            (sensor.overtemp_limit_c - HEATER_PAD_LATCH_RESET_OFFSET_C)) {
+            if (sensor.error == sensor.overtemp_error) {
+                return true;
+            }
+        }
+        return false;
     }
 
     [[nodiscard]] auto most_relevant_error() const -> errors::ErrorCode {
