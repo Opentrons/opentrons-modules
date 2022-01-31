@@ -78,20 +78,20 @@ enum class MovementType {
  * @brief Encapsulates information about a motor movement profile, and
  * generates information about when steps should occur and when the
  * movement should end based on a periodic \c tick() function.
- * 
- * @details 
+ *
+ * @details
  * The \c tick() function should be invoked at a fixed frequency, defined
  * in the constructor. With each tick, the MovementProfile will:
- * 
- *   1. Accelerate the velocity, if the peak acceleration isn't reached \n 
- *   2. Return \c step=true if a motor step should occur \n 
+ *
+ *   1. Accelerate the velocity, if the peak acceleration isn't reached \n
+ *   2. Return \c step=true if a motor step should occur \n
  *   3. Return \c done=true if the movement is over (has reached the requested
  *      number of steps and is a \c FixedDistance movement)
- * 
+ *
  * This class does \e not directly call any functions to move the motor. The
  * caller of \c tick() should handle actual signal generation based off of the
  * return values.
- * 
+ *
  */
 class MovementProfile {
   public:
@@ -138,7 +138,7 @@ class MovementProfile {
         peak_velocity = std::max(start_velocity, peak_velocity);
 
         // Convert velocities by just dividing by the tick frequency
-        _start_velocity = 
+        _start_velocity =
             convert_to_fixed_point(start_velocity / tick_freq, radix);
         _peak_velocity =
             convert_to_fixed_point(peak_velocity / tick_freq, radix);

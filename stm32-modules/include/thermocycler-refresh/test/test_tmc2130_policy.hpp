@@ -87,7 +87,9 @@ class TestTMC2130Policy {
     }
 
     auto tmc2130_step_pulse() -> bool {
-        if(!_enable) { return false; }
+        if (!_enable) {
+            return false;
+        }
         _steps += _direction;
         return true;
     }
@@ -105,6 +107,10 @@ class TestTMC2130Policy {
     auto set_gstat_error() -> void {
         _registers[static_cast<uint8_t>(tmc2130::Registers::GSTAT)] |= 0x2;
     }
+
+    // -------------- Test integration methods
+    auto get_tmc2130_steps() -> long { return _steps; }
+    auto get_tmc2130_direction() -> bool { return _direction; }
 
   private:
     auto get_status() -> uint8_t { return 0x00; }

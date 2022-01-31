@@ -3,8 +3,10 @@
 
 using namespace motor_util;
 
-static auto velocity_to_steps_per_tick(double vel, uint32_t frequency) -> sq0_31 {
-    return convert_to_fixed_point(vel/static_cast<double>(frequency), MovementProfile::radix);
+static auto velocity_to_steps_per_tick(double vel, uint32_t frequency)
+    -> sq0_31 {
+    return convert_to_fixed_point(vel / static_cast<double>(frequency),
+                                  MovementProfile::radix);
 }
 
 SCENARIO("Lid stepper current conversion works") {
@@ -185,7 +187,8 @@ SCENARIO("MovementProfile acceleration testing") {
                     static_cast<void>(profile.tick());
                 }
                 // Non-integer math results in a little bit of slop
-                REQUIRE(std::abs(profile.current_velocity() - end_velocity) < 5);
+                REQUIRE(std::abs(profile.current_velocity() - end_velocity) <
+                        5);
                 AND_THEN("more ticks do not increase the velocity") {
                     static_cast<void>(profile.tick());
                     REQUIRE(profile.current_velocity() == end_velocity);
@@ -229,7 +232,7 @@ SCENARIO("MovementProfile acceleration testing") {
                 REQUIRE(static_cast<uint64_t>(profile.current_velocity()) > 0);
             }
             THEN("it takes 1000000 ticks to reach maximum velocity") {
-                const auto end_velocity = 
+                const auto end_velocity =
                     velocity_to_steps_per_tick(end_vel_double, frequency);
                 auto vel = profile.current_velocity();
                 int ticks = 0;
@@ -254,22 +257,20 @@ SCENARIO("MovementProfile input sanitization") {
         }
     }
     WHEN("setting end velocity below start velocity") {
-        auto profile = MovementProfile(1, 0.5, 0, 0.1,
-                                       MovementType::FixedDistance, 10);
+        auto profile =
+            MovementProfile(1, 0.5, 0, 0.1, MovementType::FixedDistance, 10);
         THEN("the end velocity gets set to the starting velocity") {
-            const int velocity = 
-                    velocity_to_steps_per_tick(0.5, 1);
+            const int velocity = velocity_to_steps_per_tick(0.5, 1);
             REQUIRE(profile.current_velocity() == velocity);
             static_cast<void>(profile.tick());
             REQUIRE(profile.current_velocity() == velocity);
         }
     }
     WHEN("setting acceleration below zero") {
-        auto profile = MovementProfile(1, 0.5, 0.75, -5,
-                                       MovementType::FixedDistance, 10);
+        auto profile =
+            MovementProfile(1, 0.5, 0.75, -5, MovementType::FixedDistance, 10);
         THEN("the velocity behaves as if the acceleration was passed as 0") {
-            const int velocity = 
-                    velocity_to_steps_per_tick(0.75, 1);
+            const int velocity = velocity_to_steps_per_tick(0.75, 1);
             REQUIRE(profile.current_velocity() == velocity);
             static_cast<void>(profile.tick());
             REQUIRE(profile.current_velocity() == velocity);

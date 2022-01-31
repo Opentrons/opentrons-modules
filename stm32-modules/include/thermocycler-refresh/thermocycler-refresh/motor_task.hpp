@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <concepts>
 #include <functional>
+#include <optional>
 #include <variant>
 
 #include "hal/message_queue.hpp"
@@ -42,7 +43,7 @@ namespace motor_task {
  */
 template <typename Policy>
 concept MotorExecutionPolicy = requires(Policy& p,
-                                        std::function<void()>& callback) {
+                                        std::function<void()> callback) {
     // A function to set the stepper DAC as a register value
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.lid_stepper_set_dac(1)};
@@ -68,7 +69,7 @@ concept MotorExecutionPolicy = requires(Policy& p,
     // in a second
     {std::is_integral_v<decltype(Policy::MotorTickFrequency)>};
 }
-&& tmc2130::TMC2130Policy<Policy>;
+&&tmc2130::TMC2130Policy<Policy>;
 
 // Structure to encapsulate state of either of the stepper motors
 struct StepperState {
@@ -101,13 +102,22 @@ class MotorTask {
     static constexpr double LID_STEPPER_DEFAULT_VOLTAGE = 1200;
     // Default current to set for lid stepper for holding, in milliamperes
     static constexpr double LID_STEPPER_HOLD_CURRENT = 0;
+    // Default velocity for the seal stepper, in steps/second
+    static constexpr double SEAL_STEPPER_DEFAULT_VELOCITY = 50000;
+    // Default acceleration for the seal stepper, in steps/second^2
+    static constexpr double SEAL_STEPPER_DEFAULT_ACCELERATION = 50000;
 
     explicit MotorTask(Queue& q)
         : _message_queue(q),
           _task_registry(nullptr),
           _lid_stepper_state{.status = StepperState::IDLE, .response_id = 0},
           _seal_stepper_state{.status = StepperState::IDLE, .response_id = 0},
-          _tmc2130(default_tmc_config) {}
+          _tmc2130(default_tmc_config),
+          // Seal movement profile is populated with mostly dummy values.
+          // It is set before every movement so these are irrelevant.
+          _seal_profile(1, 0, SEAL_STEPPER_DEFAULT_VELOCITY,
+                        SEAL_STEPPER_DEFAULT_ACCELERATION,
+                        motor_util::MovementType::OpenLoop, 0) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -193,6 +203,53 @@ class MotorTask {
 
     template <typename Policy>
     requires MotorExecutionPolicy<Policy>
+    auto visit_message(const messages::SealStepperDebugMessage& msg,
+                       Policy& policy) -> void {
+        // check for errors
+        auto error = errors::ErrorCode::NO_ERROR;
+        if (_seal_stepper_state.status == StepperState::MOVING) {
+            error = errors::ErrorCode::SEAL_MOTOR_BUSY;
+        }
+        if (error == errors::ErrorCode::NO_ERROR) {
+            // Start movement and cache the id for later
+            _seal_profile = motor_util::MovementProfile(
+                policy.MotorTickFrequency, 0, SEAL_STEPPER_DEFAULT_VELOCITY,
+                SEAL_STEPPER_DEFAULT_ACCELERATION,
+                motor_util::MovementType::FixedDistance, std::abs(msg.steps));
+            auto ret = policy.tmc2130_set_direction(msg.steps > 0);
+            if (!ret) {
+            }
+            policy.tmc2130_set_enable(true);
+            policy.seal_stepper_start(
+                [&] { this->seal_step_callback(policy); });
+            _seal_stepper_state.status = StepperState::MOVING;
+            _seal_stepper_state.response_id = msg.id;
+        } else {
+            auto response = messages::AcknowledgePrevious{
+                .responding_to_id = msg.id, .with_error = error};
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(
+                    messages::HostCommsMessage(response)));
+        }
+    }
+
+    template <typename Policy>
+    requires MotorExecutionPolicy<Policy>
+    auto visit_message(const messages::SealStepperComplete& msg, Policy& policy)
+        -> void {
+        static_cast<void>(msg);
+        if (_seal_stepper_state.status == StepperState::MOVING) {
+            _seal_stepper_state.status = StepperState::IDLE;
+            auto response = messages::AcknowledgePrevious{
+                .responding_to_id = _seal_stepper_state.response_id};
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(
+                    messages::HostCommsMessage(response)));
+        }
+    }
+
+    template <typename Policy>
+    requires MotorExecutionPolicy<Policy>
     auto visit_message(const messages::ActuateSolenoidMessage& msg,
                        Policy& policy) -> void {
         if (msg.engage) {
@@ -206,11 +263,26 @@ class MotorTask {
             messages::HostCommsMessage(response)));
     }
 
+    template <MotorExecutionPolicy Policy>
+    auto seal_step_callback(Policy& policy) -> void {
+        auto ret = _seal_profile.tick();
+        if (ret.step) {
+            policy.tmc2130_step_pulse();
+        }
+        if (ret.done) {
+            policy.seal_stepper_stop();
+            // Send a 'done' message to ourself
+            static_cast<void>(get_message_queue().try_send_from_isr(
+                messages::SealStepperComplete{}));
+        }
+    }
+
     Queue& _message_queue;
     tasks::Tasks<QueueImpl>* _task_registry;
     StepperState _lid_stepper_state;
     StepperState _seal_stepper_state;
     tmc2130::TMC2130 _tmc2130;
+    motor_util::MovementProfile _seal_profile;
 };
 
 };  // namespace motor_task

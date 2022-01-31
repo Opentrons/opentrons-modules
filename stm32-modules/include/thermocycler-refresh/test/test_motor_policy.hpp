@@ -1,6 +1,6 @@
 #pragma once
 
-#include <functional> 
+#include <functional>
 
 #include "test/test_tmc2130_policy.hpp"
 
@@ -37,27 +37,31 @@ class TestMotorPolicy : public TestTMC2130Policy {
     auto lid_solenoid_disengage() -> void { _solenoid_engaged = false; }
     auto lid_solenoid_engage() -> void { _solenoid_engaged = true; }
 
-    auto seal_stepper_start(Callback &cb) -> bool {
-        if(_seal_moving) { return false; }
+    auto seal_stepper_start(Callback cb) -> bool {
+        if (_seal_moving) {
+            return false;
+        }
 
         _seal_moving = true;
         _callback = cb;
+        return true;
     }
 
     auto seal_stepper_stop() -> void { _seal_moving = false; }
 
     // Test-specific functions
 
-    auto tick() -> void { if(_seal_moving) { _callback(); } }
-
+    auto tick() -> void {
+        if (_seal_moving) {
+            _callback();
+        }
+    }
     auto solenoid_engaged() -> bool { return _solenoid_engaged; }
-
     /** Next movement will be an error.*/
     auto trigger_lid_fault() -> void { _lid_fault = true; }
-
     auto get_vref() -> uint8_t { return _dac_val; }
-
     auto get_angle() -> double { return _actual_angle; }
+    auto seal_moving() -> bool { return _seal_moving; }
 
   private:
     // Solenoid is engaged when unpowered
