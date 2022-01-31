@@ -451,8 +451,10 @@ class HeaterTask {
     }
 
     auto visit_conversion(double value, TemperatureSensor& sensor) -> void {
-        // overtemp error may be detected by software or hardware, and should
-        // not be reset until the hardware latch can successfully be reset
+        // overtemp error may be detected by software or hardware (threshold is
+        // currently between 99 and 100 degrees C), and should not be reset
+        // until the hardware latch can successfully be reset (threshold of 95
+        // degrees C to be safe)
         if (value > sensor.overtemp_limit_c) {
             sensor.error = sensor.overtemp_error;
         } else if (is_hardware_overtemp(value, sensor, state.error_bitmap)) {
