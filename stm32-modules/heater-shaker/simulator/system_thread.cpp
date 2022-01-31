@@ -72,7 +72,7 @@ static auto get_serial_number() -> std::optional<std::array<char, N>> {
     using RT = std::optional<std::array<char, N>>;
     constexpr const char serial_number_varname[] = "SERIAL_NUMBER";
     auto *env_p = std::getenv(serial_number_varname);
-    if(!env_p || (strlen(env_p) == 0)) {
+    if (!env_p || (strlen(env_p) == 0)) {
         return RT();
     }
     std::array<char, N> ret;
@@ -86,7 +86,7 @@ auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
 
     // Populate the serial number on startup, if provided
     auto ret = get_serial_number<SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>();
-    if(ret.has_value()) {
+    if (ret.has_value()) {
         static_cast<void>(policy.set_serial_number(ret.value()));
     }
 
