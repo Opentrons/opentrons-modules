@@ -97,7 +97,7 @@ class TMC2130 {
      * @return true if the registers have been written at least once,
      * false otherwise.
      */
-    [[nodiscard]] auto initialized() -> bool { return _initialized; }
+    [[nodiscard]] auto initialized() const -> bool { return _initialized; }
 
     // FUNCTIONS TO SET INDIVIDUAL REGISTERS
 
@@ -204,10 +204,10 @@ class TMC2130 {
     template <TMC2130Policy Policy>
     auto set_cool_config(CoolConfig reg, Policy& policy) -> bool {
         // Assert that bits that MUST be 0 are actually 0
-        if ((reg.padding_1 != 0) || (reg.padding_2 != 0) ||
-            (reg.padding_3 != 0) || (reg.padding_4 != 0)) {
-            return false;
-        }
+        reg.padding_1 = 0;
+        reg.padding_2 = 0;
+        reg.padding_3 = 0;
+        reg.padding_4 = 0;
         if (set_register(policy, reg)) {
             _registers.coolconf = reg;
             return true;

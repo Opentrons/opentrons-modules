@@ -40,6 +40,7 @@ StaticTask_t main_data;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static TaskHandle_t _local_task;
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static MotorPolicy _policy;
 
 static void handle_lid_stepper() {

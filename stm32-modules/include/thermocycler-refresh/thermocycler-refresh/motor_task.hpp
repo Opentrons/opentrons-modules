@@ -238,6 +238,7 @@ class MotorTask {
     auto visit_message(const messages::SealStepperComplete& msg, Policy& policy)
         -> void {
         static_cast<void>(msg);
+        static_cast<void>(policy);
         if (_seal_stepper_state.status == StepperState::MOVING) {
             _seal_stepper_state.status = StepperState::IDLE;
             auto response = messages::AcknowledgePrevious{

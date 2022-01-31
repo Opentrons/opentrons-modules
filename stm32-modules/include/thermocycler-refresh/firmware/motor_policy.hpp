@@ -19,7 +19,8 @@ class MotorPolicy {
      * @brief Construct a new Motor Policy object
      *
      */
-    MotorPolicy() : _seal_callback() {}
+    MotorPolicy()
+        : _seal_callback() {}  // NOLINT(readability-redundant-member-init)
 
     /**
      * @brief Set the value of the DAC as a register value. The DAC is used

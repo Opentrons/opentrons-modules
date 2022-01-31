@@ -48,7 +48,7 @@ auto MotorPolicy::lid_solenoid_engage() -> void {
 }
 
 auto MotorPolicy::seal_stepper_start(std::function<void()> callback) -> bool {
-    _seal_callback = callback;
+    _seal_callback = std::move(callback);
     return motor_hardware_start_seal_movement();
 }
 

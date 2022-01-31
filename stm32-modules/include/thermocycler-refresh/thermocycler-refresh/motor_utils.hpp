@@ -182,7 +182,7 @@ class MovementProfile {
         _tick_tracker += _velocity;
         // The bit _tick_flag represents a "whole" step. Once this flips,
         // the code signals that a step should occur
-        if ((old_tick_track ^ _tick_tracker) & _tick_flag) {
+        if (((old_tick_track ^ _tick_tracker) & _tick_flag) != 0U) {
             step = true;
             ++_current_distance;
         }
@@ -192,7 +192,7 @@ class MovementProfile {
     }
 
     /** Returns the current motor velocity in steps_per_tick.*/
-    [[nodiscard]] auto current_velocity() -> steps_per_tick {
+    [[nodiscard]] auto current_velocity() const -> steps_per_tick {
         return _velocity;
     }
 
