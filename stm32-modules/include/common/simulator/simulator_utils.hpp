@@ -33,7 +33,7 @@ static auto get_serial_number(const char *var_name)
     }
 
     std::array<char, N> ret;
-    memcpy(ret.data(), env_p, std::min(strlen(env_p), N));
+    strncpy(ret.data(), env_p, N);
     return RT(ret);
 }
 
