@@ -40,23 +40,25 @@ StaticTask_t main_data;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static TaskHandle_t _local_task;
 
+static MotorPolicy _policy;
+
 static void handle_lid_stepper() {
     static_cast<void>(_task.get_message_queue().try_send_from_isr(
         messages::MotorMessage(messages::LidStepperComplete{})));
 }
 
+static void handle_seal_interrupt() { _policy.seal_tick(); }
+
 // Actual function that runs inside the task
 void run(void *param) {
     static_cast<void>(param);
 
-    motor_hardware_callbacks callbacks = {.lid_stepper_complete =
-                                              handle_lid_stepper};
+    motor_hardware_callbacks callbacks = {
+        .lid_stepper_complete = handle_lid_stepper,
+        .seal_stepper_tick = handle_seal_interrupt};
     motor_hardware_setup(&callbacks);
-
-    auto policy = MotorPolicy();
-
     while (true) {
-        _task.run_once(policy);
+        _task.run_once(_policy);
     }
 }
 

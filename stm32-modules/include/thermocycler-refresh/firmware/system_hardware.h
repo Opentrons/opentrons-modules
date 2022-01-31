@@ -7,6 +7,7 @@ extern "C" {
 void system_hardware_setup(void);
 void system_debug_led(int set);
 void system_hardware_enter_bootloader(void);
+void hal_timebase_tick(void);
 
 #ifdef __cplusplus
 }  // extern "C"

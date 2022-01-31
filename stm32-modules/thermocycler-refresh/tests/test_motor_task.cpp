@@ -123,6 +123,9 @@ SCENARIO("motor task message passing") {
             tasks->run_motor_task();
             THEN("the message is received but no response is sent yet") {
                 REQUIRE(motor_policy.seal_moving());
+                // True for positive
+                REQUIRE(motor_policy.get_tmc2130_direction());
+                REQUIRE(motor_policy.get_tmc2130_enabled());
                 REQUIRE(motor_queue.backing_deque.empty());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
             }

@@ -85,7 +85,7 @@ typedef struct motor_hardware_struct {
     // Handle for the lid current control DAC
     DAC_HandleTypeDef lid_dac;
     // Current status of the lid stepper
-    motor_hardware_status lid_stepper;
+    lid_hardware_t lid_stepper;
     // Handle for the timer used for the stepper motors
     TIM_HandleTypeDef motor_timer;
     // Callback for completion of a lid stepper movement
@@ -97,7 +97,7 @@ typedef struct motor_hardware_struct {
 // Local variables
 
 static motor_hardware_t _motor_hardware = {
-    .initialized = false
+    .initialized = false,
     .lid_dac = {0},
     .lid_stepper = {
         .moving = false,
@@ -215,11 +215,11 @@ bool motor_hardware_set_seal_direction(bool direction) {
 }
 
 bool motor_hardware_start_seal_movement(void) {
-    HAL_TIM_Base_Start(&_motor_hardware.seal.timer);
+    return HAL_TIM_Base_Start_IT(&_motor_hardware.seal.timer) == HAL_OK;
 }
 
 bool motor_hardware_stop_seal_movement(void) {
-    HAL_TIM_Base_Stop(&_motor_hardware.seal.timer);
+    return HAL_TIM_Base_Stop_IT(&_motor_hardware.seal.timer) == HAL_OK;
 }
 
 void motor_hardware_seal_interrupt(void) {
@@ -301,19 +301,19 @@ static void init_motor_gpio(void)
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-    HAL_GPIO_Init(SEAL_STEPPER_ENABLE_PORT, &gpio);
+    HAL_GPIO_Init(SEAL_STEPPER_ENABLE_PORT, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = SEAL_STEPPER_DIRECTION_PIN;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-    HAL_GPIO_Init(SEAL_STEPPER_DIRECTION_PORT, &gpio);
+    HAL_GPIO_Init(SEAL_STEPPER_DIRECTION_PORT, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = SEAL_STEPPER_STEP_PIN;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-    HAL_GPIO_Init(SEAL_STEPPER_STEP_PORT, &gpio);
+    HAL_GPIO_Init(SEAL_STEPPER_STEP_PORT, &GPIO_InitStruct);
 }
 
 void HAL_TIM_OC_MspInit(TIM_HandleTypeDef* htim) {

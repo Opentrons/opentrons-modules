@@ -3,11 +3,24 @@
 #include <cstdint>
 
 #include "firmware/motor_hardware.h"
-#include "firmware/tmc2130_policy.hpp"
 #include "thermocycler-refresh/errors.hpp"
+#include "thermocycler-refresh/tmc2130.hpp"
 
-class MotorPolicy : public TMC2130Policy {
+class MotorPolicy {
+    std::function<void()> _seal_callback;
+
   public:
+    using RxTxReturn = std::optional<tmc2130::MessageT>;
+
+    /** Frequency of the seal motor interrupt in hertz.*/
+    static constexpr const uint32_t MotorTickFrequency = MOTOR_INTERRUPT_FREQ;
+
+    /**
+     * @brief Construct a new Motor Policy object
+     *
+     */
+    MotorPolicy() : _seal_callback() {}
+
     /**
      * @brief Set the value of the DAC as a register value. The DAC is used
      * to control the drive current of the lid stepper.
@@ -46,4 +59,52 @@ class MotorPolicy : public TMC2130Policy {
      * @brief Engage the lid solenoid
      */
     auto lid_solenoid_engage() -> void;
+
+    /**
+     * @brief Start a new seal stepper movement
+     *
+     * @param callback Function to call on every tick
+     * @return True if seal stepper could be started, false otherwise
+     */
+    auto seal_stepper_start(std::function<void()> callback) -> bool;
+    /**
+     * @brief Stop any active seal stepper movement
+     */
+    auto seal_stepper_stop() -> void;
+
+    /**
+     * @brief Send and receive data over SPI to tmc2130
+     *
+     * @param data Message to send to the TMC2130
+     * @return RxTxReturn containing received data, or no value if
+     * transmission failed
+     */
+    auto tmc2130_transmit_receive(tmc2130::MessageT& data) -> RxTxReturn;
+    /**
+     * @brief Set the enable pin for the TMC2130 to enabled or not
+     *
+     * @param enable True to enable the output, false to disable
+     * @return true on success, false on error
+     */
+    auto tmc2130_set_enable(bool enable) -> bool;
+    /**
+     * @brief Set the direction pin for the TMC2130 to forward
+     * or back
+     *
+     * @param direction True to go forwards, false for backwards
+     * @return true on success, false on error
+     */
+    auto tmc2130_set_direction(bool direction) -> bool;
+    /**
+     * @brief Pulse the step pin on the TMC2130
+     *
+     * @return true on success, false on error
+     */
+    auto tmc2130_step_pulse() -> bool;
+
+    /**
+     * @brief Call the seal callback function
+     *
+     */
+    auto seal_tick() -> void { _seal_callback(); }
 };

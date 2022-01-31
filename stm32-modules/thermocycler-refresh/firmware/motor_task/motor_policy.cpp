@@ -5,6 +5,7 @@
 
 #include "FreeRTOS.h"
 #include "firmware/motor_hardware.h"
+#include "firmware/motor_spi_hardware.h"
 #include "task.h"
 #include "thermocycler-refresh/errors.hpp"
 
@@ -44,4 +45,37 @@ auto MotorPolicy::lid_solenoid_disengage() -> void {
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::lid_solenoid_engage() -> void {
     motor_hardware_solenoid_engage();
+}
+
+auto MotorPolicy::seal_stepper_start(std::function<void()> callback) -> bool {
+    _seal_callback = callback;
+    return motor_hardware_start_seal_movement();
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::seal_stepper_stop() -> void {
+    static_cast<void>(motor_hardware_stop_seal_movement());
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::tmc2130_transmit_receive(tmc2130::MessageT& data)
+    -> RxTxReturn {
+    tmc2130::MessageT retBuf = {0};
+    if (motor_spi_sendreceive(data.data(), retBuf.data(), data.size())) {
+        return RxTxReturn(retBuf);
+    }
+    return RxTxReturn();
+}
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::tmc2130_set_enable(bool enable) -> bool {
+    return motor_hardware_set_seal_enable(enable);
+}
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::tmc2130_set_direction(bool direction) -> bool {
+    return motor_hardware_set_seal_direction(direction);
+}
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::tmc2130_step_pulse() -> bool {
+    motor_hardware_seal_step_pulse();
+    return true;
 }

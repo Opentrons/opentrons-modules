@@ -111,6 +111,7 @@ class TestTMC2130Policy {
     // -------------- Test integration methods
     auto get_tmc2130_steps() -> long { return _steps; }
     auto get_tmc2130_direction() -> bool { return _direction; }
+    auto get_tmc2130_enabled() -> bool { return _enable; }
 
   private:
     auto get_status() -> uint8_t { return 0x00; }
