@@ -3,6 +3,7 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <iterator>
 #include <memory>
 #include <stop_token>
@@ -10,6 +11,7 @@
 
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "simulator/simulator_utils.hpp"
 #include "systemwide.h"
 
 using namespace system_thread;
@@ -69,7 +71,18 @@ struct system_thread::TaskControlBlock {
 auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
     using namespace std::literals::chrono_literals;
     auto policy = SimSystemPolicy();
+
+    // Populate the serial number on startup, if provided
+    constexpr const char serial_var_name[] = "SERIAL_NUMBER";
+    auto ret =
+        simulator_utils::get_serial_number<SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>(
+            serial_var_name);
+    if (ret.has_value()) {
+        static_cast<void>(policy.set_serial_number(ret.value()));
+    }
+
     tcb->queue.set_stop_token(st);
+
     while (!st.stop_requested()) {
         try {
             tcb->task.run_once(policy);
