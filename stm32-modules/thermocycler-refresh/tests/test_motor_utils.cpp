@@ -3,6 +3,10 @@
 
 using namespace motor_util;
 
+static auto velocity_to_steps_per_tick(double vel, uint32_t frequency) -> sq0_31 {
+    return convert_to_fixed_point(vel/static_cast<double>(frequency), MovementProfile::radix);
+}
+
 SCENARIO("Lid stepper current conversion works") {
     GIVEN("a target current 8.25 amps") {
         double current = 8250.0;
@@ -72,15 +76,14 @@ SCENARIO("Lid stepper microstep conversion works") {
 }
 
 SCENARIO("MovementProfile functionality with flat acceleration") {
-    constexpr int radix = MovementProfile<1>::radix;
     GIVEN("a movement profile with a 1Hz interrupt") {
         constexpr int frequency = 1;
         WHEN("accelerating instantly from 0 to 1 velocity with distance 1") {
-            auto profile = MovementProfile<frequency>(
-                0, 1, 0, MovementType::FixedDistance, 1);
+            auto profile = MovementProfile(frequency, 0, 1, 0,
+                                           MovementType::FixedDistance, 1);
             THEN("the starting velocity is set to 1 step per tick") {
                 REQUIRE(profile.current_velocity() ==
-                        convert_to_fixed_point(1.0 / frequency, radix));
+                        velocity_to_steps_per_tick(1.0, frequency));
             }
             THEN("the first tick will result in a step") {
                 auto ret = profile.tick();
@@ -89,8 +92,8 @@ SCENARIO("MovementProfile functionality with flat acceleration") {
             }
         }
         WHEN("accelerating instantly to 1 velocity with distance 5") {
-            auto profile = MovementProfile<frequency>(
-                1, 1, 0, MovementType::FixedDistance, 5);
+            auto profile = MovementProfile(frequency, 1, 1, 0,
+                                           MovementType::FixedDistance, 5);
             THEN("it takes 5 ticks to be done") {
                 for (int i = 0; i < 4; ++i) {
                     auto ret = profile.tick();
@@ -104,7 +107,7 @@ SCENARIO("MovementProfile functionality with flat acceleration") {
         }
         WHEN("running open loop") {
             auto profile =
-                MovementProfile<frequency>(0, 1, 0, MovementType::SoftStop, 1);
+                MovementProfile(frequency, 0, 1, 0, MovementType::OpenLoop, 1);
             THEN("the distance is ignored") {
                 auto ret = profile.tick();
                 REQUIRE(ret.step == true);
@@ -118,11 +121,11 @@ SCENARIO("MovementProfile functionality with flat acceleration") {
     GIVEN("a movement profile with a 2Hz interrupt") {
         constexpr int frequency = 2;
         WHEN("accelerating instantly from 0 to 1 velocity with distance 1") {
-            auto profile = MovementProfile<frequency>(
-                0, 1, 0, MovementType::FixedDistance, 1);
+            auto profile = MovementProfile(frequency, 0, 1, 0,
+                                           MovementType::FixedDistance, 1);
             THEN("the starting velocity is set to 0.5 steps per tick") {
                 REQUIRE(profile.current_velocity() ==
-                        convert_to_fixed_point(1.0 / frequency, radix));
+                        velocity_to_steps_per_tick(1.0F, frequency));
             }
             THEN("the first tick will not result in a step") {
                 auto ret = profile.tick();
@@ -136,8 +139,8 @@ SCENARIO("MovementProfile functionality with flat acceleration") {
             }
         }
         WHEN("accelerating instantly to 1 velocity with distance 5") {
-            auto profile = MovementProfile<frequency>(
-                1, 1, 0, MovementType::FixedDistance, 5);
+            auto profile = MovementProfile(frequency, 1, 1, 0,
+                                           MovementType::FixedDistance, 5);
             THEN("it takes 10 ticks to be done") {
                 for (int i = 0; i < 4; ++i) {
                     auto ret = profile.tick();
@@ -159,14 +162,14 @@ SCENARIO("MovementProfile functionality with flat acceleration") {
 }
 
 SCENARIO("MovementProfile acceleration testing") {
-    constexpr int radix = MovementProfile<1>::radix;
     GIVEN("a movement profile with a 1Hz frequency") {
         constexpr int frequency = 1;
         WHEN("accelerating from 0 to 0.5 at a 0.1 step/sec^2 accel") {
             constexpr double end_vel_double = 0.5;
             constexpr double accel_double = 0.1;
-            auto profile = MovementProfile<frequency>(
-                0, end_vel_double, accel_double, MovementType::SoftStop, 10);
+            auto profile =
+                MovementProfile(frequency, 0, end_vel_double, accel_double,
+                                MovementType::OpenLoop, 10);
             THEN("the starting velocity is 0 steps/tick") {
                 REQUIRE(profile.current_velocity() == 0);
             }
@@ -176,12 +179,13 @@ SCENARIO("MovementProfile acceleration testing") {
             }
             THEN("it takes 5 ticks to reach maximum velocity") {
                 const auto end_velocity =
-                    convert_to_fixed_point(end_vel_double / frequency, radix);
+                    velocity_to_steps_per_tick(end_vel_double, frequency);
                 for (int i = 0; i < 5; ++i) {
                     REQUIRE(profile.current_velocity() != end_velocity);
                     static_cast<void>(profile.tick());
                 }
-                REQUIRE(profile.current_velocity() == end_velocity);
+                // Non-integer math results in a little bit of slop
+                REQUIRE(std::abs(profile.current_velocity() - end_velocity) < 5);
                 AND_THEN("more ticks do not increase the velocity") {
                     static_cast<void>(profile.tick());
                     REQUIRE(profile.current_velocity() == end_velocity);
@@ -194,15 +198,16 @@ SCENARIO("MovementProfile acceleration testing") {
         WHEN("accelerating from 0 to 100 at a 100 step/sec^2 accel") {
             constexpr double end_vel_double = 100;
             constexpr double accel_double = 100;
-            auto profile = MovementProfile<frequency>(
-                0, end_vel_double, accel_double, MovementType::SoftStop, 10);
+            auto profile =
+                MovementProfile(frequency, 0, end_vel_double, accel_double,
+                                MovementType::OpenLoop, 10);
             THEN("the velocity increases after a tick") {
                 static_cast<void>(profile.tick());
                 REQUIRE(static_cast<uint64_t>(profile.current_velocity()) > 0);
             }
             THEN("it takes 1000 ticks to reach maximum velocity") {
                 const auto end_velocity =
-                    convert_to_fixed_point(end_vel_double / frequency, radix);
+                    velocity_to_steps_per_tick(end_vel_double, frequency);
                 for (int i = 0; i < frequency + 1; ++i) {
                     REQUIRE(profile.current_velocity() != end_velocity);
                     static_cast<void>(profile.tick());
@@ -211,32 +216,60 @@ SCENARIO("MovementProfile acceleration testing") {
             }
         }
     }
+    GIVEN("a movement profile with a 1MHz frequency") {
+        constexpr int frequency = 1000000;
+        WHEN("accelerating from 0 to 50000 at a 50000 step/sec^2 accel") {
+            constexpr double end_vel_double = 50000.0F;
+            constexpr double accel_double = 50000.0F;
+            auto profile =
+                MovementProfile(frequency, 0, end_vel_double, accel_double,
+                                MovementType::OpenLoop, 10);
+            THEN("the velocity increases after a tick") {
+                static_cast<void>(profile.tick());
+                REQUIRE(static_cast<uint64_t>(profile.current_velocity()) > 0);
+            }
+            THEN("it takes 1000000 ticks to reach maximum velocity") {
+                const auto end_velocity = 
+                    velocity_to_steps_per_tick(end_vel_double, frequency);
+                auto vel = profile.current_velocity();
+                int ticks = 0;
+                while (vel < end_velocity) {
+                    profile.tick();
+                    vel = profile.current_velocity();
+                    ++ticks;
+                }
+                // Some slop due to floating point math and small numbers
+                REQUIRE(std::abs(ticks - frequency) < 4000);
+            }
+        }
+    }
 }
 
 SCENARIO("MovementProfile input sanitization") {
-    constexpr int radix = MovementProfile<1>::radix;
     WHEN("setting start velocity below zero") {
         auto profile =
-            MovementProfile<1>(-1, 10, 0.1, MovementType::FixedDistance, 10);
+            MovementProfile(1, -1, 10, 0.1, MovementType::FixedDistance, 10);
         THEN("the velocity is clamped up to 0") {
             REQUIRE(profile.current_velocity() == 0);
         }
     }
     WHEN("setting end velocity below start velocity") {
-        auto profile =
-            MovementProfile<1>(0.5, 0, 0.1, MovementType::FixedDistance, 10);
+        auto profile = MovementProfile(1, 0.5, 0, 0.1,
+                                       MovementType::FixedDistance, 10);
         THEN("the end velocity gets set to the starting velocity") {
-            const int velocity = convert_to_fixed_point(0.5, radix);
+            const int velocity = 
+                    velocity_to_steps_per_tick(0.5, 1);
             REQUIRE(profile.current_velocity() == velocity);
             static_cast<void>(profile.tick());
             REQUIRE(profile.current_velocity() == velocity);
         }
     }
     WHEN("setting acceleration below zero") {
-        auto profile =
-            MovementProfile<1>(0.5, 0.75, -5, MovementType::FixedDistance, 10);
+        auto profile = MovementProfile(1, 0.5, 0.75, -5,
+                                       MovementType::FixedDistance, 10);
         THEN("the velocity behaves as if the acceleration was passed as 0") {
-            const int velocity = convert_to_fixed_point(0.75, radix);
+            const int velocity = 
+                    velocity_to_steps_per_tick(0.75, 1);
             REQUIRE(profile.current_velocity() == velocity);
             static_cast<void>(profile.tick());
             REQUIRE(profile.current_velocity() == velocity);

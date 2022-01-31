@@ -31,7 +31,7 @@ class TMC2130 {
   public:
     TMC2130() = delete;
     TMC2130(const TMC2130RegisterMap& registers)
-        : _registers(registers), _spi() {}
+        : _registers(registers), _spi(), _initialized(false) {}
 
     template <TMC2130Policy Policy>
     auto write_config(Policy& policy) -> bool {
@@ -58,6 +58,7 @@ class TMC2130 {
         if (!set_cool_config(_registers.coolconf, policy)) {
             return false;
         }
+        _initialized = true;
         return true;
     }
 
@@ -87,8 +88,16 @@ class TMC2130 {
         if (!set_cool_config(registers.coolconf, policy)) {
             return false;
         }
+        _initialized = true;
         return true;
     }
+
+    /**
+     * @brief Check if the TMC2130 has been initialized.
+     * @return true if the registers have been written at least once,
+     * false otherwise.
+     */
+    [[nodiscard]] auto initialized() -> bool { return _initialized; }
 
     // FUNCTIONS TO SET INDIVIDUAL REGISTERS
 
@@ -296,5 +305,6 @@ class TMC2130 {
 
     TMC2130RegisterMap _registers = {};
     TMC2130Interface _spi = {};
+    bool _initialized;
 };
 }  // namespace tmc2130

@@ -9,12 +9,12 @@
 static constexpr int64_t multiply_mask = 0xFFFFFFFF;
 static constexpr int multiply_shift = 31;
 
-auto convert_to_fixed_point(float value, int to_radix) -> sq0_31 {
-    return static_cast<int32_t>(value * static_cast<float>(1LL << to_radix));
+auto convert_to_fixed_point(double value, int to_radix) -> sq0_31 {
+    return static_cast<int32_t>(value * static_cast<double>(1LL << to_radix));
 }
 
-auto convert_to_fixed_point_64_bit(float value, int to_radix) -> sq31_31 {
-    return static_cast<int64_t>(value * static_cast<float>(1LL << to_radix));
+auto convert_to_fixed_point_64_bit(double value, int to_radix) -> sq31_31 {
+    return static_cast<int64_t>(value * static_cast<double>(1LL << to_radix));
 }
 
 auto fixed_point_multiply(sq0_31 a, sq0_31 b) -> sq0_31 {

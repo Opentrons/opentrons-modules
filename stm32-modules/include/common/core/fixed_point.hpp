@@ -14,9 +14,9 @@ using sq31_31 = int64_t;
  * functions to account for different radix positions.
  */
 
-auto convert_to_fixed_point(float value, int to_radix) -> sq0_31;
+auto convert_to_fixed_point(double value, int to_radix) -> sq0_31;
 
-auto convert_to_fixed_point_64_bit(float value, int to_radix) -> sq31_31;
+auto convert_to_fixed_point_64_bit(double value, int to_radix) -> sq31_31;
 
 auto fixed_point_multiply(sq0_31 a, sq0_31 b) -> sq0_31;
 

@@ -9,7 +9,7 @@
 #include "firmware/motor_spi_hardware.h"
 #include "thermocycler-refresh/tmc2130.hpp"
 
-class MotorSpiPolicy {
+class TMC2130Policy {
   public:
     using RxTxReturn = std::optional<tmc2130::MessageT>;
     // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
@@ -23,5 +23,14 @@ class MotorSpiPolicy {
     // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
     auto tmc2130_set_enable(bool enable) -> bool {
         return motor_hardware_set_seal_enable(enable);
+    }
+
+    auto tmc2130_set_direction(bool direction) -> bool {
+        return motor_hardware_set_seal_direction(direction);
+    }
+
+    auto tmc2130_step_pulse() -> bool {
+        motor_hardware_seal_step_pulse();
+        return true;
     }
 };

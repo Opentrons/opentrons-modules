@@ -87,6 +87,7 @@ class TestTMC2130Policy {
     }
 
     auto tmc2130_step_pulse() -> bool {
+        if(!_enable) { return false; }
         _steps += _direction;
         return true;
     }

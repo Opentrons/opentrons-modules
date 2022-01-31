@@ -5,12 +5,14 @@
 
 #include <algorithm>
 #include <concepts>
+#include <functional>
 #include <variant>
 
 #include "hal/message_queue.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/motor_utils.hpp"
 #include "thermocycler-refresh/tasks.hpp"
+#include "thermocycler-refresh/tmc2130.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>
@@ -39,7 +41,8 @@ namespace motor_task {
  * task of its event by sending a message.
  */
 template <typename Policy>
-concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
+concept MotorExecutionPolicy = requires(Policy& p,
+                                        std::function<void()>& callback) {
     // A function to set the stepper DAC as a register value
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.lid_stepper_set_dac(1)};
@@ -56,15 +59,36 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {p.lid_solenoid_disengage()};
     // A function to engage the solenoid
     {p.lid_solenoid_engage()};
-};
+    // A function to start a seal stepper movement, with a callback for each
+    // tick
+    { p.seal_stepper_start(callback) } -> std::same_as<bool>;
+    // A function to stop a seal stepper movement
+    {p.seal_stepper_stop()};
+    // Policy defines a number that provides the number of seal motor ticks
+    // in a second
+    {std::is_integral_v<decltype(Policy::MotorTickFrequency)>};
+}
+&& tmc2130::TMC2130Policy<Policy>;
 
-struct LidStepperState {
-    enum LidStepperTaskStatus { IDLE = 0, MOVING = 1 };
+// Structure to encapsulate state of either of the stepper motors
+struct StepperState {
+    enum StepperTaskStatus { IDLE, MOVING };
     // Current status of the lid stepper
-    LidStepperTaskStatus status;
+    StepperTaskStatus status;
     // When a movement is complete, respond to this ID
     uint32_t response_id;
 };
+
+static constexpr tmc2130::TMC2130RegisterMap default_tmc_config = {
+    .gconfig = {.diag0_error = 1, .diag1_stall = 1},
+    .ihold_irun = {.hold_current = 0x1,    // Approx 118mA
+                   .run_current = 0b1101,  // Approx 825 mA
+                   .hold_current_delay = 0b0111},
+    .tpowerdown = {},
+    .tcoolthrs = {},
+    .thigh = {.threshold = 0xFFFFF},
+    .chopconf = {.toff = 0b101, .hstrt = 0b101, .hend = 0b11, .tbl = 0b10},
+    .coolconf = {}};
 
 using Message = ::messages::MotorMessage;
 template <template <class> class QueueImpl>
@@ -79,17 +103,19 @@ class MotorTask {
     static constexpr double LID_STEPPER_HOLD_CURRENT = 0;
 
     explicit MotorTask(Queue& q)
-        : message_queue(q),
-          task_registry(nullptr),
-          lid_stepper_state{.status = LidStepperState::IDLE} {}
+        : _message_queue(q),
+          _task_registry(nullptr),
+          _lid_stepper_state{.status = StepperState::IDLE, .response_id = 0},
+          _seal_stepper_state{.status = StepperState::IDLE, .response_id = 0},
+          _tmc2130(default_tmc_config) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
     auto operator=(MotorTask&& other) noexcept -> MotorTask& = delete;
     ~MotorTask() = default;
-    auto get_message_queue() -> Queue& { return message_queue; }
+    auto get_message_queue() -> Queue& { return _message_queue; }
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
-        task_registry = other_tasks;
+        _task_registry = other_tasks;
     }
 
     template <typename Policy>
@@ -97,11 +123,14 @@ class MotorTask {
     auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
 
+        if (!_tmc2130.initialized()) {
+            _tmc2130.write_config(policy);
+        }
+
         // This is the call down to the provided queue. It will block for
         // anywhere up to the provided timeout, which drives the controller
         // frequency.
-
-        static_cast<void>(message_queue.recv(&message));
+        static_cast<void>(_message_queue.recv(&message));
         std::visit(
             [this, &policy](const auto& msg) -> void {
                 this->visit_message(msg, policy);
@@ -123,7 +152,7 @@ class MotorTask {
                        Policy& policy) -> void {
         // check for errors
         auto error = errors::ErrorCode::NO_ERROR;
-        if (lid_stepper_state.status == LidStepperState::MOVING) {
+        if (_lid_stepper_state.status == StepperState::MOVING) {
             error = errors::ErrorCode::LID_MOTOR_BUSY;
         } else if (policy.lid_stepper_check_fault()) {
             error = errors::ErrorCode::LID_MOTOR_FAULT;
@@ -134,13 +163,13 @@ class MotorTask {
                 LID_STEPPER_DEFAULT_VOLTAGE));
             policy.lid_stepper_start(
                 motor_util::LidStepper::angle_to_microsteps(msg.angle));
-            lid_stepper_state.status = LidStepperState::MOVING;
-            lid_stepper_state.response_id = msg.id;
+            _lid_stepper_state.status = StepperState::MOVING;
+            _lid_stepper_state.response_id = msg.id;
         } else {
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = msg.id, .with_error = error};
             static_cast<void>(
-                task_registry->comms->get_message_queue().try_send(
+                _task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
         }
     }
@@ -150,14 +179,14 @@ class MotorTask {
     auto visit_message(const messages::LidStepperComplete& msg, Policy& policy)
         -> void {
         static_cast<void>(msg);
-        if (lid_stepper_state.status == LidStepperState::MOVING) {
-            lid_stepper_state.status = LidStepperState::IDLE;
+        if (_lid_stepper_state.status == StepperState::MOVING) {
+            _lid_stepper_state.status = StepperState::IDLE;
             policy.lid_stepper_set_dac(motor_util::LidStepper::current_to_dac(
                 LID_STEPPER_HOLD_CURRENT));
             auto response = messages::AcknowledgePrevious{
-                .responding_to_id = lid_stepper_state.response_id};
+                .responding_to_id = _lid_stepper_state.response_id};
             static_cast<void>(
-                task_registry->comms->get_message_queue().try_send(
+                _task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
         }
     }
@@ -173,13 +202,15 @@ class MotorTask {
         }
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
 
-    Queue& message_queue;
-    tasks::Tasks<QueueImpl>* task_registry;
-    LidStepperState lid_stepper_state;
+    Queue& _message_queue;
+    tasks::Tasks<QueueImpl>* _task_registry;
+    StepperState _lid_stepper_state;
+    StepperState _seal_stepper_state;
+    tmc2130::TMC2130 _tmc2130;
 };
 
 };  // namespace motor_task

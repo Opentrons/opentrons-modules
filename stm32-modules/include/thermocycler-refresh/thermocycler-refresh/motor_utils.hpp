@@ -71,24 +71,36 @@ class LidStepper {
 /** The end condition for this movement.*/
 enum class MovementType {
     FixedDistance,  // This movement goes for a fixed number of steps.
-    SoftStop,       // This movement goes until a stop switch is hit
+    OpenLoop,       // This movement goes until a stop switch is hit
 };
 
-template <uint32_t ticks_per_second>
+/**
+ * @brief Encapsulates information about a motor movement profile, and
+ * generates information about when steps should occur and when the
+ * movement should end based on a periodic \c tick() function.
+ * 
+ * @details 
+ * The \c tick() function should be invoked at a fixed frequency, defined
+ * in the constructor. With each tick, the MovementProfile will:
+ * 
+ *   1. Accelerate the velocity, if the peak acceleration isn't reached \n 
+ *   2. Return \c step=true if a motor step should occur \n 
+ *   3. Return \c done=true if the movement is over (has reached the requested
+ *      number of steps and is a \c FixedDistance movement)
+ * 
+ * This class does \e not directly call any functions to move the motor. The
+ * caller of \c tick() should handle actual signal generation based off of the
+ * return values.
+ * 
+ */
 class MovementProfile {
   public:
     using ticks = uint64_t;
     using steps_per_tick = sq0_31;
     using steps_per_tick_sq = sq0_31;
 
-    // Frequency of ticks as a double
-    static constexpr double tick_freq = static_cast<double>(ticks_per_second);
     // Radix for all fixed point values
     static constexpr int radix = 31;
-
-    // Frequency of ticks must be a positive number
-    static_assert(ticks_per_second > 0,
-                  "Frequency of movement ticks must be positive");
 
     struct TickReturn {
         bool done;  // If true, this movement is done
@@ -98,6 +110,7 @@ class MovementProfile {
     /**
      * @brief Construct a new Movement Profile object
      *
+     * @param[in] ticks_per_second Frequency of the motor interrupt
      * @param[in] start_velocity Starting velocity in steps per second
      * @param[in] peak_velocity Max velocity in steps per second
      * @param[in] acceleration Acceleration in steps per second^2. Set to 0
@@ -105,19 +118,31 @@ class MovementProfile {
      * @param[in] type The type of movement to perform. A FixedDistance
      *                 movement will have no deceleration profile.
      * @param[in] distance The number of ticks to move. Irrelevant for
-     *                     SoftStop movements.
+     *                     OpenLoop movements.
      */
-    MovementProfile(double start_velocity, double peak_velocity,
-                    double acceleration, MovementType type, ticks distance)
-        : _type(type), _target_distance(distance) {
+    MovementProfile(uint32_t ticks_per_second, double start_velocity,
+                    double peak_velocity, double acceleration,
+                    MovementType type, ticks distance)
+        : _ticks_per_second(ticks_per_second),
+          _type(type),
+          _target_distance(distance) {
+        // Clamp ticks_per_second to at least 1
+        _ticks_per_second =
+            std::max(_ticks_per_second, static_cast<uint32_t>(1));
+
+        auto tick_freq = static_cast<double>(_ticks_per_second);
+
         // Clamp the peak velocity so it is not under start velocity
         start_velocity = std::max(start_velocity, static_cast<double>(0.0F));
         acceleration = std::max(acceleration, static_cast<double>(0.0F));
         peak_velocity = std::max(start_velocity, peak_velocity);
-        _start_velocity =
+
+        // Convert velocities by just dividing by the tick frequency
+        _start_velocity = 
             convert_to_fixed_point(start_velocity / tick_freq, radix);
         _peak_velocity =
             convert_to_fixed_point(peak_velocity / tick_freq, radix);
+        // Acceleration must be dividied by (tick/sec)^2 for unit conversion
         _acceleration = convert_to_fixed_point(
             acceleration / (tick_freq * tick_freq), radix);
 
@@ -125,6 +150,7 @@ class MovementProfile {
             _start_velocity = _peak_velocity;
         }
 
+        // Ensures that all movement variables are initialized properly
         reset();
     }
 
@@ -145,7 +171,7 @@ class MovementProfile {
      */
     auto tick() -> TickReturn {
         bool step = false;
-        // Acceleration
+        // Acceleration gets clamped to _peak_velocity
         if (_velocity < _peak_velocity) {
             _velocity += _acceleration;
             if (_velocity > _peak_velocity) {
@@ -165,11 +191,13 @@ class MovementProfile {
                           .step = step};
     }
 
+    /** Returns the current motor velocity in steps_per_tick.*/
     [[nodiscard]] auto current_velocity() -> steps_per_tick {
         return _velocity;
     }
 
   private:
+    uint32_t _ticks_per_second;           // Tick frequency
     steps_per_tick _velocity = 0;         // Current velocity
     steps_per_tick _start_velocity = 0;   // Velocity to start a movement
     steps_per_tick _peak_velocity = 0;    // Velocity to ramp up to

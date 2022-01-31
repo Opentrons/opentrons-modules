@@ -70,6 +70,10 @@ SCENARIO("tmc2130 register API works") {
         auto tmc = tmc2130::TMC2130(tmc2130::TMC2130RegisterMap());
         TestTMC2130Policy policy;
 
+        THEN("the TMC2130 should not be initialized yet") {
+            REQUIRE(!tmc.initialized());
+        }
+
         WHEN("setting gconfig register to all 0") {
             tmc2130::GConfig gconf;
             auto ret = tmc.set_gconf(gconf, policy);
@@ -312,6 +316,9 @@ SCENARIO("tmc2130 register API works") {
                 REQUIRE(tmc.get_chop_config(policy).value().tbl == 2);
                 REQUIRE(tmc.get_chop_config(policy).value().mres == 4);
                 REQUIRE(tmc.get_register_map().coolconf.sgt == 6);
+            }
+            THEN("the TMC2130 reads as initialized") {
+                REQUIRE(tmc.initialized());
             }
         }
         AND_WHEN("overwriting configuration registers") {

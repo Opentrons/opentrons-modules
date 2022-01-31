@@ -3,9 +3,10 @@
 #include <cstdint>
 
 #include "firmware/motor_hardware.h"
+#include "firmware/tmc2130_policy.hpp"
 #include "thermocycler-refresh/errors.hpp"
 
-class MotorPolicy {
+class MotorPolicy : public TMC2130Policy {
   public:
     /**
      * @brief Set the value of the DAC as a register value. The DAC is used
