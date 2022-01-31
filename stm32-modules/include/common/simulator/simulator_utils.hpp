@@ -13,16 +13,17 @@ namespace simulator_utils {
 
 /**
  * @brief Get the serial number from an environment variable
- * 
+ *
  * @tparam N Number of character bytes in thhe serial number array
  * @param[in] var_name The name of the environment variable to read
  * @return The serial number \e if one is defined in the environment variable
  * \c var_name
  */
 template <size_t N>
-static auto get_serial_number(const char *var_name) -> std::optional<std::array<char, N>> {
+static auto get_serial_number(const char *var_name)
+    -> std::optional<std::array<char, N>> {
     using RT = std::optional<std::array<char, N>>;
-    if(var_name == NULL) {
+    if (var_name == NULL) {
         return RT();
     }
 
@@ -36,4 +37,4 @@ static auto get_serial_number(const char *var_name) -> std::optional<std::array<
     return RT(ret);
 }
 
-}
+}  // namespace simulator_utils
