@@ -395,6 +395,56 @@ SCENARIO("heater task error handling") {
             }
         }
         WHEN(
+            "simulating an overtemp error in hardware (by setting "
+            "HEAT_POWER_GOOD low) and software (by setting adc values to ~102 "
+            "degrees C)") {
+            auto one_error_message = messages::TemperatureConversionComplete{
+                .pad_a = 422, .pad_b = 422, .board = (1U << 11)};
+            tasks->get_heater_policy().set_power_good(false);
+            tasks->get_heater_queue().backing_deque.push_back(
+                messages::HeaterMessage(one_error_message));
+            tasks->run_heater_task();
+            THEN("one error message should be sent for each pad sense error") {
+                CHECK(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto error_update =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                auto error = std::get<messages::ErrorMessage>(error_update);
+                REQUIRE(error.code ==
+                        errors::ErrorCode::HEATER_THERMISTOR_A_OVERTEMP);
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                error_update =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                error = std::get<messages::ErrorMessage>(error_update);
+                REQUIRE(error.code ==
+                        errors::ErrorCode::HEATER_THERMISTOR_B_OVERTEMP);
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                AND_WHEN(
+                    "simulating that the temp has dropped below the latch "
+                    "reset temp") {
+                    tasks->get_heater_policy().set_can_reset(true);
+                    tasks->get_heater_policy().reset_try_reset_call_count();
+                    auto one_error_message =
+                        messages::TemperatureConversionComplete{
+                            .pad_a = (1U << 11),
+                            .pad_b = (1U << 11),
+                            .board = (1U << 11)};
+                    tasks->get_heater_queue().backing_deque.push_back(
+                        messages::HeaterMessage(one_error_message));
+                    tasks->run_heater_task();
+                    THEN("latch should reset") {
+                        CHECK(tasks->get_host_comms_queue()
+                                  .backing_deque.empty());
+                        REQUIRE(
+                            tasks->get_heater_policy().try_reset_call_count() ==
+                            1);
+                        REQUIRE(tasks->get_heater_policy().power_good());
+                    }
+                }
+            }
+        }
+        WHEN(
             "setting both thermistors to ok values but indicating a latched "
             "error") {
             tasks->get_heater_policy().set_power_good(false);
