@@ -86,9 +86,29 @@ struct system_thread::TaskControlBlock {
     SimSystemTask task;
 };
 
+template <size_t N>
+static auto get_serial_number() -> std::optional<std::array<char, N>> {
+    using RT = std::optional<std::array<char, N>>;
+    constexpr const char serial_number_varname[] = "SERIAL_NUMBER";
+    auto* env_p = std::getenv(serial_number_varname);
+    if (!env_p || (strlen(env_p) == 0)) {
+        return RT();
+    }
+    std::array<char, N> ret;
+    memcpy(ret.data(), env_p, std::min(strlen(env_p), N));
+    return RT(ret);
+}
+
 auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
     using namespace std::literals::chrono_literals;
     auto policy = SimSystemPolicy();
+
+    // Populate the serial number on startup, if provided
+    auto ret = get_serial_number<SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>();
+    if (ret.has_value()) {
+        static_cast<void>(policy.set_serial_number(ret.value()));
+    }
+
     tcb->queue.set_stop_token(st);
     while (!st.stop_requested()) {
         try {
