@@ -70,13 +70,13 @@ const std::string& socket_sim_driver::SocketSimDriver::get_name() const {
 }
 
 void socket_sim_driver::SocketSimDriver::write(const std::string& message) {
+    std::cout << "Sending response: " << message << std::endl;
     this->s->write_some(boost::asio::buffer(message));
 }
 
-int has_char(char* char_array, char value_to_find) {
-    char* position =
-        std::find(char_array, char_array + strlen(char_array), value_to_find);
-    return char_array + strlen(char_array) != position;
+int has_char(const char* char_array, const char* end, char value_to_find) {
+    const char* position = std::find(char_array, end, value_to_find);
+    return end != position;
 }
 
 void socket_sim_driver::SocketSimDriver::read(
@@ -88,6 +88,7 @@ void socket_sim_driver::SocketSimDriver::read(
     size_t l = this->s->read_some(buff);
     char* end_of_input = std::begin(*write_buffer->accessible());
     char* end_of_buffer = std::end(*write_buffer->accessible());
+
     for (; l > 0; l = this->s->read_some(buff)) {
         if (end_of_input + l > end_of_buffer) {
             end_of_input = std::begin(*write_buffer->accessible());
@@ -96,7 +97,9 @@ void socket_sim_driver::SocketSimDriver::read(
         end_of_input =
             std::copy(reinterpret_cast<char*>(buff.data()),
                       reinterpret_cast<char*>(buff.data()) + l, end_of_input);
-        if (has_char(data, '\n')) {
+        if (has_char(data, end_of_input, '\n')) {
+            std::cout << "Received complete message: "
+                      << write_buffer->accessible()->data() << std::endl;
             auto message = messages::IncomingMessageFromHost(
                 std::begin(*write_buffer->accessible()), end_of_input);
             static_cast<void>(

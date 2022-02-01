@@ -37,10 +37,8 @@ class SimulatorMessageQueue {
         return false;
     }
 
-    [[nodiscard]] auto try_send_from_isr(const Message& message,
-                                         const uint32_t timeout_ticks = 0)
-        -> bool {
-        return try_send(message, timeout_ticks);
+    [[nodiscard]] auto try_send_from_isr(const Message& message) -> bool {
+        return try_send(message, 0);
     }
 
     [[nodiscard]] auto try_recv(Message* message, uint32_t timeout_ticks = 0)
