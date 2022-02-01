@@ -37,8 +37,7 @@ class SimulatorMessageQueue {
         return false;
     }
 
-    [[nodiscard]] auto try_send_from_isr(const Message& message)
-        -> bool {
+    [[nodiscard]] auto try_send_from_isr(const Message& message) -> bool {
         return try_send(message, 0);
     }
 
