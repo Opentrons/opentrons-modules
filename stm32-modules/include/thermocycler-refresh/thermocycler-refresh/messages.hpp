@@ -150,6 +150,13 @@ struct LidStepperDebugMessage {
 
 struct LidStepperComplete {};
 
+struct SealStepperDebugMessage {
+    uint32_t id;
+    long int steps;
+};
+
+struct SealStepperComplete {};
+
 struct GetPlateTempMessage {
     uint32_t id;
 };
@@ -239,6 +246,8 @@ using LidHeaterMessage =
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
                    GetLidTempMessage, SetLidTemperatureMessage,
                    DeactivateLidHeatingMessage, SetPIDConstantsMessage>;
-using MotorMessage = ::std::variant<std::monostate, ActuateSolenoidMessage,
-                                    LidStepperDebugMessage, LidStepperComplete>;
+using MotorMessage =
+    ::std::variant<std::monostate, ActuateSolenoidMessage,
+                   LidStepperDebugMessage, LidStepperComplete,
+                   SealStepperDebugMessage, SealStepperComplete>;
 };  // namespace messages

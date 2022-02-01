@@ -6,11 +6,11 @@
 #include "core/bit_utils.hpp"
 #include "thermocycler-refresh/tmc2130.hpp"
 
-class TestTMC2130Policy {
+class SimTMC2130Policy {
   public:
     using ReadRT = std::optional<tmc2130::RegisterSerializedType>;
 
-    TestTMC2130Policy() : _registers() {
+    SimTMC2130Policy() : _registers() {
         _registers[(uint8_t)tmc2130::Registers::GCONF] = 0;
         _registers[(uint8_t)tmc2130::Registers::GSTAT] = 0;
         _registers[(uint8_t)tmc2130::Registers::IOIN] = 0;
@@ -73,7 +73,6 @@ class TestTMC2130Policy {
             // This register is cleared upon read, so clear it here
             _registers[addr] = 0x00;
         }
-        _has_been_written = true;
         return RT(ret);
     }
 
@@ -113,7 +112,6 @@ class TestTMC2130Policy {
     auto get_tmc2130_steps() -> long { return _steps; }
     auto get_tmc2130_direction() -> bool { return _direction; }
     auto get_tmc2130_enabled() -> bool { return _enable; }
-    auto has_been_written() -> bool { return _has_been_written; }
 
   private:
     auto get_status() -> uint8_t { return 0x00; }
@@ -124,5 +122,4 @@ class TestTMC2130Policy {
     bool _enable = false;
     signed int _direction = 1;
     long _steps = 0;
-    bool _has_been_written = false;
 };

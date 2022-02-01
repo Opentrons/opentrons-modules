@@ -6,6 +6,7 @@
 
 #include <concepts>
 #include <cstdint>
+#include <functional>
 #include <optional>
 
 #include "core/bit_utils.hpp"
@@ -18,14 +19,19 @@ namespace tmc2130 {
 /** Hardware abstraction policy for the TMC2130 communication.*/
 template <typename Policy>
 concept TMC2130Policy = TMC2130InterfacePolicy<Policy> && requires(Policy& p) {
-    { p.set_enable(true) } -> std::same_as<bool>;
+    // Configure the TMC to either enabled or not
+    { p.tmc2130_set_enable(true) } -> std::same_as<bool>;
+    // Function to set direction. true = forward, false = backwards.
+    { p.tmc2130_set_direction(true) } -> std::same_as<bool>;
+    // Function to pulse the step output
+    { p.tmc2130_step_pulse() } -> std::same_as<bool>;
 };
 
 class TMC2130 {
   public:
     TMC2130() = delete;
     TMC2130(const TMC2130RegisterMap& registers)
-        : _registers(registers), _spi() {}
+        : _registers(registers), _spi(), _initialized(false) {}
 
     template <TMC2130Policy Policy>
     auto write_config(Policy& policy) -> bool {
@@ -52,6 +58,7 @@ class TMC2130 {
         if (!set_cool_config(_registers.coolconf, policy)) {
             return false;
         }
+        _initialized = true;
         return true;
     }
 
@@ -81,8 +88,16 @@ class TMC2130 {
         if (!set_cool_config(registers.coolconf, policy)) {
             return false;
         }
+        _initialized = true;
         return true;
     }
+
+    /**
+     * @brief Check if the TMC2130 has been initialized.
+     * @return true if the registers have been written at least once,
+     * false otherwise.
+     */
+    [[nodiscard]] auto initialized() const -> bool { return _initialized; }
 
     // FUNCTIONS TO SET INDIVIDUAL REGISTERS
 
@@ -189,10 +204,10 @@ class TMC2130 {
     template <TMC2130Policy Policy>
     auto set_cool_config(CoolConfig reg, Policy& policy) -> bool {
         // Assert that bits that MUST be 0 are actually 0
-        if ((reg.padding_1 != 0) || (reg.padding_2 != 0) ||
-            (reg.padding_3 != 0) || (reg.padding_4 != 0)) {
-            return false;
-        }
+        reg.padding_1 = 0;
+        reg.padding_2 = 0;
+        reg.padding_3 = 0;
+        reg.padding_4 = 0;
         if (set_register(policy, reg)) {
             _registers.coolconf = reg;
             return true;
@@ -290,5 +305,6 @@ class TMC2130 {
 
     TMC2130RegisterMap _registers = {};
     TMC2130Interface _spi = {};
+    bool _initialized;
 };
 }  // namespace tmc2130

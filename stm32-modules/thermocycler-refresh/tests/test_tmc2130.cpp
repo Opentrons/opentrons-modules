@@ -70,6 +70,10 @@ SCENARIO("tmc2130 register API works") {
         auto tmc = tmc2130::TMC2130(tmc2130::TMC2130RegisterMap());
         TestTMC2130Policy policy;
 
+        THEN("the TMC2130 should not be initialized yet") {
+            REQUIRE(!tmc.initialized());
+        }
+
         WHEN("setting gconfig register to all 0") {
             tmc2130::GConfig gconf;
             auto ret = tmc.set_gconf(gconf, policy);
@@ -271,11 +275,11 @@ SCENARIO("tmc2130 register API works") {
                     REQUIRE(readback.sfilt == cool.sfilt);
                 }
             }
-            AND_WHEN("trying to set invalid register") {
+            AND_WHEN("trying to set invalid padding bits") {
                 cool.padding_1 = 1;
                 ret = tmc.set_cool_config(cool, policy);
-                THEN("the writing fails and the register is left alone") {
-                    REQUIRE(!ret);
+                THEN("the writing succeeds and the padding bits are empty") {
+                    REQUIRE(ret);
                     REQUIRE(tmc.get_register_map().coolconf.padding_1 == 0);
                 }
             }
@@ -312,6 +316,9 @@ SCENARIO("tmc2130 register API works") {
                 REQUIRE(tmc.get_chop_config(policy).value().tbl == 2);
                 REQUIRE(tmc.get_chop_config(policy).value().mres == 4);
                 REQUIRE(tmc.get_register_map().coolconf.sgt == 6);
+            }
+            THEN("the TMC2130 reads as initialized") {
+                REQUIRE(tmc.initialized());
             }
         }
         AND_WHEN("overwriting configuration registers") {

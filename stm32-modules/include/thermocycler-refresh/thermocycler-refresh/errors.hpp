@@ -52,7 +52,10 @@ enum class ErrorCode {
     THERMAL_TARGET_BAD = 407,
     // 5xx - Mechanical subsystem errors
     LID_MOTOR_BUSY = 501,
-    LID_MOTOR_FAULT = 502
+    LID_MOTOR_FAULT = 502,
+    SEAL_MOTOR_SPI_ERROR = 503,
+    SEAL_MOTOR_BUSY = 504,
+    SEAL_MOTOR_FAULT = 505,
 };
 
 auto errorstring(ErrorCode code) -> const char*;

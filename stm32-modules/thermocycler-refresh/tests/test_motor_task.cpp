@@ -12,6 +12,10 @@ SCENARIO("motor task message passing") {
         auto &motor_policy = tasks->get_motor_policy();
         auto &motor_queue = tasks->get_motor_queue();
 
+        THEN("the TMC2130 is not initialized") {
+            REQUIRE(!motor_policy.has_been_written());
+        }
+
         WHEN("sending ActuateSolenoid message to turn solenoid on") {
             auto message =
                 messages::ActuateSolenoidMessage{.id = 123, .engage = true};
@@ -22,6 +26,9 @@ SCENARIO("motor task message passing") {
                 "message") {
                 REQUIRE(motor_queue.backing_deque.empty());
                 REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+            }
+            THEN("the TMC2130 has been initialized by the task") {
+                REQUIRE(motor_policy.has_been_written());
             }
             THEN("the solenoid should be actuated") {
                 REQUIRE(motor_policy.solenoid_engaged());
@@ -112,6 +119,77 @@ SCENARIO("motor task message passing") {
                 }
                 THEN("no motion is started") {
                     REQUIRE(motor_policy.get_vref() == 0);
+                }
+            }
+        }
+        WHEN("sending a SealStepperDebugMessage") {
+            static constexpr uint32_t STEPS = 10;
+            auto message =
+                messages::SealStepperDebugMessage{.id = 123, .steps = STEPS};
+            motor_queue.backing_deque.push_back(message);
+            tasks->run_motor_task();
+            THEN("the message is received but no response is sent yet") {
+                REQUIRE(motor_policy.seal_moving());
+                // True for positive
+                REQUIRE(motor_policy.get_tmc2130_direction());
+                REQUIRE(motor_policy.get_tmc2130_enabled());
+                REQUIRE(motor_queue.backing_deque.empty());
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+            }
+            AND_WHEN("sending another one") {
+                message.id = 999;
+                motor_queue.backing_deque.push_back(message);
+                tasks->run_motor_task();
+                THEN("the second message is ACKed with an error") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto ack =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            ack));
+                    auto ack_msg = std::get<messages::AcknowledgePrevious>(ack);
+                    REQUIRE(ack_msg.responding_to_id == 999);
+                    REQUIRE(ack_msg.with_error ==
+                            errors::ErrorCode::SEAL_MOTOR_BUSY);
+                }
+            }
+            AND_WHEN("incrementing the tick for up to a second") {
+                uint32_t i = 0;
+                for (; i < motor_policy.MotorTickFrequency; ++i) {
+                    motor_policy.tick();
+                    if (!motor_policy.seal_moving()) {
+                        break;
+                    }
+                }
+                THEN("the seal movement ends after at least 10 ticks") {
+                    REQUIRE(!motor_policy.seal_moving());
+                    REQUIRE(i >= 10);
+                }
+                THEN("the seal motor has moved 10 ticks") {
+                    REQUIRE(motor_policy.get_tmc2130_steps() == 10);
+                }
+                THEN("a SealStepperComplete message is received") {
+                    REQUIRE(!motor_queue.backing_deque.empty());
+                    auto msg = motor_queue.backing_deque.front();
+                    REQUIRE(
+                        std::holds_alternative<messages::SealStepperComplete>(
+                            msg));
+                }
+                WHEN("running the task") {
+                    tasks->run_motor_task();
+                    THEN("an ack is received by the host task") {
+                        REQUIRE(motor_queue.backing_deque.empty());
+                        REQUIRE(!tasks->get_host_comms_queue()
+                                     .backing_deque.empty());
+                        auto ack =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        REQUIRE(std::holds_alternative<
+                                messages::AcknowledgePrevious>(ack));
+                        auto ack_msg =
+                            std::get<messages::AcknowledgePrevious>(ack);
+                        REQUIRE(ack_msg.responding_to_id == 123);
+                    }
                 }
             }
         }

@@ -27,11 +27,6 @@
 /** Length of an entire message is 5 bytes: status byte + 4 register bytes.*/
 #define TMC_MESSAGE_SIZE (1 + 4)
 
-/** Port for the enable pin.*/
-#define MOTOR_SPI_ENABLE_PORT (GPIOE)
-/** Pin for enable pin.*/
-#define MOTOR_SPI_ENABLE_PIN (GPIO_PIN_15)
-
 /** Port for NSS pin.*/
 #define MOTOR_SPI_NSS_PORT (GPIOD)
 /** Pin for NSS pin.*/
@@ -49,7 +44,6 @@
 struct motor_spi_hardware {
     SPI_HandleTypeDef handle;
     TaskHandle_t task_to_notify;
-    bool enabled;
     bool initialized;
 };
 
@@ -57,7 +51,6 @@ struct motor_spi_hardware {
 static struct motor_spi_hardware _spi = {
     .handle = {0},
     .task_to_notify =  NULL,
-    .enabled = false,
     .initialized = false
 };
 
@@ -89,24 +82,16 @@ void motor_spi_initialize(void) {
         configASSERT(ret == HAL_OK);
 
         // Initialize the GPIO
-        __HAL_RCC_GPIOE_CLK_ENABLE();
         GPIO_InitTypeDef gpio = {0};
-        gpio.Pin = MOTOR_SPI_ENABLE_PIN;
-        gpio.Mode = GPIO_MODE_OUTPUT_PP;
-        gpio.Pull = GPIO_NOPULL;
-        gpio.Speed = GPIO_SPEED_LOW;
-        HAL_GPIO_Init(MOTOR_SPI_ENABLE_PORT, &gpio);
-        _spi.initialized = true;
-
         __HAL_RCC_GPIOD_CLK_ENABLE();
         gpio.Pin = MOTOR_SPI_NSS_PIN;
         gpio.Mode = GPIO_MODE_OUTPUT_PP;
         gpio.Pull = GPIO_NOPULL;
         gpio.Speed = GPIO_SPEED_LOW;
         HAL_GPIO_Init(MOTOR_SPI_NSS_PORT, &gpio);
-        spi_set_nss(false);
 
-        motor_set_output_enable(false);
+        spi_set_nss(false);
+        _spi.initialized = true;
     }
 }
 
@@ -134,14 +119,6 @@ bool motor_spi_sendreceive(uint8_t *in, uint8_t *out, size_t len) {
         _spi.task_to_notify = NULL;
         return true;
     }
-    return true;
-}
-
-bool motor_set_output_enable(bool enable) {
-    if(!_spi.initialized) { return false; }
-    _spi.enabled = enable;
-    HAL_GPIO_WritePin(MOTOR_SPI_ENABLE_PORT, MOTOR_SPI_ENABLE_PIN, 
-        (enable) ? GPIO_PIN_RESET : GPIO_PIN_SET);
     return true;
 }
 

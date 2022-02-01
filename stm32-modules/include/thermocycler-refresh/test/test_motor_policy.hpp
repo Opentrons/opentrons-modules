@@ -1,10 +1,18 @@
 #pragma once
 
+#include <functional>
+
 #include "test/test_tmc2130_policy.hpp"
 
-class TestMotorPolicy {
+class TestMotorPolicy : public TestTMC2130Policy {
   public:
+    using Callback = std::function<void()>;
+
+    TestMotorPolicy() : TestTMC2130Policy(), _callback() {}
+
     // Functionality to fulfill concept
+
+    static constexpr uint32_t MotorTickFrequency = 1000000;
 
     auto lid_stepper_set_dac(uint8_t dac_val) -> void { _dac_val = dac_val; }
     auto lid_stepper_start(int32_t steps) -> void {
@@ -13,14 +21,14 @@ class TestMotorPolicy {
             return;
         }
         _actual_angle += steps;
-        _moving = false;
+        _lid_moving = false;
     }
-    auto lid_stepper_stop() -> void { _moving = false; }
+    auto lid_stepper_stop() -> void { _lid_moving = false; }
 
     auto lid_stepper_check_fault() -> bool { return _lid_fault; }
 
     auto lid_stepper_reset() -> bool {
-        _moving = false;
+        _lid_moving = false;
         _dac_val = 0;
         _lid_fault = false;
         return true;
@@ -29,22 +37,39 @@ class TestMotorPolicy {
     auto lid_solenoid_disengage() -> void { _solenoid_engaged = false; }
     auto lid_solenoid_engage() -> void { _solenoid_engaged = true; }
 
+    auto seal_stepper_start(Callback cb) -> bool {
+        if (_seal_moving) {
+            return false;
+        }
+
+        _seal_moving = true;
+        _callback = cb;
+        return true;
+    }
+
+    auto seal_stepper_stop() -> void { _seal_moving = false; }
+
     // Test-specific functions
 
+    auto tick() -> void {
+        if (_seal_moving) {
+            _callback();
+        }
+    }
     auto solenoid_engaged() -> bool { return _solenoid_engaged; }
-
     /** Next movement will be an error.*/
     auto trigger_lid_fault() -> void { _lid_fault = true; }
-
     auto get_vref() -> uint8_t { return _dac_val; }
-
     auto get_angle() -> double { return _actual_angle; }
+    auto seal_moving() -> bool { return _seal_moving; }
 
   private:
     // Solenoid is engaged when unpowered
     bool _solenoid_engaged = true;
     uint8_t _dac_val = 0;
     int32_t _actual_angle = 0;
-    bool _moving = false;
+    bool _lid_moving = false;
     bool _lid_fault = false;
+    bool _seal_moving = false;
+    Callback _callback;
 };

@@ -705,6 +705,46 @@ struct ActuateLidStepperDebug {
     }
 };
 
+struct ActuateSealStepperDebug {
+    /*
+    ** Actuate seal stepper is a debug command that lets you move the seal
+    ** stepper a specific number of steps.
+    ** Format: M241.D <steps>
+    ** Example: M241.D 10000 opens lid stepper 10000 steps
+    */
+    using ParseResult = std::optional<ActuateSealStepperDebug>;
+    static constexpr auto prefix =
+        std::array{'M', '2', '4', '1', '.', 'D', ' '};
+    static constexpr const char* response = "M241.D OK\n";
+
+    long distance;
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto value_res = parse_value<long>(working, limit);
+        if (!value_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(ActuateSealStepperDebug{
+                                  .distance = value_res.first.value()}),
+                              value_res.second);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 struct SetLidTemperature {
     /**
      * SetLidTemperature uses M140. Only parameter is optional and it is

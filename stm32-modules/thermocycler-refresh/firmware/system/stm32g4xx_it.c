@@ -28,6 +28,7 @@
 
 #include "firmware/thermal_hardware.h"
 #include "firmware/motor_hardware.h"
+#include "firmware/system_hardware.h"
 #include "firmware/system_led_hardware.h"
 
 /** @addtogroup STM32G4xx_HAL_Examples
@@ -162,6 +163,27 @@ void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim)
     if(htim->Instance == TIM17) {
         // The half-complete interrupt isn't used for this application
         return;
+    }
+}
+
+void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM2) {
+        motor_hardware_lid_increment();
+    }
+}
+
+/**
+ * TIM7 = timebase counter
+ * 
+ * TIM6 = seal motor counter
+ */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if(htim->Instance == TIM7) {
+        hal_timebase_tick();
+    } else if(htim->Instance == TIM6) {
+        motor_hardware_seal_interrupt();
     }
 }
 
