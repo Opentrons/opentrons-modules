@@ -179,6 +179,7 @@ set(CLANG_EXTRA_ARGS ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
 # This helps with clang accepting what GCC accepts around the implementations of the message queue
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
+list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Werror=implicit-fallthrough")
 add_custom_target(heater-shaker-lint
   COMMENT "Linting"
   ALL

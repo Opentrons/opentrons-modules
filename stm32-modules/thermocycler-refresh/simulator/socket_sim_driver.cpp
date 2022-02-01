@@ -41,7 +41,7 @@ std::unique_ptr<boost::asio::ip::tcp::socket> connect_to_socket(
 }
 
 socket_sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
-    std::regex url_regex(":\\/\\/([a-zA-Z0-9.]*):(\\d*)$");
+    std::regex url_regex(":\\/\\/([a-zA-Z0-9.-]*):(\\d*)$");
     std::smatch url_match_result;
 
     if (std::regex_search(url, url_match_result, url_regex)) {

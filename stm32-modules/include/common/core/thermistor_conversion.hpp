@@ -49,10 +49,10 @@ struct Conversion {
      * Build a converter. The resistance should be in kiloohms to match the
      * tables.
      */
-    Conversion(double bias_resistance_nominal_kohm, uint8_t adc_max_bits)
+    Conversion(double bias_resistance_nominal_kohm, uint8_t adc_max_bits,
+               uint16_t disconnect_threshold)
         : _adc_max(static_cast<double>((1U << adc_max_bits) - 1)),
-          _adc_max_result(static_cast<uint16_t>(
-              static_cast<uint32_t>(1U << adc_max_bits) - 1)),
+          _adc_max_result(disconnect_threshold),
           _bias_resistance_kohm(bias_resistance_nominal_kohm) {}
     /**
      * This initializer builds a converter with a literal bitmap of the
