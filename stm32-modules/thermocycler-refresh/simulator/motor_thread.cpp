@@ -1,13 +1,21 @@
 #include "simulator/motor_thread.hpp"
 
+#include "simulator/sim_tmc2130_policy.hpp"
 #include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 
 using namespace motor_thread;
 
-class SimMotorPolicy {
+class SimMotorPolicy : public SimTMC2130Policy {
   public:
+    using Callback = std::function<void()>;
+
+    /** Frequency of the seal motor interrupt in hertz.*/
+    static constexpr const uint32_t MotorTickFrequency = 1000000;
+
+    SimMotorPolicy() : SimTMC2130Policy(), _callback() {}
+
     // Functionality to fulfill concept
 
     auto lid_stepper_set_dac(uint8_t dac_val) -> void { _dac_val = dac_val; }
@@ -33,11 +41,24 @@ class SimMotorPolicy {
     auto lid_solenoid_disengage() -> void { _solenoid_engaged = false; }
     auto lid_solenoid_engage() -> void { _solenoid_engaged = true; }
 
-    // Test-specific functions
+    auto seal_stepper_start(Callback cb) -> bool {
+        if (_seal_moving) {
+            return false;
+        }
 
-    auto solenoid_engaged() -> bool { return _solenoid_engaged; }
+        _seal_moving = true;
+        _callback = cb;
+        return true;
+    }
 
-    auto trigger_lid_fault() -> void { _lid_fault = true; }
+    auto seal_stepper_stop() -> void { _seal_moving = false; }
+
+    // For simulation
+    auto tick() -> void {
+        if (_seal_moving) {
+            _callback();
+        }
+    }
 
   private:
     // Solenoid is engaged when unpowered
@@ -46,6 +67,8 @@ class SimMotorPolicy {
     int32_t _actual_angle = 0;
     bool _moving = false;
     bool _lid_fault = false;
+    bool _seal_moving = false;
+    Callback _callback;
 };
 
 struct motor_thread::TaskControlBlock {

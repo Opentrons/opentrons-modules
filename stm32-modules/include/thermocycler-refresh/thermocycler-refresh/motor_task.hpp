@@ -4,6 +4,7 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <concepts>
 #include <functional>
 #include <optional>
@@ -74,8 +75,10 @@ concept MotorExecutionPolicy = requires(Policy& p,
 // Structure to encapsulate state of either of the stepper motors
 struct StepperState {
     enum StepperTaskStatus { IDLE, MOVING };
-    // Current status of the lid stepper
-    StepperTaskStatus status;
+    // Current status of the lid stepper. Declared atomic because
+    // this flag is set & cleared by both the actual task context
+    // and an interrupt context when the motor interrupt fires.
+    std::atomic<StepperTaskStatus> status;
     // When a movement is complete, respond to this ID
     uint32_t response_id;
 };
@@ -211,20 +214,12 @@ class MotorTask {
             error = errors::ErrorCode::SEAL_MOTOR_BUSY;
         }
         if (error == errors::ErrorCode::NO_ERROR) {
-            // Start movement and cache the id for later
-            _seal_profile = motor_util::MovementProfile(
-                policy.MotorTickFrequency, 0, SEAL_STEPPER_DEFAULT_VELOCITY,
-                SEAL_STEPPER_DEFAULT_ACCELERATION,
-                motor_util::MovementType::FixedDistance, std::abs(msg.steps));
-            auto ret = policy.tmc2130_set_direction(msg.steps > 0);
-            if (!ret) {
-            }
-            policy.tmc2130_set_enable(true);
-            policy.seal_stepper_start(
-                [&] { this->seal_step_callback(policy); });
-            _seal_stepper_state.status = StepperState::MOVING;
             _seal_stepper_state.response_id = msg.id;
-        } else {
+            error = start_seal_movement(msg.steps, policy);
+        }
+
+        // Check for error after starting movement
+        if (error != errors::ErrorCode::NO_ERROR) {
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = msg.id, .with_error = error};
             static_cast<void>(
@@ -264,6 +259,7 @@ class MotorTask {
             messages::HostCommsMessage(response)));
     }
 
+    // Callback for each tick() during a seal stepper movement
     template <MotorExecutionPolicy Policy>
     auto seal_step_callback(Policy& policy) -> void {
         auto ret = _seal_profile.tick();
@@ -272,10 +268,50 @@ class MotorTask {
         }
         if (ret.done) {
             policy.seal_stepper_stop();
-            // Send a 'done' message to ourself
+            // Send a 'done' message to ourselves
             static_cast<void>(get_message_queue().try_send_from_isr(
                 messages::SealStepperComplete{}));
         }
+    }
+
+    /**
+     * @brief Contains all logic for starting a seal movement. If an ACK needs
+     * to be sent after the movement, the caller should set the response_id
+     * field.
+     *
+     * @param[in] steps Number of steps to move. This is \e signed, positive
+     * values move forwards and negative values move backwards.
+     * @param[in] policy Instance of the policy for motor control.
+     */
+    template <MotorExecutionPolicy Policy>
+    auto start_seal_movement(long steps, Policy& policy) -> errors::ErrorCode {
+        // Movement profile gets constructed with default parameters
+        _seal_profile = motor_util::MovementProfile(
+            policy.MotorTickFrequency, 0, SEAL_STEPPER_DEFAULT_VELOCITY,
+            SEAL_STEPPER_DEFAULT_ACCELERATION,
+            motor_util::MovementType::FixedDistance, std::abs(steps));
+
+        // Steps is signed, so set direction accordingly
+        auto ret = policy.tmc2130_set_direction(steps > 0);
+        if (!ret) {
+            return errors::ErrorCode::SEAL_MOTOR_FAULT;
+        }
+
+        ret = policy.tmc2130_set_enable(true);
+        if (!ret) {
+            return errors::ErrorCode::SEAL_MOTOR_FAULT;
+        }
+
+        _seal_stepper_state.status = StepperState::MOVING;
+
+        ret = policy.seal_stepper_start(
+            [&] { this->seal_step_callback(policy); });
+        if (!ret) {
+            _seal_stepper_state.status = StepperState::IDLE;
+            return errors::ErrorCode::SEAL_MOTOR_FAULT;
+        }
+
+        return errors::ErrorCode::NO_ERROR;
     }
 
     Queue& _message_queue;
