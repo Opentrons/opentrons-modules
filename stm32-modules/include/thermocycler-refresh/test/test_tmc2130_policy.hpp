@@ -73,6 +73,7 @@ class TestTMC2130Policy {
             // This register is cleared upon read, so clear it here
             _registers[addr] = 0x00;
         }
+        _has_been_written = true;
         return RT(ret);
     }
 
@@ -112,6 +113,7 @@ class TestTMC2130Policy {
     auto get_tmc2130_steps() -> long { return _steps; }
     auto get_tmc2130_direction() -> bool { return _direction; }
     auto get_tmc2130_enabled() -> bool { return _enable; }
+    auto has_been_written() -> bool { return _has_been_written; }
 
   private:
     auto get_status() -> uint8_t { return 0x00; }
@@ -122,4 +124,5 @@ class TestTMC2130Policy {
     bool _enable = false;
     signed int _direction = 1;
     long _steps = 0;
+    bool _has_been_written = false;
 };

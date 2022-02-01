@@ -275,11 +275,11 @@ SCENARIO("tmc2130 register API works") {
                     REQUIRE(readback.sfilt == cool.sfilt);
                 }
             }
-            AND_WHEN("trying to set invalid register") {
+            AND_WHEN("trying to set invalid padding bits") {
                 cool.padding_1 = 1;
                 ret = tmc.set_cool_config(cool, policy);
-                THEN("the writing fails and the register is left alone") {
-                    REQUIRE(!ret);
+                THEN("the writing succeeds and the padding bits are empty") {
+                    REQUIRE(ret);
                     REQUIRE(tmc.get_register_map().coolconf.padding_1 == 0);
                 }
             }

@@ -12,6 +12,10 @@ SCENARIO("motor task message passing") {
         auto &motor_policy = tasks->get_motor_policy();
         auto &motor_queue = tasks->get_motor_queue();
 
+        THEN("the TMC2130 is not initialized") {
+            REQUIRE(!motor_policy.has_been_written());
+        }
+
         WHEN("sending ActuateSolenoid message to turn solenoid on") {
             auto message =
                 messages::ActuateSolenoidMessage{.id = 123, .engage = true};
@@ -22,6 +26,9 @@ SCENARIO("motor task message passing") {
                 "message") {
                 REQUIRE(motor_queue.backing_deque.empty());
                 REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+            }
+            THEN("the TMC2130 has been initialized by the task") {
+                REQUIRE(motor_policy.has_been_written());
             }
             THEN("the solenoid should be actuated") {
                 REQUIRE(motor_policy.solenoid_engaged());
