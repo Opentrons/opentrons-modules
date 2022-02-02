@@ -155,7 +155,15 @@ struct SealStepperDebugMessage {
     long int steps;
 };
 
-struct SealStepperComplete {};
+struct SealStepperComplete {
+    enum class CompletionReason {
+        ERROR,  // There was an error flag
+        STALL,  // There was a stall
+        DONE,   // No error
+    };
+    // Defaults to no-error
+    CompletionReason reason = CompletionReason::DONE;
+};
 
 struct GetPlateTempMessage {
     uint32_t id;

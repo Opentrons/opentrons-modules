@@ -251,6 +251,18 @@ class TMC2130 {
         }
         return ret;
     }
+
+    /**
+     * @brief Get the current DRV_STATUS register reading. Contains
+     * information on the current error & stallguard status of the IC.
+     * @return The register, or nothing if the register couldn't be read.
+     */
+    template <TMC2130Policy Policy>
+    [[nodiscard]] auto get_driver_status(Policy& policy)
+        -> std::optional<DriveStatus> {
+        return read_register<DriveStatus>(policy);
+    }
+
     /**
      * @brief Get the register map
      */

@@ -47,6 +47,18 @@ extern "C" {
 #define SEAL_STEPPER_ENABLE_PORT (GPIOE)
 /** Pin for enable pin.*/
 #define SEAL_STEPPER_ENABLE_PIN (GPIO_PIN_15)
+/** Diag0 pin is used for error signals.*/
+#define SEAL_STEPPER_DIAG0_PORT (GPIOD)
+/** Diag0 pin is used for error signals.*/
+#define SEAL_STEPPER_DIAG0_PIN (GPIO_PIN_3)
+/** IRQ for the seal stepper diag0.*/
+#define SEAL_STEPPER_DIAG0_IRQ (EXTI3_IRQn)
+/** Diag1 pin is used for error signals.*/
+#define SEAL_STEPPER_DIAG1_PORT (GPIOD)
+/** Diag1 pin is used for error signals.*/
+#define SEAL_STEPPER_DIAG1_PIN (GPIO_PIN_4)
+/** IRQ for the seal stepper diag0.*/
+#define SEAL_STEPPER_DIAG1_IRQ (EXTI4_IRQn)
 
 /** Frequency of the driving clock for TIM6 is 170MHz.*/
 #define TIM6_APB_FREQ (170000000)
@@ -133,6 +145,7 @@ void motor_hardware_setup(const motor_hardware_callbacks* callbacks) {
     configASSERT(callbacks != NULL);
     configASSERT(callbacks->lid_stepper_complete != NULL);
     configASSERT(callbacks->seal_stepper_tick != NULL);
+    configASSERT(callbacks->seal_stepper_error != NULL);
 
     memcpy(&_motor_hardware.callbacks, callbacks, sizeof(_motor_hardware.callbacks));
 
@@ -314,6 +327,25 @@ static void init_motor_gpio(void)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
     HAL_GPIO_Init(SEAL_STEPPER_STEP_PORT, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = SEAL_STEPPER_DIAG0_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    HAL_GPIO_Init(SEAL_STEPPER_DIAG0_PORT, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = SEAL_STEPPER_DIAG1_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    HAL_GPIO_Init(SEAL_STEPPER_DIAG1_PORT, &GPIO_InitStruct);
+
+	
+	HAL_NVIC_SetPriority(SEAL_STEPPER_DIAG0_IRQ, 5, 0);
+	HAL_NVIC_EnableIRQ(SEAL_STEPPER_DIAG0_IRQ);
+
+	HAL_NVIC_SetPriority(SEAL_STEPPER_DIAG1_IRQ, 5, 0);
+	HAL_NVIC_EnableIRQ(SEAL_STEPPER_DIAG1_IRQ);
 }
 
 void HAL_TIM_OC_MspInit(TIM_HandleTypeDef* htim) {
@@ -413,6 +445,32 @@ void TIM6_DAC_IRQHandler(void) {
     HAL_TIM_IRQHandler(&_motor_hardware.seal.timer);
 }
 
+/**
+ * @brief Callback for the Diag0 input - falling edge.
+ * This flags a seal stepper error event
+ */
+void EXTI3_IRQHandler(void) {
+	if(__HAL_GPIO_EXTI_GET_IT(SEAL_STEPPER_DIAG0_PIN) != 0x00u) {
+		__HAL_GPIO_EXTI_CLEAR_IT(SEAL_STEPPER_DIAG0_PIN);
+		if(_motor_hardware.callbacks.seal_stepper_error) {
+			_motor_hardware.callbacks.seal_stepper_error(MOTOR_ERROR);
+		}	
+	}
+}
+	
+
+/**
+ * @brief Callback for the Diag1 input - falling edge.
+ * This flags a seal stepper stall event.
+ */
+void EXTI4_IRQHandler(void) {
+	if(__HAL_GPIO_EXTI_GET_IT(SEAL_STEPPER_DIAG1_PIN) != 0x00u) {
+		__HAL_GPIO_EXTI_CLEAR_IT(SEAL_STEPPER_DIAG1_PIN);
+		if(_motor_hardware.callbacks.seal_stepper_error) {
+			_motor_hardware.callbacks.seal_stepper_error(MOTOR_STALL);
+		}
+	}
+}
 
 #ifdef __cplusplus
 } // extern "C"

@@ -233,11 +233,27 @@ class MotorTask {
     auto visit_message(const messages::SealStepperComplete& msg, Policy& policy)
         -> void {
         static_cast<void>(msg);
-        static_cast<void>(policy);
         if (_seal_stepper_state.status == StepperState::MOVING) {
+            // Ignore return in case movement was already stopped by interrupt
+            static_cast<void>(policy.seal_stepper_stop());
+            using namespace messages;
+            auto with_error = errors::ErrorCode::NO_ERROR;
+            switch (msg.reason) {
+                case SealStepperComplete::CompletionReason::STALL:
+                    // TODO: during some movements a stall is expected
+                    with_error = errors::ErrorCode::SEAL_MOTOR_STALL;
+                    break;
+                case SealStepperComplete::CompletionReason::ERROR:
+                    // TODO clear the error
+                    with_error = errors::ErrorCode::SEAL_MOTOR_FAULT;
+                    break;
+                default:
+                    break;
+            }
             _seal_stepper_state.status = StepperState::IDLE;
             auto response = messages::AcknowledgePrevious{
-                .responding_to_id = _seal_stepper_state.response_id};
+                .responding_to_id = _seal_stepper_state.response_id,
+                .with_error = with_error};
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
