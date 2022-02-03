@@ -236,7 +236,7 @@ class MotorTask {
         if (_seal_stepper_state.status == StepperState::MOVING) {
             // Ignore return in case movement was already stopped by interrupt
             static_cast<void>(policy.seal_stepper_stop());
-			static_cast<void>(policy.tmc2130_set_enable(false));
+            static_cast<void>(policy.tmc2130_set_enable(false));
             using namespace messages;
             auto with_error = errors::ErrorCode::NO_ERROR;
             switch (msg.reason) {
@@ -278,16 +278,17 @@ class MotorTask {
 
     template <typename Policy>
     requires MotorExecutionPolicy<Policy>
-	auto visit_message(const messages::GetSealDriveStatusMessage& msg,
-				       Policy& policy) -> void {
-		auto ret = _tmc2130.get_driver_status(policy);
-		auto response = messages::GetSealDriveStatusResponse{.responding_to_id = msg.id};
-		if(ret.has_value()) {
-			response.status = ret.value();
-		}
+    auto visit_message(const messages::GetSealDriveStatusMessage& msg,
+                       Policy& policy) -> void {
+        auto ret = _tmc2130.get_driver_status(policy);
+        auto response =
+            messages::GetSealDriveStatusResponse{.responding_to_id = msg.id};
+        if (ret.has_value()) {
+            response.status = ret.value();
+        }
         static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
-	}
+    }
 
     // Callback for each tick() during a seal stepper movement
     template <MotorExecutionPolicy Policy>
@@ -332,10 +333,10 @@ class MotorTask {
             return errors::ErrorCode::SEAL_MOTOR_FAULT;
         }
 
-		auto err = clear_seal_stall(policy);
-		if(err != errors::ErrorCode::NO_ERROR) {
-			return err;
-		}
+        auto err = clear_seal_stall(policy);
+        if (err != errors::ErrorCode::NO_ERROR) {
+            return err;
+        }
 
         ret = policy.tmc2130_set_enable(true);
         if (!ret) {
@@ -354,32 +355,32 @@ class MotorTask {
         return errors::ErrorCode::NO_ERROR;
     }
 
-	/**
-	 * @brief This function should clear the stall flag in the TMC2130.
-	 * Enables and then disables the StealthChop mode (which isn't used in
-	 * this application), which clears the data for StallGuard.
-	 * @param policy Instance of the policy for motor control
-	 * @return errors::ErrorCode 
-	 */
-	template <MotorExecutionPolicy Policy>
-	auto clear_seal_stall(Policy &policy) -> errors::ErrorCode {
-		auto tcool = _tmc2130.get_register_map().tcoolthrs.threshold;
-		_tmc2130.get_register_map().gconfig.en_pwm_mode = 1;
-		_tmc2130.get_register_map().tcoolthrs.threshold = 0;
-		if(!_tmc2130.write_config(policy)) {
-			return errors::ErrorCode::SEAL_MOTOR_SPI_ERROR;
-		}
-		_tmc2130.get_register_map().gconfig.en_pwm_mode = 0;
-		_tmc2130.get_register_map().tcoolthrs.threshold = tcool;
-		if(!_tmc2130.write_config(policy)) {
-			return errors::ErrorCode::SEAL_MOTOR_SPI_ERROR;
-		}
+    /**
+     * @brief This function should clear the stall flag in the TMC2130.
+     * Enables and then disables the StealthChop mode (which isn't used in
+     * this application), which clears the data for StallGuard.
+     * @param policy Instance of the policy for motor control
+     * @return errors::ErrorCode
+     */
+    template <MotorExecutionPolicy Policy>
+    auto clear_seal_stall(Policy& policy) -> errors::ErrorCode {
+        auto tcool = _tmc2130.get_register_map().tcoolthrs.threshold;
+        _tmc2130.get_register_map().gconfig.en_pwm_mode = 1;
+        _tmc2130.get_register_map().tcoolthrs.threshold = 0;
+        if (!_tmc2130.write_config(policy)) {
+            return errors::ErrorCode::SEAL_MOTOR_SPI_ERROR;
+        }
+        _tmc2130.get_register_map().gconfig.en_pwm_mode = 0;
+        _tmc2130.get_register_map().tcoolthrs.threshold = tcool;
+        if (!_tmc2130.write_config(policy)) {
+            return errors::ErrorCode::SEAL_MOTOR_SPI_ERROR;
+        }
 
-		auto ret = _tmc2130.get_driver_status(policy);
-		static_cast<void>(ret);
+        auto ret = _tmc2130.get_driver_status(policy);
+        static_cast<void>(ret);
 
-		return errors::ErrorCode::NO_ERROR;
-	}
+        return errors::ErrorCode::NO_ERROR;
+    }
 
     Queue& _message_queue;
     tasks::Tasks<QueueImpl>* _task_registry;

@@ -46,7 +46,7 @@ class HostCommsTask {
         gcode::DeactivateLidHeating, gcode::SetPIDConstants,
         gcode::SetPlateTemperature, gcode::DeactivatePlate,
         gcode::SetFanAutomatic, gcode::ActuateSealStepperDebug,
-		gcode::GetSealDriveStatus>;
+        gcode::GetSealDriveStatus>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
@@ -60,7 +60,7 @@ class HostCommsTask {
     using GetPlateTempDebugCache = AckCache<8, gcode::GetPlateTemperatureDebug>;
     using GetPlateTempCache = AckCache<8, gcode::GetPlateTemp>;
     using GetLidTempCache = AckCache<8, gcode::GetLidTemp>;
-	using GetSealDriveStatusCache = AckCache<8, gcode::GetSealDriveStatus>;
+    using GetSealDriveStatusCache = AckCache<8, gcode::GetSealDriveStatus>;
 
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
@@ -80,8 +80,8 @@ class HostCommsTask {
           get_plate_temp_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_lid_temp_cache(),
-		  // NOLINTNEXTLINE(readability-redundant-member-init)
-		  get_seal_drive_status_cache() {}
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_seal_drive_status_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -384,10 +384,10 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-	auto visit_message(const messages::GetSealDriveStatusResponse & response,
+    auto visit_message(const messages::GetSealDriveStatusResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry =
-            get_seal_drive_status_cache.remove_if_present(response.responding_to_id);
+        auto cache_entry = get_seal_drive_status_cache.remove_if_present(
+            response.responding_to_id);
         return std::visit(
             [tx_into, tx_limit, response](auto cache_element) {
                 using T = std::decay_t<decltype(cache_element)>;
@@ -396,8 +396,8 @@ class HostCommsTask {
                         tx_into, tx_limit,
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
                 } else {
-                    return cache_element.write_response_into(
-                        tx_into, tx_limit, response.status);
+                    return cache_element.write_response_into(tx_into, tx_limit,
+                                                             response.status);
                 }
             },
             cache_entry);
@@ -938,7 +938,7 @@ class HostCommsTask {
     GetPlateTempDebugCache get_plate_temp_debug_cache;
     GetPlateTempCache get_plate_temp_cache;
     GetLidTempCache get_lid_temp_cache;
-	GetSealDriveStatusCache get_seal_drive_status_cache;
+    GetSealDriveStatusCache get_seal_drive_status_cache;
     bool may_connect_latch = true;
 };
 

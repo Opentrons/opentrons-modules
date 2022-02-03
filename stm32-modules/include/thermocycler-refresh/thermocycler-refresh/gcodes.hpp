@@ -747,16 +747,14 @@ struct ActuateSealStepperDebug {
 };
 
 struct GetSealDriveStatus {
-	/**
-	 * GetSealDriverStatus uses M242.D. Returns the current status of the
-	 * DriverStatus register on the TMC2130
-	 * 
-	 * Returns: M242.D SG:<stallguard flag> SG_Result:<stallguard result> OK\n
-	 */
-	using ParseResult = std::optional<GetSealDriveStatus>;
-    static constexpr auto prefix =
-        std::array{'M', '2', '4', '2', '.', 'D'};
-
+    /**
+     * GetSealDriverStatus uses M242.D. Returns the current status of the
+     * DriverStatus register on the TMC2130
+     *
+     * Returns: M242.D SG:<stallguard flag> SG_Result:<stallguard result> OK\n
+     */
+    using ParseResult = std::optional<GetSealDriveStatus>;
+    static constexpr auto prefix = std::array{'M', '2', '4', '2', '.', 'D'};
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -773,13 +771,15 @@ struct GetSealDriveStatus {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    static auto write_response_into(InputIt buf, InputLimit limit, tmc2130::DriveStatus status) -> InputIt {
+    static auto write_response_into(InputIt buf, InputLimit limit,
+                                    tmc2130::DriveStatus status) -> InputIt {
         int res = 0;
-		res = snprintf(&*buf, (limit - buf), "M242.D SG:%u SG_Result:%u OK\n", status.stallguard, status.sg_result);
-		if(res <= 0) {
-			return buf;
-		}
-		return buf + res;
+        res = snprintf(&*buf, (limit - buf), "M242.D SG:%u SG_Result:%u OK\n",
+                       status.stallguard, status.sg_result);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
     }
 };
 

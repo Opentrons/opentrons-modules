@@ -167,12 +167,12 @@ struct SealStepperComplete {
 };
 
 struct GetSealDriveStatusMessage {
-	uint32_t id;
+    uint32_t id;
 };
 
 struct GetSealDriveStatusResponse {
-	uint32_t responding_to_id;
-	tmc2130::DriveStatus status;
+    uint32_t responding_to_id;
+    tmc2130::DriveStatus status;
 };
 
 struct GetPlateTempMessage {
@@ -268,5 +268,5 @@ using MotorMessage =
     ::std::variant<std::monostate, ActuateSolenoidMessage,
                    LidStepperDebugMessage, LidStepperComplete,
                    SealStepperDebugMessage, SealStepperComplete,
-				   GetSealDriveStatusMessage>;
+                   GetSealDriveStatusMessage>;
 };  // namespace messages
