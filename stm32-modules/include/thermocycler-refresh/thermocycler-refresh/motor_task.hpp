@@ -89,7 +89,7 @@ static constexpr tmc2130::TMC2130RegisterMap default_tmc_config = {
                    .run_current = 0b1101,  // Approx 825 mA
                    .hold_current_delay = 0b0111},
     .tpowerdown = {},
-    .tcoolthrs = {.threshold = 0xFFFFF},
+    .tcoolthrs = {.threshold = 0},
     .thigh = {.threshold = 0xFFFFF},
     .chopconf = {.toff = 0b101, .hstrt = 0b101, .hend = 0b11, .tbl = 0b10},
     .coolconf = {.sgt = 4}};
