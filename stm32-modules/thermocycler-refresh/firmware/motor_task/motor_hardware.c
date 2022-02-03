@@ -314,6 +314,7 @@ static void init_motor_gpio(void)
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+	GPIO_InitStruct.Alternate = 0;
     HAL_GPIO_Init(SEAL_STEPPER_ENABLE_PORT, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = SEAL_STEPPER_DIRECTION_PIN;
@@ -335,12 +336,11 @@ static void init_motor_gpio(void)
     HAL_GPIO_Init(SEAL_STEPPER_DIAG0_PORT, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = SEAL_STEPPER_DIAG1_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
     HAL_GPIO_Init(SEAL_STEPPER_DIAG1_PORT, &GPIO_InitStruct);
 
-	
 	HAL_NVIC_SetPriority(SEAL_STEPPER_DIAG0_IRQ, 5, 0);
 	HAL_NVIC_EnableIRQ(SEAL_STEPPER_DIAG0_IRQ);
 

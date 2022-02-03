@@ -22,6 +22,7 @@
 #include "core/utility.hpp"
 #include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
+#include "thermocycler-refresh/tmc2130_registers.hpp"
 
 namespace gcode {
 
@@ -742,6 +743,43 @@ struct ActuateSealStepperDebug {
         std::sized_sentinel_for<InputLimit, InputIt>
     static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct GetSealDriveStatus {
+	/**
+	 * GetSealDriverStatus uses M242.D. Returns the current status of the
+	 * DriverStatus register on the TMC2130
+	 * 
+	 * Returns: M242.D SG:<stallguard flag> SG_Result:<stallguard result> OK\n
+	 */
+	using ParseResult = std::optional<GetSealDriveStatus>;
+    static constexpr auto prefix =
+        std::array{'M', '2', '4', '2', '.', 'D'};
+
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetSealDriveStatus()), working);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit, tmc2130::DriveStatus status) -> InputIt {
+        int res = 0;
+		res = snprintf(&*buf, (limit - buf), "M242.D SG:%u SG_Result:%u OK\n", status.stallguard, status.sg_result);
+		if(res <= 0) {
+			return buf;
+		}
+		return buf + res;
     }
 };
 

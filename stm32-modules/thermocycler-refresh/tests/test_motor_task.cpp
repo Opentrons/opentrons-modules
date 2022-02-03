@@ -241,5 +241,21 @@ SCENARIO("motor task message passing") {
                 }
             }
         }
+		WHEN("sending a GetSealDriveStatus command with a stallguard result of 0xF") {
+			motor_policy.write_register(tmc2130::Registers::DRVSTATUS, 0xF);
+			auto message = messages::GetSealDriveStatusMessage{.id = 123};
+            motor_queue.backing_deque.push_back(message);
+            tasks->run_motor_task();
+			THEN("the message is recieved and ACKd with correct data") {
+				REQUIRE(!motor_queue.has_message());
+				REQUIRE(tasks->get_host_comms_queue().has_message());
+				auto msg = tasks->get_host_comms_queue().backing_deque.front();
+				REQUIRE(std::holds_alternative<messages::GetSealDriveStatusResponse>(msg));
+				auto response = std::get<messages::GetSealDriveStatusResponse>(msg);
+				REQUIRE(response.responding_to_id == message.id);
+				REQUIRE(response.status.sg_result == 0xF);
+				REQUIRE(response.status.stallguard == 0);
+			}
+		}
     }
 }

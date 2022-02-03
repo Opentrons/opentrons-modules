@@ -66,17 +66,17 @@ const char* const THERMAL_HEATSINK_FAN_ERROR =
     "ERR403:thermal:Could not control heatsink fan\n";
 const char* const THERMAL_LID_BUSY = "ERR404:thermal:Lid heater is busy\n";
 const char* const THERMAL_HEATER_ERROR =
-    "ERR405:thermal:Error controlling lid heater";
+    "ERR405:thermal:Error controlling lid heater\n";
 const char* const THERMAL_CONSTANT_OUT_OF_RANGE =
-    "ERR406:thermal:PID constant(s) out of range";
+    "ERR406:thermal:PID constant(s) out of range\n";
 const char* const THERMAL_TARGET_BAD =
-    "ERR407:thermal:Invalid target temperature";
-const char* const LID_MOTOR_BUSY = "ERR501:lid:Lid motor busy";
-const char* const LID_MOTOR_FAULT = "EERR502:lid:Lid motor fault";
-const char* const SEAL_MOTOR_SPI_ERROR = "ERR503:seal:SPI error";
-const char* const SEAL_MOTOR_BUSY = "EERR504:seal:Seal motor busy";
-const char* const SEAL_MOTOR_FAULT = "ERR505:seal:Seal motor fault";
-const char* const SEAL_MOTOR_STALL = "ERR5006:seal:Seal motor stall event";
+    "ERR407:thermal:Invalid target temperature\n";
+const char* const LID_MOTOR_BUSY = "ERR501:lid:Lid motor busy\n";
+const char* const LID_MOTOR_FAULT = "EERR502:lid:Lid motor fault\n";
+const char* const SEAL_MOTOR_SPI_ERROR = "ERR503:seal:SPI error\n";
+const char* const SEAL_MOTOR_BUSY = "EERR504:seal:Seal motor busy\n";
+const char* const SEAL_MOTOR_FAULT = "ERR505:seal:Seal motor fault\n";
+const char* const SEAL_MOTOR_STALL = "ERR5006:seal:Seal motor stall event\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
