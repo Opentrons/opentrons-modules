@@ -36,6 +36,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_g28d.cpp
     test_m240d.cpp
     test_m241d.cpp
+    test_m242d.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 

@@ -7,6 +7,7 @@
 #include "systemwide.h"
 #include "thermocycler-refresh/colors.hpp"
 #include "thermocycler-refresh/errors.hpp"
+#include "thermocycler-refresh/tmc2130_registers.hpp"
 
 namespace messages {
 
@@ -155,7 +156,24 @@ struct SealStepperDebugMessage {
     long int steps;
 };
 
-struct SealStepperComplete {};
+struct SealStepperComplete {
+    enum class CompletionReason {
+        ERROR,  // There was an error flag
+        STALL,  // There was a stall
+        DONE,   // No error
+    };
+    // Defaults to no-error
+    CompletionReason reason = CompletionReason::DONE;
+};
+
+struct GetSealDriveStatusMessage {
+    uint32_t id;
+};
+
+struct GetSealDriveStatusResponse {
+    uint32_t responding_to_id;
+    tmc2130::DriveStatus status;
+};
 
 struct GetPlateTempMessage {
     uint32_t id;
@@ -234,7 +252,7 @@ using HostCommsMessage =
                    ErrorMessage, ForceUSBDisconnectMessage,
                    GetSystemInfoResponse, GetLidTemperatureDebugResponse,
                    GetPlateTemperatureDebugResponse, GetPlateTempResponse,
-                   GetLidTempResponse>;
+                   GetLidTempResponse, GetSealDriveStatusResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
@@ -249,5 +267,6 @@ using LidHeaterMessage =
 using MotorMessage =
     ::std::variant<std::monostate, ActuateSolenoidMessage,
                    LidStepperDebugMessage, LidStepperComplete,
-                   SealStepperDebugMessage, SealStepperComplete>;
+                   SealStepperDebugMessage, SealStepperComplete,
+                   GetSealDriveStatusMessage>;
 };  // namespace messages

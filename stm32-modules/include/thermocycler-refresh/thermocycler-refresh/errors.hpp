@@ -56,6 +56,7 @@ enum class ErrorCode {
     SEAL_MOTOR_SPI_ERROR = 503,
     SEAL_MOTOR_BUSY = 504,
     SEAL_MOTOR_FAULT = 505,
+    SEAL_MOTOR_STALL = 506,
 };
 
 auto errorstring(ErrorCode code) -> const char*;

@@ -10,19 +10,28 @@ extern "C" {
 // ----------------------------------------------------------------------------
 // Public definitions
 
-// Frequency of the motor interrupt callbacks is 1MHz
-#define MOTOR_INTERRUPT_FREQ (1000000)
+// Frequency of the motor interrupt callbacks is 500kHz
+#define MOTOR_INTERRUPT_FREQ (500000)
+
+// Enumeration of motor error types
+typedef enum MotorError {
+    MOTOR_ERROR, /**< The motor raised an error flag.*/
+    MOTOR_STALL  /**< The motor raised a stall flag.*/
+} MotorError_t;
 
 // ----------------------------------------------------------------------------
 // Type definitions
 
 // Void return and no parameters
 typedef void (*motor_step_callback_t)(void);
+// Void return and no parameters
+typedef void (*motor_error_callback_t)(MotorError_t);
 
 // This structure is used to define callbacks out of motor interrupts
 typedef struct {
     motor_step_callback_t lid_stepper_complete;
     motor_step_callback_t seal_stepper_tick;
+    motor_error_callback_t seal_stepper_error;
 } motor_hardware_callbacks;
 
 // ----------------------------------------------------------------------------

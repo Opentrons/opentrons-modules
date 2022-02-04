@@ -64,10 +64,10 @@ void system_led_iniitalize(void) {
 
     /* DMA interrupt init */
     /* DMA1_Channel1_IRQn interrupt configuration */
-    HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 7, 0);
     HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
     /* DMAMUX_OVR_IRQn interrupt configuration */
-    HAL_NVIC_SetPriority(DMAMUX_OVR_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(DMAMUX_OVR_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(DMAMUX_OVR_IRQn);
 
     _leds.tim.Instance = TIM17;

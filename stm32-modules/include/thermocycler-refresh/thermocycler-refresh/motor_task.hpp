@@ -89,10 +89,10 @@ static constexpr tmc2130::TMC2130RegisterMap default_tmc_config = {
                    .run_current = 0b1101,  // Approx 825 mA
                    .hold_current_delay = 0b0111},
     .tpowerdown = {},
-    .tcoolthrs = {},
+    .tcoolthrs = {.threshold = 0},
     .thigh = {.threshold = 0xFFFFF},
     .chopconf = {.toff = 0b101, .hstrt = 0b101, .hend = 0b11, .tbl = 0b10},
-    .coolconf = {}};
+    .coolconf = {.sgt = 4}};
 
 using Message = ::messages::MotorMessage;
 template <template <class> class QueueImpl>
@@ -233,11 +233,28 @@ class MotorTask {
     auto visit_message(const messages::SealStepperComplete& msg, Policy& policy)
         -> void {
         static_cast<void>(msg);
-        static_cast<void>(policy);
         if (_seal_stepper_state.status == StepperState::MOVING) {
+            // Ignore return in case movement was already stopped by interrupt
+            static_cast<void>(policy.seal_stepper_stop());
+            static_cast<void>(policy.tmc2130_set_enable(false));
+            using namespace messages;
+            auto with_error = errors::ErrorCode::NO_ERROR;
+            switch (msg.reason) {
+                case SealStepperComplete::CompletionReason::STALL:
+                    // TODO: during some movements a stall is expected
+                    with_error = errors::ErrorCode::SEAL_MOTOR_STALL;
+                    break;
+                case SealStepperComplete::CompletionReason::ERROR:
+                    // TODO clear the error
+                    with_error = errors::ErrorCode::SEAL_MOTOR_FAULT;
+                    break;
+                default:
+                    break;
+            }
             _seal_stepper_state.status = StepperState::IDLE;
             auto response = messages::AcknowledgePrevious{
-                .responding_to_id = _seal_stepper_state.response_id};
+                .responding_to_id = _seal_stepper_state.response_id,
+                .with_error = with_error};
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
@@ -255,6 +272,20 @@ class MotorTask {
         }
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    requires MotorExecutionPolicy<Policy>
+    auto visit_message(const messages::GetSealDriveStatusMessage& msg,
+                       Policy& policy) -> void {
+        auto ret = _tmc2130.get_driver_status(policy);
+        auto response =
+            messages::GetSealDriveStatusResponse{.responding_to_id = msg.id};
+        if (ret.has_value()) {
+            response.status = ret.value();
+        }
         static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
@@ -297,6 +328,16 @@ class MotorTask {
             return errors::ErrorCode::SEAL_MOTOR_FAULT;
         }
 
+        ret = policy.tmc2130_set_enable(false);
+        if (!ret) {
+            return errors::ErrorCode::SEAL_MOTOR_FAULT;
+        }
+
+        auto err = clear_seal_stall(policy);
+        if (err != errors::ErrorCode::NO_ERROR) {
+            return err;
+        }
+
         ret = policy.tmc2130_set_enable(true);
         if (!ret) {
             return errors::ErrorCode::SEAL_MOTOR_FAULT;
@@ -309,6 +350,30 @@ class MotorTask {
         if (!ret) {
             _seal_stepper_state.status = StepperState::IDLE;
             return errors::ErrorCode::SEAL_MOTOR_FAULT;
+        }
+
+        return errors::ErrorCode::NO_ERROR;
+    }
+
+    /**
+     * @brief This function should clear the stall flag in the TMC2130.
+     * Enables and then disables the StealthChop mode (which isn't used in
+     * this application), which clears the data for StallGuard.
+     * @param policy Instance of the policy for motor control
+     * @return errors::ErrorCode
+     */
+    template <MotorExecutionPolicy Policy>
+    auto clear_seal_stall(Policy& policy) -> errors::ErrorCode {
+        auto tcool = _tmc2130.get_register_map().tcoolthrs.threshold;
+        _tmc2130.get_register_map().gconfig.en_pwm_mode = 1;
+        _tmc2130.get_register_map().tcoolthrs.threshold = 0;
+        if (!_tmc2130.write_config(policy)) {
+            return errors::ErrorCode::SEAL_MOTOR_SPI_ERROR;
+        }
+        _tmc2130.get_register_map().gconfig.en_pwm_mode = 0;
+        _tmc2130.get_register_map().tcoolthrs.threshold = tcool;
+        if (!_tmc2130.write_config(policy)) {
+            return errors::ErrorCode::SEAL_MOTOR_SPI_ERROR;
         }
 
         return errors::ErrorCode::NO_ERROR;

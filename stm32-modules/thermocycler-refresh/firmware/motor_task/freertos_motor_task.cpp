@@ -43,12 +43,40 @@ static TaskHandle_t _local_task;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static MotorPolicy _policy;
 
+/**
+ * @brief This function is called after the lid stepper has stepped the
+ * requested number of steps.
+ */
 static void handle_lid_stepper() {
     static_cast<void>(_task.get_message_queue().try_send_from_isr(
         messages::MotorMessage(messages::LidStepperComplete{})));
 }
 
+/** @brief This function is called for every seal motor tick, at 1MHz.*/
 static void handle_seal_interrupt() { _policy.seal_tick(); }
+
+/**
+ * @brief This function is called when the seal motor signals an error flag.
+ * Based on the type of error that was raised (an actual error, or a stall
+ * flag) a SealStepperComplete message will be sent to the motor_task and
+ * the Seal motor interrupt will be disabled.
+ *
+ * @param[in] error The specific flag that was raised
+ */
+static void handle_seal_error(MotorError_t error) {
+    using namespace messages;
+
+    static_cast<void>(motor_hardware_stop_seal_movement());
+    if (error == MotorError::MOTOR_ERROR) {
+        static_cast<void>(_task.get_message_queue().try_send_from_isr(
+            messages::MotorMessage(SealStepperComplete{
+                .reason = SealStepperComplete::CompletionReason::ERROR})));
+    } else {  // error == MotorError::MOTOR_STALL
+        static_cast<void>(_task.get_message_queue().try_send_from_isr(
+            messages::MotorMessage(SealStepperComplete{
+                .reason = SealStepperComplete::CompletionReason::STALL})));
+    }
+}
 
 // Actual function that runs inside the task
 void run(void *param) {
@@ -56,7 +84,8 @@ void run(void *param) {
 
     motor_hardware_callbacks callbacks = {
         .lid_stepper_complete = handle_lid_stepper,
-        .seal_stepper_tick = handle_seal_interrupt};
+        .seal_stepper_tick = handle_seal_interrupt,
+        .seal_stepper_error = handle_seal_error};
     motor_hardware_setup(&callbacks);
     while (true) {
         _task.run_once(_policy);

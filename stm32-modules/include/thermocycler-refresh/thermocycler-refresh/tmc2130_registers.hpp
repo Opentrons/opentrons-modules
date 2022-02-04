@@ -361,6 +361,45 @@ struct __attribute__((packed, __may_alias__)) CoolConfig {
     uint32_t sfilt : 1 = 0;
 };
 
+/**
+ * Holds error & stallguard information. Read only.
+ */
+struct __attribute__((packed, __may_alias__)) DriveStatus {
+    static constexpr Registers address = Registers::DRVSTATUS;
+    static constexpr bool readable = true;
+    static constexpr uint32_t value_mask = 0xFFFFFFFF;
+
+    // Stallguard2 Result, represents mechanical load.
+    // 0 is max load, 0x3FF is the max load.
+    uint32_t sg_result : 10 = 0;
+    // Reserved padding
+    uint32_t padding_0 : 5 = 0;
+    // Fullstep-active indicator
+    uint32_t fsactive : 1 = 0;
+    // Actual motor current/ smart energy current.
+    // For monitoring function of automatic current scaling.
+    uint32_t cs_actual : 5 = 0;
+    // Rserved padding
+    uint32_t padding_1 : 3 = 0;
+    // Motor stall detected (sg_result = 0), or DcStep stall
+    // in DcStep mode.
+    uint32_t stallguard : 1 = 0;
+    // If 1, overtemp detected and driver is shut down.
+    uint32_t overtemp_flag : 1 = 0;
+    // If 1, pre-warning threshold for overtemp is exceeded.
+    uint32_t overtemp_prewarning_flag : 1 = 0;
+    // Short to ground in phase A
+    uint32_t s2ga : 1 = 0;
+    // Short to ground in phase B
+    uint32_t s2gb : 1 = 0;
+    // Open load in phase A
+    uint32_t ola : 1 = 0;
+    // Open load in phase B
+    uint32_t olb : 1 = 0;
+    // Standstill indicator. Occurs 2^20 clocks after last step.
+    uint32_t stst : 1 = 0;
+};
+
 // Encapsulates all of the registers that should be configured by software
 struct TMC2130RegisterMap {
     GConfig gconfig = {};

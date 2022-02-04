@@ -284,6 +284,17 @@ SCENARIO("tmc2130 register API works") {
                 }
             }
         }
+        GIVEN("drive status register with an overtemp flag set") {
+            policy.write_register(tmc2130::Registers::DRVSTATUS, 1 << 25);
+            WHEN("reading drive status") {
+                auto ret = tmc.get_driver_status(policy);
+                THEN("drive status has the flag set") {
+                    REQUIRE(ret.has_value());
+                    REQUIRE(ret.value().overtemp_flag == 1);
+                    REQUIRE(ret.value().overtemp_prewarning_flag == 0);
+                }
+            }
+        }
     }
     GIVEN("a tmc2130 with a randomly allocated register map") {
         tmc2130::TMC2130RegisterMap registers = {

@@ -104,6 +104,12 @@ class TestTMC2130Policy {
         return ReadRT(_registers[addr]);
     }
 
+    // Primarily for test integration
+    auto write_register(tmc2130::Registers reg, uint32_t value) {
+        auto addr = static_cast<uint8_t>(reg);
+        _registers[addr] = value;
+    }
+
     // Testing function to be able to set a fake error flag
     auto set_gstat_error() -> void {
         _registers[static_cast<uint8_t>(tmc2130::Registers::GSTAT)] |= 0x2;
