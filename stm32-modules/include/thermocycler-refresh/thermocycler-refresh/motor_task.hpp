@@ -376,9 +376,6 @@ class MotorTask {
             return errors::ErrorCode::SEAL_MOTOR_SPI_ERROR;
         }
 
-        auto ret = _tmc2130.get_driver_status(policy);
-        static_cast<void>(ret);
-
         return errors::ErrorCode::NO_ERROR;
     }
 
