@@ -179,7 +179,7 @@ struct GetSealDriveStatusResponse {
 struct SetSealParameterMessage {
     uint32_t id;
     motor_util::SealStepper::Parameter param;
-    uint32_t value;
+    int32_t value;
 };
 
 struct GetPlateTempMessage {

@@ -302,14 +302,16 @@ class MotorTask {
         auto with_error = errors::ErrorCode::NO_ERROR;
         switch (msg.param) {
             case Parameter::Velocity:
-                _seal_velocity = msg.value;
+                _seal_velocity = static_cast<uint32_t>(
+                    std::max(msg.value, static_cast<int32_t>(1)));
                 break;
             case Parameter::Acceleration:
-                _seal_acceleration = msg.value;
+                _seal_acceleration = static_cast<uint32_t>(
+                    std::max(msg.value, static_cast<int32_t>(1)));
                 break;
             case Parameter::StallguardThreshold: {
-                static constexpr const uint32_t min_sgt = -64;
-                static constexpr const uint32_t max_sgt = 63;
+                static constexpr const int32_t min_sgt = -64;
+                static constexpr const int32_t max_sgt = 63;
                 auto value = std::clamp(msg.value, min_sgt, max_sgt);
                 _tmc2130.get_register_map().coolconf.sgt = value;
                 ret = _tmc2130.write_config(policy);
@@ -320,7 +322,8 @@ class MotorTask {
                     motor_util::SealStepper::velocity_to_tstep(msg.value);
                 static constexpr const uint32_t min_tstep = -64;
                 static constexpr const uint32_t max_tstep = 63;
-                value = std::clamp(value, min_tstep, max_tstep);
+                value = std::clamp(static_cast<uint32_t>(value), min_tstep,
+                                   max_tstep);
                 _tmc2130.get_register_map().tcoolthrs.threshold = value;
                 ret = _tmc2130.write_config(policy);
                 break;
@@ -328,7 +331,8 @@ class MotorTask {
             case Parameter::RunCurrent: {
                 static constexpr const uint32_t min_current = 0;
                 static constexpr const uint32_t max_current = 0x1F;
-                auto value = std::clamp(msg.value, min_current, max_current);
+                auto value = std::clamp(static_cast<uint32_t>(msg.value),
+                                        min_current, max_current);
                 _tmc2130.get_register_map().ihold_irun.run_current = value;
                 ret = _tmc2130.write_config(policy);
                 break;
@@ -336,7 +340,8 @@ class MotorTask {
             case Parameter::HoldCurrent: {
                 static constexpr const uint32_t min_current = 0;
                 static constexpr const uint32_t max_current = 0x1F;
-                auto value = std::clamp(msg.value, min_current, max_current);
+                auto value = std::clamp(static_cast<uint32_t>(msg.value),
+                                        min_current, max_current);
                 _tmc2130.get_register_map().ihold_irun.hold_current = value;
                 ret = _tmc2130.write_config(policy);
                 break;

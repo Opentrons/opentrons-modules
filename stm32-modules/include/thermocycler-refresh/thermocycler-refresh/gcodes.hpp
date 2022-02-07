@@ -815,7 +815,7 @@ struct SetSealParameter {
     /** The parameter to set.*/
     SealParameter parameter;
     /** The value to set \c parameter to.*/
-    uint32_t value;
+    int32_t value;
 
     template <typename Input>
     static auto inline is_legal_parameter(const Input parameter_char) -> bool {
@@ -845,7 +845,7 @@ struct SetSealParameter {
             return std::make_pair(ParseResult(), input);
         }
 
-        auto value_res = parse_value<uint32_t>(working, limit);
+        auto value_res = parse_value<int32_t>(working, limit);
         if (!value_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
