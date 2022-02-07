@@ -9,6 +9,7 @@ import re
 import serial
 import datetime
 import time
+from enum import Enum
 
 from serial.tools.list_ports import grep
 from typing import Any, Callable, Dict, Tuple, List, Optional
@@ -184,4 +185,27 @@ def set_solenoid(engaged: bool, ser: serial.Serial):
     ser.write(f'G28.D {value}\n'.encode())
     res = ser.readline()
     guard_error(res, b'G28.D OK')
+    print(res)
+
+def move_seal_steps(steps: int, ser: serial.Serial):
+    print(f'Moving seal by {steps} steps')
+    ser.write(f'M241.D {steps}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M241.D OK')
+    print(res)
+
+class SealParam(Enum):
+    VELOCITY = 'V'
+    ACCELERATION = 'A'
+    STALLGUARD_THRESHOLD = 'T'
+    STALLGUARD_MIN_VELOCITY = 'M'
+    RUN_CURRENT = 'R'
+    HOLD_CURRENT = 'H'
+
+# Debug command to set a seal parameter
+def set_seal_param(param: SealParam, value: int, ser: serial.Serial):
+    print(f'Setting {param} ({param.value}) to {value}')
+    ser.write(f'M243.D {param.value} {value}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M243.D OK')
     print(res)
