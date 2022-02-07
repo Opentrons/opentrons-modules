@@ -22,6 +22,7 @@
 #include "core/utility.hpp"
 #include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
+#include "thermocycler-refresh/motor_utils.hpp"
 #include "thermocycler-refresh/tmc2130_registers.hpp"
 
 namespace gcode {
@@ -780,6 +781,86 @@ struct GetSealDriveStatus {
             return buf;
         }
         return buf + res;
+    }
+};
+
+struct SetSealParameter {
+    /**
+     * @brief SetSealParameter uses M243.D. Lets users set parameters for the
+     * seal stepper movement. Intended for internal testing use to find
+     * optimal settings for StallGuard repeatability.
+     *
+     * Syntax: M243.D <parameter> <value>\n
+     * Returns: M243.D OK\n
+     *
+     */
+    using ParseResult = std::optional<SetSealParameter>;
+
+    /** Enumeration of supported parameters.*/
+    using SealParameter = motor_util::SealStepper::Parameter;
+
+    static constexpr auto prefix =
+        std::array{'M', '2', '4', '3', '.', 'D', ' '};
+    static constexpr const char* response = "M243.D OK\n";
+
+    /** Array of parameters to allow easy searching for legal parameters.*/
+    static constexpr std::array<char, 6> _parameters = {
+        static_cast<char>(SealParameter::Velocity),
+        static_cast<char>(SealParameter::Acceleration),
+        static_cast<char>(SealParameter::StallguardThreshold),
+        static_cast<char>(SealParameter::StallguardMinVelocity),
+        static_cast<char>(SealParameter::RunCurrent),
+        static_cast<char>(SealParameter::HoldCurrent)};
+
+    /** The parameter to set.*/
+    SealParameter parameter;
+    /** The value to set \c parameter to.*/
+    int32_t value;
+
+    template <typename Input>
+    static auto inline is_legal_parameter(const Input parameter_char) -> bool {
+        return std::find(_parameters.begin(), _parameters.end(),
+                         parameter_char) != _parameters.end();
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        // Next character should be one of the seal parameters
+        auto parameter_char = *working;
+        std::advance(working, 1);
+        if (!is_legal_parameter(parameter_char)) {
+            // Not a valid parameter
+            return std::make_pair(ParseResult(), input);
+        }
+        working = gobble_whitespace(working, limit);
+        if (working == limit) {
+            // No value was defined
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto value_res = parse_value<int32_t>(working, limit);
+        if (!value_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(
+            ParseResult(SetSealParameter{
+                .parameter = static_cast<SealParameter>(parameter_char),
+                .value = value_res.first.value()}),
+            value_res.second);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
     }
 };
 

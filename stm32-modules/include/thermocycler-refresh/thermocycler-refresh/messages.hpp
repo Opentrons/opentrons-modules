@@ -7,6 +7,7 @@
 #include "systemwide.h"
 #include "thermocycler-refresh/colors.hpp"
 #include "thermocycler-refresh/errors.hpp"
+#include "thermocycler-refresh/motor_utils.hpp"
 #include "thermocycler-refresh/tmc2130_registers.hpp"
 
 namespace messages {
@@ -175,6 +176,12 @@ struct GetSealDriveStatusResponse {
     tmc2130::DriveStatus status;
 };
 
+struct SetSealParameterMessage {
+    uint32_t id;
+    motor_util::SealStepper::Parameter param;
+    int32_t value;
+};
+
 struct GetPlateTempMessage {
     uint32_t id;
 };
@@ -268,5 +275,5 @@ using MotorMessage =
     ::std::variant<std::monostate, ActuateSolenoidMessage,
                    LidStepperDebugMessage, LidStepperComplete,
                    SealStepperDebugMessage, SealStepperComplete,
-                   GetSealDriveStatusMessage>;
+                   GetSealDriveStatusMessage, SetSealParameterMessage>;
 };  // namespace messages

@@ -261,5 +261,30 @@ SCENARIO("motor task message passing") {
                 REQUIRE(response.status.stallguard == 0);
             }
         }
+        WHEN("sending a SetSealParameter message with hold current = 0x2F") {
+            auto message = messages::SetSealParameterMessage{
+                .id = 123,
+                .param = motor_util::SealStepper::Parameter::HoldCurrent,
+                .value = 1000};
+            motor_queue.backing_deque.push_back(message);
+            tasks->run_motor_task();
+            THEN("the message is recieved and ACKd with correct id") {
+                REQUIRE(!motor_queue.has_message());
+                REQUIRE(tasks->get_host_comms_queue().has_message());
+                auto msg = tasks->get_host_comms_queue().backing_deque.front();
+                REQUIRE(
+                    std::holds_alternative<messages::AcknowledgePrevious>(msg));
+                auto response = std::get<messages::AcknowledgePrevious>(msg);
+                REQUIRE(response.responding_to_id == message.id);
+                REQUIRE(response.with_error == errors::ErrorCode::NO_ERROR);
+            }
+            THEN("the current is set to a clamped value of 0x1F (5 bits)") {
+                auto reg =
+                    motor_policy.read_register(tmc2130::Registers::IHOLD_IRUN);
+                uint32_t mask = 0x1F;
+                REQUIRE(reg.has_value());
+                REQUIRE((reg.value() & mask) == mask);
+            }
+        }
     }
 }
