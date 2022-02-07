@@ -68,6 +68,52 @@ class LidStepper {
     }
 };
 
+class SealStepper {
+  public:
+    /** Enumeration of supported parameters.*/
+    enum class Parameter : char {
+        Velocity = 'V',
+        Acceleration = 'A',
+        StallguardThreshold = 'T',
+        StallguardMinVelocity = 'M',
+        RunCurrent = 'R',
+        HoldCurrent = 'H'
+    };
+
+    // 16MHz external oscillator
+    static constexpr const double tmc_external_clock = 16000000;
+
+    /**
+     * @brief Convert a velocity into a period value
+     *
+     * @param velocity The velocity in steps/second
+     * @param clock Clock rate of the TMC2130. Default to \ref
+     * tmc_external_clock
+     * @return uint32_t containing the number of \c clock ticks per each motor
+     * step
+     */
+    [[nodiscard]] static auto inline velocity_to_tstep(
+        double velocity, double clock = tmc_external_clock) -> uint32_t {
+        return static_cast<uint32_t>(clock / velocity);
+    }
+
+    /**
+     * @brief Convert a period of TMC2130 clock ticks into a velocity in
+     * steps/sec
+     *
+     * @param tstep The period to convert, in \c clock ticks per each motor step
+     * @param clock Clock rate of the TMC2130. Default to \ref
+     * tmc_external_clock
+     * @return double containing the velocity in steps/second
+     */
+    [[nodiscard]] static auto inline tstep_to_velocity(
+        uint32_t tstep, double clock = tmc_external_clock) -> double {
+        // Avoid divide-by-zero issues, bound tstep to at least 1
+        tstep = std::max(tstep, static_cast<uint32_t>(1));
+        return clock / static_cast<double>(tstep);
+    }
+};
+
 /** The end condition for this movement.*/
 enum class MovementType {
     FixedDistance,  // This movement goes for a fixed number of steps.

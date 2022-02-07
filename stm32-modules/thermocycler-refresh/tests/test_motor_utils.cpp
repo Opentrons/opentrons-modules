@@ -163,6 +163,29 @@ SCENARIO("MovementProfile functionality with flat acceleration") {
     }
 }
 
+SCENARIO("seal stepper utilities work") {
+    using namespace motor_util;
+    GIVEN("tmc2130 clock speed of 1000Hz") {
+        double clock = 1000;
+        GIVEN("velocity of 25 steps/sec") {
+            double velocity = 25;
+            WHEN("converting velocity to period") {
+                auto period = SealStepper::velocity_to_tstep(velocity, clock);
+                THEN("period is 40 clock ticks") { REQUIRE(period == 40); }
+            }
+        }
+        GIVEN("period of 40 clock ticks") {
+            uint32_t period = 40;
+            WHEN("converting period to velocity") {
+                auto velocity = SealStepper::tstep_to_velocity(period, clock);
+                THEN("velocity is 25 steps/sec") {
+                    REQUIRE_THAT(velocity, Catch::Matchers::WithinAbs(25, 0.1));
+                }
+            }
+        }
+    }
+}
+
 SCENARIO("MovementProfile acceleration testing") {
     GIVEN("a movement profile with a 1Hz frequency") {
         constexpr int frequency = 1;

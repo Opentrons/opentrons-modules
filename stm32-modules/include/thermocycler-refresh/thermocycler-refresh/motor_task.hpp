@@ -120,7 +120,9 @@ class MotorTask {
           // It is set before every movement so these are irrelevant.
           _seal_profile(1, 0, SEAL_STEPPER_DEFAULT_VELOCITY,
                         SEAL_STEPPER_DEFAULT_ACCELERATION,
-                        motor_util::MovementType::OpenLoop, 0) {}
+                        motor_util::MovementType::OpenLoop, 0),
+          _seal_velocity(SEAL_STEPPER_DEFAULT_VELOCITY),
+          _seal_acceleration(SEAL_STEPPER_DEFAULT_ACCELERATION) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -290,6 +292,67 @@ class MotorTask {
             messages::HostCommsMessage(response)));
     }
 
+    template <MotorExecutionPolicy Policy>
+    auto visit_message(const messages::SetSealParameterMessage& msg,
+                       Policy& policy) -> void {
+        using Parameter = motor_util::SealStepper::Parameter;
+
+        // Only set to false if a tmc2130 write fails
+        bool ret = true;
+        auto with_error = errors::ErrorCode::NO_ERROR;
+        switch (msg.param) {
+            case Parameter::Velocity:
+                _seal_velocity = msg.value;
+                break;
+            case Parameter::Acceleration:
+                _seal_acceleration = msg.value;
+                break;
+            case Parameter::StallguardThreshold: {
+                static constexpr const uint32_t min_sgt = -64;
+                static constexpr const uint32_t max_sgt = 63;
+                auto value = std::clamp(msg.value, min_sgt, max_sgt);
+                _tmc2130.get_register_map().coolconf.sgt = value;
+                ret = _tmc2130.write_config(policy);
+                break;
+            }
+            case Parameter::StallguardMinVelocity: {
+                auto value =
+                    motor_util::SealStepper::velocity_to_tstep(msg.value);
+                static constexpr const uint32_t min_tstep = -64;
+                static constexpr const uint32_t max_tstep = 63;
+                value = std::clamp(value, min_tstep, max_tstep);
+                _tmc2130.get_register_map().tcoolthrs.threshold = value;
+                ret = _tmc2130.write_config(policy);
+                break;
+            }
+            case Parameter::RunCurrent: {
+                static constexpr const uint32_t min_current = 0;
+                static constexpr const uint32_t max_current = 0x1F;
+                auto value = std::clamp(msg.value, min_current, max_current);
+                _tmc2130.get_register_map().ihold_irun.run_current = value;
+                ret = _tmc2130.write_config(policy);
+                break;
+            }
+            case Parameter::HoldCurrent: {
+                static constexpr const uint32_t min_current = 0;
+                static constexpr const uint32_t max_current = 0x1F;
+                auto value = std::clamp(msg.value, min_current, max_current);
+                _tmc2130.get_register_map().ihold_irun.hold_current = value;
+                ret = _tmc2130.write_config(policy);
+                break;
+            }
+        }
+
+        if (!ret) {
+            with_error = errors::ErrorCode::SEAL_MOTOR_SPI_ERROR;
+        }
+
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id = msg.id, .with_error = with_error};
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
     // Callback for each tick() during a seal stepper movement
     template <MotorExecutionPolicy Policy>
     auto seal_step_callback(Policy& policy) -> void {
@@ -318,8 +381,7 @@ class MotorTask {
     auto start_seal_movement(long steps, Policy& policy) -> errors::ErrorCode {
         // Movement profile gets constructed with default parameters
         _seal_profile = motor_util::MovementProfile(
-            policy.MotorTickFrequency, 0, SEAL_STEPPER_DEFAULT_VELOCITY,
-            SEAL_STEPPER_DEFAULT_ACCELERATION,
+            policy.MotorTickFrequency, 0, _seal_velocity, _seal_acceleration,
             motor_util::MovementType::FixedDistance, std::abs(steps));
 
         // Steps is signed, so set direction accordingly
@@ -385,6 +447,8 @@ class MotorTask {
     StepperState _seal_stepper_state;
     tmc2130::TMC2130 _tmc2130;
     motor_util::MovementProfile _seal_profile;
+    double _seal_velocity;
+    double _seal_acceleration;
 };
 
 };  // namespace motor_task

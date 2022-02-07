@@ -7,6 +7,7 @@
 #include "systemwide.h"
 #include "thermocycler-refresh/colors.hpp"
 #include "thermocycler-refresh/errors.hpp"
+#include "thermocycler-refresh/motor_utils.hpp"
 #include "thermocycler-refresh/tmc2130_registers.hpp"
 
 namespace messages {
@@ -33,8 +34,8 @@ concept Response = requires(ResponseType rt) {
 
 /*
 ** Message structs initiate actions. These may be changes in physical state, or
-** a request to send back some data. Each carries an ID, which should be copied
-*into
+** a request to send back some data. Each carries an ID, which should be copied4
+*V into
 ** the response.
 */
 // The from_system elements are a bit of a hack because we don't have full
@@ -175,6 +176,12 @@ struct GetSealDriveStatusResponse {
     tmc2130::DriveStatus status;
 };
 
+struct SetSealParameterMessage {
+    uint32_t id;
+    motor_util::SealStepper::Parameter param;
+    uint32_t value;
+};
+
 struct GetPlateTempMessage {
     uint32_t id;
 };
@@ -268,5 +275,5 @@ using MotorMessage =
     ::std::variant<std::monostate, ActuateSolenoidMessage,
                    LidStepperDebugMessage, LidStepperComplete,
                    SealStepperDebugMessage, SealStepperComplete,
-                   GetSealDriveStatusMessage>;
+                   GetSealDriveStatusMessage, SetSealParameterMessage>;
 };  // namespace messages
