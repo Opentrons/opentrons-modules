@@ -36,6 +36,27 @@ class LidStepper {
     constexpr static double ROTATION_TO_STEPS = DEGREES_TO_MICROSTEPS * 360;
 
   public:
+    /** Possible states of the lid stepper.*/
+    enum class Status { BETWEEN, CLOSED, OPEN, UNKNOWN };
+
+    [[nodiscard]] static auto status_to_string(Status status) -> const char* {
+        switch (status) {
+            case Status::BETWEEN:
+                return "in_between";
+                break;
+            case Status::CLOSED:
+                return "closed";
+                break;
+            case Status::OPEN:
+                return "open";
+                break;
+            case Status::UNKNOWN:
+                return "unknown";
+                break;
+        }
+        return "unknown";
+    }
+
     /**
      * @brief Convert a current value in milliamperes to a DAC value.
      *
@@ -80,8 +101,29 @@ class SealStepper {
         HoldCurrent = 'H'
     };
 
+    /** Possible status of the seal stepper.*/
+    enum class Status { BETWEEN, ENGAGED, RETRACTED, UNKNOWN };
+
     // 16MHz external oscillator
     static constexpr const double tmc_external_clock = 16000000;
+
+    [[nodiscard]] static auto status_to_string(Status status) -> const char* {
+        switch (status) {
+            case Status::BETWEEN:
+                return "in_between";
+                break;
+            case Status::ENGAGED:
+                return "engaged";
+                break;
+            case Status::RETRACTED:
+                return "retracted";
+                break;
+            case Status::UNKNOWN:
+                return "unknown";
+                break;
+        }
+        return "unknown";
+    }
 
     /**
      * @brief Convert a velocity into a period value

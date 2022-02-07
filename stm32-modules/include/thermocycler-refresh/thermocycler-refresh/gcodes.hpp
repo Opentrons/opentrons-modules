@@ -707,6 +707,49 @@ struct ActuateLidStepperDebug {
     }
 };
 
+struct GetLidStatus {
+    /**
+     * GetLidStatus uses M119, from the Gen1 Thermocycler. Returns the
+     * current status of the lid: in_between, closed, open, or unknown
+     *
+     * and the current status of the seal: in_between, engaged, retracted
+     *
+     * Format: M119
+     * Returns: M119 Lid:open Seal:engaged OK\n
+     */
+    using ParseResult = std::optional<GetLidStatus>;
+    static constexpr auto prefix = std::array{'M', '1', '1', '9'};
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetLidStatus()), working);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit,
+                                    motor_util::LidStepper::Status lid,
+                                    motor_util::SealStepper::Status seal)
+        -> InputIt {
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf), "M119 Lid:%s Seal:%s OK\n",
+                       motor_util::LidStepper::status_to_string(lid),
+                       motor_util::SealStepper::status_to_string(seal));
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
 struct ActuateSealStepperDebug {
     /*
     ** Actuate seal stepper is a debug command that lets you move the seal
