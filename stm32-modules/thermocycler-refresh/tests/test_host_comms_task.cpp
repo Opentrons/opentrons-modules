@@ -1627,6 +1627,67 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 }
             }
         }
+        WHEN("sending a GetLidStatus command") {
+            auto message_text = std::string("M119\n");
+            auto message_obj =
+                messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                    &*message_text.begin(), &*message_text.end()));
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            auto written_firstpass = tasks->get_host_comms_task().run_once(
+                tx_buf.begin(), tx_buf.end());
+            THEN("the task should pass the message and not immediately ack") {
+                REQUIRE(tasks->get_motor_queue().has_message());
+                auto motor_msg = tasks->get_motor_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::GetLidStatusMessage>(
+                    motor_msg));
+                auto lid_message =
+                    std::get<messages::GetLidStatusMessage>(motor_msg);
+                tasks->get_motor_queue().backing_deque.pop_front();
+                REQUIRE(written_firstpass == tx_buf.begin());
+                REQUIRE(!tasks->get_host_comms_queue().has_message());
+                AND_WHEN("sending good response back to comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::GetLidStatusResponse{
+                            .responding_to_id = lid_message.id,
+                            .lid = motor_util::LidStepper::Status::UNKNOWN,
+                            .seal = motor_util::SealStepper::Status::UNKNOWN});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("the task should ack the previous message") {
+                        const char response[] = "M119 Lid:unknown Seal:unknown OK\n";
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith(response));
+                        REQUIRE(written_secondpass ==
+                                tx_buf.begin() + strlen(response));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN("sending invalid ID back to comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::GetLidStatusResponse{
+                            .responding_to_id = lid_message.id + 1,
+                            .lid = motor_util::LidStepper::Status::UNKNOWN,
+                            .seal = motor_util::SealStepper::Status::UNKNOWN});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN(
+                        "the task should pull the message and print an error") {
+                        REQUIRE(written_secondpass > tx_buf.begin());
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -358,6 +358,18 @@ class MotorTask {
             messages::HostCommsMessage(response)));
     }
 
+    template <MotorExecutionPolicy Policy>
+    auto visit_message(const messages::GetLidStatusMessage& msg, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        auto response = messages::GetLidStatusResponse{
+            .responding_to_id = msg.id,
+            .lid = motor_util::LidStepper::Status::UNKNOWN,
+            .seal = motor_util::SealStepper::Status::UNKNOWN};
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
     // Callback for each tick() during a seal stepper movement
     template <MotorExecutionPolicy Policy>
     auto seal_step_callback(Policy& policy) -> void {
