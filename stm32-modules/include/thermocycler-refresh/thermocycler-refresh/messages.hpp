@@ -34,7 +34,7 @@ concept Response = requires(ResponseType rt) {
 
 /*
 ** Message structs initiate actions. These may be changes in physical state, or
-** a request to send back some data. Each carries an ID, which should be copied4
+** a request to send back some data. Each carries an ID, which should be copied
 *V into
 ** the response.
 */
