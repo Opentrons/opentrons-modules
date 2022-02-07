@@ -307,7 +307,7 @@ class MotorTask {
                 break;
             case Parameter::Acceleration:
                 _seal_acceleration = static_cast<uint32_t>(
-                    std::max(msg.value, static_cast<int32_t>(1)));
+                    std::max(msg.value, static_cast<int32_t>(0)));
                 break;
             case Parameter::StallguardThreshold: {
                 static constexpr const int32_t min_sgt = -64;
