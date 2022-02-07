@@ -320,8 +320,8 @@ class MotorTask {
             case Parameter::StallguardMinVelocity: {
                 auto value =
                     motor_util::SealStepper::velocity_to_tstep(msg.value);
-                static constexpr const uint32_t min_tstep = -64;
-                static constexpr const uint32_t max_tstep = 63;
+                static constexpr const uint32_t min_tstep = 0;
+                static constexpr const uint32_t max_tstep = (1 << 20) - 1;
                 value = std::clamp(static_cast<uint32_t>(value), min_tstep,
                                    max_tstep);
                 _tmc2130.get_register_map().tcoolthrs.threshold = value;
