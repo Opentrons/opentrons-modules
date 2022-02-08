@@ -61,6 +61,10 @@ concept MotorExecutionPolicy = requires(Policy& p,
     {p.lid_solenoid_disengage()};
     // A function to engage the solenoid
     {p.lid_solenoid_engage()};
+    // A function to read the Lid Closed Switch
+    { p.lid_read_closed_switch() } -> std::same_as<bool>;
+    // A function to read the Lid Open Switch
+    { p.lid_read_open_switch() } -> std::same_as<bool>;
     // A function to start a seal stepper movement, with a callback for each
     // tick
     { p.seal_stepper_start(callback) } -> std::same_as<bool>;
@@ -362,10 +366,18 @@ class MotorTask {
     auto visit_message(const messages::GetLidStatusMessage& msg, Policy& policy)
         -> void {
         static_cast<void>(policy);
+        auto lid = motor_util::LidStepper::Status::UNKNOWN;
+        auto seal = motor_util::SealStepper::Status::UNKNOWN;
+
+        if (policy.lid_read_closed_switch()) {
+            lid = motor_util::LidStepper::Status::CLOSED;
+        }
+        if (policy.lid_read_open_switch()) {
+            seal = motor_util::SealStepper::Status::ENGAGED;
+        }
+
         auto response = messages::GetLidStatusResponse{
-            .responding_to_id = msg.id,
-            .lid = motor_util::LidStepper::Status::UNKNOWN,
-            .seal = motor_util::SealStepper::Status::UNKNOWN};
+            .responding_to_id = msg.id, .lid = lid, .seal = seal};
         static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }

@@ -80,6 +80,20 @@ bool motor_hardware_lid_stepper_check_fault(void);
 bool motor_hardware_lid_stepper_reset(void);
 
 /**
+ * @brief Read the Lid Closed switch
+ *
+ * @return true if the lid is closed, false otherwise
+ */
+bool motor_hardware_lid_read_closed(void);
+
+/**
+ * @brief Read the Lid Open switch
+ *
+ * @return true if the lid is fully open, false otherwise
+ */
+bool motor_hardware_lid_read_open(void);
+
+/**
  * @brief Sets the enable pin on the TMC2130
  * @param[in] enable True to enable, false to disable the TMC
  * @return True if the enable pin was set, false if it couldn't be set

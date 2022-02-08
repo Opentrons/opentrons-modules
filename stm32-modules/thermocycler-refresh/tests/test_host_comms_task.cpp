@@ -1657,7 +1657,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
-                        const char response[] = "M119 Lid:unknown Seal:unknown OK\n";
+                        const char response[] =
+                            "M119 Lid:unknown Seal:unknown OK\n";
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith(response));
                         REQUIRE(written_secondpass ==

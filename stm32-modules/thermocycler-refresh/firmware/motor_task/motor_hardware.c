@@ -35,6 +35,21 @@ extern "C" {
 #define LID_STEPPER_VREF_CHANNEL DAC_CHANNEL_1
 #define LID_STEPPER_STEP_Channel TIM_CHANNEL_1
 
+/** Port for the lid closed optical switch.*/
+#define LID_CLOSED_SWITCH_PORT (GPIOD)
+/** Pin for the lid closed optical switch.*/
+#define LID_CLOSED_SWITCH_PIN (GPIO_PIN_9)
+
+/** Port for the lid open optical switch.*/
+#define LID_OPEN_SWITCH_PORT (GPIOB)
+/** Pin for the lid open optical switch.*/
+#define LID_OPEN_SWITCH_PIN (GPIO_PIN_7)
+
+/** Port for the Photointerrupt Enable line.*/
+#define PHOTOINTERRUPT_ENABLE_PORT (GPIOE)
+/** Pin for the photointerrupt enable line.*/
+#define PHOTOINTERRUPT_ENABLE_PIN (GPIO_PIN_0)
+
 /** Port for the step pulse pin.*/
 #define SEAL_STEPPER_STEP_PORT (GPIOB)
 /** Pin for the step pulse pin.*/
@@ -212,6 +227,14 @@ bool motor_hardware_lid_stepper_reset(void) {
     return (motor_hardware_lid_stepper_check_fault() == true) ? false : true;
 }
 
+bool motor_hardware_lid_read_closed(void) {
+    return (HAL_GPIO_ReadPin(LID_CLOSED_SWITCH_PORT, LID_CLOSED_SWITCH_PIN) == GPIO_PIN_RESET) ? true : false;
+}
+
+bool motor_hardware_lid_read_open(void) {
+    return (HAL_GPIO_ReadPin(LID_OPEN_SWITCH_PORT, LID_OPEN_SWITCH_PIN) == GPIO_PIN_SET) ? true : false;
+}
+
 
 bool motor_hardware_set_seal_enable(bool enable) {
     // Active low
@@ -309,6 +332,29 @@ static void init_motor_gpio(void)
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
     HAL_GPIO_Init(LID_STEPPER_CONTROL_Port, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = LID_CLOSED_SWITCH_PIN;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Alternate = 0;
+    HAL_GPIO_Init(LID_CLOSED_SWITCH_PORT, &GPIO_InitStruct);
+    
+    GPIO_InitStruct.Pin = LID_OPEN_SWITCH_PIN;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Alternate = 0;
+    HAL_GPIO_Init(LID_OPEN_SWITCH_PORT, &GPIO_InitStruct);
+
+    // Initialize photointerrupt to 3.3v to enable
+    GPIO_InitStruct.Pin = PHOTOINTERRUPT_ENABLE_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+	GPIO_InitStruct.Alternate = 0;
+    HAL_GPIO_Init(PHOTOINTERRUPT_ENABLE_PORT, &GPIO_InitStruct);
+    HAL_GPIO_WritePin(PHOTOINTERRUPT_ENABLE_PORT, PHOTOINTERRUPT_ENABLE_PIN, GPIO_PIN_SET);
 
     GPIO_InitStruct.Pin = SEAL_STEPPER_ENABLE_PIN;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
