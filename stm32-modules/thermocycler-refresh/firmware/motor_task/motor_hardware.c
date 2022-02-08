@@ -460,7 +460,7 @@ static void init_tim2(TIM_HandleTypeDef* htim) {
     htim->Init.Prescaler = uwPrescalerValue;
     htim->Init.CounterMode = TIM_COUNTERMODE_UP;
     htim->Init.Period = uwPeriodValue;
-    htim->Init.ClockDivision = 0;
+    htim->Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     htim->Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
     htim->Channel = HAL_TIM_ACTIVE_CHANNEL_1;
     hal_ret = HAL_TIM_OC_Init(htim);
