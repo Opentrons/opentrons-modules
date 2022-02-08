@@ -61,6 +61,10 @@ concept MotorExecutionPolicy = requires(Policy& p,
     {p.lid_solenoid_disengage()};
     // A function to engage the solenoid
     {p.lid_solenoid_engage()};
+    // A function to read the Lid Closed Switch
+    { p.lid_read_closed_switch() } -> std::same_as<bool>;
+    // A function to read the Lid Open Switch
+    { p.lid_read_open_switch() } -> std::same_as<bool>;
     // A function to start a seal stepper movement, with a callback for each
     // tick
     { p.seal_stepper_start(callback) } -> std::same_as<bool>;
@@ -122,7 +126,8 @@ class MotorTask {
                         SEAL_STEPPER_DEFAULT_ACCELERATION,
                         motor_util::MovementType::OpenLoop, 0),
           _seal_velocity(SEAL_STEPPER_DEFAULT_VELOCITY),
-          _seal_acceleration(SEAL_STEPPER_DEFAULT_ACCELERATION) {}
+          _seal_acceleration(SEAL_STEPPER_DEFAULT_ACCELERATION),
+          _seal_position(motor_util::SealStepper::Status::UNKNOWN) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -249,6 +254,7 @@ class MotorTask {
                 case SealStepperComplete::CompletionReason::ERROR:
                     // TODO clear the error
                     with_error = errors::ErrorCode::SEAL_MOTOR_FAULT;
+                    _seal_position = motor_util::SealStepper::Status::UNKNOWN;
                     break;
                 default:
                     break;
@@ -358,6 +364,33 @@ class MotorTask {
             messages::HostCommsMessage(response)));
     }
 
+    template <MotorExecutionPolicy Policy>
+    auto visit_message(const messages::GetLidStatusMessage& msg, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        auto lid = motor_util::LidStepper::Status::UNKNOWN;
+        auto seal = _seal_position;
+
+        if (policy.lid_read_closed_switch()) {
+            lid = motor_util::LidStepper::Status::CLOSED;
+        } else if (policy.lid_read_open_switch()) {
+            lid = motor_util::LidStepper::Status::OPEN;
+        } else if (_lid_stepper_state.status !=
+                   StepperState::StepperTaskStatus::IDLE) {
+            lid = motor_util::LidStepper::Status::BETWEEN;
+        }
+
+        if (_seal_stepper_state.status !=
+            StepperState::StepperTaskStatus::IDLE) {
+            seal = motor_util::SealStepper::Status::BETWEEN;
+        }
+
+        auto response = messages::GetLidStatusResponse{
+            .responding_to_id = msg.id, .lid = lid, .seal = seal};
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
     // Callback for each tick() during a seal stepper movement
     template <MotorExecutionPolicy Policy>
     auto seal_step_callback(Policy& policy) -> void {
@@ -454,6 +487,14 @@ class MotorTask {
     motor_util::MovementProfile _seal_profile;
     double _seal_velocity;
     double _seal_acceleration;
+    /**
+     * @brief  We need to cache the position of the seal motor in addition to
+     * the state in _seal_stepper_state due to the lack of limit switches.
+     *
+     * The lid stepper has switches to tell where it is, so we don't
+     * need a similar variable for that motor.
+     */
+    motor_util::SealStepper::Status _seal_position;
 };
 
 };  // namespace motor_task

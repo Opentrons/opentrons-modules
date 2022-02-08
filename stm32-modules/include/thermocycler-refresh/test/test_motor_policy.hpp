@@ -37,6 +37,10 @@ class TestMotorPolicy : public TestTMC2130Policy {
     auto lid_solenoid_disengage() -> void { _solenoid_engaged = false; }
     auto lid_solenoid_engage() -> void { _solenoid_engaged = true; }
 
+    auto lid_read_closed_switch() -> bool { return _lid_closed_switch; }
+
+    auto lid_read_open_switch() -> bool { return _lid_open_switch; }
+
     auto seal_stepper_start(Callback cb) -> bool {
         if (_seal_moving) {
             return false;
@@ -63,6 +67,10 @@ class TestMotorPolicy : public TestTMC2130Policy {
     auto get_angle() -> double { return _actual_angle; }
     auto seal_moving() -> bool { return _seal_moving; }
 
+    auto set_lid_open_switch(bool val) -> void { _lid_open_switch = val; }
+
+    auto set_lid_closed_switch(bool val) -> void { _lid_closed_switch = val; }
+
   private:
     // Solenoid is engaged when unpowered
     bool _solenoid_engaged = true;
@@ -71,5 +79,7 @@ class TestMotorPolicy : public TestTMC2130Policy {
     bool _lid_moving = false;
     bool _lid_fault = false;
     bool _seal_moving = false;
+    bool _lid_open_switch = false;
+    bool _lid_closed_switch = false;
     Callback _callback;
 };

@@ -250,6 +250,16 @@ struct SetLedMode {
     colors::Mode mode;
 };
 
+struct GetLidStatusMessage {
+    uint32_t id;
+};
+
+struct GetLidStatusResponse {
+    uint32_t responding_to_id;
+    motor_util::LidStepper::Status lid;
+    motor_util::SealStepper::Status seal;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage,
@@ -259,7 +269,8 @@ using HostCommsMessage =
                    ErrorMessage, ForceUSBDisconnectMessage,
                    GetSystemInfoResponse, GetLidTemperatureDebugResponse,
                    GetPlateTemperatureDebugResponse, GetPlateTempResponse,
-                   GetLidTempResponse, GetSealDriveStatusResponse>;
+                   GetLidTempResponse, GetSealDriveStatusResponse,
+                   GetLidStatusResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
@@ -271,9 +282,8 @@ using LidHeaterMessage =
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
                    GetLidTempMessage, SetLidTemperatureMessage,
                    DeactivateLidHeatingMessage, SetPIDConstantsMessage>;
-using MotorMessage =
-    ::std::variant<std::monostate, ActuateSolenoidMessage,
-                   LidStepperDebugMessage, LidStepperComplete,
-                   SealStepperDebugMessage, SealStepperComplete,
-                   GetSealDriveStatusMessage, SetSealParameterMessage>;
+using MotorMessage = ::std::variant<
+    std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
+    LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,
+    GetSealDriveStatusMessage, SetSealParameterMessage, GetLidStatusMessage>;
 };  // namespace messages

@@ -41,6 +41,10 @@ class SimMotorPolicy : public SimTMC2130Policy {
     auto lid_solenoid_disengage() -> void { _solenoid_engaged = false; }
     auto lid_solenoid_engage() -> void { _solenoid_engaged = true; }
 
+    auto lid_read_closed_switch() -> bool { return _lid_closed_switch; }
+
+    auto lid_read_open_switch() -> bool { return _lid_open_switch; }
+
     auto seal_stepper_start(Callback cb) -> bool {
         if (_seal_moving) {
             return false;
@@ -67,6 +71,8 @@ class SimMotorPolicy : public SimTMC2130Policy {
     int32_t _actual_angle = 0;
     bool _moving = false;
     bool _lid_fault = false;
+    bool _lid_open_switch = false;
+    bool _lid_closed_switch = false;
     bool _seal_moving = false;
     Callback _callback;
 };

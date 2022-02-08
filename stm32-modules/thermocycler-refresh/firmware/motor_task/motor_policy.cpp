@@ -47,6 +47,16 @@ auto MotorPolicy::lid_solenoid_engage() -> void {
     motor_hardware_solenoid_engage();
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::lid_read_closed_switch() -> bool {
+    return motor_hardware_lid_read_closed();
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::lid_read_open_switch() -> bool {
+    return motor_hardware_lid_read_open();
+}
+
 auto MotorPolicy::seal_stepper_start(std::function<void()> callback) -> bool {
     _seal_callback = std::move(callback);
     return motor_hardware_start_seal_movement();

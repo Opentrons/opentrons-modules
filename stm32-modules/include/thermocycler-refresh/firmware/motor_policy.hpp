@@ -62,6 +62,20 @@ class MotorPolicy {
     auto lid_solenoid_engage() -> void;
 
     /**
+     * @brief Read whether the Closed Switch is active
+     *
+     * @return true if the lid is closed, false otherwise
+     */
+    auto lid_read_closed_switch() -> bool;
+
+    /**
+     * @brief Read whether the Open Switch is active
+     *
+     * @return true if the lid is fully open, false otherwise
+     */
+    auto lid_read_open_switch() -> bool;
+
+    /**
      * @brief Start a new seal stepper movement
      *
      * @param callback Function to call on every tick

@@ -35,6 +35,21 @@ extern "C" {
 #define LID_STEPPER_VREF_CHANNEL DAC_CHANNEL_1
 #define LID_STEPPER_STEP_Channel TIM_CHANNEL_1
 
+/** Port for the lid closed optical switch.*/
+#define LID_CLOSED_SWITCH_PORT (GPIOD)
+/** Pin for the lid closed optical switch.*/
+#define LID_CLOSED_SWITCH_PIN (GPIO_PIN_9)
+
+/** Port for the lid open optical switch.*/
+#define LID_OPEN_SWITCH_PORT (GPIOB)
+/** Pin for the lid open optical switch.*/
+#define LID_OPEN_SWITCH_PIN (GPIO_PIN_7)
+
+/** Port for the Photointerrupt Enable line.*/
+#define PHOTOINTERRUPT_ENABLE_PORT (GPIOE)
+/** Pin for the photointerrupt enable line.*/
+#define PHOTOINTERRUPT_ENABLE_PIN (GPIO_PIN_0)
+
 /** Port for the step pulse pin.*/
 #define SEAL_STEPPER_STEP_PORT (GPIOB)
 /** Pin for the step pulse pin.*/
@@ -73,10 +88,16 @@ extern "C" {
 typedef struct lid_hardware_struct {
     // Whether the lid motor is moving
     bool moving;
+    // Direction the lid is moving
+    bool direction;
     // Current step count for the lid
     int32_t step_count;
     // Target step count for the lid
     int32_t step_target;
+    // Timer for the lid motor
+    TIM_HandleTypeDef timer;
+    // DAC for lid current control
+    DAC_HandleTypeDef dac;
 } lid_hardware_t;
 
 typedef struct seal_hardware_struct {
@@ -94,14 +115,10 @@ typedef struct seal_hardware_struct {
 typedef struct motor_hardware_struct {
     // Whether this driver has been initialized
     bool initialized;
-    // Handle for the lid current control DAC
-    DAC_HandleTypeDef lid_dac;
-    // Current status of the lid stepper
-    lid_hardware_t lid_stepper;
-    // Handle for the timer used for the stepper motors
-    TIM_HandleTypeDef motor_timer;
     // Callback for completion of a lid stepper movement
     motor_hardware_callbacks callbacks;
+    // Current status of the lid stepper
+    lid_hardware_t lid_stepper;
     // Encapsulates seal motor information
     seal_hardware_t seal;
 } motor_hardware_t;
@@ -110,16 +127,17 @@ typedef struct motor_hardware_struct {
 
 static motor_hardware_t _motor_hardware = {
     .initialized = false,
-    .lid_dac = {0},
-    .lid_stepper = {
-        .moving = false,
-        .step_count = 0,
-        .step_target = 0
-    },
-    .motor_timer = {0},
     .callbacks = {
         .lid_stepper_complete = NULL,
         .seal_stepper_tick = NULL
+    },
+    .lid_stepper = {
+        .moving = false,
+        .direction = true,
+        .step_count = 0,
+        .step_target = 0,
+        .timer = {0},
+        .dac = {0}
     },
     .seal = {
         .enabled = false,
@@ -151,8 +169,8 @@ void motor_hardware_setup(const motor_hardware_callbacks* callbacks) {
 
     if(!_motor_hardware.initialized) {
         init_motor_gpio();
-        init_dac1(&_motor_hardware.lid_dac);
-        init_tim2(&_motor_hardware.motor_timer);
+        init_dac1(&_motor_hardware.lid_stepper.dac);
+        init_tim2(&_motor_hardware.lid_stepper.timer);
         init_tim6(&_motor_hardware.seal.timer);
         motor_spi_initialize();
     }
@@ -172,29 +190,48 @@ void motor_hardware_lid_stepper_start(int32_t steps) {
     // Multiply number of steps by 2 because the timer is in toggle mode (2 interrupts = 1 microstep)
     _motor_hardware.lid_stepper.step_target = abs(steps) * 2;
 
+    // True = opening
+    _motor_hardware.lid_stepper.direction = (steps > 0);
     if (steps > 0) {
         HAL_GPIO_WritePin(LID_STEPPER_CONTROL_Port, LID_STEPPER_DIR_Pin, GPIO_PIN_SET);
     } else {
         HAL_GPIO_WritePin(LID_STEPPER_CONTROL_Port, LID_STEPPER_DIR_Pin, GPIO_PIN_RESET);
     }
 
-    HAL_TIM_OC_Start_IT(&_motor_hardware.motor_timer, LID_STEPPER_STEP_Channel);
+    HAL_TIM_OC_Start_IT(&_motor_hardware.lid_stepper.timer, LID_STEPPER_STEP_Channel);
 }
 
 void motor_hardware_lid_stepper_stop() {
-    HAL_TIM_OC_Stop_IT(&_motor_hardware.motor_timer, LID_STEPPER_STEP_Channel);
+    HAL_TIM_OC_Stop_IT(&_motor_hardware.lid_stepper.timer, LID_STEPPER_STEP_Channel);
 }
 
 void motor_hardware_lid_increment() {
+    bool done = false;
     _motor_hardware.lid_stepper.step_count++;
+    if(_motor_hardware.lid_stepper.direction) {
+        // Check if lid is open
+        if(motor_hardware_lid_read_open()) {
+            done = true;
+        }
+    } else {
+        // Check if lid is closed
+        if(motor_hardware_lid_read_closed()) {
+            done = true;
+        }
+    }
+    // If the lid hit a limit switch, 
     if (_motor_hardware.lid_stepper.step_count > (_motor_hardware.lid_stepper.step_target - 1)) {
+        done = true;
+    }
+
+    if(done) {
         motor_hardware_lid_stepper_stop();
         _motor_hardware.callbacks.lid_stepper_complete();
     }
 }
 
 void motor_hardware_lid_stepper_set_dac(uint8_t dacval) {
-    HAL_DAC_SetValue(&_motor_hardware.lid_dac, LID_STEPPER_VREF_CHANNEL, DAC_ALIGN_8B_R, dacval);
+    HAL_DAC_SetValue(&_motor_hardware.lid_stepper.dac, LID_STEPPER_VREF_CHANNEL, DAC_ALIGN_8B_R, dacval);
 }
 
 bool motor_hardware_lid_stepper_check_fault(void) {
@@ -212,6 +249,13 @@ bool motor_hardware_lid_stepper_reset(void) {
     return (motor_hardware_lid_stepper_check_fault() == true) ? false : true;
 }
 
+bool motor_hardware_lid_read_closed(void) {
+    return (HAL_GPIO_ReadPin(LID_CLOSED_SWITCH_PORT, LID_CLOSED_SWITCH_PIN) == GPIO_PIN_RESET) ? true : false;
+}
+
+bool motor_hardware_lid_read_open(void) {
+    return (HAL_GPIO_ReadPin(LID_OPEN_SWITCH_PORT, LID_OPEN_SWITCH_PIN) == GPIO_PIN_SET) ? true : false;
+}
 
 bool motor_hardware_set_seal_enable(bool enable) {
     // Active low
@@ -310,6 +354,29 @@ static void init_motor_gpio(void)
     GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
     HAL_GPIO_Init(LID_STEPPER_CONTROL_Port, &GPIO_InitStruct);
 
+    GPIO_InitStruct.Pin = LID_CLOSED_SWITCH_PIN;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Alternate = 0;
+    HAL_GPIO_Init(LID_CLOSED_SWITCH_PORT, &GPIO_InitStruct);
+    
+    GPIO_InitStruct.Pin = LID_OPEN_SWITCH_PIN;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Alternate = 0;
+    HAL_GPIO_Init(LID_OPEN_SWITCH_PORT, &GPIO_InitStruct);
+
+    // Initialize photointerrupt to 3.3v to enable
+    GPIO_InitStruct.Pin = PHOTOINTERRUPT_ENABLE_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+	GPIO_InitStruct.Alternate = 0;
+    HAL_GPIO_Init(PHOTOINTERRUPT_ENABLE_PORT, &GPIO_InitStruct);
+    HAL_GPIO_WritePin(PHOTOINTERRUPT_ENABLE_PORT, PHOTOINTERRUPT_ENABLE_PIN, GPIO_PIN_SET);
+
     GPIO_InitStruct.Pin = SEAL_STEPPER_ENABLE_PIN;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -349,7 +416,7 @@ static void init_motor_gpio(void)
 }
 
 void HAL_TIM_OC_MspInit(TIM_HandleTypeDef* htim) {
-    if (htim == &_motor_hardware.motor_timer) {
+    if (htim == &_motor_hardware.lid_stepper.timer) {
         /* Peripheral clock enable */
         __HAL_RCC_TIM2_CLK_ENABLE();
 
@@ -393,7 +460,7 @@ static void init_tim2(TIM_HandleTypeDef* htim) {
     htim->Init.Prescaler = uwPrescalerValue;
     htim->Init.CounterMode = TIM_COUNTERMODE_UP;
     htim->Init.Period = uwPeriodValue;
-    htim->Init.ClockDivision = 0;
+    htim->Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     htim->Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
     htim->Channel = HAL_TIM_ACTIVE_CHANNEL_1;
     hal_ret = HAL_TIM_OC_Init(htim);
@@ -435,7 +502,7 @@ static void init_tim6(TIM_HandleTypeDef* htim) {
   * Lid Stepper control)
   */
 void TIM2_IRQHandler(void) { 
-    HAL_TIM_IRQHandler(&_motor_hardware.motor_timer); 
+    HAL_TIM_IRQHandler(&_motor_hardware.lid_stepper.timer); 
 }
 
 /**
@@ -457,7 +524,6 @@ void EXTI3_IRQHandler(void) {
 		}	
 	}
 }
-	
 
 /**
  * @brief Callback for the Diag1 input - falling edge.

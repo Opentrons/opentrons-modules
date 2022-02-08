@@ -77,6 +77,40 @@ SCENARIO("Lid stepper microstep conversion works") {
     }
 }
 
+SCENARIO("lid status stringification works") {
+    using Status = motor_util::LidStepper::Status;
+    std::array<Status, 4> inputs = {Status::BETWEEN, Status::CLOSED,
+                                    Status::OPEN, Status::UNKNOWN};
+    std::array<std::string, 4> outputs = {"in_between", "closed", "open",
+                                          "unknown"};
+    WHEN("converting lid status enums to strings ") {
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            auto result =
+                motor_util::LidStepper::status_to_string(inputs.at(i));
+            DYNAMIC_SECTION("the string is as expected" << i) {
+                REQUIRE_THAT(result, Catch::Matchers::Equals(outputs.at(i)));
+            }
+        }
+    }
+}
+
+SCENARIO("seal status stringification works") {
+    using Status = motor_util::SealStepper::Status;
+    std::array<Status, 4> inputs = {Status::BETWEEN, Status::ENGAGED,
+                                    Status::RETRACTED, Status::UNKNOWN};
+    std::array<std::string, 4> outputs = {"in_between", "engaged", "retracted",
+                                          "unknown"};
+    WHEN("converting lid status enums to strings") {
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            auto result =
+                motor_util::SealStepper::status_to_string(inputs.at(i));
+            DYNAMIC_SECTION("the string is as expected " << i) {
+                REQUIRE_THAT(result, Catch::Matchers::Equals(outputs.at(i)));
+            }
+        }
+    }
+}
+
 SCENARIO("MovementProfile functionality with flat acceleration") {
     GIVEN("a movement profile with a 1Hz interrupt") {
         constexpr int frequency = 1;

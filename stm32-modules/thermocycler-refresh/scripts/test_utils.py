@@ -209,3 +209,11 @@ def set_seal_param(param: SealParam, value: int, ser: serial.Serial):
     res = ser.readline()
     guard_error(res, b'M243.D OK')
     print(res)
+
+# Debug command to get lid status
+def get_lid_status(ser: serial.Serial):
+    print('Getting lid status')
+    ser.write(f'M119\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M119 Lid:')
+    print(res)

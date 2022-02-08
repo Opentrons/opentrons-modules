@@ -95,6 +95,19 @@ SCENARIO("motor task message passing") {
                     REQUIRE(ack_msg.responding_to_id == 123);
                 }
             }
+            AND_WHEN("sending a GetLidStatus message") {
+                auto message = messages::GetLidStatusMessage{.id = 123};
+                motor_queue.backing_deque.push_back(message);
+                tasks->run_motor_task();
+                THEN("the response shows the lid moving") {
+                    auto msg =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    auto response =
+                        std::get<messages::GetLidStatusResponse>(msg);
+                    REQUIRE(response.lid ==
+                            motor_util::LidStepper::Status::BETWEEN);
+                }
+            }
         }
         GIVEN("a lid motor fault") {
             motor_policy.trigger_lid_fault();
@@ -200,6 +213,19 @@ SCENARIO("motor task message passing") {
                     REQUIRE(!motor_policy.seal_moving());
                 }
             }
+            AND_WHEN("sending a GetLidStatus message") {
+                auto message = messages::GetLidStatusMessage{.id = 123};
+                motor_queue.backing_deque.push_back(message);
+                tasks->run_motor_task();
+                THEN("the response shows the seal moving") {
+                    auto msg =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    auto response =
+                        std::get<messages::GetLidStatusResponse>(msg);
+                    REQUIRE(response.seal ==
+                            motor_util::SealStepper::Status::BETWEEN);
+                }
+            }
             AND_WHEN("incrementing the tick for up to a second") {
                 uint32_t i = 0;
                 for (; i < motor_policy.MotorTickFrequency; ++i) {
@@ -284,6 +310,56 @@ SCENARIO("motor task message passing") {
                 uint32_t mask = 0x1F;
                 REQUIRE(reg.has_value());
                 REQUIRE((reg.value() & mask) == mask);
+            }
+        }
+        WHEN("sending a GetLidStatus message") {
+            auto message = messages::GetLidStatusMessage{.id = 123};
+            motor_queue.backing_deque.push_back(message);
+            tasks->run_motor_task();
+            THEN("the message is received and responded to") {
+                REQUIRE(!motor_queue.has_message());
+                REQUIRE(tasks->get_host_comms_queue().has_message());
+                auto msg = tasks->get_host_comms_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::GetLidStatusResponse>(
+                    msg));
+                auto response = std::get<messages::GetLidStatusResponse>(msg);
+                REQUIRE(response.responding_to_id == message.id);
+                REQUIRE(response.lid ==
+                        motor_util::LidStepper::Status::UNKNOWN);
+                REQUIRE(response.seal ==
+                        motor_util::SealStepper::Status::UNKNOWN);
+            }
+        }
+        GIVEN("triggered lid close switch") {
+            tasks->get_motor_policy().set_lid_closed_switch(true);
+            WHEN("sending a GetLidStatus message") {
+                auto message = messages::GetLidStatusMessage{.id = 123};
+                motor_queue.backing_deque.push_back(message);
+                tasks->run_motor_task();
+                THEN("the response shows the lid closed") {
+                    auto msg =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    auto response =
+                        std::get<messages::GetLidStatusResponse>(msg);
+                    REQUIRE(response.lid ==
+                            motor_util::LidStepper::Status::CLOSED);
+                }
+            }
+        }
+        GIVEN("triggered lid open switch") {
+            tasks->get_motor_policy().set_lid_open_switch(true);
+            WHEN("sending a GetLidStatus message") {
+                auto message = messages::GetLidStatusMessage{.id = 123};
+                motor_queue.backing_deque.push_back(message);
+                tasks->run_motor_task();
+                THEN("the response shows the lid open") {
+                    auto msg =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    auto response =
+                        std::get<messages::GetLidStatusResponse>(msg);
+                    REQUIRE(response.lid ==
+                            motor_util::LidStepper::Status::OPEN);
+                }
             }
         }
     }
