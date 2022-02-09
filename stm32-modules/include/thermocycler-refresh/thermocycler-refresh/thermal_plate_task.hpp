@@ -46,6 +46,8 @@ concept ThermalPlateExecutionPolicy = requires(Policy& p, PeltierID id,
     // a percentage from 0 to 1.0
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     { p.set_fan(1.0F) } -> std::same_as<bool>;
+    // A function to get the current power of the heatsink fan.
+    { p.get_fan() } -> std::same_as<double>;
 };
 
 /** Just used for initialization assignment of error bits.*/
@@ -542,14 +544,26 @@ class ThermalPlateTask {
     template <ThermalPlateExecutionPolicy Policy>
     auto visit_message(const messages::GetThermalPowerMessage& msg,
                        Policy& policy) -> void {
-        static_cast<void>(policy);
-
         auto response =
             messages::GetPlatePowerResponse{.responding_to_id = msg.id,
                                             .left = 0.0F,
                                             .center = 0.0F,
                                             .right = 0.0F,
-                                            .fans = 0.0F};
+                                            .fans = policy.get_fan()};
+
+        auto left = policy.get_peltier(_peltier_left.id);
+        auto center = policy.get_peltier(_peltier_center.id);
+        auto right = policy.get_peltier(_peltier_right.id);
+
+        response.left =
+            left.second *
+            (left.first == PeltierDirection::PELTIER_HEATING ? 1.0 : -1.0);
+        response.center =
+            center.second *
+            (center.first == PeltierDirection::PELTIER_HEATING ? 1.0 : -1.0);
+        response.right =
+            right.second *
+            (right.first == PeltierDirection::PELTIER_HEATING ? 1.0 : -1.0);
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));

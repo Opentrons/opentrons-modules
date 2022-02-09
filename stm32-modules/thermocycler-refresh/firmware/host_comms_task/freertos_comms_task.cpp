@@ -50,7 +50,7 @@ static auto _top_task = host_comms_task::HostCommsTask(_comms_queue);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _tasks = std::make_pair(&_top_task, &_local_task);
 
-static constexpr uint32_t stack_size = 500;
+static constexpr uint32_t stack_size = 2000;
 // Stack as a std::array because why not
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::array<StackType_t, stack_size> stack;

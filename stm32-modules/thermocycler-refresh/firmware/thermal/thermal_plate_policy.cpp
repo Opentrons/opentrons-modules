@@ -41,3 +41,6 @@ auto ThermalPlatePolicy::set_fan(double power) -> bool {
     power = std::clamp(power, (double)0.0F, (double)1.0F);
     return thermal_fan_set_power(power);
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto ThermalPlatePolicy::get_fan() -> double { return thermal_fan_get_power(); }

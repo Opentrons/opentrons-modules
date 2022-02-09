@@ -329,10 +329,8 @@ class LidHeaterTask {
     template <LidHeaterExecutionPolicy Policy>
     auto visit_message(const messages::GetThermalPowerMessage& msg,
                        Policy& policy) -> void {
-        static_cast<void>(policy);
-
         auto response = messages::GetLidPowerResponse{
-            .responding_to_id = msg.id, .heater = 0.0F};
+            .responding_to_id = msg.id, .heater = policy.get_heater_power()};
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));

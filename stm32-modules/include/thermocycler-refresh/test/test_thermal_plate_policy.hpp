@@ -54,6 +54,8 @@ class TestThermalPlatePolicy {
         return true;
     }
 
+    auto get_fan() -> double { return _fan_power; }
+
     bool _enabled = false;
     TestPeltier _left = TestPeltier();
     TestPeltier _center = TestPeltier();
