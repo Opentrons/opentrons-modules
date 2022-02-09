@@ -539,6 +539,22 @@ class ThermalPlateTask {
             _task_registry->comms->get_message_queue().try_send(response));
     }
 
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::GetThermalPowerMessage& msg,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+
+        auto response =
+            messages::GetPlatePowerResponse{.responding_to_id = msg.id,
+                                            .left = 0.0F,
+                                            .center = 0.0F,
+                                            .right = 0.0F,
+                                            .fans = 0.0F};
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
     auto handle_temperature_conversion(uint16_t conversion_result,
                                        Thermistor& thermistor) -> void {
         auto visitor = [this, &thermistor](const auto value) -> void {
