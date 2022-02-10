@@ -37,12 +37,13 @@ SCENARIO("gcode m240.d works", "[gcode][parse][m240d]") {
                 REQUIRE(parsed.first.has_value());
                 REQUIRE_THAT(parsed.first.value().angle,
                              Catch::Matchers::WithinAbs(20, 0.1));
+                REQUIRE(!parsed.first.value().overdrive);
             }
         }
     }
 
-    GIVEN("command to move motor -20.5 degrees") {
-        std::string buffer = "M240.D -20.5\n";
+    GIVEN("command to move motor -20.5 degrees with overdrive") {
+        std::string buffer = "M240.D -20.5 O\n";
         WHEN("parsing the command") {
             auto parsed = gcode::ActuateLidStepperDebug::parse(buffer.begin(),
                                                                buffer.end());
@@ -51,6 +52,7 @@ SCENARIO("gcode m240.d works", "[gcode][parse][m240d]") {
                 REQUIRE(parsed.first.has_value());
                 REQUIRE_THAT(parsed.first.value().angle,
                              Catch::Matchers::WithinAbs(-20.5, 0.1));
+                REQUIRE(parsed.first.value().overdrive);
             }
         }
     }

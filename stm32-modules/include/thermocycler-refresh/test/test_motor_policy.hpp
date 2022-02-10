@@ -15,7 +15,8 @@ class TestMotorPolicy : public TestTMC2130Policy {
     static constexpr uint32_t MotorTickFrequency = 1000000;
 
     auto lid_stepper_set_dac(uint8_t dac_val) -> void { _dac_val = dac_val; }
-    auto lid_stepper_start(int32_t steps) -> void {
+    auto lid_stepper_start(int32_t steps, bool overdrive) -> void {
+        _lid_overdrive = overdrive;
         // Simulate jumping right to the end
         if (_lid_fault) {
             return;
@@ -71,6 +72,8 @@ class TestMotorPolicy : public TestTMC2130Policy {
 
     auto set_lid_closed_switch(bool val) -> void { _lid_closed_switch = val; }
 
+    auto get_lid_overdrive() -> bool { return _lid_overdrive; }
+
   private:
     // Solenoid is engaged when unpowered
     bool _solenoid_engaged = true;
@@ -81,5 +84,6 @@ class TestMotorPolicy : public TestTMC2130Policy {
     bool _seal_moving = false;
     bool _lid_open_switch = false;
     bool _lid_closed_switch = false;
+    bool _lid_overdrive = false;
     Callback _callback;
 };
