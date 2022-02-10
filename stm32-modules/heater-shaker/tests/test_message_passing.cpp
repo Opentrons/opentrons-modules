@@ -27,7 +27,11 @@ SCENARIO("testing full message passing integration") {
                 auto written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE(written == response_buffer.begin());
+                tasks->get_motor_policy().test_set_current_rpm(50);
                 tasks->get_motor_task().run_once(tasks->get_motor_policy());
+                tasks->get_motor_task().run_once(
+                    tasks->get_motor_policy());  // process check_motor_start
+                                                 // message
                 written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE_THAT(response_buffer,

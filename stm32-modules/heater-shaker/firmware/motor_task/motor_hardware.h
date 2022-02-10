@@ -20,9 +20,6 @@ typedef struct {
     TIM_HandleTypeDef tim2;
     TIM_HandleTypeDef tim3;
     DAC_HandleTypeDef dac1;
-    COMP_HandleTypeDef comp1;
-    COMP_HandleTypeDef comp2;
-    //COMP_HandleTypeDef comp6;
     MCI_Handle_t* mci[NBR_OF_MOTORS];
     MCT_Handle_t* mct[NBR_OF_MOTORS];
     void (*plate_lock_complete)(const optical_switch_results* results);
@@ -75,7 +72,6 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 #define M1_OCP_GPIO_Port GPIOC
 #define M1_BUS_VOLTAGE_Pin GPIO_PIN_5
 #define M1_BUS_VOLTAGE_GPIO_Port GPIOC
-#define M1_OCP_DAC_CHANNEL DAC_CHANNEL_1
 
 // Hall sensor pins that sense the mechanical phase angle of the rotor
 #define M1_HALL_H1_Pin GPIO_PIN_3

@@ -483,55 +483,7 @@ static void DAC_Init(DAC_HandleTypeDef* dac) {
   HAL_DAC_ConfigChannel(dac, &chan_config, SOLENOID_DAC_CHANNEL);
   HAL_DAC_Start(dac, SOLENOID_DAC_CHANNEL);
   HAL_DAC_SetValue(dac, SOLENOID_DAC_CHANNEL, DAC_ALIGN_8B_R, 0);
-
-  DAC_ChannelConfTypeDef chan_config_2 = { //confirm settings. Should be good. Need connection to COMP? Just on COMP
-     .DAC_Trigger = DAC_TRIGGER_NONE,
-     .DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE,
-  };
-  HAL_DAC_ConfigChannel(dac, &chan_config_2, M1_OCP_DAC_CHANNEL);
-  HAL_DAC_Start(dac, M1_OCP_DAC_CHANNEL);
-
-  uint32_t current_ma = (175 / 330) * 255; //adjust numerator
-  // and then rescale into 8 bits with 330 ending up at 255
-  uint8_t dac_val = (uint8_t) ((current_ma) & 0xff);
-  HAL_DAC_SetValue(dac, M1_OCP_DAC_CHANNEL, DAC_ALIGN_8B_R, dac_val); //can DAC only drive 330mA at 3.3V? Setup and probe PA4?
-  //What electricity do wee see at BLDC_CURRU/W during spool up, steady-state, and stall?
 }
-
-//BLDC_CURRU and BLDC_CURRW used to detect main motor overcurrent. BLDC_CURRV not available to comparators for use? Or is it...
-//Need COMP interrupt? Shouldn't, test without
-static void MX_COMP1_Init(COMP_HandleTypeDef* comp) {
-  comp->Instance = COMP1;
-
-  comp->Init.InvertingInput = COMP_INVERTINGINPUT_DAC1_CH1;
-  comp->Init.NonInvertingInput = COMP_NONINVERTINGINPUT_IO1; //PA1
-  comp->Init.Output = COMP_OUTPUT_TIM1BKIN2;
-  //comp->Init.TriggerMode = ; //only need for interrupt mode
-  HAL_COMP_Init(comp);
-  HAL_COMP_Start(comp);
-}
-
-static void MX_COMP2_Init(COMP_HandleTypeDef* comp) {
-  comp->Instance = COMP2;
-
-  comp->Init.InvertingInput = COMP_INVERTINGINPUT_DAC1_CH1;
-  comp->Init.NonInvertingInput = COMP_NONINVERTINGINPUT_IO1; //PA7
-  comp->Init.Output = COMP_OUTPUT_TIM1BKIN2;
-  //comp->Init.TriggerMode = ;
-  HAL_COMP_Init(comp);
-  HAL_COMP_Start(comp);
-}
-
-/*static void MX_COMP6_Init(COMP_HandleTypeDef* comp) {
-  comp->Instance = COMP6;
-
-  comp->Init.InvertingInput = COMP_INVERTINGINPUT_DAC1_CH1;
-  comp->Init.NonInvertingInput = COMP_NONINVERTINGINPUT_IO2; //PB11
-  comp->Init.Output = COMP_OUTPUT_TIM1BKIN2;
-  //comp->Init.TriggerMode = ;
-  HAL_COMP_Init(comp);
-  HAL_COMP_Start(comp);
-}*/
 
 /**
   * Initializes the Global MSP.
@@ -737,8 +689,8 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     PA11     ------> TIM1_BKIN2
     */
     GPIO_InitStruct.Pin = M1_OCP_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD; //OD output from driver
-    GPIO_InitStruct.Pull = GPIO_NOPULL; //need? Have external. Break input may never trigger, but motor would stop in fault state. How big are driver internal resistors?
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF6_TIM1;
     HAL_GPIO_Init(M1_OCP_GPIO_Port, &GPIO_InitStruct);
@@ -863,9 +815,6 @@ void motor_hardware_setup(motor_hardware_handles* handles) {
   MX_TIM1_Init(&handles->tim1);
   MX_TIM2_Init(&handles->tim2);
   DAC_Init(&handles->dac1);
-  MX_COMP1_Init(&handles->comp1);
-  MX_COMP2_Init(&handles->comp2);
-  //MX_COMP6_Init(&handles->comp6);
   MCboot(handles->mci, handles->mct);
   PlateLockTIM_Init(&handles->tim3);
   EXTI0_Config();

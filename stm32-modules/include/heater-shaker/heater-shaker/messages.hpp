@@ -137,6 +137,7 @@ struct ForceUSBDisconnectMessage {
 
 struct BeginHomingMessage {
     uint32_t id;
+    bool from_startup = false;
 };
 
 // Used internally to the motor task, communicates asynchronous errors to the
@@ -146,7 +147,9 @@ struct MotorSystemErrorMessage {
 };
 
 // Used internally to the motor task to drive homing state machine changes
-struct CheckHomingStatusMessage {};
+struct CheckHomingStatusMessage {
+    bool from_startup = false;
+};
 
 struct ErrorMessage {
     errors::ErrorCode code;
@@ -164,12 +167,12 @@ struct SetPlateLockPowerMessage {
 
 struct OpenPlateLockMessage {
     uint32_t id;
-    bool from_startup;
+    bool from_startup = false;
 };
 
 struct ClosePlateLockMessage {
     uint32_t id;
-    bool from_startup;
+    bool from_startup = false;
 };
 
 struct GetPlateLockStateMessage {
@@ -182,7 +185,7 @@ struct GetPlateLockStateDebugMessage {
 
 struct CheckPlateLockStatusMessage {
     uint32_t responding_to_id;
-    bool from_startup;
+    bool from_startup = false;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
