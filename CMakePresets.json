@@ -157,7 +157,7 @@
         {
             "name": "simulators-gcc10",
             "displayName": "simulators gcc10",
-            "description": "Runs simulator target for all subprojects",
+            "description": "Runs simulator target for all subprojects using gcc10 (osx)",
             "configurePreset": "stm32-host-gcc10",
             "jobs": 4,
             "targets": [
