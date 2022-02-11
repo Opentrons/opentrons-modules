@@ -666,20 +666,27 @@ struct ActuateSolenoid {
     }
 };
 
+/**
+ * Actuate lid stepper is a debug command that lets you move the lid
+ * stepper a desired angle. A positive value opens and negative value
+ * closes the lid stepper a desired angle.
+ *
+ * Adding the character 'O' to the command marks an overdrive movement,
+ * aka the limit switches will be ignored
+ *
+ * Format: M240.D <angle> [O]
+ * Example: M240.D 20 opens lid stepper 20 degrees
+ */
 struct ActuateLidStepperDebug {
-    /*
-    ** Actuate lid stepper is a debug command that lets you move the lid
-    ** stepper a desired angle. A positive value opens and negative value
-    ** closes the lid stepper a desired angle.
-    ** Format: M240.D <angle>
-    ** Example: M240.D 20 opens lid stepper 20 degrees
-    */
     using ParseResult = std::optional<ActuateLidStepperDebug>;
     static constexpr auto prefix =
         std::array{'M', '2', '4', '0', '.', 'D', ' '};
     static constexpr const char* response = "M240.D OK\n";
 
+    static constexpr auto overdrive_flag = std::array{' ', 'O'};
+
     double angle;
+    bool overdrive;
 
     template <typename InputIt, typename Limit>
     requires std::contiguous_iterator<InputIt> &&
@@ -694,9 +701,15 @@ struct ActuateLidStepperDebug {
         if (!value_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        return std::make_pair(ParseResult(ActuateLidStepperDebug{
-                                  .angle = value_res.first.value()}),
-                              value_res.second);
+
+        working = prefix_matches(value_res.second, limit, overdrive_flag);
+        // If the flag is present, working was incremented
+        bool overdrive_set = (working != value_res.second);
+
+        return std::make_pair(
+            ParseResult(ActuateLidStepperDebug{.angle = value_res.first.value(),
+                                               .overdrive = overdrive_set}),
+            working);
     }
 
     template <typename InputIt, typename InputLimit>

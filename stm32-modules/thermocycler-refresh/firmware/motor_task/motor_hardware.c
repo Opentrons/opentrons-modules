@@ -90,6 +90,8 @@ typedef struct lid_hardware_struct {
     bool moving;
     // Direction the lid is moving
     bool direction;
+    // Whether the current movement is an overdrive movement
+    bool overdrive;
     // Current step count for the lid
     int32_t step_count;
     // Target step count for the lid
@@ -134,6 +136,7 @@ static motor_hardware_t _motor_hardware = {
     .lid_stepper = {
         .moving = false,
         .direction = true,
+        .overdrive = false,
         .step_count = 0,
         .step_target = 0,
         .timer = {0},
@@ -184,11 +187,13 @@ void motor_hardware_setup(const motor_hardware_callbacks* callbacks) {
 //PA0/PA1/PB10/PB11 = TIM2CH1/2/3/4 (all GPIO_AF1_TIM2)
 //control via increment_step in motor_task.hpp?
 //handle end switch IT start and stop
-void motor_hardware_lid_stepper_start(int32_t steps) {
+void motor_hardware_lid_stepper_start(int32_t steps, bool overdrive) {
     //check for fault
     _motor_hardware.lid_stepper.step_count = 0;
     // Multiply number of steps by 2 because the timer is in toggle mode (2 interrupts = 1 microstep)
     _motor_hardware.lid_stepper.step_target = abs(steps) * 2;
+    // Set overdrive flag
+    _motor_hardware.lid_stepper.overdrive = overdrive;
 
     // True = opening
     _motor_hardware.lid_stepper.direction = (steps > 0);
@@ -208,17 +213,21 @@ void motor_hardware_lid_stepper_stop() {
 void motor_hardware_lid_increment() {
     bool done = false;
     _motor_hardware.lid_stepper.step_count++;
-    if(_motor_hardware.lid_stepper.direction) {
-        // Check if lid is open
-        if(motor_hardware_lid_read_open()) {
-            done = true;
-        }
-    } else {
-        // Check if lid is closed
-        if(motor_hardware_lid_read_closed()) {
-            done = true;
+    // Only check stop switches if this is NOT an overdrive
+    if(!_motor_hardware.lid_stepper.overdrive) {
+        if(_motor_hardware.lid_stepper.direction) {
+            // Check if lid is open
+            if(motor_hardware_lid_read_open()) {
+                done = true;
+            }
+        } else {
+            // Check if lid is closed
+            if(motor_hardware_lid_read_closed()) {
+                done = true;
+            }
         }
     }
+    
     // If the lid hit a limit switch, 
     if (_motor_hardware.lid_stepper.step_count > (_motor_hardware.lid_stepper.step_target - 1)) {
         done = true;

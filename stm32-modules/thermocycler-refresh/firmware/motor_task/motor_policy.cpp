@@ -18,8 +18,8 @@ auto MotorPolicy::lid_stepper_set_dac(uint8_t dac_val) -> void {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::lid_stepper_start(int32_t steps) -> void {
-    motor_hardware_lid_stepper_start(steps);
+auto MotorPolicy::lid_stepper_start(int32_t steps, bool overdrive) -> void {
+    motor_hardware_lid_stepper_start(steps, overdrive);
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
