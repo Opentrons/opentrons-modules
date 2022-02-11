@@ -65,6 +65,23 @@ def get_plate_temperatures(ser: serial.Serial) -> Tuple[float, float, float, flo
     temp_hs = float(match.group('HST'))
     return temp_hs, temp_r, temp_l, temp_c
 
+_THERMAL_POWER_RE = re.compile(
+    '^M103.D L:(?P<L>.+) C:(?P<C>.+) R:(?P<R>.+) H:(?P<H>.+) F:(?P<F>.+) OK\n'
+)
+def get_thermal_power(ser: serial.Serial) -> Tuple[float, float, float, float, float]:
+    ser.write(b'M103.D\n')
+    res = ser.readline()
+    guard_error(res, b'M103.D ')
+    res_s = res.decode()
+    match = re.match(_THERMAL_POWER_RE, res_s)
+    left = float(match.group('L'))
+    center = float(match.group('C'))
+    right = float(match.group('R'))
+    heater = float(match.group('H'))
+    fans = float(match.group('F'))
+    print(res)
+    return left, center, right, heater, fans
+
 _PLATE_TEMP_RE = re.compile('^M105 T:(?P<target>.+) C:(?P<temp>.+) OK\n')
 # JUST gets the base temperature of the plate
 def get_plate_temperature(ser: serial.Serial) -> float:

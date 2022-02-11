@@ -1690,6 +1690,120 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 }
             }
         }
+        WHEN("sending a GetThermalPowerDebug command") {
+            auto message_text = std::string("M103.D\n");
+            auto message_obj =
+                messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                    &*message_text.begin(), &*message_text.end()));
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            auto written_firstpass = tasks->get_host_comms_task().run_once(
+                tx_buf.begin(), tx_buf.end());
+            THEN(
+                "the task should pass the message on to the plate task and not "
+                "immediately ack") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.size() !=
+                        0);
+                auto plate_message =
+                    tasks->get_thermal_plate_queue().backing_deque.front();
+                REQUIRE(
+                    std::holds_alternative<messages::GetThermalPowerMessage>(
+                        plate_message));
+                auto get_plate_message =
+                    std::get<messages::GetThermalPowerMessage>(plate_message);
+                AND_WHEN("sending a good response to host comms") {
+                    auto response = messages::HostCommsMessage(
+                        messages::GetPlatePowerResponse{
+                            .responding_to_id = get_plate_message.id,
+                            .left = 0.0,
+                            .center = 0.1,
+                            .right = 0.2,
+                            .fans = 0.5});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("the task should not ack the message yet") {
+                        REQUIRE(written_secondpass == written_firstpass);
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                    THEN("the task passes the message to the lid task") {
+                        REQUIRE(tasks->get_lid_heater_queue().has_message());
+                        auto lid_message =
+                            tasks->get_lid_heater_queue().backing_deque.front();
+                        REQUIRE(std::holds_alternative<
+                                messages::GetThermalPowerMessage>(lid_message));
+                        auto get_lid_message =
+                            std::get<messages::GetThermalPowerMessage>(
+                                lid_message);
+                        AND_WHEN("sending good response to comms") {
+                            auto response = messages::HostCommsMessage(
+                                messages::GetLidPowerResponse{
+                                    .responding_to_id = get_lid_message.id,
+                                    .heater = 0.3});
+                            tasks->get_host_comms_queue()
+                                .backing_deque.push_back(response);
+                            auto written_thirdpass =
+                                tasks->get_host_comms_task().run_once(
+                                    tx_buf.begin(), tx_buf.end());
+                            THEN("the task should ack the previous message") {
+                                const char response_msg[] =
+                                    "M103.D L:0.00 C:0.10 R:0.20 H:0.30 F:0.50 "
+                                    "OK\n";
+                                REQUIRE_THAT(
+                                    tx_buf,
+                                    Catch::Matchers::StartsWith(response_msg));
+                                REQUIRE(written_thirdpass ==
+                                        tx_buf.begin() + strlen(response_msg));
+                                REQUIRE(!tasks->get_host_comms_queue()
+                                             .has_message());
+                            }
+                        }
+                        AND_WHEN("sending a bad response to host comms") {
+                            auto response = messages::HostCommsMessage(
+                                messages::GetLidPowerResponse{
+                                    .responding_to_id = get_lid_message.id + 1,
+                                    .heater = 1.0});
+                            tasks->get_host_comms_queue()
+                                .backing_deque.push_back(response);
+                            auto written_thirdpass =
+                                tasks->get_host_comms_task().run_once(
+                                    tx_buf.begin(), tx_buf.end());
+                            THEN("an error is written") {
+                                REQUIRE(!tasks->get_host_comms_queue()
+                                             .has_message());
+                                REQUIRE_THAT(
+                                    tx_buf,
+                                    Catch::Matchers::StartsWith("ERR005"));
+                                REQUIRE(written_thirdpass > written_secondpass);
+                            }
+                        }
+                    }
+                }
+                AND_WHEN("sending a bad response to host comms") {
+                    auto response = messages::HostCommsMessage(
+                        messages::GetPlatePowerResponse{
+                            .responding_to_id = get_plate_message.id + 1,
+                            .left = 0.0,
+                            .center = 0.1,
+                            .right = 0.2,
+                            .fans = 0.5});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("an error is written") {
+                        REQUIRE(!tasks->get_host_comms_queue().has_message());
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
+                        REQUIRE(!tasks->get_lid_heater_queue().has_message());
+                        REQUIRE(written_secondpass > written_firstpass);
+                    }
+                }
+            }
+        }
     }
 }
 
