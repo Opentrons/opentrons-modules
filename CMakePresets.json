@@ -144,6 +144,28 @@
             ]
         },
         {
+            "name": "simulators",
+            "displayName": "simulators",
+            "description": "Runs simulator target for all subprojects",
+            "configurePreset": "stm32-host",
+            "jobs": 4,
+            "targets": [
+                "heater-shaker-simulator",
+                "thermocycler-refresh-simulator"
+            ]
+        },
+        {
+            "name": "simulators-gcc10",
+            "displayName": "simulators gcc10",
+            "description": "Runs simulator target for all subprojects",
+            "configurePreset": "stm32-host-gcc10",
+            "jobs": 4,
+            "targets": [
+                "heater-shaker-simulator",
+                "thermocycler-refresh-simulator"
+            ]
+        },
+        {
             "name": "tests",
             "displayName": "tests",
             "description": "Runs build-and-test target for all subprojects",
