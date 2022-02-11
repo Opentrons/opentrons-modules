@@ -49,7 +49,7 @@ void motor_hardware_setup(const motor_hardware_callbacks* callbacks);
  * @brief Start a lid stepper movement
  * @param[in] steps Number of steps to move the stepper
  */
-void motor_hardware_lid_stepper_start(int32_t steps);
+void motor_hardware_lid_stepper_start(int32_t steps, bool overdrive);
 /**
  * @brief Stop a lid stepper movement
  *

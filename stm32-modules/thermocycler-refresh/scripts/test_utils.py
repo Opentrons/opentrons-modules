@@ -186,9 +186,12 @@ def set_peltier_pid(p: float, i: float, d: float, ser: serial.Serial):
     print(res)
 
 # Debug command to move the hinge motor
-def move_lid_angle(angle: float, ser: serial.Serial):
-    print(f'Moving lid by {angle}º')
-    ser.write(f'M240.D {angle}\n'.encode())
+def move_lid_angle(angle: float, overdrive: bool, ser: serial.Serial):
+    print(f'Moving lid by {angle}º overdrive = {overdrive}')
+    if(overdrive):
+        ser.write(f'M240.D {angle} O\n'.encode())
+    else:
+        ser.write(f'M240.D {angle}\n'.encode())
     res = ser.readline()
     guard_error(res, b'M240.D OK')
     print(res)

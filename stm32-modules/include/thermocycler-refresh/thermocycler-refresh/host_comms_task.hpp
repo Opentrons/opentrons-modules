@@ -980,7 +980,9 @@ class HostCommsTask {
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
         auto message = messages::LidStepperDebugMessage{
-            .id = id, .angle = lid_stepper_gcode.angle};
+            .id = id,
+            .angle = lid_stepper_gcode.angle,
+            .overdrive = lid_stepper_gcode.overdrive};
         if (!task_registry->motor->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(

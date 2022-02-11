@@ -148,6 +148,7 @@ struct ActuateSolenoidMessage {
 struct LidStepperDebugMessage {
     uint32_t id;
     double angle;
+    bool overdrive;
 };
 
 struct LidStepperComplete {};
