@@ -48,8 +48,8 @@ SCENARIO("motor task message passing") {
         }
         WHEN("sending a LidStepperDebugMessage") {
             static constexpr double ANGLE = 10.0F;
-            auto message =
-                messages::LidStepperDebugMessage{.id = 123, .angle = ANGLE, .overdrive = true};
+            auto message = messages::LidStepperDebugMessage{
+                .id = 123, .angle = ANGLE, .overdrive = true};
             motor_queue.backing_deque.push_back(message);
             tasks->run_motor_task();
             THEN("the message is received but no response is sent yet") {
