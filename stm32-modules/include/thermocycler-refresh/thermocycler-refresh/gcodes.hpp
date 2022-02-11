@@ -627,6 +627,49 @@ struct GetPlateTemperatureDebug {
     }
 };
 
+/**
+ * @brief Uses M103.D to get the current power output for all thermal elements.
+ *
+ * Format: M103.D\n
+ * Return: M103.D L:<left peltier> C:<center> R:<right> H:<heater> F:<fans>
+ *
+ */
+struct GetThermalPowerDebug {
+    using ParseResult = std::optional<GetThermalPowerDebug>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '3', '.', 'D'};
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetThermalPowerDebug()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double left_power, double center_power,
+                                    double right_power, double heater_power,
+                                    double fan_power) -> InputIt {
+        auto res = snprintf(
+            &*buf, (limit - buf),
+            "M103.D L:%0.2f C:%0.2f R:%0.2f H:%0.2f F:%0.2f OK\n",
+            static_cast<float>(left_power), static_cast<float>(center_power),
+            static_cast<float>(right_power), static_cast<float>(heater_power),
+            static_cast<float>(fan_power));
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
 struct ActuateSolenoid {
     /*
     ** Actuate solenoid is a debug command that lets you activate or deactivate

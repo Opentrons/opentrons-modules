@@ -21,6 +21,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_motor_utils.cpp
     # GCode parse tests
     test_m14.cpp
+    test_m103d.cpp
     test_m104.cpp
     test_m105.cpp
     test_m105d.cpp
