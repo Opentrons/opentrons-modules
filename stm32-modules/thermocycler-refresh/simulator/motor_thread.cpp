@@ -19,7 +19,8 @@ class SimMotorPolicy : public SimTMC2130Policy {
     // Functionality to fulfill concept
 
     auto lid_stepper_set_dac(uint8_t dac_val) -> void { _dac_val = dac_val; }
-    auto lid_stepper_start(int32_t steps) -> void {
+    auto lid_stepper_start(int32_t steps, bool overdrive) -> void {
+        _lid_overdrive = overdrive;
         // Simulate jumping right to the end
         if (_lid_fault) {
             return;
@@ -74,6 +75,7 @@ class SimMotorPolicy : public SimTMC2130Policy {
     bool _lid_open_switch = false;
     bool _lid_closed_switch = false;
     bool _seal_moving = false;
+    bool _lid_overdrive = false;
     Callback _callback;
 };
 

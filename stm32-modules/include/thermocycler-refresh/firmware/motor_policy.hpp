@@ -34,7 +34,7 @@ class MotorPolicy {
      * @param steps Number of steps to move. Can be positive or negative
      * to indicate direction.
      */
-    auto lid_stepper_start(int32_t steps) -> void;
+    auto lid_stepper_start(int32_t steps, bool overdrive) -> void;
     /**
      * @brief Stop any movement on the lid stepper.
      *

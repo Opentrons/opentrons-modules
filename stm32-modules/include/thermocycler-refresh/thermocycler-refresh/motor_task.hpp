@@ -48,9 +48,10 @@ concept MotorExecutionPolicy = requires(Policy& p,
     // A function to set the stepper DAC as a register value
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.lid_stepper_set_dac(1)};
-    // A function to start a stepper movement
+    // A function to start a stepper movement. Accepts a number of steps,
+    // and a boolean argument for whether this is an overdrive movement.
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-    {p.lid_stepper_start(1)};
+    {p.lid_stepper_start(1, true)};
     // A function to stop a stepper movement
     {p.lid_stepper_stop()};
     // A function to check for a fault in the stepper movement
@@ -182,7 +183,8 @@ class MotorTask {
             policy.lid_stepper_set_dac(motor_util::LidStepper::current_to_dac(
                 LID_STEPPER_DEFAULT_VOLTAGE));
             policy.lid_stepper_start(
-                motor_util::LidStepper::angle_to_microsteps(msg.angle));
+                motor_util::LidStepper::angle_to_microsteps(msg.angle),
+                msg.overdrive);
             _lid_stepper_state.status = StepperState::MOVING;
             _lid_stepper_state.response_id = msg.id;
         } else {

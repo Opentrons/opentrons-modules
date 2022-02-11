@@ -1415,6 +1415,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(!tasks->get_host_comms_queue().has_message());
                 REQUIRE(lid_stepper_msg.angle == 10.0F);
+                REQUIRE(!lid_stepper_msg.overdrive);
                 AND_WHEN("sending good response back to comms task") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{.responding_to_id =
