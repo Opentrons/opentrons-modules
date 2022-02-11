@@ -63,11 +63,8 @@ SCENARIO("motor task core message handling", "[motor]") {
                 messages::SetRPMMessage{.id = 222, .target_rpm = 1254};
             tasks->get_motor_queue().backing_deque.push_back(
                 messages::MotorMessage(message));
-            tasks->get_motor_task().run_once(tasks->get_motor_policy());
             tasks->get_motor_policy().test_set_current_rpm(50);
-            tasks->get_motor_task().run_once(
-                tasks
-                    ->get_motor_policy());  // process check_motor_start message
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_motor_queue().backing_deque.empty());
                 AND_THEN("the task should set the rpm and disengage solenoid") {
@@ -101,11 +98,8 @@ SCENARIO("motor task core message handling", "[motor]") {
                 .id = 222, .target_rpm = 1254, .from_system = true};
             tasks->get_motor_queue().backing_deque.push_back(
                 messages::MotorMessage(message));
-            tasks->get_motor_task().run_once(tasks->get_motor_policy());
             tasks->get_motor_policy().test_set_current_rpm(50);
-            tasks->get_motor_task().run_once(
-                tasks
-                    ->get_motor_policy());  // process check_motor_start message
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_motor_queue().backing_deque.empty());
                 AND_THEN(
@@ -141,11 +135,8 @@ SCENARIO("motor task core message handling", "[motor]") {
                 messages::SetRPMMessage{.id = 222, .target_rpm = 1254};
             tasks->get_motor_queue().backing_deque.push_back(
                 messages::MotorMessage(message));
-            tasks->get_motor_task().run_once(tasks->get_motor_policy());
             tasks->get_motor_policy().test_set_current_rpm(0);
-            tasks->get_motor_task().run_once(
-                tasks
-                    ->get_motor_policy());  // process check_motor_start message
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_motor_queue().backing_deque.empty());
                 AND_THEN("the task should disengage solenoid and stop motor") {
@@ -353,11 +344,8 @@ SCENARIO("motor task input error handling", "[motor]") {
                 messages::SetRPMMessage{.id = 123, .target_rpm = 9999};
             tasks->get_motor_queue().backing_deque.push_back(
                 messages::MotorMessage(message));
-            tasks->get_motor_task().run_once(tasks->get_motor_policy());
             tasks->get_motor_policy().test_set_current_rpm(50);
-            tasks->get_motor_task().run_once(
-                tasks
-                    ->get_motor_policy());  // process check_motor_start message
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the motor task should respond with an error") {
                 auto response =
                     tasks->get_host_comms_queue().backing_deque.front();
@@ -452,8 +440,6 @@ SCENARIO("motor task homing", "[motor][homing]") {
             messages::MotorMessage(run_message));
         tasks->get_motor_policy().test_set_current_rpm(run_message.target_rpm);
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_motor_task().run_once(
-            tasks->get_motor_policy());  // process check_motor_start message
         CHECK(tasks->get_motor_policy().get_target_rpm() ==
               run_message.target_rpm);
         CHECK(tasks->get_motor_task().get_state() ==
@@ -485,8 +471,6 @@ SCENARIO("motor task homing", "[motor][homing]") {
             messages::MotorMessage(run_message));
         tasks->get_motor_policy().test_set_current_rpm(run_message.target_rpm);
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_motor_task().run_once(
-            tasks->get_motor_policy());  // process check_motor_start message
         CHECK(tasks->get_motor_policy().get_target_rpm() ==
               run_message.target_rpm);
         CHECK(tasks->get_motor_task().get_state() ==
@@ -522,8 +506,6 @@ SCENARIO("motor task homing", "[motor][homing]") {
             messages::MotorMessage(run_message));
         tasks->get_motor_policy().test_set_current_rpm(run_message.target_rpm);
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_motor_task().run_once(
-            tasks->get_motor_policy());  // process check_motor_start message
         CHECK(tasks->get_motor_policy().get_target_rpm() ==
               run_message.target_rpm);
         CHECK(tasks->get_motor_task().get_state() ==
@@ -559,8 +541,6 @@ SCENARIO("motor task homing", "[motor][homing]") {
             messages::MotorMessage(run_message));
         tasks->get_motor_policy().test_set_current_rpm(run_message.target_rpm);
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_motor_task().run_once(
-            tasks->get_motor_policy());  // process check_motor_start message
         CHECK(tasks->get_motor_policy().get_target_rpm() ==
               run_message.target_rpm);
         tasks->get_motor_queue().backing_deque.push_back(
@@ -628,8 +608,6 @@ SCENARIO("motor task homing", "[motor][homing]") {
             messages::MotorMessage(run_message));
         tasks->get_motor_policy().test_set_current_rpm(run_message.target_rpm);
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_motor_task().run_once(
-            tasks->get_motor_policy());  // process check_motor_start message
         tasks->get_host_comms_queue().backing_deque.clear();
         auto homing_message = messages::BeginHomingMessage{.id = 2213};
         tasks->get_motor_queue().backing_deque.push_back(homing_message);
@@ -839,8 +817,6 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
             messages::MotorMessage(run_message));
         tasks->get_motor_policy().test_set_current_rpm(run_message.target_rpm);
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
-        tasks->get_motor_task().run_once(
-            tasks->get_motor_policy());  // process check_motor_start message
         tasks->get_host_comms_queue().backing_deque.clear();
         auto homing_message = messages::BeginHomingMessage{.id = 2213};
         tasks->get_motor_queue().backing_deque.push_back(homing_message);
