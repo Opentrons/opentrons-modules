@@ -50,7 +50,6 @@ void system_hardware_enter_bootloader(void) {
     // The HAL has ways to turn off all the core clocking and the clock security system
     HAL_RCC_DisableLSECSS();
     HAL_RCC_DeInit();
-    HAL_DeInit();
 
     // systick should be off at boot
     SysTick->CTRL = 0;
