@@ -8,6 +8,8 @@
 #include <stop_token>
 #include <thread>
 
+#include "core/xt1511.hpp"
+#include "simulator/simulator_utils.hpp"
 #include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
 #include "thermocycler-refresh/tasks.hpp"
@@ -16,11 +18,19 @@ using namespace system_thread;
 
 struct SimSystemPolicy {
   private:
+    static constexpr uint16_t PWM_MAX = 213;
+    static constexpr std::size_t LED_BUFFER_SIZE =
+        (SYSTEM_LED_COUNT * xt1511::SINGLE_PIXEL_BUF_SIZE) + 1;
+    using LedBuffer = std::array<uint16_t, LED_BUFFER_SIZE>;
     bool serial_number_set = false;
     static constexpr std::size_t SYSTEM_SERIAL_NUMBER_LENGTH =
         SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number = {};
     errors::ErrorCode set_serial_number_return = errors::ErrorCode::NO_ERROR;
+
+    LedBuffer::iterator _led_input_buf_itr = nullptr;
+    LedBuffer _led_buffer = {};
+    bool _led_active = false;
 
   public:
     auto enter_bootloader() -> void { std::terminate(); }
@@ -47,6 +57,27 @@ struct SimSystemPolicy {
             return empty_serial_number;
         }
     }
+    // Functions for XT1511 setting
+    auto start_send(LedBuffer& buffer) -> bool {
+        if (_led_active) {
+            return false;
+        }
+        _led_input_buf_itr = buffer.begin();
+        _led_active = true;
+        return true;
+    }
+    auto end_send() -> void { _led_active = false; }
+    auto wait_for_interrupt(uint32_t timeout_ms) -> bool {
+        if (!_led_active) {
+            return false;
+        }
+        auto itr = _led_input_buf_itr;
+        for (size_t i = 0; i < _led_buffer.size(); ++i, std::advance(itr, 1)) {
+            _led_buffer.at(i) = *itr;
+        }
+        return true;
+    }
+    [[nodiscard]] auto get_max_pwm() -> uint16_t { return PWM_MAX; }
 };
 
 struct system_thread::TaskControlBlock {
@@ -59,6 +90,16 @@ struct system_thread::TaskControlBlock {
 auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
     using namespace std::literals::chrono_literals;
     auto policy = SimSystemPolicy();
+
+    // Populate the serial number on startup, if provided
+    constexpr const char serial_var_name[] = "SERIAL_NUMBER";
+    auto ret =
+        simulator_utils::get_serial_number<SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>(
+            serial_var_name);
+    if (ret.has_value()) {
+        static_cast<void>(policy.set_serial_number(ret.value()));
+    }
+
     tcb->queue.set_stop_token(st);
     while (!st.stop_requested()) {
         try {

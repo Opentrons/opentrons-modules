@@ -1,14 +1,12 @@
+#include "firmware/system_policy.hpp"
+
 #include <array>
 #include <iterator>
 #include <ranges>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wvolatile"
-#include "system_hardware.h"
+#include "firmware/system_hardware.h"
+#include "firmware/system_led_hardware.h"
 #include "system_serial_number.h"
-#pragma GCC diagnostic pop
-
-#include "system_policy.hpp"
 #include "thermocycler-refresh/errors.hpp"
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
@@ -59,4 +57,22 @@ auto SystemPolicy::get_serial_number()
         }
     }
     return serial_number_array;
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto SystemPolicy::start_send(LedBuffer &buffer) -> bool {
+    return system_led_start_send(buffer.data(), buffer.size());
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto SystemPolicy::end_send() -> void { system_led_stop(); }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto SystemPolicy::wait_for_interrupt(uint32_t timeout_ms) -> bool {
+    return system_led_wait_for_interrupt(timeout_ms);
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+[[nodiscard]] auto SystemPolicy::get_max_pwm() -> uint16_t {
+    return system_led_max_pwm();
 }

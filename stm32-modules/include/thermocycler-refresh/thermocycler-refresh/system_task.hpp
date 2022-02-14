@@ -8,8 +8,10 @@
 
 #include "core/ack_cache.hpp"
 #include "core/version.hpp"
+#include "core/xt1511.hpp"
 #include "hal/message_queue.hpp"
 #include "systemwide.h"
+#include "thermocycler-refresh/colors.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/tasks.hpp"
 
@@ -19,6 +21,8 @@ struct Tasks;
 };
 
 namespace system_task {
+
+using PWM_T = uint16_t;
 
 template <typename Policy>
 concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
@@ -30,6 +34,16 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {
         p.get_serial_number()
         } -> std::same_as<std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>>;
+};
+
+struct LedState {
+    // Configured color of the LED, assuming
+    xt1511::XT1511 color = colors::get_color(colors::Colors::SOFT_WHITE);
+    colors::Mode mode = colors::Mode::SOLID;
+    // Utility counter for updating state in non-solid modes
+    uint32_t counter = 0;
+    // Period for movement in MS
+    uint32_t period = 0;
 };
 
 using Message = messages::SystemMessage;
@@ -45,27 +59,38 @@ class SystemTask {
 
   public:
     using Queue = QueueImpl<Message>;
+    // Time between each write to the LED strip
+    static constexpr uint32_t LED_UPDATE_PERIOD_MS = 13;
+    // Time that each full "pulse" action should take (sine wave)
+    static constexpr uint32_t LED_PULSE_PERIOD_MS = 1000;
+    // Max brightness to set for automatic LED actions
+    static constexpr uint8_t LED_MAX_BRIGHTNESS = 0x20;
     explicit SystemTask(Queue& q)
-        : message_queue(q),
-          task_registry(nullptr),
+        : _message_queue(q),
+          _task_registry(nullptr),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          prep_cache() {}
+          _prep_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          _leds(xt1511::Speed::HALF),
+          _led_state{.color = colors::get_color(colors::Colors::SOFT_WHITE),
+                     .mode = colors::Mode::SOLID,
+                     .counter = 0,
+                     .period = LED_PULSE_PERIOD_MS} {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
     SystemTask(SystemTask&& other) noexcept = delete;
     auto operator=(SystemTask&& other) noexcept -> SystemTask& = delete;
     ~SystemTask() = default;
-    auto get_message_queue() -> Queue& { return message_queue; }
+    auto get_message_queue() -> Queue& { return _message_queue; }
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
-        task_registry = other_tasks;
+        _task_registry = other_tasks;
     }
 
     template <typename Policy>
     requires SystemExecutionPolicy<Policy>
     auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
-
-        message_queue.recv(&message);
+        _message_queue.recv(&message);
 
         auto visit_helper = [this, &policy](auto& message) -> void {
             this->visit_message(message, policy);
@@ -84,21 +109,21 @@ class SystemTask {
         // this happens, so let's try and turn off the rest of the hardware
         // nicely just in case.
         auto disconnect_message = messages::ForceUSBDisconnectMessage{.id = 0};
-        auto disconnect_id = prep_cache.add(disconnect_message);
+        auto disconnect_id = _prep_cache.add(disconnect_message);
         disconnect_message.id = disconnect_id;
-        if (!task_registry->comms->get_message_queue().try_send(
+        if (!_task_registry->comms->get_message_queue().try_send(
                 disconnect_message, 1)) {
-            prep_cache.remove_if_present(disconnect_id);
+            _prep_cache.remove_if_present(disconnect_id);
         }
 
         auto ack_message =
             messages::AcknowledgePrevious{.responding_to_id = message.id};
-        static_cast<void>(
-            task_registry->comms->get_message_queue().try_send(ack_message, 1));
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            ack_message, 1));
 
         // Somehow we couldn't send any of the messages, maybe system deadlock?
         // Enter bootloader regardless
-        if (prep_cache.empty()) {
+        if (_prep_cache.empty()) {
             policy.enter_bootloader();
         }
     }
@@ -109,7 +134,7 @@ class SystemTask {
                        Policy& policy) -> void {
         // handle an acknowledgement for one of the prep tasks we've dispatched
         auto cache_entry =
-            prep_cache.remove_if_present(message.responding_to_id);
+            _prep_cache.remove_if_present(message.responding_to_id);
         // See if the ack has an error in it so we can forward if necessary
         auto error_result = std::visit(
             [&policy, &message](auto cache_element) -> errors::ErrorCode {
@@ -123,11 +148,11 @@ class SystemTask {
         if (error_result != errors::ErrorCode::NO_ERROR) {
             auto error_message = messages::ErrorMessage{.code = error_result};
             static_cast<void>(
-                task_registry->comms->get_message_queue().try_send(
+                _task_registry->comms->get_message_queue().try_send(
                     error_message, 1));
         }
         // No remaining setup tasks, enter bootloader
-        if (prep_cache.empty()) {
+        if (_prep_cache.empty()) {
             policy.enter_bootloader();
         }
     }
@@ -138,7 +163,7 @@ class SystemTask {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         response.with_error = policy.set_serial_number(msg.serial_number);
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
 
@@ -150,8 +175,82 @@ class SystemTask {
             .serial_number = policy.get_serial_number(),
             .fw_version = version::fw_version(),
             .hw_version = version::hw_version()};
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    requires SystemExecutionPolicy<Policy>
+    auto visit_message(const messages::UpdateUIMessage& message, Policy& policy)
+        -> void {
+        static_cast<void>(message);
+        static constexpr double TWO = 2.0F;
+        _led_state.counter += LED_UPDATE_PERIOD_MS;
+        if (_led_state.counter > _led_state.period) {
+            _led_state.counter = 0;
+        }
+
+        switch (_led_state.mode) {
+            case colors::Mode::SOLID:
+                // Don't bother with timer
+                _leds.set_all(_led_state.color);
+                break;
+            case colors::Mode::PULSING: {
+                // Set color as a triangle wave
+                double brightness = 0.0F;
+                if (_led_state.counter < (_led_state.period / 2)) {
+                    brightness = static_cast<double>(_led_state.counter) /
+                                 (static_cast<double>(_led_state.period) / TWO);
+                } else {
+                    auto inverse_count =
+                        std::abs(static_cast<int>(_led_state.period) -
+                                 static_cast<int>(_led_state.counter));
+                    brightness = static_cast<double>(inverse_count) /
+                                 (static_cast<double>(_led_state.period) / TWO);
+                }
+                auto color = _led_state.color;
+                color.set_scale(brightness);
+                _leds.set_all(color);
+                break;
+            }
+            case colors::Mode::BLINKING:
+                // Turn on color for half of the duty cycle, off for the other
+                // half
+                if (_led_state.counter < (_led_state.period / 2)) {
+                    _leds.set_all(_led_state.color);
+                } else {
+                    _leds.set_all(xt1511::XT1511{});
+                }
+                break;
+            case colors::Mode::WIPE: {
+                static constexpr size_t trail_length = SYSTEM_LED_COUNT;
+                static constexpr size_t head_max = (SYSTEM_LED_COUNT * 2);
+                auto percent_done = static_cast<double>(_led_state.counter) /
+                                    static_cast<double>(_led_state.period);
+                auto head_position = static_cast<size_t>(
+                    static_cast<double>(head_max) * percent_done);
+                for (size_t i = 0; i < SYSTEM_LED_COUNT; ++i) {
+                    if ((i < head_position -
+                                 std::min(trail_length, head_position)) ||
+                        (i > head_position)) {
+                        _leds.pixel(i) = xt1511::XT1511{};
+                    } else {
+                        _leds.pixel(i) = _led_state.color;
+                    }
+                }
+                break;
+            }
+        }
+        static_cast<void>(_leds.write(policy));
+    }
+
+    template <SystemExecutionPolicy Policy>
+    auto visit_message(const messages::SetLedMode& message, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        _led_state.color = colors::get_color(message.color);
+        _led_state.mode = message.mode;
+        _led_state.counter = 0;
     }
 
     template <typename Policy>
@@ -161,10 +260,22 @@ class SystemTask {
         static_cast<void>(policy);
     }
 
+    // Should be provided to LED Timer to send LED Update messages. Ensure that
+    // the timer implementation does NOT execute in an interrupt context.
+    auto led_timer_callback() -> void {
+        static_cast<void>(
+            get_message_queue().try_send(messages::UpdateUIMessage()));
+    }
+
+    // To be used for tests
+    [[nodiscard]] auto get_led_state() -> LedState& { return _led_state; }
+
   private:
-    Queue& message_queue;
-    tasks::Tasks<QueueImpl>* task_registry;
-    BootloaderPrepAckCache prep_cache;
+    Queue& _message_queue;
+    tasks::Tasks<QueueImpl>* _task_registry;
+    BootloaderPrepAckCache _prep_cache;
+    xt1511::XT1511String<PWM_T, SYSTEM_LED_COUNT> _leds;
+    LedState _led_state;
 };
 
 };  // namespace system_task

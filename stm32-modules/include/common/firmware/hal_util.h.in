@@ -1,0 +1,20 @@
+/**
+ * @file hal_util.h
+ * @brief Provides utilities for working with the STM32 HAL libraries.
+ * This file should only be #included into C source files, as the
+ * HAL libraries are not safe for use with C++.
+ * @details This file must be configured for each target. The CMakeLists
+ * for each target should configure this file after defining the
+ * variable STM_HAL_PREFIX to specify the STM32 hal to be included
+ * (e.g. stm32g4xx, stm32f3xx).
+ * 
+ * Source files may #include this file as "firmware/hal_util.h"
+ */
+
+#include "${STM_HAL_PREFIX}_hal.h"
+#include "${STM_HAL_PREFIX}_hal_gpio.h"
+
+typedef struct {
+    const uint16_t pin;
+    GPIO_TypeDef * port;
+} GPIOConfig;

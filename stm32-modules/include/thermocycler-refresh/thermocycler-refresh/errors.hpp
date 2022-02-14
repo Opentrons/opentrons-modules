@@ -42,6 +42,21 @@ enum class ErrorCode {
     // 3xx - System General
     SYSTEM_SERIAL_NUMBER_INVALID = 301,
     SYSTEM_SERIAL_NUMBER_HAL_ERROR = 302,
+    // 4xx - Thermal subsystem errors
+    THERMAL_PLATE_BUSY = 401,
+    THERMAL_PELTIER_ERROR = 402,
+    THERMAL_HEATSINK_FAN_ERROR = 403,
+    THERMAL_LID_BUSY = 404,
+    THERMAL_HEATER_ERROR = 405,
+    THERMAL_CONSTANT_OUT_OF_RANGE = 406,
+    THERMAL_TARGET_BAD = 407,
+    // 5xx - Mechanical subsystem errors
+    LID_MOTOR_BUSY = 501,
+    LID_MOTOR_FAULT = 502,
+    SEAL_MOTOR_SPI_ERROR = 503,
+    SEAL_MOTOR_BUSY = 504,
+    SEAL_MOTOR_FAULT = 505,
+    SEAL_MOTOR_STALL = 506,
 };
 
 auto errorstring(ErrorCode code) -> const char*;

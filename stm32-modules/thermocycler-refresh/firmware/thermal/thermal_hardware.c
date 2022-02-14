@@ -38,6 +38,11 @@
 #include "semphr.h"
 #include "task.h"
 
+// Local includes
+#include "firmware/thermal_fan_hardware.h"
+#include "firmware/thermal_heater_hardware.h"
+#include "firmware/thermal_peltier_hardware.h"
+
 /** Private definitions */
 
 #define I2C_INSTANCE (I2C2)
@@ -139,6 +144,9 @@ void thermal_hardware_setup(void) {
         configASSERT(_i2c_semaphore != NULL);
         thermal_gpio_init();
         thermal_i2c_init();
+        thermal_peltier_initialize();
+        thermal_fan_initialize();
+        thermal_heater_initialize();
 
         _initialization_done = true;
     }
@@ -192,7 +200,7 @@ bool thermal_i2c_read_16(uint16_t addr, uint8_t reg, uint16_t *val) {
     const uint16_t bytes_to_read = 2;
     const TickType_t max_block_time = pdMS_TO_TICKS(100);
     BaseType_t sem_ret;
-    uint32_t notification_val;
+    uint32_t notification_val = 0;
     HAL_StatusTypeDef hal_ret;
 
     sem_ret = xSemaphoreTake(_i2c_semaphore, portMAX_DELAY);

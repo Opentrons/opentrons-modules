@@ -51,7 +51,7 @@ const char* const HEATER_THERMISTOR_BOARD_OVERTEMP =
 const char* const HEATER_THERMISTOR_BOARD_DISCONNECTED =
     "ERR210:heater:board thermistor disconnected\n";
 const char* const HEATER_HARDWARE_ERROR_LATCH =
-    "ERR211:heater:hardware error latch set\n";
+    "ERR211:heater:heatpad thermistor overtemp or disconnected\n";
 const char* const HEATER_CONSTANT_OUT_OF_RANGE =
     "ERR212:heater:control constant out of range\n";
 const char* const SYSTEM_SERIAL_NUMBER_INVALID =

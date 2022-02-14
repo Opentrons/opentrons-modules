@@ -1,8 +1,12 @@
+#include "firmware/system_hardware.h"
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_rcc.h"
 #include "stm32g4xx_hal_cortex.h"
-#include "system_hardware.h"
 #include "stm32g4xx_hal_tim.h"
+
+/** Private definitions.*/
+#define DBG_LED_PIN GPIO_PIN_6
+#define DBG_LED_PORT GPIOE
 
 /** Global variable instantiation */
 
@@ -40,37 +44,45 @@ void system_debug_led(int set)
 
 void system_hardware_enter_bootloader(void) {
 
-  // We have to uninitialize as many of the peripherals as possible, because the bootloader
-  // expects to start as the system comes up
+    // We have to uninitialize as many of the peripherals as possible, because the bootloader
+    // expects to start as the system comes up
 
-  // The HAL has ways to turn off all the core clocking and the clock security system
-  HAL_RCC_DisableLSECSS();
-  HAL_RCC_DeInit();
+    // The HAL has ways to turn off all the core clocking and the clock security system
+    HAL_RCC_DisableLSECSS();
+    HAL_RCC_DeInit();
 
-  // systick should be off at boot
-  SysTick->CTRL = 0;
-  SysTick->LOAD = 0;
-  SysTick->VAL = 0;
+    // systick should be off at boot
+    SysTick->CTRL = 0;
+    SysTick->LOAD = 0;
+    SysTick->VAL = 0;
 
-  // We have to make sure that the processor is mapping the system memory region to address 0,
-  // which the bootloader expects
-  __HAL_SYSCFG_REMAPMEMORY_SYSTEMFLASH();
-  // and now we're ready to set the system up to start executing system flash.
-  // arm cortex initialization means that
 
-  // address 0 in the bootable region is the address where the processor should start its stack
-  // which we have to do as late as possible because as soon as we do this the c and c++ runtime
-  // environment is no longer valid
-  __set_MSP(*((uint32_t*)SYSMEM_START));
+    /* Clear Interrupt Enable Register & Interrupt Pending Register */
+    for (int i=0;i<8;i++)
+    {
+        NVIC->ICER[i]=0xFFFFFFFF;
+        NVIC->ICPR[i]=0xFFFFFFFF;
+    }
 
-  // finally, jump to the bootloader. we do this in inline asm because we need
-  // this to be a naked call (no caller-side prep like stacking return addresses)
-  // and to have a naked function you need to define it as a function, not a
-  // function pointer, and we don't statically know the address here since it is
-  // whatever's contained in that second word of the bsystem memory region.
-asm volatile (
-  "bx %0"
-  : // no outputs
-  : "r" (*sysmem_boot_loc)
-  : "memory"  );
+    // We have to make sure that the processor is mapping the system memory region to address 0,
+    // which the bootloader expects
+    __HAL_SYSCFG_REMAPMEMORY_SYSTEMFLASH();
+    // and now we're ready to set the system up to start executing system flash.
+    // arm cortex initialization means that
+
+    // address 0 in the bootable region is the address where the processor should start its stack
+    // which we have to do as late as possible because as soon as we do this the c and c++ runtime
+    // environment is no longer valid
+    __set_MSP(*((uint32_t*)SYSMEM_START));
+
+    // finally, jump to the bootloader. we do this in inline asm because we need
+    // this to be a naked call (no caller-side prep like stacking return addresses)
+    // and to have a naked function you need to define it as a function, not a
+    // function pointer, and we don't statically know the address here since it is
+    // whatever's contained in that second word of the bsystem memory region.
+    asm volatile (
+        "bx %0"
+        : // no outputs
+        : "r" (*sysmem_boot_loc)
+        : "memory"  );
 }

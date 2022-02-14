@@ -85,7 +85,11 @@ static void handle_conversion(const conversion_results *results) {
 // Actual function that runs the task
 void run(void *param) {
     auto *local_tasks = static_cast<HeaterTasks *>(param);
-    static_cast<void>(local_tasks->policy.try_reset_power_good());
+    if (!local_tasks->policy.try_reset_power_good()) {
+        // throw error
+        auto &queue = _task.get_message_queue();
+        static_cast<void>(queue.try_send(messages::HandleNTCSetupError{}));
+    }
     while (true) {
         local_tasks->heater_main_task.run_once(local_tasks->policy);
     }

@@ -16,10 +16,20 @@ const std::string SOCKET_DRIVER_NAME = "Socket";
 std::unique_ptr<boost::asio::ip::tcp::socket> connect_to_socket(
     std::string host, int port) {
     boost::asio::io_service io_context;
+    boost::asio::ip::tcp::resolver resolver(io_context);
+    std::string parsed_host;
+    try {
+        auto endpoints = resolver.resolve(host, std::to_string(port));
+        parsed_host = endpoints.begin()->endpoint().address().to_string();
+    } catch (const boost::system::system_error& ex) {
+        std::cerr << "Failed to resolve passed host/ip: \"" << host << "\""
+                  << std::endl;
+        exit(1);
+    }
 
     auto socket = std::make_unique<boost::asio::ip::tcp::socket>(io_context);
     boost::asio::ip::tcp::endpoint endpoint(
-        boost::asio::ip::address::from_string(host), port);
+        boost::asio::ip::address::from_string(parsed_host), port);
     boost::system::error_code ec;
     socket->connect(endpoint, ec);
     if (ec) {
@@ -31,7 +41,7 @@ std::unique_ptr<boost::asio::ip::tcp::socket> connect_to_socket(
 }
 
 socket_sim_driver::SocketSimDriver::SocketSimDriver(std::string url) {
-    std::regex url_regex(":\\/\\/([a-zA-Z0-9.]*):(\\d*)$");
+    std::regex url_regex(":\\/\\/([a-zA-Z0-9.-]*):(\\d*)$");
     std::smatch url_match_result;
 
     if (std::regex_search(url, url_match_result, url_regex)) {
@@ -60,13 +70,13 @@ const std::string& socket_sim_driver::SocketSimDriver::get_name() const {
 }
 
 void socket_sim_driver::SocketSimDriver::write(const std::string& message) {
+    std::cout << "Sending response: " << message << std::endl;
     this->s->write_some(boost::asio::buffer(message));
 }
 
-int has_char(char* char_array, char value_to_find) {
-    char* position =
-        std::find(char_array, char_array + strlen(char_array), value_to_find);
-    return char_array + strlen(char_array) != position;
+int has_char(const char* char_array, const char* end, char value_to_find) {
+    const char* position = std::find(char_array, end, value_to_find);
+    return end != position;
 }
 
 void socket_sim_driver::SocketSimDriver::read(
@@ -78,6 +88,7 @@ void socket_sim_driver::SocketSimDriver::read(
     size_t l = this->s->read_some(buff);
     char* end_of_input = std::begin(*write_buffer->accessible());
     char* end_of_buffer = std::end(*write_buffer->accessible());
+
     for (; l > 0; l = this->s->read_some(buff)) {
         if (end_of_input + l > end_of_buffer) {
             end_of_input = std::begin(*write_buffer->accessible());
@@ -86,7 +97,9 @@ void socket_sim_driver::SocketSimDriver::read(
         end_of_input =
             std::copy(reinterpret_cast<char*>(buff.data()),
                       reinterpret_cast<char*>(buff.data()) + l, end_of_input);
-        if (has_char(data, '\n')) {
+        if (has_char(data, end_of_input, '\n')) {
+            std::cout << "Received complete message: "
+                      << write_buffer->accessible()->data() << std::endl;
             auto message = messages::IncomingMessageFromHost(
                 std::begin(*write_buffer->accessible()), end_of_input);
             static_cast<void>(

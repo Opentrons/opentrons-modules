@@ -27,6 +27,9 @@
 #include "stm32g4xx_hal_pcd.h"
 
 #include "firmware/thermal_hardware.h"
+#include "firmware/motor_hardware.h"
+#include "firmware/system_hardware.h"
+#include "firmware/system_led_hardware.h"
 
 /** @addtogroup STM32G4xx_HAL_Examples
  * @{
@@ -46,7 +49,6 @@
 
 /* External variables --------------------------------------------------------*/
 extern TIM_HandleTypeDef htim7;
-
 
 /******************************************************************************/
 /*            Cortex-M4 Processor Exceptions Handlers                         */
@@ -123,13 +125,7 @@ void DebugMon_Handler(void) {}
   */
 void TIM7_IRQHandler(void)
 {
-  /* USER CODE BEGIN TIM7_IRQn 0 */
-
-  /* USER CODE END TIM7_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim7);
-  /* USER CODE BEGIN TIM7_IRQn 1 */
-
-  /* USER CODE END TIM7_IRQn 1 */
+ 	HAL_TIM_IRQHandler(&htim7);
 }
 
 /**
@@ -149,5 +145,40 @@ void EXTI15_10_IRQHandler(void)
 
 }
 
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) 
+{
+    if(htim->Instance == TIM17) {
+        system_led_pulse_callback();
+    }
+}
+
+void HAL_TIM_PWM_PulseFinishedHalfCpltCallback(TIM_HandleTypeDef *htim) 
+{
+    if(htim->Instance == TIM17) {
+        // The half-complete interrupt isn't used for this application
+        return;
+    }
+}
+
+void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM2) {
+        motor_hardware_lid_increment();
+    }
+}
+
+/**
+ * TIM7 = timebase counter
+ * 
+ * TIM6 = seal motor counter
+ */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if(htim->Instance == TIM7) {
+        hal_timebase_tick();
+    } else if(htim->Instance == TIM6) {
+        motor_hardware_seal_interrupt();
+    }
+}
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

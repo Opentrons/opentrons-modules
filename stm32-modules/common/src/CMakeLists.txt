@@ -23,7 +23,9 @@ add_custom_command(
 
 # Configure lintable/nonlintable sources here
 set(CORE_LINTABLE_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/fixed_point.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pid.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/xt1511.cpp
   )
 set(CORE_NONLINTABLE_SOURCES 
   ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
