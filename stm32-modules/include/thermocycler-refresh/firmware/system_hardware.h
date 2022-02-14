@@ -11,12 +11,12 @@ typedef void (*front_button_callback_t)(void);
 
 /**
  * @brief Initialize the system hardware
- * 
+ *
  */
 void system_hardware_setup(front_button_callback_t button_cb);
 /**
  * @brief Toggle the debug LED (hearbeat LED)
- * 
+ *
  * @param set True to set the led on, false to disable it
  */
 void system_debug_led(int set);
@@ -27,13 +27,13 @@ void system_hardware_enter_bootloader(void);
 
 /**
  * @brief Interrupt servicing for the HAL systick interrupt
- * 
+ *
  */
 void hal_timebase_tick(void);
 
 /**
  * @brief Read the front button
- * 
+ *
  * @return true if the button is pressed, false otherwise
  */
 bool system_front_button_pressed(void);
