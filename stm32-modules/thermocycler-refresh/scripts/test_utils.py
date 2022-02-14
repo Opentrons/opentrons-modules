@@ -222,6 +222,7 @@ class SealParam(Enum):
     RUN_CURRENT = 'R'
     HOLD_CURRENT = 'H'
 
+
 # Debug command to set a seal parameter
 def set_seal_param(param: SealParam, value: int, ser: serial.Serial):
     print(f'Setting {param} ({param.value}) to {value}')
@@ -230,10 +231,50 @@ def set_seal_param(param: SealParam, value: int, ser: serial.Serial):
     guard_error(res, b'M243.D OK')
     print(res)
 
+class PositionStatus(Enum):
+    Open = 0
+    Closed = 1
+    Unknown = 2
+
 # Debug command to get lid status
-def get_lid_status(ser: serial.Serial):
+# Returns [lid status, seal status]
+_LID_STATUS_RE = re.compile('^M119 Lid:(?P<lid>.+) Seal:(?P<seal>.+) OK\n')
+def get_lid_status(ser: serial.Serial) -> Tuple[PositionStatus, PositionStatus]:
     print('Getting lid status')
     ser.write(f'M119\n'.encode())
     res = ser.readline()
     guard_error(res, b'M119 Lid:')
-    print(res)
+    #print(res)
+    res_s = res.decode()
+    match = re.match(_LID_STATUS_RE, res_s)
+    lid_s = str(match.group('lid'))
+    seal_s = str(match.group('seal'))
+    ret = [PositionStatus.Unknown, PositionStatus.Unknown]
+    if lid_s == 'closed':
+        ret[0] = PositionStatus.Closed
+    elif lid_s == 'open':
+        ret[0] = PositionStatus.Open
+    return ret
+
+# Function to fully open the lid
+def open_lid(ser: serial.Serial):
+    lid_status = get_lid_status(ser)[0]
+    if lid_status == PositionStatus.Open:
+        print('Lid already open')
+        return
+    print('Opening lid')
+    set_solenoid(True, ser)
+    move_lid_angle(120, False, ser)
+    move_lid_angle(3, True, ser)
+    set_solenoid(False, ser)
+
+# Function to fully close the lid
+def close_lid(ser: serial.Serial):
+    lid_status = get_lid_status(ser)[0]
+    if lid_status == PositionStatus.Closed:
+        print('Lid already closed')
+        return
+    print('Closing lid')
+    move_lid_angle(-120, False, ser)
+    move_lid_angle(-3, True, ser)
+    
