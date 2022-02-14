@@ -12,7 +12,7 @@ extern "C" {
  * @brief Initialize the LED controller. This is a prerequisite to driving the
  * LED strip connected to the board.
  */
-void system_led_iniitalize(void);
+void system_led_initialize(void);
 
 /** Callback for MSP initialization of the LED timer */
 void system_led_msp_init(void);

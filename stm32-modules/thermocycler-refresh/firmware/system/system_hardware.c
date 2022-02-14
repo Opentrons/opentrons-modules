@@ -15,19 +15,26 @@
 #define FRONT_BUTTON_IN_PORT (GPIOC)
 #define FRONT_BUTTON_IRQ (EXTI15_10_IRQn)
 
-// Front button can only be pressed at 200ms increments
-#define FRONT_BUTTON_DEBOUNCE_MS (200)
+#define FRONT_BUTTON_IN_PIN_REV1 (GPIO_PIN_11)
+#define FRONT_BUTTON_IN_PORT_REV1 (GPIOD)
 
 /** Global variable instantiation */
 
 typedef struct SystemHardware_struct {
     uint32_t button_last_tick;
     front_button_callback_t button_callback;
+
+    // Port changes based on hardware rev
+    GPIO_TypeDef *front_button_in_port;
+    // Pin changes basd on hardware rev
+    uint16_t front_button_in_pin;
 } SystemHardware_t;
 
 static SystemHardware_t _system = {
     .button_callback = 0,
-    .button_callback = NULL
+    .button_callback = NULL,
+    .front_button_in_port = FRONT_BUTTON_IN_PORT,
+    .front_button_in_pin = FRONT_BUTTON_IN_PIN
 };
 
 /** PUBLIC FUNCTION IMPLEMENTATION */
@@ -38,7 +45,7 @@ static SystemHardware_t _system = {
  * - PD10 = Front switch LED
  * - PC13 = Front switch input
  */
-void system_hardware_setup(front_button_callback_t button_cb) {
+void system_hardware_setup(bool rev_1_board, front_button_callback_t button_cb) {
     GPIO_InitTypeDef gpio_init = {
       .Pin = DBG_LED_PIN,
       .Mode = GPIO_MODE_OUTPUT_PP,
@@ -54,10 +61,15 @@ void system_hardware_setup(front_button_callback_t button_cb) {
     // Initialize the LED pin on to turn it on
     HAL_GPIO_WritePin(BUTTON_LED_PORT, BUTTON_LED_PIN, GPIO_PIN_SET);
 
-    gpio_init.Pin = FRONT_BUTTON_IN_PIN;
+    if(rev_1_board) {
+        _system.front_button_in_port = FRONT_BUTTON_IN_PORT_REV1;
+        _system.front_button_in_pin = FRONT_BUTTON_IN_PIN_REV1;
+    }
+
+    gpio_init.Pin = _system.front_button_in_pin;
     gpio_init.Mode = GPIO_MODE_IT_FALLING;
     __HAL_RCC_GPIOC_CLK_ENABLE();
-    HAL_GPIO_Init(FRONT_BUTTON_IN_PORT, &gpio_init);
+    HAL_GPIO_Init(_system.front_button_in_port, &gpio_init);
 
     HAL_NVIC_SetPriority(FRONT_BUTTON_IRQ, 5, 0);
     HAL_NVIC_EnableIRQ(FRONT_BUTTON_IRQ);
@@ -128,16 +140,22 @@ void system_hardware_enter_bootloader(void) {
 
 bool system_front_button_pressed(void) {
     // Active low button, passively pulled high
-    return HAL_GPIO_ReadPin(FRONT_BUTTON_IN_PORT, FRONT_BUTTON_IN_PIN) 
+    return HAL_GPIO_ReadPin(_system.front_button_in_port, _system.front_button_in_pin) 
                 == GPIO_PIN_RESET;
 }
 
+void system_front_button_led_set(bool set) {
+    HAL_GPIO_WritePin(BUTTON_LED_PORT, BUTTON_LED_PIN,
+        set ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
 void system_front_button_callback(void) {
-    if(__HAL_GPIO_EXTI_GET_IT(FRONT_BUTTON_IN_PIN) != 0x00u) {
-        __HAL_GPIO_EXTI_CLEAR_IT(FRONT_BUTTON_IN_PIN);
+    if(__HAL_GPIO_EXTI_GET_IT(_system.front_button_in_pin) != 0x00u) {
+        __HAL_GPIO_EXTI_CLEAR_IT(_system.front_button_in_pin);
         uint32_t new_tick = HAL_GetTick();
-        if(new_tick >  _system.button_last_tick + 
-                        FRONT_BUTTON_DEBOUNCE_MS) {
+        if((new_tick - _system.button_last_tick) > 
+            FRONT_BUTTON_DEBOUNCE_MS) {
+
             _system.button_last_tick = new_tick;
             if(_system.button_callback) {
                 _system.button_callback();

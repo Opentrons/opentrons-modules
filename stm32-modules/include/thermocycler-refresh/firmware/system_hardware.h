@@ -6,14 +6,19 @@ extern "C" {
 
 #include <stdbool.h>
 
+// Front button can only be pressed at 200ms increments
+#define FRONT_BUTTON_DEBOUNCE_MS (200)
+
 // Type for callback when the button has been pressed
 typedef void (*front_button_callback_t)(void);
 
 /**
  * @brief Initialize the system hardware
- *
+ * @param[in] rev_1_board Set to true if this is a rev 1 board, false if it
+ *                        is any other revision.
+ * @param[in] button_cb Callback to invoke when the front button is pressed
  */
-void system_hardware_setup(front_button_callback_t button_cb);
+void system_hardware_setup(bool rev_1_board, front_button_callback_t button_cb);
 /**
  * @brief Toggle the debug LED (hearbeat LED)
  *
@@ -37,6 +42,13 @@ void hal_timebase_tick(void);
  * @return true if the button is pressed, false otherwise
  */
 bool system_front_button_pressed(void);
+
+/**
+ * @brief Turn the front button LED on or off
+ *
+ * @param set True to enable the LED, false to turn it off
+ */
+void system_front_button_led_set(bool set);
 
 /**
  * @brief Hardcoded callback when the IRQ for the front button is triggered.
