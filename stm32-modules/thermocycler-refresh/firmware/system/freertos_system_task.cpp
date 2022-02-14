@@ -48,7 +48,7 @@ static timer::GenericTimer<freertos_timer::FreeRTOSTimer> _led_timer(
 // Actual function that runs inside the task, unused param because we don't get
 // to pick the function type
 static void run(void *param) {
-    system_hardware_setup();
+    system_hardware_setup(nullptr);
     system_led_iniitalize();
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto *task = reinterpret_cast<decltype(_task) *>(param);
