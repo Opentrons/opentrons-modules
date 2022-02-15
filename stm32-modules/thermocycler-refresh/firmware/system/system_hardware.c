@@ -8,23 +8,74 @@
 #define DBG_LED_PIN GPIO_PIN_6
 #define DBG_LED_PORT GPIOE
 
+#define BUTTON_LED_PIN (GPIO_PIN_10)
+#define BUTTON_LED_PORT (GPIOD)
+
+#define FRONT_BUTTON_IN_PIN (GPIO_PIN_13)
+#define FRONT_BUTTON_IN_PORT (GPIOC)
+#define FRONT_BUTTON_IRQ (EXTI15_10_IRQn)
+
+#define FRONT_BUTTON_IN_PIN_REV1 (GPIO_PIN_11)
+#define FRONT_BUTTON_IN_PORT_REV1 (GPIOD)
+
 /** Global variable instantiation */
+
+typedef struct SystemHardware_struct {
+    uint32_t button_last_tick;
+    front_button_callback_t button_callback;
+
+    // Port changes based on hardware rev
+    GPIO_TypeDef *front_button_in_port;
+    // Pin changes basd on hardware rev
+    uint16_t front_button_in_pin;
+} SystemHardware_t;
+
+static SystemHardware_t _system = {
+    .button_callback = 0,
+    .button_callback = NULL,
+    .front_button_in_port = FRONT_BUTTON_IN_PORT,
+    .front_button_in_pin = FRONT_BUTTON_IN_PIN
+};
 
 /** PUBLIC FUNCTION IMPLEMENTATION */
 
 /**
  * Initialize hardware specific to the system process:
  * - PE6 = Heartbeat LED
+ * - PD10 = Front switch LED
+ * - PC13 = Front switch input
  */
-void system_hardware_setup(void) {
+void system_hardware_setup(bool rev_1_board, front_button_callback_t button_cb) {
     GPIO_InitTypeDef gpio_init = {
-      .Pin = GPIO_PIN_6,
+      .Pin = DBG_LED_PIN,
       .Mode = GPIO_MODE_OUTPUT_PP,
       .Pull = GPIO_NOPULL,
       .Speed = GPIO_SPEED_FREQ_LOW
     };
     __HAL_RCC_GPIOE_CLK_ENABLE();
-    HAL_GPIO_Init(GPIOE, &gpio_init);
+    HAL_GPIO_Init(DBG_LED_PORT, &gpio_init);
+
+    gpio_init.Pin = BUTTON_LED_PIN;
+    __HAL_RCC_GPIOD_CLK_ENABLE();
+    HAL_GPIO_Init(BUTTON_LED_PORT, &gpio_init);
+    // Initialize the LED pin on to turn it on
+    HAL_GPIO_WritePin(BUTTON_LED_PORT, BUTTON_LED_PIN, GPIO_PIN_SET);
+
+    if(rev_1_board) {
+        _system.front_button_in_port = FRONT_BUTTON_IN_PORT_REV1;
+        _system.front_button_in_pin = FRONT_BUTTON_IN_PIN_REV1;
+    }
+
+    gpio_init.Pin = _system.front_button_in_pin;
+    gpio_init.Mode = GPIO_MODE_IT_FALLING;
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    HAL_GPIO_Init(_system.front_button_in_port, &gpio_init);
+
+    HAL_NVIC_SetPriority(FRONT_BUTTON_IRQ, 5, 0);
+    HAL_NVIC_EnableIRQ(FRONT_BUTTON_IRQ);
+
+    _system.button_last_tick = HAL_GetTick();
+    _system.button_callback = button_cb;
 }
 
 // This is the start of the sys memory region for the STM32G491 
@@ -85,4 +136,30 @@ void system_hardware_enter_bootloader(void) {
         : // no outputs
         : "r" (*sysmem_boot_loc)
         : "memory"  );
+}
+
+bool system_front_button_pressed(void) {
+    // Active low button, passively pulled high
+    return HAL_GPIO_ReadPin(_system.front_button_in_port, _system.front_button_in_pin) 
+                == GPIO_PIN_RESET;
+}
+
+void system_front_button_led_set(bool set) {
+    HAL_GPIO_WritePin(BUTTON_LED_PORT, BUTTON_LED_PIN,
+        set ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void system_front_button_callback(void) {
+    if(__HAL_GPIO_EXTI_GET_IT(_system.front_button_in_pin) != 0x00u) {
+        __HAL_GPIO_EXTI_CLEAR_IT(_system.front_button_in_pin);
+        uint32_t new_tick = HAL_GetTick();
+        if((new_tick - _system.button_last_tick) > 
+            FRONT_BUTTON_DEBOUNCE_MS) {
+
+            _system.button_last_tick = new_tick;
+            if(_system.button_callback) {
+                _system.button_callback();
+            }
+        }
+    }
 }

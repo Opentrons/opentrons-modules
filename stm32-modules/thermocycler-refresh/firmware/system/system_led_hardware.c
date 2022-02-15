@@ -52,7 +52,7 @@ static struct led_hardware _leds = {
 // ----------------------------------------------------------------------------
 // PUBLIC FUNCTION IMPLEMENTATION
 
-void system_led_iniitalize(void) {
+void system_led_initialize(void) {
     HAL_StatusTypeDef hal_ret = HAL_ERROR;
     TIM_OC_InitTypeDef sConfigOC = {0};
     TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
