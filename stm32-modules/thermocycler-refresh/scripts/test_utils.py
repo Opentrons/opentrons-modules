@@ -282,8 +282,8 @@ def close_lid(ser: serial.Serial):
 
 def sample_until_condition(
         ser: serial.Serial,
-        period: datetime.timedelta,
-        sampler: Callable[[serial.Serial]],
+        period: float,
+        sampler: Callable[[serial.Serial], any],
         done: Callable[[serial.Serial], bool] ):
     try:
         print('Beginning data collection')
@@ -291,7 +291,7 @@ def sample_until_condition(
             sampler(ser)
             if done(ser):
                 break
-            time.sleep(period.total_seconds)
+            time.sleep(period)
     except KeyboardInterrupt:
         print('Sampling complete (keyboard interrupt')
     except RuntimeError as re:

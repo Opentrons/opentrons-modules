@@ -65,9 +65,9 @@ class LidHeaterTask {
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 10.0;
     static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
     // TODO most of these defaults will have to change
-    static constexpr double DEFAULT_KI = 0.102;
-    static constexpr double DEFAULT_KP = 0.97;
-    static constexpr double DEFAULT_KD = 1.901;
+    static constexpr double DEFAULT_KI = 0.001552;
+    static constexpr double DEFAULT_KP = 0.0922;
+    static constexpr double DEFAULT_KD = 0.10358;
     static constexpr double KP_MIN = -200;
     static constexpr double KP_MAX = 200;
     static constexpr double KI_MIN = -200;
