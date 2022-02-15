@@ -11,8 +11,8 @@ def cycle(ser : serial.Serial):
     # Cycle to 95 then 5 and finally back
     # Format is target temp, then hold time
     targets = [
-        (95.0, 20.0),
-        (5.0, 10.0),
+        (95.0, 40.0),
+        (5.0, 50.0),
         (20.0, 20.0) ]
     targets_fake = [
         (20.0, 20.0) ]
