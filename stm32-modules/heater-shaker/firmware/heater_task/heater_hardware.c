@@ -7,6 +7,8 @@
 #include "stm32f3xx_hal_cortex.h"
 #include "stm32f3xx_hal_tim.h"
 #include "stm32f3xx_ll_tim.h"
+#include "stm32f3xx_hal_dac.h"
+#include "stm32f3xx_hal_comp.h"
 
 #include "heater_hardware.h"
 
@@ -21,6 +23,8 @@ typedef struct {
     conversion_results results;
     ADC_HandleTypeDef ntc_adc;
     TIM_HandleTypeDef pad_tim;
+    DAC_HandleTypeDef dac1;
+    COMP_HandleTypeDef comp4;
     TIM_OC_InitTypeDef pwm_config;
     bool heater_started;
 } hw_internal;
@@ -58,6 +62,9 @@ heater_hardware *HEATER_HW_HANDLE = NULL;
 #define HEATER_PAD_ENABLE_PIN (1<<14)
 #define HEATER_PAD_ENABLE_TIM_CHANNEL TIM_CHANNEL_3
 #define HEATER_PAD_LL_SETCOMPARE LL_TIM_OC_SetCompareCH3
+#define HEATPAD_CS_DAC_CHANNEL DAC_CHANNEL_1
+#define HEATPAD_CS_PIN (1<<7)
+#define HEATPAD_CS_PORT GPIOE
 
 
 static void gpio_setup(void) {
@@ -71,6 +78,8 @@ static void gpio_setup(void) {
     HAL_GPIO_Init(NTC_PAD_B_PORT, &gpio_init);
     gpio_init.Pin = NTC_PAD_A_PIN;
     HAL_GPIO_Init(NTC_PAD_A_PORT, &gpio_init);
+    gpio_init.Pin = HEATPAD_CS_PIN;
+    HAL_GPIO_Init(HEATPAD_CS_PORT, &gpio_init);
 
     // Power good sense pin GPIO input nopull
     gpio_init.Pin = HEATER_PGOOD_SENSE_PIN;
@@ -133,6 +142,36 @@ static void tim_setup(TIM_HandleTypeDef* tim) {
     }
 }
 
+static void dac_setup(DAC_HandleTypeDef* dac) {
+  __HAL_RCC_DAC1_CLK_ENABLE();
+  dac->Instance = DAC1;
+  if (HAL_OK != HAL_DAC_Init(dac)) {
+    init_error();
+  }
+
+  DAC_ChannelConfTypeDef chan_config = {
+     .DAC_Trigger = DAC_TRIGGER_NONE,
+     .DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE,
+  };
+  HAL_DAC_ConfigChannel(dac, &chan_config, HEATPAD_CS_DAC_CHANNEL);
+  HAL_DAC_Start(dac, HEATPAD_CS_DAC_CHANNEL);
+
+  uint8_t dac_val = (uint8_t) (0xF7); //roughly 3.2V
+  HAL_DAC_SetValue(dac, HEATPAD_CS_DAC_CHANNEL, DAC_ALIGN_8B_R, dac_val);
+}
+
+static void comp_setup(COMP_HandleTypeDef* comp) {
+  comp->Instance = COMP4;
+  comp->Init.InvertingInput = COMP_INVERTINGINPUT_DAC1_CH1;
+  comp->Init.NonInvertingInput = COMP_NONINVERTINGINPUT_IO1; //PB0
+  comp->Init.Output = COMP_OUTPUT_TIM1BKIN2; //change to interrupt
+  //comp->Init.TriggerMode = ;
+  if (HAL_OK != HAL_COMP_Init(comp)) {
+    init_error();
+  }
+  HAL_COMP_Start(comp);
+}
+
 void heater_hardware_setup(heater_hardware* hardware) {
     HEATER_HW_HANDLE = hardware;
     hardware->hardware_internal = (void*)&_internals;
@@ -145,6 +184,8 @@ void heater_hardware_setup(heater_hardware* hardware) {
     gpio_setup();
     adc_setup(&_internals.ntc_adc);
     tim_setup(&_internals.pad_tim);
+    dac_setup(&_internals.dac1);
+    comp_setup(&_internals.comp4);
     HAL_NVIC_SetPriority(ADC3_IRQn, 10, 0);
     HAL_NVIC_EnableIRQ(ADC3_IRQn);
     HAL_ADC_Start(&_internals.ntc_adc);
