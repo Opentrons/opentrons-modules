@@ -278,3 +278,21 @@ def close_lid(ser: serial.Serial):
     move_lid_angle(-120, False, ser)
     move_lid_angle(-3, True, ser)
     
+# UTILITIES FOR STEP RESPONSE
+
+def sample_until_condition(
+        ser: serial.Serial,
+        period: datetime.timedelta,
+        sampler: Callable[[serial.Serial]],
+        done: Callable[[serial.Serial], bool] ):
+    try:
+        print('Beginning data collection')
+        while True:
+            sampler(ser)
+            if done(ser):
+                break
+            time.sleep(period.total_seconds)
+    except KeyboardInterrupt:
+        print('Sampling complete (keyboard interrupt')
+    except RuntimeError as re:
+        print(f'Sampling complete (Error: {re}')
