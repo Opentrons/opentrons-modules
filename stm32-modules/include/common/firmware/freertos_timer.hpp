@@ -35,6 +35,22 @@ class FreeRTOSTimer {
 
     auto stop() -> bool { return xTimerStop(_timer, 0) == pdPASS; }
 
+    auto start_from_isr() -> bool {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        auto ret = xTimerStartFromISR(_timer, &xHigherPriorityTaskWoken);
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast)
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        return ret == pdPASS;
+    }
+
+    auto stop_from_isr() -> bool {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        auto ret = xTimerStopFromISR(_timer, &xHigherPriorityTaskWoken);
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast)
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        return ret == pdPASS;
+    }
+
     [[nodiscard]] auto active() const -> bool {
         return xTimerIsTimerActive(_timer) != pdFALSE;
     }

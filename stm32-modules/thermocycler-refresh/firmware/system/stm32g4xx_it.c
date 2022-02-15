@@ -142,7 +142,7 @@ void EXTI9_5_IRQHandler(void)
 void EXTI15_10_IRQHandler(void)
 {
     thermal_adc_ready_callback(ADC2_ITR);
-
+    system_front_button_callback();
 }
 
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) 
