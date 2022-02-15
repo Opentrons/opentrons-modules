@@ -11,11 +11,11 @@ def cycle(ser : serial.Serial):
     # Cycle to 95 then 5 and finally back
     # Format is target temp, then hold time
     targets = [
-        (95.0, 10.0),
+        (95.0, 20.0),
         (5.0, 10.0),
         (20.0, 20.0) ]
     targets_fake = [
-        (30.0, 20.0) ]
+        (20.0, 20.0) ]
     target_idx = 0
 
     hold_timer = 0.0
@@ -55,10 +55,11 @@ def cycle(ser : serial.Serial):
 if __name__ == '__main__':
     ser = test_utils.build_serial()
 
-    test_utils.set_peltier_pid(0.43429, 0.001656, 0.0164408, ser)
+    #test_utils.set_peltier_pid(0.043429, 0.001656, 0.0164408, ser)
+    test_utils.set_peltier_pid(0.26225539341692944, 0.05356372043227761, 0.008128697818415609, ser)
     test_utils.set_heater_pid(0.0922, 0.001552, 0.10358, ser)
 
-    test_utils.set_lid_temperature(90, ser)
+    #test_utils.set_lid_temperature(90, ser)
     cycle(ser)
     test_utils.deactivate_lid(ser)
     test_utils.deactivate_plate(ser)

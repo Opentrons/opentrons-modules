@@ -99,7 +99,7 @@ def get_lid_temp(ser: serial.Serial):
 if __name__ == '__main__':
     print('Testing peltier system')
     ser = test_utils.build_serial()
-    main_tester = StepResponse(set_whole_power, get_whole_temperature, 0.5, 80, 20, 0.1)
+    main_tester = StepResponse(set_whole_power, get_whole_temperature, 1, 95, 100, 0.1)
     test_utils.set_fans_manual(0, ser)
     main_tester.run(ser)
     main_tester.set_power(ser, 0)
@@ -108,7 +108,8 @@ if __name__ == '__main__':
     write_csv('main', main_tester.data)
 
     print('Testing lid heater system')
-    lid_tester = StepResponse(set_lid_power, get_lid_temp, 0.5, 80, 20, 0.1)
+    lid_tester = StepResponse(set_lid_power, get_lid_temp, 1, 80, 100, 0.1)
     lid_tester.run(ser)
+    lid_tester.set_power(ser, 0)
     print('Lid done, exporting')
     write_csv('lid', lid_tester.data)
