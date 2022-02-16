@@ -250,7 +250,6 @@ class SystemTask {
         static_cast<void>(policy);
         _led_state.color = colors::get_color(message.color);
         _led_state.mode = message.mode;
-        _led_state.counter = 0;
     }
 
     template <typename Policy>
