@@ -88,9 +88,9 @@ class ThermalPlateTask {
     static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
     static constexpr uint8_t PLATE_THERM_COUNT = 7;
     // TODO most of these defaults will have to change
-    static constexpr double DEFAULT_KI = 0.102;
-    static constexpr double DEFAULT_KP = 0.97;
-    static constexpr double DEFAULT_KD = 1.901;
+    static constexpr double DEFAULT_KI = 0.05356;
+    static constexpr double DEFAULT_KP = 0.26225;
+    static constexpr double DEFAULT_KD = 0.00812;
     static constexpr double DEFAULT_FAN_KI = 0.01;
     static constexpr double DEFAULT_FAN_KP = 0.2;
     static constexpr double DEFAULT_FAN_KD = 0.05;
