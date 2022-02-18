@@ -723,45 +723,49 @@ class ThermalPlateTask {
     }
 
     /**
-     * @brief Send a message to the System Task with our current 
+     * @brief Send a message to the System Task with our current
      * most_relevant_error
-     * 
+     *
      */
     auto send_current_error() -> void {
         auto error_msg = messages::UpdateTaskErrorState{
             .task = messages::UpdateTaskErrorState::Tasks::THERMAL_PLATE,
-            .current_error = most_relevant_error()
-        };
-        static_cast<void>(_task_registry->system->get_message_queue().try_send(error_msg));
+            .current_error = most_relevant_error()};
+        static_cast<void>(
+            _task_registry->system->get_message_queue().try_send(error_msg));
     }
 
     /**
-     * @brief Send a message to the System Task with the current state of 
+     * @brief Send a message to the System Task with the current state of
      * the plate task. This is used to update the LED control for the UI
      */
     auto send_current_state() -> void {
         using PlateState = messages::UpdatePlateState::PlateState;
         auto state = PlateState::IDLE;
         // State only matters if there's no error
-        if(_state.system_status == State::CONTROLLING) {
+        if (_state.system_status == State::CONTROLLING) {
             bool ramping = true;
             auto plate_control_status = _plate_control.status();
-            if(plate_control_status == plate_control::PlateStatus::OVERSHOOT ||
-               plate_control_status == plate_control::PlateStatus::STEADY_STATE) {
+            if (plate_control_status == plate_control::PlateStatus::OVERSHOOT ||
+                plate_control_status ==
+                    plate_control::PlateStatus::STEADY_STATE) {
                 ramping = false;
             }
-            // We consider whether the plate is going to a hot or cold temp, 
+            // We consider whether the plate is going to a hot or cold temp,
             // and whether it is ramping or already at the target
-            if(_plate_control.setpoint() > 
+            if (_plate_control.setpoint() >
                 static_cast<double>(plate_control::TemperatureZone::COLD)) {
-                state = (ramping) ? PlateState::HEATING : PlateState::AT_HOT_TEMP;
+                state =
+                    (ramping) ? PlateState::HEATING : PlateState::AT_HOT_TEMP;
             } else {
-                state = (ramping) ? PlateState::COOLING : PlateState::AT_COLD_TEMP;
+                state =
+                    (ramping) ? PlateState::COOLING : PlateState::AT_COLD_TEMP;
             }
         }
 
         auto message = messages::UpdatePlateState{.state = state};
-        static_cast<void>(_task_registry->system->get_message_queue().try_send(message));
+        static_cast<void>(
+            _task_registry->system->get_message_queue().try_send(message));
     }
 
     Queue& _message_queue;

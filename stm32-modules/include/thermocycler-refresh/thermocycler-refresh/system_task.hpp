@@ -261,11 +261,11 @@ class SystemTask {
     }
 
     template <SystemExecutionPolicy Policy>
-    auto visit_message(const messages::UpdateTaskErrorState& message, Policy& policy)
-        -> void  {
+    auto visit_message(const messages::UpdateTaskErrorState& message,
+                       Policy& policy) -> void {
         static_cast<void>(policy);
         using Tasks = messages::UpdateTaskErrorState::Tasks;
-        switch(message.task) {
+        switch (message.task) {
             case Tasks::THERMAL_PLATE:
                 _plate_error = message.current_error;
                 break;
@@ -279,8 +279,8 @@ class SystemTask {
     }
 
     template <SystemExecutionPolicy Policy>
-    auto visit_message(const messages::UpdatePlateState& message, Policy& policy)
-        -> void  {
+    auto visit_message(const messages::UpdatePlateState& message,
+                       Policy& policy) -> void {
         static_cast<void>(policy);
         _plate_state = message.state;
     }
@@ -303,18 +303,16 @@ class SystemTask {
     [[nodiscard]] auto get_led_state() -> LedState& { return _led_state; }
 
   private:
-
     // Update current state of the UI based on task errors and plate action
     auto update_led_mode_from_system() -> void {
         using namespace colors;
-        if(_plate_error != errors::ErrorCode::NO_ERROR ||
-           _lid_error != errors::ErrorCode::NO_ERROR ||
-           _motor_error != errors::ErrorCode::NO_ERROR ) {
-
+        if (_plate_error != errors::ErrorCode::NO_ERROR ||
+            _lid_error != errors::ErrorCode::NO_ERROR ||
+            _motor_error != errors::ErrorCode::NO_ERROR) {
             _led_state.color = get_color(Colors::ORANGE);
             _led_state.mode = Mode::BLINKING;
         } else {
-            switch(_plate_state) {
+            switch (_plate_state) {
                 case PlateState::IDLE:
                     _led_state.color = get_color(Colors::SOFT_WHITE);
                     _led_state.mode = Mode::SOLID;

@@ -128,25 +128,159 @@ SCENARIO("system task message passing") {
                     auto &led = tasks->get_system_task().get_led_state();
                     REQUIRE(led.mode == message.mode);
                     REQUIRE(led.color == colors::get_color(message.color));
-                    REQUIRE(led.counter == 0);
                 }
             }
-            AND_THEN("sending an LED update message") {
+        }
+        WHEN("sending an UpdateTaskErrorState message with a plate error") {
+            auto message = messages::UpdateTaskErrorState{
+                .task = messages::UpdateTaskErrorState::Tasks::THERMAL_PLATE,
+                .current_error =
+                    errors::ErrorCode::THERMISTOR_BACK_CENTER_OVERTEMP};
+            tasks->get_system_queue().backing_deque.push_back(
+                messages::SystemMessage(message));
+            tasks->get_system_task().run_once(tasks->get_system_policy());
+            AND_WHEN("sending an LED update message") {
                 tasks->get_system_queue().backing_deque.push_back(
                     messages::SystemMessage(messages::UpdateUIMessage()));
                 tasks->get_system_task().run_once(tasks->get_system_policy());
-                THEN("the task should set the LED outputs appropriately") {
-                    auto &buf = tasks->get_system_policy().buffer();
-                    auto test_string =
-                        xt1511::XT1511String<uint16_t, 16>(xt1511::Speed::HALF);
-                    auto test_buf = TestXT1511Policy<16>(
-                        tasks->get_system_policy().get_max_pwm());
-                    test_string.set_all(
-                        colors::get_color(colors::Colors::BLUE));
-                    test_string.write(test_buf);
-                    for (size_t i = 0; i < buf.size(); ++i) {
-                        REQUIRE(buf[i] == test_buf.buffer()[i]);
-                    }
+                THEN("the task should set the LED outputs to the error mode") {
+                    auto &led = tasks->get_system_task().get_led_state();
+                    REQUIRE(led.mode == colors::Mode::BLINKING);
+                    REQUIRE(led.color ==
+                            colors::get_color(colors::Colors::ORANGE));
+                }
+            }
+        }
+        WHEN("sending an UpdateTaskErrorState message with a lid error") {
+            auto message = messages::UpdateTaskErrorState{
+                .task = messages::UpdateTaskErrorState::Tasks::THERMAL_LID,
+                .current_error =
+                    errors::ErrorCode::THERMISTOR_LID_DISCONNECTED};
+            tasks->get_system_queue().backing_deque.push_back(
+                messages::SystemMessage(message));
+            tasks->get_system_task().run_once(tasks->get_system_policy());
+            AND_WHEN("sending an LED update message") {
+                tasks->get_system_queue().backing_deque.push_back(
+                    messages::SystemMessage(messages::UpdateUIMessage()));
+                tasks->get_system_task().run_once(tasks->get_system_policy());
+                THEN("the task should set the LED outputs to the error mode") {
+                    auto &led = tasks->get_system_task().get_led_state();
+                    REQUIRE(led.mode == colors::Mode::BLINKING);
+                    REQUIRE(led.color ==
+                            colors::get_color(colors::Colors::ORANGE));
+                }
+            }
+        }
+        WHEN("sending an UpdateTaskErrorState message with a motor error") {
+            auto message = messages::UpdateTaskErrorState{
+                .task = messages::UpdateTaskErrorState::Tasks::MOTOR,
+                .current_error = errors::ErrorCode::SEAL_MOTOR_SPI_ERROR};
+            tasks->get_system_queue().backing_deque.push_back(
+                messages::SystemMessage(message));
+            tasks->get_system_task().run_once(tasks->get_system_policy());
+            AND_WHEN("sending an LED update message") {
+                tasks->get_system_queue().backing_deque.push_back(
+                    messages::SystemMessage(messages::UpdateUIMessage()));
+                tasks->get_system_task().run_once(tasks->get_system_policy());
+                THEN("the task should set the LED outputs to the error mode") {
+                    auto &led = tasks->get_system_task().get_led_state();
+                    REQUIRE(led.mode == colors::Mode::BLINKING);
+                    REQUIRE(led.color ==
+                            colors::get_color(colors::Colors::ORANGE));
+                }
+            }
+        }
+        WHEN("sending a UpdatePlateStatus message with an idle plate") {
+            auto message = messages::UpdatePlateState{
+                .state = messages::UpdatePlateState::PlateState::IDLE};
+            tasks->get_system_queue().backing_deque.push_back(
+                messages::SystemMessage(message));
+            tasks->get_system_task().run_once(tasks->get_system_policy());
+            AND_WHEN("sending an LED update message") {
+                tasks->get_system_queue().backing_deque.push_back(
+                    messages::SystemMessage(messages::UpdateUIMessage()));
+                tasks->get_system_task().run_once(tasks->get_system_policy());
+                THEN("the task should set the LED outputs to the idle mode") {
+                    auto &led = tasks->get_system_task().get_led_state();
+                    REQUIRE(led.mode == colors::Mode::SOLID);
+                    REQUIRE(led.color ==
+                            colors::get_color(colors::Colors::SOFT_WHITE));
+                }
+            }
+        }
+        WHEN("sending a UpdatePlateStatus message with a heating plate") {
+            auto message = messages::UpdatePlateState{
+                .state = messages::UpdatePlateState::PlateState::HEATING};
+            tasks->get_system_queue().backing_deque.push_back(
+                messages::SystemMessage(message));
+            tasks->get_system_task().run_once(tasks->get_system_policy());
+            AND_WHEN("sending an LED update message") {
+                tasks->get_system_queue().backing_deque.push_back(
+                    messages::SystemMessage(messages::UpdateUIMessage()));
+                tasks->get_system_task().run_once(tasks->get_system_policy());
+                THEN(
+                    "the task should set the LED outputs to the heating mode") {
+                    auto &led = tasks->get_system_task().get_led_state();
+                    REQUIRE(led.mode == colors::Mode::PULSING);
+                    REQUIRE(led.color ==
+                            colors::get_color(colors::Colors::RED));
+                }
+            }
+        }
+        WHEN("sending a UpdatePlateStatus message with plate at hot temp") {
+            auto message = messages::UpdatePlateState{
+                .state = messages::UpdatePlateState::PlateState::AT_HOT_TEMP};
+            tasks->get_system_queue().backing_deque.push_back(
+                messages::SystemMessage(message));
+            tasks->get_system_task().run_once(tasks->get_system_policy());
+            AND_WHEN("sending an LED update message") {
+                tasks->get_system_queue().backing_deque.push_back(
+                    messages::SystemMessage(messages::UpdateUIMessage()));
+                tasks->get_system_task().run_once(tasks->get_system_policy());
+                THEN(
+                    "the task should set the LED outputs to the heating mode") {
+                    auto &led = tasks->get_system_task().get_led_state();
+                    REQUIRE(led.mode == colors::Mode::SOLID);
+                    REQUIRE(led.color ==
+                            colors::get_color(colors::Colors::RED));
+                }
+            }
+        }
+        WHEN("sending a UpdatePlateStatus message with a cooling plate") {
+            auto message = messages::UpdatePlateState{
+                .state = messages::UpdatePlateState::PlateState::COOLING};
+            tasks->get_system_queue().backing_deque.push_back(
+                messages::SystemMessage(message));
+            tasks->get_system_task().run_once(tasks->get_system_policy());
+            AND_WHEN("sending an LED update message") {
+                tasks->get_system_queue().backing_deque.push_back(
+                    messages::SystemMessage(messages::UpdateUIMessage()));
+                tasks->get_system_task().run_once(tasks->get_system_policy());
+                THEN(
+                    "the task should set the LED outputs to the cooling mode") {
+                    auto &led = tasks->get_system_task().get_led_state();
+                    REQUIRE(led.mode == colors::Mode::PULSING);
+                    REQUIRE(led.color ==
+                            colors::get_color(colors::Colors::BLUE));
+                }
+            }
+        }
+        WHEN("sending a UpdatePlateStatus message with plate at cool temp") {
+            auto message = messages::UpdatePlateState{
+                .state = messages::UpdatePlateState::PlateState::AT_COLD_TEMP};
+            tasks->get_system_queue().backing_deque.push_back(
+                messages::SystemMessage(message));
+            tasks->get_system_task().run_once(tasks->get_system_policy());
+            AND_WHEN("sending an LED update message") {
+                tasks->get_system_queue().backing_deque.push_back(
+                    messages::SystemMessage(messages::UpdateUIMessage()));
+                tasks->get_system_task().run_once(tasks->get_system_policy());
+                THEN(
+                    "the task should set the LED outputs to the cooling mode") {
+                    auto &led = tasks->get_system_task().get_led_state();
+                    REQUIRE(led.mode == colors::Mode::SOLID);
+                    REQUIRE(led.color ==
+                            colors::get_color(colors::Colors::BLUE));
                 }
             }
         }

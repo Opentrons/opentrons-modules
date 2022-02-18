@@ -273,14 +273,10 @@ struct SetLedMode {
 // This message is sent to the System Task by each
 // subsystem task to update what the current error state is.
 struct UpdateTaskErrorState {
-    // Each subsystem can signal its own errors so the 
+    // Each subsystem can signal its own errors so the
     // system task can independently track whether there is
     // a reason to trigger the error light condition
-    enum class Tasks : uint8_t {
-        THERMAL_PLATE,
-        THERMAL_LID,
-        MOTOR
-    };
+    enum class Tasks : uint8_t { THERMAL_PLATE, THERMAL_LID, MOTOR };
 
     Tasks task;
     errors::ErrorCode current_error = errors::ErrorCode::NO_ERROR;
