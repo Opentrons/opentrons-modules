@@ -59,6 +59,7 @@ class SystemTask {
 
   public:
     using Queue = QueueImpl<Message>;
+    using PlateState = messages::UpdatePlateState::PlateState;
     // Time between each write to the LED strip
     static constexpr uint32_t LED_UPDATE_PERIOD_MS = 13;
     // Time that each full "pulse" action should take (sine wave)
@@ -75,7 +76,11 @@ class SystemTask {
           _led_state{.color = colors::get_color(colors::Colors::SOFT_WHITE),
                      .mode = colors::Mode::SOLID,
                      .counter = 0,
-                     .period = LED_PULSE_PERIOD_MS} {}
+                     .period = LED_PULSE_PERIOD_MS},
+          _plate_error(errors::ErrorCode::NO_ERROR),
+          _lid_error(errors::ErrorCode::NO_ERROR),
+          _motor_error(errors::ErrorCode::NO_ERROR),
+          _plate_state(PlateState::IDLE) {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
     SystemTask(SystemTask&& other) noexcept = delete;
@@ -190,6 +195,9 @@ class SystemTask {
             _led_state.counter = 0;
         }
 
+        // The LED mode is automatic based on the plate status and error status
+        update_led_mode_from_system();
+
         switch (_led_state.mode) {
             case colors::Mode::SOLID:
                 // Don't bother with timer
@@ -252,6 +260,31 @@ class SystemTask {
         _led_state.mode = message.mode;
     }
 
+    template <SystemExecutionPolicy Policy>
+    auto visit_message(const messages::UpdateTaskErrorState& message, Policy& policy)
+        -> void  {
+        static_cast<void>(policy);
+        using Tasks = messages::UpdateTaskErrorState::Tasks;
+        switch(message.task) {
+            case Tasks::THERMAL_PLATE:
+                _plate_error = message.current_error;
+                break;
+            case Tasks::THERMAL_LID:
+                _lid_error = message.current_error;
+                break;
+            case Tasks::MOTOR:
+                _motor_error = message.current_error;
+                break;
+        }
+    }
+
+    template <SystemExecutionPolicy Policy>
+    auto visit_message(const messages::UpdatePlateState& message, Policy& policy)
+        -> void  {
+        static_cast<void>(policy);
+        _plate_state = message.state;
+    }
+
     template <typename Policy>
     requires SystemExecutionPolicy<Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
@@ -270,11 +303,52 @@ class SystemTask {
     [[nodiscard]] auto get_led_state() -> LedState& { return _led_state; }
 
   private:
+
+    // Update current state of the UI based on task errors and plate action
+    auto update_led_mode_from_system() -> void {
+        using namespace colors;
+        if(_plate_error != errors::ErrorCode::NO_ERROR ||
+           _lid_error != errors::ErrorCode::NO_ERROR ||
+           _motor_error != errors::ErrorCode::NO_ERROR ) {
+
+            _led_state.color = get_color(Colors::ORANGE);
+            _led_state.mode = Mode::BLINKING;
+        } else {
+            switch(_plate_state) {
+                case PlateState::IDLE:
+                    _led_state.color = get_color(Colors::SOFT_WHITE);
+                    _led_state.mode = Mode::SOLID;
+                    break;
+                case PlateState::HEATING:
+                    _led_state.color = get_color(Colors::RED);
+                    _led_state.mode = Mode::PULSING;
+                    break;
+                case PlateState::AT_HOT_TEMP:
+                    _led_state.color = get_color(Colors::RED);
+                    _led_state.mode = Mode::SOLID;
+                    break;
+                case PlateState::COOLING:
+                    _led_state.color = get_color(Colors::BLUE);
+                    _led_state.mode = Mode::PULSING;
+                    break;
+                case PlateState::AT_COLD_TEMP:
+                    _led_state.color = get_color(Colors::BLUE);
+                    _led_state.mode = Mode::SOLID;
+                    break;
+            }
+        }
+    }
+
     Queue& _message_queue;
     tasks::Tasks<QueueImpl>* _task_registry;
     BootloaderPrepAckCache _prep_cache;
     xt1511::XT1511String<PWM_T, SYSTEM_LED_COUNT> _leds;
     LedState _led_state;
+    // Tracks error state of different tasks
+    errors::ErrorCode _plate_error;
+    errors::ErrorCode _lid_error;
+    errors::ErrorCode _motor_error;
+    PlateState _plate_state;
 };
 
 };  // namespace system_task

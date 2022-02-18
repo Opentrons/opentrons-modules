@@ -270,6 +270,38 @@ struct SetLedMode {
     colors::Mode mode;
 };
 
+// This message is sent to the System Task by each
+// subsystem task to update what the current error state is.
+struct UpdateTaskErrorState {
+    // Each subsystem can signal its own errors so the 
+    // system task can independently track whether there is
+    // a reason to trigger the error light condition
+    enum class Tasks : uint8_t {
+        THERMAL_PLATE,
+        THERMAL_LID,
+        MOTOR
+    };
+
+    Tasks task;
+    errors::ErrorCode current_error = errors::ErrorCode::NO_ERROR;
+};
+
+// This message is sent to the System Task by just the Thermal
+// Plate Task to update what the current state of the thermal
+// subsystem is. This dictates how the UI LED's are controlled
+// if there is no active error flag.
+struct UpdatePlateState {
+    enum class PlateState : uint8_t {
+        IDLE,
+        HEATING,
+        AT_HOT_TEMP,
+        COOLING,
+        AT_COLD_TEMP
+    };
+
+    PlateState state;
+};
+
 struct GetLidStatusMessage {
     uint32_t id;
 };
@@ -283,7 +315,8 @@ struct GetLidStatusResponse {
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage,
-                   UpdateUIMessage, SetLedMode>;
+                   UpdateUIMessage, SetLedMode, UpdateTaskErrorState,
+                   UpdatePlateState>;
 using HostCommsMessage = ::std::variant<
     std::monostate, IncomingMessageFromHost, AcknowledgePrevious, ErrorMessage,
     ForceUSBDisconnectMessage, GetSystemInfoResponse,
