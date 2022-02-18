@@ -90,7 +90,7 @@ static void run(void *param) {
 auto start() -> tasks::Task<TaskHandle_t,
                             system_task::SystemTask<FreeRTOSMessageQueue>> {
     auto *handle = xTaskCreateStatic(run, "SystemControl", stack.size(), &_task,
-                                     3, stack.data(), &data);
+                                     1, stack.data(), &data);
     _system_queue.provide_handle(handle);
     return tasks::Task<TaskHandle_t, decltype(_task)>{.handle = handle,
                                                       .task = &_task};
