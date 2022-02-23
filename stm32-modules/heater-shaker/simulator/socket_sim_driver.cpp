@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <boost/asio.hpp>
+#include <iostream>
 #include <iterator>
 #include <memory>
 #include <regex>
