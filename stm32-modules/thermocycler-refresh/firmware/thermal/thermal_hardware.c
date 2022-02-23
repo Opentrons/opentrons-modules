@@ -58,6 +58,11 @@
  */
 #define ADC_READY_ITR_PRIO (10)
 
+/** EEPROM write protect pin */
+#define EEPROM_WRITE_PROTECT_PIN  (10)
+/** EEPROM write protect port */
+#define EEPROM_WRITE_PROTECT_PORT (GPIOC)
+
 /** Local variables */
 
 static TaskHandle_t _i2c_task_to_notify = NULL;
@@ -89,6 +94,7 @@ static void thermal_gpio_init(void) {
 
     /* GPIO Ports Clock Enable */
     __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
 
     /*Configure GPIO pins : ADC_1_ALERT_Pin ADC_2_ALERT_Pin */
     GPIO_InitStruct.Pin = _adc_itr_gpio[ADC1_ITR] |
@@ -96,6 +102,14 @@ static void thermal_gpio_init(void) {
     GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    /*Configure GPIO pin: EEPROM Write Protect */
+    GPIO_InitStruct.Pin = EEPROM_WRITE_PROTECT_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(EEPROM_WRITE_PROTECT_PORT, &GPIO_InitStruct);
+    // Initialize to protected
+    thermal_eeprom_set_write_protect(true);
 
     /* EXTI interrupt init*/
     HAL_NVIC_SetPriority(EXTI9_5_IRQn, ADC_READY_ITR_PRIO, 0);
@@ -233,6 +247,75 @@ bool thermal_i2c_read_16(uint16_t addr, uint8_t reg, uint16_t *val) {
     return (notification_val == 1) && (hal_ret == HAL_OK);
 }
 
+bool thermal_i2c_write_data(uint16_t addr, uint8_t *data, uint16_t len) {
+    const TickType_t max_block_time = pdMS_TO_TICKS(100);
+    HAL_StatusTypeDef hal_ret;
+    uint32_t notification_val = 0;
+    BaseType_t sem_ret;
+
+    if(data == NULL) {
+        return false;
+    }
+
+    sem_ret = xSemaphoreTake(_i2c_semaphore, portMAX_DELAY);
+    if(sem_ret != pdTRUE) {
+        return false;
+    }
+
+    // Set up notification info
+    if(_i2c_task_to_notify != NULL) {
+        xSemaphoreGive(_i2c_semaphore);
+        return false;
+    }
+
+    hal_ret = HAL_I2C_Master_Transmit_IT(&_i2c_handle, addr, data, len);
+
+    if(hal_ret == HAL_OK) {
+        // Block on the interrupt for transmit_complete
+        notification_val = ulTaskNotifyTake(pdTRUE, max_block_time);
+    }
+
+    // Ignore return, we would not return an error here even if it fails
+    (void)xSemaphoreGive(_i2c_semaphore);
+
+    return (notification_val == 1) && (hal_ret == HAL_OK);
+}
+
+bool thermal_i2c_read_data(uint16_t addr, uint8_t *data, uint16_t len) {
+    const TickType_t max_block_time = pdMS_TO_TICKS(100);
+    HAL_StatusTypeDef hal_ret;
+    uint32_t notification_val = 0;
+    BaseType_t sem_ret;
+
+    if(data == NULL) {
+        return false;
+    }
+
+    sem_ret = xSemaphoreTake(_i2c_semaphore, portMAX_DELAY);
+    if(sem_ret != pdTRUE) {
+        return false;
+    }
+
+    // Set up notification info
+    if(_i2c_task_to_notify != NULL) {
+        xSemaphoreGive(_i2c_semaphore);
+        return false;
+    }
+
+    hal_ret = HAL_I2C_Master_Receive_IT(&_i2c_handle, addr, data, len);
+
+    if(hal_ret == HAL_OK) {
+        // Block on the interrupt for transmit_complete
+        notification_val = ulTaskNotifyTake(pdTRUE, max_block_time);
+    }
+
+    // Ignore return, we would not return an error here even if it fails
+    (void)xSemaphoreGive(_i2c_semaphore);
+    
+    return (notification_val == 1) && (hal_ret == HAL_OK);
+
+}
+
 bool thermal_arm_adc_for_read(ADC_ITR_T id) {
     if(_gpio_task_to_notify[id] != NULL) {
         return false;
@@ -257,10 +340,17 @@ void thermal_adc_ready_callback(ADC_ITR_T id) {
     }
 }
 
+void thermal_eeprom_set_write_protect(bool protect) {
+    HAL_GPIO_WritePin(
+        EEPROM_WRITE_PROTECT_PORT, 
+        EEPROM_WRITE_PROTECT_PIN,
+        (protect) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
 /** Overwritten HAL functions */
 
-void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *i2c_handle)
-{
+// Interrupt handling is the same for every type of transmission
+static void handle_i2c_callback() {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     if( _i2c_task_to_notify == NULL ) {
         return;
@@ -268,29 +358,28 @@ void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *i2c_handle)
     vTaskNotifyGiveFromISR( _i2c_task_to_notify, &xHigherPriorityTaskWoken );
     _i2c_task_to_notify = NULL;
     portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+
 }
 
-void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *i2c_handle)
-{
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    if( _i2c_task_to_notify == NULL ) {
-        return;
-    }
-    vTaskNotifyGiveFromISR( _i2c_task_to_notify, &xHigherPriorityTaskWoken );
-    _i2c_task_to_notify = NULL;
-    portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *i2c_handle){
+    handle_i2c_callback();
 }
 
+void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *i2c_handle){
+    handle_i2c_callback();
+}
+
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    handle_i2c_callback();
+}
+
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    handle_i2c_callback();
+}
 
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *i2c_handle)
 {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    if( _i2c_task_to_notify == NULL ) {
-        return;
-    }
-    vTaskNotifyGiveFromISR( _i2c_task_to_notify, &xHigherPriorityTaskWoken );
-    _i2c_task_to_notify = NULL;
-    portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+    handle_i2c_callback();
 }
 
 /** Interrupt handlers */

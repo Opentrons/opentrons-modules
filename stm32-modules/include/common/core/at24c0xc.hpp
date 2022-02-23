@@ -33,6 +33,25 @@ concept AT24C0xC_Policy = requires(Policy &policy, uint8_t addr,
     { policy.set_write_protect(true) } -> std::same_as<void>;
 };
 
+/**
+ * @brief Class encapsulating the AT24C01C and AT24C02C
+ * EEPROM chips.
+ *
+ * The EEPROM consists of 16 or 32 pages of 8 bytes each.
+ * One page can be written at a time, and an unlimited
+ * number of bytes can be read in a single transaction.
+ *
+ * This driver groups all writes & reads into entire-page
+ * actions. Any arbitrary Plain-Old-Data type may be written
+ * to the EEPROM, so long as it is serializable into 8 or less
+ * bytes.
+ *
+ * @tparam PAGES Number of data pages. Must be 16 or 32.
+ * @tparam ADDRESS The I2C address for this device. Pass
+ * in the <b>7-bit value</b> specified in the datasheet,
+ * this driver will automatically shift it left by 1 bit
+ * to create an 8-bit address.
+ */
 template <size_t PAGES, uint8_t ADDRESS>
 class AT24C0xC {
   public:
@@ -124,9 +143,11 @@ class AT24C0xC {
     [[nodiscard]] auto const size() -> size_t { return _size; }
 
   private:
-    // Total size of the EEPROm
+    // Total size of the EEPROM
     static constexpr const size_t _size = PAGES * PAGE_LENGTH;
-    static constexpr const uint8_t _address = ADDRESS;
+    // I2C address of the EEPROM, shifted 1 bit left from the
+    // datasheet.
+    static constexpr const uint8_t _address = ADDRESS << 1;
 };
 
 }  // namespace at24c0xc

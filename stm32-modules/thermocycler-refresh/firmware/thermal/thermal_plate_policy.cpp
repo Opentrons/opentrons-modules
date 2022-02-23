@@ -44,3 +44,8 @@ auto ThermalPlatePolicy::set_fan(double power) -> bool {
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPlatePolicy::get_fan() -> double { return thermal_fan_get_power(); }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto ThermalPlatePolicy::set_write_protect(bool write_protect) -> void {
+    thermal_eeprom_set_write_protect(write_protect);
+}
