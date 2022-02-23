@@ -3,10 +3,10 @@
  * @brief Implements a generic driver for the AT24C0xC EEPROM IC's.
  */
 
-#pragma once 
+#pragma once
 
 #include <array>
-#include <cstring> // For memcpy
+#include <cstring>  // For memcpy
 
 #include "core/bit_utils.hpp"
 
@@ -16,9 +16,9 @@ namespace at24c0xc {
 static constexpr const size_t PAGE_LENGTH = 8;
 
 template <typename Policy>
-concept AT24C0xC_Policy = requires(Policy& policy, uint8_t addr, 
-        std::array<uint8_t, PAGE_LENGTH + 1> send,
-        std::array<uint8_t, PAGE_LENGTH> receive) {
+concept AT24C0xC_Policy = requires(Policy &policy, uint8_t addr,
+                                   std::array<uint8_t, PAGE_LENGTH + 1> send,
+                                   std::array<uint8_t, PAGE_LENGTH> receive) {
     // Function to write a page (8 bytes)
     { policy.i2c_write(addr, send) } -> std::same_as<bool>;
     // Function to write a singlye byte
@@ -37,16 +37,15 @@ template <size_t PAGES, uint8_t ADDRESS>
 class AT24C0xC {
   public:
     // Either a 1024 or 2048 bit device
-    static_assert((PAGES == 16) ||( PAGES == 32), 
+    static_assert((PAGES == 16) || (PAGES == 32),
                   "EEPROM size must be 1024 or 2048 bits");
     // Address is lower 7 bits
-    static_assert(ADDRESS < 0x80,
-                  "Address must be a 7-bit value");
+    static_assert(ADDRESS < 0x80, "Address must be a 7-bit value");
 
     /**
      * @brief Serialize and write a value of type T to the EEPROM
-     * 
-     * @tparam Policy Instance of policy for sending/receiving over I2C 
+     *
+     * @tparam Policy Instance of policy for sending/receiving over I2C
      * @tparam T The type to write. Must be serializable to an 8 byte
      * or less value.
      * @param page The page number to write to.
@@ -54,7 +53,7 @@ class AT24C0xC {
      * @param policy Instance of \c T
      * @return true on success, false otherwise
      */
-    template <AT24C0xC_Policy Policy, typename T>
+    template <typename T, AT24C0xC_Policy Policy>
     requires std::is_trivially_copyable_v<T>
     auto write_value(uint8_t page, T value, Policy &policy) -> bool {
         // The type to be written must be serializable to a single page
@@ -62,7 +61,7 @@ class AT24C0xC {
                       "Type T must be 8 bytes max to serialize");
         using BufferT = std::array<uint8_t, PAGE_LENGTH + 1>;
         // Check memory bounds
-        if(page > PAGES) {
+        if (page > PAGES) {
             return false;
         }
         // Because T must be trivially copyable, this is not a dangerous copy
@@ -71,61 +70,63 @@ class AT24C0xC {
         // Actual address is based on the byte.
         BufferT buffer;
         buffer.at(0) = page * PAGE_LENGTH;
-        auto itr = bit_utils::int_to_bytes(static_cast<uint64_t>(value_int), buffer.begin() + 1, buffer.end());
-        if(itr != buffer.end()) {
+        auto itr = bit_utils::int_to_bytes(static_cast<uint64_t>(value_int),
+                                           buffer.begin() + 1, buffer.end());
+        if (itr != buffer.end()) {
             // Error converting data
             return false;
         }
 
-        return policy.i2c_write(_address, buffer);
+        policy.set_write_protect(false);
+        auto ret = policy.i2c_write(_address, buffer);
+        policy.set_write_protect(true);
+
+        return ret;
     }
 
     /**
      * @brief Read and deserialize a value of type T from EEPROM
-     * 
-     * @tparam Policy 
-     * @tparam T 
-     * @param page 
-     * @param policy 
-     * @return std::optional<T> 
+     *
+     * @tparam Policy
+     * @tparam T
+     * @param page
+     * @param policy
+     * @return std::optional<T>
      */
-    template <AT24C0xC_Policy Policy, typename T>
+    template <typename T, AT24C0xC_Policy Policy>
     requires std::is_trivially_copyable_v<T>
     auto read_value(uint8_t page, Policy &policy) -> std::optional<T> {
         using RT = std::optional<T>;
         using BufferT = std::array<uint8_t, PAGE_LENGTH>;
         // Check memory bounds
-        if(page > PAGES) {
-            return RT();
+        if (page > PAGES) {
+            return std::nullopt;
         }
         // Must write the address before reading everything else
-        if( !policy.i2c_write(_address, page * PAGE_LENGTH) ) {
-            return RT();
+        if (!policy.i2c_write(_address, page * PAGE_LENGTH)) {
+            return std::nullopt;
         }
 
         BufferT buffer = {0};
-        if( !policy.i2c_read(_address, buffer) ) {
-            return RT();
+        if (!policy.i2c_read(_address, buffer)) {
+            return std::nullopt;
         }
         uint64_t value_int = 0;
         auto itr = bit_utils::bytes_to_int(buffer, value_int);
-        if(itr != buffer.end()) {
-            return RT();
+        if (itr != buffer.end()) {
+            return std::nullopt;
         }
         T value;
         memcpy(&value, &value_int, sizeof(T));
         return RT(value);
     }
 
-    [[nodiscard]] auto const size() -> size_t {
-        return _size;
-    }
+    [[nodiscard]] auto const size() -> size_t { return _size; }
 
-  private:  
+  private:
     // Total size of the EEPROm
     static constexpr const size_t _size = PAGES * PAGE_LENGTH;
     static constexpr const uint8_t _address = ADDRESS;
-    
 };
 
-}
+}  // namespace at24c0xc
