@@ -89,7 +89,7 @@ class AT24C0xC {
         // Actual address is based on the byte.
         BufferT buffer;
         buffer.at(0) = page * PAGE_LENGTH;
-        auto itr = bit_utils::int_to_bytes(static_cast<uint64_t>(value_int),
+        auto itr = bit_utils::int_to_bytes(value_int,
                                            buffer.begin() + 1, buffer.end());
         if (itr != buffer.end()) {
             // Error converting data
@@ -114,11 +114,11 @@ class AT24C0xC {
      */
     template <typename T, AT24C0xC_Policy Policy>
     requires std::is_trivially_copyable_v<T>
-    auto read_value(uint8_t page, Policy &policy) -> std::optional<T> {
+    [[nodiscard]] auto read_value(uint8_t page, Policy &policy) -> std::optional<T> {
         using RT = std::optional<T>;
         using BufferT = std::array<uint8_t, PAGE_LENGTH>;
         // Check memory bounds
-        if (page > PAGES) {
+        if (page >= PAGES) {
             return std::nullopt;
         }
         // Must write the address before reading everything else

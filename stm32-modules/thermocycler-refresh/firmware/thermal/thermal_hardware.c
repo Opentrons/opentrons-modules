@@ -59,7 +59,7 @@
 #define ADC_READY_ITR_PRIO (10)
 
 /** EEPROM write protect pin */
-#define EEPROM_WRITE_PROTECT_PIN  (10)
+#define EEPROM_WRITE_PROTECT_PIN  (GPIO_PIN_10)
 /** EEPROM write protect port */
 #define EEPROM_WRITE_PROTECT_PORT (GPIOC)
 
@@ -267,6 +267,7 @@ bool thermal_i2c_write_data(uint16_t addr, uint8_t *data, uint16_t len) {
         xSemaphoreGive(_i2c_semaphore);
         return false;
     }
+    _i2c_task_to_notify = xTaskGetCurrentTaskHandle();
 
     hal_ret = HAL_I2C_Master_Transmit_IT(&_i2c_handle, addr, data, len);
 
@@ -301,6 +302,7 @@ bool thermal_i2c_read_data(uint16_t addr, uint8_t *data, uint16_t len) {
         xSemaphoreGive(_i2c_semaphore);
         return false;
     }
+    _i2c_task_to_notify = xTaskGetCurrentTaskHandle();
 
     hal_ret = HAL_I2C_Master_Receive_IT(&_i2c_handle, addr, data, len);
 

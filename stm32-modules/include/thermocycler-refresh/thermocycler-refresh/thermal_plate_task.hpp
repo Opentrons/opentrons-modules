@@ -107,7 +107,7 @@ class ThermalPlateTask {
     static constexpr const double CONTROL_PERIOD_SECONDS =
         CONTROL_PERIOD_TICKS * 0.001;
     static constexpr size_t EEPROM_PAGES = 32;
-    static constexpr uint8_t EEPROM_ADDRESS = 0b1010001;
+    static constexpr uint8_t EEPROM_ADDRESS = 0b1010010;
 
     explicit ThermalPlateTask(Queue& q)
         : _message_queue(q),
@@ -221,9 +221,6 @@ class ThermalPlateTask {
         // This is the call down to the provided queue. It will block for
         // anywhere up to the provided timeout, which drives the controller
         // frequency.
-
-        auto count = _eeprom.read_value<int>(31, policy);
-        _eeprom.write_value(31, count + 1, policy);
 
         static_cast<void>(_message_queue.recv(&message));
         std::visit(

@@ -39,3 +39,10 @@ extern "C" void vApplicationGetTimerTaskMemory(
     *ppxTimerTaskStackBuffer = idle_timer_stack.data();
     *pulTimerTaskStackSize = idle_timer_stack.size();
 }
+
+extern "C" void vApplicationStackOverflowHook(
+        TaskHandle_t xTask,
+        signed char *pcTaskName ) {
+    // Lock the processor forever
+    configASSERT(0);
+}
