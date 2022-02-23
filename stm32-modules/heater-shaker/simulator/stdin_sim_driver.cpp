@@ -1,6 +1,7 @@
 #include "simulator/stdin_sim_driver.hpp"
 
 #include <boost/asio.hpp>
+#include <iostream>
 #include <regex>
 
 #include "simulator/simulator_queue.hpp"
