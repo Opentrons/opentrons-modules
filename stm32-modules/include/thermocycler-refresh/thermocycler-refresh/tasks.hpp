@@ -9,6 +9,7 @@
 #include "host_comms_task.hpp"
 #include "lid_heater_task.hpp"
 #include "messages.hpp"
+#include "motor_task.hpp"
 #include "system_task.hpp"
 #include "thermal_plate_task.hpp"
 
@@ -40,6 +41,12 @@ requires MessageQueue<QueueImpl<messages::LidHeaterMessage>,
 class LidHeaterTask;
 }  // namespace lid_heater_task
 
+namespace motor_task {
+template <template <class> class QueueImpl>
+requires MessageQueue<QueueImpl<messages::MotorMessage>, messages::MotorMessage>
+class MotorTask;
+}  // namespace motor_task
+
 namespace tasks {
 /* Container relating the RTOSTask for the implementation and the portable task
  * object */
@@ -57,27 +64,33 @@ struct Tasks {
     Tasks(host_comms_task::HostCommsTask<QueueImpl>* comms_in,
           system_task::SystemTask<QueueImpl>* system_in,
           thermal_plate_task::ThermalPlateTask<QueueImpl>* thermal_plate_in,
-          lid_heater_task::LidHeaterTask<QueueImpl>* lid_heater_in)
+          lid_heater_task::LidHeaterTask<QueueImpl>* lid_heater_in,
+          motor_task::MotorTask<QueueImpl>* motor_in)
         : comms(nullptr),
           system(nullptr),
           thermal_plate(nullptr),
-          lid_heater(nullptr) {
-        initialize(comms_in, system_in, thermal_plate_in, lid_heater_in);
+          lid_heater(nullptr),
+          motor(nullptr) {
+        initialize(comms_in, system_in, thermal_plate_in, lid_heater_in,
+                   motor_in);
     }
 
     auto initialize(
         host_comms_task::HostCommsTask<QueueImpl>* comms_in,
         system_task::SystemTask<QueueImpl>* system_in,
         thermal_plate_task::ThermalPlateTask<QueueImpl>* thermal_plate_in,
-        lid_heater_task::LidHeaterTask<QueueImpl>* lid_heater_in) -> void {
+        lid_heater_task::LidHeaterTask<QueueImpl>* lid_heater_in,
+        motor_task::MotorTask<QueueImpl>* motor_in) -> void {
         comms = comms_in;
         system = system_in;
         thermal_plate = thermal_plate_in;
         lid_heater = lid_heater_in;
+        motor = motor_in;
         comms->provide_tasks(this);
         system->provide_tasks(this);
         thermal_plate_in->provide_tasks(this);
         lid_heater->provide_tasks(this);
+        motor->provide_tasks(this);
     }
 
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
@@ -88,5 +101,7 @@ struct Tasks {
     thermal_plate_task::ThermalPlateTask<QueueImpl>* thermal_plate;
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     lid_heater_task::LidHeaterTask<QueueImpl>* lid_heater;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    motor_task::MotorTask<QueueImpl>* motor;
 };
 }  // namespace tasks

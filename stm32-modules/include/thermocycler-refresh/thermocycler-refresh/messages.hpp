@@ -5,7 +5,10 @@
 #include <variant>
 
 #include "systemwide.h"
+#include "thermocycler-refresh/colors.hpp"
 #include "thermocycler-refresh/errors.hpp"
+#include "thermocycler-refresh/motor_utils.hpp"
+#include "thermocycler-refresh/tmc2130_registers.hpp"
 
 namespace messages {
 
@@ -137,6 +140,49 @@ struct GetPlateTemperatureDebugResponse {
     uint16_t back_left_adc;
 };
 
+struct ActuateSolenoidMessage {
+    uint32_t id;
+    bool engage;
+};
+
+struct LidStepperDebugMessage {
+    uint32_t id;
+    double angle;
+    bool overdrive;
+};
+
+struct LidStepperComplete {};
+
+struct SealStepperDebugMessage {
+    uint32_t id;
+    long int steps;
+};
+
+struct SealStepperComplete {
+    enum class CompletionReason {
+        ERROR,  // There was an error flag
+        STALL,  // There was a stall
+        DONE,   // No error
+    };
+    // Defaults to no-error
+    CompletionReason reason = CompletionReason::DONE;
+};
+
+struct GetSealDriveStatusMessage {
+    uint32_t id;
+};
+
+struct GetSealDriveStatusResponse {
+    uint32_t responding_to_id;
+    tmc2130::DriveStatus status;
+};
+
+struct SetSealParameterMessage {
+    uint32_t id;
+    motor_util::SealStepper::Parameter param;
+    int32_t value;
+};
+
 struct GetPlateTempMessage {
     uint32_t id;
 };
@@ -153,6 +199,25 @@ struct SetPeltierDebugMessage {
     double power;
     PeltierDirection direction;
     PeltierSelection selection;
+};
+
+// Can be sent to both plate task and lid task
+struct GetThermalPowerMessage {
+    uint32_t id;
+};
+
+// Plate Task response to GetThermalPowerMessage
+struct GetPlatePowerResponse {
+    uint32_t responding_to_id;
+
+    double left, center, right, fans;
+};
+
+// Lid Task response to GetThermalPowerMessage
+struct GetLidPowerResponse {
+    uint32_t responding_to_id;
+
+    double heater;
 };
 
 struct SetFanManualMessage {
@@ -196,24 +261,79 @@ struct SetPIDConstantsMessage {
     double d;
 };
 
+struct UpdateUIMessage {
+    // Empty struct
+};
+
+struct SetLedMode {
+    colors::Colors color;
+    colors::Mode mode;
+};
+
+// This message is sent to the System Task by each
+// subsystem task to update what the current error state is.
+struct UpdateTaskErrorState {
+    // Each subsystem can signal its own errors so the
+    // system task can independently track whether there is
+    // a reason to trigger the error light condition
+    enum class Tasks : uint8_t { THERMAL_PLATE, THERMAL_LID, MOTOR };
+
+    Tasks task;
+    errors::ErrorCode current_error = errors::ErrorCode::NO_ERROR;
+};
+
+// This message is sent to the System Task by just the Thermal
+// Plate Task to update what the current state of the thermal
+// subsystem is. This dictates how the UI LED's are controlled
+// if there is no active error flag.
+struct UpdatePlateState {
+    enum class PlateState : uint8_t {
+        IDLE,
+        HEATING,
+        AT_HOT_TEMP,
+        COOLING,
+        AT_COLD_TEMP
+    };
+
+    PlateState state;
+};
+
+struct GetLidStatusMessage {
+    uint32_t id;
+};
+
+struct GetLidStatusResponse {
+    uint32_t responding_to_id;
+    motor_util::LidStepper::Status lid;
+    motor_util::SealStepper::Status seal;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
-                   SetSerialNumberMessage, GetSystemInfoMessage>;
-using HostCommsMessage =
-    ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
-                   ErrorMessage, ForceUSBDisconnectMessage,
-                   GetSystemInfoResponse, GetLidTemperatureDebugResponse,
-                   GetPlateTemperatureDebugResponse, GetPlateTempResponse,
-                   GetLidTempResponse>;
+                   SetSerialNumberMessage, GetSystemInfoMessage,
+                   UpdateUIMessage, SetLedMode, UpdateTaskErrorState,
+                   UpdatePlateState>;
+using HostCommsMessage = ::std::variant<
+    std::monostate, IncomingMessageFromHost, AcknowledgePrevious, ErrorMessage,
+    ForceUSBDisconnectMessage, GetSystemInfoResponse,
+    GetLidTemperatureDebugResponse, GetPlateTemperatureDebugResponse,
+    GetPlateTempResponse, GetLidTempResponse, GetSealDriveStatusResponse,
+    GetLidStatusResponse, GetPlatePowerResponse, GetLidPowerResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
                    SetFanManualMessage, GetPlateTempMessage,
                    SetPlateTemperatureMessage, DeactivatePlateMessage,
-                   SetPIDConstantsMessage, SetFanAutomaticMessage>;
+                   SetPIDConstantsMessage, SetFanAutomaticMessage,
+                   GetThermalPowerMessage>;
 using LidHeaterMessage =
     ::std::variant<std::monostate, LidTempReadComplete,
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
                    GetLidTempMessage, SetLidTemperatureMessage,
-                   DeactivateLidHeatingMessage, SetPIDConstantsMessage>;
+                   DeactivateLidHeatingMessage, SetPIDConstantsMessage,
+                   GetThermalPowerMessage>;
+using MotorMessage = ::std::variant<
+    std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
+    LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,
+    GetSealDriveStatusMessage, SetSealParameterMessage, GetLidStatusMessage>;
 };  // namespace messages

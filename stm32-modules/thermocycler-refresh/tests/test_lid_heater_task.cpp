@@ -281,6 +281,23 @@ SCENARIO("lid heater task message passing") {
                 }
             }
         }
+        GIVEN("some power on the heater") {
+            tasks->get_lid_heater_policy().set_heater_power(0.5);
+            WHEN("sending GetThermalPowerMessage") {
+                auto message = messages::GetThermalPowerMessage{.id = 123};
+                tasks->get_lid_heater_queue().backing_deque.push_back(message);
+                tasks->run_lid_heater_task();
+                THEN("the power is returned correctly") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response = std::get<messages::GetLidPowerResponse>(
+                        tasks->get_host_comms_queue().backing_deque.front());
+                    REQUIRE(response.responding_to_id == message.id);
+                    REQUIRE_THAT(response.heater,
+                                 Catch::Matchers::WithinAbs(0.5, 0.01));
+                }
+            }
+        }
     }
     GIVEN("a heater task with a shorted temp") {
         auto tasks = TaskBuilder::build();

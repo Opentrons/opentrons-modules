@@ -58,6 +58,7 @@ set(CORE_LINTABLE_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/errors.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/plate_control.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/board_revision.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/colors.cpp
   )
 set(CORE_NONLINTABLE_SOURCES
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp

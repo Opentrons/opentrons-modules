@@ -132,14 +132,13 @@ void HAL_ResumeTick(void)
   * @param  htim : TIM handle
   * @retval None
   */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+void hal_timebase_tick(void)
 {
-  static const uint32_t heartbeat_period = 25;
-  static uint8_t heartbeat_pwm = 0;
-  static uint8_t heartbeat_count = 0;
-  static int8_t  heartbeat_direction = 1;
+    static const uint32_t heartbeat_period = 25;
+    static uint8_t heartbeat_pwm = 0;
+    static uint8_t heartbeat_count = 0;
+    static int8_t  heartbeat_direction = 1;
 
-  if (htim->Instance == TIM7) {
     HAL_IncTick();
 
     // A little silly, but this makes the heartbeat LED more pleasant
@@ -148,14 +147,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if(heartbeat_count == heartbeat_pwm) { system_debug_led(0); }
     if(heartbeat_count == heartbeat_period)
     {
-      heartbeat_count = 0;
-      if(heartbeat_pwm > 2) { system_debug_led(1); }
-      heartbeat_pwm += heartbeat_direction;
-      if(heartbeat_pwm == heartbeat_period) { heartbeat_direction = -1; }
-      else if(heartbeat_pwm == 0) { heartbeat_direction = 1; }
+        heartbeat_count = 0;
+        if(heartbeat_pwm > 2) { system_debug_led(1); }
+        heartbeat_pwm += heartbeat_direction;
+        if(heartbeat_pwm == heartbeat_period) { heartbeat_direction = -1; }
+        else if(heartbeat_pwm == 0) { heartbeat_direction = 1; }
     }
-  }
-
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

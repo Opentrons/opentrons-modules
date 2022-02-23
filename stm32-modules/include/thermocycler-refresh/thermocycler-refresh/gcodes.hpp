@@ -22,6 +22,8 @@
 #include "core/utility.hpp"
 #include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
+#include "thermocycler-refresh/motor_utils.hpp"
+#include "thermocycler-refresh/tmc2130_registers.hpp"
 
 namespace gcode {
 
@@ -622,6 +624,342 @@ struct GetPlateTemperatureDebug {
             return std::make_pair(ParseResult(), input);
         }
         return std::make_pair(ParseResult(GetPlateTemperatureDebug()), working);
+    }
+};
+
+/**
+ * @brief Uses M103.D to get the current power output for all thermal elements.
+ *
+ * Format: M103.D\n
+ * Return: M103.D L:<left peltier> C:<center> R:<right> H:<heater> F:<fans>
+ *
+ */
+struct GetThermalPowerDebug {
+    using ParseResult = std::optional<GetThermalPowerDebug>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '3', '.', 'D'};
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetThermalPowerDebug()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double left_power, double center_power,
+                                    double right_power, double heater_power,
+                                    double fan_power) -> InputIt {
+        auto res = snprintf(
+            &*buf, (limit - buf),
+            "M103.D L:%0.2f C:%0.2f R:%0.2f H:%0.2f F:%0.2f OK\n",
+            static_cast<float>(left_power), static_cast<float>(center_power),
+            static_cast<float>(right_power), static_cast<float>(heater_power),
+            static_cast<float>(fan_power));
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
+struct ActuateSolenoid {
+    /*
+    ** Actuate solenoid is a debug command that lets you activate or deactivate
+    ** the solenoid. It uses G28.D x where x is a bool and 1 engages and 0
+    ** disengages the solenoid.
+    */
+    using ParseResult = std::optional<ActuateSolenoid>;
+    static constexpr auto prefix = std::array{'G', '2', '8', '.', 'D', ' '};
+    static constexpr const char* response = "G28.D OK\n";
+
+    bool engage;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto engage_parse = parse_value<uint16_t>(working, limit);
+        if (!engage_parse.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        bool tempEngage = static_cast<bool>(engage_parse.first.value());
+        return std::make_pair(
+            ParseResult(ActuateSolenoid{.engage = tempEngage}),
+            engage_parse.second);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+/**
+ * Actuate lid stepper is a debug command that lets you move the lid
+ * stepper a desired angle. A positive value opens and negative value
+ * closes the lid stepper a desired angle.
+ *
+ * Adding the character 'O' to the command marks an overdrive movement,
+ * aka the limit switches will be ignored
+ *
+ * Format: M240.D <angle> [O]
+ * Example: M240.D 20 opens lid stepper 20 degrees
+ */
+struct ActuateLidStepperDebug {
+    using ParseResult = std::optional<ActuateLidStepperDebug>;
+    static constexpr auto prefix =
+        std::array{'M', '2', '4', '0', '.', 'D', ' '};
+    static constexpr const char* response = "M240.D OK\n";
+
+    static constexpr auto overdrive_flag = std::array{' ', 'O'};
+
+    double angle;
+    bool overdrive;
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto value_res = parse_value<float>(working, limit);
+        if (!value_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        working = prefix_matches(value_res.second, limit, overdrive_flag);
+        // If the flag is present, working was incremented
+        bool overdrive_set = (working != value_res.second);
+
+        return std::make_pair(
+            ParseResult(ActuateLidStepperDebug{.angle = value_res.first.value(),
+                                               .overdrive = overdrive_set}),
+            working);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct GetLidStatus {
+    /**
+     * GetLidStatus uses M119, from the Gen1 Thermocycler. Returns the
+     * current status of the lid: in_between, closed, open, or unknown
+     *
+     * and the current status of the seal: in_between, engaged, retracted
+     *
+     * Format: M119
+     * Returns: M119 Lid:open Seal:engaged OK\n
+     */
+    using ParseResult = std::optional<GetLidStatus>;
+    static constexpr auto prefix = std::array{'M', '1', '1', '9'};
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetLidStatus()), working);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit,
+                                    motor_util::LidStepper::Status lid,
+                                    motor_util::SealStepper::Status seal)
+        -> InputIt {
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf), "M119 Lid:%s Seal:%s OK\n",
+                       motor_util::LidStepper::status_to_string(lid),
+                       motor_util::SealStepper::status_to_string(seal));
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
+struct ActuateSealStepperDebug {
+    /*
+    ** Actuate seal stepper is a debug command that lets you move the seal
+    ** stepper a specific number of steps.
+    ** Format: M241.D <steps>
+    ** Example: M241.D 10000 opens lid stepper 10000 steps
+    */
+    using ParseResult = std::optional<ActuateSealStepperDebug>;
+    static constexpr auto prefix =
+        std::array{'M', '2', '4', '1', '.', 'D', ' '};
+    static constexpr const char* response = "M241.D OK\n";
+
+    long distance;
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto value_res = parse_value<long>(working, limit);
+        if (!value_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(ActuateSealStepperDebug{
+                                  .distance = value_res.first.value()}),
+                              value_res.second);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct GetSealDriveStatus {
+    /**
+     * GetSealDriverStatus uses M242.D. Returns the current status of the
+     * DriverStatus register on the TMC2130
+     *
+     * Returns: M242.D SG:<stallguard flag> SG_Result:<stallguard result> OK\n
+     */
+    using ParseResult = std::optional<GetSealDriveStatus>;
+    static constexpr auto prefix = std::array{'M', '2', '4', '2', '.', 'D'};
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetSealDriveStatus()), working);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit,
+                                    tmc2130::DriveStatus status) -> InputIt {
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf), "M242.D SG:%u SG_Result:%u OK\n",
+                       status.stallguard, status.sg_result);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
+struct SetSealParameter {
+    /**
+     * @brief SetSealParameter uses M243.D. Lets users set parameters for the
+     * seal stepper movement. Intended for internal testing use to find
+     * optimal settings for StallGuard repeatability.
+     *
+     * Syntax: M243.D <parameter> <value>\n
+     * Returns: M243.D OK\n
+     *
+     */
+    using ParseResult = std::optional<SetSealParameter>;
+
+    /** Enumeration of supported parameters.*/
+    using SealParameter = motor_util::SealStepper::Parameter;
+
+    static constexpr auto prefix =
+        std::array{'M', '2', '4', '3', '.', 'D', ' '};
+    static constexpr const char* response = "M243.D OK\n";
+
+    /** Array of parameters to allow easy searching for legal parameters.*/
+    static constexpr std::array<char, 6> _parameters = {
+        static_cast<char>(SealParameter::Velocity),
+        static_cast<char>(SealParameter::Acceleration),
+        static_cast<char>(SealParameter::StallguardThreshold),
+        static_cast<char>(SealParameter::StallguardMinVelocity),
+        static_cast<char>(SealParameter::RunCurrent),
+        static_cast<char>(SealParameter::HoldCurrent)};
+
+    /** The parameter to set.*/
+    SealParameter parameter;
+    /** The value to set \c parameter to.*/
+    int32_t value;
+
+    template <typename Input>
+    static auto inline is_legal_parameter(const Input parameter_char) -> bool {
+        return std::find(_parameters.begin(), _parameters.end(),
+                         parameter_char) != _parameters.end();
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        // Next character should be one of the seal parameters
+        auto parameter_char = *working;
+        std::advance(working, 1);
+        if (!is_legal_parameter(parameter_char)) {
+            // Not a valid parameter
+            return std::make_pair(ParseResult(), input);
+        }
+        working = gobble_whitespace(working, limit);
+        if (working == limit) {
+            // No value was defined
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto value_res = parse_value<int32_t>(working, limit);
+        if (!value_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(
+            ParseResult(SetSealParameter{
+                .parameter = static_cast<SealParameter>(parameter_char),
+                .value = value_res.first.value()}),
+            value_res.second);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
     }
 };
 

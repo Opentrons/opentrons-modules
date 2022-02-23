@@ -46,6 +46,8 @@ concept ThermalPlateExecutionPolicy = requires(Policy& p, PeltierID id,
     // a percentage from 0 to 1.0
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     { p.set_fan(1.0F) } -> std::same_as<bool>;
+    // A function to get the current power of the heatsink fan.
+    { p.get_fan() } -> std::same_as<double>;
 };
 
 /** Just used for initialization assignment of error bits.*/
@@ -86,9 +88,9 @@ class ThermalPlateTask {
     static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
     static constexpr uint8_t PLATE_THERM_COUNT = 7;
     // TODO most of these defaults will have to change
-    static constexpr double DEFAULT_KI = 0.102;
-    static constexpr double DEFAULT_KP = 0.97;
-    static constexpr double DEFAULT_KD = 1.901;
+    static constexpr double DEFAULT_KI = 0.05356;
+    static constexpr double DEFAULT_KP = 0.26225;
+    static constexpr double DEFAULT_KD = 0.00812;
     static constexpr double DEFAULT_FAN_KI = 0.01;
     static constexpr double DEFAULT_FAN_KP = 0.2;
     static constexpr double DEFAULT_FAN_KD = 0.05;
@@ -263,11 +265,14 @@ class ThermalPlateTask {
                 // We went from an error state to no error state... so go idle
                 _state.system_status = State::IDLE;
             }
+            send_current_error();
         }
 
         if (_state.system_status == State::CONTROLLING) {
             update_control(policy);
+            send_current_state();
         } else if (_state.system_status == State::IDLE) {
+            send_current_state();
             auto fan_power = _plate_control.fan_idle_power();
             if (!_fans.manual_control) {
                 if (!policy.set_fan(fan_power)) {
@@ -539,6 +544,34 @@ class ThermalPlateTask {
             _task_registry->comms->get_message_queue().try_send(response));
     }
 
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::GetThermalPowerMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::GetPlatePowerResponse{.responding_to_id = msg.id,
+                                            .left = 0.0F,
+                                            .center = 0.0F,
+                                            .right = 0.0F,
+                                            .fans = policy.get_fan()};
+
+        auto left = policy.get_peltier(_peltier_left.id);
+        auto center = policy.get_peltier(_peltier_center.id);
+        auto right = policy.get_peltier(_peltier_right.id);
+
+        response.left =
+            left.second *
+            (left.first == PeltierDirection::PELTIER_HEATING ? 1.0 : -1.0);
+        response.center =
+            center.second *
+            (center.first == PeltierDirection::PELTIER_HEATING ? 1.0 : -1.0);
+        response.right =
+            right.second *
+            (right.first == PeltierDirection::PELTIER_HEATING ? 1.0 : -1.0);
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
     auto handle_temperature_conversion(uint16_t conversion_result,
                                        Thermistor& thermistor) -> void {
         auto visitor = [this, &thermistor](const auto value) -> void {
@@ -687,6 +720,52 @@ class ThermalPlateTask {
         return policy.set_peltier(peltier.id,
                                   std::clamp(power, (double)0.0F, (double)1.0F),
                                   direction);
+    }
+
+    /**
+     * @brief Send a message to the System Task with our current
+     * most_relevant_error
+     *
+     */
+    auto send_current_error() -> void {
+        auto error_msg = messages::UpdateTaskErrorState{
+            .task = messages::UpdateTaskErrorState::Tasks::THERMAL_PLATE,
+            .current_error = most_relevant_error()};
+        static_cast<void>(
+            _task_registry->system->get_message_queue().try_send(error_msg));
+    }
+
+    /**
+     * @brief Send a message to the System Task with the current state of
+     * the plate task. This is used to update the LED control for the UI
+     */
+    auto send_current_state() -> void {
+        using PlateState = messages::UpdatePlateState::PlateState;
+        auto state = PlateState::IDLE;
+        // State only matters if there's no error
+        if (_state.system_status == State::CONTROLLING) {
+            bool ramping = true;
+            auto plate_control_status = _plate_control.status();
+            if (plate_control_status == plate_control::PlateStatus::OVERSHOOT ||
+                plate_control_status ==
+                    plate_control::PlateStatus::STEADY_STATE) {
+                ramping = false;
+            }
+            // We consider whether the plate is going to a hot or cold temp,
+            // and whether it is ramping or already at the target
+            if (_plate_control.setpoint() >
+                static_cast<double>(plate_control::TemperatureZone::COLD)) {
+                state =
+                    (ramping) ? PlateState::HEATING : PlateState::AT_HOT_TEMP;
+            } else {
+                state =
+                    (ramping) ? PlateState::COOLING : PlateState::AT_COLD_TEMP;
+            }
+        }
+
+        auto message = messages::UpdatePlateState{.state = state};
+        static_cast<void>(
+            _task_registry->system->get_message_queue().try_send(message));
     }
 
     Queue& _message_queue;

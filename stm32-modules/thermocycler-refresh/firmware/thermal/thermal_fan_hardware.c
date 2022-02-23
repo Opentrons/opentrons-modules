@@ -156,6 +156,10 @@ bool thermal_fan_set_power(double power) {
     return true;
 }
 
+double thermal_fan_get_power(void) {
+    return _fans.power;
+}
+
 // Local function implementations
 
 static bool thermal_fan_set_enable(bool enabled) {

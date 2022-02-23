@@ -200,7 +200,7 @@ bool thermal_i2c_read_16(uint16_t addr, uint8_t reg, uint16_t *val) {
     const uint16_t bytes_to_read = 2;
     const TickType_t max_block_time = pdMS_TO_TICKS(100);
     BaseType_t sem_ret;
-    uint32_t notification_val;
+    uint32_t notification_val = 0;
     HAL_StatusTypeDef hal_ret;
 
     sem_ret = xSemaphoreTake(_i2c_semaphore, portMAX_DELAY);

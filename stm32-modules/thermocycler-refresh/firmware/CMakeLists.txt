@@ -9,6 +9,7 @@ add_STM32G4_usb(${TARGET_MODULE_NAME})
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 set(THERMAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thermal")
+set(MOTOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/motor_task")
 set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32G491")
 set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
 set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
@@ -25,6 +26,8 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${THERMAL_DIR}/thermal_plate_policy.cpp
   ${THERMAL_DIR}/freertos_lid_heater_task.cpp
   ${THERMAL_DIR}/lid_heater_policy.cpp
+  ${MOTOR_DIR}/freertos_motor_task.cpp
+  ${MOTOR_DIR}/motor_policy.cpp
   )
 
 # Add source files that should NOT be checked by clang-tidy here
@@ -41,10 +44,11 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${COMMS_DIR}/usbd_desc.c
   ${COMMS_DIR}/usb_hardware.c
   ${THERMAL_DIR}/thermal_hardware.c
+  ${MOTOR_DIR}/motor_hardware.c
+  ${MOTOR_DIR}/motor_spi_hardware.c
   ${THERMAL_DIR}/thermal_peltier_hardware.c
   ${THERMAL_DIR}/thermal_fan_hardware.c
   ${THERMAL_DIR}/thermal_heater_hardware.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/motor_task/motor_spi_hardware.c
   )
 
 add_executable(${TARGET_MODULE_NAME}

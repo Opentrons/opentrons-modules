@@ -9,6 +9,7 @@ import re
 import serial
 import datetime
 import time
+from enum import Enum
 
 from serial.tools.list_ports import grep
 from typing import Any, Callable, Dict, Tuple, List, Optional
@@ -63,6 +64,23 @@ def get_plate_temperatures(ser: serial.Serial) -> Tuple[float, float, float, flo
     temp_l = (float(match.group('FLT')) + float(match.group('BLT'))) / 2.0
     temp_hs = float(match.group('HST'))
     return temp_hs, temp_r, temp_l, temp_c
+
+_THERMAL_POWER_RE = re.compile(
+    '^M103.D L:(?P<L>.+) C:(?P<C>.+) R:(?P<R>.+) H:(?P<H>.+) F:(?P<F>.+) OK\n'
+)
+def get_thermal_power(ser: serial.Serial) -> Tuple[float, float, float, float, float]:
+    ser.write(b'M103.D\n')
+    res = ser.readline()
+    guard_error(res, b'M103.D ')
+    res_s = res.decode()
+    match = re.match(_THERMAL_POWER_RE, res_s)
+    left = float(match.group('L'))
+    center = float(match.group('C'))
+    right = float(match.group('R'))
+    heater = float(match.group('H'))
+    fans = float(match.group('F'))
+    print(res)
+    return left, center, right, heater, fans
 
 _PLATE_TEMP_RE = re.compile('^M105 T:(?P<target>.+) C:(?P<temp>.+) OK\n')
 # JUST gets the base temperature of the plate
@@ -166,3 +184,115 @@ def set_peltier_pid(p: float, i: float, d: float, ser: serial.Serial):
     res = ser.readline()
     guard_error(res, b'M301 OK')
     print(res)
+
+# Debug command to move the hinge motor
+def move_lid_angle(angle: float, overdrive: bool, ser: serial.Serial):
+    print(f'Moving lid by {angle}º overdrive = {overdrive}')
+    if(overdrive):
+        ser.write(f'M240.D {angle} O\n'.encode())
+    else:
+        ser.write(f'M240.D {angle}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M240.D OK')
+    print(res)
+
+# Debug command to engage/disengage the solenoid.
+def set_solenoid(engaged: bool, ser: serial.Serial):
+    value = 1
+    if not engaged:
+        value = 0
+    print(f'Setting solenoid to {engaged}')
+    ser.write(f'G28.D {value}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'G28.D OK')
+    print(res)
+
+def move_seal_steps(steps: int, ser: serial.Serial):
+    print(f'Moving seal by {steps} steps')
+    ser.write(f'M241.D {steps}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M241.D OK')
+    print(res)
+
+class SealParam(Enum):
+    VELOCITY = 'V'
+    ACCELERATION = 'A'
+    STALLGUARD_THRESHOLD = 'T'
+    STALLGUARD_MIN_VELOCITY = 'M'
+    RUN_CURRENT = 'R'
+    HOLD_CURRENT = 'H'
+
+
+# Debug command to set a seal parameter
+def set_seal_param(param: SealParam, value: int, ser: serial.Serial):
+    print(f'Setting {param} ({param.value}) to {value}')
+    ser.write(f'M243.D {param.value} {value}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M243.D OK')
+    print(res)
+
+class PositionStatus(Enum):
+    Open = 0
+    Closed = 1
+    Unknown = 2
+
+# Debug command to get lid status
+# Returns [lid status, seal status]
+_LID_STATUS_RE = re.compile('^M119 Lid:(?P<lid>.+) Seal:(?P<seal>.+) OK\n')
+def get_lid_status(ser: serial.Serial) -> Tuple[PositionStatus, PositionStatus]:
+    print('Getting lid status')
+    ser.write(f'M119\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M119 Lid:')
+    #print(res)
+    res_s = res.decode()
+    match = re.match(_LID_STATUS_RE, res_s)
+    lid_s = str(match.group('lid'))
+    seal_s = str(match.group('seal'))
+    ret = [PositionStatus.Unknown, PositionStatus.Unknown]
+    if lid_s == 'closed':
+        ret[0] = PositionStatus.Closed
+    elif lid_s == 'open':
+        ret[0] = PositionStatus.Open
+    return ret
+
+# Function to fully open the lid
+def open_lid(ser: serial.Serial):
+    lid_status = get_lid_status(ser)[0]
+    if lid_status == PositionStatus.Open:
+        print('Lid already open')
+        return
+    print('Opening lid')
+    set_solenoid(True, ser)
+    move_lid_angle(120, False, ser)
+    move_lid_angle(3, True, ser)
+    set_solenoid(False, ser)
+
+# Function to fully close the lid
+def close_lid(ser: serial.Serial):
+    lid_status = get_lid_status(ser)[0]
+    if lid_status == PositionStatus.Closed:
+        print('Lid already closed')
+        return
+    print('Closing lid')
+    move_lid_angle(-120, False, ser)
+    move_lid_angle(-3, True, ser)
+    
+# UTILITIES FOR STEP RESPONSE
+
+def sample_until_condition(
+        ser: serial.Serial,
+        period: float,
+        sampler: Callable[[serial.Serial], any],
+        done: Callable[[serial.Serial], bool] ):
+    try:
+        print('Beginning data collection')
+        while True:
+            sampler(ser)
+            if done(ser):
+                break
+            time.sleep(period)
+    except KeyboardInterrupt:
+        print('Sampling complete (keyboard interrupt')
+    except RuntimeError as re:
+        print(f'Sampling complete (Error: {re}')

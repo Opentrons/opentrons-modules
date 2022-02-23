@@ -8,6 +8,7 @@ add_executable(
   system_thread.cpp 
   thermal_plate_thread.cpp
   sim_board_revision_hardware.cpp
+  motor_thread.cpp
   main.cpp
 )
 
@@ -21,6 +22,7 @@ target_link_libraries(
 target_include_directories(
   ${TARGET_MODULE_NAME}-simulator 
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include/common
   )
 
 

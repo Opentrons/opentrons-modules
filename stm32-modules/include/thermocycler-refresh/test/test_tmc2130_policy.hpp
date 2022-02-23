@@ -44,7 +44,7 @@ class TestTMC2130Policy {
         _registers[(uint8_t)tmc2130::Registers::LOST_STEPS] = 0;
     }
 
-    auto transmit_receive(tmc2130::MessageT& data)
+    auto tmc2130_transmit_receive(tmc2130::MessageT& data)
         -> std::optional<tmc2130::MessageT> {
         using RT = std::optional<tmc2130::MessageT>;
         auto iter = data.begin();
@@ -73,11 +73,25 @@ class TestTMC2130Policy {
             // This register is cleared upon read, so clear it here
             _registers[addr] = 0x00;
         }
+        _has_been_written = true;
         return RT(ret);
     }
 
-    auto set_enable(bool enable) -> bool {
+    auto tmc2130_set_enable(bool enable) -> bool {
         _enable = enable;
+        return true;
+    }
+
+    auto tmc2130_set_direction(bool direction) -> bool {
+        _direction = (direction) ? 1 : -1;
+        return true;
+    }
+
+    auto tmc2130_step_pulse() -> bool {
+        if (!_enable) {
+            return false;
+        }
+        _steps += _direction;
         return true;
     }
 
@@ -90,10 +104,22 @@ class TestTMC2130Policy {
         return ReadRT(_registers[addr]);
     }
 
+    // Primarily for test integration
+    auto write_register(tmc2130::Registers reg, uint32_t value) {
+        auto addr = static_cast<uint8_t>(reg);
+        _registers[addr] = value;
+    }
+
     // Testing function to be able to set a fake error flag
     auto set_gstat_error() -> void {
         _registers[static_cast<uint8_t>(tmc2130::Registers::GSTAT)] |= 0x2;
     }
+
+    // -------------- Test integration methods
+    auto get_tmc2130_steps() -> long { return _steps; }
+    auto get_tmc2130_direction() -> bool { return _direction; }
+    auto get_tmc2130_enabled() -> bool { return _enable; }
+    auto has_been_written() -> bool { return _has_been_written; }
 
   private:
     auto get_status() -> uint8_t { return 0x00; }
@@ -102,4 +128,7 @@ class TestTMC2130Policy {
     RegMap _registers;
     tmc2130::RegisterSerializedType _cache = 0;
     bool _enable = false;
+    signed int _direction = 1;
+    long _steps = 0;
+    bool _has_been_written = false;
 };

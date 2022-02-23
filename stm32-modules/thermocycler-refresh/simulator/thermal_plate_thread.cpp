@@ -81,6 +81,8 @@ struct SimThermalPlatePolicy {
         _fan_power = power;
         return true;
     }
+
+    auto get_fan() -> double { return _fan_power; }
 };
 
 struct thermal_plate_thread::TaskControlBlock {

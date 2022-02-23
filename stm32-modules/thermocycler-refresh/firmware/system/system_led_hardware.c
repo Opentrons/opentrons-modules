@@ -26,7 +26,7 @@
 #define TIMER_CLOCK_FREQ (170000000)
 // These two together give a 400kHz total period
 #define TIM17_PRESCALER (0)
-#define TIM17_RELOAD (213)
+#define TIM17_RELOAD (424)
 // PWM should be scaled from 0 to MAX_PWM, inclusive
 #define MAX_PWM (TIM17_RELOAD + 1)
 
@@ -52,7 +52,7 @@ static struct led_hardware _leds = {
 // ----------------------------------------------------------------------------
 // PUBLIC FUNCTION IMPLEMENTATION
 
-void system_led_iniitalize(void) {
+void system_led_initialize(void) {
     HAL_StatusTypeDef hal_ret = HAL_ERROR;
     TIM_OC_InitTypeDef sConfigOC = {0};
     TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
@@ -64,10 +64,10 @@ void system_led_iniitalize(void) {
 
     /* DMA interrupt init */
     /* DMA1_Channel1_IRQn interrupt configuration */
-    HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 7, 0);
     HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
     /* DMAMUX_OVR_IRQn interrupt configuration */
-    HAL_NVIC_SetPriority(DMAMUX_OVR_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(DMAMUX_OVR_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(DMAMUX_OVR_IRQn);
 
     _leds.tim.Instance = TIM17;
@@ -87,7 +87,7 @@ void system_led_iniitalize(void) {
     sConfigOC.Pulse = 0;
     sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
     sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
-    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+    sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
     sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
     sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
     hal_ret = HAL_TIM_PWM_ConfigChannel(&_leds.tim, &sConfigOC, _leds.tim_channel);
@@ -112,7 +112,7 @@ void system_led_iniitalize(void) {
     GPIO_InitStruct.Pin = GPIO_PIN_9;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF1_TIM17;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -208,6 +208,5 @@ void system_led_pulse_callback(void) {
         return;
     }
     vTaskNotifyGiveFromISR( _leds.task_to_notify, &xHigherPriorityTaskWoken );
-    _leds.task_to_notify = NULL;
     portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }

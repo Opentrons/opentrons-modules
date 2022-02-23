@@ -22,6 +22,12 @@ void thermal_fan_initialize(void);
  */
 bool thermal_fan_set_power(double power);
 
+/**
+ * @brief Retreives the current power setting of the fans
+ * @return double containing current fan power
+ */
+double thermal_fan_get_power(void);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus

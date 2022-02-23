@@ -129,6 +129,7 @@ arduino_ide
 build-stm32-cross/
 stm32-tools/
 build-stm32-host/
+build-arduino/
 
 # Custom CMake Config
 /CMakeUserPresets.json

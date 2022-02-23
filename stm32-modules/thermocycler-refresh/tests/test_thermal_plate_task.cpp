@@ -38,6 +38,15 @@ SCENARIO("thermal plate task message passing") {
 
         REQUIRE(!tasks->get_thermal_plate_policy()._enabled);
 
+        THEN("the current control status was sent to system task") {
+            REQUIRE(tasks->get_system_queue().has_message());
+            auto sys_msg = tasks->get_system_queue().backing_deque.front();
+            REQUIRE(
+                std::holds_alternative<messages::UpdatePlateState>(sys_msg));
+            REQUIRE(std::get<messages::UpdatePlateState>(sys_msg).state ==
+                    messages::UpdatePlateState::PlateState::IDLE);
+        }
+
         WHEN("sending a get-plate-temperature-debug message") {
             auto message = messages::GetPlateTemperatureDebugMessage{.id = 123};
             tasks->get_thermal_plate_queue().backing_deque.push_back(
@@ -377,6 +386,8 @@ SCENARIO("thermal plate task message passing") {
                     }
                 }
                 AND_WHEN("sending updated temperatures below target") {
+                    // Flush out the system task queue, which has old messages
+                    tasks->get_system_queue().backing_deque.clear();
                     tasks->get_thermal_plate_queue().backing_deque.push_back(
                         messages::ThermalPlateMessage(read_message));
                     tasks->run_thermal_plate_task();
@@ -399,6 +410,18 @@ SCENARIO("thermal plate task message passing") {
                         REQUIRE(p_center.first ==
                                 PeltierDirection::PELTIER_HEATING);
                         REQUIRE(p_center.second > 0.0F);
+                    }
+                    THEN("the current control status was sent to system task") {
+                        REQUIRE(tasks->get_system_queue().has_message());
+                        auto sys_msg =
+                            tasks->get_system_queue().backing_deque.front();
+                        REQUIRE(
+                            std::holds_alternative<messages::UpdatePlateState>(
+                                sys_msg));
+                        REQUIRE(
+                            std::get<messages::UpdatePlateState>(sys_msg)
+                                .state ==
+                            messages::UpdatePlateState::PlateState::HEATING);
                     }
                 }
             }
@@ -470,6 +493,35 @@ SCENARIO("thermal plate task message passing") {
                 }
             }
         }
+        GIVEN("some power on the peltiers and fans") {
+            auto &policy = tasks->get_thermal_plate_policy();
+            policy._left.power = 0.1;
+            policy._center.power = 0.2;
+            policy._center.direction = PeltierDirection::PELTIER_COOLING;
+            policy._right.power = 0.3;
+            policy._fan_power = 1.0;
+            WHEN("sending GetThermalPowerMessage") {
+                auto message = messages::GetThermalPowerMessage{.id = 123};
+                tasks->get_thermal_plate_queue().backing_deque.push_back(
+                    message);
+                tasks->run_thermal_plate_task();
+                THEN("the powers are returned correctly") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response = std::get<messages::GetPlatePowerResponse>(
+                        tasks->get_host_comms_queue().backing_deque.front());
+                    REQUIRE(response.responding_to_id == message.id);
+                    REQUIRE_THAT(response.left,
+                                 Catch::Matchers::WithinAbs(0.1, 0.01));
+                    REQUIRE_THAT(response.center,
+                                 Catch::Matchers::WithinAbs(-0.2, 0.01));
+                    REQUIRE_THAT(response.right,
+                                 Catch::Matchers::WithinAbs(0.3, 0.01));
+                    REQUIRE_THAT(response.fans,
+                                 Catch::Matchers::WithinAbs(1.0, 0.01));
+                }
+            }
+        }
     }
     GIVEN("a thermal plate task with shorted thermistors") {
         auto tasks = TaskBuilder::build();
@@ -510,6 +562,15 @@ SCENARIO("thermal plate task message passing") {
         }
 #endif
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+
+        THEN("the current error status was sent to system task") {
+            REQUIRE(tasks->get_system_queue().has_message());
+            auto sys_msg = tasks->get_system_queue().backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::UpdateTaskErrorState>(
+                sys_msg));
+            REQUIRE(std::get<messages::UpdateTaskErrorState>(sys_msg)
+                        .current_error != errors::ErrorCode::NO_ERROR);
+        }
 
         WHEN("sending a get-plate-temperature message") {
             auto message = messages::GetPlateTempMessage{.id = 123};
