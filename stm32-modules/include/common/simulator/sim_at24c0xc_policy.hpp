@@ -85,4 +85,4 @@ class SimAT24C0XCPolicy {
     bool _write_protect;
 };
 
-}
+}  // namespace at24c0xc_sim_policy
