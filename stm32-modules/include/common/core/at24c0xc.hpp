@@ -21,7 +21,7 @@ concept AT24C0xC_Policy = requires(Policy &policy, uint8_t addr,
                                    std::array<uint8_t, PAGE_LENGTH> receive) {
     // Function to write a page (8 bytes)
     { policy.i2c_write(addr, send) } -> std::same_as<bool>;
-    // Function to write a singlye byte
+    // Function to write a single byte
     { policy.i2c_write(addr, send[0]) } -> std::same_as<bool>;
     // Function to read a page (8 bytes).
     // First parameter is the device address, second
