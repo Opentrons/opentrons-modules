@@ -87,7 +87,7 @@ class AT24C0xC {
         }
         // Because T must be trivially copyable, this is not a dangerous copy
         uint64_t value_int = 0;
-        std::memcpy(&value_int, &value, sizeof(T));
+        std::memcpy(&value_int, &value, sizeof(value));
         // Actual address is based on the byte.
         BufferT buffer;
         buffer.at(0) = page * PAGE_LENGTH;
