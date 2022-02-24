@@ -55,11 +55,13 @@ concept AT24C0xC_Policy = requires(Policy &policy, uint8_t addr,
 template <size_t PAGES, uint8_t ADDRESS>
 class AT24C0xC {
   public:
+    static const constexpr uint8_t MAX_ADDR = 0x80;
     // Either a 1024 or 2048 bit device
     static_assert((PAGES == 16) || (PAGES == 32),
                   "EEPROM size must be 1024 or 2048 bits");
+        
     // Address is lower 7 bits
-    static_assert(ADDRESS < 0x80, "Address must be a 7-bit value");
+    static_assert(ADDRESS < MAX_ADDR, "Address must be a 7-bit value");
 
     /**
      * @brief Serialize and write a value of type T to the EEPROM
@@ -89,7 +91,7 @@ class AT24C0xC {
         // Actual address is based on the byte.
         BufferT buffer;
         buffer.at(0) = page * PAGE_LENGTH;
-        auto itr = bit_utils::int_to_bytes(value_int,
+        auto *itr = bit_utils::int_to_bytes(value_int,
                                            buffer.begin() + 1, buffer.end());
         if (itr != buffer.end()) {
             // Error converting data
@@ -131,7 +133,7 @@ class AT24C0xC {
             return std::nullopt;
         }
         uint64_t value_int = 0;
-        auto itr = bit_utils::bytes_to_int(buffer, value_int);
+        const auto *itr = bit_utils::bytes_to_int(buffer, value_int);
         if (itr != buffer.end()) {
             return std::nullopt;
         }
@@ -140,7 +142,7 @@ class AT24C0xC {
         return RT(value);
     }
 
-    [[nodiscard]] auto const size() -> size_t { return _size; }
+    [[nodiscard]] auto size() const -> size_t { return _size; }
 
   private:
     // Total size of the EEPROM

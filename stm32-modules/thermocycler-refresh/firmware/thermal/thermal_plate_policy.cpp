@@ -49,3 +49,8 @@ auto ThermalPlatePolicy::get_fan() -> double { return thermal_fan_get_power(); }
 auto ThermalPlatePolicy::set_write_protect(bool write_protect) -> void {
     thermal_eeprom_set_write_protect(write_protect);
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto ThermalPlatePolicy::i2c_write(uint8_t addr, uint8_t data) -> bool {
+    return thermal_i2c_write_data(addr, &data, 1);
+}
