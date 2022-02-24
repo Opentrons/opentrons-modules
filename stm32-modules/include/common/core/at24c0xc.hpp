@@ -17,17 +17,19 @@ static constexpr const size_t PAGE_LENGTH = 8;
 
 template <typename Policy>
 concept AT24C0xC_Policy = requires(Policy &policy, uint8_t addr,
-                                   std::array<uint8_t, PAGE_LENGTH + 1> send,
-                                   std::array<uint8_t, PAGE_LENGTH> receive) {
-    // Function to write a page (8 bytes)
-    { policy.i2c_write(addr, send) } -> std::same_as<bool>;
+                                   std::array<uint8_t, PAGE_LENGTH> array) {
+    // Function to write a page.
+    // Accepts I2C address, uint8_t iterator, and a length
+    {
+        policy.i2c_write(addr, array.begin(), array.size())
+        } -> std::same_as<bool>;
     // Function to write a single byte
-    { policy.i2c_write(addr, send[0]) } -> std::same_as<bool>;
+    { policy.i2c_write(addr, array[0]) } -> std::same_as<bool>;
     // Function to read a page (8 bytes).
-    // First parameter is the device address, second
-    // is the array to return data. Length of transaction
-    // is deduced from the array type.
-    { policy.i2c_read(addr, receive) } -> std::same_as<bool>;
+    // Accepts I2C address, uint8_t iterator, and a length
+    {
+        policy.i2c_read(addr, array.begin(), array.size())
+        } -> std::same_as<bool>;
     // Function to enable or disable protection.
     // True turns on protection, false disables it.
     { policy.set_write_protect(true) } -> std::same_as<void>;
@@ -85,21 +87,14 @@ class AT24C0xC {
         if (page > PAGES) {
             return false;
         }
-        // Because T must be trivially copyable, this is not a dangerous copy
-        uint64_t value_int = 0;
-        std::memcpy(&value_int, &value, sizeof(value));
         // Actual address is based on the byte.
         BufferT buffer;
         buffer.at(0) = page * PAGE_LENGTH;
-        auto *itr = bit_utils::int_to_bytes(value_int, buffer.begin() + 1,
-                                            buffer.end());
-        if (itr != buffer.end()) {
-            // Error converting data
-            return false;
-        }
+        // Because T must be trivially copyable, this is not a dangerous copy
+        std::memcpy(&(buffer[1]), &value, sizeof(value));
 
         policy.set_write_protect(false);
-        auto ret = policy.i2c_write(_address, buffer);
+        auto ret = policy.i2c_write(_address, buffer.begin(), buffer.size());
         policy.set_write_protect(true);
 
         return ret;
@@ -130,16 +125,11 @@ class AT24C0xC {
         }
 
         BufferT buffer = {0};
-        if (!policy.i2c_read(_address, buffer)) {
-            return std::nullopt;
-        }
-        uint64_t value_int = 0;
-        const auto *itr = bit_utils::bytes_to_int(buffer, value_int);
-        if (itr != buffer.end()) {
+        if (!policy.i2c_read(_address, buffer.begin(), buffer.size())) {
             return std::nullopt;
         }
         T value;
-        memcpy(&value, &value_int, sizeof(value));
+        memcpy(&value, &buffer[0], sizeof(value));
         return RT(value);
     }
 

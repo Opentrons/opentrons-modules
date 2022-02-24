@@ -14,9 +14,10 @@ struct TestPeltier {
     }
 };
 
-class TestThermalPlatePolicy : public TestAT24C0XCPolicy<32> {
+class TestThermalPlatePolicy
+    : public at24c0xc_test_policy::TestAT24C0XCPolicy<32> {
   public:
-    TestThermalPlatePolicy() : TestAT24C0XCPolicy<32>() {}
+    TestThermalPlatePolicy() : at24c0xc_test_policy::TestAT24C0XCPolicy<32>() {}
 
     auto set_enabled(bool enabled) -> void {
         _enabled = enabled;

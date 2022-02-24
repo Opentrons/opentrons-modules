@@ -22,6 +22,8 @@ struct SimPeltier {
     }
 };
 
+using namespace at24c0xc_sim_policy;
+
 struct SimThermalPlatePolicy
     : public SimAT24C0XCPolicy<SimThermalPlateTask::EEPROM_PAGES> {
   private:

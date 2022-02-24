@@ -1,8 +1,17 @@
 #pragma once
 
 #include <array>
+#include <iterator>
 
 #include "core/at24c0xc.hpp"
+
+namespace at24c0xc_test_policy {
+
+template <typename Iter>
+concept ByteIterator = requires {
+    {std::forward_iterator<Iter>};
+    {std::is_same_v<std::iter_value_t<Iter>, uint8_t>};
+};
 
 template <size_t PAGES>
 class TestAT24C0XCPolicy {
@@ -15,19 +24,20 @@ class TestAT24C0XCPolicy {
 
     // --- Policy fulfillment -----------
 
-    template <size_t Length>
-    auto i2c_write(uint8_t addr, std::array<uint8_t, Length> &data) -> bool {
+    template <ByteIterator Input>
+    auto i2c_write(uint8_t addr, Input data, size_t len) -> bool {
         // Ignore address for test purposes
         static_cast<void>(addr);
-        if (data.size() > 0) {
-            if (data.at(0) >= _buffer.size()) {
+        if (len > 0) {
+            if (*data >= _buffer.size()) {
                 // Out of bounds write attempt
                 return false;
             }
-            _data_pointer = data.at(0);
-            for (auto itr = data.begin() + 1; itr != data.end(); itr++) {
+            _data_pointer = *data;
+            ++data;
+            for (size_t i = 1; i < len; ++i, ++data) {
                 if (!_write_protect) {
-                    _buffer[_data_pointer++] = *itr;
+                    _buffer[_data_pointer++] = *data;
                 }
                 // If data pointer is at a page boundary, wraparound
                 if ((_data_pointer % PAGE_LENGTH) == 0) {
@@ -51,13 +61,13 @@ class TestAT24C0XCPolicy {
         return false;
     }
 
-    template <size_t Length>
-    auto i2c_read(uint8_t addr, std::array<uint8_t, Length> &data) -> bool {
+    template <ByteIterator Input>
+    auto i2c_read(uint8_t addr, Input data, size_t len) -> bool {
         // Ignore address for test purposes
         static_cast<void>(addr);
         // Data pointer is held over from the last transaction
-        for (auto &itr : data) {
-            itr = _buffer[_data_pointer++];
+        for (size_t i = 0; i < len; ++i, ++data) {
+            *data = _buffer[_data_pointer++];
             // Wraparound is at memory limit instead of page boundary
             if (_data_pointer == _buffer.size()) {
                 _data_pointer = 0;
@@ -74,3 +84,5 @@ class TestAT24C0XCPolicy {
     size_t _data_pointer;
     bool _write_protect;
 };
+
+}  // namespace at24c0xc_test_policy

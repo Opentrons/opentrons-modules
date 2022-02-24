@@ -8,6 +8,14 @@
 #include "firmware/thermal_hardware.h"
 #include "thermocycler-refresh/thermal_general.hpp"
 
+namespace plate_policy {
+
+template <typename Iter>
+concept ByteIterator = requires {
+    {std::forward_iterator<Iter>};
+    {std::is_same_v<std::iter_value_t<Iter>, uint8_t>};
+};
+
 class ThermalPlatePolicy {
   public:
     ThermalPlatePolicy() = default;
@@ -27,13 +35,15 @@ class ThermalPlatePolicy {
 
     auto i2c_write(uint8_t addr, uint8_t data) -> bool;
 
-    template <size_t Length>
-    auto i2c_write(uint8_t addr, std::array<uint8_t, Length> &data) -> bool {
-        return thermal_i2c_write_data(addr, data.data(), Length);
+    template <ByteIterator Input>
+    auto i2c_write(uint8_t addr, Input data, size_t length) -> bool {
+        return thermal_i2c_write_data(addr, &(*data), length);
     }
 
-    template <size_t Length>
-    auto i2c_read(uint8_t addr, std::array<uint8_t, Length> &data) -> bool {
-        return thermal_i2c_read_data(addr, data.data(), Length);
+    template <ByteIterator Output>
+    auto i2c_read(uint8_t addr, Output data, size_t length) -> bool {
+        return thermal_i2c_read_data(addr, &(*data), length);
     }
 };
+
+}  // namespace plate_policy

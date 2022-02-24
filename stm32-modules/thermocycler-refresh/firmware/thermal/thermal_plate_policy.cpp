@@ -4,6 +4,8 @@
 #include "firmware/thermal_peltier_hardware.h"
 #include "systemwide.h"
 
+using namespace plate_policy;
+
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPlatePolicy::set_enabled(bool enabled) -> void {
     thermal_peltier_set_enable(enabled);
