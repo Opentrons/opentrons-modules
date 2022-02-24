@@ -1,5 +1,6 @@
 #pragma once
 
+#include "test/test_at24c0xc_policy.hpp"
 #include "thermocycler-refresh/thermal_general.hpp"
 
 struct TestPeltier {
@@ -13,8 +14,10 @@ struct TestPeltier {
     }
 };
 
-class TestThermalPlatePolicy {
+class TestThermalPlatePolicy : public TestAT24C0XCPolicy<32> {
   public:
+    TestThermalPlatePolicy() : TestAT24C0XCPolicy<32>() {}
+
     auto set_enabled(bool enabled) -> void {
         _enabled = enabled;
         if (!enabled) {
