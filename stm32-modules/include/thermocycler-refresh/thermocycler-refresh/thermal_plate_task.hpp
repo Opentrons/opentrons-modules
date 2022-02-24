@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <variant>
 
+#include "core/at24c0xc.hpp"
 #include "core/pid.hpp"
 #include "core/thermistor_conversion.hpp"
 #include "hal/message_queue.hpp"
@@ -48,7 +49,8 @@ concept ThermalPlateExecutionPolicy = requires(Policy& p, PeltierID id,
     { p.set_fan(1.0F) } -> std::same_as<bool>;
     // A function to get the current power of the heatsink fan.
     { p.get_fan() } -> std::same_as<double>;
-};
+}
+&&at24c0xc::AT24C0xC_Policy<Policy>;
 
 /** Just used for initialization assignment of error bits.*/
 constexpr auto thermistorErrorBit(const ThermistorID id) -> uint16_t {
@@ -104,6 +106,8 @@ class ThermalPlateTask {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     static constexpr const double CONTROL_PERIOD_SECONDS =
         CONTROL_PERIOD_TICKS * 0.001;
+    static constexpr size_t EEPROM_PAGES = 32;
+    static constexpr uint8_t EEPROM_ADDRESS = 0b1010010;
 
     explicit ThermalPlateTask(Queue& q)
         : _message_queue(q),
@@ -183,7 +187,8 @@ class ThermalPlateTask {
                      false),
           _state{.system_status = State::IDLE, .error_bitmap = 0},
           _plate_control(_peltier_left, _peltier_right, _peltier_center, _fans,
-                         CONTROL_PERIOD_SECONDS) {}
+                         CONTROL_PERIOD_SECONDS),
+          _eeprom() {}
     ThermalPlateTask(const ThermalPlateTask& other) = delete;
     auto operator=(const ThermalPlateTask& other) -> ThermalPlateTask& = delete;
     ThermalPlateTask(ThermalPlateTask&& other) noexcept = delete;
@@ -778,6 +783,7 @@ class ThermalPlateTask {
     thermistor_conversion::Conversion<lookups::KS103J2G> _converter;
     State _state;
     plate_control::PlateControl _plate_control;
+    at24c0xc::AT24C0xC<EEPROM_PAGES, EEPROM_ADDRESS> _eeprom;
 };
 
 }  // namespace thermal_plate_task
