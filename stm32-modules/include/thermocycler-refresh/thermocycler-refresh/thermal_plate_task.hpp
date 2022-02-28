@@ -577,6 +577,28 @@ class ThermalPlateTask {
             _task_registry->comms->get_message_queue().try_send(response));
     }
 
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::SetOffsetConstantsMessage& msg,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::GetOffsetConstantsMessage& msg,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        auto response = messages::GetOffsetConstantsResponse{
+            .responding_to_id = msg.id, .const_b = 10.0, .const_c = 12.0};
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
     auto handle_temperature_conversion(uint16_t conversion_result,
                                        Thermistor& thermistor) -> void {
         auto visitor = [this, &thermistor](const auto value) -> void {

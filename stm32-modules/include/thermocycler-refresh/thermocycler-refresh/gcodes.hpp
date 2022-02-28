@@ -1250,15 +1250,15 @@ struct SetPIDConstants {
 
 /**
  * Uses M116, as defined on Gen 1 thermocyclers.
- * 
+ *
  * Accepts two optional constants, B and C. These are
  * used in the calculation of the plate temperature for
  * each thermistor on the system with the following equation:
- * 
+ *
  * > temp = (1+B)*(measured temp) + C
- * 
+ *
  * Format: M116 B0.102 C-0.245\n
- * 
+ *
  */
 struct SetOffsetConstants {
     using ParseResult = std::optional<SetOffsetConstants>;
@@ -1294,16 +1294,16 @@ struct SetOffsetConstants {
         -> std::pair<ParseResult, InputIt> {
         // Prefix with no variables is technically allowed
         auto working = prefix_matches(input, limit, prefix);
-        if(working == input) {
+        if (working == input) {
             return std::make_pair(std::nullopt, input);
         }
         auto old_working = working;
         auto ret = SetOffsetConstants();
         working = prefix_matches(old_working, limit, prefix_b);
-        if(working != old_working) {
+        if (working != old_working) {
             old_working = working;
             auto b = parse_value<float>(working, limit);
-            if(!b.first.has_value()) {
+            if (!b.first.has_value()) {
                 return std::make_pair(std::nullopt, input);
             }
             ret.const_b.defined = true;
@@ -1313,10 +1313,10 @@ struct SetOffsetConstants {
         old_working = working;
 
         working = prefix_matches(old_working, limit, prefix_c);
-        if(working != old_working) {
+        if (working != old_working) {
             old_working = working;
             auto c = parse_value<float>(working, limit);
-            if(!c.first.has_value()) {
+            if (!c.first.has_value()) {
                 return std::make_pair(std::nullopt, input);
             }
             ret.const_c.defined = true;
@@ -1329,13 +1329,13 @@ struct SetOffsetConstants {
 
 /**
  * Uses M117, as defined on Gen 1 thermocyclers.
- * 
+ *
  * Returns the programmed offset constants on the device, B and C.
- * 
+ *
  * Format: M117\n
- * 
+ *
  * Returns: M117 B:[B value] C:[C value] OK\n
- * 
+ *
  */
 struct GetOffsetConstants {
     using ParseResult = std::optional<GetOffsetConstants>;
@@ -1356,18 +1356,15 @@ struct GetOffsetConstants {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    static auto write_response_into(InputIt buf, InputLimit limit,
-        double b, double c) -> InputIt {
-
-        auto res = snprintf(&*buf, (limit - buf), "M117 B:%0.2f C:%0.2f OK\n", 
-            static_cast<float>(b), static_cast<float>(c));
+    static auto write_response_into(InputIt buf, InputLimit limit, double b,
+                                    double c) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf), "M117 B:%0.2f C:%0.2f OK\n",
+                            static_cast<float>(b), static_cast<float>(c));
         if (res <= 0) {
             return buf;
         }
         return buf + res;
     }
-
 };
-
 
 }  // namespace gcode

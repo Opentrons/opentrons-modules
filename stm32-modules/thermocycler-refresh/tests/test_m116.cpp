@@ -29,7 +29,8 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
     GIVEN("input to set no constants") {
         std::string input = "M116\n";
         WHEN("parsing") {
-            auto parsed = gcode::SetOffsetConstants::parse(input.begin(), input.end());
+            auto parsed =
+                gcode::SetOffsetConstants::parse(input.begin(), input.end());
             THEN("parsing should be succesful") {
                 REQUIRE(parsed.second != input.begin());
                 REQUIRE(parsed.first.has_value());
@@ -42,7 +43,8 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
     GIVEN("input to set B constant") {
         std::string input = "M116 B-0.543\n";
         WHEN("parsing") {
-            auto parsed = gcode::SetOffsetConstants::parse(input.begin(), input.end());
+            auto parsed =
+                gcode::SetOffsetConstants::parse(input.begin(), input.end());
             THEN("parsing should be succesful") {
                 REQUIRE(parsed.second != input.begin());
                 REQUIRE(parsed.first.has_value());
@@ -57,7 +59,8 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
     GIVEN("input to set C constant") {
         std::string input = "M116 C123.5\n";
         WHEN("parsing") {
-            auto parsed = gcode::SetOffsetConstants::parse(input.begin(), input.end());
+            auto parsed =
+                gcode::SetOffsetConstants::parse(input.begin(), input.end());
             THEN("parsing should be succesful") {
                 REQUIRE(parsed.second != input.begin());
                 REQUIRE(parsed.first.has_value());
@@ -72,7 +75,8 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
     GIVEN("input to set both constants") {
         std::string input = "M116 B543 C123.5\n";
         WHEN("parsing") {
-            auto parsed = gcode::SetOffsetConstants::parse(input.begin(), input.end());
+            auto parsed =
+                gcode::SetOffsetConstants::parse(input.begin(), input.end());
             THEN("parsing should be succesful") {
                 REQUIRE(parsed.second != input.begin());
                 REQUIRE(parsed.first.has_value());
@@ -89,7 +93,8 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
     GIVEN("invalid input") {
         std::string input = "M1116\n";
         WHEN("parsing") {
-            auto parsed = gcode::SetOffsetConstants::parse(input.begin(), input.end());
+            auto parsed =
+                gcode::SetOffsetConstants::parse(input.begin(), input.end());
             THEN("parsing should not be succesful") {
                 REQUIRE(parsed.second == input.begin());
                 REQUIRE(!parsed.first.has_value());
