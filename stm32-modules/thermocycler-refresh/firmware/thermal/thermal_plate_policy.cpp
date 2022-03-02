@@ -56,7 +56,8 @@ auto ThermalPlatePolicy::set_write_protect(bool write_protect) -> void {
         // When done writing to the EEPROM, it needs some time to perform
         // the write. We could poll the I2C bus, or we can just add a short
         // delay since this won't happen during any critical sections.
-        vTaskDelay(10);
+        static constexpr const TickType_t delay_ticks = pdMS_TO_TICKS(10);
+        vTaskDelay(delay_ticks);
     }
 }
 
