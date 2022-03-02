@@ -614,7 +614,7 @@ class ThermalPlateTask {
     template <ThermalPlateExecutionPolicy Policy>
     auto visit_message(const messages::GetOffsetConstantsMessage& msg,
                        Policy& policy) -> void {
-        static_cast<void>(policy);
+        _offset_constants = _eeprom.get_offset_constants(policy);
         auto response = messages::GetOffsetConstantsResponse{
             .responding_to_id = msg.id,
             .const_b = _offset_constants.b,
