@@ -19,6 +19,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_colors.cpp
     test_motor_task.cpp
     test_motor_utils.cpp
+    test_eeprom.cpp
     # GCode parse tests
     test_m14.cpp
     test_m103d.cpp

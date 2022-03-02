@@ -106,6 +106,8 @@ class ThermalPlateTask {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     static constexpr const double CONTROL_PERIOD_SECONDS =
         CONTROL_PERIOD_TICKS * 0.001;
+    static constexpr size_t EEPROM_PAGES = 32;
+    static constexpr uint8_t EEPROM_ADDRESS = 0b1010010;
     static constexpr const double OFFSET_DEFAULT_CONST_B = 0.0F;
     static constexpr const double OFFSET_DEFAULT_CONST_C = 0.0F;
 
@@ -588,9 +590,21 @@ class ThermalPlateTask {
     template <ThermalPlateExecutionPolicy Policy>
     auto visit_message(const messages::SetOffsetConstantsMessage& msg,
                        Policy& policy) -> void {
-        static_cast<void>(policy);
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        if (msg.b_set) {
+            _offset_constants.b = msg.const_b;
+        }
+        if (msg.c_set) {
+            _offset_constants.c = msg.const_c;
+        }
+
+        if (!_eeprom.template write_offset_constants(_offset_constants,
+                                                     policy)) {
+            // Could not write to the eeprom.
+            response.with_error = errors::ErrorCode::SYSTEM_EEPROM_ERROR;
+        }
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));
@@ -601,7 +615,9 @@ class ThermalPlateTask {
                        Policy& policy) -> void {
         static_cast<void>(policy);
         auto response = messages::GetOffsetConstantsResponse{
-            .responding_to_id = msg.id, .const_b = 10.0, .const_c = 12.0};
+            .responding_to_id = msg.id,
+            .const_b = _offset_constants.b,
+            .const_c = _offset_constants.c};
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));
@@ -834,7 +850,7 @@ class ThermalPlateTask {
     thermistor_conversion::Conversion<lookups::KS103J2G> _converter;
     State _state;
     plate_control::PlateControl _plate_control;
-    eeprom::Eeprom _eeprom;
+    eeprom::Eeprom<EEPROM_PAGES, EEPROM_ADDRESS> _eeprom;
     eeprom::OffsetConstants _offset_constants;
 };
 
