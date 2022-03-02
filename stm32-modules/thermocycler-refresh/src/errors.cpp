@@ -59,6 +59,8 @@ const char* const SYSTEM_SERIAL_NUMBER_INVALID =
     "ERR301:system:serial number invalid format\n";
 const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
     "ERR302:system:HAL error, busy, or timeout\n";
+const char* const SYSTEM_EEPROM_ERROR =
+    "ERR303:system:EEPROM communication error\n";
 const char* const THERMAL_PLATE_BUSY = "ERR401:thermal:Thermal plate busy\n";
 const char* const THERMAL_PELTIER_ERROR =
     "ERR402:thermal:Could not activate peltier\n";
@@ -119,6 +121,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(THERMISTOR_LID_OVERTEMP);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_INVALID);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
+        HANDLE_CASE(SYSTEM_EEPROM_ERROR);
         HANDLE_CASE(THERMAL_PLATE_BUSY);
         HANDLE_CASE(THERMAL_PELTIER_ERROR);
         HANDLE_CASE(THERMAL_HEATSINK_FAN_ERROR);

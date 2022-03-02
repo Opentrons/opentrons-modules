@@ -8,10 +8,10 @@
 #include <cstddef>
 #include <variant>
 
-#include "core/at24c0xc.hpp"
 #include "core/pid.hpp"
 #include "core/thermistor_conversion.hpp"
 #include "hal/message_queue.hpp"
+#include "thermocycler-refresh/eeprom.hpp"
 #include "thermocycler-refresh/errors.hpp"
 #include "thermocycler-refresh/messages.hpp"
 #include "thermocycler-refresh/plate_control.hpp"
@@ -108,6 +108,8 @@ class ThermalPlateTask {
         CONTROL_PERIOD_TICKS * 0.001;
     static constexpr size_t EEPROM_PAGES = 32;
     static constexpr uint8_t EEPROM_ADDRESS = 0b1010010;
+    static constexpr const double OFFSET_DEFAULT_CONST_B = 0.0F;
+    static constexpr const double OFFSET_DEFAULT_CONST_C = 0.0F;
 
     explicit ThermalPlateTask(Queue& q)
         : _message_queue(q),
@@ -188,7 +190,10 @@ class ThermalPlateTask {
           _state{.system_status = State::IDLE, .error_bitmap = 0},
           _plate_control(_peltier_left, _peltier_right, _peltier_center, _fans,
                          CONTROL_PERIOD_SECONDS),
-          _eeprom() {}
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          _eeprom(),
+          _offset_constants{.b = OFFSET_DEFAULT_CONST_B,
+                            .c = OFFSET_DEFAULT_CONST_C} {}
     ThermalPlateTask(const ThermalPlateTask& other) = delete;
     auto operator=(const ThermalPlateTask& other) -> ThermalPlateTask& = delete;
     ThermalPlateTask(ThermalPlateTask&& other) noexcept = delete;
@@ -217,6 +222,12 @@ class ThermalPlateTask {
     requires ThermalPlateExecutionPolicy<Policy>
     auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
+
+        // If the EEPROM data hasn't been read, read it before doing
+        // anything else.
+        if (!_eeprom.initialized()) {
+            _offset_constants = _eeprom.get_offset_constants(policy);
+        }
 
         // This is the call down to the provided queue. It will block for
         // anywhere up to the provided timeout, which drives the controller
@@ -247,19 +258,19 @@ class ThermalPlateTask {
         // Peltier temperatures are implicitly updated by updating the values
         // in the thermistors
         handle_temperature_conversion(msg.front_right,
-                                      _thermistors[THERM_FRONT_RIGHT]);
+                                      _thermistors[THERM_FRONT_RIGHT], true);
         handle_temperature_conversion(msg.front_left,
-                                      _thermistors[THERM_FRONT_LEFT]);
+                                      _thermistors[THERM_FRONT_LEFT], true);
         handle_temperature_conversion(msg.front_center,
-                                      _thermistors[THERM_FRONT_CENTER]);
+                                      _thermistors[THERM_FRONT_CENTER], true);
         handle_temperature_conversion(msg.back_right,
-                                      _thermistors[THERM_BACK_RIGHT]);
+                                      _thermistors[THERM_BACK_RIGHT], true);
         handle_temperature_conversion(msg.back_left,
-                                      _thermistors[THERM_BACK_LEFT]);
+                                      _thermistors[THERM_BACK_LEFT], true);
         handle_temperature_conversion(msg.back_center,
-                                      _thermistors[THERM_BACK_CENTER]);
+                                      _thermistors[THERM_BACK_CENTER], true);
         handle_temperature_conversion(msg.heat_sink,
-                                      _thermistors[THERM_HEATSINK]);
+                                      _thermistors[THERM_HEATSINK], false);
 
         if (old_error_bitmap != _state.error_bitmap) {
             if (_state.error_bitmap != 0) {
@@ -577,8 +588,45 @@ class ThermalPlateTask {
             _task_registry->comms->get_message_queue().try_send(response));
     }
 
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::SetOffsetConstantsMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        if (msg.b_set) {
+            _offset_constants.b = msg.const_b;
+        }
+        if (msg.c_set) {
+            _offset_constants.c = msg.const_c;
+        }
+
+        if (!_eeprom.template write_offset_constants(_offset_constants,
+                                                     policy)) {
+            // Could not write to the eeprom.
+            response.with_error = errors::ErrorCode::SYSTEM_EEPROM_ERROR;
+        }
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::GetOffsetConstantsMessage& msg,
+                       Policy& policy) -> void {
+        _offset_constants = _eeprom.get_offset_constants(policy);
+        auto response = messages::GetOffsetConstantsResponse{
+            .responding_to_id = msg.id,
+            .const_b = _offset_constants.b,
+            .const_c = _offset_constants.c};
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
     auto handle_temperature_conversion(uint16_t conversion_result,
-                                       Thermistor& thermistor) -> void {
+                                       Thermistor& thermistor,
+                                       bool apply_offset) -> void {
         auto visitor = [this, &thermistor](const auto value) -> void {
             this->visit_conversion(thermistor, value);
         };
@@ -586,6 +634,10 @@ class ThermalPlateTask {
         thermistor.last_adc = conversion_result;
         auto old_error = thermistor.error;
         std::visit(visitor, _converter.convert(conversion_result));
+        // If there was an error, don't apply the offset
+        if (apply_offset && (thermistor.error == errors::ErrorCode::NO_ERROR)) {
+            thermistor.temp_c = calculate_thermistor_offset(thermistor.temp_c);
+        }
         if (old_error != thermistor.error) {
             if (thermistor.error != errors::ErrorCode::NO_ERROR) {
                 _state.error_bitmap |= thermistor.error_bit;
@@ -773,6 +825,22 @@ class ThermalPlateTask {
             _task_registry->system->get_message_queue().try_send(message));
     }
 
+    /**
+     * @brief Apply the thermistor offset constants to calculate the expected
+     * temperature of a thermistor.
+     *
+     * @param temp The measured temperature of the thermistor with no offset
+     * applied.
+     * @return double containing the
+     */
+    [[nodiscard]] auto calculate_thermistor_offset(double temp) const
+        -> double {
+        if (!_eeprom.initialized()) {
+            return temp;
+        }
+        return ((1.0F + _offset_constants.b) * temp) + _offset_constants.c;
+    }
+
     Queue& _message_queue;
     tasks::Tasks<QueueImpl>* _task_registry;
     std::array<Thermistor, PLATE_THERM_COUNT> _thermistors;
@@ -783,7 +851,8 @@ class ThermalPlateTask {
     thermistor_conversion::Conversion<lookups::KS103J2G> _converter;
     State _state;
     plate_control::PlateControl _plate_control;
-    at24c0xc::AT24C0xC<EEPROM_PAGES, EEPROM_ADDRESS> _eeprom;
+    eeprom::Eeprom<EEPROM_PAGES, EEPROM_ADDRESS> _eeprom;
+    eeprom::OffsetConstants _offset_constants;
 };
 
 }  // namespace thermal_plate_task

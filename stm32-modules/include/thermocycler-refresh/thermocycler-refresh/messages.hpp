@@ -261,6 +261,23 @@ struct SetPIDConstantsMessage {
     double d;
 };
 
+struct SetOffsetConstantsMessage {
+    uint32_t id;
+    bool b_set;
+    double const_b;
+    bool c_set;
+    double const_c;
+};
+
+struct GetOffsetConstantsMessage {
+    uint32_t id;
+};
+
+struct GetOffsetConstantsResponse {
+    uint32_t responding_to_id;
+    double const_b, const_c;
+};
+
 struct UpdateUIMessage {
     // Empty struct
 };
@@ -313,19 +330,22 @@ using SystemMessage =
                    SetSerialNumberMessage, GetSystemInfoMessage,
                    UpdateUIMessage, SetLedMode, UpdateTaskErrorState,
                    UpdatePlateState>;
-using HostCommsMessage = ::std::variant<
-    std::monostate, IncomingMessageFromHost, AcknowledgePrevious, ErrorMessage,
-    ForceUSBDisconnectMessage, GetSystemInfoResponse,
-    GetLidTemperatureDebugResponse, GetPlateTemperatureDebugResponse,
-    GetPlateTempResponse, GetLidTempResponse, GetSealDriveStatusResponse,
-    GetLidStatusResponse, GetPlatePowerResponse, GetLidPowerResponse>;
+using HostCommsMessage =
+    ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
+                   ErrorMessage, ForceUSBDisconnectMessage,
+                   GetSystemInfoResponse, GetLidTemperatureDebugResponse,
+                   GetPlateTemperatureDebugResponse, GetPlateTempResponse,
+                   GetLidTempResponse, GetSealDriveStatusResponse,
+                   GetLidStatusResponse, GetPlatePowerResponse,
+                   GetLidPowerResponse, GetOffsetConstantsResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
                    SetFanManualMessage, GetPlateTempMessage,
                    SetPlateTemperatureMessage, DeactivatePlateMessage,
                    SetPIDConstantsMessage, SetFanAutomaticMessage,
-                   GetThermalPowerMessage>;
+                   GetThermalPowerMessage, SetOffsetConstantsMessage,
+                   GetOffsetConstantsMessage>;
 using LidHeaterMessage =
     ::std::variant<std::monostate, LidTempReadComplete,
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
