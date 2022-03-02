@@ -190,6 +190,7 @@ class ThermalPlateTask {
           _state{.system_status = State::IDLE, .error_bitmap = 0},
           _plate_control(_peltier_left, _peltier_right, _peltier_center, _fans,
                          CONTROL_PERIOD_SECONDS),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
           _eeprom(),
           _offset_constants{.b = OFFSET_DEFAULT_CONST_B,
                             .c = OFFSET_DEFAULT_CONST_C} {}
@@ -832,7 +833,7 @@ class ThermalPlateTask {
      * applied.
      * @return double containing the
      */
-    [[nodiscard]] auto const calculate_thermistor_offset(double temp)
+    [[nodiscard]] auto calculate_thermistor_offset(double temp) const
         -> double {
         if (!_eeprom.initialized()) {
             return temp;

@@ -43,7 +43,7 @@ struct OffsetConstants {
 template <size_t PAGES, uint8_t ADDRESS>
 class Eeprom {
   public:
-    Eeprom() : _eeprom(), _initialized(false) {}
+    Eeprom() : _eeprom() {}
 
     /**
      * @brief Get the offset constants from the EEPROM
@@ -180,7 +180,7 @@ class Eeprom {
     // Even if the EEPROM is empty, this flag is set after attempting
     // to read so that the firmware doesn't try to keep making redundant
     // reads.
-    bool _initialized;
+    bool _initialized = false;
 };
 
 }  // namespace eeprom
