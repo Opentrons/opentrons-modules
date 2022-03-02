@@ -128,6 +128,7 @@ class Eeprom {
     static_assert(sizeof(EEPROMPageMap) == sizeof(uint8_t),
                   "EEPROM API requires uint8_t page address");
 
+    /** Default value for all constants.*/
     static constexpr double OFFSET_DEFAULT_CONST = 0.0F;
 
     /**

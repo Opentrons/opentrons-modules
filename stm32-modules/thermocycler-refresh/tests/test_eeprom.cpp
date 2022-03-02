@@ -40,7 +40,7 @@ TEST_CASE("eeprom reading and writing") {
         OffsetConstants constants = {.b = 10.0F, .c = -12.0F};
         WHEN("writing the constants") {
             REQUIRE(eeprom.write_offset_constants(constants, policy));
-            AND_THEN("readinb back the constants") {
+            AND_THEN("reading back the constants") {
                 auto readback = eeprom.get_offset_constants(policy);
                 THEN("the constants match") {
                     REQUIRE_THAT(readback.b,
