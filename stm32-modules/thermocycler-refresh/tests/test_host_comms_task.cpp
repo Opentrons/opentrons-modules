@@ -1650,7 +1650,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::GetLidStatusResponse{
                             .responding_to_id = lid_message.id,
-                            .lid = motor_util::LidStepper::Status::UNKNOWN,
+                            .lid = motor_util::LidStepper::Position::UNKNOWN,
                             .seal = motor_util::SealStepper::Status::UNKNOWN});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
@@ -1672,7 +1672,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::GetLidStatusResponse{
                             .responding_to_id = lid_message.id + 1,
-                            .lid = motor_util::LidStepper::Status::UNKNOWN,
+                            .lid = motor_util::LidStepper::Position::UNKNOWN,
                             .seal = motor_util::SealStepper::Status::UNKNOWN});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);

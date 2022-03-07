@@ -112,6 +112,9 @@ struct LidStepperState {
     // this flag is set & cleared by both the actual task context
     // and an interrupt context when the motor interrupt fires.
     std::atomic<Status> status;
+    // Current position of the lid stepper. Only relevant if the
+    // status is IDLE
+    motor_util::LidStepper::Position position;
     // When a movement is complete, respond to this ID
     uint32_t response_id;
 };
@@ -158,8 +161,10 @@ class MotorTask {
     explicit MotorTask(Queue& q)
         : _message_queue(q),
           _task_registry(nullptr),
-          _lid_stepper_state{.status = LidStepperState::Status::IDLE,
-                             .response_id = 0},
+          _lid_stepper_state{
+              .status = LidStepperState::Status::IDLE,
+              .position = motor_util::LidStepper::Position::UNKNOWN,
+              .response_id = 0},
           _seal_stepper_state{.status = SealStepperState::Status::IDLE,
                               .response_id = 0},
           _tmc2130(default_tmc_config),
@@ -229,6 +234,8 @@ class MotorTask {
                 msg.overdrive);
             _lid_stepper_state.status =
                 LidStepperState::Status::SIMPLE_MOVEMENT;
+            _lid_stepper_state.position =
+                motor_util::LidStepper::Position::UNKNOWN;
             _lid_stepper_state.response_id = msg.id;
         } else {
             auto response = messages::AcknowledgePrevious{
@@ -415,15 +422,17 @@ class MotorTask {
     auto visit_message(const messages::GetLidStatusMessage& msg, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        auto lid = motor_util::LidStepper::Status::UNKNOWN;
+        auto lid = motor_util::LidStepper::Position::UNKNOWN;
         auto seal = _seal_position;
 
         if (policy.lid_read_closed_switch()) {
-            lid = motor_util::LidStepper::Status::CLOSED;
+            lid = motor_util::LidStepper::Position::CLOSED;
         } else if (policy.lid_read_open_switch()) {
-            lid = motor_util::LidStepper::Status::OPEN;
-        } else if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
-            lid = motor_util::LidStepper::Status::BETWEEN;
+            lid = motor_util::LidStepper::Position::OPEN;
+        } else if (_lid_stepper_state.status == LidStepperState::Status::IDLE) {
+            lid = _lid_stepper_state.position;
+        } else /* status != idle */ {
+            lid = motor_util::LidStepper::Position::BETWEEN;
         }
 
         if (_seal_stepper_state.status != SealStepperState::Status::IDLE) {
@@ -456,6 +465,7 @@ class MotorTask {
         policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES, false);
         // Store the new state, as well as the response ID
         _lid_stepper_state.status = LidStepperState::Status::OPEN_TO_SWITCH;
+        _lid_stepper_state.position = motor_util::LidStepper::Position::UNKNOWN;
         _lid_stepper_state.response_id = msg.id;
     }
 
@@ -478,6 +488,7 @@ class MotorTask {
         policy.lid_stepper_start(LidStepperState::FULL_CLOSE_DEGREES, false);
         // Store the new state, as well as the response ID
         _lid_stepper_state.status = LidStepperState::Status::CLOSE_TO_SWITCH;
+        _lid_stepper_state.position = motor_util::LidStepper::Position::UNKNOWN;
         _lid_stepper_state.response_id = msg.id;
     }
 
@@ -600,6 +611,8 @@ class MotorTask {
                 policy.lid_stepper_set_dac(0);
                 // Movement is done
                 _lid_stepper_state.status = LidStepperState::Status::IDLE;
+                _lid_stepper_state.position =
+                    motor_util::LidStepper::Position::OPEN;
                 break;
             case LidStepperState::Status::CLOSE_TO_SWITCH:
                 // Overdrive the lid stepper into the switch
@@ -616,6 +629,8 @@ class MotorTask {
                 policy.lid_stepper_set_dac(0);
                 // Movement is done
                 _lid_stepper_state.status = LidStepperState::Status::IDLE;
+                _lid_stepper_state.position =
+                    motor_util::LidStepper::Position::CLOSED;
                 // TODO(Frank, Mar-7-2022) check if the lid didn't make it in
                 // all the way
                 break;

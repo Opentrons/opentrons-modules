@@ -321,7 +321,7 @@ struct GetLidStatusMessage {
 
 struct GetLidStatusResponse {
     uint32_t responding_to_id;
-    motor_util::LidStepper::Status lid;
+    motor_util::LidStepper::Position lid;
     motor_util::SealStepper::Status seal;
 };
 

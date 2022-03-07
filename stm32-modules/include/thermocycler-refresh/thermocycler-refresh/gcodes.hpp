@@ -791,7 +791,7 @@ struct GetLidStatus {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
     static auto write_response_into(InputIt buf, InputLimit limit,
-                                    motor_util::LidStepper::Status lid,
+                                    motor_util::LidStepper::Position lid,
                                     motor_util::SealStepper::Status seal)
         -> InputIt {
         int res = 0;

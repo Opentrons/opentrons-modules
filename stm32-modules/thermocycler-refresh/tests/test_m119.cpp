@@ -13,7 +13,7 @@ SCENARIO("GetLidStatus (M119) parser works", "[gcode][parse][m119]") {
     GIVEN("a response buffer large enough for the formatted response") {
         std::string buffer(256, 'c');
         WHEN("filling response") {
-            auto lid = motor_util::LidStepper::Status::UNKNOWN;
+            auto lid = motor_util::LidStepper::Position::UNKNOWN;
             auto seal = motor_util::SealStepper::Status::UNKNOWN;
             auto written = gcode::GetLidStatus::write_response_into(
                 buffer.begin(), buffer.end(), lid, seal);

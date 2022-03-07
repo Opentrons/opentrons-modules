@@ -78,7 +78,7 @@ SCENARIO("Lid stepper microstep conversion works") {
 }
 
 SCENARIO("lid status stringification works") {
-    using Status = motor_util::LidStepper::Status;
+    using Status = motor_util::LidStepper::Position;
     std::array<Status, 4> inputs = {Status::BETWEEN, Status::CLOSED,
                                     Status::OPEN, Status::UNKNOWN};
     std::array<std::string, 4> outputs = {"in_between", "closed", "open",

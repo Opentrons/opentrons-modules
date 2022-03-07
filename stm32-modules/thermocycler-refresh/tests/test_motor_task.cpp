@@ -106,7 +106,7 @@ SCENARIO("motor task message passing") {
                     auto response =
                         std::get<messages::GetLidStatusResponse>(msg);
                     REQUIRE(response.lid ==
-                            motor_util::LidStepper::Status::BETWEEN);
+                            motor_util::LidStepper::Position::BETWEEN);
                 }
             }
         }
@@ -326,7 +326,7 @@ SCENARIO("motor task message passing") {
                 auto response = std::get<messages::GetLidStatusResponse>(msg);
                 REQUIRE(response.responding_to_id == message.id);
                 REQUIRE(response.lid ==
-                        motor_util::LidStepper::Status::UNKNOWN);
+                        motor_util::LidStepper::Position::UNKNOWN);
                 REQUIRE(response.seal ==
                         motor_util::SealStepper::Status::UNKNOWN);
             }
@@ -343,7 +343,7 @@ SCENARIO("motor task message passing") {
                     auto response =
                         std::get<messages::GetLidStatusResponse>(msg);
                     REQUIRE(response.lid ==
-                            motor_util::LidStepper::Status::CLOSED);
+                            motor_util::LidStepper::Position::CLOSED);
                 }
             }
         }
@@ -359,7 +359,7 @@ SCENARIO("motor task message passing") {
                     auto response =
                         std::get<messages::GetLidStatusResponse>(msg);
                     REQUIRE(response.lid ==
-                            motor_util::LidStepper::Status::OPEN);
+                            motor_util::LidStepper::Position::OPEN);
                 }
             }
         }
@@ -400,6 +400,22 @@ SCENARIO("motor task message passing") {
                         REQUIRE(reply_msg.responding_to_id == 123);
                         REQUIRE(reply_msg.with_error ==
                                 errors::ErrorCode::NO_ERROR);
+                    }
+                    AND_WHEN("querying the lid position") {
+                        tasks->get_host_comms_queue().backing_deque.clear();
+                        tasks->get_motor_queue().backing_deque.push_back(
+                            messages::GetLidStatusMessage{.id = 10});
+                        tasks->run_motor_task();
+                        THEN(
+                            "the position is Open even though the switch "
+                            "doesn't detect it") {
+                            auto msg = tasks->get_host_comms_queue()
+                                           .backing_deque.front();
+                            auto reply_msg =
+                                std::get<messages::GetLidStatusResponse>(msg);
+                            REQUIRE(reply_msg.lid ==
+                                    motor_util::LidStepper::Position::OPEN);
+                        }
                     }
                 }
             }
@@ -454,6 +470,22 @@ SCENARIO("motor task message passing") {
                         REQUIRE(reply_msg.responding_to_id == 123);
                         REQUIRE(reply_msg.with_error ==
                                 errors::ErrorCode::NO_ERROR);
+                    }
+                    AND_WHEN("querying the lid position") {
+                        tasks->get_host_comms_queue().backing_deque.clear();
+                        tasks->get_motor_queue().backing_deque.push_back(
+                            messages::GetLidStatusMessage{.id = 10});
+                        tasks->run_motor_task();
+                        THEN(
+                            "the position is Closed even though the switch "
+                            "doesn't detect it") {
+                            auto msg = tasks->get_host_comms_queue()
+                                           .backing_deque.front();
+                            auto reply_msg =
+                                std::get<messages::GetLidStatusResponse>(msg);
+                            REQUIRE(reply_msg.lid ==
+                                    motor_util::LidStepper::Position::CLOSED);
+                        }
                     }
                 }
             }

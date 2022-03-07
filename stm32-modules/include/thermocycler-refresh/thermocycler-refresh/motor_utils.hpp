@@ -37,21 +37,21 @@ class LidStepper {
 
   public:
     /** Possible states of the lid stepper.*/
-    enum class Status { BETWEEN, CLOSED, OPEN, UNKNOWN };
+    enum class Position { BETWEEN, CLOSED, OPEN, UNKNOWN };
 
-    [[nodiscard]] constexpr static auto status_to_string(Status status) -> const
-        char* {
+    [[nodiscard]] constexpr static auto status_to_string(Position status)
+        -> const char* {
         switch (status) {
-            case Status::BETWEEN:
+            case Position::BETWEEN:
                 return "in_between";
                 break;
-            case Status::CLOSED:
+            case Position::CLOSED:
                 return "closed";
                 break;
-            case Status::OPEN:
+            case Position::OPEN:
                 return "open";
                 break;
-            case Status::UNKNOWN:
+            case Position::UNKNOWN:
                 return "unknown";
                 break;
         }
