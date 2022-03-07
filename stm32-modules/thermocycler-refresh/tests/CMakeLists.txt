@@ -34,6 +34,8 @@ add_executable(${TARGET_MODULE_NAME}
     test_m116.cpp
     test_m117.cpp
     test_m119.cpp
+    test_m126.cpp 
+    test_m127.cpp
     test_m140.cpp
     test_m140d.cpp
     test_m141.cpp

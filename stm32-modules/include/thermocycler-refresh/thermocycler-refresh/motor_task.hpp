@@ -77,13 +77,53 @@ concept MotorExecutionPolicy = requires(Policy& p,
 }
 &&tmc2130::TMC2130Policy<Policy>;
 
-// Structure to encapsulate state of either of the stepper motors
-struct StepperState {
-    enum StepperTaskStatus { IDLE, MOVING };
+// Structure to encapsulate state of the lid stepper
+struct LidStepperState {
+    // Full open/close movements run until they hit an endstop switch, so the
+    // distance is 120 degrees which is far wider than the actual travel angle.
+    constexpr static double FULL_OPEN_DEGREES =
+        motor_util::LidStepper::angle_to_microsteps(120);
+    // After opening to the open switch, the lid must close ~5º to
+    // be at the 90º position
+    constexpr static double OPEN_BACK_TO_90_DEGREES =
+        motor_util::LidStepper::angle_to_microsteps(-17);
+    // Full open/close movements run until they hit an endstop switch, so the
+    // distance is 120 degrees which is far wider than the actual travel angle.
+    constexpr static double FULL_CLOSE_DEGREES =
+        motor_util::LidStepper::angle_to_microsteps(-120);
+    // After closing to the switch, the lid must "overdrive" a few degrees to
+    // be fully seated in the closed position. The endstop switch is ignored
+    // for this movement.
+    constexpr static double CLOSE_OVERDRIVE_DEGREES =
+        motor_util::LidStepper::angle_to_microsteps(-5);
+    // Default run current is 1200 milliamperes
+    constexpr static double DEFAULT_RUN_CURRENT = 
+        motor_util::LidStepper::current_to_dac(1200);
+    // States for lid stepper
+    enum Status {
+        IDLE,            /**< Not moving.*/
+        SIMPLE_MOVEMENT, /**< Single stage movement.*/
+        OPEN_TO_SWITCH,  /**< Open until the open switch is hit.*/
+        OPEN_BACK_TO_90, /**< Close from switch back to 90º position.*/
+        CLOSE_TO_SWITCH, /**< Close lid until it hits the switch.*/
+        CLOSE_OVERDRIVE  /**< Close lid a few degrees into the switch.*/
+    };
     // Current status of the lid stepper. Declared atomic because
     // this flag is set & cleared by both the actual task context
     // and an interrupt context when the motor interrupt fires.
-    std::atomic<StepperTaskStatus> status;
+    std::atomic<Status> status;
+    // When a movement is complete, respond to this ID
+    uint32_t response_id;
+};
+
+// Structure to encapsulate state of the seal stepper
+struct SealStepperState {
+    // Enumeration of legal stepper actions
+    enum Status { IDLE, MOVING };
+    // Current status of the seal stepper. Declared atomic because
+    // this flag is set & cleared by both the actual task context
+    // and an interrupt context when the motor interrupt fires.
+    std::atomic<Status> status;
     // When a movement is complete, respond to this ID
     uint32_t response_id;
 };
@@ -118,8 +158,10 @@ class MotorTask {
     explicit MotorTask(Queue& q)
         : _message_queue(q),
           _task_registry(nullptr),
-          _lid_stepper_state{.status = StepperState::IDLE, .response_id = 0},
-          _seal_stepper_state{.status = StepperState::IDLE, .response_id = 0},
+          _lid_stepper_state{.status = LidStepperState::Status::IDLE,
+                             .response_id = 0},
+          _seal_stepper_state{.status = SealStepperState::Status::IDLE,
+                              .response_id = 0},
           _tmc2130(default_tmc_config),
           // Seal movement profile is populated with mostly dummy values.
           // It is set before every movement so these are irrelevant.
@@ -173,7 +215,7 @@ class MotorTask {
                        Policy& policy) -> void {
         // check for errors
         auto error = errors::ErrorCode::NO_ERROR;
-        if (_lid_stepper_state.status == StepperState::MOVING) {
+        if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
             error = errors::ErrorCode::LID_MOTOR_BUSY;
         } else if (policy.lid_stepper_check_fault()) {
             error = errors::ErrorCode::LID_MOTOR_FAULT;
@@ -185,7 +227,8 @@ class MotorTask {
             policy.lid_stepper_start(
                 motor_util::LidStepper::angle_to_microsteps(msg.angle),
                 msg.overdrive);
-            _lid_stepper_state.status = StepperState::MOVING;
+            _lid_stepper_state.status =
+                LidStepperState::Status::SIMPLE_MOVEMENT;
             _lid_stepper_state.response_id = msg.id;
         } else {
             auto response = messages::AcknowledgePrevious{
@@ -200,13 +243,15 @@ class MotorTask {
     requires MotorExecutionPolicy<Policy>
     auto visit_message(const messages::LidStepperComplete& msg, Policy& policy)
         -> void {
-        static_cast<void>(msg);
-        if (_lid_stepper_state.status == StepperState::MOVING) {
-            _lid_stepper_state.status = StepperState::IDLE;
-            policy.lid_stepper_set_dac(motor_util::LidStepper::current_to_dac(
-                LID_STEPPER_HOLD_CURRENT));
+        static_cast<void>(msg);  // No contents in message
+        LidStepperState::Status old_state = _lid_stepper_state.status.load();
+        auto error = handle_lid_state_end(policy);
+        if (_lid_stepper_state.status == LidStepperState::Status::IDLE &&
+            old_state != _lid_stepper_state.status) {
+            // Send an ACK if a movement just finished
             auto response = messages::AcknowledgePrevious{
-                .responding_to_id = _lid_stepper_state.response_id};
+                .responding_to_id = _lid_stepper_state.response_id,
+                .with_error = error};
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
@@ -219,7 +264,7 @@ class MotorTask {
                        Policy& policy) -> void {
         // check for errors
         auto error = errors::ErrorCode::NO_ERROR;
-        if (_seal_stepper_state.status == StepperState::MOVING) {
+        if (_seal_stepper_state.status != SealStepperState::Status::IDLE) {
             error = errors::ErrorCode::SEAL_MOTOR_BUSY;
         }
         if (error == errors::ErrorCode::NO_ERROR) {
@@ -242,7 +287,7 @@ class MotorTask {
     auto visit_message(const messages::SealStepperComplete& msg, Policy& policy)
         -> void {
         static_cast<void>(msg);
-        if (_seal_stepper_state.status == StepperState::MOVING) {
+        if (_seal_stepper_state.status == SealStepperState::Status::MOVING) {
             // Ignore return in case movement was already stopped by interrupt
             static_cast<void>(policy.seal_stepper_stop());
             static_cast<void>(policy.tmc2130_set_enable(false));
@@ -261,7 +306,7 @@ class MotorTask {
                 default:
                     break;
             }
-            _seal_stepper_state.status = StepperState::IDLE;
+            _seal_stepper_state.status = SealStepperState::Status::IDLE;
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = _seal_stepper_state.response_id,
                 .with_error = with_error};
@@ -378,12 +423,11 @@ class MotorTask {
         } else if (policy.lid_read_open_switch()) {
             lid = motor_util::LidStepper::Status::OPEN;
         } else if (_lid_stepper_state.status !=
-                   StepperState::StepperTaskStatus::IDLE) {
+                   LidStepperState::Status::IDLE) {
             lid = motor_util::LidStepper::Status::BETWEEN;
         }
 
-        if (_seal_stepper_state.status !=
-            StepperState::StepperTaskStatus::IDLE) {
+        if (_seal_stepper_state.status != SealStepperState::Status::IDLE) {
             seal = motor_util::SealStepper::Status::BETWEEN;
         }
 
@@ -391,6 +435,51 @@ class MotorTask {
             .responding_to_id = msg.id, .lid = lid, .seal = seal};
         static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
+    }
+
+    template <MotorExecutionPolicy Policy>
+    auto visit_message(const messages::OpenLidMessage& msg, Policy& policy)
+        -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
+            response.with_error = errors::ErrorCode::LID_MOTOR_BUSY;
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(
+                    messages::HostCommsMessage(response)));
+            return;
+        }
+
+        // First release the latch
+        policy.lid_solenoid_engage();
+        // Now start a lid motor movement to the endstop
+        policy.lid_stepper_set_dac(LidStepperState::DEFAULT_RUN_CURRENT);
+        policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES, false);
+        // Store the new state, as well as the response ID
+        _lid_stepper_state.status = LidStepperState::Status::OPEN_TO_SWITCH;
+        _lid_stepper_state.response_id = msg.id;
+    }
+
+    template <MotorExecutionPolicy Policy>
+    auto visit_message(const messages::CloseLidMessage& msg, Policy& policy)
+        -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
+            response.with_error = errors::ErrorCode::LID_MOTOR_BUSY;
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(
+                    messages::HostCommsMessage(response)));
+            return;
+        }
+        // First release the latch
+        policy.lid_solenoid_engage();
+        // Now start a lid motor movement to closed position
+        policy.lid_stepper_set_dac(LidStepperState::DEFAULT_RUN_CURRENT);
+        policy.lid_stepper_start(LidStepperState::FULL_CLOSE_DEGREES, false);
+        // Store the new state, as well as the response ID
+        _lid_stepper_state.status = LidStepperState::Status::CLOSE_TO_SWITCH;
+        _lid_stepper_state.response_id = msg.id;
     }
 
     // Callback for each tick() during a seal stepper movement
@@ -445,12 +534,12 @@ class MotorTask {
             return errors::ErrorCode::SEAL_MOTOR_FAULT;
         }
 
-        _seal_stepper_state.status = StepperState::MOVING;
+        _seal_stepper_state.status = SealStepperState::Status::MOVING;
 
         ret = policy.seal_stepper_start(
             [&] { this->seal_step_callback(policy); });
         if (!ret) {
-            _seal_stepper_state.status = StepperState::IDLE;
+            _seal_stepper_state.status = SealStepperState::Status::IDLE;
             return errors::ErrorCode::SEAL_MOTOR_FAULT;
         }
 
@@ -481,10 +570,69 @@ class MotorTask {
         return errors::ErrorCode::NO_ERROR;
     }
 
+    /**
+     * @brief Handler to transition between lid motor states. Should be
+     * called every time a lid motor movement complete callback is triggered.
+     * @param policy Instance of the policy for motor control
+     * @return errors::ErrorCode
+     */
+    template <MotorExecutionPolicy Policy>
+    auto handle_lid_state_end(Policy& policy) -> errors::ErrorCode {
+        auto error = errors::ErrorCode::NO_ERROR;
+        switch (_lid_stepper_state.status.load()) {
+            case LidStepperState::Status::SIMPLE_MOVEMENT:
+                // Turn off the drive current
+                policy.lid_stepper_set_dac(0);
+                // Movement is done
+                _lid_stepper_state.status = LidStepperState::Status::IDLE;
+                break;
+            case LidStepperState::Status::OPEN_TO_SWITCH:
+                // Now that the lid is at the open position,
+                // the solenoid can be safely turned off
+                policy.lid_solenoid_disengage();
+                // Move to the Open Back To 90 step
+                policy.lid_stepper_start(
+                    LidStepperState::OPEN_BACK_TO_90_DEGREES, false);
+                _lid_stepper_state.status =
+                    LidStepperState::Status::OPEN_BACK_TO_90;
+                break;
+            case LidStepperState::Status::OPEN_BACK_TO_90:
+                // Turn off lid stepper current
+                policy.lid_stepper_set_dac(0);
+                // Movement is done
+                _lid_stepper_state.status = LidStepperState::Status::IDLE;
+                break;
+            case LidStepperState::Status::CLOSE_TO_SWITCH:
+                // Overdrive the lid stepper into the switch
+                policy.lid_stepper_start(
+                    LidStepperState::CLOSE_OVERDRIVE_DEGREES, true);
+                _lid_stepper_state.status =
+                    LidStepperState::Status::CLOSE_OVERDRIVE;
+                break;
+            case LidStepperState::Status::CLOSE_OVERDRIVE:
+                // Now that the lid is at the closed position,
+                // the solenoid can be safely turned off
+                policy.lid_solenoid_disengage();
+                // Turn off lid stepper current
+                policy.lid_stepper_set_dac(0);
+                // Movement is done
+                _lid_stepper_state.status = LidStepperState::Status::IDLE;
+                // TODO(Frank, Mar-7-2022) check if the lid didn't make it in
+                // all the way
+                break;
+            case LidStepperState::Status::IDLE:
+                [[fallthrough]];
+            default:
+                break;
+        }
+
+        return error;
+    }
+
     Queue& _message_queue;
     tasks::Tasks<QueueImpl>* _task_registry;
-    StepperState _lid_stepper_state;
-    StepperState _seal_stepper_state;
+    LidStepperState _lid_stepper_state;
+    SealStepperState _seal_stepper_state;
     tmc2130::TMC2130 _tmc2130;
     motor_util::MovementProfile _seal_profile;
     double _seal_velocity;

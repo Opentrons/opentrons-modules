@@ -283,10 +283,10 @@ def open_lid(ser: serial.Serial):
         print('Lid already open')
         return
     print('Opening lid')
-    set_solenoid(True, ser)
-    move_lid_angle(120, False, ser)
-    move_lid_angle(3, True, ser)
-    set_solenoid(False, ser)
+    ser.write('M126\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M126 OK\n')
+    print(res)
 
 # Function to fully close the lid
 def close_lid(ser: serial.Serial):
@@ -295,8 +295,10 @@ def close_lid(ser: serial.Serial):
         print('Lid already closed')
         return
     print('Closing lid')
-    move_lid_angle(-120, False, ser)
-    move_lid_angle(-3, True, ser)
+    ser.write('M127\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M127 OK\n')
+    print(res)
     
 # UTILITIES FOR STEP RESPONSE
 
