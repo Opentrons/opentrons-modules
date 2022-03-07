@@ -363,5 +363,115 @@ SCENARIO("motor task message passing") {
                 }
             }
         }
+        WHEN("sending OpenLid command") {
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::OpenLidMessage{.id = 123});
+            tasks->run_motor_task();
+            THEN("the lid starts moving to the endstop") {
+                REQUIRE(motor_policy.solenoid_engaged());
+                REQUIRE(!motor_policy.get_lid_overdrive());
+                REQUIRE(motor_policy.get_angle() > 0);
+                REQUIRE(motor_policy.get_vref() > 0);
+            }
+            auto position_full_open = motor_policy.get_angle();
+            AND_WHEN("the first movement completes") {
+                tasks->get_motor_queue().backing_deque.push_back(
+                    messages::LidStepperComplete());
+                tasks->run_motor_task();
+                THEN("the lid is moved back to 90º") {
+                    REQUIRE(motor_policy.get_angle() < position_full_open);
+                    REQUIRE(motor_policy.get_vref() > 0);
+                    REQUIRE(!motor_policy.get_lid_overdrive());
+                }
+                AND_WHEN("the second movement completes") {
+                    tasks->get_motor_queue().backing_deque.push_back(
+                        messages::LidStepperComplete());
+                    tasks->run_motor_task();
+                    THEN("the movement ends") {
+                        REQUIRE(motor_policy.get_vref() == 0);
+                    }
+                    THEN("an ACK is sent to the host comms task") {
+                        REQUIRE(!motor_policy.solenoid_engaged());
+                        REQUIRE(tasks->get_host_comms_queue().has_message());
+                        auto msg =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        auto reply_msg =
+                            std::get<messages::AcknowledgePrevious>(msg);
+                        REQUIRE(reply_msg.responding_to_id == 123);
+                        REQUIRE(reply_msg.with_error ==
+                                errors::ErrorCode::NO_ERROR);
+                    }
+                }
+            }
+            AND_WHEN("sending another OpenLid command immediately") {
+                tasks->get_motor_queue().backing_deque.push_back(
+                    messages::OpenLidMessage{.id = 456});
+                tasks->run_motor_task();
+                THEN("the second command is ignored with an error") {
+                    REQUIRE(tasks->get_host_comms_queue().has_message());
+                    auto msg =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    auto reply_msg =
+                        std::get<messages::AcknowledgePrevious>(msg);
+                    REQUIRE(reply_msg.responding_to_id == 456);
+                    REQUIRE(reply_msg.with_error ==
+                            errors::ErrorCode::LID_MOTOR_BUSY);
+                }
+            }
+        }
+        WHEN("sending CloseLid command") {
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::CloseLidMessage{.id = 123});
+            tasks->run_motor_task();
+            THEN("the lid starts moving to the endstop") {
+                REQUIRE(!motor_policy.get_lid_overdrive());
+                REQUIRE(motor_policy.get_angle() < 0);
+                REQUIRE(motor_policy.get_vref() > 0);
+            }
+            auto position_full_closed = motor_policy.get_angle();
+            AND_WHEN("the first movement completes") {
+                tasks->get_motor_queue().backing_deque.push_back(
+                    messages::LidStepperComplete());
+                tasks->run_motor_task();
+                THEN("the lid is overdriven a few degrees") {
+                    REQUIRE(motor_policy.get_angle() < position_full_closed);
+                    REQUIRE(motor_policy.get_vref() > 0);
+                    REQUIRE(motor_policy.get_lid_overdrive());
+                }
+                AND_WHEN("the second movement completes") {
+                    tasks->get_motor_queue().backing_deque.push_back(
+                        messages::LidStepperComplete());
+                    tasks->run_motor_task();
+                    THEN("the movement ends") {
+                        REQUIRE(motor_policy.get_vref() == 0);
+                    }
+                    THEN("an ACK is sent to the host comms task") {
+                        REQUIRE(tasks->get_host_comms_queue().has_message());
+                        auto msg =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        auto reply_msg =
+                            std::get<messages::AcknowledgePrevious>(msg);
+                        REQUIRE(reply_msg.responding_to_id == 123);
+                        REQUIRE(reply_msg.with_error ==
+                                errors::ErrorCode::NO_ERROR);
+                    }
+                }
+            }
+            AND_WHEN("sending another CloseLid command immediately") {
+                tasks->get_motor_queue().backing_deque.push_back(
+                    messages::CloseLidMessage{.id = 456});
+                tasks->run_motor_task();
+                THEN("the second command is ignored with an error") {
+                    REQUIRE(tasks->get_host_comms_queue().has_message());
+                    auto msg =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    auto reply_msg =
+                        std::get<messages::AcknowledgePrevious>(msg);
+                    REQUIRE(reply_msg.responding_to_id == 456);
+                    REQUIRE(reply_msg.with_error ==
+                            errors::ErrorCode::LID_MOTOR_BUSY);
+                }
+            }
+        }
     }
 }

@@ -97,7 +97,7 @@ struct LidStepperState {
     constexpr static double CLOSE_OVERDRIVE_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(-5);
     // Default run current is 1200 milliamperes
-    constexpr static double DEFAULT_RUN_CURRENT = 
+    constexpr static double DEFAULT_RUN_CURRENT =
         motor_util::LidStepper::current_to_dac(1200);
     // States for lid stepper
     enum Status {
@@ -422,8 +422,7 @@ class MotorTask {
             lid = motor_util::LidStepper::Status::CLOSED;
         } else if (policy.lid_read_open_switch()) {
             lid = motor_util::LidStepper::Status::OPEN;
-        } else if (_lid_stepper_state.status !=
-                   LidStepperState::Status::IDLE) {
+        } else if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
             lid = motor_util::LidStepper::Status::BETWEEN;
         }
 
