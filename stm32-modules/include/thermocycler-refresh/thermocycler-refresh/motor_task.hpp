@@ -157,16 +157,19 @@ class MotorTask {
     static constexpr double SEAL_STEPPER_DEFAULT_VELOCITY = 50000;
     // Default acceleration for the seal stepper, in steps/second^2
     static constexpr double SEAL_STEPPER_DEFAULT_ACCELERATION = 50000;
+    // ID value to indicate that no response is actually needed from a
+    // motor completion
+    static constexpr uint32_t INVALID_ID = 0;
 
     explicit MotorTask(Queue& q)
         : _message_queue(q),
           _task_registry(nullptr),
           _lid_stepper_state{
               .status = LidStepperState::Status::IDLE,
-              .position = motor_util::LidStepper::Position::UNKNOWN,
-              .response_id = 0},
+              .position = motor_util::LidStepper::Position::BETWEEN,
+              .response_id = INVALID_ID},
           _seal_stepper_state{.status = SealStepperState::Status::IDLE,
-                              .response_id = 0},
+                              .response_id = INVALID_ID},
           _tmc2130(default_tmc_config),
           // Seal movement profile is populated with mostly dummy values.
           // It is set before every movement so these are irrelevant.
@@ -235,7 +238,7 @@ class MotorTask {
             _lid_stepper_state.status =
                 LidStepperState::Status::SIMPLE_MOVEMENT;
             _lid_stepper_state.position =
-                motor_util::LidStepper::Position::UNKNOWN;
+                motor_util::LidStepper::Position::BETWEEN;
             _lid_stepper_state.response_id = msg.id;
         } else {
             auto response = messages::AcknowledgePrevious{
@@ -254,7 +257,8 @@ class MotorTask {
         LidStepperState::Status old_state = _lid_stepper_state.status.load();
         auto error = handle_lid_state_end(policy);
         if (_lid_stepper_state.status == LidStepperState::Status::IDLE &&
-            old_state != _lid_stepper_state.status) {
+            old_state != _lid_stepper_state.status &&
+            _lid_stepper_state.response_id != INVALID_ID) {
             // Send an ACK if a movement just finished
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = _lid_stepper_state.response_id,
@@ -314,12 +318,14 @@ class MotorTask {
                     break;
             }
             _seal_stepper_state.status = SealStepperState::Status::IDLE;
-            auto response = messages::AcknowledgePrevious{
-                .responding_to_id = _seal_stepper_state.response_id,
-                .with_error = with_error};
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(
-                    messages::HostCommsMessage(response)));
+            if (_seal_stepper_state.response_id != INVALID_ID) {
+                auto response = messages::AcknowledgePrevious{
+                    .responding_to_id = _seal_stepper_state.response_id,
+                    .with_error = with_error};
+                static_cast<void>(
+                    _task_registry->comms->get_message_queue().try_send(
+                        messages::HostCommsMessage(response)));
+            }
         }
     }
 
@@ -421,19 +427,8 @@ class MotorTask {
     template <MotorExecutionPolicy Policy>
     auto visit_message(const messages::GetLidStatusMessage& msg, Policy& policy)
         -> void {
-        static_cast<void>(policy);
-        auto lid = motor_util::LidStepper::Position::UNKNOWN;
+        auto lid = get_lid_position(policy);
         auto seal = _seal_position;
-
-        if (policy.lid_read_closed_switch()) {
-            lid = motor_util::LidStepper::Position::CLOSED;
-        } else if (policy.lid_read_open_switch()) {
-            lid = motor_util::LidStepper::Position::OPEN;
-        } else if (_lid_stepper_state.status == LidStepperState::Status::IDLE) {
-            lid = _lid_stepper_state.position;
-        } else /* status != idle */ {
-            lid = motor_util::LidStepper::Position::BETWEEN;
-        }
 
         if (_seal_stepper_state.status != SealStepperState::Status::IDLE) {
             seal = motor_util::SealStepper::Status::BETWEEN;
@@ -448,48 +443,48 @@ class MotorTask {
     template <MotorExecutionPolicy Policy>
     auto visit_message(const messages::OpenLidMessage& msg, Policy& policy)
         -> void {
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
-            response.with_error = errors::ErrorCode::LID_MOTOR_BUSY;
+        if (!start_lid_open(msg.id, policy)) {
+            auto response = messages::AcknowledgePrevious{
+                .responding_to_id = msg.id,
+                .with_error = errors::ErrorCode::LID_MOTOR_BUSY};
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
-            return;
         }
-
-        // First release the latch
-        policy.lid_solenoid_engage();
-        // Now start a lid motor movement to the endstop
-        policy.lid_stepper_set_dac(LidStepperState::DEFAULT_RUN_CURRENT);
-        policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES, false);
-        // Store the new state, as well as the response ID
-        _lid_stepper_state.status = LidStepperState::Status::OPEN_TO_SWITCH;
-        _lid_stepper_state.position = motor_util::LidStepper::Position::UNKNOWN;
-        _lid_stepper_state.response_id = msg.id;
     }
 
     template <MotorExecutionPolicy Policy>
     auto visit_message(const messages::CloseLidMessage& msg, Policy& policy)
         -> void {
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
-            response.with_error = errors::ErrorCode::LID_MOTOR_BUSY;
+        if (!start_lid_close(msg.id, policy)) {
+            auto response = messages::AcknowledgePrevious{
+                .responding_to_id = msg.id,
+                .with_error = errors::ErrorCode::LID_MOTOR_BUSY};
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
+        }
+    }
+
+    template <MotorExecutionPolicy Policy>
+    auto visit_message(const messages::FrontButtonPressMessage& msg,
+                       Policy& policy) {
+        static_cast<void>(msg);
+        if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
+            // Ignore button press during any lid stepper movement.
             return;
         }
-        // First release the latch
-        policy.lid_solenoid_engage();
-        // Now start a lid motor movement to closed position
-        policy.lid_stepper_set_dac(LidStepperState::DEFAULT_RUN_CURRENT);
-        policy.lid_stepper_start(LidStepperState::FULL_CLOSE_DEGREES, false);
-        // Store the new state, as well as the response ID
-        _lid_stepper_state.status = LidStepperState::Status::CLOSE_TO_SWITCH;
-        _lid_stepper_state.position = motor_util::LidStepper::Position::UNKNOWN;
-        _lid_stepper_state.response_id = msg.id;
+
+        auto lid_position = get_lid_position(policy);
+        if (lid_position == motor_util::LidStepper::Position::UNKNOWN) {
+            return;
+        }
+        if (lid_position == motor_util::LidStepper::Position::OPEN) {
+            static_cast<void>(start_lid_close(INVALID_ID, policy));
+        } else {
+            // Default to opening the lid if the status is in-between switches
+            static_cast<void>(start_lid_open(INVALID_ID, policy));
+        }
     }
 
     // Callback for each tick() during a seal stepper movement
@@ -580,6 +575,61 @@ class MotorTask {
         return errors::ErrorCode::NO_ERROR;
     }
 
+    template <MotorExecutionPolicy Policy>
+    [[nodiscard]] auto get_lid_position(Policy& policy)
+        -> motor_util::LidStepper::Position {
+        auto closed_switch = policy.lid_read_closed_switch();
+        auto open_switch = policy.lid_read_open_switch();
+
+        if (closed_switch && open_switch) {
+            return motor_util::LidStepper::Position::UNKNOWN;
+        }
+        if (closed_switch) {
+            return motor_util::LidStepper::Position::CLOSED;
+        }
+        if (open_switch) {
+            return motor_util::LidStepper::Position::OPEN;
+        }
+        if (_lid_stepper_state.status == LidStepperState::Status::IDLE) {
+            return _lid_stepper_state.position;
+        }
+        return motor_util::LidStepper::Position::BETWEEN;
+    }
+
+    template <MotorExecutionPolicy Policy>
+    auto start_lid_open(uint32_t response_id, Policy& policy) -> bool {
+        if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
+            return false;
+        }
+        // First release the latch
+        policy.lid_solenoid_engage();
+        // Now start a lid motor movement to the endstop
+        policy.lid_stepper_set_dac(LidStepperState::DEFAULT_RUN_CURRENT);
+        policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES, false);
+        // Store the new state, as well as the response ID
+        _lid_stepper_state.status = LidStepperState::Status::OPEN_TO_SWITCH;
+        _lid_stepper_state.position = motor_util::LidStepper::Position::BETWEEN;
+        _lid_stepper_state.response_id = response_id;
+        return true;
+    }
+
+    template <MotorExecutionPolicy Policy>
+    auto start_lid_close(uint32_t response_id, Policy& policy) -> bool {
+        if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
+            return false;
+        }
+        // First release the latch
+        policy.lid_solenoid_engage();
+        // Now start a lid motor movement to closed position
+        policy.lid_stepper_set_dac(LidStepperState::DEFAULT_RUN_CURRENT);
+        policy.lid_stepper_start(LidStepperState::FULL_CLOSE_DEGREES, false);
+        // Store the new state, as well as the response ID
+        _lid_stepper_state.status = LidStepperState::Status::CLOSE_TO_SWITCH;
+        _lid_stepper_state.position = motor_util::LidStepper::Position::BETWEEN;
+        _lid_stepper_state.response_id = response_id;
+        return true;
+    }
+
     /**
      * @brief Handler to transition between lid motor states. Should be
      * called every time a lid motor movement complete callback is triggered.
@@ -595,6 +645,8 @@ class MotorTask {
                 policy.lid_stepper_set_dac(0);
                 // Movement is done
                 _lid_stepper_state.status = LidStepperState::Status::IDLE;
+                _lid_stepper_state.position =
+                    motor_util::LidStepper::Position::BETWEEN;
                 break;
             case LidStepperState::Status::OPEN_TO_SWITCH:
                 // Now that the lid is at the open position,

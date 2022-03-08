@@ -326,7 +326,7 @@ SCENARIO("motor task message passing") {
                 auto response = std::get<messages::GetLidStatusResponse>(msg);
                 REQUIRE(response.responding_to_id == message.id);
                 REQUIRE(response.lid ==
-                        motor_util::LidStepper::Position::UNKNOWN);
+                        motor_util::LidStepper::Position::BETWEEN);
                 REQUIRE(response.seal ==
                         motor_util::SealStepper::Status::UNKNOWN);
             }
