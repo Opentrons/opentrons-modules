@@ -83,7 +83,7 @@ struct LidStepperState {
     // distance is 120 degrees which is far wider than the actual travel angle.
     constexpr static double FULL_OPEN_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(120);
-    // After opening to the open switch, the lid must close ~5º to
+    // After opening to the open switch, the lid must close a few degrees to
     // be at the 90º position
     constexpr static double OPEN_BACK_TO_90_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(-17);
