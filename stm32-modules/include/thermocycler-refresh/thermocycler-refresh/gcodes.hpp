@@ -791,7 +791,7 @@ struct GetLidStatus {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
     static auto write_response_into(InputIt buf, InputLimit limit,
-                                    motor_util::LidStepper::Status lid,
+                                    motor_util::LidStepper::Position lid,
                                     motor_util::SealStepper::Status seal)
         -> InputIt {
         int res = 0;
@@ -1364,6 +1364,64 @@ struct GetOffsetConstants {
             return buf;
         }
         return buf + res;
+    }
+};
+
+/**
+ * @brief Uses M126, same as gen 1 thermocycler. Opens the lid.
+ *
+ */
+struct OpenLid {
+    using ParseResult = std::optional<OpenLid>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '6'};
+    static constexpr const char* response = "M126 OK\n";
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(OpenLid()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+/**
+ * @brief Uses M127, same as gen 1 thermocycler. Closes the lid.
+ *
+ */
+struct CloseLid {
+    using ParseResult = std::optional<CloseLid>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '7'};
+    static constexpr const char* response = "M127 OK\n";
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(CloseLid()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
     }
 };
 

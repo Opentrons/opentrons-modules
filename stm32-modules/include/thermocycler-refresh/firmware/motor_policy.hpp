@@ -33,6 +33,7 @@ class MotorPolicy {
      *
      * @param steps Number of steps to move. Can be positive or negative
      * to indicate direction.
+     * @param overdrive True to ignore the endstop switches for this movement
      */
     auto lid_stepper_start(int32_t steps, bool overdrive) -> void;
     /**

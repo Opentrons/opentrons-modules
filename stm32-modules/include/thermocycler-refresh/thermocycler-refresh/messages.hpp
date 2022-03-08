@@ -321,8 +321,16 @@ struct GetLidStatusMessage {
 
 struct GetLidStatusResponse {
     uint32_t responding_to_id;
-    motor_util::LidStepper::Status lid;
+    motor_util::LidStepper::Position lid;
     motor_util::SealStepper::Status seal;
+};
+
+struct OpenLidMessage {
+    uint32_t id;
+};
+
+struct CloseLidMessage {
+    uint32_t id;
 };
 
 using SystemMessage =
@@ -352,8 +360,10 @@ using LidHeaterMessage =
                    GetLidTempMessage, SetLidTemperatureMessage,
                    DeactivateLidHeatingMessage, SetPIDConstantsMessage,
                    GetThermalPowerMessage>;
-using MotorMessage = ::std::variant<
-    std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
-    LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,
-    GetSealDriveStatusMessage, SetSealParameterMessage, GetLidStatusMessage>;
+using MotorMessage =
+    ::std::variant<std::monostate, ActuateSolenoidMessage,
+                   LidStepperDebugMessage, LidStepperComplete,
+                   SealStepperDebugMessage, SealStepperComplete,
+                   GetSealDriveStatusMessage, SetSealParameterMessage,
+                   GetLidStatusMessage, OpenLidMessage, CloseLidMessage>;
 };  // namespace messages
