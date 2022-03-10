@@ -191,6 +191,9 @@ struct GetPlateTempResponse {
     uint32_t responding_to_id;
     double current_temp;
     double set_temp;
+    double time_remaining;
+    double total_time;
+    bool at_target;
 };
 
 struct SetPeltierDebugMessage {
@@ -333,6 +336,8 @@ struct CloseLidMessage {
     uint32_t id;
 };
 
+struct FrontButtonPressMessage {};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage,
@@ -360,10 +365,9 @@ using LidHeaterMessage =
                    GetLidTempMessage, SetLidTemperatureMessage,
                    DeactivateLidHeatingMessage, SetPIDConstantsMessage,
                    GetThermalPowerMessage>;
-using MotorMessage =
-    ::std::variant<std::monostate, ActuateSolenoidMessage,
-                   LidStepperDebugMessage, LidStepperComplete,
-                   SealStepperDebugMessage, SealStepperComplete,
-                   GetSealDriveStatusMessage, SetSealParameterMessage,
-                   GetLidStatusMessage, OpenLidMessage, CloseLidMessage>;
+using MotorMessage = ::std::variant<
+    std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
+    LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,
+    GetSealDriveStatusMessage, SetSealParameterMessage, GetLidStatusMessage,
+    OpenLidMessage, CloseLidMessage, FrontButtonPressMessage>;
 };  // namespace messages

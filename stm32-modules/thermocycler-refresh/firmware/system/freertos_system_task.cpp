@@ -49,15 +49,8 @@ static timer::GenericTimer<freertos_timer::FreeRTOSTimer> _led_timer(
 // One shot timer for front button events.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static freertos_timer::FreeRTOSTimer _front_button_timer(
-    "button timer", FRONT_BUTTON_DEBOUNCE_MS, false, [] {
-        // TODO(Frank, 2/14/2022): Update this to send a message to the
-        // system task instead of just turning the button on/off
-        auto pressed = system_front_button_pressed();
-        system_front_button_led_set(!pressed);
-        if (pressed) {
-            _front_button_timer.start();
-        }
-    });
+    "button timer", FRONT_BUTTON_DEBOUNCE_MS, false,
+    [ObjectPtr = &_task] { ObjectPtr->front_button_callback(); });
 
 /**
  * @brief This is the DIRECT callback from .c file that will start the

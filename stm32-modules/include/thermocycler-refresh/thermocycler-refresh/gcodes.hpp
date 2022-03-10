@@ -200,15 +200,26 @@ struct GetPlateTemp {
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit,
                                     double current_temperature,
-                                    double setpoint_temperature) -> InputIt {
+                                    double setpoint_temperature = 0.0F,
+                                    double remaining_hold = 0.0F,
+                                    double total_hold = 0.0F,
+                                    bool at_target = false) -> InputIt {
         int res = 0;
         if (setpoint_temperature == 0.0F) {
-            res = snprintf(&*buf, (limit - buf), "M105 T:none C:%0.2f OK\n",
-                           static_cast<float>(current_temperature));
+            // Active setpoint response
+            res = snprintf(
+                &*buf, (limit - buf),
+                "M105 T:none C:%0.2f H:none Total_H:none At_target?:0 OK\n",
+                static_cast<float>(current_temperature));
         } else {
-            res = snprintf(&*buf, (limit - buf), "M105 T:%0.2f C:%0.2f OK\n",
-                           static_cast<float>(setpoint_temperature),
-                           static_cast<float>(current_temperature));
+            // No active setpoint response
+            res = snprintf(
+                &*buf, (limit - buf),
+                "M105 T:%0.2f C:%0.2f H:%0.2f Total_H:%0.2f At_target?:%i OK\n",
+                static_cast<float>(setpoint_temperature),
+                static_cast<float>(current_temperature),
+                static_cast<float>(remaining_hold),
+                static_cast<float>(total_hold), at_target ? 1 : 0);
         }
         if (res <= 0) {
             return buf;
