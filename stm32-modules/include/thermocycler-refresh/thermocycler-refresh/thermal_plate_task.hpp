@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <concepts>
 #include <cstddef>
+#include <tuple>
 #include <variant>
 
 #include "core/pid.hpp"
@@ -335,7 +336,14 @@ class ThermalPlateTask {
         auto response = messages::GetPlateTempResponse{
             .responding_to_id = msg.id,
             .current_temp = average_plate_temp(),
-            .set_temp = _plate_control.setpoint()};
+            .set_temp = _plate_control.setpoint(),
+            .time_remaining = 0,
+            .total_time = 0,
+            .at_target = _plate_control.temp_within_setpoint()};
+
+        std::tie(response.time_remaining, response.total_time) =
+            _plate_control.get_hold_time();
+
         if (_state.system_status != State::CONTROLLING) {
             response.set_temp = 0.0F;
         }
@@ -490,7 +498,7 @@ class ThermalPlateTask {
             _state.system_status = State::IDLE;
             policy.set_enabled(false);
         } else {
-            if (_plate_control.set_new_target(msg.setpoint)) {
+            if (_plate_control.set_new_target(msg.setpoint, msg.hold_time)) {
                 _state.system_status = State::CONTROLLING;
             } else {
                 response.with_error = errors::ErrorCode::THERMAL_TARGET_BAD;

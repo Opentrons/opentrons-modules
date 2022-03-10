@@ -1079,16 +1079,23 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                         messages::GetPlateTempResponse{
                             .responding_to_id = get_plate_temp_message.id,
                             .current_temp = 30.0F,
-                            .set_temp = 35.0F});
+                            .set_temp = 35.0F,
+                            .time_remaining = 10.0F,
+                            .total_time = 15.0F,
+                            .at_target = true});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "M105 T:35.00 C:30.00 OK\n"));
-                        REQUIRE(written_secondpass == tx_buf.begin() + 24);
+                        const char* reply =
+                            "M105 T:35.00 C:30.00 H:10.00 Total_H:15.00 "
+                            "At_target?:1 OK\n";
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith(reply));
+                        REQUIRE(written_secondpass ==
+                                tx_buf.begin() + strlen(reply));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }

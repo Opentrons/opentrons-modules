@@ -23,6 +23,7 @@ struct PlateControlVals {
 class PlateControl {
   public:
     using UpdateRet = std::optional<PlateControlVals>;
+    using Seconds = double;  // In seconds
 
     /** This ramp rate value will cause ramped target to immediately become the
      * target.*/
@@ -76,7 +77,7 @@ class PlateControl {
     PlateControl(thermal_general::Peltier &left,
                  thermal_general::Peltier &right,
                  thermal_general::Peltier &center,
-                 thermal_general::HeatsinkFan &fan, double update_rate)
+                 thermal_general::HeatsinkFan &fan, Seconds update_rate)
         : _left(left),
           _right(right),
           _center(center),
@@ -97,27 +98,18 @@ class PlateControl {
      */
     auto update_control() -> UpdateRet;
     /**
-     * @brief Set a new target temperature
-     *
-     * @param setpoint the temperature to drive to
-     * @return True if the temperature target could be updated
-     */
-    auto set_new_target(double setpoint) -> bool {
-        return set_new_target(setpoint, RAMP_INFINITE, HOLD_INFINITE);
-    }
-    /**
      * @brief Set a new target temperature, with configurable ramp rate
      * and hold times
      *
      * @param[in] setpoint The temperature to drive to
-     * @param[in] ramp_rate The rate to drive the peltiers at, in degrees
-     * celsius per second.
      * @param[in] hold_time The amount of time to hold at the target
      * temperature before the step is considered done, in seconds.
+     * @param[in] ramp_rate The rate to drive the peltiers at, in degrees
+     * celsius per second.
      * @return True if the temperature target could be updated
      */
-    auto set_new_target(double setpoint, double ramp_rate, double hold_time)
-        -> bool;
+    auto set_new_target(double setpoint, double hold_time = HOLD_INFINITE,
+                        double ramp_rate = RAMP_INFINITE) -> bool;
 
     /**
      * @brief This function will return the correct fan PWM to be set if
@@ -132,12 +124,29 @@ class PlateControl {
 
     /** Return the current temperature target.*/
     [[nodiscard]] auto setpoint() const -> double { return _setpoint; }
+
     /** Return the current average temperature of the plate.*/
     [[nodiscard]] auto plate_temp() const -> double;
+
     /** Return the current PlateStatus.*/
     [[nodiscard]] auto status() const -> PlateStatus { return _status; }
+
     /** Get the TemperatureZone that a temperature falls into.*/
     [[nodiscard]] auto temperature_zone(double temp) const -> TemperatureZone;
+
+    /**
+     * @brief Return the remaining and total hold times, in seconds.
+     * @return Pair of <remaining hold time, total hold time>
+     */
+    [[nodiscard]] auto get_hold_time() const -> std::pair<Seconds, Seconds>;
+
+    /**
+     * @brief Checks if the current plate temperature is within the acceptable
+     * bounds for the setpoint
+     * @return True if the temperature average is within \ref setpoint_range
+     * degrees of the setpoint, false otherwise
+     */
+    [[nodiscard]] auto temp_within_setpoint() const -> bool;
 
   private:
     /**
@@ -171,13 +180,6 @@ class PlateControl {
      * @param[in] fan The fan to reset control for.
      */
     auto reset_control(thermal_general::HeatsinkFan &fan) -> void;
-    /**
-     * @brief Checks if the current plate temperature is within the acceptable
-     * bounds for the setpoint
-     * @return True if the temperature average is within \ref setpoint_range
-     * degrees of the setpoint, false otherwise
-     */
-    [[nodiscard]] auto temp_within_setpoint() const -> bool;
 
     PlateStatus _status = PlateStatus::STEADY_STATE;  // State machine for plate
     thermal_general::Peltier &_left;
@@ -185,11 +187,12 @@ class PlateControl {
     thermal_general::Peltier &_center;
     thermal_general::HeatsinkFan &_fan;
     // This is the update rate in seconds/tick
-    const double _update_rate;
+    const Seconds _update_rate;
 
     double _setpoint = 0.0F;
     double _ramp_rate = 0.0F;
-    double _hold_time = 0.0F;
+    Seconds _hold_time = 0.0F;            // Total hold time
+    Seconds _remaining_hold_time = 0.0F;  // Hold time left, out of _hold_time
 };
 
 }  // namespace plate_control

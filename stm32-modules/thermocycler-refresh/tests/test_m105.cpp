@@ -12,19 +12,21 @@ SCENARIO("GetPlateTemperature (M105) parser works", "[gcode][parse][M105]") {
         std::string buffer(256, 'c');
         WHEN("filling response") {
             auto written = gcode::GetPlateTemp::write_response_into(
-                buffer.begin(), buffer.end(), 10.0, 40);
+                buffer.begin(), buffer.end(), 10.0, 40, 30.0, 40.0, true);
             THEN("the response should be written in full") {
                 REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
-                                         "M105 T:40.00 C:10.00 OK\n"));
+                                         "M105 T:40.00 C:10.00 H:30.00 "
+                                         "Total_H:40.00 At_target?:1 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
         WHEN("filling response with no target temp") {
             auto written = gcode::GetPlateTemp::write_response_into(
-                buffer.begin(), buffer.end(), 10.0, 0);
+                buffer.begin(), buffer.end(), 10.0);
             THEN("the response should be written in full") {
                 REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
-                                         "M105 T:none C:10.00 OK\n"));
+                                         "M105 T:none C:10.00 H:none "
+                                         "Total_H:none At_target?:0 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
