@@ -1425,4 +1425,65 @@ struct CloseLid {
     }
 };
 
+struct GetBoardRevision {
+    using ParseResult = std::optional<GetBoardRevision>;
+    static constexpr auto prefix = std::array{'M', '9', '0', '0'};
+    
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetBoardRevision()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit, int revision) -> InputIt {
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf), "M900 C:%i OK\n",
+                       revision);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
+struct GetLidSwitches {
+    using ParseResult = std::optional<GetLidSwitches>;
+    static constexpr auto prefix = std::array{'M', '9', '0', '1'};
+    
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetLidSwitches()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit, int closed, int open) -> InputIt {
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf), "M901 C:%i O:%i OK\n",
+                       closed, open);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+
+};
+
 }  // namespace gcode

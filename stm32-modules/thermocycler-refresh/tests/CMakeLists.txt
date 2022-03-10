@@ -45,6 +45,8 @@ add_executable(${TARGET_MODULE_NAME}
     test_m241d.cpp
     test_m242d.cpp
     test_m243d.cpp
+    test_m900.cpp 
+    test_m901.cpp 
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 
