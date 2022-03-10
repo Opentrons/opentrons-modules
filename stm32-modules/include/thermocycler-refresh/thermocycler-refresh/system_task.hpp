@@ -299,6 +299,14 @@ class SystemTask {
             get_message_queue().try_send(messages::UpdateUIMessage()));
     }
 
+    // Should be provided to the front button timer to send Front Button
+    // messages. Ensure the timer implementation does NOT execute in an
+    // interrupt context.
+    auto front_button_callback() -> void {
+        static_cast<void>(_task_registry->motor->get_message_queue().try_send(
+            messages::FrontButtonPressMessage()));
+    }
+
     // To be used for tests
     [[nodiscard]] auto get_led_state() -> LedState& { return _led_state; }
 

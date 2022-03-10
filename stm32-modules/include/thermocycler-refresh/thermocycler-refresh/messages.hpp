@@ -336,6 +336,8 @@ struct CloseLidMessage {
     uint32_t id;
 };
 
+struct FrontButtonPressMessage {};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage,
@@ -363,10 +365,9 @@ using LidHeaterMessage =
                    GetLidTempMessage, SetLidTemperatureMessage,
                    DeactivateLidHeatingMessage, SetPIDConstantsMessage,
                    GetThermalPowerMessage>;
-using MotorMessage =
-    ::std::variant<std::monostate, ActuateSolenoidMessage,
-                   LidStepperDebugMessage, LidStepperComplete,
-                   SealStepperDebugMessage, SealStepperComplete,
-                   GetSealDriveStatusMessage, SetSealParameterMessage,
-                   GetLidStatusMessage, OpenLidMessage, CloseLidMessage>;
+using MotorMessage = ::std::variant<
+    std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
+    LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,
+    GetSealDriveStatusMessage, SetSealParameterMessage, GetLidStatusMessage,
+    OpenLidMessage, CloseLidMessage, FrontButtonPressMessage>;
 };  // namespace messages

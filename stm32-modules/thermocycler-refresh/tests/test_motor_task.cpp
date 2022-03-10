@@ -326,7 +326,7 @@ SCENARIO("motor task message passing") {
                 auto response = std::get<messages::GetLidStatusResponse>(msg);
                 REQUIRE(response.responding_to_id == message.id);
                 REQUIRE(response.lid ==
-                        motor_util::LidStepper::Position::UNKNOWN);
+                        motor_util::LidStepper::Position::BETWEEN);
                 REQUIRE(response.seal ==
                         motor_util::SealStepper::Status::UNKNOWN);
             }
@@ -502,6 +502,44 @@ SCENARIO("motor task message passing") {
                     REQUIRE(reply_msg.responding_to_id == 456);
                     REQUIRE(reply_msg.with_error ==
                             errors::ErrorCode::LID_MOTOR_BUSY);
+                }
+            }
+        }
+        WHEN("sending a Front Button message with lid in unknown position") {
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::FrontButtonPressMessage());
+            tasks->run_motor_task();
+            THEN("the lid starts to open") {
+                REQUIRE(motor_policy.solenoid_engaged());
+                REQUIRE(!motor_policy.get_lid_overdrive());
+                REQUIRE(motor_policy.get_angle() > 0);
+                REQUIRE(motor_policy.get_vref() > 0);
+            }
+        }
+        GIVEN("lid closed sensor triggered") {
+            motor_policy.set_lid_closed_switch(true);
+            WHEN("sending a Front Button message") {
+                tasks->get_motor_queue().backing_deque.push_back(
+                    messages::FrontButtonPressMessage());
+                tasks->run_motor_task();
+                THEN("the lid starts to open") {
+                    REQUIRE(motor_policy.solenoid_engaged());
+                    REQUIRE(!motor_policy.get_lid_overdrive());
+                    REQUIRE(motor_policy.get_angle() > 0);
+                    REQUIRE(motor_policy.get_vref() > 0);
+                }
+            }
+        }
+        GIVEN("lid open sensor triggered") {
+            motor_policy.set_lid_open_switch(true);
+            WHEN("sending a Front Button message") {
+                tasks->get_motor_queue().backing_deque.push_back(
+                    messages::FrontButtonPressMessage());
+                tasks->run_motor_task();
+                THEN("the lid starts to close") {
+                    REQUIRE(!motor_policy.get_lid_overdrive());
+                    REQUIRE(motor_policy.get_angle() < 0);
+                    REQUIRE(motor_policy.get_vref() > 0);
                 }
             }
         }
