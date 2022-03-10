@@ -884,8 +884,9 @@ struct GetSealDriveStatus {
     static auto write_response_into(InputIt buf, InputLimit limit,
                                     tmc2130::DriveStatus status) -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M242.D SG:%u SG_Result:%u OK\n",
-                       status.stallguard, status.sg_result);
+        res = snprintf(&*buf, (limit - buf),
+                       "M242.D SG:%u SG_Result:%u STST:%u OK\n",
+                       status.stallguard, status.sg_result, status.stst);
         if (res <= 0) {
             return buf;
         }
@@ -1439,7 +1440,7 @@ struct CloseLid {
 struct GetBoardRevision {
     using ParseResult = std::optional<GetBoardRevision>;
     static constexpr auto prefix = std::array{'M', '9', '0', '0'};
-    
+
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<Limit, InputIt>
@@ -1455,10 +1456,10 @@ struct GetBoardRevision {
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
-    static auto write_response_into(InputIt buf, InLimit limit, int revision) -> InputIt {
+    static auto write_response_into(InputIt buf, InLimit limit, int revision)
+        -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M900 C:%i OK\n",
-                       revision);
+        res = snprintf(&*buf, (limit - buf), "M900 C:%i OK\n", revision);
         if (res <= 0) {
             return buf;
         }
@@ -1469,7 +1470,7 @@ struct GetBoardRevision {
 struct GetLidSwitches {
     using ParseResult = std::optional<GetLidSwitches>;
     static constexpr auto prefix = std::array{'M', '9', '0', '1'};
-    
+
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<Limit, InputIt>
@@ -1485,16 +1486,16 @@ struct GetLidSwitches {
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
-    static auto write_response_into(InputIt buf, InLimit limit, int closed, int open) -> InputIt {
+    static auto write_response_into(InputIt buf, InLimit limit, int closed,
+                                    int open) -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M901 C:%i O:%i OK\n",
-                       closed, open);
+        res =
+            snprintf(&*buf, (limit - buf), "M901 C:%i O:%i OK\n", closed, open);
         if (res <= 0) {
             return buf;
         }
         return buf + res;
     }
-
 };
 
 }  // namespace gcode
