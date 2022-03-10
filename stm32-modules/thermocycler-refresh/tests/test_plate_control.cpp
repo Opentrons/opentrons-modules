@@ -49,11 +49,15 @@ SCENARIO("PlateControl peltier control works") {
             REQUIRE(plateControl.plate_temp() == ROOM_TEMP);
             REQUIRE(plateControl.setpoint() == 0.0F);
         }
-        WHEN("setting a hot target temperature") {
-            plateControl.set_new_target(HOT_TEMP);
-            REQUIRE(plateControl.setpoint() == HOT_TEMP);
-            REQUIRE(plateControl.status() ==
-                    plate_control::PlateStatus::INITIAL_HEAT);
+        WHEN("setting a hot target temperature with 10 second hold time") {
+            plateControl.set_new_target(HOT_TEMP, 10.0F);
+            THEN("the plate control object is initialized properly") {
+                REQUIRE(plateControl.setpoint() == HOT_TEMP);
+                REQUIRE(plateControl.status() ==
+                        plate_control::PlateStatus::INITIAL_HEAT);
+                REQUIRE(plateControl.get_hold_time().first == 10.0F);
+                REQUIRE(plateControl.get_hold_time().second == 10.0F);
+            }
             THEN("updating control should drive peltiers hot") {
                 auto ctrl = plateControl.update_control();
                 REQUIRE(ctrl.has_value());
@@ -82,6 +86,33 @@ SCENARIO("PlateControl peltier control works") {
                 REQUIRE(ctrl.has_value());
                 REQUIRE(plateControl.status() !=
                         plate_control::PlateStatus::INITIAL_HEAT);
+            }
+            WHEN(
+                "the thermistors hit the target temperature and control is "
+                "updated") {
+                for (auto &therm : thermistors) {
+                    therm.temp_c = HOT_TEMP;
+                }
+                static_cast<void>(plateControl.update_control());
+                THEN("hold time should decrease") {
+                    double remaining_hold, total_hold;
+                    std::tie(remaining_hold, total_hold) =
+                        plateControl.get_hold_time();
+                    REQUIRE_THAT(remaining_hold,
+                                 Catch::Matchers::WithinAbs(
+                                     total_hold - UPDATE_RATE_SEC, 0.001));
+                }
+                AND_WHEN(
+                    "control is updated for long enough to exceed the hold "
+                    "time") {
+                    for (int i = 0; i < (10.0F / UPDATE_RATE_SEC) + 5; ++i) {
+                        static_cast<void>(plateControl.update_control());
+                    }
+                    THEN("the hold time should not go below zero") {
+                        REQUIRE(plateControl.get_hold_time().first == 0.0F);
+                        REQUIRE(plateControl.get_hold_time().second == 10.0F);
+                    }
+                }
             }
         }
         WHEN("setting a cold target temperature") {

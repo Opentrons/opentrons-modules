@@ -191,6 +191,9 @@ struct GetPlateTempResponse {
     uint32_t responding_to_id;
     double current_temp;
     double set_temp;
+    double time_remaining;
+    double total_time;
+    bool at_target;
 };
 
 struct SetPeltierDebugMessage {
