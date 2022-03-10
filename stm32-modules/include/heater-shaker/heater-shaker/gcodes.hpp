@@ -1011,7 +1011,7 @@ struct GetPlateLockStateDebug {
 };
 
 /**
- * Uses M116, as defined on Gen 1 thermocyclers.
+ * Uses M116, same as thermocyclers.
  *
  * Accepts two optional constants, B and C. These are
  * used in the calculation of the plate temperature for
@@ -1090,7 +1090,7 @@ struct SetOffsetConstants {
 };
 
 /**
- * Uses M117, as defined on Gen 1 thermocyclers.
+ * Uses M117, same as thermocyclers.
  *
  * Returns the programmed offset constants on the device, B and C.
  *
