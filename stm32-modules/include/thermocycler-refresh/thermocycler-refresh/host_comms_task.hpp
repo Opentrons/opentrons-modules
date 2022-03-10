@@ -391,7 +391,8 @@ class HostCommsTask {
                 } else {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.current_temp,
-                        response.set_temp);
+                        response.set_temp, response.time_remaining,
+                        response.total_time, response.at_target);
                 }
             },
             cache_entry);

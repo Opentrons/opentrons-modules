@@ -506,10 +506,19 @@ SCENARIO("thermal plate task message passing") {
                         THEN("the response should have the new setpoint") {
                             REQUIRE(!tasks->get_host_comms_queue()
                                          .backing_deque.empty());
-                            REQUIRE(std::get<messages::GetPlateTempResponse>(
-                                        tasks->get_host_comms_queue()
-                                            .backing_deque.front())
-                                        .set_temp == message.setpoint);
+                            auto temperature_message =
+                                std::get<messages::GetPlateTempResponse>(
+                                    tasks->get_host_comms_queue()
+                                        .backing_deque.front());
+                            REQUIRE(temperature_message.set_temp ==
+                                    message.setpoint);
+                            REQUIRE_THAT(
+                                temperature_message.time_remaining,
+                                Catch::Matchers::WithinAbs(10.0F, 0.01));
+                            REQUIRE_THAT(
+                                temperature_message.total_time,
+                                Catch::Matchers::WithinAbs(10.0F, 0.01));
+                            REQUIRE(!temperature_message.at_target);
                         }
                     }
                 }

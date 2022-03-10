@@ -1078,7 +1078,11 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::GetPlateTempResponse{
                             .responding_to_id = get_plate_temp_message.id,
-                            .current_temp = 30.0F});
+                            .current_temp = 30.0F,
+                            .set_temp = 35.0F,
+                            .time_remaining = 10.0F,
+                            .total_time = 15.0F,
+                            .at_target = true});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -1086,8 +1090,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
                         const char* reply =
-                            "M105 T:none C:30.00 H:none Total_H:none "
-                            "At_target?:0 OK\n";
+                            "M105 T:35.00 C:30.00 H:10.00 Total_H:15.00 "
+                            "At_target?:1 OK\n";
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith(reply));
                         REQUIRE(written_secondpass ==
