@@ -1,6 +1,8 @@
 #include "heater_policy.hpp"
 
 #include <algorithm>
+#include <cstring>
+#include <stddef.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -49,4 +51,31 @@ auto HeaterPolicy::set_power_output(double relative_power) -> void {
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-make-member-function-const)
 auto HeaterPolicy::disable_power_output() -> void {
     heater_hardware_power_disable(hardware_handle);
+}
+
+auto HeaterPolicy::set_thermal_offsets(flash::OffsetConstants* constants) -> bool {
+    //convert constants to writable_offsets
+    writable_offsets to_send;
+    memcpy(&to_send.const_b, &constants->b, sizeof(to_send.const_b));
+    memcpy(&to_send.const_c, &constants->c, sizeof(to_send.const_c));
+    memcpy(&to_send.const_flag, &constants->flag, sizeof(to_send.const_flag));
+
+    if (!heater_hardware_set_offsets(&to_send)) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
+auto HeaterPolicy::get_thermal_offsets() -> flash::OffsetConstants {
+    //convert writable_offsets to OffsetConstants
+    writable_offsets to_receive;
+    to_receive.const_b = heater_hardware_get_offset(offsetof(struct writable_offsets, const_b));
+    to_receive.const_c = heater_hardware_get_offset(offsetof(struct writable_offsets, const_c));
+    to_receive.const_flag = heater_hardware_get_offset(offsetof(struct writable_offsets, const_flag));
+    flash::OffsetConstants to_pass;
+    memcpy(&to_pass.b, &to_receive.const_b, sizeof(to_receive.const_b));
+    memcpy(&to_pass.c, &to_receive.const_c, sizeof(to_receive.const_c));
+    memcpy(&to_pass.flag, &to_receive.const_flag, sizeof(to_receive.const_flag));
+    return to_pass;
 }

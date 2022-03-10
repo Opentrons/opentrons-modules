@@ -15,6 +15,7 @@
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
 #include "thermistor_lookups.hpp"
+#include "heater-shaker/flash.hpp"
 
 /* Need a forward declaration for this because of recursive includes */
 namespace tasks {
@@ -110,6 +111,8 @@ class HeaterTask {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     static constexpr double CONTROL_PERIOD_S =
         static_cast<uint32_t>(CONTROL_PERIOD_TICKS) * 0.001;
+    static constexpr const double OFFSET_DEFAULT_CONST_B = 0.0F;
+    static constexpr const double OFFSET_DEFAULT_CONST_C = 0.0F;
     explicit HeaterTask(Queue& q)
         : message_queue(q),
           task_registry(nullptr),
@@ -150,7 +153,10 @@ class HeaterTask {
               .error_bit = State::BOARD_SENSE_ERROR},
           state{.system_status = State::IDLE, .error_bitmap = 0},
           pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_S, 1.0, -1.0),
-          setpoint(0) {}
+          setpoint(0),
+          _flash(),
+          _offset_constants{.b = OFFSET_DEFAULT_CONST_B,
+                            .c = OFFSET_DEFAULT_CONST_C} {}
     HeaterTask(const HeaterTask& other) = delete;
     auto operator=(const HeaterTask& other) -> HeaterTask& = delete;
     HeaterTask(HeaterTask&& other) noexcept = delete;
@@ -195,6 +201,12 @@ class HeaterTask {
             static_cast<void>(
                 task_registry->system->get_message_queue().try_send(
                     LED_message));
+        }
+
+        // If the FLASH data hasn't been read, read it before doing
+        // anything else.
+        if (!_flash.initialized()) {
+            _offset_constants = _flash.get_offset_constants(policy);
         }
 
         auto message = Message(std::monostate());
@@ -318,9 +330,9 @@ class HeaterTask {
         if (!policy.power_good()) {
             state.error_bitmap |= State::POWER_GOOD_ERROR;
         }
-        handle_temperature_conversion(msg.pad_a, pad_a);
-        handle_temperature_conversion(msg.pad_b, pad_b);
-        handle_temperature_conversion(msg.board, board);
+        handle_temperature_conversion(msg.pad_a, pad_a, true);
+        handle_temperature_conversion(msg.pad_b, pad_b, true);
+        handle_temperature_conversion(msg.board, board, false);
         // The error handling wants to accomplish the following:
         // - Only run if there were any changes in the error state for
         //   the sensors or the heater pad power driver
@@ -397,6 +409,45 @@ class HeaterTask {
 
     template <typename Policy>
     requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::SetOffsetConstantsMessage& msg,
+        Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        if (msg.b_set) {
+            _offset_constants.b = msg.const_b;
+        }
+        if (msg.c_set) {
+            _offset_constants.c = msg.const_c;
+        }
+        _offset_constants.flag = static_cast<double>(flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM);
+
+        if (!_flash.template set_offset_constants(_offset_constants,
+                                                     policy)) {
+            // Could not write to the flash.
+            response.with_error = errors::ErrorCode::SYSTEM_FLASH_ERROR;
+        }
+
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::GetOffsetConstantsMessage& msg,
+                       Policy& policy) -> void {
+        _offset_constants = _flash.get_offset_constants(policy);
+        auto response = messages::GetOffsetConstantsResponse{
+            .responding_to_id = msg.id,
+            .const_b = _offset_constants.b,
+            .const_c = _offset_constants.c};
+
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy>
     auto try_latch_disarm(Policy& policy) -> void {
         if (!policy.power_good() &&
             ((state.error_bitmap & State::PAD_SENSE_ERROR) == 0)) {
@@ -411,13 +462,17 @@ class HeaterTask {
     }
 
     auto handle_temperature_conversion(uint16_t conversion_result,
-                                       TemperatureSensor& sensor) {
+                                       TemperatureSensor& sensor,
+                                       bool apply_offset) {
         auto visitor = [this, &sensor](auto val) {
             this->visit_conversion(val, sensor);
         };
         sensor.last_adc = conversion_result;
         auto old_error = sensor.error;
         std::visit(visitor, sensor.conversion.convert(conversion_result));
+        if (apply_offset && (sensor.error == errors::ErrorCode::NO_ERROR)) {
+            sensor.temp_c = calculate_thermistor_offset(sensor.temp_c);
+        }
         if (sensor.error != old_error) {
             if (sensor.error != errors::ErrorCode::NO_ERROR) {
                 state.error_bitmap |= sensor.error_bit;
@@ -521,6 +576,23 @@ class HeaterTask {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         return (pad_a.temp_c + pad_b.temp_c) / 2.0;
     }
+
+    /**
+     * @brief Apply the thermistor offset constants to calculate the expected
+     * temperature of a thermistor.
+     *
+     * @param temp The measured temperature of the thermistor with no offset
+     * applied.
+     * @return double containing the adjusted thermistor reading
+     */
+    [[nodiscard]] auto calculate_thermistor_offset(double temp) const
+        -> double {
+        if (!_flash.initialized()) {
+            return temp;
+        }
+        return ((1.0F + _offset_constants.b) * temp) + _offset_constants.c;
+    }
+
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
     TemperatureSensor pad_a;
@@ -530,6 +602,8 @@ class HeaterTask {
     PID pid;
     double setpoint;
     bool hot_LED_set = false;
+    flash::Flash _flash;
+    flash::OffsetConstants _offset_constants;
 };
 
 };  // namespace heater_task

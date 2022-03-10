@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stddef.h>
 
 #include "stm32f3xx_hal.h"
 #include "stm32f3xx_hal_adc.h"
@@ -59,6 +60,7 @@ heater_hardware *HEATER_HW_HANDLE = NULL;
 #define HEATER_PAD_ENABLE_TIM_CHANNEL TIM_CHANNEL_3
 #define HEATER_PAD_LL_SETCOMPARE LL_TIM_OC_SetCompareCH3
 
+static uint32_t OFFSETS_PAGE_ADDRESS = 0x0807F000; //second last page in flash memory. Last page reserved for serial number storage
 
 static void gpio_setup(void) {
     // NTC sense pis all routed to the ADC
@@ -282,6 +284,33 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
             }
             break;}
     }
+}
+
+bool heater_hardware_set_offsets(struct writable_offsets* to_write) {
+    FLASH_EraseInitTypeDef pageToErase = {.TypeErase = FLASH_TYPEERASE_PAGES, .PageAddress = OFFSETS_PAGE_ADDRESS, .NbPages = 1};
+    uint32_t pageErrorPtr = 0; //pointer to variable  that contains the configuration information on faulty page in case of error
+    uint32_t ProgramAddress1 = OFFSETS_PAGE_ADDRESS + (offsetof(struct writable_offsets, const_b) * 8); //offsetof returns bytes
+    uint32_t ProgramAddress2 = OFFSETS_PAGE_ADDRESS + (offsetof(struct writable_offsets, const_c) * 8);
+    uint32_t ProgramAddress3 = OFFSETS_PAGE_ADDRESS + (offsetof(struct writable_offsets, const_flag) * 8);
+
+    HAL_StatusTypeDef status = HAL_FLASH_Unlock();
+    if (status == HAL_OK) {
+        status = HAL_FLASHEx_Erase(&pageToErase, &pageErrorPtr);
+        if (status == HAL_OK) {
+            status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, ProgramAddress1, to_write->const_b);
+            status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, ProgramAddress2, to_write->const_c);
+            status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, ProgramAddress3, to_write->const_flag);
+            if (status == HAL_OK) {
+                status = HAL_FLASH_Lock();
+            }
+        }
+    }
+    return (status == HAL_OK);
+}
+
+uint64_t heater_hardware_get_offset(size_t addr_offset) {
+    uint32_t AddressToRead = OFFSETS_PAGE_ADDRESS + (addr_offset * 8); //addr_offset in bytes
+    return *(uint64_t*)AddressToRead;
 }
 
 static void init_error(void) {
