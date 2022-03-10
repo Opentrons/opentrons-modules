@@ -14,8 +14,8 @@ SCENARIO("GetBoardRevision (M900) parser works", "[gcode][parse][m900]") {
             auto written = gcode::GetBoardRevision::write_response_into(
                 buffer.begin(), buffer.end(), 1);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
-                                         "M900 C:1 OK\n"));
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::StartsWith("M900 C:1 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
@@ -37,7 +37,8 @@ SCENARIO("GetBoardRevision (M900) parser works", "[gcode][parse][m900]") {
     GIVEN("valid input") {
         std::string input = "M900\n";
         WHEN("parsing input") {
-            auto parsed = gcode::GetBoardRevision::parse(input.begin(), input.end());
+            auto parsed =
+                gcode::GetBoardRevision::parse(input.begin(), input.end());
             THEN("the gcode is parsed") {
                 REQUIRE(parsed.first.has_value());
                 REQUIRE(parsed.second != input.begin());

@@ -14,8 +14,8 @@ SCENARIO("GetLidSwitches (M901) parser works", "[gcode][parse][m901]") {
             auto written = gcode::GetLidSwitches::write_response_into(
                 buffer.begin(), buffer.end(), true, true);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
-                                         "M901 C:1 O:1 OK\n"));
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::StartsWith("M901 C:1 O:1 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
@@ -37,7 +37,8 @@ SCENARIO("GetLidSwitches (M901) parser works", "[gcode][parse][m901]") {
     GIVEN("valid input") {
         std::string input = "M901\n";
         WHEN("parsing input") {
-            auto parsed = gcode::GetLidSwitches::parse(input.begin(), input.end());
+            auto parsed =
+                gcode::GetLidSwitches::parse(input.begin(), input.end());
             THEN("the gcode is parsed") {
                 REQUIRE(parsed.first.has_value());
                 REQUIRE(parsed.second != input.begin());
