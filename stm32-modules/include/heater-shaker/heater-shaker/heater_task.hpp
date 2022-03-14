@@ -420,7 +420,7 @@ class HeaterTask {
         if (msg.c_set) {
             _offset_constants.c = msg.const_c;
         }
-        _offset_constants.flag = static_cast<double>(flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM);
+        _offset_constants.flag = static_cast<bool>(flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM);
 
         if (!_flash.template set_offset_constants(_offset_constants,
                                                      policy)) {

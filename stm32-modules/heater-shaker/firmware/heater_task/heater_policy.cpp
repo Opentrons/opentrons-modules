@@ -56,9 +56,9 @@ auto HeaterPolicy::disable_power_output() -> void {
 auto HeaterPolicy::set_thermal_offsets(flash::OffsetConstants* constants) -> bool {
     //convert constants to writable_offsets
     writable_offsets to_send;
-    memcpy(&to_send.const_b, &constants->b, sizeof(to_send.const_b));
-    memcpy(&to_send.const_c, &constants->c, sizeof(to_send.const_c));
-    memcpy(&to_send.const_flag, &constants->flag, sizeof(to_send.const_flag));
+    memcpy(&to_send.const_b, &constants->b, sizeof(constants->b));
+    memcpy(&to_send.const_c, &constants->c, sizeof(constants->c));
+    memcpy(&to_send.const_flag, &constants->flag, sizeof(constants->flag));
 
     if (!heater_hardware_set_offsets(&to_send)) {
         return false;

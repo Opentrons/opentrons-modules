@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include "heater-shaker/flash.hpp"
 
 class TestHeaterPolicy {
   public:
@@ -18,6 +19,8 @@ class TestHeaterPolicy {
 
     auto try_reset_call_count() const -> size_t;
     auto reset_try_reset_call_count() -> void;
+    auto set_thermal_offsets(flash::OffsetConstants* constants) -> bool;
+    auto get_thermal_offsets() -> flash::OffsetConstants;
 
   private:
     bool power_good_val;
@@ -25,4 +28,5 @@ class TestHeaterPolicy {
     size_t try_reset_calls;
     double power;
     bool enabled;
+    flash::OffsetConstants stored_offsets = {};
 };
