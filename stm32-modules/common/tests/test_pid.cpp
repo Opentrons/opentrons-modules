@@ -73,6 +73,19 @@ SCENARIO("PID controller") {
                 REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
             }
         }
+        WHEN("calculating controls with varied sample times") {
+            std::vector<float> results(5);
+            std::vector<float> inputs = {0.1, 0.2, 0.3, 0.4, 0.5};
+            std::transform(
+                inputs.cbegin(), inputs.cend(), results.begin(),
+                [&p](const float& sampletime) { return p.compute(1.0, sampletime); });
+            THEN("the sample time should not affect the output") {
+                std::vector<float> intended(5);
+                std::transform(inputs.cbegin(), inputs.cend(), intended.begin(),
+                               [](float sampletime) { return 2.0; });
+                REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
+            }
+        }
     }
     GIVEN("a PID controller with only kd") {
         auto p = PID(0, 0, 1.0, 1.0);
@@ -113,6 +126,24 @@ SCENARIO("PID controller") {
                            });
             THEN("the result should always calculate a difference from 0") {
                 REQUIRE_THAT(results, Catch::Matchers::Equals(inputs));
+            }
+        }
+        WHEN("resetting in between calculations and halving sample time") {
+            std::vector<float> results(8);
+            std::vector<float> inputs = {0, 1, 2, 4, 8, 16, 32, 64};
+            std::transform(inputs.cbegin(), inputs.cend(), results.begin(),
+                           [&p](const float& error) {
+                               p.reset();
+                               return p.compute(error, 0.5);
+                           });
+            THEN("the result should always calculate a difference from 0, "
+                 "divided by the sample time of 0.5") {
+                std::vector<float> expected(8);
+                std::transform(inputs.cbegin(), inputs.cend(), expected.begin(),
+                            [](const float& error) {
+                                return error / 0.5;
+                            });
+                REQUIRE_THAT(results, Catch::Matchers::Equals(expected));
             }
         }
     }
