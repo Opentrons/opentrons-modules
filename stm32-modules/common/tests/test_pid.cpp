@@ -76,9 +76,10 @@ SCENARIO("PID controller") {
         WHEN("calculating controls with varied sample times") {
             std::vector<float> results(5);
             std::vector<float> inputs = {0.1, 0.2, 0.3, 0.4, 0.5};
-            std::transform(
-                inputs.cbegin(), inputs.cend(), results.begin(),
-                [&p](const float& sampletime) { return p.compute(1.0, sampletime); });
+            std::transform(inputs.cbegin(), inputs.cend(), results.begin(),
+                           [&p](const float& sampletime) {
+                               return p.compute(1.0, sampletime);
+                           });
             THEN("the sample time should not affect the output") {
                 std::vector<float> intended(5);
                 std::transform(inputs.cbegin(), inputs.cend(), intended.begin(),
@@ -136,13 +137,12 @@ SCENARIO("PID controller") {
                                p.reset();
                                return p.compute(error, 0.5);
                            });
-            THEN("the result should always calculate a difference from 0, "
-                 "divided by the sample time of 0.5") {
+            THEN(
+                "the result should always calculate a difference from 0, "
+                "divided by the sample time of 0.5") {
                 std::vector<float> expected(8);
                 std::transform(inputs.cbegin(), inputs.cend(), expected.begin(),
-                            [](const float& error) {
-                                return error / 0.5;
-                            });
+                               [](const float& error) { return error / 0.5; });
                 REQUIRE_THAT(results, Catch::Matchers::Equals(expected));
             }
         }

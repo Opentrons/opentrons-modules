@@ -6,18 +6,18 @@
 class PID {
   public:
     PID() = delete;
-    /** 
+    /**
      * @brief Create a PID controller without windup limits.
-     * 
+     *
      * @param[in] kp Proportional constant
      * @param[in] ki Integral constant
      * @param[in] kd Derivative constant
      * @param[in] sampletime The time between each sample, in seconds
      */
     PID(double kp, double ki, double kd, double sampletime);
-    /** 
+    /**
      * @brief Create a PID controller without windup limits.
-     * 
+     *
      * @param[in] kp Proportional constant
      * @param[in] ki Integral constant
      * @param[in] kd Derivative constant
@@ -32,7 +32,7 @@ class PID {
     /**
      * @brief Compute the output of the PID controller from a new
      * error value. Uses the last configured value of \ref sampletime
-     * 
+     *
      * @param[in] error The error in the input
      * @return double containing the output for the controller
      */
@@ -41,7 +41,7 @@ class PID {
      * @brief Compute the output of the PID controller from a new
      * error value. The amount of time from the last error value
      * is used to scale the parameters
-     * 
+     *
      * @param[in] error The error in the input
      * @param[in] sampletime The time since the last input, in seconds
      * @return double containing the output for the controller
