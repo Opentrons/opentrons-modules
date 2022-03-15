@@ -91,7 +91,7 @@ static void run(void *param) {
     thermal_hardware_wait_for_init();
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto *task = reinterpret_cast<decltype(_main_task) *>(param);
-    auto policy = ThermalPlatePolicy();
+    auto policy = plate_policy::ThermalPlatePolicy();
     while (true) {
         task->run_once(policy);
     }

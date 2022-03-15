@@ -38,6 +38,12 @@ typedef struct {
     uint16_t onboard_val;
 } conversion_results;
 
+struct __attribute__((packed)) writable_offsets {
+    uint64_t const_b;
+    uint64_t const_c;
+    uint64_t const_flag;
+};
+
 typedef struct {
     void (*conversions_complete)(const conversion_results* results);
     void* hardware_internal;
@@ -51,6 +57,8 @@ void heater_hardware_drive_pg_latch_low();
 void heater_hardware_release_pg_latch();
 void heater_hardware_power_disable(heater_hardware* hardware);
 void heater_hardware_power_set(heater_hardware* hardware, uint16_t setting);
+bool heater_hardware_set_offsets(struct writable_offsets* to_write);
+uint64_t heater_hardware_get_offset(size_t addr_offset);
 
 #ifdef __cplusplus
 }  // extern "C"

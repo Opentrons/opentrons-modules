@@ -1,8 +1,12 @@
 #include "firmware/thermal_plate_policy.hpp"
 
+#include "FreeRTOS.h"
 #include "firmware/thermal_fan_hardware.h"
 #include "firmware/thermal_peltier_hardware.h"
 #include "systemwide.h"
+#include "task.h"
+
+using namespace plate_policy;
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPlatePolicy::set_enabled(bool enabled) -> void {
@@ -44,3 +48,20 @@ auto ThermalPlatePolicy::set_fan(double power) -> bool {
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPlatePolicy::get_fan() -> double { return thermal_fan_get_power(); }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto ThermalPlatePolicy::set_write_protect(bool write_protect) -> void {
+    thermal_eeprom_set_write_protect(write_protect);
+    if (!write_protect) {
+        // When done writing to the EEPROM, it needs some time to perform
+        // the write. We could poll the I2C bus, or we can just add a short
+        // delay since this won't happen during any critical sections.
+        static constexpr const TickType_t delay_ticks = pdMS_TO_TICKS(10);
+        vTaskDelay(delay_ticks);
+    }
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto ThermalPlatePolicy::i2c_write(uint8_t addr, uint8_t data) -> bool {
+    return thermal_i2c_write_data(addr, &data, 1);
+}

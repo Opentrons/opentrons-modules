@@ -55,6 +55,28 @@ bool thermal_i2c_write_16(uint16_t addr, uint8_t reg, uint16_t val);
 bool thermal_i2c_read_16(uint16_t addr, uint8_t reg, uint16_t *val);
 
 /**
+ * @brief Writes an arbitrary array of data to a device
+ * @note Thread safe
+ *
+ * @param addr I2C device address to write to
+ * @param data Pointer to array of data to write
+ * @param len Number of bytes in \c data
+ * @return True if the write was succesful, false otherwise
+ */
+bool thermal_i2c_write_data(uint16_t addr, uint8_t *data, uint16_t len);
+
+/**
+ * @brief Reads an arbitrary string of data from a device
+ * @note Thread safe
+ *
+ * @param addr I2C device address to reaad from
+ * @param data Pointer to array to store read data
+ * @param len Number of bytes to read into \c data
+ * @return True if the read was succesful, false otherwise
+ */
+bool thermal_i2c_read_data(uint16_t addr, uint8_t *data, uint16_t len);
+
+/**
  * @brief Configures one of the ADC Alert monitoring pins to be ready
  * to signal the correct task after a conversion-complete signals is raised.
  * @param[in] id The ADC to arm the callback for.
@@ -65,6 +87,12 @@ bool thermal_arm_adc_for_read(ADC_ITR_T id);
  * @brief Callback when an ADC READY pin interrupt is triggered (falling edge)
  */
 void thermal_adc_ready_callback(ADC_ITR_T id);
+
+/**
+ * @brief Set the write enable pin on the EEPROM
+ * @param[in] protect True to enable write protect, false to disable it
+ */
+void thermal_eeprom_set_write_protect(bool protect);
 
 /**
  * @brief This function handles I2C2 event interrupt / I2C2 wake-up interrupt

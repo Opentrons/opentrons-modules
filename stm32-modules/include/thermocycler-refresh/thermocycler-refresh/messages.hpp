@@ -191,6 +191,9 @@ struct GetPlateTempResponse {
     uint32_t responding_to_id;
     double current_temp;
     double set_temp;
+    double time_remaining;
+    double total_time;
+    bool at_target;
 };
 
 struct SetPeltierDebugMessage {
@@ -261,6 +264,23 @@ struct SetPIDConstantsMessage {
     double d;
 };
 
+struct SetOffsetConstantsMessage {
+    uint32_t id;
+    bool b_set;
+    double const_b;
+    bool c_set;
+    double const_c;
+};
+
+struct GetOffsetConstantsMessage {
+    uint32_t id;
+};
+
+struct GetOffsetConstantsResponse {
+    uint32_t responding_to_id;
+    double const_b, const_c;
+};
+
 struct UpdateUIMessage {
     // Empty struct
 };
@@ -304,28 +324,41 @@ struct GetLidStatusMessage {
 
 struct GetLidStatusResponse {
     uint32_t responding_to_id;
-    motor_util::LidStepper::Status lid;
+    motor_util::LidStepper::Position lid;
     motor_util::SealStepper::Status seal;
 };
+
+struct OpenLidMessage {
+    uint32_t id;
+};
+
+struct CloseLidMessage {
+    uint32_t id;
+};
+
+struct FrontButtonPressMessage {};
 
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage,
                    UpdateUIMessage, SetLedMode, UpdateTaskErrorState,
                    UpdatePlateState>;
-using HostCommsMessage = ::std::variant<
-    std::monostate, IncomingMessageFromHost, AcknowledgePrevious, ErrorMessage,
-    ForceUSBDisconnectMessage, GetSystemInfoResponse,
-    GetLidTemperatureDebugResponse, GetPlateTemperatureDebugResponse,
-    GetPlateTempResponse, GetLidTempResponse, GetSealDriveStatusResponse,
-    GetLidStatusResponse, GetPlatePowerResponse, GetLidPowerResponse>;
+using HostCommsMessage =
+    ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
+                   ErrorMessage, ForceUSBDisconnectMessage,
+                   GetSystemInfoResponse, GetLidTemperatureDebugResponse,
+                   GetPlateTemperatureDebugResponse, GetPlateTempResponse,
+                   GetLidTempResponse, GetSealDriveStatusResponse,
+                   GetLidStatusResponse, GetPlatePowerResponse,
+                   GetLidPowerResponse, GetOffsetConstantsResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
                    SetFanManualMessage, GetPlateTempMessage,
                    SetPlateTemperatureMessage, DeactivatePlateMessage,
                    SetPIDConstantsMessage, SetFanAutomaticMessage,
-                   GetThermalPowerMessage>;
+                   GetThermalPowerMessage, SetOffsetConstantsMessage,
+                   GetOffsetConstantsMessage>;
 using LidHeaterMessage =
     ::std::variant<std::monostate, LidTempReadComplete,
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
@@ -335,5 +368,6 @@ using LidHeaterMessage =
 using MotorMessage = ::std::variant<
     std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
     LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,
-    GetSealDriveStatusMessage, SetSealParameterMessage, GetLidStatusMessage>;
+    GetSealDriveStatusMessage, SetSealParameterMessage, GetLidStatusMessage,
+    OpenLidMessage, CloseLidMessage, FrontButtonPressMessage>;
 };  // namespace messages

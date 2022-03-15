@@ -37,20 +37,21 @@ class LidStepper {
 
   public:
     /** Possible states of the lid stepper.*/
-    enum class Status { BETWEEN, CLOSED, OPEN, UNKNOWN };
+    enum class Position { BETWEEN, CLOSED, OPEN, UNKNOWN };
 
-    [[nodiscard]] static auto status_to_string(Status status) -> const char* {
+    [[nodiscard]] constexpr static auto status_to_string(Position status)
+        -> const char* {
         switch (status) {
-            case Status::BETWEEN:
+            case Position::BETWEEN:
                 return "in_between";
                 break;
-            case Status::CLOSED:
+            case Position::CLOSED:
                 return "closed";
                 break;
-            case Status::OPEN:
+            case Position::OPEN:
                 return "open";
                 break;
-            case Status::UNKNOWN:
+            case Position::UNKNOWN:
                 return "unknown";
                 break;
         }
@@ -63,7 +64,8 @@ class LidStepper {
      * @param mamps Milliampere drive value to set for the current control
      * @return uint8_t containing the DAC register value for this voltage
      */
-    static auto current_to_dac(double mamps) -> uint8_t {
+    [[nodiscard]] constexpr static auto current_to_dac(double mamps)
+        -> uint8_t {
         // hardware has a 1ohm sense resistor and the driver has an implicit 10x
         // divider. the dac can express a max of 3.3V, so the maximum current we
         // can drive is 330mA at 3.3V/dac fullscale of 255. we can therefore
@@ -84,7 +86,8 @@ class LidStepper {
      * @param angle The angle in degrees. Can be positive or negative
      * @return int32_t count of steps to reach this angle
      */
-    static auto angle_to_microsteps(double angle) -> int32_t {
+    [[nodiscard]] constexpr static auto angle_to_microsteps(double angle)
+        -> int32_t {
         return static_cast<int32_t>(angle * DEGREES_TO_MICROSTEPS);
     }
 };

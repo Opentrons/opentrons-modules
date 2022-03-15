@@ -9,7 +9,7 @@
 
 static const uint32_t PAGE_ADDRESS = 0x0807F800; //last page in flash memory, 0x0807F800 for 512K (FF board) FLASH 
 static const uint32_t PAGE_INDEX = 255; //last page index in flash memory
-static const uint8_t  ADDRESS_SIZE = 64;
+static const uint8_t  ADDRESS_SIZE = 8;
 
 bool system_set_serial_number(struct writable_serial* to_write) {
     FLASH_EraseInitTypeDef pageToErase = {

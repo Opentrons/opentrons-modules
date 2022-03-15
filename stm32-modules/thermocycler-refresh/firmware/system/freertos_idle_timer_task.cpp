@@ -39,3 +39,15 @@ extern "C" void vApplicationGetTimerTaskMemory(
     *ppxTimerTaskStackBuffer = idle_timer_stack.data();
     *pulTimerTaskStackSize = idle_timer_stack.size();
 }
+
+// We are matching the definition of this function in FreeRTOS, and thus
+// keep the function signature the same
+extern "C" void vApplicationStackOverflowHook(
+    TaskHandle_t xTask,
+    // NOLINTNEXTLINE(readability-non-const-parameter)
+    signed char *pcTaskName) {
+    static_cast<void>(xTask);
+    static_cast<void>(pcTaskName);
+    // Lock the processor forever
+    configASSERT(0);
+}

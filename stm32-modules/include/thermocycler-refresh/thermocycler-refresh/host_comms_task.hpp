@@ -47,7 +47,8 @@ class HostCommsTask {
         gcode::SetPlateTemperature, gcode::DeactivatePlate,
         gcode::SetFanAutomatic, gcode::ActuateSealStepperDebug,
         gcode::GetSealDriveStatus, gcode::SetSealParameter, gcode::GetLidStatus,
-        gcode::GetThermalPowerDebug>;
+        gcode::GetThermalPowerDebug, gcode::SetOffsetConstants,
+        gcode::GetOffsetConstants, gcode::OpenLid, gcode::CloseLid>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
@@ -56,7 +57,8 @@ class HostCommsTask {
                  gcode::DeactivateLidHeating, gcode::SetPIDConstants,
                  gcode::SetPlateTemperature, gcode::DeactivatePlate,
                  gcode::SetFanAutomatic, gcode::ActuateSealStepperDebug,
-                 gcode::SetSealParameter>;
+                 gcode::SetSealParameter, gcode::SetOffsetConstants,
+                 gcode::OpenLid, gcode::CloseLid>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetLidTempDebugCache = AckCache<8, gcode::GetLidTemperatureDebug>;
     using GetPlateTempDebugCache = AckCache<8, gcode::GetPlateTemperatureDebug>;
@@ -64,6 +66,7 @@ class HostCommsTask {
     using GetLidTempCache = AckCache<8, gcode::GetLidTemp>;
     using GetSealDriveStatusCache = AckCache<8, gcode::GetSealDriveStatus>;
     using GetLidStatusCache = AckCache<8, gcode::GetLidStatus>;
+    using GetOffsetConstantsCache = AckCache<8, gcode::GetOffsetConstants>;
     // This is a two-stage message since both the Plate and Lid tasks have
     // to respond.
     using GetThermalPowerCache = AckCache<8, gcode::GetThermalPowerDebug,
@@ -91,6 +94,8 @@ class HostCommsTask {
           get_seal_drive_status_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_lid_status_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_offset_constants_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_thermal_power_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
@@ -386,7 +391,8 @@ class HostCommsTask {
                 } else {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.current_temp,
-                        response.set_temp);
+                        response.set_temp, response.time_remaining,
+                        response.total_time, response.at_target);
                 }
             },
             cache_entry);
@@ -431,6 +437,29 @@ class HostCommsTask {
                 } else {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.lid, response.seal);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetOffsetConstantsResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        // Now we can send complete response to host computer
+        auto cache_entry = get_offset_constants_cache.remove_if_present(
+            response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.const_b, response.const_c);
                 }
             },
             cache_entry);
@@ -611,7 +640,7 @@ class HostCommsTask {
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            ack_only_cache.remove_if_present(id);
+            get_lid_temp_debug_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
 
@@ -635,7 +664,7 @@ class HostCommsTask {
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            ack_only_cache.remove_if_present(id);
+            get_lid_temp_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
 
@@ -660,7 +689,7 @@ class HostCommsTask {
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            ack_only_cache.remove_if_present(id);
+            get_plate_temp_debug_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
 
@@ -702,7 +731,7 @@ class HostCommsTask {
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            ack_only_cache.remove_if_present(id);
+            get_plate_temp_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
 
@@ -1010,7 +1039,7 @@ class HostCommsTask {
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            ack_only_cache.remove_if_present(id);
+            get_seal_drive_status_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
@@ -1055,7 +1084,7 @@ class HostCommsTask {
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            ack_only_cache.remove_if_present(id);
+            get_lid_status_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
@@ -1074,6 +1103,100 @@ class HostCommsTask {
         }
         auto message = messages::GetThermalPowerMessage{.id = id};
         if (!task_registry->thermal_plate->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_thermal_power_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetOffsetConstants& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message =
+            messages::SetOffsetConstantsMessage{.id = id,
+                                                .b_set = gcode.const_b.defined,
+                                                .const_b = gcode.const_b.value,
+                                                .c_set = gcode.const_c.defined,
+                                                .const_c = gcode.const_c.value};
+
+        if (!task_registry->thermal_plate->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetOffsetConstants& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_offset_constants_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetOffsetConstantsMessage{.id = id};
+        if (!task_registry->thermal_plate->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_offset_constants_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::CloseLid& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::CloseLidMessage{.id = id};
+        if (!task_registry->motor->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::OpenLid& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::OpenLidMessage{.id = id};
+        if (!task_registry->motor->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
@@ -1105,6 +1228,7 @@ class HostCommsTask {
     GetLidTempCache get_lid_temp_cache;
     GetSealDriveStatusCache get_seal_drive_status_cache;
     GetLidStatusCache get_lid_status_cache;
+    GetOffsetConstantsCache get_offset_constants_cache;
     GetThermalPowerCache get_thermal_power_cache;
     bool may_connect_latch = true;
 };

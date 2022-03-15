@@ -3,6 +3,7 @@
 #include <chrono>
 #include <stop_token>
 
+#include "simulator/sim_at24c0xc_policy.hpp"
 #include "systemwide.h"
 #include "thermocycler-refresh/errors.hpp"
 #include "thermocycler-refresh/tasks.hpp"
@@ -21,7 +22,10 @@ struct SimPeltier {
     }
 };
 
-struct SimThermalPlatePolicy {
+using namespace at24c0xc_sim_policy;
+
+struct SimThermalPlatePolicy
+    : public SimAT24C0XCPolicy<SimThermalPlateTask::EEPROM_PAGES> {
   private:
     bool _enabled = false;
     SimPeltier _left = SimPeltier();
@@ -44,6 +48,10 @@ struct SimThermalPlatePolicy {
     }
 
   public:
+    using EepromPolicy = SimAT24C0XCPolicy<SimThermalPlateTask::EEPROM_PAGES>;
+
+    SimThermalPlatePolicy() : EepromPolicy() {}
+
     auto set_enabled(bool enabled) -> void {
         _enabled = enabled;
         if (!enabled) {

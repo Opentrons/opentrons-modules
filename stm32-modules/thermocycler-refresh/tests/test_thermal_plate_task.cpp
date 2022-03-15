@@ -141,6 +141,134 @@ SCENARIO("thermal plate task message passing") {
                 }
             }
         }
+        WHEN(
+            "setting the C offset to 6 and B offset to 1 and then re-sending "
+            "the temperature readings") {
+            auto offset_set_msg =
+                messages::SetOffsetConstantsMessage{.id = 456,
+                                                    .b_set = true,
+                                                    .const_b = 1.0,
+                                                    .c_set = true,
+                                                    .const_c = 6.0};
+            tasks->get_thermal_plate_queue().backing_deque.push_back(
+                messages::ThermalPlateMessage(offset_set_msg));
+            tasks->get_host_comms_queue().backing_deque.clear();
+            tasks->run_thermal_plate_task();
+            // Send temperatures to refresh calculations
+            tasks->get_thermal_plate_queue().backing_deque.push_back(
+                messages::ThermalPlateMessage(read_message));
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.empty());
+                AND_THEN("the task should respond to the messsage") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto ack_msg =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(ack_msg.responding_to_id == offset_set_msg.id);
+                }
+            }
+            AND_WHEN("sending a get-plate-temperature-debug message") {
+                auto message =
+                    messages::GetPlateTemperatureDebugMessage{.id = 123};
+                tasks->get_thermal_plate_queue().backing_deque.push_back(
+                    messages::ThermalPlateMessage(message));
+                tasks->get_host_comms_queue().backing_deque.clear();
+                tasks->run_thermal_plate_task();
+                THEN("the task should get the message") {
+                    REQUIRE(
+                        tasks->get_thermal_plate_queue().backing_deque.empty());
+                    AND_THEN(
+                        "the temperature should be changed by the offset") {
+                        double adjusted_temp = (2.0 * _valid_temp) + 6.0F;
+                        REQUIRE(!tasks->get_host_comms_queue()
+                                     .backing_deque.empty());
+                        auto response =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        tasks->get_host_comms_queue().backing_deque.pop_front();
+                        REQUIRE(std::holds_alternative<
+                                messages::GetPlateTemperatureDebugResponse>(
+                            response));
+                        auto gettemp = std::get<
+                            messages::GetPlateTemperatureDebugResponse>(
+                            response);
+
+                        REQUIRE(gettemp.responding_to_id == message.id);
+
+                        REQUIRE_THAT(
+                            gettemp.heat_sink_temp,
+                            Catch::Matchers::WithinAbs(_valid_temp, 0.1));
+                        REQUIRE(gettemp.heat_sink_adc == valid_adc);
+
+                        REQUIRE_THAT(
+                            gettemp.front_right_temp,
+                            Catch::Matchers::WithinAbs(adjusted_temp, 0.01));
+                        REQUIRE(gettemp.front_right_adc == valid_adc);
+
+                        REQUIRE_THAT(
+                            gettemp.front_center_temp,
+                            Catch::Matchers::WithinAbs(adjusted_temp, 0.01));
+                        REQUIRE(gettemp.front_center_adc == valid_adc);
+
+                        REQUIRE_THAT(
+                            gettemp.front_left_temp,
+                            Catch::Matchers::WithinAbs(adjusted_temp, 0.01));
+                        REQUIRE(gettemp.front_left_adc == valid_adc);
+
+                        REQUIRE_THAT(
+                            gettemp.back_right_temp,
+                            Catch::Matchers::WithinAbs(adjusted_temp, 0.01));
+                        REQUIRE(gettemp.back_right_adc == valid_adc);
+
+                        REQUIRE_THAT(
+                            gettemp.back_center_temp,
+                            Catch::Matchers::WithinAbs(adjusted_temp, 0.01));
+                        REQUIRE(gettemp.back_center_adc == valid_adc);
+
+                        REQUIRE_THAT(
+                            gettemp.back_left_temp,
+                            Catch::Matchers::WithinAbs(adjusted_temp, 0.01));
+                        REQUIRE(gettemp.back_left_adc == valid_adc);
+                    }
+                }
+            }
+            AND_WHEN("sending a get-offset-constants message") {
+                auto get_offsets =
+                    messages::GetOffsetConstantsMessage{.id = 654};
+                tasks->get_thermal_plate_queue().backing_deque.push_back(
+                    messages::ThermalPlateMessage(get_offsets));
+                tasks->get_host_comms_queue().backing_deque.clear();
+                tasks->run_thermal_plate_task();
+                THEN("the task should get the message") {
+                    REQUIRE(
+                        tasks->get_thermal_plate_queue().backing_deque.empty());
+                    AND_THEN("the response should have B=1 and C=6") {
+                        REQUIRE(!tasks->get_host_comms_queue()
+                                     .backing_deque.empty());
+                        auto response =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        tasks->get_host_comms_queue().backing_deque.pop_front();
+                        REQUIRE(std::holds_alternative<
+                                messages::GetOffsetConstantsResponse>(
+                            response));
+                        auto constants =
+                            std::get<messages::GetOffsetConstantsResponse>(
+                                response);
+                        REQUIRE(constants.responding_to_id == get_offsets.id);
+                        REQUIRE_THAT(constants.const_b,
+                                     Catch::Matchers::WithinAbs(1.0F, 0.01F));
+                        REQUIRE_THAT(constants.const_c,
+                                     Catch::Matchers::WithinAbs(6.0F, 0.01F));
+                    }
+                }
+            }
+        }
         WHEN("sending a SetPeltierDebug message to turn on all peltiers") {
             auto message = messages::SetPeltierDebugMessage{
                 .id = 123,
@@ -378,10 +506,19 @@ SCENARIO("thermal plate task message passing") {
                         THEN("the response should have the new setpoint") {
                             REQUIRE(!tasks->get_host_comms_queue()
                                          .backing_deque.empty());
-                            REQUIRE(std::get<messages::GetPlateTempResponse>(
-                                        tasks->get_host_comms_queue()
-                                            .backing_deque.front())
-                                        .set_temp == message.setpoint);
+                            auto temperature_message =
+                                std::get<messages::GetPlateTempResponse>(
+                                    tasks->get_host_comms_queue()
+                                        .backing_deque.front());
+                            REQUIRE(temperature_message.set_temp ==
+                                    message.setpoint);
+                            REQUIRE_THAT(
+                                temperature_message.time_remaining,
+                                Catch::Matchers::WithinAbs(10.0F, 0.01));
+                            REQUIRE_THAT(
+                                temperature_message.total_time,
+                                Catch::Matchers::WithinAbs(10.0F, 0.01));
+                            REQUIRE(!temperature_message.at_target);
                         }
                     }
                 }

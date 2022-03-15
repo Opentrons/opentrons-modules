@@ -51,6 +51,16 @@ SCENARIO("system task message passing") {
             }
         }
 
+        WHEN("calling button press callback") {
+            tasks->get_system_task().front_button_callback();
+            THEN("a Front Button message is sent to motor task") {
+                REQUIRE(tasks->get_motor_queue().has_message());
+                REQUIRE(
+                    std::holds_alternative<messages::FrontButtonPressMessage>(
+                        tasks->get_motor_queue().backing_deque.front()));
+            }
+        }
+
         WHEN("sending a set-serial-number message as if from the host comms") {
             auto message = messages::SetSerialNumberMessage{
                 .id = 123,
