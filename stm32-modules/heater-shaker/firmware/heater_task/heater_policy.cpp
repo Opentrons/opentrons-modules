@@ -60,7 +60,8 @@ auto HeaterPolicy::set_thermal_offsets(flash::OffsetConstants* constants)
     writable_offsets to_send;
     memcpy(&to_send.const_b, &constants->b, sizeof(constants->b));
     memcpy(&to_send.const_c, &constants->c, sizeof(constants->c));
-    to_send.const_flag = static_cast<uint64_t>(flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM);
+    to_send.const_flag =
+        static_cast<uint64_t>(flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM);
 
     if (!heater_hardware_set_offsets(&to_send)) {
         return false;
@@ -81,7 +82,8 @@ auto HeaterPolicy::get_thermal_offsets() -> flash::OffsetConstants {
     flash::OffsetConstants to_pass;
     memcpy(&to_pass.b, &to_receive.const_b, sizeof(to_receive.const_b));
     memcpy(&to_pass.c, &to_receive.const_c, sizeof(to_receive.const_c));
-    if (to_receive.const_flag == (static_cast<uint64_t>(flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM))) {
+    if (to_receive.const_flag ==
+        (static_cast<uint64_t>(flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM))) {
         to_pass.flag = true;
     }
     return to_pass;
