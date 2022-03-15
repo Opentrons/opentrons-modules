@@ -32,7 +32,7 @@ namespace flash {
 struct OffsetConstants {
     // The value of the constants B and C
     double b, c;
-    bool flag;
+    uint64_t flag;
 };
 
 /**
@@ -56,7 +56,8 @@ class Flash {
         OffsetConstants ret = {.b = OFFSET_DEFAULT_CONST,
                                .c = OFFSET_DEFAULT_CONST};
         OffsetConstants receive = policy.get_thermal_offsets();
-        if (receive.flag == static_cast<bool>(FLASHFlag::WRITTEN_NO_CHECKSUM)) {
+        if (receive.flag ==
+            static_cast<uint64_t>(FLASHFlag::WRITTEN_NO_CHECKSUM)) {
             ret.b = receive.b;
             ret.c = receive.c;
         }
@@ -91,8 +92,9 @@ class Flash {
      */
     [[nodiscard]] auto initialized() const -> bool { return _initialized; }
 
-    // Enumeration of the FLASH_CONST_FLAG values
-    enum class FLASHFlag : uint64_t { WRITTEN_NO_CHECKSUM = 1, INVALID = 0 };
+    // Enumeration of the FLASH_CONST_FLAG values. Default erase value of FLASH
+    // is all 1s
+    enum class FLASHFlag : uint64_t { WRITTEN_NO_CHECKSUM = 1, INVALID = 0xFF };
 
   private:
     /** Default value for all constants.*/
