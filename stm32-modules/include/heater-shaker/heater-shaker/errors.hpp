@@ -62,6 +62,7 @@ enum class ErrorCode {
     SYSTEM_SERIAL_NUMBER_HAL_ERROR = 302,
     SYSTEM_LED_I2C_NOT_READY = 303,
     SYSTEM_LED_TRANSMIT_ERROR = 304,
+    SYSTEM_FLASH_ERROR = 305,
 };
 
 auto from_motor_error(uint16_t error_bitmap, MotorErrorOffset which)

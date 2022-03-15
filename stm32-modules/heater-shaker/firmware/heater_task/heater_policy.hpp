@@ -1,5 +1,7 @@
 #pragma once
 
+#include "heater-shaker/flash.hpp"
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
 #include "heater_hardware.h"
@@ -13,6 +15,8 @@ class HeaterPolicy {
     [[nodiscard]] auto try_reset_power_good() -> bool;
     auto set_power_output(double relative_power) -> void;
     auto disable_power_output() -> void;
+    auto set_thermal_offsets(flash::OffsetConstants* constants) -> bool;
+    auto get_thermal_offsets() -> flash::OffsetConstants;
     // The latch hardware requires some amount of time where the latch is held
     // low. That time isn't very long (it's ns, this is digital logic) but it is
     // non-zero, and this is how long we can delay without busy waiting
