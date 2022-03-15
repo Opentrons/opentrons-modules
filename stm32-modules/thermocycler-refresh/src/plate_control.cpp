@@ -43,6 +43,13 @@ auto PlateControl::update_control() -> UpdateRet {
     values.right_power = update_pid(_right);
     values.center_power = update_pid(_center);
 
+    // Hold time decreases whenever temp has reached the
+    if (_status == PlateStatus::OVERSHOOT ||
+        _status == PlateStatus::STEADY_STATE) {
+        _remaining_hold_time = std::max(_remaining_hold_time - _update_rate,
+                                        static_cast<double>(0.0F));
+    }
+
     // Caller should check whether fan is manual after this function runs
     if (_fan.manual_control) {
         values.fan_power = 0.0F;
@@ -58,10 +65,11 @@ auto PlateControl::update_control() -> UpdateRet {
     return UpdateRet(values);
 }
 
-auto PlateControl::set_new_target(double setpoint, double ramp_rate,
-                                  double hold_time) -> bool {
+auto PlateControl::set_new_target(double setpoint, double hold_time,
+                                  double ramp_rate) -> bool {
     _ramp_rate = ramp_rate;
     _hold_time = hold_time;
+    _remaining_hold_time = hold_time;
     _setpoint = setpoint;
 
     reset_control(_left);
@@ -190,6 +198,11 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
         return TemperatureZone::WARM;
     }
     return TemperatureZone::HOT;
+}
+
+[[nodiscard]] auto PlateControl::get_hold_time() const
+    -> std::pair<Seconds, Seconds> {
+    return std::make_pair(_remaining_hold_time, _hold_time);
 }
 
 [[nodiscard]] auto PlateControl::temp_within_setpoint() const -> bool {
