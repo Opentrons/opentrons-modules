@@ -20,7 +20,9 @@ What the script does:
 NOTE: Requires avrdude v6.3+ to be in system path.
 '''
 
+import os
 import subprocess
+import sys
 import time
 from argparse import ArgumentParser
 from serial import Serial
@@ -45,13 +47,20 @@ MODELS = {
     'MDV20': 'mag_deck_v20',
 }
 
-THIS_DIR = PurePath(__file__).parent
+if getattr(sys, 'frozen', False):
+    THIS_DIR = PurePath(os.path.dirname(sys.executable))
+    AVR_EXEC = os.path.join(os.path.dirname(sys.executable), 'avrdude/avrdude.exe')
+elif __file__:
+    AVR_EXEC = 'avrdude'
+    THIS_DIR = PurePath(os.path.dirname(__file__))
+
+print(f'THIS_DIR: {THIS_DIR}')
 AVR_CONFIG_FILE = THIS_DIR.joinpath('avrdude.conf')
 EEPROM_FIRMARE_PATH = THIS_DIR.joinpath('eepromWriter.hex')
 TEMP_DECK_FIRMARE_PATH = THIS_DIR.joinpath('temp-deck-arduino.ino.hex')
 MAG_DECK_FIRMARE_PATH = THIS_DIR.joinpath('mag-deck-arduino.ino.hex')
 
-AVR_COMMAND = 'avrdude -C {config} -v -patmega32u4 -cavr109 -P {port} -b 57600 -D -U flash:w:{firmware}:i'  # NOQA
+AVR_COMMAND = '{avrdude} -C {config} -v -patmega32u4 -cavr109 -P {port} -b 57600 -D -U flash:w:{firmware}:i'  # NOQA
 
 
 def find_opentrons_port():
@@ -92,7 +101,7 @@ def trigger_bootloader(port_name):
 
 def upload_eeprom_sketch(port_name):
     cmd = AVR_COMMAND.format(
-        config=AVR_CONFIG_FILE, port=port_name, firmware=EEPROM_FIRMARE_PATH)
+        avrdude=AVR_EXEC, config=AVR_CONFIG_FILE, port=port_name, firmware=EEPROM_FIRMARE_PATH)
     res = subprocess.check_output('{}'.format(cmd), shell=True)
     print('AVR gave response:')
     print(res)
@@ -108,7 +117,7 @@ def upload_application_firmware(port_name, model):
         raise RuntimeError(
             'Unknown model for writing firmware: {}'.format(model))
     cmd = AVR_COMMAND.format(
-        config=AVR_CONFIG_FILE, port=port_name, firmware=hex_file)
+        avrdude=AVR_EXEC, config=AVR_CONFIG_FILE, port=port_name, firmware=hex_file)
     res = subprocess.check_output('{}'.format(cmd), shell=True)
     print('AVR gave response:')
     print(res)
@@ -199,7 +208,8 @@ def build_arg_parser():
                             help='Specify whether to scan & store '
                                  'serial(True/False)')
     arg_parser.add_argument("--module",
-                            help='Specify whether a magdeck or tempdeck')
+                            help='Specify whether a magdeck or tempdeck',
+                            default="tempdeck")
     return arg_parser
 
 
@@ -259,6 +269,9 @@ def main():
     finally:
         if connected_port:
             connected_port.close()
+        print('Done')
+        while True:
+            time.sleep(1)
 
 
 if __name__ == "__main__":
