@@ -1,8 +1,9 @@
 #include "heater_policy.hpp"
 
+#include <stddef.h>
+
 #include <algorithm>
 #include <cstring>
-#include <stddef.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -53,8 +54,9 @@ auto HeaterPolicy::disable_power_output() -> void {
     heater_hardware_power_disable(hardware_handle);
 }
 
-auto HeaterPolicy::set_thermal_offsets(flash::OffsetConstants* constants) -> bool {
-    //convert constants to writable_offsets
+auto HeaterPolicy::set_thermal_offsets(flash::OffsetConstants* constants)
+    -> bool {
+    // convert constants to writable_offsets
     writable_offsets to_send;
     memcpy(&to_send.const_b, &constants->b, sizeof(constants->b));
     memcpy(&to_send.const_c, &constants->c, sizeof(constants->c));
@@ -68,14 +70,18 @@ auto HeaterPolicy::set_thermal_offsets(flash::OffsetConstants* constants) -> boo
 }
 
 auto HeaterPolicy::get_thermal_offsets() -> flash::OffsetConstants {
-    //convert writable_offsets to OffsetConstants
+    // convert writable_offsets to OffsetConstants
     writable_offsets to_receive;
-    to_receive.const_b = heater_hardware_get_offset(offsetof(struct writable_offsets, const_b));
-    to_receive.const_c = heater_hardware_get_offset(offsetof(struct writable_offsets, const_c));
-    to_receive.const_flag = heater_hardware_get_offset(offsetof(struct writable_offsets, const_flag));
+    to_receive.const_b =
+        heater_hardware_get_offset(offsetof(struct writable_offsets, const_b));
+    to_receive.const_c =
+        heater_hardware_get_offset(offsetof(struct writable_offsets, const_c));
+    to_receive.const_flag = heater_hardware_get_offset(
+        offsetof(struct writable_offsets, const_flag));
     flash::OffsetConstants to_pass;
     memcpy(&to_pass.b, &to_receive.const_b, sizeof(to_receive.const_b));
     memcpy(&to_pass.c, &to_receive.const_c, sizeof(to_receive.const_c));
-    memcpy(&to_pass.flag, &to_receive.const_flag, sizeof(to_receive.const_flag));
+    memcpy(&to_pass.flag, &to_receive.const_flag,
+           sizeof(to_receive.const_flag));
     return to_pass;
 }

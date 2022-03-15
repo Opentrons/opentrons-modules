@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+
 #include "heater-shaker/flash.hpp"
 
 class TestHeaterPolicy {

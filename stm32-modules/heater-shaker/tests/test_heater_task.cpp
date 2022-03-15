@@ -6,10 +6,13 @@
 
 constexpr double _valid_temp = 55.0;
 
-static auto _converter = thermistor_conversion::Conversion<lookups::NTCG104ED104DTDSX>(
-    heater_task::HeaterTask<TestMessageQueue>::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
-    heater_task::HeaterTask<TestMessageQueue>::ADC_BIT_DEPTH,
-    heater_task::HeaterTask<TestMessageQueue>::HEATER_PAD_NTC_DISCONNECT_THRESHOLD_ADC);
+static auto _converter =
+    thermistor_conversion::Conversion<lookups::NTCG104ED104DTDSX>(
+        heater_task::HeaterTask<
+            TestMessageQueue>::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
+        heater_task::HeaterTask<TestMessageQueue>::ADC_BIT_DEPTH,
+        heater_task::HeaterTask<
+            TestMessageQueue>::HEATER_PAD_NTC_DISCONNECT_THRESHOLD_ADC);
 
 SCENARIO("heater task message passing") {
     GIVEN("a heater task with valid temps") {
@@ -259,15 +262,13 @@ SCENARIO("heater task message passing") {
                 }
             }
             AND_WHEN("sending a get-temperature-debug message") {
-                auto message =
-                    messages::GetTemperatureDebugMessage{.id = 123};
+                auto message = messages::GetTemperatureDebugMessage{.id = 123};
                 tasks->get_heater_queue().backing_deque.push_back(
                     messages::HeaterMessage(message));
                 tasks->get_host_comms_queue().backing_deque.clear();
                 tasks->run_heater_task();
                 THEN("the task should get the message") {
-                    REQUIRE(
-                        tasks->get_heater_queue().backing_deque.empty());
+                    REQUIRE(tasks->get_heater_queue().backing_deque.empty());
                     AND_THEN(
                         "the temperature should be changed by the offset") {
                         double adjusted_temp = (2.0 * _valid_temp) + 6.0F;
@@ -279,9 +280,9 @@ SCENARIO("heater task message passing") {
                         REQUIRE(std::holds_alternative<
                                 messages::GetTemperatureDebugResponse>(
                             response));
-                        auto gettemp = std::get<
-                            messages::GetTemperatureDebugResponse>(
-                            response);
+                        auto gettemp =
+                            std::get<messages::GetTemperatureDebugResponse>(
+                                response);
 
                         REQUIRE(gettemp.responding_to_id == message.id);
 
@@ -310,8 +311,7 @@ SCENARIO("heater task message passing") {
                 tasks->get_host_comms_queue().backing_deque.clear();
                 tasks->run_heater_task();
                 THEN("the task should get the message") {
-                    REQUIRE(
-                        tasks->get_heater_queue().backing_deque.empty());
+                    REQUIRE(tasks->get_heater_queue().backing_deque.empty());
                     AND_THEN("the response should have B=1 and C=6") {
                         REQUIRE(!tasks->get_host_comms_queue()
                                      .backing_deque.empty());

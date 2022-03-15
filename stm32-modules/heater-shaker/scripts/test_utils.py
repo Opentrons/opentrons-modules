@@ -190,7 +190,24 @@ def set_acceleration(ser: serial.Serial, acceleration: float):
     res = ser.readline()
     guard_error(res, b'M204')
 
+def set_offset_constants(ser: serial.Serial, const_b = None, const_c = None):
+    b_str = ''
+    if const_b != None:
+        b_str = f' B{const_b}'
+    c_str = ''
+    if const_c != None:
+        c_str = f' C{const_c}'
+    print(f'Setting constants{b_str}{c_str}\n')
+    ser.write(f'M116{b_str}{c_str}\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M116 OK\n')
+    print(res)
 
+def get_offset_constants(ser: serial.Serial):
+    ser.write('M117\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M117 B:')
+    print(res)
 
 
 def plot_data(data: List[Tuple[float, float]], config: RunConfig):

@@ -12,10 +12,10 @@
 #include "core/thermistor_conversion.hpp"
 #include "hal/message_queue.hpp"
 #include "heater-shaker/errors.hpp"
+#include "heater-shaker/flash.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
 #include "thermistor_lookups.hpp"
-#include "heater-shaker/flash.hpp"
 
 /* Need a forward declaration for this because of recursive includes */
 namespace tasks {
@@ -410,7 +410,7 @@ class HeaterTask {
     template <typename Policy>
     requires HeaterExecutionPolicy<Policy>
     auto visit_message(const messages::SetOffsetConstantsMessage& msg,
-        Policy& policy) -> void {
+                       Policy& policy) -> void {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
 
@@ -420,10 +420,10 @@ class HeaterTask {
         if (msg.c_set) {
             _offset_constants.c = msg.const_c;
         }
-        _offset_constants.flag = static_cast<bool>(flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM);
+        _offset_constants.flag =
+            static_cast<bool>(flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM);
 
-        if (!_flash.template set_offset_constants(_offset_constants,
-                                                     policy)) {
+        if (!_flash.template set_offset_constants(_offset_constants, policy)) {
             // Could not write to the flash.
             response.with_error = errors::ErrorCode::SYSTEM_FLASH_ERROR;
         }

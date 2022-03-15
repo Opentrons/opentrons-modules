@@ -52,8 +52,7 @@ class Flash {
      * default values if the FLASH doesn't have programmed values.
      */
     template <typename Policy>
-    [[nodiscard]] auto get_offset_constants(Policy& policy)
-        -> OffsetConstants {
+    [[nodiscard]] auto get_offset_constants(Policy& policy) -> OffsetConstants {
         OffsetConstants ret = {.b = OFFSET_DEFAULT_CONST,
                                .c = OFFSET_DEFAULT_CONST};
         OffsetConstants receive = policy.get_thermal_offsets();

@@ -11,7 +11,8 @@ TEST_CASE("flash class initialization tracking") {
         auto flash = Flash();
         THEN("it starts as noninitialized") { REQUIRE(!flash.initialized()); }
         WHEN("reading from the FLASH") {
-            static_cast<void>(flash.get_offset_constants(tasks->get_heater_policy()));
+            static_cast<void>(
+                flash.get_offset_constants(tasks->get_heater_policy()));
             THEN("the FLASH now shows as initialized") {
                 REQUIRE(flash.initialized());
             }
@@ -24,7 +25,8 @@ TEST_CASE("blank flash reading") {
         auto tasks = TaskBuilder::build();
         auto flash = Flash();
         WHEN("reading before writing anything") {
-            auto readback = flash.get_offset_constants(tasks->get_heater_policy());
+            auto readback =
+                flash.get_offset_constants(tasks->get_heater_policy());
             THEN("the resulting constants are 0") {
                 REQUIRE_THAT(readback.b, Catch::Matchers::WithinAbs(0, 0.01));
                 REQUIRE_THAT(readback.c, Catch::Matchers::WithinAbs(0, 0.01));
@@ -39,9 +41,11 @@ TEST_CASE("flash reading and writing") {
         auto flash = Flash();
         OffsetConstants constants = {.b = 10.0F, .c = -12.0F, .flag = 0x01};
         WHEN("writing the constants") {
-            REQUIRE(flash.set_offset_constants(constants, tasks->get_heater_policy()));
+            REQUIRE(flash.set_offset_constants(constants,
+                                               tasks->get_heater_policy()));
             AND_THEN("reading back the constants") {
-                auto readback = flash.get_offset_constants(tasks->get_heater_policy());
+                auto readback =
+                    flash.get_offset_constants(tasks->get_heater_policy());
                 THEN("the constants match") {
                     REQUIRE_THAT(readback.b,
                                  Catch::Matchers::WithinAbs(constants.b, 0.01));
