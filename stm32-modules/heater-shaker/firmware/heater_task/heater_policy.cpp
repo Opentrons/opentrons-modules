@@ -81,6 +81,7 @@ auto HeaterPolicy::get_thermal_offsets() -> flash::OffsetConstants {
     flash::OffsetConstants to_pass;
     memcpy(&to_pass.b, &to_receive.const_b, sizeof(to_receive.const_b));
     memcpy(&to_pass.c, &to_receive.const_c, sizeof(to_receive.const_c));
-    memcpy(&to_pass.flag, &to_receive.const_flag, sizeof(to_receive.const_flag));
+    memcpy(&to_pass.flag, &to_receive.const_flag,
+           sizeof(to_receive.const_flag));
     return to_pass;
 }
