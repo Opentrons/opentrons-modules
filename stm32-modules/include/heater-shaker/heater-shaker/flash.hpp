@@ -32,7 +32,7 @@ namespace flash {
 struct OffsetConstants {
     // The value of the constants B and C
     double b, c;
-    uint64_t flag;
+    bool flag;
 };
 
 /**
@@ -56,8 +56,7 @@ class Flash {
         OffsetConstants ret = {.b = OFFSET_DEFAULT_CONST,
                                .c = OFFSET_DEFAULT_CONST};
         OffsetConstants receive = policy.get_thermal_offsets();
-        if (receive.flag ==
-            static_cast<uint64_t>(FLASHFlag::WRITTEN_NO_CHECKSUM)) {
+        if (receive.flag) {
             ret.b = receive.b;
             ret.c = receive.c;
         }
