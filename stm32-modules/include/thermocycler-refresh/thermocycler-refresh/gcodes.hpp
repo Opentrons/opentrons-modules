@@ -200,15 +200,26 @@ struct GetPlateTemp {
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit,
                                     double current_temperature,
-                                    double setpoint_temperature) -> InputIt {
+                                    double setpoint_temperature = 0.0F,
+                                    double remaining_hold = 0.0F,
+                                    double total_hold = 0.0F,
+                                    bool at_target = false) -> InputIt {
         int res = 0;
         if (setpoint_temperature == 0.0F) {
-            res = snprintf(&*buf, (limit - buf), "M105 T:none C:%0.2f OK\n",
-                           static_cast<float>(current_temperature));
+            // Active setpoint response
+            res = snprintf(
+                &*buf, (limit - buf),
+                "M105 T:none C:%0.2f H:none Total_H:none At_target?:0 OK\n",
+                static_cast<float>(current_temperature));
         } else {
-            res = snprintf(&*buf, (limit - buf), "M105 T:%0.2f C:%0.2f OK\n",
-                           static_cast<float>(setpoint_temperature),
-                           static_cast<float>(current_temperature));
+            // No active setpoint response
+            res = snprintf(
+                &*buf, (limit - buf),
+                "M105 T:%0.2f C:%0.2f H:%0.2f Total_H:%0.2f At_target?:%i OK\n",
+                static_cast<float>(setpoint_temperature),
+                static_cast<float>(current_temperature),
+                static_cast<float>(remaining_hold),
+                static_cast<float>(total_hold), at_target ? 1 : 0);
         }
         if (res <= 0) {
             return buf;
@@ -791,7 +802,7 @@ struct GetLidStatus {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
     static auto write_response_into(InputIt buf, InputLimit limit,
-                                    motor_util::LidStepper::Status lid,
+                                    motor_util::LidStepper::Position lid,
                                     motor_util::SealStepper::Status seal)
         -> InputIt {
         int res = 0;
@@ -1364,6 +1375,64 @@ struct GetOffsetConstants {
             return buf;
         }
         return buf + res;
+    }
+};
+
+/**
+ * @brief Uses M126, same as gen 1 thermocycler. Opens the lid.
+ *
+ */
+struct OpenLid {
+    using ParseResult = std::optional<OpenLid>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '6'};
+    static constexpr const char* response = "M126 OK\n";
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(OpenLid()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+/**
+ * @brief Uses M127, same as gen 1 thermocycler. Closes the lid.
+ *
+ */
+struct CloseLid {
+    using ParseResult = std::optional<CloseLid>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '7'};
+    static constexpr const char* response = "M127 OK\n";
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(CloseLid()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
     }
 };
 

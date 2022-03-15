@@ -82,14 +82,16 @@ def get_thermal_power(ser: serial.Serial) -> Tuple[float, float, float, float, f
     print(res)
     return left, center, right, heater, fans
 
-_PLATE_TEMP_RE = re.compile('^M105 T:(?P<target>.+) C:(?P<temp>.+) OK\n')
+_PLATE_TEMP_RE = re.compile('^M105 T:(?P<target>.+) C:(?P<temp>.+) H:(?P<hold>.+) Total_H:(?P<total_hold>.+) At_target\?:(?P<at_target>.+) OK\n')
 # JUST gets the base temperature of the plate
-def get_plate_temperature(ser: serial.Serial) -> float:
+def get_plate_temperature(ser: serial.Serial, debug_print = False) -> float:
     ser.write(b'M105\n')
     res = ser.readline()
     guard_error(res, b'M105')
     res_s = res.decode()
     match = re.match(_PLATE_TEMP_RE, res_s)
+    if debug_print:
+        print(res)
     return float(match.group('temp'))
 
 # Sets peltier PWM as a percentage. Be careful!!!!!
@@ -162,9 +164,9 @@ def set_heater_pid(p: float, i: float, d: float, ser: serial.Serial):
     print(res)
 
 # Sets the plate target as a temperature in celsius
-def set_plate_temperature(temperature: float, ser: serial.Serial):
-    print(f'Setting plate temperature target to {temperature}C')
-    ser.write(f'M104 S{temperature}\n'.encode())
+def set_plate_temperature(temperature: float, ser: serial.Serial, hold_time: float = 0):
+    print(f'Setting plate temperature target to {temperature}C and hold time to {hold_time} sec')
+    ser.write(f'M104 S{temperature} H{hold_time}\n'.encode())
     res = ser.readline()
     guard_error(res, b'M104 OK')
     print(res)
@@ -283,10 +285,10 @@ def open_lid(ser: serial.Serial):
         print('Lid already open')
         return
     print('Opening lid')
-    set_solenoid(True, ser)
-    move_lid_angle(120, False, ser)
-    move_lid_angle(3, True, ser)
-    set_solenoid(False, ser)
+    ser.write('M126\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M126 OK\n')
+    print(res)
 
 # Function to fully close the lid
 def close_lid(ser: serial.Serial):
@@ -295,8 +297,10 @@ def close_lid(ser: serial.Serial):
         print('Lid already closed')
         return
     print('Closing lid')
-    move_lid_angle(-120, False, ser)
-    move_lid_angle(-3, True, ser)
+    ser.write('M127\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M127 OK\n')
+    print(res)
     
 # UTILITIES FOR STEP RESPONSE
 
