@@ -63,6 +63,7 @@ const char* const SYSTEM_LED_I2C_NOT_READY =
 const char* const SYSTEM_LED_TRANSMIT_ERROR =
     "ERR304:system:LED I2C transmission or FreeRTOS notification passing "
     "failed\n";
+const char* const SYSTEM_FLASH_ERROR = "ERR305:system:flash write failed\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -112,6 +113,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
         HANDLE_CASE(SYSTEM_LED_I2C_NOT_READY);
         HANDLE_CASE(SYSTEM_LED_TRANSMIT_ERROR);
+        HANDLE_CASE(SYSTEM_FLASH_ERROR);
     }
     return UNKNOWN_ERROR;
 }
