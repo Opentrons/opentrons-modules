@@ -420,6 +420,8 @@ class HeaterTask {
         if (msg.c_set) {
             _offset_constants.c = msg.const_c;
         }
+        _offset_constants.flag =
+            static_cast<uint64_t>(flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM);
 
         if (!_flash.template set_offset_constants(_offset_constants, policy)) {
             // Could not write to the flash.
