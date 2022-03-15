@@ -4,6 +4,8 @@
 
 #include "temp-deck.h"
 
+static bool _s_is_testing_fan = false;
+
 PID myPID(
   &CURRENT_TEMPERATURE,
   &TEMPERATURE_SWING,
@@ -117,6 +119,9 @@ void turn_off_target() {
 /////////////////////////////////
 
 void set_fan_power(float percentage){
+  if (_s_is_testing_fan) {
+    return;
+  }
   percentage = constrain(percentage, 0.0, 1.0);
   if (is_v3_v4_fan) {
     fan_on_time = percentage * MAX_FAN_OFF_TIME;
@@ -125,6 +130,11 @@ void set_fan_power(float percentage){
   else {
     analogWrite(PIN_FAN, int(percentage * 255.0));
   }
+}
+
+void set_fan_power_testing(float percentage) {
+  percentage = constrain(percentage, 0.0, 1.0);
+  analogWrite(PIN_FAN, int(percentage * 255.0));
 }
 
 void fan_v3_v4_on() {
@@ -373,6 +383,19 @@ void read_gcode(){
           if (gcode.read_number('S')) {
             set_target_temperature(gcode.parsed_number);
             MASTER_SET_A_TARGET = true;
+          } else if (gcode.read_number('F')) {
+            if (gcode.parsed_number < 0) {
+              if (_s_is_testing_fan) {
+                gcode.print_warning(F("Re-enabling automatic fan control"));
+              }
+              _s_is_testing_fan = false;
+            } else {
+              if (!_s_is_testing_fan) {
+                gcode.print_warning(F("Disabling automatic fan control"));
+              }
+              _s_is_testing_fan = true;
+              set_fan_power_testing(gcode.parsed_number / 100.f);
+            }
           }
           break;
         case GCODE_DISENGAGE:
