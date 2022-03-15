@@ -12,6 +12,8 @@
 constexpr double _valid_temp = 25.0;
 constexpr int _shorted_adc = 0;
 constexpr int _disconnected_adc = 0x5DC0;
+constexpr uint32_t TIME_DELTA = thermal_plate_task::ThermalPlateTask<
+    TestMessageQueue>::CONTROL_PERIOD_TICKS;
 
 static auto _converter = thermistor_conversion::Conversion<lookups::KS103J2G>(
     thermal_plate_task::ThermalPlateTask<
@@ -21,6 +23,7 @@ static auto _converter = thermistor_conversion::Conversion<lookups::KS103J2G>(
 using ErrorList = std::list<errors::ErrorCode>;
 
 SCENARIO("thermal plate task message passing") {
+    uint32_t timestamp = TIME_DELTA;
     GIVEN("a thermal plate task with valid temps") {
         auto tasks = TaskBuilder::build();
         auto valid_adc = _converter.backconvert(_valid_temp);
@@ -31,7 +34,9 @@ SCENARIO("thermal plate task message passing") {
                                                    .front_left = valid_adc,
                                                    .back_right = valid_adc,
                                                    .back_center = valid_adc,
-                                                   .back_left = valid_adc};
+                                                   .back_left = valid_adc,
+                                                   .timestamp_ms = timestamp};
+        timestamp += TIME_DELTA;
         tasks->get_thermal_plate_queue().backing_deque.push_back(
             messages::ThermalPlateMessage(read_message));
         tasks->run_thermal_plate_task();
@@ -102,6 +107,8 @@ SCENARIO("thermal plate task message passing") {
                 REQUIRE(tasks->get_thermal_plate_policy()._fan_power == 0.0F);
                 AND_WHEN("the heatsink is an unsafe temperature") {
                     read_message.heat_sink = _converter.backconvert(80.0F);
+                    read_message.timestamp_ms = timestamp;
+                    timestamp += TIME_DELTA;
                     tasks->get_thermal_plate_queue().backing_deque.push_back(
                         messages::ThermalPlateMessage(read_message));
                     tasks->run_thermal_plate_task();
@@ -155,6 +162,8 @@ SCENARIO("thermal plate task message passing") {
             tasks->get_host_comms_queue().backing_deque.clear();
             tasks->run_thermal_plate_task();
             // Send temperatures to refresh calculations
+            read_message.timestamp_ms = timestamp;
+            timestamp += TIME_DELTA;
             tasks->get_thermal_plate_queue().backing_deque.push_back(
                 messages::ThermalPlateMessage(read_message));
             tasks->run_thermal_plate_task();
@@ -525,6 +534,8 @@ SCENARIO("thermal plate task message passing") {
                 AND_WHEN("sending updated temperatures below target") {
                     // Flush out the system task queue, which has old messages
                     tasks->get_system_queue().backing_deque.clear();
+                    read_message.timestamp_ms = timestamp;
+                    timestamp += TIME_DELTA;
                     tasks->get_thermal_plate_queue().backing_deque.push_back(
                         messages::ThermalPlateMessage(read_message));
                     tasks->run_thermal_plate_task();
@@ -669,7 +680,9 @@ SCENARIO("thermal plate task message passing") {
                                                    .front_left = _shorted_adc,
                                                    .back_right = _shorted_adc,
                                                    .back_center = _shorted_adc,
-                                                   .back_left = _shorted_adc};
+                                                   .back_left = _shorted_adc,
+                                                   .timestamp_ms = timestamp};
+        timestamp += TIME_DELTA;
         // Order of errors doesn't care, so we use a list
         ErrorList errors = {
             errors::ErrorCode::THERMISTOR_HEATSINK_SHORT,
@@ -837,7 +850,9 @@ SCENARIO("thermal plate task message passing") {
             .front_left = _disconnected_adc,
             .back_right = _disconnected_adc,
             .back_center = _disconnected_adc,
-            .back_left = _disconnected_adc};
+            .back_left = _disconnected_adc,
+            .timestamp_ms = timestamp};
+        timestamp += TIME_DELTA;
         // Order of errors doesn't care, so we use a list
         ErrorList errors = {
             errors::ErrorCode::THERMISTOR_HEATSINK_DISCONNECTED,

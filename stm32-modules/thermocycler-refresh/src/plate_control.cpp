@@ -15,7 +15,7 @@
 
 using namespace plate_control;
 
-auto PlateControl::update_control() -> UpdateRet {
+auto PlateControl::update_control(Seconds time) -> UpdateRet {
     PlateControlVals values = {0.0F};
     switch (_status) {
         case PlateStatus::INITIAL_HEAT:
@@ -23,9 +23,9 @@ auto PlateControl::update_control() -> UpdateRet {
             if (temp_within_setpoint()) {
                 _status = PlateStatus::OVERSHOOT;
             } else {
-                update_ramp(_left);
-                update_ramp(_right);
-                update_ramp(_center);
+                update_ramp(_left, time);
+                update_ramp(_right, time);
+                update_ramp(_center, time);
             }
             break;
         case PlateStatus::OVERSHOOT:
@@ -39,15 +39,15 @@ auto PlateControl::update_control() -> UpdateRet {
             break;
     }
 
-    values.left_power = update_pid(_left);
-    values.right_power = update_pid(_right);
-    values.center_power = update_pid(_center);
+    values.left_power = update_pid(_left, time);
+    values.right_power = update_pid(_right, time);
+    values.center_power = update_pid(_center, time);
 
-    // Hold time decreases whenever temp has reached the
+    // Hold time decreases whenever temp has reached the target
     if (_status == PlateStatus::OVERSHOOT ||
         _status == PlateStatus::STEADY_STATE) {
-        _remaining_hold_time = std::max(_remaining_hold_time - _update_rate,
-                                        static_cast<double>(0.0F));
+        _remaining_hold_time =
+            std::max(_remaining_hold_time - time, static_cast<double>(0.0F));
     }
 
     // Caller should check whether fan is manual after this function runs
@@ -59,7 +59,7 @@ auto PlateControl::update_control() -> UpdateRet {
         }
     }
     if (!_fan.manual_control) {
-        values.fan_power = update_fan();
+        values.fan_power = update_fan(time);
     }
 
     return UpdateRet(values);
@@ -97,24 +97,27 @@ auto PlateControl::set_new_target(double setpoint, double hold_time,
     return temp * IDLE_FAN_POWER_SLOPE;
 }
 
-auto PlateControl::update_ramp(thermal_general::Peltier &peltier) -> void {
+auto PlateControl::update_ramp(thermal_general::Peltier &peltier, Seconds time)
+    -> void {
     if (_ramp_rate == RAMP_INFINITE) {
         peltier.temp_target = _setpoint;
     }
     if (peltier.temp_target < _setpoint) {
         peltier.temp_target =
-            std::min(peltier.temp_target + _ramp_rate, _setpoint);
+            std::min(peltier.temp_target + (_ramp_rate * time), _setpoint);
     } else if (peltier.temp_target > _setpoint) {
         peltier.temp_target =
-            std::max(peltier.temp_target - _ramp_rate, _setpoint);
+            std::max(peltier.temp_target - (_ramp_rate * time), _setpoint);
     }
 }
 
-auto PlateControl::update_pid(thermal_general::Peltier &peltier) -> double {
-    return peltier.pid.compute(peltier.temp_target - peltier.current_temp());
+auto PlateControl::update_pid(thermal_general::Peltier &peltier, Seconds time)
+    -> double {
+    return peltier.pid.compute(peltier.temp_target - peltier.current_temp(),
+                               time);
 }
 
-auto PlateControl::update_fan() -> double {
+auto PlateControl::update_fan(Seconds time) -> double {
     // First check is simple... if heatsink is over 75º we have to
     // crank the fans hard.
     if (_fan.current_temp() > IDLE_FAN_DANGER_THRESHOLD) {
@@ -137,7 +140,7 @@ auto PlateControl::update_fan() -> double {
             }
             // Power is clamped in range [0.35,0.7]
             auto power =
-                _fan.pid.compute(_fan.current_temp() - _fan.temp_target);
+                _fan.pid.compute(_fan.current_temp() - _fan.temp_target, time);
             return std::clamp(power, FAN_POWER_LIMITS_COLD.first,
                               FAN_POWER_LIMITS_COLD.second);
         }
@@ -158,7 +161,7 @@ auto PlateControl::update_fan() -> double {
         _fan.temp_target = threshold;
         _fan.pid.arm_integrator_reset(_fan.current_temp() - _fan.temp_target);
     }
-    auto power = _fan.pid.compute(_fan.current_temp() - _fan.temp_target);
+    auto power = _fan.pid.compute(_fan.current_temp() - _fan.temp_target, time);
     if (target_zone == TemperatureZone::HOT) {
         return std::clamp(power, FAN_POWER_LIMITS_HOT.first,
                           FAN_POWER_LIMITS_HOT.second);

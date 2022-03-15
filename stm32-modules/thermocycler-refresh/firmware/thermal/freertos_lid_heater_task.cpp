@@ -60,6 +60,8 @@ static void run(void *param) {
  * the message sent by updating its control loop.
  */
 static void run_thermistor_task(void *param) {
+    static_assert(configTICK_RATE_HZ == 1000,
+                  "FreeRTOS tickrate must be at 1000 Hz");
     static_cast<void>(param);
     thermal_hardware_setup();
     ADS1115::ADC adc(_adc_address, ADC2_ITR);
@@ -77,6 +79,7 @@ static void run_thermistor_task(void *param) {
         } else {
             readings.lid_temp = std::get<uint16_t>(result);
         }
+        readings.timestamp_ms = xTaskGetTickCount();
         auto send_ret = _main_task.get_message_queue().try_send(readings);
         static_cast<void>(
             send_ret);  // Not much we can do if messages won't send

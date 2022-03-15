@@ -103,6 +103,8 @@ static void run(void *param) {
  * the message sent by updating its control loop.
  */
 static void run_thermistor_task(void *param) {
+    static_assert(configTICK_RATE_HZ == 1000,
+                  "FreeRTOS tickrate must be at 1000 Hz");
     static_cast<void>(param);
     thermal_hardware_setup();
     _adc[ADC_FRONT].initialize();
@@ -129,6 +131,7 @@ static void run_thermistor_task(void *param) {
             _adc_map[thermal_general::ThermistorID::THERM_BACK_CENTER]);
         readings.heat_sink = read_thermistor(
             _adc_map[thermal_general::ThermistorID::THERM_HEATSINK]);
+        readings.timestamp_ms = xTaskGetTickCount();
 
         auto send_ret = _main_task.get_message_queue().try_send(readings);
         static_cast<void>(
