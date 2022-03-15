@@ -88,6 +88,7 @@ class ThermalPlateTask {
     using Queue = QueueImpl<Message>;
     using Milliseconds = uint32_t;
     using Seconds = double;
+    static constexpr const double MILLISECONDS_PER_SECOND = 1000.0;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 50;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 10.0;
     static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
@@ -289,9 +290,9 @@ class ThermalPlateTask {
         }
 
         if (_state.system_status == State::CONTROLLING) {
-            update_control(
-                policy,
-                static_cast<double>(current_time - _last_update) / 1000.0);
+            update_control(policy,
+                           static_cast<double>(current_time - _last_update) /
+                               MILLISECONDS_PER_SECOND);
             send_current_state();
         } else if (_state.system_status == State::IDLE) {
             send_current_state();

@@ -60,6 +60,7 @@ static void run(void *param) {
  * the message sent by updating its control loop.
  */
 static void run_thermistor_task(void *param) {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     static_assert(configTICK_RATE_HZ == 1000,
                   "FreeRTOS tickrate must be at 1000 Hz");
     static_cast<void>(param);
