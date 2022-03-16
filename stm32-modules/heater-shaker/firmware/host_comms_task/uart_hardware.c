@@ -11,7 +11,7 @@ void UART_Init(UART_HandleTypeDef *huart)
 
   huart->Instance        = USARTx;
 
-  huart->Init.BaudRate   = 9600;
+  huart->Init.BaudRate   = 115200; //to match default STM32CubeIDE VCP setting
   huart->Init.WordLength = UART_WORDLENGTH_8B;
   huart->Init.StopBits   = UART_STOPBITS_1;
   huart->Init.Parity     = UART_PARITY_NONE;
