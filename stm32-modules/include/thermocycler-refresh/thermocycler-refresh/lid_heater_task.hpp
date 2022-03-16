@@ -4,6 +4,7 @@
 #pragma once
 
 #include <algorithm>
+#include <chrono>
 #include <concepts>
 #include <cstddef>
 #include <variant>
@@ -61,8 +62,8 @@ requires MessageQueue<QueueImpl<Message>, Message>
 class LidHeaterTask {
   public:
     using Queue = QueueImpl<Message>;
-    using Milliseconds = uint32_t;
-    static constexpr const double MILLISECONDS_PER_SECOND = 1000.0;
+    using Milliseconds = std::chrono::milliseconds;
+    using Seconds = std::chrono::duration<double, std::chrono::seconds::period>;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 100;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 10.0;
     static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
@@ -151,7 +152,7 @@ class LidHeaterTask {
     auto visit_message(const messages::LidTempReadComplete& msg, Policy& policy)
         -> void {
         auto old_error_bitmap = _state.error_bitmap;
-        Milliseconds current_time = msg.timestamp_ms;
+        auto current_time = Milliseconds(msg.timestamp_ms);
         handle_temperature_conversion(msg.lid_temp, _thermistor);
         if (old_error_bitmap != _state.error_bitmap) {
             if (_state.error_bitmap != 0) {
@@ -166,11 +167,10 @@ class LidHeaterTask {
 
         // If we're in a controlling state, we now update the heater output
         if (_state.system_status == State::CONTROLLING) {
-            auto ret = policy.set_heater_power(
-                _pid.compute(_setpoint_c - _thermistor.temp_c,
-                             // Convert millisecond time to seconds
-                             static_cast<double>(current_time - _last_update) /
-                                 MILLISECONDS_PER_SECOND));
+            auto ret = policy.set_heater_power(_pid.compute(
+                _setpoint_c - _thermistor.temp_c,
+                std::chrono::duration_cast<Seconds>(current_time - _last_update)
+                    .count()));
             if (!ret) {
                 policy.set_heater_power(0.0F);
                 _state.system_status = State::ERROR;

@@ -4,6 +4,7 @@
 #pragma once
 
 #include <algorithm>
+#include <chrono>
 #include <concepts>
 #include <cstddef>
 #include <tuple>
@@ -86,9 +87,8 @@ requires MessageQueue<QueueImpl<Message>, Message>
 class ThermalPlateTask {
   public:
     using Queue = QueueImpl<Message>;
-    using Milliseconds = uint32_t;
-    using Seconds = double;
-    static constexpr const double MILLISECONDS_PER_SECOND = 1000.0;
+    using Milliseconds = std::chrono::milliseconds;
+    using Seconds = std::chrono::duration<double, std::chrono::seconds::period>;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 50;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 10.0;
     static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
@@ -258,7 +258,7 @@ class ThermalPlateTask {
     auto visit_message(const messages::ThermalPlateTempReadComplete& msg,
                        Policy& policy) -> void {
         auto old_error_bitmap = _state.error_bitmap;
-        Milliseconds current_time = msg.timestamp_ms;
+        auto current_time = Milliseconds(msg.timestamp_ms);
 
         // Peltier temperatures are implicitly updated by updating the values
         // in the thermistors
@@ -290,9 +290,8 @@ class ThermalPlateTask {
         }
 
         if (_state.system_status == State::CONTROLLING) {
-            update_control(policy,
-                           static_cast<double>(current_time - _last_update) /
-                               MILLISECONDS_PER_SECOND);
+            update_control(policy, std::chrono::duration_cast<Seconds>(
+                                       current_time - _last_update));
             send_current_state();
         } else if (_state.system_status == State::IDLE) {
             send_current_state();
@@ -741,7 +740,7 @@ class ThermalPlateTask {
     template <ThermalPlateExecutionPolicy Policy>
     auto update_control(Policy& policy, Seconds elapsed_time) -> bool {
         policy.set_enabled(true);
-        auto values = _plate_control.update_control(elapsed_time);
+        auto values = _plate_control.update_control(elapsed_time.count());
         auto ret = values.has_value();
         if (ret) {
             ret = set_peltier_power(_peltier_left, values.value().left_power,
