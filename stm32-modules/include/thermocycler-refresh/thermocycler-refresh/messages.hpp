@@ -91,10 +91,12 @@ struct ThermalPlateTempReadComplete {
     uint16_t back_right;
     uint16_t back_center;
     uint16_t back_left;
+    uint32_t timestamp_ms;
 };
 
 struct LidTempReadComplete {
     uint16_t lid_temp;
+    uint32_t timestamp_ms;
 };
 
 struct GetLidTemperatureDebugMessage {

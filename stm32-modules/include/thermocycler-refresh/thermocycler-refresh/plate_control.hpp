@@ -71,18 +71,12 @@ class PlateControl {
      * @param[in] right Right peltier reference
      * @param[in] center Center peltier reference
      * @param[in] fan Fan control reference
-     * @param[in] update_rate Expected number of seconds between each call to
-     * \c update_control()
      */
     PlateControl(thermal_general::Peltier &left,
                  thermal_general::Peltier &right,
                  thermal_general::Peltier &center,
-                 thermal_general::HeatsinkFan &fan, Seconds update_rate)
-        : _left(left),
-          _right(right),
-          _center(center),
-          _fan(fan),
-          _update_rate(update_rate) {}
+                 thermal_general::HeatsinkFan &fan)
+        : _left(left), _right(right), _center(center), _fan(fan) {}
 
     /**
      * @brief Updates the power settings for the peltiers fans. The current
@@ -93,10 +87,11 @@ class PlateControl {
      * \c manual_control variable in the fan handle. This function will set the
      * flag to \c false if the fan temperature exceeds a safety thershold.
      * @pre Update the current temperature of each thermistor for each peltier
-     * @param setpoint The setpoint to drive the peltiers towards
+     * @param time The amount of time that has elapsed since the function was
+     * last called, in seconds
      * @return A set of updated power outputs, or nothing if an error occurs
      */
-    auto update_control() -> UpdateRet;
+    auto update_control(Seconds time) -> UpdateRet;
     /**
      * @brief Set a new target temperature, with configurable ramp rate
      * and hold times
@@ -152,19 +147,22 @@ class PlateControl {
     /**
      * @brief Apply a ramp to the target temperature of an element.
      * @param[in] peltier The peltier to ramp target temperature of
+     * @param[in] time The time that has passed since the last update
      */
-    auto update_ramp(thermal_general::Peltier &peltier) -> void;
+    auto update_ramp(thermal_general::Peltier &peltier, Seconds time) -> void;
     /**
      * @brief Update the PID control of a single peltier
      * @param[in] peltier The peltier to update
+     * @param[in] time The time that has passed since the last update
      * @return The new power value for the element
      */
-    auto update_pid(thermal_general::Peltier &peltier) -> double;
+    auto update_pid(thermal_general::Peltier &peltier, Seconds time) -> double;
     /**
      * @brief Update the control of the heatsink fan during active control
+     * @param[in] time The time that has passed since the last update
      * @return The new power value for the fan
      */
-    auto update_fan() -> double;
+    auto update_fan(Seconds time) -> double;
     /**
      * @brief Reset a peltier for a new setpoint. Sets the target
      * temperature to the current average plate temperature and
@@ -186,8 +184,6 @@ class PlateControl {
     thermal_general::Peltier &_right;
     thermal_general::Peltier &_center;
     thermal_general::HeatsinkFan &_fan;
-    // This is the update rate in seconds/tick
-    const Seconds _update_rate;
 
     double _setpoint = 0.0F;
     double _ramp_rate = 0.0F;
