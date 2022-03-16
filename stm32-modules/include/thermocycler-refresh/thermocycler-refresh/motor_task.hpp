@@ -319,8 +319,10 @@ class MotorTask {
             }
             _seal_stepper_state.status = SealStepperState::Status::IDLE;
             if (_seal_stepper_state.response_id != INVALID_ID) {
-                auto response = messages::AcknowledgePrevious{
+                auto response = messages::SealStepperDebugResponse{
                     .responding_to_id = _seal_stepper_state.response_id,
+                    .steps_taken =
+                        static_cast<long int>(_seal_profile.current_distance()),
                     .with_error = with_error};
                 static_cast<void>(
                     _task_registry->comms->get_message_queue().try_send(

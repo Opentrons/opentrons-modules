@@ -160,6 +160,12 @@ struct SealStepperDebugMessage {
     long int steps;
 };
 
+struct SealStepperDebugResponse {
+    uint32_t responding_to_id;
+    long int steps_taken;
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
+};
+
 struct SealStepperComplete {
     enum class CompletionReason {
         ERROR,  // There was an error flag
@@ -345,14 +351,13 @@ using SystemMessage =
                    SetSerialNumberMessage, GetSystemInfoMessage,
                    UpdateUIMessage, SetLedMode, UpdateTaskErrorState,
                    UpdatePlateState>;
-using HostCommsMessage =
-    ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
-                   ErrorMessage, ForceUSBDisconnectMessage,
-                   GetSystemInfoResponse, GetLidTemperatureDebugResponse,
-                   GetPlateTemperatureDebugResponse, GetPlateTempResponse,
-                   GetLidTempResponse, GetSealDriveStatusResponse,
-                   GetLidStatusResponse, GetPlatePowerResponse,
-                   GetLidPowerResponse, GetOffsetConstantsResponse>;
+using HostCommsMessage = ::std::variant<
+    std::monostate, IncomingMessageFromHost, AcknowledgePrevious, ErrorMessage,
+    ForceUSBDisconnectMessage, GetSystemInfoResponse,
+    GetLidTemperatureDebugResponse, GetPlateTemperatureDebugResponse,
+    GetPlateTempResponse, GetLidTempResponse, GetSealDriveStatusResponse,
+    GetLidStatusResponse, GetPlatePowerResponse, GetLidPowerResponse,
+    GetOffsetConstantsResponse, SealStepperDebugResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,

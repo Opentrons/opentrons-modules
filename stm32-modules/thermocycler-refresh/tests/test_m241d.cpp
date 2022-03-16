@@ -1,15 +1,18 @@
 #include "catch2/catch.hpp"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
 #include "thermocycler-refresh/gcodes.hpp"
+#pragma GCC diagnostic pop
 
 SCENARIO("gcode m241.d works", "[gcode][parse][m241d]") {
     GIVEN("a response buffer large enough for the formatted response") {
         std::string buffer(64, 'c');
         WHEN("filling response") {
             auto written = gcode::ActuateSealStepperDebug::write_response_into(
-                buffer.begin(), buffer.end());
+                buffer.begin(), buffer.end(), -1000);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::StartsWith("M241.D OK\n"));
+                REQUIRE_THAT(
+                    buffer, Catch::Matchers::StartsWith("M241.D S:-1000 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
@@ -18,9 +21,10 @@ SCENARIO("gcode m241.d works", "[gcode][parse][m241d]") {
         std::string buffer(16, 'c');
         WHEN("filling response") {
             auto written = gcode::ActuateSealStepperDebug::write_response_into(
-                buffer.begin(), buffer.begin() + 8);
+                buffer.begin(), buffer.begin() + 7, -1000);
             THEN("the response should write only up to the available space") {
-                std::string response = "M241.D Occcccccc";
+                std::string response = "M241.Dcccccccccc";
+                response.at(6) = '\0';
                 REQUIRE_THAT(buffer, Catch::Matchers::Equals(response));
                 REQUIRE(written != buffer.begin());
             }

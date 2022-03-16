@@ -179,11 +179,12 @@ SCENARIO("motor task message passing") {
                         !tasks->get_host_comms_queue().backing_deque.empty());
                     auto ack =
                         tasks->get_host_comms_queue().backing_deque.front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            ack));
-                    auto ack_msg = std::get<messages::AcknowledgePrevious>(ack);
+                    REQUIRE(std::holds_alternative<
+                            messages::SealStepperDebugResponse>(ack));
+                    auto ack_msg =
+                        std::get<messages::SealStepperDebugResponse>(ack);
                     REQUIRE(ack_msg.responding_to_id == 123);
+                    REQUIRE(ack_msg.steps_taken == 0);
                     REQUIRE(ack_msg.with_error ==
                             errors::ErrorCode::SEAL_MOTOR_STALL);
                 }
@@ -202,11 +203,12 @@ SCENARIO("motor task message passing") {
                         !tasks->get_host_comms_queue().backing_deque.empty());
                     auto ack =
                         tasks->get_host_comms_queue().backing_deque.front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            ack));
-                    auto ack_msg = std::get<messages::AcknowledgePrevious>(ack);
+                    REQUIRE(std::holds_alternative<
+                            messages::SealStepperDebugResponse>(ack));
+                    auto ack_msg =
+                        std::get<messages::SealStepperDebugResponse>(ack);
                     REQUIRE(ack_msg.responding_to_id == 123);
+                    REQUIRE(ack_msg.steps_taken == 0);
                     REQUIRE(ack_msg.with_error ==
                             errors::ErrorCode::SEAL_MOTOR_FAULT);
                 }
@@ -258,10 +260,11 @@ SCENARIO("motor task message passing") {
                         auto ack =
                             tasks->get_host_comms_queue().backing_deque.front();
                         REQUIRE(std::holds_alternative<
-                                messages::AcknowledgePrevious>(ack));
+                                messages::SealStepperDebugResponse>(ack));
                         auto ack_msg =
-                            std::get<messages::AcknowledgePrevious>(ack);
+                            std::get<messages::SealStepperDebugResponse>(ack);
                         REQUIRE(ack_msg.responding_to_id == 123);
+                        REQUIRE(ack_msg.steps_taken == STEPS);
                         REQUIRE(ack_msg.with_error ==
                                 errors::ErrorCode::NO_ERROR);
                     }
