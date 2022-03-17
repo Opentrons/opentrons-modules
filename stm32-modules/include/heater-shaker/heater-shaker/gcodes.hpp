@@ -1120,7 +1120,7 @@ struct GetOffsetConstants {
         std::sized_sentinel_for<InputLimit, InputIt>
     static auto write_response_into(InputIt buf, InputLimit limit, double b,
                                     double c) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M117 B:%0.2f C:%0.2f OK\n",
+        auto res = snprintf(&*buf, (limit - buf), "M117 B:%0.3f C:%0.3f OK\n",
                             static_cast<float>(b), static_cast<float>(c));
         if (res <= 0) {
             return buf;
