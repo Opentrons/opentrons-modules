@@ -252,6 +252,37 @@ SCENARIO("lid heater task message passing") {
                     }
                 }
             }
+            AND_WHEN("sending a DeactivateAll command") {
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                auto tempMessage = messages::DeactivateAllMessage{.id = 321};
+                tasks->get_lid_heater_queue().backing_deque.push_back(
+                    messages::LidHeaterMessage(tempMessage));
+                tasks->run_lid_heater_task();
+                THEN("the task should respond to the message") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(
+                        std::get<messages::DeactivateAllResponse>(
+                            tasks->get_host_comms_queue().backing_deque.front())
+                            .responding_to_id == 321);
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    AND_WHEN("sending a GetLidTemp query") {
+                        auto tempMessage =
+                            messages::GetLidTempMessage{.id = 555};
+                        tasks->get_lid_heater_queue().backing_deque.push_back(
+                            messages::LidHeaterMessage(tempMessage));
+                        tasks->run_lid_heater_task();
+                        THEN("the response should have no setpoint") {
+                            REQUIRE(!tasks->get_host_comms_queue()
+                                         .backing_deque.empty());
+                            REQUIRE(std::get<messages::GetLidTempResponse>(
+                                        tasks->get_host_comms_queue()
+                                            .backing_deque.front())
+                                        .set_temp == 0.0F);
+                        }
+                    }
+                }
+            }
             AND_WHEN(
                 "Sending a SetPIDConstants to configure the lid constants") {
                 tasks->get_host_comms_queue().backing_deque.pop_front();
