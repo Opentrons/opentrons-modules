@@ -38,12 +38,12 @@ static FreeRTOSMessageQueue<thermal_plate_task::Message>
 static auto _main_task =
     thermal_plate_task::ThermalPlateTask(_thermal_plate_queue);
 
-static constexpr uint32_t _stack_size = 500;
+static constexpr uint32_t _stack_size = 512;
 // Stack as a std::array because why not. Quiet lint because, well, we have to
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::array<StackType_t, _stack_size> _stack;
 
-static constexpr uint32_t _thermistor_stack_size = 128;
+static constexpr uint32_t _thermistor_stack_size = 256;
 // Stack as a std::array because why not. Quiet lint because, well, we have to
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::array<StackType_t, _thermistor_stack_size> _thermistor_stack;
