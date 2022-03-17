@@ -1482,25 +1482,29 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 REQUIRE(seal_stepper_msg.steps == 10);
                 AND_WHEN("sending good response back to comms task") {
                     auto response = messages::HostCommsMessage(
-                        messages::AcknowledgePrevious{.responding_to_id =
-                                                          seal_stepper_msg.id});
+                        messages::SealStepperDebugResponse{
+                            .responding_to_id = seal_stepper_msg.id,
+                            .steps_taken = 1000});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
-                        REQUIRE_THAT(
-                            tx_buf, Catch::Matchers::StartsWith("M241.D OK\n"));
-                        REQUIRE(written_secondpass == tx_buf.begin() + 10);
+                        const char* response = "M241.D S:1000 OK\n";
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith(response));
+                        REQUIRE(written_secondpass ==
+                                tx_buf.begin() + strlen(response));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
                 }
                 AND_WHEN("sending invalid ID back to comms task") {
                     auto response = messages::HostCommsMessage(
-                        messages::AcknowledgePrevious{
-                            .responding_to_id = seal_stepper_msg.id + 1});
+                        messages::SealStepperDebugResponse{
+                            .responding_to_id = seal_stepper_msg.id + 1,
+                            .steps_taken = 1000});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =

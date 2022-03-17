@@ -91,10 +91,12 @@ struct ThermalPlateTempReadComplete {
     uint16_t back_right;
     uint16_t back_center;
     uint16_t back_left;
+    uint32_t timestamp_ms;
 };
 
 struct LidTempReadComplete {
     uint16_t lid_temp;
+    uint32_t timestamp_ms;
 };
 
 struct GetLidTemperatureDebugMessage {
@@ -156,6 +158,12 @@ struct LidStepperComplete {};
 struct SealStepperDebugMessage {
     uint32_t id;
     long int steps;
+};
+
+struct SealStepperDebugResponse {
+    uint32_t responding_to_id;
+    long int steps_taken;
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
 struct SealStepperComplete {
@@ -343,14 +351,13 @@ using SystemMessage =
                    SetSerialNumberMessage, GetSystemInfoMessage,
                    UpdateUIMessage, SetLedMode, UpdateTaskErrorState,
                    UpdatePlateState>;
-using HostCommsMessage =
-    ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
-                   ErrorMessage, ForceUSBDisconnectMessage,
-                   GetSystemInfoResponse, GetLidTemperatureDebugResponse,
-                   GetPlateTemperatureDebugResponse, GetPlateTempResponse,
-                   GetLidTempResponse, GetSealDriveStatusResponse,
-                   GetLidStatusResponse, GetPlatePowerResponse,
-                   GetLidPowerResponse, GetOffsetConstantsResponse>;
+using HostCommsMessage = ::std::variant<
+    std::monostate, IncomingMessageFromHost, AcknowledgePrevious, ErrorMessage,
+    ForceUSBDisconnectMessage, GetSystemInfoResponse,
+    GetLidTemperatureDebugResponse, GetPlateTemperatureDebugResponse,
+    GetPlateTempResponse, GetLidTempResponse, GetSealDriveStatusResponse,
+    GetLidStatusResponse, GetPlatePowerResponse, GetLidPowerResponse,
+    GetOffsetConstantsResponse, SealStepperDebugResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,

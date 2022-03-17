@@ -213,7 +213,7 @@ def move_seal_steps(steps: int, ser: serial.Serial):
     print(f'Moving seal by {steps} steps')
     ser.write(f'M241.D {steps}\n'.encode())
     res = ser.readline()
-    guard_error(res, b'M241.D OK')
+    guard_error(res, b'M241.D S:')
     print(res)
 
 class SealParam(Enum):
