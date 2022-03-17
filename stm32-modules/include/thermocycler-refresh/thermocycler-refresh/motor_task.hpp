@@ -129,6 +129,9 @@ struct SealStepperState {
     std::atomic<Status> status;
     // When a movement is complete, respond to this ID
     uint32_t response_id;
+    // Direction of the current movement, since the steps stored in
+    // the movement profile are unsigned
+    bool direction;
 };
 
 static constexpr tmc2130::TMC2130RegisterMap default_tmc_config = {
@@ -169,7 +172,8 @@ class MotorTask {
               .position = motor_util::LidStepper::Position::BETWEEN,
               .response_id = INVALID_ID},
           _seal_stepper_state{.status = SealStepperState::Status::IDLE,
-                              .response_id = INVALID_ID},
+                              .response_id = INVALID_ID,
+                              .direction = true},
           _tmc2130(default_tmc_config),
           // Seal movement profile is populated with mostly dummy values.
           // It is set before every movement so these are irrelevant.
@@ -325,6 +329,9 @@ class MotorTask {
                     .steps_taken =
                         static_cast<long int>(_seal_profile.current_distance()),
                     .with_error = with_error};
+                if (!_seal_stepper_state.direction) {
+                    response.steps_taken *= -1;
+                }
                 static_cast<void>(
                     _task_registry->comms->get_message_queue().try_send(
                         messages::HostCommsMessage(response)));
@@ -520,6 +527,8 @@ class MotorTask {
         _seal_profile = motor_util::MovementProfile(
             policy.MotorTickFrequency, 0, _seal_velocity, _seal_acceleration,
             motor_util::MovementType::FixedDistance, std::abs(steps));
+
+        _seal_stepper_state.direction = steps > 0;
 
         // Steps is signed, so set direction accordingly
         auto ret = policy.tmc2130_set_direction(steps > 0);
