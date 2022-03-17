@@ -11,7 +11,7 @@ SCENARIO("GetOffsetConstants (M117) parser works", "[gcode][parse][m117]") {
             auto written = gcode::GetOffsetConstants::write_response_into(
                 buffer.begin(), buffer.end(), 10.0, 15.0);
             THEN("the response should be written in full") {
-                auto response_str = "M117 B:10.000 C:15.000 OK\n"; 
+                auto response_str = "M117 B:10.000 C:15.000 OK\n";
                 REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(response_str));
                 REQUIRE(written == buffer.begin() + strlen(response_str));
             }
