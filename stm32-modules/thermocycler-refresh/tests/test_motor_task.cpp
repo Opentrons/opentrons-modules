@@ -174,7 +174,9 @@ SCENARIO("motor task message passing") {
                     .reason = SealStepperComplete::CompletionReason::STALL};
                 motor_queue.backing_deque.push_back(stall_msg);
                 tasks->run_motor_task();
-                THEN("the original message is ACK'd with an error") {
+                THEN(
+                    "the original message is ACK'd with a reduced step count "
+                    "and no error") {
                     REQUIRE(
                         !tasks->get_host_comms_queue().backing_deque.empty());
                     auto ack =
@@ -185,8 +187,7 @@ SCENARIO("motor task message passing") {
                         std::get<messages::SealStepperDebugResponse>(ack);
                     REQUIRE(ack_msg.responding_to_id == 123);
                     REQUIRE(ack_msg.steps_taken == 0);
-                    REQUIRE(ack_msg.with_error ==
-                            errors::ErrorCode::SEAL_MOTOR_STALL);
+                    REQUIRE(ack_msg.with_error == errors::ErrorCode::NO_ERROR);
                 }
                 THEN("the seal motor was stopped") {
                     REQUIRE(!motor_policy.seal_moving());

@@ -306,8 +306,9 @@ class MotorTask {
             auto with_error = errors::ErrorCode::NO_ERROR;
             switch (msg.reason) {
                 case SealStepperComplete::CompletionReason::STALL:
-                    // TODO: during some movements a stall is expected
-                    with_error = errors::ErrorCode::SEAL_MOTOR_STALL;
+                    // Don't send an error because a stall is expected in some
+                    // conditions. The number of steps will tell whether this
+                    // stall was too early or not.
                     break;
                 case SealStepperComplete::CompletionReason::ERROR:
                     // TODO clear the error
