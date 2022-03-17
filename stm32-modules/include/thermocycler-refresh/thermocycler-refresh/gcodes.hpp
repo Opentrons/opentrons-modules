@@ -826,7 +826,6 @@ struct ActuateSealStepperDebug {
     using ParseResult = std::optional<ActuateSealStepperDebug>;
     static constexpr auto prefix =
         std::array{'M', '2', '4', '1', '.', 'D', ' '};
-    static constexpr const char* response = "M241.D OK\n";
 
     long distance;
 
@@ -851,8 +850,13 @@ struct ActuateSealStepperDebug {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
-        return write_string_to_iterpair(buf, limit, response);
+    static auto write_response_into(InputIt buf, InputLimit limit, long steps)
+        -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf), "M241.D S:%li OK\n", steps);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
     }
 };
 

@@ -56,9 +56,8 @@ class HostCommsTask {
                  gcode::SetHeaterDebug, gcode::SetLidTemperature,
                  gcode::DeactivateLidHeating, gcode::SetPIDConstants,
                  gcode::SetPlateTemperature, gcode::DeactivatePlate,
-                 gcode::SetFanAutomatic, gcode::ActuateSealStepperDebug,
-                 gcode::SetSealParameter, gcode::SetOffsetConstants,
-                 gcode::OpenLid, gcode::CloseLid>;
+                 gcode::SetFanAutomatic, gcode::SetSealParameter,
+                 gcode::SetOffsetConstants, gcode::OpenLid, gcode::CloseLid>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetLidTempDebugCache = AckCache<8, gcode::GetLidTemperatureDebug>;
     using GetPlateTempDebugCache = AckCache<8, gcode::GetPlateTemperatureDebug>;
@@ -67,6 +66,7 @@ class HostCommsTask {
     using GetSealDriveStatusCache = AckCache<8, gcode::GetSealDriveStatus>;
     using GetLidStatusCache = AckCache<8, gcode::GetLidStatus>;
     using GetOffsetConstantsCache = AckCache<8, gcode::GetOffsetConstants>;
+    using SealStepperDebugCache = AckCache<8, gcode::ActuateSealStepperDebug>;
     // This is a two-stage message since both the Plate and Lid tasks have
     // to respond.
     using GetThermalPowerCache = AckCache<8, gcode::GetThermalPowerDebug,
@@ -96,6 +96,8 @@ class HostCommsTask {
           get_lid_status_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_offset_constants_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          seal_stepper_debug_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_thermal_power_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
@@ -528,6 +530,32 @@ class HostCommsTask {
             cache_entry);
     }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::SealStepperDebugResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry = seal_stepper_debug_cache.remove_if_present(
+            response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    if (response.with_error == errors::ErrorCode::NO_ERROR) {
+                        return cache_element.write_response_into(
+                            tx_into, tx_limit, response.steps_taken);
+                    }
+                    return errors::write_into(tx_into, tx_limit,
+                                              response.with_error);
+                }
+            },
+            cache_entry);
+    }
+
     /**
      * visit_gcode() is a set of member function overloads, each of which is
      * called when we parse the appropriate gcode out of the receive buffer.
@@ -821,7 +849,7 @@ class HostCommsTask {
     auto visit_gcode(const gcode::ActuateSealStepperDebug& gcode,
                      InputIt tx_into, InputLimit tx_limit)
         -> std::pair<bool, InputIt> {
-        auto id = ack_only_cache.add(gcode);
+        auto id = seal_stepper_debug_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
                 false, errors::write_into(tx_into, tx_limit,
@@ -834,7 +862,7 @@ class HostCommsTask {
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            ack_only_cache.remove_if_present(id);
+            seal_stepper_debug_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
 
@@ -1229,6 +1257,7 @@ class HostCommsTask {
     GetSealDriveStatusCache get_seal_drive_status_cache;
     GetLidStatusCache get_lid_status_cache;
     GetOffsetConstantsCache get_offset_constants_cache;
+    SealStepperDebugCache seal_stepper_debug_cache;
     GetThermalPowerCache get_thermal_power_cache;
     bool may_connect_latch = true;
 };
