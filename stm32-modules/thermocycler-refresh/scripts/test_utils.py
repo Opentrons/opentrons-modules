@@ -41,6 +41,13 @@ def guard_error(res: bytes, prefix: bytes=  None):
     if prefix and not res.startswith(prefix):
         raise RuntimeError(f'incorrect response: {res} (expected prefix {prefix})')
 
+# Turn off the plate and the heater!
+def deactivate_all(ser: serial.Serial):
+    print('Deactivating all')
+    ser.write('M18\n'.encode())
+    res = ser.readline()
+    guard_error(res, b'M18 OK')
+    print(res)
 
 _TEMP_RE = re.compile('^M141 T:(?P<target>.+) C:(?P<temp>.+) OK\n')
 def get_lid_temperature(ser: serial.Serial) -> float:

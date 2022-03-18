@@ -311,6 +311,19 @@ class LidHeaterTask {
     }
 
     template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::DeactivateAllMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::DeactivateAllResponse{.responding_to_id = msg.id};
+
+        static_cast<void>(policy.set_heater_power(0.0F));
+        _state.system_status = State::IDLE;
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
     auto visit_message(const messages::SetPIDConstantsMessage& msg,
                        Policy& policy) -> void {
         static_cast<void>(policy);

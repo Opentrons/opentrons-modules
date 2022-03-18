@@ -605,6 +605,38 @@ SCENARIO("thermal plate task message passing") {
                     }
                 }
             }
+            AND_WHEN("sending a DeactivateAll command") {
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                auto tempMessage = messages::DeactivateAllMessage{.id = 321};
+                tasks->get_thermal_plate_queue().backing_deque.push_back(
+                    messages::ThermalPlateMessage(tempMessage));
+                tasks->run_thermal_plate_task();
+                THEN("the task should respond to the message") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(
+                        std::get<messages::DeactivateAllResponse>(
+                            tasks->get_host_comms_queue().backing_deque.front())
+                            .responding_to_id == 321);
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    AND_WHEN("sending a GetPlateTemp query") {
+                        auto tempMessage =
+                            messages::GetPlateTempMessage{.id = 555};
+                        tasks->get_thermal_plate_queue()
+                            .backing_deque.push_back(
+                                messages::ThermalPlateMessage(tempMessage));
+                        tasks->run_thermal_plate_task();
+                        THEN("the response should have no setpoint") {
+                            REQUIRE(!tasks->get_host_comms_queue()
+                                         .backing_deque.empty());
+                            REQUIRE(std::get<messages::GetPlateTempResponse>(
+                                        tasks->get_host_comms_queue()
+                                            .backing_deque.front())
+                                        .set_temp == 0.0F);
+                        }
+                    }
+                }
+            }
             AND_WHEN(
                 "Sending a SetPIDConstants to configure the peltier "
                 "constants") {

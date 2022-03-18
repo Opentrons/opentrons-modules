@@ -346,18 +346,30 @@ struct CloseLidMessage {
 
 struct FrontButtonPressMessage {};
 
+// This is a two-stage message that is first sent to the Plate task,
+// and then the Lid task.
+struct DeactivateAllMessage {
+    uint32_t id;
+};
+
+struct DeactivateAllResponse {
+    uint32_t responding_to_id;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage,
                    UpdateUIMessage, SetLedMode, UpdateTaskErrorState,
                    UpdatePlateState>;
-using HostCommsMessage = ::std::variant<
-    std::monostate, IncomingMessageFromHost, AcknowledgePrevious, ErrorMessage,
-    ForceUSBDisconnectMessage, GetSystemInfoResponse,
-    GetLidTemperatureDebugResponse, GetPlateTemperatureDebugResponse,
-    GetPlateTempResponse, GetLidTempResponse, GetSealDriveStatusResponse,
-    GetLidStatusResponse, GetPlatePowerResponse, GetLidPowerResponse,
-    GetOffsetConstantsResponse, SealStepperDebugResponse>;
+using HostCommsMessage =
+    ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
+                   ErrorMessage, ForceUSBDisconnectMessage,
+                   GetSystemInfoResponse, GetLidTemperatureDebugResponse,
+                   GetPlateTemperatureDebugResponse, GetPlateTempResponse,
+                   GetLidTempResponse, GetSealDriveStatusResponse,
+                   GetLidStatusResponse, GetPlatePowerResponse,
+                   GetLidPowerResponse, GetOffsetConstantsResponse,
+                   SealStepperDebugResponse, DeactivateAllResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
@@ -365,13 +377,13 @@ using ThermalPlateMessage =
                    SetPlateTemperatureMessage, DeactivatePlateMessage,
                    SetPIDConstantsMessage, SetFanAutomaticMessage,
                    GetThermalPowerMessage, SetOffsetConstantsMessage,
-                   GetOffsetConstantsMessage>;
+                   GetOffsetConstantsMessage, DeactivateAllMessage>;
 using LidHeaterMessage =
     ::std::variant<std::monostate, LidTempReadComplete,
                    GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
                    GetLidTempMessage, SetLidTemperatureMessage,
                    DeactivateLidHeatingMessage, SetPIDConstantsMessage,
-                   GetThermalPowerMessage>;
+                   GetThermalPowerMessage, DeactivateAllMessage>;
 using MotorMessage = ::std::variant<
     std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
     LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,
