@@ -40,10 +40,10 @@ using namespace cli_parser;
     exit(1);
 }
 
-std::shared_ptr<sim_driver::SimDriver> cli_parser::get_sim_driver(
-    int num_args, char* args[]) {
+RT cli_parser::get_sim_driver(int num_args, char* args[]) {
     bool use_stdin = false;
     bool use_socket = false;
+    bool realtime = false;
     bool options_specified = num_args > 1;
 
     boost::program_options::options_description desc("Allowed options");
@@ -52,7 +52,9 @@ std::shared_ptr<sim_driver::SimDriver> cli_parser::get_sim_driver(
         "Use stdin to provide G-Codes")("socket",
                                         boost::program_options::value<
                                             std::string>(),
-                                        "Use socket to provide G-Codes");
+                                        "Use socket to provide G-Codes")
+        ("realtime", boost::program_options::bool_switch(&realtime),
+         "Thermal and motor data should run in real time");
 
     boost::program_options::variables_map vm;
     /*
@@ -83,10 +85,12 @@ std::shared_ptr<sim_driver::SimDriver> cli_parser::get_sim_driver(
     }
 
     if (use_stdin) {
-        return std::make_shared<stdin_sim_driver::StdinSimDriver>();
+        return RT(std::make_shared<stdin_sim_driver::StdinSimDriver>(),
+                  realtime);
     } else if (use_socket) {
-        return std::make_shared<socket_sim_driver::SocketSimDriver>(
-            vm["socket"].as<std::string>());
+        return RT(std::make_shared<socket_sim_driver::SocketSimDriver>(
+                      vm["socket"].as<std::string>()),
+                  realtime);
     } else {
         neither_driver_error(desc);
     }

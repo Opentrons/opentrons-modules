@@ -20,6 +20,10 @@ struct SimPeltier {
         power = 0.0F;
         direction = PeltierDirection::PELTIER_HEATING;
     }
+
+    auto signed_power() -> double {
+        return power * (direction == PELTIER_HEATING ? 1.0 : -1.0);
+    }
 };
 
 using namespace at24c0xc_sim_policy;
@@ -32,6 +36,7 @@ struct SimThermalPlatePolicy
     SimPeltier _center = SimPeltier();
     SimPeltier _right = SimPeltier();
     double _fan_power = 0.0F;
+    periodic_data_thread::PeriodicDataThread *_periodic_data;
 
     using GetPeltierT = std::optional<std::reference_wrapper<SimPeltier>>;
     auto get_peltier_from_id(PeltierID peltier) -> GetPeltierT {
@@ -50,7 +55,9 @@ struct SimThermalPlatePolicy
   public:
     using EepromPolicy = SimAT24C0XCPolicy<SimThermalPlateTask::EEPROM_PAGES>;
 
-    SimThermalPlatePolicy() : EepromPolicy() {}
+    SimThermalPlatePolicy(
+        periodic_data_thread::PeriodicDataThread *periodic_data)
+        : EepromPolicy(), _periodic_data(periodic_data) {}
 
     auto set_enabled(bool enabled) -> void {
         _enabled = enabled;
@@ -91,6 +98,14 @@ struct SimThermalPlatePolicy
     }
 
     auto get_fan() -> double { return _fan_power; }
+
+    auto send_power() -> void {
+        _periodic_data->send_message(periodic_data_thread::PeriodicDataMessage(
+            periodic_data_thread::PeltierPower{
+                .left = _left.signed_power(),
+                .center = _center.signed_power(),
+                .right = _right.signed_power()}));
+    }
 };
 
 struct thermal_plate_thread::TaskControlBlock {
@@ -101,21 +116,25 @@ struct thermal_plate_thread::TaskControlBlock {
     SimThermalPlateTask task;
 };
 
-auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
+auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb,
+         periodic_data_thread::PeriodicDataThread *periodic_data) -> void {
     using namespace std::literals::chrono_literals;
-    auto policy = SimThermalPlatePolicy();
+    auto policy = SimThermalPlatePolicy(periodic_data);
     tcb->queue.set_stop_token(st);
     while (!st.stop_requested()) {
         try {
             tcb->task.run_once(policy);
+            policy.send_power();
         } catch (const SimThermalPlateTask::Queue::StopDuringMsgWait sdmw) {
             return;
         }
     }
 }
 
-auto thermal_plate_thread::build()
+auto thermal_plate_thread::build(
+    periodic_data_thread::PeriodicDataThread *periodic_data)
     -> tasks::Task<std::unique_ptr<std::jthread>, SimThermalPlateTask> {
     auto tcb = std::make_shared<TaskControlBlock>();
-    return tasks::Task(std::make_unique<std::jthread>(run, tcb), &tcb->task);
+    return tasks::Task(std::make_unique<std::jthread>(run, tcb, periodic_data),
+                       &tcb->task);
 }
