@@ -206,18 +206,15 @@ auto PeriodicDataThread::run_motor() -> void {
     // Todo!!!
 }
 
-auto run_task(std::stop_token st, std::unique_ptr<PeriodicDataThread>& thread) {
-    return 0;
-}
-
 auto periodic_data_thread::build(bool realtime)
     -> tasks::Task<std::unique_ptr<std::jthread>, PeriodicDataThread> {
     auto thread = std::make_shared<PeriodicDataThread>(realtime);
-    return tasks::Task(std::make_unique<std::jthread>(
-                           [](std::stop_token st,
-                              std::shared_ptr<PeriodicDataThread> _thread) {
-                               _thread->run(st);
-                           },
-                           thread),
+
+    auto lambda = [](std::stop_token st,
+                     std::shared_ptr<PeriodicDataThread> _thread) {
+        _thread->run(st);
+    };
+
+    return tasks::Task(std::make_unique<std::jthread>(lambda, thread),
                        thread.get());
 }
