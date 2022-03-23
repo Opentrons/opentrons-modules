@@ -28,12 +28,12 @@ static FreeRTOSMessageQueue<lid_heater_task::Message>
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _main_task = lid_heater_task::LidHeaterTask(_lid_heater_queue);
 
-static constexpr uint32_t _stack_size = 500;
+static constexpr uint32_t _stack_size = 512;
 // Stack as a std::array because why not. Quiet lint because, well, we have to
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::array<StackType_t, _stack_size> _stack;
 
-static constexpr uint32_t _thermistor_stack_size = 128;
+static constexpr uint32_t _thermistor_stack_size = 256;
 // Stack as a std::array because why not. Quiet lint because, well, we have to
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::array<StackType_t, _thermistor_stack_size> _thermistor_stack;
@@ -60,6 +60,9 @@ static void run(void *param) {
  * the message sent by updating its control loop.
  */
 static void run_thermistor_task(void *param) {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    static_assert(configTICK_RATE_HZ == 1000,
+                  "FreeRTOS tickrate must be at 1000 Hz");
     static_cast<void>(param);
     thermal_hardware_setup();
     ADS1115::ADC adc(_adc_address, ADC2_ITR);
@@ -77,6 +80,7 @@ static void run_thermistor_task(void *param) {
         } else {
             readings.lid_temp = std::get<uint16_t>(result);
         }
+        readings.timestamp_ms = xTaskGetTickCount();
         auto send_ret = _main_task.get_message_queue().try_send(readings);
         static_cast<void>(
             send_ret);  // Not much we can do if messages won't send

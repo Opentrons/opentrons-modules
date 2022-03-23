@@ -9,6 +9,7 @@ add_executable(
   thermal_plate_thread.cpp
   sim_board_revision_hardware.cpp
   motor_thread.cpp
+  periodic_data_thread.cpp
   main.cpp
 )
 

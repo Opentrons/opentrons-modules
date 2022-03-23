@@ -43,8 +43,8 @@ SCENARIO("PlateControl peltier control works") {
                        .pid = PID(1, 0, 0, UPDATE_RATE_SEC, 1.0, -1.0)};
         HeatsinkFan fan{.thermistor = thermistors.at(THERM_HEATSINK),
                         .pid = PID(1, 0, 0, UPDATE_RATE_SEC, 1.0, -1.0)};
-        auto plateControl = plate_control::PlateControl(left, right, center,
-                                                        fan, UPDATE_RATE_SEC);
+        auto plateControl =
+            plate_control::PlateControl(left, right, center, fan);
         THEN("the temperature reads correctly") {
             REQUIRE(plateControl.plate_temp() == ROOM_TEMP);
             REQUIRE(plateControl.setpoint() == 0.0F);
@@ -59,7 +59,7 @@ SCENARIO("PlateControl peltier control works") {
                 REQUIRE(plateControl.get_hold_time().second == 10.0F);
             }
             THEN("updating control should drive peltiers hot") {
-                auto ctrl = plateControl.update_control();
+                auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
                 auto controlValues = ctrl.value();
                 REQUIRE(controlValues.center_power > 0.0F);
@@ -72,7 +72,7 @@ SCENARIO("PlateControl peltier control works") {
                     for (auto &therm : thermistors) {
                         therm.temp_c = temperature;
                     }
-                    auto ctrl = plateControl.update_control();
+                    auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                     REQUIRE(ctrl.has_value());
                     REQUIRE(plateControl.status() ==
                             plate_control::PlateStatus::INITIAL_HEAT);
@@ -82,7 +82,7 @@ SCENARIO("PlateControl peltier control works") {
                     therm.temp_c = temperature;
                 }
 
-                auto ctrl = plateControl.update_control();
+                auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
                 REQUIRE(plateControl.status() !=
                         plate_control::PlateStatus::INITIAL_HEAT);
@@ -93,7 +93,7 @@ SCENARIO("PlateControl peltier control works") {
                 for (auto &therm : thermistors) {
                     therm.temp_c = HOT_TEMP;
                 }
-                static_cast<void>(plateControl.update_control());
+                static_cast<void>(plateControl.update_control(UPDATE_RATE_SEC));
                 THEN("hold time should decrease") {
                     double remaining_hold, total_hold;
                     std::tie(remaining_hold, total_hold) =
@@ -106,7 +106,8 @@ SCENARIO("PlateControl peltier control works") {
                     "control is updated for long enough to exceed the hold "
                     "time") {
                     for (int i = 0; i < (10.0F / UPDATE_RATE_SEC) + 5; ++i) {
-                        static_cast<void>(plateControl.update_control());
+                        static_cast<void>(
+                            plateControl.update_control(UPDATE_RATE_SEC));
                     }
                     THEN("the hold time should not go below zero") {
                         REQUIRE(plateControl.get_hold_time().first == 0.0F);
@@ -119,7 +120,7 @@ SCENARIO("PlateControl peltier control works") {
             plateControl.set_new_target(COLD_TEMP);
             REQUIRE(plateControl.setpoint() == COLD_TEMP);
             THEN("updating control should drive peltiers cold") {
-                auto ctrl = plateControl.update_control();
+                auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
                 auto controlValues = ctrl.value();
                 REQUIRE(controlValues.center_power < 0.0F);
@@ -132,7 +133,7 @@ SCENARIO("PlateControl peltier control works") {
                     for (auto &therm : thermistors) {
                         therm.temp_c = temperature;
                     }
-                    auto ctrl = plateControl.update_control();
+                    auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                     REQUIRE(ctrl.has_value());
                     REQUIRE(plateControl.status() ==
                             plate_control::PlateStatus::INITIAL_COOL);
@@ -142,7 +143,7 @@ SCENARIO("PlateControl peltier control works") {
                     therm.temp_c = temperature;
                 }
 
-                auto ctrl = plateControl.update_control();
+                auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
                 REQUIRE(plateControl.status() !=
                         plate_control::PlateStatus::INITIAL_COOL);
@@ -182,8 +183,8 @@ SCENARIO("PlateControl idle fan control works") {
                        .pid = PID(1, 0, 0, UPDATE_RATE_SEC, 1.0, -1.0)};
         HeatsinkFan fan{.thermistor = thermistors.at(THERM_HEATSINK),
                         .pid = PID(1, 0, 0, UPDATE_RATE_SEC, 1.0, -1.0)};
-        auto plateControl = plate_control::PlateControl(left, right, center,
-                                                        fan, UPDATE_RATE_SEC);
+        auto plateControl =
+            plate_control::PlateControl(left, right, center, fan);
         WHEN("getting fan power for an idle system") {
             WHEN("the heatsink is at room temperature") {
                 auto power = plateControl.fan_idle_power();
@@ -243,15 +244,16 @@ SCENARIO("PlateControl active fan control works") {
                        .pid = PID(1, 0, 0, UPDATE_RATE_SEC, 1.0, -1.0)};
         HeatsinkFan fan{.thermistor = thermistors.at(THERM_HEATSINK),
                         .pid = PID(1, 0, 0, UPDATE_RATE_SEC, 1.0, -1.0)};
-        auto plateControl = plate_control::PlateControl(left, right, center,
-                                                        fan, UPDATE_RATE_SEC);
+        auto plateControl =
+            plate_control::PlateControl(left, right, center, fan);
         GIVEN("a fan in manual mode") {
             fan.manual_control = true;
             WHEN("the setpoint is set to ramp the peltiers down") {
                 plateControl.set_new_target(COLD_TEMP);
                 AND_WHEN("the heatsink is at a reasonable temperature") {
                     THEN("updating control should give fan power of 0") {
-                        auto ctrl = plateControl.update_control();
+                        auto ctrl =
+                            plateControl.update_control(UPDATE_RATE_SEC);
                         REQUIRE(ctrl.has_value());
                         REQUIRE(ctrl.value().fan_power == 0.0F);
                         REQUIRE(fan.manual_control);
@@ -260,7 +262,8 @@ SCENARIO("PlateControl active fan control works") {
                 AND_WHEN("the heatsink is dangerously warm") {
                     fan.thermistor.temp_c = HOT_TEMP;
                     THEN("updating control forces the fan out of manual mode") {
-                        auto ctrl = plateControl.update_control();
+                        auto ctrl =
+                            plateControl.update_control(UPDATE_RATE_SEC);
                         REQUIRE(ctrl.has_value());
                         REQUIRE(ctrl.value().fan_power > 0.0F);
                         REQUIRE(!fan.manual_control);
@@ -270,7 +273,7 @@ SCENARIO("PlateControl active fan control works") {
         }
         WHEN("the setpoint is set to ramp the peltiers down") {
             plateControl.set_new_target(COLD_TEMP);
-            auto ctrl = plateControl.update_control();
+            auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
             REQUIRE(ctrl.has_value());
             THEN("the fan should drive at exactly 0.7") {
                 REQUIRE(ctrl.value().fan_power == 0.7F);
@@ -280,7 +283,7 @@ SCENARIO("PlateControl active fan control works") {
                     therm.temp_c = COLD_TEMP;
                 }
                 fan.thermistor.temp_c = 60.0F;
-                ctrl = plateControl.update_control();
+                ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
                 THEN("the fan is driven between 0.35 and 0.55") {
                     REQUIRE(ctrl.value().fan_power >= 0.35);
@@ -290,7 +293,7 @@ SCENARIO("PlateControl active fan control works") {
         }
         WHEN("the setpoint is set to ramp the peltiers up to a warm temp") {
             plateControl.set_new_target(WARM_TEMP);
-            auto ctrl = plateControl.update_control();
+            auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
             REQUIRE(ctrl.has_value());
             THEN("the fan should drive at exactly 0.15") {
                 REQUIRE(ctrl.value().fan_power == 0.15F);
@@ -302,7 +305,7 @@ SCENARIO("PlateControl active fan control works") {
                     therm.temp_c = WARM_TEMP;
                 }
                 fan.thermistor.temp_c = WARM_TEMP + 2.0F;
-                ctrl = plateControl.update_control();
+                ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
                 THEN("the fan is driven between 0.35 and 0.55") {
                     REQUIRE_THAT(fan.temp_target,
@@ -317,7 +320,7 @@ SCENARIO("PlateControl active fan control works") {
         }
         WHEN("the setpoint is set to ramp the peltiers up to a hot temp") {
             plateControl.set_new_target(HOT_TEMP);
-            auto ctrl = plateControl.update_control();
+            auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
             REQUIRE(ctrl.has_value());
             THEN("the fan should drive at exactly 0.15") {
                 REQUIRE(ctrl.value().fan_power == 0.15F);
@@ -327,7 +330,7 @@ SCENARIO("PlateControl active fan control works") {
                     therm.temp_c = HOT_TEMP;
                 }
                 fan.thermistor.temp_c = 73;
-                ctrl = plateControl.update_control();
+                ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
                 THEN("the fan is driven between 0.30 and 0.55") {
                     REQUIRE_THAT(fan.temp_target,
@@ -342,7 +345,7 @@ SCENARIO("PlateControl active fan control works") {
                     therm.temp_c = HOT_TEMP;
                 }
                 fan.thermistor.temp_c = HOT_TEMP;
-                ctrl = plateControl.update_control();
+                ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
                 THEN("the fan is driven at 0.8") {
                     REQUIRE_THAT(ctrl.value().fan_power,

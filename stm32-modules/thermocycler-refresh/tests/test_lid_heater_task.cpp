@@ -9,12 +9,16 @@ constexpr int _valid_adc = 6360;  // Gives 50C
 constexpr double _valid_temp = 50.0;
 constexpr int _shorted_adc = 0;
 constexpr int _disconnected_adc = 0x5DC0;
+constexpr uint32_t TIME_DELTA =
+    lid_heater_task::LidHeaterTask<TestMessageQueue>::CONTROL_PERIOD_TICKS;
 
 SCENARIO("lid heater task message passing") {
+    uint32_t timestamp = TIME_DELTA;
     GIVEN("a lid heater task with valid temps") {
         auto tasks = TaskBuilder::build();
-        auto read_message =
-            messages::LidTempReadComplete{.lid_temp = _valid_adc};
+        auto read_message = messages::LidTempReadComplete{
+            .lid_temp = _valid_adc, .timestamp_ms = timestamp};
+        timestamp += TIME_DELTA;
         tasks->get_lid_heater_queue().backing_deque.push_back(
             messages::LidHeaterMessage(read_message));
         tasks->run_lid_heater_task();
@@ -204,6 +208,8 @@ SCENARIO("lid heater task message passing") {
                     }
                 }
                 AND_WHEN("sending updated temperatures below target") {
+                    read_message.timestamp_ms = timestamp;
+                    timestamp += TIME_DELTA;
                     tasks->get_lid_heater_queue().backing_deque.push_back(
                         messages::LidHeaterMessage(read_message));
                     tasks->run_lid_heater_task();
@@ -226,6 +232,37 @@ SCENARIO("lid heater task message passing") {
                         !tasks->get_host_comms_queue().backing_deque.empty());
                     REQUIRE(
                         std::get<messages::AcknowledgePrevious>(
+                            tasks->get_host_comms_queue().backing_deque.front())
+                            .responding_to_id == 321);
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    AND_WHEN("sending a GetLidTemp query") {
+                        auto tempMessage =
+                            messages::GetLidTempMessage{.id = 555};
+                        tasks->get_lid_heater_queue().backing_deque.push_back(
+                            messages::LidHeaterMessage(tempMessage));
+                        tasks->run_lid_heater_task();
+                        THEN("the response should have no setpoint") {
+                            REQUIRE(!tasks->get_host_comms_queue()
+                                         .backing_deque.empty());
+                            REQUIRE(std::get<messages::GetLidTempResponse>(
+                                        tasks->get_host_comms_queue()
+                                            .backing_deque.front())
+                                        .set_temp == 0.0F);
+                        }
+                    }
+                }
+            }
+            AND_WHEN("sending a DeactivateAll command") {
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                auto tempMessage = messages::DeactivateAllMessage{.id = 321};
+                tasks->get_lid_heater_queue().backing_deque.push_back(
+                    messages::LidHeaterMessage(tempMessage));
+                tasks->run_lid_heater_task();
+                THEN("the task should respond to the message") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(
+                        std::get<messages::DeactivateAllResponse>(
                             tasks->get_host_comms_queue().backing_deque.front())
                             .responding_to_id == 321);
                     tasks->get_host_comms_queue().backing_deque.pop_front();
@@ -301,8 +338,9 @@ SCENARIO("lid heater task message passing") {
     }
     GIVEN("a heater task with a shorted temp") {
         auto tasks = TaskBuilder::build();
-        auto read_message =
-            messages::LidTempReadComplete{.lid_temp = _shorted_adc};
+        auto read_message = messages::LidTempReadComplete{
+            .lid_temp = _shorted_adc, .timestamp_ms = timestamp};
+        timestamp += TIME_DELTA;
         tasks->get_lid_heater_queue().backing_deque.push_back(
             messages::LidHeaterMessage(read_message));
         tasks->run_lid_heater_task();
@@ -415,8 +453,9 @@ SCENARIO("lid heater task message passing") {
     }
     GIVEN("a heater task with a disconnected thermistor") {
         auto tasks = TaskBuilder::build();
-        auto read_message =
-            messages::LidTempReadComplete{.lid_temp = _disconnected_adc};
+        auto read_message = messages::LidTempReadComplete{
+            .lid_temp = _disconnected_adc, .timestamp_ms = timestamp};
+        timestamp += TIME_DELTA;
         tasks->get_lid_heater_queue().backing_deque.push_back(
             messages::LidHeaterMessage(read_message));
         tasks->run_lid_heater_task();

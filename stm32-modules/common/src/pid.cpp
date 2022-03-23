@@ -51,6 +51,11 @@ auto PID::compute(double error) -> double {
     return pterm + iterm + dterm;
 }
 
+auto PID::compute(double error, double sampletime) -> double {
+    _sampletime = sampletime;
+    return compute(error);
+}
+
 auto PID::reset() -> void {
     _last_error = 0;
     _last_iterm = 0;

@@ -4,6 +4,7 @@
 #pragma once
 
 #include <algorithm>
+#include <chrono>
 #include <concepts>
 #include <cstddef>
 #include <variant>
@@ -61,6 +62,8 @@ requires MessageQueue<QueueImpl<Message>, Message>
 class LidHeaterTask {
   public:
     using Queue = QueueImpl<Message>;
+    using Milliseconds = std::chrono::milliseconds;
+    using Seconds = std::chrono::duration<double, std::chrono::seconds::period>;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 100;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 10.0;
     static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
@@ -94,7 +97,8 @@ class LidHeaterTask {
           _state{.system_status = State::IDLE, .error_bitmap = 0},
           _pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS, 1.0,
                -1.0),
-          _setpoint_c(0.0F) {}
+          _setpoint_c(0.0F),
+          _last_update(0) {}
     LidHeaterTask(const LidHeaterTask& other) = delete;
     auto operator=(const LidHeaterTask& other) -> LidHeaterTask& = delete;
     LidHeaterTask(LidHeaterTask&& other) noexcept = delete;
@@ -148,6 +152,7 @@ class LidHeaterTask {
     auto visit_message(const messages::LidTempReadComplete& msg, Policy& policy)
         -> void {
         auto old_error_bitmap = _state.error_bitmap;
+        auto current_time = Milliseconds(msg.timestamp_ms);
         handle_temperature_conversion(msg.lid_temp, _thermistor);
         if (old_error_bitmap != _state.error_bitmap) {
             if (_state.error_bitmap != 0) {
@@ -162,8 +167,10 @@ class LidHeaterTask {
 
         // If we're in a controlling state, we now update the heater output
         if (_state.system_status == State::CONTROLLING) {
-            auto ret = policy.set_heater_power(
-                _pid.compute(_setpoint_c - _thermistor.temp_c));
+            auto ret = policy.set_heater_power(_pid.compute(
+                _setpoint_c - _thermistor.temp_c,
+                std::chrono::duration_cast<Seconds>(current_time - _last_update)
+                    .count()));
             if (!ret) {
                 policy.set_heater_power(0.0F);
                 _state.system_status = State::ERROR;
@@ -172,6 +179,10 @@ class LidHeaterTask {
         } else if (_state.system_status != State::HEATER_TEST) {
             policy.set_heater_power(0.0F);
         }
+
+        // Cache the timestamp from this message so the time difference for
+        // the next reading is correct
+        _last_update = current_time;
     }
 
     template <typename Policy>
@@ -300,6 +311,19 @@ class LidHeaterTask {
     }
 
     template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::DeactivateAllMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::DeactivateAllResponse{.responding_to_id = msg.id};
+
+        static_cast<void>(policy.set_heater_power(0.0F));
+        _state.system_status = State::IDLE;
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
     auto visit_message(const messages::SetPIDConstantsMessage& msg,
                        Policy& policy) -> void {
         static_cast<void>(policy);
@@ -410,6 +434,7 @@ class LidHeaterTask {
     State _state;
     PID _pid;
     double _setpoint_c;
+    Milliseconds _last_update;
 };
 
 }  // namespace lid_heater_task

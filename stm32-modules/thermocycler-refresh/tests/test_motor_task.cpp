@@ -136,8 +136,8 @@ SCENARIO("motor task message passing") {
                 }
             }
         }
-        WHEN("sending a SealStepperDebugMessage") {
-            static constexpr uint32_t STEPS = 10;
+        WHEN("sending a SealStepperDebugMessage with positive steps") {
+            static constexpr int32_t STEPS = 10;
             auto message =
                 messages::SealStepperDebugMessage{.id = 123, .steps = STEPS};
             motor_queue.backing_deque.push_back(message);
@@ -174,18 +174,20 @@ SCENARIO("motor task message passing") {
                     .reason = SealStepperComplete::CompletionReason::STALL};
                 motor_queue.backing_deque.push_back(stall_msg);
                 tasks->run_motor_task();
-                THEN("the original message is ACK'd with an error") {
+                THEN(
+                    "the original message is ACK'd with a reduced step count "
+                    "and no error") {
                     REQUIRE(
                         !tasks->get_host_comms_queue().backing_deque.empty());
                     auto ack =
                         tasks->get_host_comms_queue().backing_deque.front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            ack));
-                    auto ack_msg = std::get<messages::AcknowledgePrevious>(ack);
+                    REQUIRE(std::holds_alternative<
+                            messages::SealStepperDebugResponse>(ack));
+                    auto ack_msg =
+                        std::get<messages::SealStepperDebugResponse>(ack);
                     REQUIRE(ack_msg.responding_to_id == 123);
-                    REQUIRE(ack_msg.with_error ==
-                            errors::ErrorCode::SEAL_MOTOR_STALL);
+                    REQUIRE(ack_msg.steps_taken == 0);
+                    REQUIRE(ack_msg.with_error == errors::ErrorCode::NO_ERROR);
                 }
                 THEN("the seal motor was stopped") {
                     REQUIRE(!motor_policy.seal_moving());
@@ -202,11 +204,12 @@ SCENARIO("motor task message passing") {
                         !tasks->get_host_comms_queue().backing_deque.empty());
                     auto ack =
                         tasks->get_host_comms_queue().backing_deque.front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            ack));
-                    auto ack_msg = std::get<messages::AcknowledgePrevious>(ack);
+                    REQUIRE(std::holds_alternative<
+                            messages::SealStepperDebugResponse>(ack));
+                    auto ack_msg =
+                        std::get<messages::SealStepperDebugResponse>(ack);
                     REQUIRE(ack_msg.responding_to_id == 123);
+                    REQUIRE(ack_msg.steps_taken == 0);
                     REQUIRE(ack_msg.with_error ==
                             errors::ErrorCode::SEAL_MOTOR_FAULT);
                 }
@@ -258,10 +261,52 @@ SCENARIO("motor task message passing") {
                         auto ack =
                             tasks->get_host_comms_queue().backing_deque.front();
                         REQUIRE(std::holds_alternative<
-                                messages::AcknowledgePrevious>(ack));
+                                messages::SealStepperDebugResponse>(ack));
                         auto ack_msg =
-                            std::get<messages::AcknowledgePrevious>(ack);
+                            std::get<messages::SealStepperDebugResponse>(ack);
                         REQUIRE(ack_msg.responding_to_id == 123);
+                        REQUIRE(ack_msg.steps_taken == STEPS);
+                        REQUIRE(ack_msg.with_error ==
+                                errors::ErrorCode::NO_ERROR);
+                    }
+                }
+            }
+        }
+        WHEN("sending a SealStepperDebugMessage with negative steps") {
+            static constexpr int32_t STEPS = -10;
+            auto message =
+                messages::SealStepperDebugMessage{.id = 123, .steps = STEPS};
+            motor_queue.backing_deque.push_back(message);
+            tasks->run_motor_task();
+            AND_WHEN("incrementing the tick for up to a second") {
+                uint32_t i = 0;
+                for (; i < motor_policy.MotorTickFrequency; ++i) {
+                    motor_policy.tick();
+                    if (!motor_policy.seal_moving()) {
+                        break;
+                    }
+                }
+                THEN("a SealStepperComplete message is received") {
+                    REQUIRE(!motor_queue.backing_deque.empty());
+                    auto msg = motor_queue.backing_deque.front();
+                    REQUIRE(
+                        std::holds_alternative<messages::SealStepperComplete>(
+                            msg));
+                }
+                WHEN("running the task") {
+                    tasks->run_motor_task();
+                    THEN("an ack is received by the host task") {
+                        REQUIRE(motor_queue.backing_deque.empty());
+                        REQUIRE(!tasks->get_host_comms_queue()
+                                     .backing_deque.empty());
+                        auto ack =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        REQUIRE(std::holds_alternative<
+                                messages::SealStepperDebugResponse>(ack));
+                        auto ack_msg =
+                            std::get<messages::SealStepperDebugResponse>(ack);
+                        REQUIRE(ack_msg.responding_to_id == 123);
+                        REQUIRE(ack_msg.steps_taken == STEPS);
                         REQUIRE(ack_msg.with_error ==
                                 errors::ErrorCode::NO_ERROR);
                     }

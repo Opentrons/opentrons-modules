@@ -4,6 +4,7 @@
 #pragma once
 
 #include <algorithm>
+#include <chrono>
 #include <concepts>
 #include <cstddef>
 #include <tuple>
@@ -86,6 +87,8 @@ requires MessageQueue<QueueImpl<Message>, Message>
 class ThermalPlateTask {
   public:
     using Queue = QueueImpl<Message>;
+    using Milliseconds = std::chrono::milliseconds;
+    using Seconds = std::chrono::duration<double, std::chrono::seconds::period>;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 50;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 10.0;
     static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
@@ -189,12 +192,12 @@ class ThermalPlateTask {
           _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
                      false),
           _state{.system_status = State::IDLE, .error_bitmap = 0},
-          _plate_control(_peltier_left, _peltier_right, _peltier_center, _fans,
-                         CONTROL_PERIOD_SECONDS),
+          _plate_control(_peltier_left, _peltier_right, _peltier_center, _fans),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _eeprom(),
           _offset_constants{.b = OFFSET_DEFAULT_CONST_B,
-                            .c = OFFSET_DEFAULT_CONST_C} {}
+                            .c = OFFSET_DEFAULT_CONST_C},
+          _last_update(0) {}
     ThermalPlateTask(const ThermalPlateTask& other) = delete;
     auto operator=(const ThermalPlateTask& other) -> ThermalPlateTask& = delete;
     ThermalPlateTask(ThermalPlateTask&& other) noexcept = delete;
@@ -255,6 +258,7 @@ class ThermalPlateTask {
     auto visit_message(const messages::ThermalPlateTempReadComplete& msg,
                        Policy& policy) -> void {
         auto old_error_bitmap = _state.error_bitmap;
+        auto current_time = Milliseconds(msg.timestamp_ms);
 
         // Peltier temperatures are implicitly updated by updating the values
         // in the thermistors
@@ -286,7 +290,8 @@ class ThermalPlateTask {
         }
 
         if (_state.system_status == State::CONTROLLING) {
-            update_control(policy);
+            update_control(policy, std::chrono::duration_cast<Seconds>(
+                                       current_time - _last_update));
             send_current_state();
         } else if (_state.system_status == State::IDLE) {
             send_current_state();
@@ -302,6 +307,10 @@ class ThermalPlateTask {
         if (_state.system_status == State::ERROR) {
             policy.set_enabled(false);
         }
+
+        // Cache the timestamp from this message so the time difference for
+        // the next reading is correct
+        _last_update = current_time;
     }
 
     template <typename Policy>
@@ -530,6 +539,19 @@ class ThermalPlateTask {
     }
 
     template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::DeactivateAllMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::DeactivateAllResponse{.responding_to_id = msg.id};
+
+        policy.set_enabled(false);
+        _state.system_status = State::IDLE;
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
     auto visit_message(const messages::SetPIDConstantsMessage& msg,
                        Policy& policy) -> void {
         static_cast<void>(policy);
@@ -724,12 +746,14 @@ class ThermalPlateTask {
      * closed-loop-control mode. Call this when the state is CONTROLLING
      * and new temperatures have been stored in the thermistor handles.
      * @param[in] policy The thermal plate policy
+     * @param[in] elapsed_time The amount of time that has passed since the
+     * last thermistor reading, in seconds
      * @return True if outputs are updated fine, false if any error occurs
      */
     template <ThermalPlateExecutionPolicy Policy>
-    auto update_control(Policy& policy) -> bool {
+    auto update_control(Policy& policy, Seconds elapsed_time) -> bool {
         policy.set_enabled(true);
-        auto values = _plate_control.update_control();
+        auto values = _plate_control.update_control(elapsed_time.count());
         auto ret = values.has_value();
         if (ret) {
             ret = set_peltier_power(_peltier_left, values.value().left_power,
@@ -861,6 +885,7 @@ class ThermalPlateTask {
     plate_control::PlateControl _plate_control;
     eeprom::Eeprom<EEPROM_PAGES, EEPROM_ADDRESS> _eeprom;
     eeprom::OffsetConstants _offset_constants;
+    Milliseconds _last_update;
 };
 
 }  // namespace thermal_plate_task
