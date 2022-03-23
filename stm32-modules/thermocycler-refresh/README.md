@@ -36,7 +36,7 @@ When compiling the firmware using your local compiler (using the `stm32-host` cm
 - Build and Test: `cmake --build ./build-stm32-host --target thermocycler-refresh-build-and-test` 
 
 ### Simulator
-There's a simulator! It host-compiles the core lib with boost for interaction. Right now it just talks over stdin and stdout but it should really learn about arbitrary sockets and whatnot. You can build it with `cmake --build ./build-stm32-host --target thermocycler-refresh-simulator` and then run it with `./build-stm32-host/stm32-modules/thermocycler-refresh/simulator/thermocycler-refresh-simulator`. You can type some gcodes in to stdin. To quit, either interrupt or kill or send EOF (ctrl-d on unixlikes).
+There's a simulator! It host-compiles the core lib with boost for interaction. It can run with input from either `stdin` or a socket. You can build it with `cmake --build ./build-stm32-host --target thermocycler-refresh-simulator` and then run it with `./build-stm32-host/stm32-modules/thermocycler-refresh/simulator/thermocycler-refresh-simulator --stdin`. You can type some gcodes in to stdin. To quit, either interrupt or kill or send EOF (ctrl-d on unixlikes). See `./simulator` for more detail.
 
 ## File Structure
 - `./tests/` contains the test-specific entrypoints and actual test code
