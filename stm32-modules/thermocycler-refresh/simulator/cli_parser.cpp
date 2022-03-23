@@ -1,8 +1,11 @@
 #include "simulator/cli_parser.hpp"
 
+#include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <string>
 
 #include "simulator/sim_driver.hpp"
 #include "simulator/socket_sim_driver.hpp"
@@ -94,4 +97,20 @@ RT cli_parser::get_sim_driver(int num_args, char* args[]) {
     } else {
         neither_driver_error(desc);
     }
+}
+
+bool cli_parser::check_realtime_environment_variable() {
+    constexpr const char realtime_var_name[] = "USE_REALTIME_SIM";
+    constexpr const char string_true[] = "true";
+    const auto* var_value = getenv(realtime_var_name);
+
+    if (!var_value || strlen(var_value) == 0) {
+        return false;
+    }
+
+    // Convert to lowercase
+    auto var_string = std::string(var_value);
+    boost::algorithm::to_lower(var_string);
+
+    return var_string.starts_with(string_true);
 }
