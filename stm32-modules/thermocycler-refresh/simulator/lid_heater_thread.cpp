@@ -12,10 +12,11 @@ using namespace lid_heater_thread;
 class SimLidHeaterPolicy {
   private:
     double _power = 0.0F;
-    periodic_data_thread::PeriodicDataThread *_periodic_data;
+    std::shared_ptr<periodic_data_thread::PeriodicDataThread> _periodic_data;
 
   public:
-    SimLidHeaterPolicy(periodic_data_thread::PeriodicDataThread *periodic_data)
+    SimLidHeaterPolicy(
+        std::shared_ptr<periodic_data_thread::PeriodicDataThread> periodic_data)
         : _periodic_data(periodic_data) {}
 
     auto set_heater_power(double power) -> bool {
@@ -35,8 +36,10 @@ struct lid_heater_thread::TaskControlBlock {
     SimLidHeaterTask task;
 };
 
-auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb,
-         periodic_data_thread::PeriodicDataThread *periodic_data) -> void {
+auto run(
+    std::stop_token st, std::shared_ptr<TaskControlBlock> tcb,
+    std::shared_ptr<periodic_data_thread::PeriodicDataThread> periodic_data)
+    -> void {
     using namespace std::literals::chrono_literals;
     auto policy = SimLidHeaterPolicy(periodic_data);
     tcb->queue.set_stop_token(st);
@@ -50,7 +53,7 @@ auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb,
 }
 
 auto lid_heater_thread::build(
-    periodic_data_thread::PeriodicDataThread *periodic_data)
+    std::shared_ptr<periodic_data_thread::PeriodicDataThread> periodic_data)
     -> tasks::Task<std::unique_ptr<std::jthread>, SimLidHeaterTask> {
     auto tcb = std::make_shared<TaskControlBlock>();
     return tasks::Task(std::make_unique<std::jthread>(run, tcb, periodic_data),

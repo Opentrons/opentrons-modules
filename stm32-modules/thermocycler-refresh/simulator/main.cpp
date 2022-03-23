@@ -22,15 +22,15 @@ int main(int argc, char *argv[]) {
     auto periodic_data = periodic_data_thread::build(realtime);
 
     auto system = system_thread::build();
-    auto thermal_plate = thermal_plate_thread::build(periodic_data.task);
-    auto lid_heater = lid_heater_thread::build(periodic_data.task);
+    auto thermal_plate = thermal_plate_thread::build(periodic_data.second);
+    auto lid_heater = lid_heater_thread::build(periodic_data.second);
     auto motor = motor_thread::build();
     auto comms = comm_thread::build(std::move(sim_driver));
     auto tasks = tasks::Tasks<SimulatorMessageQueue>(
         comms.task, system.task, thermal_plate.task, lid_heater.task,
         motor.task);
 
-    periodic_data.task->provide_tasks(&tasks);
+    periodic_data.second->provide_tasks(&tasks);
 
     comm_thread::handle_input(std::move(sim_driver), tasks);
 
@@ -39,14 +39,14 @@ int main(int argc, char *argv[]) {
     thermal_plate.handle->request_stop();
     lid_heater.handle->request_stop();
     motor.handle->request_stop();
-    periodic_data.handle->request_stop();
+    periodic_data.first->request_stop();
 
     system.handle->join();
     comms.handle->join();
     thermal_plate.handle->join();
     lid_heater.handle->join();
     motor.handle->join();
-    periodic_data.handle->join();
+    periodic_data.first->join();
 
     return 0;
 }

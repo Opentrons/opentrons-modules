@@ -74,7 +74,7 @@ class PeriodicDataThread {
     std::atomic_bool _init_latch;
 };
 
-auto build(bool realtime)
-    -> tasks::Task<std::unique_ptr<std::jthread>, PeriodicDataThread>;
+auto build(bool realtime) -> std::pair<std::unique_ptr<std::jthread>,
+                                       std::shared_ptr<PeriodicDataThread>>;
 
 };  // namespace periodic_data_thread

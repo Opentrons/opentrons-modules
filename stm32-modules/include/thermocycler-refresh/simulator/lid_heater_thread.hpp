@@ -10,6 +10,7 @@
 namespace lid_heater_thread {
 using SimLidHeaterTask = lid_heater_task::LidHeaterTask<SimulatorMessageQueue>;
 struct TaskControlBlock;
-auto build(periodic_data_thread::PeriodicDataThread *periodic_data)
+auto build(
+    std::shared_ptr<periodic_data_thread::PeriodicDataThread> periodic_data)
     -> tasks::Task<std::unique_ptr<std::jthread>, SimLidHeaterTask>;
 };  // namespace lid_heater_thread

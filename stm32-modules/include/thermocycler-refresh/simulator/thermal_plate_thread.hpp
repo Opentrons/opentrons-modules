@@ -11,6 +11,7 @@ namespace thermal_plate_thread {
 using SimThermalPlateTask =
     thermal_plate_task::ThermalPlateTask<SimulatorMessageQueue>;
 struct TaskControlBlock;
-auto build(periodic_data_thread::PeriodicDataThread *periodic_data)
+auto build(
+    std::shared_ptr<periodic_data_thread::PeriodicDataThread> periodic_data)
     -> tasks::Task<std::unique_ptr<std::jthread>, SimThermalPlateTask>;
 };  // namespace thermal_plate_thread

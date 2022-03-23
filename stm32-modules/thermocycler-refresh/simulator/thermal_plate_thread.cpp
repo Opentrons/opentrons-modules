@@ -36,7 +36,7 @@ struct SimThermalPlatePolicy
     SimPeltier _center = SimPeltier();
     SimPeltier _right = SimPeltier();
     double _fan_power = 0.0F;
-    periodic_data_thread::PeriodicDataThread *_periodic_data;
+    std::shared_ptr<periodic_data_thread::PeriodicDataThread> _periodic_data;
 
     using GetPeltierT = std::optional<std::reference_wrapper<SimPeltier>>;
     auto get_peltier_from_id(PeltierID peltier) -> GetPeltierT {
@@ -56,7 +56,7 @@ struct SimThermalPlatePolicy
     using EepromPolicy = SimAT24C0XCPolicy<SimThermalPlateTask::EEPROM_PAGES>;
 
     SimThermalPlatePolicy(
-        periodic_data_thread::PeriodicDataThread *periodic_data)
+        std::shared_ptr<periodic_data_thread::PeriodicDataThread> periodic_data)
         : EepromPolicy(), _periodic_data(periodic_data) {}
 
     auto set_enabled(bool enabled) -> void {
@@ -116,8 +116,10 @@ struct thermal_plate_thread::TaskControlBlock {
     SimThermalPlateTask task;
 };
 
-auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb,
-         periodic_data_thread::PeriodicDataThread *periodic_data) -> void {
+auto run(
+    std::stop_token st, std::shared_ptr<TaskControlBlock> tcb,
+    std::shared_ptr<periodic_data_thread::PeriodicDataThread> periodic_data)
+    -> void {
     using namespace std::literals::chrono_literals;
     auto policy = SimThermalPlatePolicy(periodic_data);
     tcb->queue.set_stop_token(st);
@@ -132,7 +134,7 @@ auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb,
 }
 
 auto thermal_plate_thread::build(
-    periodic_data_thread::PeriodicDataThread *periodic_data)
+    std::shared_ptr<periodic_data_thread::PeriodicDataThread> periodic_data)
     -> tasks::Task<std::unique_ptr<std::jthread>, SimThermalPlateTask> {
     auto tcb = std::make_shared<TaskControlBlock>();
     return tasks::Task(std::make_unique<std::jthread>(run, tcb, periodic_data),
