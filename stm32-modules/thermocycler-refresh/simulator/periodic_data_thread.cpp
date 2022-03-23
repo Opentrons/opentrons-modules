@@ -70,7 +70,6 @@ auto PeriodicDataThread::run(std::stop_token& st) -> void {
     // This doesn't use std::chrono to emulate the firmware 32bit counter
     // overflow behavior
     PeriodicDataMessage msg;
-    bool pending_lid_update = true, pending_peltier_update = true;
 
     while (!_init_latch.load()) {
         std::this_thread::yield();
@@ -79,6 +78,10 @@ auto PeriodicDataThread::run(std::stop_token& st) -> void {
     auto actual_time = std::chrono::high_resolution_clock::now();
 
     while (!st.stop_requested()) {
+        // -------------------------------------------------------------------
+        // Update the current time, either based on real time or simulated
+        // time progression.
+
         if (_realtime) {
             // Use the high resolution clock to get an idea of the time
             // difference
@@ -94,34 +97,39 @@ auto PeriodicDataThread::run(std::stop_token& st) -> void {
             _current_tick += std::min(PELTIER_PERIOD, LID_PERIOD);
         }
 
+        // -------------------------------------------------------------------
+        // Check for any updated control values
+
         while (_queue.try_recv(&msg)) {
             if (std::holds_alternative<HeatPadPower>(msg)) {
                 // Update heat pad powers
                 _heat_pad_power = std::get<HeatPadPower>(msg).power;
-                pending_lid_update = true;
             } else if (std::holds_alternative<PeltierPower>(msg)) {
                 // Update peltier temperatures
                 _peltiers_power = std::get<PeltierPower>(msg);
-                pending_peltier_update = true;
             } else if (std::holds_alternative<StartMotorMovement>(msg)) {
                 // TODO
             }
         }
-        if (pending_lid_update &&
-            ((_current_tick - _tick_heater) > LID_PERIOD)) {
-            pending_lid_update = false;
+
+        // -------------------------------------------------------------------
+        // Update the heat pad & peltiers.
+
+        if (((_current_tick - _tick_heater) > LID_PERIOD)) {
             update_heat_pad();
         }
-        if (pending_peltier_update &&
-            ((_current_tick - _tick_peltiers) > PELTIER_PERIOD)) {
-            pending_peltier_update = false;
+        if (((_current_tick - _tick_peltiers) > PELTIER_PERIOD)) {
             update_peltiers();
         }
 
+        // -------------------------------------------------------------------
         // Yield at the end of each loop to let other processes run
         if (_realtime) {
             // Sleep for 1 millisecond
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        } else {
+            // Yield to ensure other processes handle their messages
+            std::this_thread::yield();
         }
     }
 }
