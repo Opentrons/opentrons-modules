@@ -22,4 +22,4 @@ The simulator has two options for emulating thermal & motor data, either __simul
 - In __simulated time__, all behaviors on the system occur _much_ faster than on a real Thermocycler. The response for the thermal & motor systems will still be emulated with simple models, but the rate at which this emulation happens will be nearly instantaneous.
 - In __real time__, all behaviors on the system should occur at the same rate they would on a real Thermocycler. This means that thermal ramp rates will be somewhat close to a realistic ramp, and motor movements will take approximately the same time as a real motor movement.
 
-The default mode is __simulated time__. To select __real time__, you can either 1) pass the flag `--realtime` when starting the simulator, or 2) set an environment variable `USE_REALTIME_SIM=True` (case insensitive) before starting the simulator.
+The default mode is __simulated time__. To select __real time__, you can either 1) pass the flag `--realtime` when starting the simulator, or 2) set an environment variable `USE_REALTIME_SIM=True` before starting the simulator.
