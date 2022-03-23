@@ -17,7 +17,8 @@ using namespace std;
 int main(int argc, char *argv[]) {
     auto cli_ret = cli_parser::get_sim_driver(argc, argv);
     auto sim_driver = cli_ret.first;
-    auto realtime = cli_ret.second;
+    auto realtime =
+        cli_ret.second || cli_parser::check_realtime_environment_variable();
 
     auto periodic_data = periodic_data_thread::build(realtime);
 

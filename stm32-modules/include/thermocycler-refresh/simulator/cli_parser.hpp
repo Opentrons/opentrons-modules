@@ -16,4 +16,7 @@ using RT = std::pair<std::shared_ptr<sim_driver::SimDriver>, bool>;
  * used 2) whether the simulation should be realtime or accelerated
  */
 RT get_sim_driver(int, char**);
+
+bool check_realtime_environment_variable();
+
 }  // namespace cli_parser

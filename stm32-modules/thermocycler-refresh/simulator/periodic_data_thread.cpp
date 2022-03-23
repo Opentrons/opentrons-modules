@@ -67,8 +67,6 @@ auto PeriodicDataThread::provide_tasks(
 }
 
 auto PeriodicDataThread::run(std::stop_token& st) -> void {
-    // This doesn't use std::chrono to emulate the firmware 32bit counter
-    // overflow behavior
     PeriodicDataMessage msg;
 
     while (!_init_latch.load()) {
