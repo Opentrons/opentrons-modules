@@ -57,6 +57,10 @@ struct SimSystemPolicy {
             return empty_serial_number;
         }
     }
+    auto get_front_button_status() -> bool {
+        // Just always simulate a non-pressed button
+        return false;
+    }
     // Functions for XT1511 setting
     auto start_send(LedBuffer& buffer) -> bool {
         if (_led_active) {

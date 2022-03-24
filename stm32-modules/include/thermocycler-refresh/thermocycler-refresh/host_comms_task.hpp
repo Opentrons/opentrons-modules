@@ -50,7 +50,8 @@ class HostCommsTask {
         gcode::GetSealDriveStatus, gcode::SetSealParameter, gcode::GetLidStatus,
         gcode::GetThermalPowerDebug, gcode::SetOffsetConstants,
         gcode::GetOffsetConstants, gcode::OpenLid, gcode::CloseLid,
-        gcode::DeactivateAll, gcode::GetBoardRevision>;
+        gcode::DeactivateAll, gcode::GetBoardRevision, gcode::GetLidSwitches,
+        gcode::GetFrontButton>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
@@ -77,6 +78,9 @@ class HostCommsTask {
     // to respond.
     using DeactivateAllCache =
         AckCache<8, gcode::DeactivateAll, messages::DeactivateAllResponse>;
+    // Shared cache for debugging commands intended for In Circuit Test Fixture
+    using GetSwitchCache =
+        AckCache<8, gcode::GetLidSwitches, gcode::GetFrontButton>;
 
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
@@ -107,7 +111,9 @@ class HostCommsTask {
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_thermal_power_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          deactivate_all_cache() {}
+          deactivate_all_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_switch_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -605,6 +611,51 @@ class HostCommsTask {
                     return errors::write_into(
                         tx_into, tx_limit,
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetLidSwitchesResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            get_switch_cache.remove_if_present(response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (!std::is_same_v<gcode::GetLidSwitches, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.close_switch_pressed,
+                        response.open_switch_pressed);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetFrontButtonResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            get_switch_cache.remove_if_present(response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (!std::is_same_v<gcode::GetFrontButton, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.button_pressed);
                 }
             },
             cache_entry);
@@ -1323,6 +1374,50 @@ class HostCommsTask {
         return std::make_pair(true, wrote_to);
     }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetLidSwitches& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_switch_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetLidSwitchesMessage{.id = id};
+        if (!task_registry->motor->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_switch_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetFrontButton& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_switch_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetFrontButtonMessage{.id = id};
+        if (!task_registry->system->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_switch_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -1349,6 +1444,7 @@ class HostCommsTask {
     SealStepperDebugCache seal_stepper_debug_cache;
     GetThermalPowerCache get_thermal_power_cache;
     DeactivateAllCache deactivate_all_cache;
+    GetSwitchCache get_switch_cache;
     bool may_connect_latch = true;
 };
 

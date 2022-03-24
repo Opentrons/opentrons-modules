@@ -34,6 +34,8 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {
         p.get_serial_number()
         } -> std::same_as<std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>>;
+    // A function to read the current status of the front button
+    { p.get_front_button_status() } -> std::same_as<bool>;
 };
 
 struct LedState {
@@ -283,6 +285,16 @@ class SystemTask {
                        Policy& policy) -> void {
         static_cast<void>(policy);
         _plate_state = message.state;
+    }
+
+    template <SystemExecutionPolicy Policy>
+    auto visit_message(const messages::GetFrontButtonMessage& message,
+                       Policy& policy) {
+        auto response = messages::GetFrontButtonResponse{
+            .responding_to_id = message.id,
+            .button_pressed = policy.get_front_button_status()};
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
     }
 
     template <typename Policy>

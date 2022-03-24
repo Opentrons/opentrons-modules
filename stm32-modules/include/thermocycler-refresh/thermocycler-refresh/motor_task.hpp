@@ -497,6 +497,18 @@ class MotorTask {
         }
     }
 
+    template <MotorExecutionPolicy Policy>
+    auto visit_message(const messages::GetLidSwitchesMessage& msg,
+                       Policy& policy) {
+        auto response = messages::GetLidSwitchesResponse{
+            .responding_to_id = msg.id,
+            .close_switch_pressed = policy.lid_read_closed_switch(),
+            .open_switch_pressed = policy.lid_read_open_switch()};
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
     // Callback for each tick() during a seal stepper movement
     template <MotorExecutionPolicy Policy>
     auto seal_step_callback(Policy& policy) -> void {
