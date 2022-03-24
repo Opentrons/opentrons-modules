@@ -12,7 +12,11 @@
 namespace board_revision {
 
 // Enumeration of possible board revisions
-enum BoardRevision { BOARD_REV_1, BOARD_REV_2, BOARD_REV_INVALID };
+enum BoardRevision {
+    BOARD_REV_1 = 1,
+    BOARD_REV_2 = 2,
+    BOARD_REV_INVALID = 0xFF
+};
 
 class BoardRevisionIface {
   public:

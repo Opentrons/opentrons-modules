@@ -60,6 +60,11 @@ auto SystemPolicy::get_serial_number()
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+[[nodiscard]] auto SystemPolicy::get_front_button_status() -> bool {
+    return system_front_button_pressed();
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto SystemPolicy::start_send(LedBuffer &buffer) -> bool {
     return system_led_start_send(buffer.data(), buffer.size());
 }

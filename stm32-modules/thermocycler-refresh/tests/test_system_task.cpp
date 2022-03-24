@@ -294,5 +294,45 @@ SCENARIO("system task message passing") {
                 }
             }
         }
+        GIVEN("front button pressed") {
+            tasks->get_system_policy().set_front_button_status(true);
+            WHEN("sending a GetFrontButton message") {
+                auto message = messages::GetFrontButtonMessage{.id = 123};
+                tasks->get_system_queue().backing_deque.push_back(
+                    messages::SystemMessage(message));
+                tasks->get_system_task().run_once(tasks->get_system_policy());
+                THEN("a response is sent to host comms with the correct data") {
+                    REQUIRE(!tasks->get_system_queue().has_message());
+                    auto host_message =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    REQUIRE(std::holds_alternative<
+                            messages::GetFrontButtonResponse>(host_message));
+                    auto response = std::get<messages::GetFrontButtonResponse>(
+                        host_message);
+                    REQUIRE(response.responding_to_id == message.id);
+                    REQUIRE(response.button_pressed);
+                }
+            }
+        }
+        GIVEN("front button not pressed") {
+            tasks->get_system_policy().set_front_button_status(false);
+            WHEN("sending a GetFrontButton message") {
+                auto message = messages::GetFrontButtonMessage{.id = 123};
+                tasks->get_system_queue().backing_deque.push_back(
+                    messages::SystemMessage(message));
+                tasks->get_system_task().run_once(tasks->get_system_policy());
+                THEN("a response is sent to host comms with the correct data") {
+                    REQUIRE(!tasks->get_system_queue().has_message());
+                    auto host_message =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    REQUIRE(std::holds_alternative<
+                            messages::GetFrontButtonResponse>(host_message));
+                    auto response = std::get<messages::GetFrontButtonResponse>(
+                        host_message);
+                    REQUIRE(response.responding_to_id == message.id);
+                    REQUIRE(!response.button_pressed);
+                }
+            }
+        }
     }
 }

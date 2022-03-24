@@ -12,8 +12,9 @@ SCENARIO("gcode m242.d works", "[gcode][parse][m242d]") {
             auto written = gcode::GetSealDriveStatus::write_response_into(
                 buffer.begin(), buffer.end(), reg);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
-                                         "M242.D SG:1 SG_Result:123 OK\n"));
+                REQUIRE_THAT(buffer,
+                             Catch::Matchers::StartsWith(
+                                 "M242.D SG:1 SG_Result:123 STST:0 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }

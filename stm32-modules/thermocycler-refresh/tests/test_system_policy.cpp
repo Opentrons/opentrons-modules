@@ -31,3 +31,11 @@ auto TestSystemPolicy::get_serial_number(void)
         return empty_serial_number;
     }
 }
+
+auto TestSystemPolicy::get_front_button_status() -> bool {
+    return front_button;
+}
+
+auto TestSystemPolicy::set_front_button_status(bool set) -> void {
+    front_button = set;
+}

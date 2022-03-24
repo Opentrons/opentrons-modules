@@ -563,6 +563,7 @@ SCENARIO("motor task message passing") {
         }
         GIVEN("lid closed sensor triggered") {
             motor_policy.set_lid_closed_switch(true);
+            motor_policy.set_lid_open_switch(false);
             WHEN("sending a Front Button message") {
                 tasks->get_motor_queue().backing_deque.push_back(
                     messages::FrontButtonPressMessage());
@@ -574,9 +575,33 @@ SCENARIO("motor task message passing") {
                     REQUIRE(motor_policy.get_vref() > 0);
                 }
             }
+            WHEN("sending a GetLidSwitches message") {
+                WHEN("sending a GetFrontButton message") {
+                    auto message = messages::GetLidSwitchesMessage{.id = 123};
+                    tasks->get_motor_queue().backing_deque.push_back(message);
+                    tasks->run_motor_task();
+                    THEN(
+                        "a response is sent to host comms with the correct "
+                        "data") {
+                        REQUIRE(!tasks->get_motor_queue().has_message());
+                        auto host_message =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        REQUIRE(std::holds_alternative<
+                                messages::GetLidSwitchesResponse>(
+                            host_message));
+                        auto response =
+                            std::get<messages::GetLidSwitchesResponse>(
+                                host_message);
+                        REQUIRE(response.responding_to_id == message.id);
+                        REQUIRE(response.close_switch_pressed);
+                        REQUIRE(!response.open_switch_pressed);
+                    }
+                }
+            }
         }
         GIVEN("lid open sensor triggered") {
             motor_policy.set_lid_open_switch(true);
+            motor_policy.set_lid_closed_switch(false);
             WHEN("sending a Front Button message") {
                 tasks->get_motor_queue().backing_deque.push_back(
                     messages::FrontButtonPressMessage());
@@ -585,6 +610,29 @@ SCENARIO("motor task message passing") {
                     REQUIRE(!motor_policy.get_lid_overdrive());
                     REQUIRE(motor_policy.get_angle() < 0);
                     REQUIRE(motor_policy.get_vref() > 0);
+                }
+            }
+            WHEN("sending a GetLidSwitches message") {
+                WHEN("sending a GetFrontButton message") {
+                    auto message = messages::GetLidSwitchesMessage{.id = 123};
+                    tasks->get_motor_queue().backing_deque.push_back(message);
+                    tasks->run_motor_task();
+                    THEN(
+                        "a response is sent to host comms with the correct "
+                        "data") {
+                        REQUIRE(!tasks->get_motor_queue().has_message());
+                        auto host_message =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        REQUIRE(std::holds_alternative<
+                                messages::GetLidSwitchesResponse>(
+                            host_message));
+                        auto response =
+                            std::get<messages::GetLidSwitchesResponse>(
+                                host_message);
+                        REQUIRE(response.responding_to_id == message.id);
+                        REQUIRE(!response.close_switch_pressed);
+                        REQUIRE(response.open_switch_pressed);
+                    }
                 }
             }
         }
