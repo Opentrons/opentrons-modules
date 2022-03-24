@@ -6,6 +6,8 @@
 #include "test/task_builder.hpp"
 #include "thermocycler-refresh/errors.hpp"
 #include "thermocycler-refresh/messages.hpp"
+#include "test/test_board_revision_hardware.hpp"
+#include "thermocycler-refresh/board_revision.hpp"
 
 SCENARIO("usb message parsing") {
     GIVEN("a host_comms_task") {
@@ -2191,6 +2193,27 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 }
             }
         }
+        GIVEN("a board revision of Rev1") {
+            std::array<TrinaryInput_t, BOARD_REV_PIN_COUNT> inputs = {
+                INPUT_FLOATING, INPUT_FLOATING, INPUT_FLOATING};
+            board_revision::set_pin_values(inputs);
+            WHEN("sending a GetBoardRevision message") {
+                std::string message_text = std::string("M900\n");
+                auto message_obj =
+                    messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                        &*message_text.begin(), &*message_text.end()));
+                tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+                auto written_firstpass = tasks->get_host_comms_task().run_once(
+                    tx_buf.begin(), tx_buf.end());
+                THEN("the task should parse the message and immediately ack") {
+                    constexpr auto response = "M900 C:0 OK\n";
+                    REQUIRE(written_firstpass == tx_buf.begin() + strlen(response));
+                    REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(response));
+                }
+            }
+        }
+       
     }
 }
 

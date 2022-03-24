@@ -13,6 +13,7 @@
 #include "core/gcode_parser.hpp"
 #include "core/version.hpp"
 #include "hal/message_queue.hpp"
+#include "thermocycler-refresh/board_revision.hpp"
 #include "thermocycler-refresh/errors.hpp"
 #include "thermocycler-refresh/gcodes.hpp"
 #include "thermocycler-refresh/messages.hpp"
@@ -49,7 +50,7 @@ class HostCommsTask {
         gcode::GetSealDriveStatus, gcode::SetSealParameter, gcode::GetLidStatus,
         gcode::GetThermalPowerDebug, gcode::SetOffsetConstants,
         gcode::GetOffsetConstants, gcode::OpenLid, gcode::CloseLid,
-        gcode::DeactivateAll>;
+        gcode::DeactivateAll, gcode::GetBoardRevision>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
@@ -1307,6 +1308,19 @@ class HostCommsTask {
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetBoardRevision& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        // The board revision driver is already populated, so we can actually
+        // send the response immediately!
+        auto revision = board_revision::BoardRevisionIface::get();
+        auto wrote_to = gcode.write_response_into(tx_into, tx_limit,
+                                                  static_cast<int>(revision));
+        return std::make_pair(true, wrote_to);
     }
 
     // Our error handler just writes an error and bails
