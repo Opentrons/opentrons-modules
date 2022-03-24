@@ -1468,7 +1468,7 @@ struct DeactivateAll {
 
 struct GetBoardRevision {
     using ParseResult = std::optional<GetBoardRevision>;
-    static constexpr auto prefix = std::array{'M', '9', '0', '0'};
+    static constexpr auto prefix = std::array{'M', '9', '0', '0', '.', 'D'};
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -1488,7 +1488,7 @@ struct GetBoardRevision {
     static auto write_response_into(InputIt buf, InLimit limit, int revision)
         -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M900 C:%i OK\n", revision);
+        res = snprintf(&*buf, (limit - buf), "M900.D C:%i OK\n", revision);
         if (res <= 0) {
             return buf;
         }
@@ -1498,7 +1498,7 @@ struct GetBoardRevision {
 
 struct GetLidSwitches {
     using ParseResult = std::optional<GetLidSwitches>;
-    static constexpr auto prefix = std::array{'M', '9', '0', '1'};
+    static constexpr auto prefix = std::array{'M', '9', '0', '1', '.', 'D'};
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -1518,8 +1518,8 @@ struct GetLidSwitches {
     static auto write_response_into(InputIt buf, InLimit limit, int closed,
                                     int open) -> InputIt {
         int res = 0;
-        res =
-            snprintf(&*buf, (limit - buf), "M901 C:%i O:%i OK\n", closed, open);
+        res = snprintf(&*buf, (limit - buf), "M901.D C:%i O:%i OK\n", closed,
+                       open);
         if (res <= 0) {
             return buf;
         }
@@ -1529,7 +1529,7 @@ struct GetLidSwitches {
 
 struct GetFrontButton {
     using ParseResult = std::optional<GetFrontButton>;
-    static constexpr auto prefix = std::array{'M', '9', '0', '2'};
+    static constexpr auto prefix = std::array{'M', '9', '0', '2', '.', 'D'};
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -1549,7 +1549,7 @@ struct GetFrontButton {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     int button_state) -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M902 C:%i OK\n", button_state);
+        res = snprintf(&*buf, (limit - buf), "M902.D C:%i OK\n", button_state);
         if (res <= 0) {
             return buf;
         }

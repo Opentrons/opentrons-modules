@@ -2199,7 +2199,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
             board_revision::set_pin_values(inputs);
             static_cast<void>(board_revision::BoardRevisionIface::read());
             WHEN("sending a GetBoardRevision message") {
-                std::string message_text = std::string("M900\n");
+                std::string message_text = std::string("M900.D\n");
                 auto message_obj = messages::HostCommsMessage(
                     messages::IncomingMessageFromHost(&*message_text.begin(),
                                                       &*message_text.end()));
@@ -2208,7 +2208,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 auto written_firstpass = tasks->get_host_comms_task().run_once(
                     tx_buf.begin(), tx_buf.end());
                 THEN("the task should parse the message and immediately ack") {
-                    constexpr auto response = "M900 C:1 OK\n";
+                    constexpr auto response = "M900.D C:1 OK\n";
                     REQUIRE(written_firstpass ==
                             tx_buf.begin() + strlen(response));
                     REQUIRE(
@@ -2223,7 +2223,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
             board_revision::set_pin_values(inputs);
             static_cast<void>(board_revision::BoardRevisionIface::read());
             WHEN("sending a GetBoardRevision message") {
-                std::string message_text = std::string("M900\n");
+                std::string message_text = std::string("M900.D\n");
                 auto message_obj = messages::HostCommsMessage(
                     messages::IncomingMessageFromHost(&*message_text.begin(),
                                                       &*message_text.end()));
@@ -2232,7 +2232,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 auto written_firstpass = tasks->get_host_comms_task().run_once(
                     tx_buf.begin(), tx_buf.end());
                 THEN("the task should parse the message and immediately ack") {
-                    constexpr auto response = "M900 C:2 OK\n";
+                    constexpr auto response = "M900.D C:2 OK\n";
                     REQUIRE(written_firstpass ==
                             tx_buf.begin() + strlen(response));
                     REQUIRE(
@@ -2242,7 +2242,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
             }
         }
         WHEN("sending a GetLidSwitches message") {
-            auto message_text = std::string("M901\n");
+            auto message_text = std::string("M901.D\n");
             auto message_obj =
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
                     &*message_text.begin(), &*message_text.end()));
@@ -2273,7 +2273,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "M901 C:0 O:1 OK\n"));
+                                                 "M901.D C:0 O:1 OK\n"));
                         REQUIRE(written_secondpass != tx_buf.begin());
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
@@ -2302,7 +2302,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
             }
         }
         WHEN("sending a GetFrontButton message") {
-            auto message_text = std::string("M902\n");
+            auto message_text = std::string("M902.D\n");
             auto message_obj =
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
                     &*message_text.begin(), &*message_text.end()));
@@ -2332,7 +2332,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "M902 C:0 OK\n"));
+                                                 "M902.D C:0 OK\n"));
                         REQUIRE(written_secondpass != tx_buf.begin());
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
