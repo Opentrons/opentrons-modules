@@ -2197,6 +2197,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
             std::array<TrinaryInput_t, BOARD_REV_PIN_COUNT> inputs = {
                 INPUT_FLOATING, INPUT_FLOATING, INPUT_FLOATING};
             board_revision::set_pin_values(inputs);
+            static_cast<void>(board_revision::BoardRevisionIface::read());
             WHEN("sending a GetBoardRevision message") {
                 std::string message_text = std::string("M900\n");
                 auto message_obj = messages::HostCommsMessage(
@@ -2207,7 +2208,31 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 auto written_firstpass = tasks->get_host_comms_task().run_once(
                     tx_buf.begin(), tx_buf.end());
                 THEN("the task should parse the message and immediately ack") {
-                    constexpr auto response = "M900 C:0 OK\n";
+                    constexpr auto response = "M900 C:1 OK\n";
+                    REQUIRE(written_firstpass ==
+                            tx_buf.begin() + strlen(response));
+                    REQUIRE(
+                        tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(response));
+                }
+            }
+        }
+        GIVEN("a board revision of Rev2") {
+            std::array<TrinaryInput_t, BOARD_REV_PIN_COUNT> inputs = {
+                INPUT_PULLDOWN, INPUT_PULLDOWN, INPUT_PULLDOWN};
+            board_revision::set_pin_values(inputs);
+            static_cast<void>(board_revision::BoardRevisionIface::read());
+            WHEN("sending a GetBoardRevision message") {
+                std::string message_text = std::string("M900\n");
+                auto message_obj = messages::HostCommsMessage(
+                    messages::IncomingMessageFromHost(&*message_text.begin(),
+                                                      &*message_text.end()));
+                tasks->get_host_comms_queue().backing_deque.push_back(
+                    message_obj);
+                auto written_firstpass = tasks->get_host_comms_task().run_once(
+                    tx_buf.begin(), tx_buf.end());
+                THEN("the task should parse the message and immediately ack") {
+                    constexpr auto response = "M900 C:2 OK\n";
                     REQUIRE(written_firstpass ==
                             tx_buf.begin() + strlen(response));
                     REQUIRE(
