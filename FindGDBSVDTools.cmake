@@ -36,10 +36,13 @@ FetchContent_GetProperties(GDBSVDTools_repo
 
 FetchContent_Declare(
   CMSIS_SVD
+  GIT_REPOSITORY "https://github.com/posborne/cmsis-svd"
+  GIT_TAG 207675b6d22fa2fd733b87a9fb068dcf97d85f99
+  GIT_SHALLOW
   PREFIX ${GDBSVDTools_DIRECTORY}/cmsis-svd
   SOURCE_DIR ${GDBSVDTools_DIRECTORY}/cmsis-svd/cmsis-svd
-  URL "https://files.pythonhosted.org/packages/36/0c/a4d0c814fbd356b9eb98da4b89d903d4d293970abe73c77368cac62eb4fe/cmsis-svd-0.4.tar.gz"
   )
+
 FetchContent_MakeAvailable(CMSIS_SVD)
 FetchContent_GetProperties(CMSIS_SVD
   SOURCE_DIR cmsissvd_source

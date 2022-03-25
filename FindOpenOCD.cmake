@@ -19,7 +19,7 @@ built into openocd live
 
 include(FetchContent)
 
-set(OPENOCD_VERSION "0.10.0-15")
+set(OPENOCD_VERSION "0.11.0-1")
 set(OPENOCD_DIR "${CMAKE_SOURCE_DIR}/stm32-tools/openocd")
 
 if("${CMAKE_HOST_SYSTEM_NAME}" STREQUAL "Linux")

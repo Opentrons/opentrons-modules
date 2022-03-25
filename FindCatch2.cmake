@@ -15,7 +15,7 @@ Include(FetchContent)
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v2.13.4
+  GIT_TAG        v2.13.8
   PREFIX         ${CMAKE_SOURCE_DIR}/stm32-tools/catch2
   SOURCE_DIR     ${CMAKE_SOURCE_DIR}/stm32-tools/catch2/src
   BINARY_DIR     ${CMAKE_SOURCE_DIR}/stm32-tools/catch2/bin
