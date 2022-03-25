@@ -196,7 +196,7 @@ class SystemTask {
         if (!policy.check_I2C_ready()) {
             error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
         } else {
-            error = policy.start_set_led(msg.mode);
+            error = policy.start_set_led(msg.mode); 
         }
         if (msg.from_host) {
             auto response = messages::AcknowledgePrevious{
