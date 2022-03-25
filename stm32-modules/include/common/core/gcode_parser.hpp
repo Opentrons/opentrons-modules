@@ -10,6 +10,7 @@
 #include <iterator>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <variant>
 
@@ -119,6 +120,85 @@ auto parse_value(const Input& start_from, Limit stop_at)
         return std::make_pair(std::optional<ValueType>(), start_from);
     }
     return std::make_pair(std::optional<ValueType>(value), after);
+}
+
+template <typename Arg>
+concept GCodeArgument = requires(Arg &a) {
+    // Prefix needs to be string
+    // TODO this should just be an iterable array
+    {std::is_same_v(decltype(Arg::prefix), std::string)};
+    // Needs a type
+    // TODO
+    // Needs a flag for whether it's required
+    {std::is_same_v(decltype(Arg::required), bool)};
+    // Needs a flag for whether there's a value
+    {std::is_same_v(decltype(Arg::has_value), bool)};
+    // Variable within the argument - flag for if it is present
+    {std::is_same_v(decltype(a.present), bool)};
+    // Variable within the argument - the value
+    {a.value};
+};
+
+template <std::forward_iterator Input, typename Limit,
+          typename PrefixArray, GCodeArgument... Args>
+requires std::sized_sentinel_for<Limit, Input> &&
+    std::convertible_to < std::iter_value_t<Input>,
+    typename PrefixArray::value_type >
+auto parse_gcode(const Input& start_from, Limit stop_at, const PrefixArray& prefix)
+    -> std::pair<std::optional<std::tuple<Args...>>, Input> {
+    using ArgRet = std::optional<std::tuple<Args...>>;
+    using RT = std::pair<ArgRet, Input>;
+    // TODO
+    auto working = prefix_matches(start_from, stop_at, prefix);
+    if(working == start_from) {
+        return RT(ArgRet(), start_from);
+    }
+    if constexpr(sizeof...(Args) > 0) {
+        // Instantiate a tuple of the argument types
+        auto arguments = std::tuple<Args...>;
+        // Flag that gets set by the fold expression if any required
+        // arguments end up being missing/out of order
+        bool failed = false;
+        // Index in the tuple
+        int idx = 0;
+
+        // Fold expression to iterate through all of the items in Args
+        // with a lambda. Each one will be separately evaluated
+        (
+            // Take one item from `arguments` at a time
+            [&] (auto &arg) {
+                auto &tuple_arg = std::get<idx++>(arguments);
+                auto argument_working = prefix_matches(working, stop_at, arg.prefix);
+                if(argument_working == working) {
+                    // The argument is NOT present
+                    tuple_arg.present = false;
+                    if constexpr(arg.required) {
+                        // No option to skip this argument, flag an error
+                        failed = true;
+                    }
+                } else {
+                    // The argument prefix is there
+                    tuple_arg.present = true;
+                    argument_working = gobble_whitespace(argument_working, stop_at);
+                    if(arg.has_value) {
+                        // This argument is expected to have a value set...
+                        auto value = parse_value<decltype(arg.value)>(argument_working, stop_at);
+                        
+                    }
+                }
+            }
+
+            (arguments), ...
+        )
+
+        if(failed) {
+            return RT(ArgRet(), start_from);
+        } else {
+            return RT(ArgRet(arguments), working);
+        }
+    } else {
+        return RT(ArgRet(), working);
+    }
 }
 
 template <typename... GCodes>
