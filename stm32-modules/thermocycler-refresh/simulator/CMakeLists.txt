@@ -11,6 +11,7 @@ add_executable(
   motor_thread.cpp
   periodic_data_thread.cpp
   main.cpp
+  putchar.c
 )
 
 target_link_libraries(
