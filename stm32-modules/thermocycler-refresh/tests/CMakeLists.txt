@@ -5,6 +5,7 @@ include(Catch)
 include(AddBuildAndTestTarget)
 
 add_executable(${TARGET_MODULE_NAME}
+    putchar.c
     task_builder.cpp
     test_host_comms_task.cpp
     test_lid_heater_task.cpp
@@ -63,12 +64,12 @@ target_compile_options(${TARGET_MODULE_NAME}
     PUBLIC
     -Wall
     -Werror
-    -Weffc++
-    -Wreorder
-    -Wsign-promo
-    -Wextra-semi
-    -Wctor-dtor-privacy
-    -fno-rtti)
+    $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wctor-dtor-privacy>
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>)
 
 target_link_libraries(${TARGET_MODULE_NAME} 
     ${TARGET_MODULE_NAME}-core 
