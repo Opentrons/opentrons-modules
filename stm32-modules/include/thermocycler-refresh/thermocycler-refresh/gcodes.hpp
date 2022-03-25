@@ -11,11 +11,12 @@
 #include <charconv>
 #include <concepts>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <iterator>
 #include <optional>
 #include <utility>
+
+#include <printf.h> // Non-malloc printf
 
 #include "core/gcode_parser.hpp"
 #include "core/utility.hpp"

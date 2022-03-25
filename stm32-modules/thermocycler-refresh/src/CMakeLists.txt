@@ -5,6 +5,7 @@
 
 find_package(Python)
 find_package(Git QUIET)
+find_package(MpalandPrintf)
 
 # Generate the thermistor table for this project
 set(COMMON_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src)
@@ -55,15 +56,16 @@ endif()
 
 # Configure lintable/nonlintable sources here
 set(CORE_LINTABLE_SOURCES
-  ${CMAKE_CURRENT_SOURCE_DIR}/errors.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/plate_control.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/board_revision.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/colors.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/motor_utils.cpp
-  )
+    ${CMAKE_CURRENT_SOURCE_DIR}/errors.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/plate_control.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/board_revision.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/colors.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/motor_utils.cpp
+    )
 set(CORE_NONLINTABLE_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/putchar.c
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
-  ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
+    ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 
 add_library(${TARGET_MODULE_NAME}-core STATIC
   ${CORE_LINTABLE_SOURCES}
@@ -72,9 +74,13 @@ add_library(${TARGET_MODULE_NAME}-core STATIC
 
 set_target_properties(${TARGET_MODULE_NAME}-core
   PROPERTIES CXX_STANDARD 20
-             CXX_STANDARD_REQUIRED TRUE)
+             CXX_STANDARD_REQUIRED TRUE
+             C_STANDARD 11
+             C_STANDARD_REQUIRED TRUE)
 
-target_link_libraries(${TARGET_MODULE_NAME}-core common-core)
+target_link_libraries(${TARGET_MODULE_NAME}-core PUBLIC common-core)
+
+target_link_libraries(${TARGET_MODULE_NAME}-core PUBLIC Mpaland_Printf_Library)
 
 target_include_directories(${TARGET_MODULE_NAME}-core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
@@ -85,10 +91,10 @@ target_compile_options(${TARGET_MODULE_NAME}-core
   PRIVATE
   -Wall
   -Werror
-  -Weffc++
-  -Wreorder
-  -Wsign-promo
-  -Wextra-semi
-  -Wctor-dtor-privacy
-  -fno-rtti
+  $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wctor-dtor-privacy>
+  $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
   )
