@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <printf.h>  // Non-malloc printf
+
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -15,8 +17,6 @@
 #include <iterator>
 #include <optional>
 #include <utility>
-
-#include <printf.h> // Non-malloc printf
 
 #include "core/gcode_parser.hpp"
 #include "core/utility.hpp"
