@@ -104,6 +104,7 @@ struct SetSerialNumberMessage {
 struct SetLEDMessage {
     uint32_t id;
     LED_MODE mode;
+    bool from_host = false;
 };
 
 struct IdentifyModuleStartLEDMessage {
