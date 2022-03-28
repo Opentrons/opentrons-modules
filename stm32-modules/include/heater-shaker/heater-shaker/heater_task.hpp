@@ -88,6 +88,8 @@ requires MessageQueue<QueueImpl<Message>, Message>
 class HeaterTask {
   public:
     using Queue = QueueImpl<Message>;
+    static constexpr double MAX_APPLICATION_TEMPERATURE_C = 100;
+    static constexpr double MIN_APPLICATION_TEMPERATURE_C = 0;
     static constexpr double HOT_TO_TOUCH_THRESHOLD = 48.9;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 100;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 44.2;
@@ -254,9 +256,15 @@ class HeaterTask {
             setpoint = 0;
             response.with_error = most_relevant_error();
         } else {
-            setpoint = msg.target_temperature;
-            pid.arm_integrator_reset(setpoint - pad_temperature());
-            state.system_status = State::CONTROLLING;
+            if (msg.target_temperature > MAX_APPLICATION_TEMPERATURE_C ||
+                msg.target_temperature < MIN_APPLICATION_TEMPERATURE_C) {
+                response.with_error =
+                    errors::ErrorCode::HEATER_ILLEGAL_TARGET_TEMPERATURE;
+            } else {
+                setpoint = msg.target_temperature;
+                pid.arm_integrator_reset(setpoint - pad_temperature());
+                state.system_status = State::CONTROLLING;
+            }
         }
         if (msg.from_system) {
             static_cast<void>(
