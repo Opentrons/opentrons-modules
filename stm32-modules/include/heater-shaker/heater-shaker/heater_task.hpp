@@ -259,7 +259,7 @@ class HeaterTask {
             if (msg.target_temperature > MAX_APPLICATION_TEMPERATURE_C ||
                 msg.target_temperature < MIN_APPLICATION_TEMPERATURE_C) {
                 response.with_error =
-                    errors::ErrorCode::HEATER_ILLEGAL_TARGET_TEMPERATURE;
+                    errors::ErrorCode::HEATER_ILLEGAL_TARGET_TEMPERATURE; 
             } else {
                 setpoint = msg.target_temperature;
                 pid.arm_integrator_reset(setpoint - pad_temperature());
