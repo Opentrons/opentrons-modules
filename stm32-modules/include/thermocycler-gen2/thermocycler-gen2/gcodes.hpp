@@ -1073,13 +1073,17 @@ struct SetPlateTemperature {
     using ParseResult = std::optional<SetPlateTemperature>;
     static constexpr auto prefix = std::array{'M', '1', '0', '4', ' ', 'S'};
     static constexpr auto hold_prefix = std::array{' ', 'H'};
+    static constexpr auto volume_prefix = std::array{' ', 'V'};
     static constexpr const char* response = "M104 OK\n";
 
     // 0 seconds means infinite hold time
     constexpr static double infinite_hold = 0.0F;
+    // If no volume is specified, set to 0
+    constexpr static double default_volume = 0.0F;
 
     double setpoint;
     double hold_time;
+    double volume;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -1116,9 +1120,23 @@ struct SetPlateTemperature {
             working = hold.second;
         }
 
+        auto volume_val = default_volume;
+        auto working_volume = working;
+        working = prefix_matches(working_volume, limit, volume_prefix);
+        if (working != working_volume) {
+            // This command specified a volume
+            auto vol = parse_value<float>(working, limit);
+            if (!vol.first.has_value()) {
+                return std::make_pair(ParseResult(), input);
+            }
+            volume_val = vol.first.value();
+            working = vol.second;
+        }
+
         return std::make_pair(
             ParseResult(SetPlateTemperature{.setpoint = temperature_val,
-                                            .hold_time = hold_val}),
+                                            .hold_time = hold_val,
+                                            .volume = volume_val}),
             working);
     }
 };

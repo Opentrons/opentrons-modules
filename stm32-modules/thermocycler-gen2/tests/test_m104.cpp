@@ -38,6 +38,8 @@ SCENARIO("SetPlateTemperature (M104) parser works", "[gcode][parse][m104]") {
                 REQUIRE(val.value().setpoint == 95.0F);
                 REQUIRE(val.value().hold_time ==
                         gcode::SetPlateTemperature::infinite_hold);
+                REQUIRE(val.value().volume ==
+                        gcode::SetPlateTemperature::default_volume);
             }
         }
         WHEN("Setting target to 0.0") {
@@ -51,6 +53,8 @@ SCENARIO("SetPlateTemperature (M104) parser works", "[gcode][parse][m104]") {
                 REQUIRE(val.value().setpoint == 0.0F);
                 REQUIRE(val.value().hold_time ==
                         gcode::SetPlateTemperature::infinite_hold);
+                REQUIRE(val.value().volume ==
+                        gcode::SetPlateTemperature::default_volume);
             }
         }
         WHEN("Setting target to 50C with a hold time of 40 seconds") {
@@ -63,6 +67,39 @@ SCENARIO("SetPlateTemperature (M104) parser works", "[gcode][parse][m104]") {
                 REQUIRE(val.has_value());
                 REQUIRE(val.value().setpoint == 50.0F);
                 REQUIRE(val.value().hold_time == 40.0F);
+                REQUIRE(val.value().volume ==
+                        gcode::SetPlateTemperature::default_volume);
+            }
+        }
+        WHEN("Setting target to 50C with a volume of 40.5") {
+            std::string buffer = "M104 S50.0 V40.5\n";
+            auto parsed =
+                gcode::SetPlateTemperature::parse(buffer.begin(), buffer.end());
+            THEN("the target should be 50.0") {
+                auto &val = parsed.first;
+                REQUIRE(parsed.second != buffer.begin());
+                REQUIRE(val.has_value());
+                REQUIRE(val.value().setpoint == 50.0F);
+                REQUIRE(val.value().hold_time ==
+                        gcode::SetPlateTemperature::infinite_hold);
+                REQUIRE_THAT(val.value().volume,
+                             Catch::Matchers::WithinAbs(40.5, 0.01));
+            }
+        }
+        WHEN(
+            "Setting target to 50C with a hold time of 10 and a volume of "
+            "40.5") {
+            std::string buffer = "M104 S50.0 H10.0 V40.5\n";
+            auto parsed =
+                gcode::SetPlateTemperature::parse(buffer.begin(), buffer.end());
+            THEN("the target should be 50.0") {
+                auto &val = parsed.first;
+                REQUIRE(parsed.second != buffer.begin());
+                REQUIRE(val.has_value());
+                REQUIRE(val.value().setpoint == 50.0F);
+                REQUIRE(val.value().hold_time == 10.0F);
+                REQUIRE_THAT(val.value().volume,
+                             Catch::Matchers::WithinAbs(40.5, 0.01));
             }
         }
     }
