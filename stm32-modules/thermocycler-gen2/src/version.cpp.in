@@ -1,7 +1,7 @@
 #include "core/version.hpp"
 
 static constexpr const char* _FW_VERSION_GENERATED = "${${TARGET_MODULE_NAME}_VERSION}";
-static constexpr const char* _HW_VERSION_GENERATED = "Opentrons ${TARGET_MODULE_NAME}";
+static constexpr const char* _HW_VERSION_GENERATED = "Opentrons-${TARGET_MODULE_NAME}";
 
 const char* version::fw_version() {
     return _FW_VERSION_GENERATED;
