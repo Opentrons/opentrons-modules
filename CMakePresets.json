@@ -69,23 +69,23 @@
     ],
     "buildPresets": [
         {
-            "name": "thermocycler-refresh-binary",
-            "displayName": "thermocycler refresh binary",
-            "description": "Build the thermocycler-refresh cross binary",
+            "name": "thermocycler-gen2-binary",
+            "displayName": "thermocycler gen2 binary",
+            "description": "Build the thermocycler-gen2 cross binary",
             "configurePreset": "stm32-cross",
             "jobs": 4,
             "targets": [
-                "thermocycler-refresh"
+                "thermocycler-gen2"
             ]
         },
         {
-            "name": "thermocycler-refresh-debug",
-            "displayName": "thermocycler refresh debug",
-            "description": "Build the thermocycler-refresh cross debug",
+            "name": "thermocycler-gen2-debug",
+            "displayName": "thermocycler gen2 debug",
+            "description": "Build the thermocycler-gen2 cross debug",
             "configurePreset": "stm32-cross",
             "jobs": 4,
             "targets": [
-                "thermocycler-refresh-debug"
+                "thermocycler-gen2-debug"
             ]
         },
         {
@@ -116,7 +116,7 @@
             "targets": [
                 "heater-shaker-lint",
                 "common-lint",
-                "thermocycler-refresh-lint"
+                "thermocycler-gen2-lint"
             ]
         },
         {
@@ -128,7 +128,7 @@
             "targets": [
                 "heater-shaker-format",
                 "common-format",
-                "thermocycler-refresh-format"
+                "thermocycler-gen2-format"
             ]
         },
         {
@@ -140,7 +140,7 @@
             "targets": [
                 "heater-shaker-format",
                 "common-format",
-                "thermocycler-refresh-format"
+                "thermocycler-gen2-format"
             ]
         },
         {
@@ -151,7 +151,7 @@
             "jobs": 4,
             "targets": [
                 "heater-shaker-simulator",
-                "thermocycler-refresh-simulator"
+                "thermocycler-gen2-simulator"
             ]
         },
         {
@@ -162,7 +162,7 @@
             "jobs": 4,
             "targets": [
                 "heater-shaker-simulator",
-                "thermocycler-refresh-simulator"
+                "thermocycler-gen2-simulator"
             ]
         },
         {
@@ -174,17 +174,17 @@
             "targets": [
                 "heater-shaker-build-and-test",
                 "common-build-and-test",
-                "thermocycler-refresh-build-and-test"
+                "thermocycler-gen2-build-and-test"
             ]
         },
         {
-            "name": "thermocycler-refresh-tests",
+            "name": "thermocycler-gen2-tests",
             "displayName": "tests",
             "description": "Runs build-and-test target for all subprojects",
             "configurePreset": "stm32-host",
             "jobs": 4,
             "targets": [
-                "thermocycler-refresh-build-and-test"
+                "thermocycler-gen2-build-and-test"
             ]
         },
         {
