@@ -38,9 +38,16 @@ Reset_Handler:
     ldr     r0, =_estack 
     mov     sp, r0 
     /* Jump to the user application */
-    bl      [Fault_Handler]
-    //ldr     r0, =[_user_app_start]
-    //bx      r0
+    ldr     r0, =_user_app_start
+    ldr     r1, [r0]
+    /* As an easy way to check for a missing program, check if the reset
+     * vector we're expecting points to 0xFFFFFFFF. If that's the case,
+     * there is definitely not a valid program to run. */
+    ldr     r2, =0xFFFFFFFF
+    cmp     r1, r2 
+    bcs Fault_Handler
+    /* If we didn't jump to the fault handler, jump to the app now */
+    bx      r1
 
 .size	Reset_Handler, .-Reset_Handler
 
