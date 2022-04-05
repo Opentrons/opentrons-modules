@@ -47,7 +47,7 @@ Reset_Handler:
     ldr     r2, =0xFFFFFFF0
     and     r1, r1, r2
     cmp     r1, r2 
-    bcs Post_Fault_Handler
+    bcs Post_Fault_Handler /* jump if upper 7 nibbles are all 0xF */
     /* Another check is to avoid any address that is not pointing to a
      * thumb-mode function, which will most certainly fault. */
     ldr     r1, [r0]
