@@ -1,31 +1,29 @@
 #include "stm32f3xx_hal.h"
 #include "uart_hardware.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 static UART_HandleTypeDef *uart_handle;
 
-static void Error_Handler(void);
-
 void UART_Init(UART_HandleTypeDef *huart)
 {
+  HAL_StatusTypeDef ret;
   uart_handle = huart;
 
   huart->Instance        = USARTx;
-
-  huart->Init.BaudRate   = 9600; //to match USB
+  huart->Init.BaudRate   = 9600;
   huart->Init.WordLength = UART_WORDLENGTH_8B;
   huart->Init.StopBits   = UART_STOPBITS_1;
   huart->Init.Parity     = UART_PARITY_NONE;
   huart->Init.Mode       = UART_MODE_TX_RX;
   huart->Init.HwFlowCtl  = UART_HWCONTROL_NONE;
-  huart->AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT; 
-  if(HAL_UART_DeInit(huart) != HAL_OK)
-  {
-    Error_Handler();
-  }  
-  if(HAL_UART_Init(huart) != HAL_OK)
-  {
-    Error_Handler();
-  }
+  huart->AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+
+  ret = HAL_UART_DeInit(huart);
+  configASSERT(ret == HAL_OK);
+  ret = HAL_UART_Init(huart);
+  configASSERT(ret == HAL_OK);
+
   /* Configure NVIC */
   HAL_NVIC_SetPriority(USART2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(USART2_IRQn);
@@ -33,26 +31,19 @@ void UART_Init(UART_HandleTypeDef *huart)
 
 void UART_DeInit(UART_HandleTypeDef *huart)
 {
-  huart->Instance        = USARTx;
+  HAL_StatusTypeDef ret;
 
+  huart->Instance        = USARTx;
   huart->Init.BaudRate   = 9600;
   huart->Init.WordLength = UART_WORDLENGTH_8B;
   huart->Init.StopBits   = UART_STOPBITS_1;
   huart->Init.Parity     = UART_PARITY_NONE;
   huart->Init.Mode       = UART_MODE_TX_RX;
   huart->Init.HwFlowCtl  = UART_HWCONTROL_NONE;
-  huart->AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT; 
-  if(HAL_UART_DeInit(huart) != HAL_OK)
-  {
-    Error_Handler();
-  }  
-}
+  huart->AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 
-static void Error_Handler(void)
-{
-  while(1)
-  {
-  }  
+  ret = HAL_UART_DeInit(huart);
+  configASSERT(ret == HAL_OK);
 }
 
 void HAL_UART_MspInit(UART_HandleTypeDef *huart)
