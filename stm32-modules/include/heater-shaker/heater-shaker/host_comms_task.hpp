@@ -138,7 +138,6 @@ class HostCommsTask {
     }
 
     [[nodiscard]] auto may_connect() const -> bool { return may_connect_latch; }
-    [[nodiscard]] auto uart_may_connect() const -> bool { return uart_may_connect_latch; }
 
   private:
     /**
@@ -401,7 +400,6 @@ class HostCommsTask {
         auto acknowledgement =
             messages::AcknowledgePrevious{.responding_to_id = response.id};
         may_connect_latch = false;
-        uart_may_connect_latch = false;
         static_cast<void>(task_registry->system->get_message_queue().try_send(
             acknowledgement));
         return tx_into;
@@ -949,7 +947,6 @@ class HostCommsTask {
     GetPlateLockStateCache get_plate_lock_state_cache;
     GetPlateLockStateDebugCache get_plate_lock_state_debug_cache;
     bool may_connect_latch = true;
-    bool uart_may_connect_latch = true;
 };
 
 };  // namespace host_comms_task

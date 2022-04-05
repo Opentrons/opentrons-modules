@@ -32,7 +32,7 @@ struct CommsTaskFreeRTOS {
     double_buffer::DoubleBuffer<char, CDC_DATA_HS_MAX_PACKET_SIZE * 4> rx_buf;
     double_buffer::DoubleBuffer<char, CDC_DATA_HS_MAX_PACKET_SIZE * 4> tx_buf;
     char *committed_rx_buf_ptr;
-    double_buffer::DoubleBuffer<char, CDC_DATA_HS_MAX_PACKET_SIZE * 4> uart_rx_buf; //make same size as USB buffers?
+    double_buffer::DoubleBuffer<char, UART_BUFFER_MAX_SIZE> uart_rx_buf;
     char *committed_uart_rx_buf_ptr;
 };
 
@@ -101,7 +101,7 @@ extern __ALIGN_BEGIN uint8_t
     USBD_CDC_CfgFSDesc[USB_CDC_CONFIG_DESC_SIZ] __ALIGN_END;
 }
 
-__IO ITStatus UartReady = SET;
+static bool UartReady = true;
 
 // Actual function that runs in the task
 void run(void *param) {  // NOLINT(misc-unused-parameters)
@@ -123,14 +123,14 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
                                &local_task->cdc_class_fops);
     USBD_SetClassConfig(&local_task->usb_handle, 0);
     USBD_Start(&local_task->usb_handle);
-    UART_Init(&local_task->uart_handle);
+    UART_Init(&_local_task.uart_handle);
     local_task->committed_rx_buf_ptr = local_task->rx_buf.committed()->data();
-    local_task->committed_uart_rx_buf_ptr = local_task->uart_rx_buf.committed()->data();
-    HAL_UART_Receive_IT(
+    _local_task.committed_uart_rx_buf_ptr = _local_task.uart_rx_buf.committed()->data();
+    HAL_UARTEx_ReceiveToIdle_IT(
         &_local_task.uart_handle,
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         reinterpret_cast<uint8_t *>(
-            _local_task.uart_rx_buf.committed()->data()),
+            _local_task.committed_uart_rx_buf_ptr),
         (uint16_t)(
             _local_task.uart_rx_buf.committed()->size()));
     while (true) {
@@ -140,7 +140,7 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
         if (!top_task->may_connect()) {
             USBD_Stop(&_local_task.usb_handle);
             UART_DeInit(&_local_task.uart_handle);
-        } else if ((tx_end != local_task->tx_buf.accessible()->data()) && (UartReady == SET)) {
+        } else if ((tx_end != local_task->tx_buf.accessible()->data()) && (UartReady)) {
             local_task->tx_buf.swap();
             USBD_CDC_SetTxBuffer(
                 &_local_task.usb_handle,
@@ -149,7 +149,7 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
                     local_task->tx_buf.committed()->data()),
                 tx_end - local_task->tx_buf.committed()->data());
             USBD_CDC_TransmitPacket(&_local_task.usb_handle);
-            UartReady = RESET;
+            UartReady = false;
             HAL_UART_Transmit_IT(
                 &_local_task.uart_handle,
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
@@ -333,51 +333,63 @@ static auto CDC_Receive(uint8_t *Buf, uint32_t *Len) -> int8_t {
     return USBD_OK;
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *UartHandle, uint16_t Size)
 {
     using namespace host_comms_control_task;
-    uint8_t *Buf = reinterpret_cast<uint8_t *>(_local_task.uart_rx_buf.committed()->data());
-    uint16_t Len = (uint16_t)(_local_task.uart_rx_buf.committed()->size());
-    uint8_t *buffer_count = std::find_if_not(Buf + Len, Buf, [](auto ch) { return ch == '0'; });
-    ssize_t remaining_buffer_count = reinterpret_cast<ssize_t>(Buf + Len - buffer_count);
+    uint8_t *Buf = reinterpret_cast<uint8_t *>(_local_task.committed_uart_rx_buf_ptr);
+    ssize_t Len = (ssize_t)(Size);
+    ssize_t remaining_buffer_count = (ssize_t)(UART_BUFFER_MAX_SIZE) - Len;
+
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     if ((std::find_if(Buf, Buf + Len,
                       [](auto ch) { return ch == '\n' || ch == '\r'; }) !=
          (Buf +  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
           Len)) ||
         remaining_buffer_count <
-            static_cast<ssize_t>(CDC_DATA_HS_MAX_PACKET_SIZE)) {
+            (ssize_t)(UART_BUFFER_MIN_SIZE)) {
         // there was a newline in this message, can pass on
         auto message =
             messages::HostCommsMessage(messages::IncomingMessageFromHost{
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
                 .buffer = reinterpret_cast<const char *>(
-                    _local_task.rx_buf.committed()->data()),
+                    _local_task.uart_rx_buf.committed()->data()),
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
                 .limit = reinterpret_cast<const char *>(
                     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                    buffer_count)});
+                    Buf + Len)});
         static_cast<void>(
             _top_task.get_message_queue().try_send_from_isr(message));
-        _local_task.rx_buf.swap();
-        _local_task.committed_rx_buf_ptr =
-            _local_task.rx_buf.committed()->data();
+        _local_task.uart_rx_buf.swap();
+        _local_task.committed_uart_rx_buf_ptr =
+            _local_task.uart_rx_buf.committed()->data();
+        HAL_UARTEx_ReceiveToIdle_IT(
+            &_local_task.uart_handle,
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+            reinterpret_cast<uint8_t *>(
+                _local_task.committed_uart_rx_buf_ptr),
+            (uint16_t)(
+                _local_task.uart_rx_buf.committed()->size()));
     } else {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        _local_task.committed_rx_buf_ptr += (buffer_count - Buf);
+        _local_task.committed_uart_rx_buf_ptr += Len;
+        HAL_UARTEx_ReceiveToIdle_IT(
+            &_local_task.uart_handle,
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+            reinterpret_cast<uint8_t *>(
+                _local_task.committed_uart_rx_buf_ptr),
+            (uint16_t)(remaining_buffer_count));
     }
-    
-    HAL_UART_Receive_IT(
-        &_local_task.uart_handle,
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-        reinterpret_cast<uint8_t *>(
-            _local_task.uart_rx_buf.committed()->data()),
-        (uint16_t)(
-            _local_task.uart_rx_buf.committed()->size()));
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
     using namespace host_comms_control_task;
-    UartReady = SET;
+    UartReady = true;
+    HAL_UARTEx_ReceiveToIdle_IT(
+        &_local_task.uart_handle,
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        reinterpret_cast<uint8_t *>(
+            _local_task.committed_uart_rx_buf_ptr),
+        (uint16_t)(
+            _local_task.uart_rx_buf.committed()->size()));
 }
