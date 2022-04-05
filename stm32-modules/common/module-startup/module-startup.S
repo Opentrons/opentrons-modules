@@ -20,6 +20,7 @@
 
 .global	g_pfnVectors
 .global Fault_Handler
+.global Post_Fault_Handler
 
 .equ  BootRAM,        0xF1E0F85F
 
@@ -41,12 +42,21 @@ Reset_Handler:
     ldr     r0, =_user_app_start
     ldr     r1, [r0]
     /* As an easy way to check for a missing program, check if the reset
-     * vector we're expecting points to 0xFFFFFFFF. If that's the case,
+     * vector we're expecting points to 0xFFFFFFFx. If that's the case,
      * there is definitely not a valid program to run. */
-    ldr     r2, =0xFFFFFFFF
+    ldr     r2, =0xFFFFFFF0
+    and     r1, r1, r2
     cmp     r1, r2 
-    bcs Fault_Handler
+    bcs Post_Fault_Handler
+    /* Another check is to avoid any address that is not pointing to a
+     * thumb-mode function, which will most certainly fault. */
+    ldr     r1, [r0]
+    ldr     r2, =1
+    and     r1, r1, r2 
+    cmp     r1, r2 
+    bcc Post_Fault_Handler /* jump if bit 0 was NOT a 1 */
     /* If we didn't jump to the fault handler, jump to the app now */
+    ldr     r1, [r0]
     bx      r1
 
 .size	Reset_Handler, .-Reset_Handler
@@ -60,7 +70,38 @@ Reset_Handler:
  * @retval : None
 */
     .section	.text.Fault_Handler,"ax",%progbits
+    .thumb_func
 Fault_Handler:
+    /* First clear the Configurable Fault Status Reg (CFSR) */
+    ldr     r0, =0xE000ED28 /* address of CFSR */
+    ldr     r1, [r0]
+    str     r1, [r0]        /* writing the reg value back clears 
+                             * any asserted bits */
+    /* Now clear HFSR register */
+    ldr     r0, =0xE000ED2C /* address of HFSR */
+    ldr     r1, [r0]
+    str     r1, [r0]        /* writing the reg value back clears 
+                             * any asserted bits */
+    /* Now ovewrite PC in the stack frame, stored at SP + 0x18 */
+    ldr     r0, =Post_Fault_Handler
+    str     r0, [sp,#0x18]
+
+    /* In order to clear the hard fault flag, we overwrite LR and return
+     * to the Post_Fault_Handler function */
+    bx      lr
+
+.size	Fault_Handler, .-Fault_Handler
+
+/**
+ * @brief  This is the code that gets called by the actual hard fault handler.
+ *         This sends the processor to the built in bootloader.
+ *
+ * @param  None
+ * @retval : None
+*/
+    .section	.text.Post_Fault_Handler,"ax",%progbits
+    .thumb_func
+Post_Fault_Handler:
     /* We make the assumption that the RCC is already not initialized.*/
 SystickDisable:
     /* Clear out SysTick data */
@@ -75,7 +116,7 @@ InitNvicClear:
     ldr     r0, =0xE000E180UL  /* NVIC Enable base address */
     ldr     r1, =0xE000E280UL  /* NVIC Pending base address */
     ldr     r2, =0xFFFFFFFF    /* Constant */
-    ldr     r3, = 0            /* Loop iterator */
+    ldr     r3, =0             /* Loop iterator */
     b LoopNvicClear
 NvicClear:
     str     r2, [r0,r3] /* Clear Enable at iterataor position */
@@ -110,7 +151,7 @@ BootloaderJump:
     ldr     r1, [r0]
     bx      r1
 
-.size	Fault_Handler, .-Fault_Handler
+.size	Post_Fault_Handler, .-Post_Fault_Handler
 
 /******************************************************************************
 *
