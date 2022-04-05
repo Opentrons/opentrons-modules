@@ -38,8 +38,11 @@ Reset_Handler:
     ldr     r0, =_estack 
     mov     sp, r0 
     /* Jump to the user application */
-    ldr     r0, =_user_app_start
-    bx      r0
+    bl      [Fault_Handler]
+    //ldr     r0, =[_user_app_start]
+    //bx      r0
+
+.size	Reset_Handler, .-Reset_Handler
 
 /**
  * @brief  This is the code that gets called when the processor receives an
@@ -51,6 +54,7 @@ Reset_Handler:
 */
     .section	.text.Fault_Handler,"ax",%progbits
 Fault_Handler:
+    /* We make the assumption that the RCC is already not initialized.*/
 SystickDisable:
     /* Clear out SysTick data */
     ldr     r0, =0xE000E010UL  /* Systick base address */
@@ -71,8 +75,8 @@ NvicClear:
     str     r2, [r1,r3] /* Clear Pending at iterataor position */
     adds r3, r3, #4     /* Increment iterator */
 LoopNvicClear:
-    /* 7 entries incremented by 4 = 28 */
-    cmp r3, #28         /* Check end of iteration */
+    /* 8 entries incremented by 4 = 32 */
+    cmp r3, #32         /* Check end of iteration */
     bcc NvicClear       /* Branch if not done */
 
 FlashMemorySwap:
@@ -90,12 +94,16 @@ FlashMemorySwap:
 SetMsp:
     /* point the main stack pointer to sysmem right before jumping */
     ldr     r0, =_sysmem_start
-    msr     MSP, r0
+    ldr     r1, [r0]
+    msr     MSP, r1
 
 BootloaderJump:
     /* Perform the jump to the bootloader */
     ldr     r0, =_bootloader_start
-    bx      r0
+    ldr     r1, [r0]
+    bx      r1
+
+.size	Fault_Handler, .-Fault_Handler
 
 /******************************************************************************
 *

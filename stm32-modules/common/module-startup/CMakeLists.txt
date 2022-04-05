@@ -36,7 +36,6 @@ add_custom_command(OUTPUT module-startup.hex
 add_custom_target(module-startup-hex ALL
     DEPENDS module-startup.hex)
 
-
 add_custom_command(OUTPUT module-startup.bin
     COMMAND ${CROSS_OBJCOPY} ARGS module-startup "-Obinary" module-startup.bin
     DEPENDS module-startup
