@@ -63,6 +63,8 @@ jobs:
         run: cmake --build ./build-stm32-cross --target thermocycler-gen2-lint
       - name: 'Build'
         run: cmake --build ./build-stm32-cross --target thermocycler-gen2-hex
+      - name: 'Build full image'
+        run: cmake --build ./build-stm32-cross --target thermocycler-gen2-image-hex
   host-compile-test:
     name: 'Host-Compile/Test'
     runs-on: 'ubuntu-20.04'
@@ -88,5 +90,3 @@ jobs:
         run: cmake --build ./build-stm32-host --target thermocycler-gen2-simulator
       - name: 'Build and Test'
         run: cmake --build --preset thermocycler-gen2-tests
-      - name: 'Build full image'
-        run: cmake --build ./build-stm32-cross --target thermocycler-gen2-image-hex
