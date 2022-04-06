@@ -5,17 +5,26 @@ import plot_temp
 import serial
 import time
 import sys
-from typing import Tuple
+import argparse
 
 def cycle(ser : serial.Serial):
     # Cycle to 95 then 5 and finally back
     # Format is target temp, then hold time
-    targets = [
+    targets_pcr = [
         (95.0, 40.0),
         (5.0, 50.0),
         (20.0, 20.0) ]
-    targets_fake = [
-        (20.0, 20.0) ]
+    targets = [
+        (35.0, 5.0),
+        (50.0, 5.0),
+        (65.0, 5.0),
+        (80.0, 5.0),
+        (95.0, 5.0),
+        (50.0, 5.0),
+        (4.0, 5.0),
+        (20.0, 5.0),
+        (10.0, 5.0),
+        (1.0, 5.0) ]
     target_idx = 0
 
     hold_timer = 0.0
@@ -53,13 +62,25 @@ def cycle(ser : serial.Serial):
     plot_temp.graphTemperatures(ser, update_callback)
 
 if __name__ == '__main__':
-    ser = test_utils.build_serial()
+    parser = argparse.ArgumentParser(description="Run a simple PCR cycle")
+    parser.add_argument('-s', '--socket', type=int, required=False, 
+                        help='Open a socket on localhost with a given port')
+    parser.add_argument('-c', '--constants', type=float, required=False, nargs=3, 
+                        metavar=('P','I','D'), 
+                        help='define P, I, and D constants for control')
+    args = parser.parse_args()
+    if args.socket:
+        print(f"Opening socket at localhost:{args.socket}")
+        ser = test_utils.build_tcp(args.socket)
+    else:
+        print("Connecting to TC via serial")
+        ser = test_utils.build_serial()
 
-    #test_utils.set_peltier_pid(0.043429, 0.001656, 0.0164408, ser)
-    test_utils.set_peltier_pid(0.26225539341692944, 0.05356372043227761, 0.008128697818415609, ser)
-    test_utils.set_heater_pid(0.0922, 0.001552, 0.10358, ser)
+    if args.constants:
+        print(f'Setting P={args.constants[0]}, I={args.constants[1]}, D={args.constants[2]}')
+        test_utils.set_peltier_pid(args.constants[0], args.constants[1], args.constants[2], ser)
 
-    #test_utils.set_lid_temperature(90, ser)
+    test_utils.set_lid_temperature(105, ser)
     cycle(ser)
     test_utils.deactivate_lid(ser)
     test_utils.deactivate_plate(ser)
