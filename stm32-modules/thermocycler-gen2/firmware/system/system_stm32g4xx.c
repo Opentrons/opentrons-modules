@@ -109,7 +109,6 @@
 /*!< Uncomment the following line if you need to relocate your vector Table in
      Internal SRAM. */
 /* #define VECT_TAB_SRAM */
-extern int _flash_start, _app_flash_start;
 
 #define VECT_TAB_OFFSET (0x800) 
             /*!< Vector Table base offset field. \
