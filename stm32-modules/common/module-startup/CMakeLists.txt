@@ -24,7 +24,7 @@ find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
 
 # Incurs at least a relink when you change the linker file (and a recompile of main
 # but hopefully that's quick)
-set_source_files_properties(./module-startup.s
+set_source_files_properties(./module-startup.S
     PROPERTIES
     OBJECT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/STM32_MODULE_STARTUP.ld)
 
