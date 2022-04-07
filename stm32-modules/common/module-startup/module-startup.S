@@ -120,7 +120,7 @@ InitNvicClear:
     b LoopNvicClear
 NvicClear:
     str     r2, [r0,r3] /* Clear Enable at iterator position */
-    str     r2, [r1,r3] /* Clear Pending at iterataor position */
+    str     r2, [r1,r3] /* Clear Pending at iterator position */
     adds r3, r3, #4     /* Increment iterator */
 LoopNvicClear:
     /* 8 entries incremented by 4 = 32 */
