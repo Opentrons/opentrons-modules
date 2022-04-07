@@ -11,7 +11,7 @@ void UART_Init(UART_HandleTypeDef *huart)
   uart_handle = huart;
 
   huart->Instance        = USARTx;
-  huart->Init.BaudRate   = 9600;
+  huart->Init.BaudRate   = 115200;
   huart->Init.WordLength = UART_WORDLENGTH_8B;
   huart->Init.StopBits   = UART_STOPBITS_1;
   huart->Init.Parity     = UART_PARITY_NONE;
@@ -21,8 +21,10 @@ void UART_Init(UART_HandleTypeDef *huart)
 
   ret = HAL_UART_DeInit(huart);
   configASSERT(ret == HAL_OK);
-  ret = HAL_UART_Init(huart);
-  configASSERT(ret == HAL_OK);
+  if (ret == HAL_OK) {
+    ret = HAL_UART_Init(huart);
+    configASSERT(ret == HAL_OK);
+  }
 
   /* Configure NVIC */
   HAL_NVIC_SetPriority(USART2_IRQn, 5, 0);
@@ -34,7 +36,7 @@ void UART_DeInit(UART_HandleTypeDef *huart)
   HAL_StatusTypeDef ret;
 
   huart->Instance        = USARTx;
-  huart->Init.BaudRate   = 9600;
+  huart->Init.BaudRate   = 115200;
   huart->Init.WordLength = UART_WORDLENGTH_8B;
   huart->Init.StopBits   = UART_STOPBITS_1;
   huart->Init.Parity     = UART_PARITY_NONE;
