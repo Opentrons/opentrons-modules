@@ -12,7 +12,7 @@ The code for this module consists of a core set of code that can be compiled for
 
 The structure of each target is shown below (arrows indicate dependencies):
 
-'''mermaid
+```mermaid
 flowchart BT
     A[Simulator Executable]
     B[Thermocycler common code]
@@ -31,7 +31,7 @@ flowchart BT
     C --> H
     D --> G
     A --> F
-'''
+```
 
 ## Relevant build system targets
 
