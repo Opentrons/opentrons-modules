@@ -191,8 +191,11 @@ set(MODULE_STARTUP_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../common/module-st
 # Targets to create full image hex file containing both bootloader and application
 add_custom_command(
     OUTPUT ${TARGET_MODULE_NAME}-image.hex
-    DEPENDS ${TARGET_MODULE_NAME}-hex module-startup-hex
+    DEPENDS ${TARGET_MODULE_NAME}-hex 
+    DEPENDS module-startup
+    DEPENDS module-startup-hex
     COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py ${TARGET_MODULE_NAME}-image.hex $<TARGET_FILE_DIR:module-startup>/module-startup.hex ${TARGET_MODULE_NAME}.hex
     VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-image-hex ALL
-    DEPENDS ${TARGET_MODULE_NAME}-image.hex)
+    DEPENDS ${TARGET_MODULE_NAME}-image.hex
+    DEPENDS ${TARGET_MODULE_NAME}.hex)

@@ -105,7 +105,7 @@ Fault_Handler:
     .thumb_func
 Post_Fault_Handler:
     /* We make the assumption that the RCC is already not initialized.*/
-    cpsid ai
+    cpsid   if
 SystickDisable:
     /* Clear out SysTick data */
     ldr     r0, =0xE000E010UL  /* Systick base address */
@@ -152,7 +152,7 @@ BootloaderJump:
     /* Perform the jump to the bootloader */
     ldr     r0, =_bootloader_start
     ldr     r1, [r0]
-    cpsie ai
+    cpsie   if
     bx      r1
 
 .size	Post_Fault_Handler, .-Post_Fault_Handler
