@@ -82,7 +82,9 @@ Fault_Handler:
     ldr     r1, [r0]
     str     r1, [r0]        /* writing the reg value back clears 
                              * any asserted bits */
-    /* Now ovewrite PC in the stack frame, stored at SP + 0x18 */
+    /* Now ovewrite PC in the stack frame, stored at SP + 0x18
+     * See https://developer.arm.com/documentation/dui0552/a/the-cortex-m3-processor/exception-model/exception-entry-and-return
+     * for details on the stack frame contents. */
     ldr     r0, =Post_Fault_Handler
     str     r0, [sp,#0x18]
 
@@ -103,6 +105,7 @@ Fault_Handler:
     .thumb_func
 Post_Fault_Handler:
     /* We make the assumption that the RCC is already not initialized.*/
+    cpsid ai
 SystickDisable:
     /* Clear out SysTick data */
     ldr     r0, =0xE000E010UL  /* Systick base address */
@@ -149,6 +152,7 @@ BootloaderJump:
     /* Perform the jump to the bootloader */
     ldr     r0, =_bootloader_start
     ldr     r1, [r0]
+    cpsie ai
     bx      r1
 
 .size	Post_Fault_Handler, .-Post_Fault_Handler
