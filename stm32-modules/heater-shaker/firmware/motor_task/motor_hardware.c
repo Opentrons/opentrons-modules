@@ -357,7 +357,7 @@ static void PlateLockTIM_Init(TIM_HandleTypeDef* tim3) {
   tim3->Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   HAL_TIM_PWM_Init(tim3);
 
-  motor_hardware_plate_lock_off(tim3); 
+  motor_hardware_plate_lock_off(tim3);
 }
 
 /**
