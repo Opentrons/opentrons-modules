@@ -4,9 +4,9 @@
 #include "firmware/freertos_comms_task.hpp"
 
 #include <array>
+#include <atomic>
 #include <functional>
 #include <utility>
-#include <atomic>
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -340,7 +340,10 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *UartHandle, uint16_t Size) {
     uint8_t *Buf =
         reinterpret_cast<uint8_t *>(_local_task.committed_uart_rx_buf_ptr);
     ssize_t Len = (ssize_t)(Size);
-    ssize_t remaining_buffer_count = (ssize_t)((_local_task.uart_rx_buf.committed()->data() + _local_task.uart_rx_buf.committed()->size()) - (_local_task.committed_uart_rx_buf_ptr + Len));
+    ssize_t remaining_buffer_count =
+        (ssize_t)((_local_task.uart_rx_buf.committed()->data() +
+                   _local_task.uart_rx_buf.committed()->size()) -
+                  (_local_task.committed_uart_rx_buf_ptr + Len));
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     if ((std::find_if(Buf, Buf + Len,
