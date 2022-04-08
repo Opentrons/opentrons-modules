@@ -54,6 +54,8 @@ const char* const HEATER_HARDWARE_ERROR_LATCH =
     "ERR211:heater:heatpad thermistor overtemp or disconnected\n";
 const char* const HEATER_CONSTANT_OUT_OF_RANGE =
     "ERR212:heater:control constant out of range\n";
+const char* const HEATER_ILLEGAL_TARGET_TEMPERATURE =
+    "ERR213:heater:target temperature out of range\n";
 const char* const SYSTEM_SERIAL_NUMBER_INVALID =
     "ERR301:system:serial number invalid format\n";
 const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
@@ -63,6 +65,7 @@ const char* const SYSTEM_LED_I2C_NOT_READY =
 const char* const SYSTEM_LED_TRANSMIT_ERROR =
     "ERR304:system:LED I2C transmission or FreeRTOS notification passing "
     "failed\n";
+const char* const SYSTEM_FLASH_ERROR = "ERR305:system:flash write failed\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -108,10 +111,12 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(HEATER_THERMISTOR_BOARD_DISCONNECTED);
         HANDLE_CASE(HEATER_HARDWARE_ERROR_LATCH);
         HANDLE_CASE(HEATER_CONSTANT_OUT_OF_RANGE);
+        HANDLE_CASE(HEATER_ILLEGAL_TARGET_TEMPERATURE);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_INVALID);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
         HANDLE_CASE(SYSTEM_LED_I2C_NOT_READY);
         HANDLE_CASE(SYSTEM_LED_TRANSMIT_ERROR);
+        HANDLE_CASE(SYSTEM_FLASH_ERROR);
     }
     return UNKNOWN_ERROR;
 }

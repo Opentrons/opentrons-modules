@@ -192,15 +192,24 @@ class SystemTask {
     template <typename Policy>
     auto visit_message(const messages::SetLEDMessage& msg, Policy& policy)
         -> void {
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        auto error = errors::ErrorCode::NO_ERROR;
         if (!policy.check_I2C_ready()) {
-            response.with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
+            error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
         } else {
-            response.with_error = policy.start_set_led(msg.mode);
+            error = policy.start_set_led(msg.mode);
         }
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
+        if (msg.from_host) {
+            auto response = messages::AcknowledgePrevious{
+                .responding_to_id = msg.id, .with_error = error};
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    messages::HostCommsMessage(response)));
+        } else if (error != errors::ErrorCode::NO_ERROR) {
+            auto error_message = messages::ErrorMessage{.code = error};
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    error_message));
+        }
     }
 
     template <typename Policy>
@@ -246,8 +255,8 @@ class SystemTask {
                 bStatus = false;
                 static_cast<void>(
                     task_registry->comms->get_message_queue().try_send(
-                        messages::AcknowledgePrevious{
-                            .with_error =
+                        messages::ErrorMessage{
+                            .code =
                                 errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY}));
             }
             if (bStatus) {
@@ -257,8 +266,8 @@ class SystemTask {
                         bStatus = false;
                         static_cast<void>(
                             task_registry->comms->get_message_queue().try_send(
-                                messages::AcknowledgePrevious{
-                                    .with_error = errors::ErrorCode::
+                                messages::ErrorMessage{
+                                    .code = errors::ErrorCode::
                                         SYSTEM_LED_TRANSMIT_ERROR}));
                     }
                     if (bStatus) {
@@ -272,8 +281,8 @@ class SystemTask {
                         bStatus = false;
                         static_cast<void>(
                             task_registry->comms->get_message_queue().try_send(
-                                messages::AcknowledgePrevious{
-                                    .with_error = errors::ErrorCode::
+                                messages::ErrorMessage{
+                                    .code = errors::ErrorCode::
                                         SYSTEM_LED_TRANSMIT_ERROR}));
                     }
                     if (bStatus) {
@@ -293,10 +302,9 @@ class SystemTask {
     template <typename Policy>
     auto visit_message(const messages::HandleLEDSetupError& msg, Policy& policy)
         -> void {
-        auto response =
-            messages::AcknowledgePrevious{.with_error = msg.with_error};
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
+        auto error_message = messages::ErrorMessage{.code = msg.with_error};
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(error_message));
     }
 
     template <typename Policy>
