@@ -104,7 +104,9 @@ class MotorTask {
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
     static constexpr uint16_t HOMING_CYCLES_BEFORE_TIMEOUT = 10;
     static constexpr uint16_t PLATE_LOCK_MOVE_TIME_THRESHOLD =
-        2350;  // 1250 for 380:1 motor, 2350 for 1000:1 motor
+        4950;  // 1250 for 380:1 motor, 2350 for 1000:1 motor. Updated to 4950
+               // for SZ testing, needs to be tuned down (must end in 50 to pass
+               // tests)
     static constexpr int16_t MOTOR_START_THRESHOLD_RPM = 20;
     using Queue = QueueImpl<Message>;
     static constexpr uint8_t PLATE_LOCK_STATE_SIZE = 14;
@@ -401,7 +403,7 @@ class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::OpenPlateLockMessage& msg,
                        Policy& policy) -> void {
-        static constexpr float OpenPower = -1.0F;
+        static constexpr float OpenPower = 1.0F;
         auto check_state_message =
             messages::CheckPlateLockStatusMessage{.responding_to_id = msg.id};
         if ((policy.plate_lock_open_sensor_read()) ||
@@ -423,7 +425,7 @@ class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::ClosePlateLockMessage& msg,
                        Policy& policy) -> void {
-        static constexpr float ClosePower = 1.0F;
+        static constexpr float ClosePower = -1.0F;
         auto check_state_message = messages::CheckPlateLockStatusMessage{
             .responding_to_id = msg.id, .from_startup = msg.from_startup};
         if ((policy.plate_lock_closed_sensor_read()) ||

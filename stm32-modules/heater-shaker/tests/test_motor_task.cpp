@@ -879,7 +879,7 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                         tasks->get_motor_policy().test_plate_lock_enabled());
                     REQUIRE(
                         tasks->get_motor_policy().test_plate_lock_get_power() ==
-                        -1.0F);
+                        1.0F);
                     REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
                             motor_task::PlateLockState::OPENING);
                     REQUIRE(std::holds_alternative<
@@ -1049,7 +1049,7 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                         tasks->get_motor_policy().test_plate_lock_enabled());
                     REQUIRE(
                         tasks->get_motor_policy().test_plate_lock_get_power() ==
-                        1.0F);
+                        -1.0F);
                     REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
                             motor_task::PlateLockState::CLOSING);
                     REQUIRE(std::holds_alternative<
@@ -1195,7 +1195,7 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                         tasks->get_motor_policy().test_plate_lock_enabled());
                     REQUIRE(
                         tasks->get_motor_policy().test_plate_lock_get_power() ==
-                        1.0F);
+                        -1.0F);
                     REQUIRE(tasks->get_motor_task().get_plate_lock_state() ==
                             motor_task::PlateLockState::CLOSING);
                     REQUIRE(std::holds_alternative<
