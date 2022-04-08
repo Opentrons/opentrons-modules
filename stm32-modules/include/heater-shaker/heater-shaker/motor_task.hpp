@@ -554,7 +554,7 @@ class MotorTask {
             case PlateLockState::CLOSING:
                 plate_lock_state_array = std::array<char, 14>{"CLOSING"};
                 break;
-            case PlateLockState::IDLE_UNKNOWN:
+            case PlateLockState::IDLE_UNKNOWN: 
                 plate_lock_state_array = std::array<char, 14>{"IDLE_UNKNOWN"};
                 break;
             default:
