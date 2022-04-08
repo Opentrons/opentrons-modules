@@ -12,4 +12,4 @@ find_package(Clang)
 
 add_subdirectory(common)
 add_subdirectory(heater-shaker)
-add_subdirectory(thermocycler-refresh)
+add_subdirectory(thermocycler-gen2)
