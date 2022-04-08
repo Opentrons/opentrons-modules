@@ -11,8 +11,8 @@ void UART_Init(UART_HandleTypeDef *huart);
 void UART_DeInit(UART_HandleTypeDef *huart);
 void USART2_IRQHandler(void);
 
-#define UART_BUFFER_MAX_SIZE 64U
-#define UART_BUFFER_MIN_SIZE 16U
+#define UART_BUFFER_MAX_SIZE 64U //sized to capture any incoming gcode commands
+#define UART_BUFFER_MIN_SIZE 16U //threshold for determining remaining buffer size insufficient
 
 /* Definition for USARTx clock resources */
 #define USARTx USART2
