@@ -58,6 +58,7 @@ set(HS_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/stm32f3xx_it.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
+  ${COMMS_DIR}/uart_hardware.c
   ${MOTOR_DIR}/motor_hardware.c
   ${MOTOR_DIR}/mc_config.c
   ${MOTOR_DIR}/mc_interface.c
