@@ -79,8 +79,7 @@ struct PlateLockState {
         OPENING = 1,
         IDLE_OPEN = 2,
         CLOSING = 3,
-        IDLE_UNKNOWN = 4,
-        UNKNOWN = 5
+        IDLE_UNKNOWN = 4
     };
     PlateLockTaskStatus status;
 };
@@ -524,11 +523,8 @@ class MotorTask {
             case PlateLockState::IDLE_UNKNOWN:
                 plate_lock_state_array = std::array<char, 14>{"IDLE_UNKNOWN"};
                 break;
-            case PlateLockState::UNKNOWN:
-                plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
-                break;
             default:
-                plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
+                plate_lock_state_array = std::array<char, 14>{"IDLE_UNKNOWN"};
         }
         auto response = messages::GetPlateLockStateResponse{
             .responding_to_id = msg.id,
@@ -561,11 +557,8 @@ class MotorTask {
             case PlateLockState::IDLE_UNKNOWN:
                 plate_lock_state_array = std::array<char, 14>{"IDLE_UNKNOWN"};
                 break;
-            case PlateLockState::UNKNOWN:
-                plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
-                break;
             default:
-                plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
+                plate_lock_state_array = std::array<char, 14>{"IDLE_UNKNOWN"};
         }
         auto response = messages::GetPlateLockStateDebugResponse{
             .responding_to_id = msg.id,
