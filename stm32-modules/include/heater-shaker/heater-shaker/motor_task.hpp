@@ -105,7 +105,7 @@ class MotorTask {
     static constexpr uint16_t HOMING_CYCLES_BEFORE_TIMEOUT = 10;
     static constexpr uint16_t PLATE_LOCK_MOVE_TIME_THRESHOLD =
         4950;  // 1250 for 380:1 motor, 2350 for 1000:1 motor. Updated to 4950
-               // for SZ testing, needs to be tuned down
+               // for SZ testing, needs to be tuned down (must end in 50 to pass tests)
     static constexpr int16_t MOTOR_START_THRESHOLD_RPM = 20;
     using Queue = QueueImpl<Message>;
     static constexpr uint8_t PLATE_LOCK_STATE_SIZE = 14;
