@@ -374,7 +374,7 @@ static void EXTI0_Config(void)
   
   /* Configure plate lock engaged optical switch*/
   GPIO_InitStructure.Pin = PLATE_LOCK_ENGAGED_Pin;
-  GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStructure.Pull = GPIO_PULLUP;
   GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(PLATE_LOCK_Port, &GPIO_InitStructure);
@@ -398,7 +398,7 @@ static void EXTI4_Config(void)
   
   /* Configure plate lock released optical switch*/
   GPIO_InitStructure.Pin = PLATE_LOCK_RELEASED_Pin;
-  GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStructure.Pull = GPIO_PULLUP;
   GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(PLATE_LOCK_Port, &GPIO_InitStructure);
@@ -937,7 +937,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 bool motor_hardware_plate_lock_sensor_read(uint16_t GPIO_Pin)
 {
-  if (GPIO_PIN_SET == HAL_GPIO_ReadPin(PLATE_LOCK_Port, GPIO_Pin)) {
+  if (GPIO_PIN_RESET == HAL_GPIO_ReadPin(PLATE_LOCK_Port, GPIO_Pin)) {
     return true;
   } else {
     return false;
