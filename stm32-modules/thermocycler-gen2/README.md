@@ -2,6 +2,37 @@
 
 This directory has the code for the thermocycler gen2 (TC2)
 
+## Basic project structure
+
+The code for this module consists of a core set of code that can be compiled for any target platform, as well as supporting code that implements the lower levels of control for each specific platform. With this structure, the code can be compiled for three primary targets:
+
+- __firmware__ - the actual firmware running on the microcontroller
+- __tests__ - code that is intended to work alongside a suite of unit tests
+- __simulator__ - a version of the firmware that runs on the host platform (whatever computer is used to compile it), and which simulates the low level behavior of the firmware.
+
+The structure of each target is shown below (arrows indicate dependencies):
+
+```mermaid
+flowchart BT
+    A[Simulator Executable]
+    B[Thermocycler common code]
+    C[Firmware Binary]
+    D[Test Suite Executable]
+    E[Common libraries]
+
+    F[Simulator-specific code]
+    G[Test-specific code]
+    H[Firmware-specific code]
+
+    D ---> B
+    C ---> B
+    A ---> B
+    B --> E
+    C --> H
+    D --> G
+    A --> F
+```
+
 ## Relevant build system targets
 
 ### Cross-build

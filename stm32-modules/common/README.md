@@ -27,6 +27,7 @@ When compiling the firmware using your local compiler (using the `stm32-host` cm
 - `./src` contains the code that can be either cross- or host-compiled, and therefore can and should be tested
 - `./STM32F303` contains code and configuration files for running on an STM32F303 MCU
 - `./STM32G491` contains code and configuration files for running on an STM32G491 MCU
+- `./module-startup` contains code and configuration files for the modules startup application. See its README.md for more details.
 
 ## Style
 

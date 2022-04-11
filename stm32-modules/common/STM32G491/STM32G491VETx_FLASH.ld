@@ -58,12 +58,19 @@ _estack = ORIGIN(RAM) + LENGTH(RAM);	/* end of "RAM" Ram type memory */
 _Min_Heap_Size = 0x800;	/* required amount of heap  */
 _Min_Stack_Size = 0x600;	/* required amount of stack */
 
+_flash_offset = 0x800; /* first page is occupied by bootloader shim */
+_flash_start = 0x8000000;
+_app_flash_start  = _flash_start + _flash_offset;
+_flash_size = 512K;
+_serial_size = 0x800;
+_app_flash_size = _flash_size - _flash_offset - _serial_size;
+
 /* Specify the memory areas */
 MEMORY
 {
   CCMSRAM    (xrw)    : ORIGIN = 0x10000000,   LENGTH = 16K
   RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 112K
-  FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 510K /* Length reduced by 2K to reserve last page for serial number storage (NFF board flash size 384K, FF board flash size 512K) */
+  FLASH (rx)      : ORIGIN = _app_flash_start, LENGTH = _app_flash_size 
 }
 
 /* Define output sections */
