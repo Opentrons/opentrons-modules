@@ -180,10 +180,12 @@ class SystemTask {
         // If the serial number is unwritten, it will contain 0xFF which is
         // an illegal character that will confuse the host side. Replace the
         // first instance of it with a null terminator for safety.
+        constexpr uint8_t invalid_ascii_mask = 0x80;
         auto serial_number = policy.get_serial_number();
-        auto invalid_char =
-            std::find_if(serial_number.begin(), serial_number.end(),
-                         [](auto c) { return static_cast<uint8_t>(c) & 0x80; });
+        auto invalid_char = std::find_if(
+            serial_number.begin(), serial_number.end(), [](auto c) {
+                return static_cast<uint8_t>(c) & invalid_ascii_mask;
+            });
         if (invalid_char != serial_number.end()) {
             *invalid_char = '\0';
         }
