@@ -10,6 +10,7 @@ import serial
 import datetime
 import time
 from enum import Enum
+import socket as Socket
 
 from serial.tools.list_ports import grep
 from typing import Any, Callable, Dict, Tuple, List, Optional
@@ -34,6 +35,31 @@ def build_serial(port: str = None) -> serial.Serial:
             raise RuntimeError("could not find thermocycler")
         return serial.Serial(avail[0].device, 115200)
     return serial.Serial(port, 115200)
+
+
+class TCPModule():
+    def __init__(self, socket: Tuple[str, int]):
+        self._socket = Socket.socket(Socket.AF_INET, Socket.SOCK_STREAM)
+        self._socket.bind( (socket[0], socket[1]) )
+        self._socket.listen(1)
+        self._conn, self._addr = self._socket.accept()
+
+    def write(self, data: bytes) -> None:
+        """Write a bytearray object"""
+        self._conn.send(data)
+
+    def readline(self) -> bytes:
+        """Read one line of data, terminated by \n"""
+        recv = bytes()
+        while recv.count('\n'.encode()) == 0:
+            new_data = self._conn.recv(1024)
+            recv = recv + new_data
+        return recv
+
+
+def build_tcp(port: int, host: str = 'localhost') -> TCPModule:
+    """Sets up a TCP connection on a port"""
+    return TCPModule((host, port))
 
 def guard_error(res: bytes, prefix: bytes=  None):
     if res.startswith(b'ERR'):
