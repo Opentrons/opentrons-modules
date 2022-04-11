@@ -23,6 +23,33 @@ SCENARIO("GetSystemInfo (M115) response works", "[gcode][parse][m115]") {
                 REQUIRE_THAT(buffer, Catch::Matchers::EndsWith(suffix));
             }
         }
+        WHEN("filling response with an unset serial number (all 0xFF)") {
+            std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> TEST_SN;
+            memset(TEST_SN._M_elems, 0xFF, TEST_SN.size());
+            auto written = gcode::GetSystemInfo::write_response_into(
+                buffer.begin(), buffer.end(), TEST_SN, "hello", "world");
+            THEN("the response should be written in full with an empty serial") {
+                std::string ok = "M115 FW:hello HW:world SerialNo:EMPTYSN OK\n";
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(ok));
+                REQUIRE(written == buffer.begin() + ok.size());
+                std::string suffix(buffer.size() - ok.size(), 'c');
+                REQUIRE_THAT(buffer, Catch::Matchers::EndsWith(suffix));
+            }
+        }
+        WHEN("filling response with a SN with an invalid char") {
+            std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> TEST_SN =
+                {"TESTSN3"};
+            TEST_SN[3] = 0xFF;
+            auto written = gcode::GetSystemInfo::write_response_into(
+                buffer.begin(), buffer.end(), TEST_SN, "hello", "world");
+            THEN("the response should be written in full with an empty serial") {
+                std::string ok = "M115 FW:hello HW:world SerialNo:TES OK\n";
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(ok));
+                REQUIRE(written == buffer.begin() + ok.size());
+                std::string suffix(buffer.size() - ok.size(), 'c');
+                REQUIRE_THAT(buffer, Catch::Matchers::EndsWith(suffix));
+            }
+        }
     }
 
     GIVEN("a response buffer not large enough for the formatted response") {
