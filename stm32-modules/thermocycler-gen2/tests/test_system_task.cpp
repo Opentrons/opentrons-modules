@@ -1,9 +1,10 @@
+#include <string.h>  // memset
+
 #include "catch2/catch.hpp"
 #include "systemwide.h"
 #include "test/task_builder.hpp"
 #include "thermocycler-gen2/messages.hpp"
 #include "thermocycler-gen2/system_task.hpp"
-#include <string.h> // memset
 
 SCENARIO("system task message passing") {
     GIVEN("a system task") {
@@ -126,13 +127,15 @@ SCENARIO("system task message passing") {
                 }
             }
         }
-        
+
         GIVEN("a serial number that has not been initialized (all 0xFF)") {
-            WHEN("sending a get-system-info message as if from the host comms") {
+            WHEN(
+                "sending a get-system-info message as if from the host comms") {
                 auto message = messages::GetSystemInfoMessage{.id = 123};
                 tasks->get_system_queue().backing_deque.push_back(
                     messages::SystemMessage(message));
-                std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> serial_number;
+                std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>
+                    serial_number;
                 memset(serial_number._M_elems, 0xFF, serial_number.size());
                 tasks->get_system_policy().set_serial_number(serial_number);
                 tasks->get_system_task().run_once(tasks->get_system_policy());
@@ -141,21 +144,20 @@ SCENARIO("system task message passing") {
                     AND_THEN(
                         "the task should respond to the message to the host "
                         "comms with a null-terminated serial number") {
-                        REQUIRE(
-                            !tasks->get_host_comms_queue().backing_deque.empty());
+                        REQUIRE(!tasks->get_host_comms_queue()
+                                     .backing_deque.empty());
                         auto response =
                             tasks->get_host_comms_queue().backing_deque.front();
                         tasks->get_host_comms_queue().backing_deque.pop_front();
-                        REQUIRE(
-                            std::holds_alternative<messages::GetSystemInfoResponse>(
-                                response));
+                        REQUIRE(std::holds_alternative<
+                                messages::GetSystemInfoResponse>(response));
                         auto getsysteminfo =
                             std::get<messages::GetSystemInfoResponse>(response);
                         REQUIRE(getsysteminfo.responding_to_id == message.id);
                         REQUIRE(getsysteminfo.serial_number[0] == '\0');
                     }
                 }
-            }    
+            }
         }
 
         WHEN("sending a set-led message") {
