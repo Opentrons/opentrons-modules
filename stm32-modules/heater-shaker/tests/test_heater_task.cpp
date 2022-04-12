@@ -186,10 +186,10 @@ SCENARIO("heater task message passing") {
                         }
                     }
                     AND_WHEN("sending a deactivate-heater command") {
-                        auto message =
+                        auto message2 =
                             messages::DeactivateHeaterMessage{.id = 1234};
                         tasks->get_heater_queue().backing_deque.push_back(
-                            messages::HeaterMessage(message));
+                            messages::HeaterMessage(message2));
                         tasks->run_heater_task();
                         THEN("the task should get the message") {
                             REQUIRE(tasks->get_heater_queue()
@@ -211,7 +211,29 @@ SCENARIO("heater task message passing") {
                                 auto ack =
                                     std::get<messages::AcknowledgePrevious>(
                                         response);
-                                REQUIRE(ack.responding_to_id == message.id);
+                                REQUIRE(ack.responding_to_id == message2.id);
+                                AND_WHEN(
+                                    "sending a subsequent set-temperature "
+                                    "command and valid ADC readings") {
+                                    auto message3 =
+                                        messages::SetTemperatureMessage{
+                                            .id = 1235,
+                                            .target_temperature = _valid_temp};
+                                    tasks->get_heater_queue()
+                                        .backing_deque.push_back(
+                                            messages::HeaterMessage(message3));
+                                    tasks->run_heater_task();
+                                    tasks->get_heater_queue()
+                                        .backing_deque.push_back(
+                                            messages::HeaterMessage(
+                                                read_message));
+                                    tasks->run_heater_task();
+                                    THEN("state should update") {
+                                        REQUIRE(tasks->get_heater_policy()
+                                                    .last_enable_setting() ==
+                                                true);
+                                    }
+                                }
                             }
                         }
                     }
