@@ -177,9 +177,11 @@ class SystemTask {
     template <typename Policy>
     auto visit_message(const messages::GetSystemInfoMessage& msg,
                        Policy& policy) -> void {
+        auto serial_number = policy.get_serial_number();
+
         auto response = messages::GetSystemInfoResponse{
             .responding_to_id = msg.id,
-            .serial_number = policy.get_serial_number(),
+            .serial_number = serial_number,
             .fw_version = version::fw_version(),
             .hw_version = version::hw_version()};
         static_cast<void>(_task_registry->comms->get_message_queue().try_send(

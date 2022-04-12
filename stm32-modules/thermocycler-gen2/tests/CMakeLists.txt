@@ -28,6 +28,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_m104.cpp
     test_m105.cpp
     test_m105d.cpp
+    test_m115.cpp
     test_m141d.cpp
     test_m104d.cpp
     test_m106.cpp

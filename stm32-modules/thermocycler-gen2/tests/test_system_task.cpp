@@ -1,3 +1,5 @@
+#include <string.h>  // memset
+
 #include "catch2/catch.hpp"
 #include "systemwide.h"
 #include "test/task_builder.hpp"
@@ -125,7 +127,6 @@ SCENARIO("system task message passing") {
                 }
             }
         }
-
         WHEN("sending a set-led message") {
             auto message = messages::SetLedMode{.color = colors::Colors::BLUE,
                                                 .mode = colors::Mode::SOLID};
