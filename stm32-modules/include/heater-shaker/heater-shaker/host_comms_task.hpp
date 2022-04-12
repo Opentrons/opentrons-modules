@@ -47,7 +47,8 @@ class HostCommsTask {
         gcode::ClosePlateLock, gcode::GetPlateLockState,
         gcode::GetPlateLockStateDebug, gcode::SetLEDDebug,
         gcode::IdentifyModuleStartLED, gcode::IdentifyModuleStopLED,
-        gcode::SetOffsetConstants, gcode::GetOffsetConstants, gcode::DeactivateHeater>;
+        gcode::SetOffsetConstants, gcode::GetOffsetConstants,
+        gcode::DeactivateHeater>;
     using AckOnlyCache =
         AckCache<8, gcode::SetRPM, gcode::SetTemperature,
                  gcode::SetAcceleration, gcode::SetPIDConstants,

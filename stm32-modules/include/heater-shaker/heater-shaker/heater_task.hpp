@@ -289,9 +289,8 @@ class HeaterTask {
         } else {
             state.system_status = State::IDLE;
         }
-        static_cast<void>(
-            task_registry->comms->get_message_queue().try_send(
-                messages::HostCommsMessage(response)));
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
     }
 
     template <typename Policy>
