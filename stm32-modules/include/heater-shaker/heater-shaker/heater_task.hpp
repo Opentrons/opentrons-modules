@@ -279,6 +279,22 @@ class HeaterTask {
 
     template <typename Policy>
     requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::DeactivateHeaterMessage& msg,
+                       Policy& policy) -> void {
+        policy.disable_power_output();
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+        } else {
+            state.system_status = State::IDLE;
+        }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy>
     auto visit_message(const messages::GetTemperatureMessage& msg,
                        Policy& policy) -> void {
         static_cast<void>(policy);

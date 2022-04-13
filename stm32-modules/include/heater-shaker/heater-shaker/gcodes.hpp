@@ -1129,4 +1129,35 @@ struct GetOffsetConstants {
     }
 };
 
+struct DeactivateHeater {
+    /**
+     * DeactivateHeater is M106 based on existing convention
+     *
+     * Acknowledged immediately upon receipt
+     * */
+    using ParseResult = std::optional<DeactivateHeater>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '6'};
+    static constexpr const char* response = "M106 OK\n";
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt write_to_buf,
+                                    InLimit write_to_limit) {
+        return write_string_to_iterpair(write_to_buf, write_to_limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(DeactivateHeater()), working);
+    }
+};
+
 }  // namespace gcode
