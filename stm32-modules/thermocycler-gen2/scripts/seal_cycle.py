@@ -15,12 +15,16 @@ def make_parser() -> argparse.ArgumentParser:
                         help='Target velocity in pulses/second')
     parser.add_argument('-a', '--accel', type=int, required=False, default=50000,
                         help='Target acceleration in pulses/second^2')
-    parser.add_argument('-c', '--current', type=int, required=False, default=28,
+    parser.add_argument('-c', '--current', type=int, required=False, default=13,
                         help='Drive current in milliamps')
     parser.add_argument('-t', '--threshold', type=int, required=False, default=4,
                         help='Stallguard threshold value as an integer')
     parser.add_argument('-s', '--stallvelocity', type=int, required=False, default=70000,
                         help='Stallguard minimum velocity in pulses/second')
+    parser.add_argument('--csv', required=False, action='store_true',
+                        help='Format output nicely for a CSV')
+    parser.add_argument('--repeat', type=int, required=False, default=1,
+                        help='Number of times to repeat the test')
     return parser
 
 _SEAL_STEPS_RE = re.compile('^M241.D S:(?P<steps>.+) OK\n')
@@ -48,28 +52,36 @@ if __name__ == '__main__':
     parser = make_parser()
     args = parser.parse_args()
 
+    repetitions = args.repeat
+
     ser = build_serial()
 
-    # Set all the configured parameters
-    set_seal_param(SealParam.VELOCITY, args.velocity, ser)
-    set_seal_param(SealParam.ACCELERATION, args.accel, ser)
-    set_seal_param(SealParam.RUN_CURRENT, args.current, ser)
-    set_seal_param(SealParam.STALLGUARD_MIN_VELOCITY, args.stallvelocity, ser)
+    for i in range(repetitions):
+        # Set all the configured parameters
+        set_seal_param(SealParam.VELOCITY, args.velocity, ser)
+        set_seal_param(SealParam.ACCELERATION, args.accel, ser)
+        set_seal_param(SealParam.RUN_CURRENT, args.current, ser)
+        set_seal_param(SealParam.STALLGUARD_MIN_VELOCITY, args.stallvelocity, ser)
 
-    steps_to_extend = abs(args.extend) * -1
-    steps_to_retract = abs(args.retract)
+        steps_to_extend = abs(args.extend) * -1
+        steps_to_retract = abs(args.retract)
 
-    set_seal_param(SealParam.STALLGUARD_THRESHOLD, args.velocity, ser)
-    steps_extended = move_seal_steps(steps_to_extend, ser)
-    get_seal_status(ser)
-    print(f'Moved:  {steps_extended} steps')
-    time.sleep(10)
+        set_seal_param(SealParam.STALLGUARD_THRESHOLD, args.velocity, ser)
+        steps_extended = move_seal_steps(steps_to_extend, ser)
+        if not args.csv:
+            print(f'Moved:  {steps_extended} steps')
+            
+        time.sleep(5)
 
-    set_seal_param(SealParam.VELOCITY, args.velocity, ser)
-    set_seal_param(SealParam.ACCELERATION, args.accel, ser)
-    set_seal_param(SealParam.RUN_CURRENT, args.current, ser)
-    set_seal_param(SealParam.STALLGUARD_MIN_VELOCITY, args.stallvelocity, ser)
-    set_seal_param(SealParam.STALLGUARD_THRESHOLD, args.threshold, ser)
-    steps_retracted = move_and_get_sg(steps_to_retract, ser)
-    get_seal_status(ser)
-    print(f'Retracted: {steps_retracted} steps')
+        set_seal_param(SealParam.VELOCITY, args.velocity, ser)
+        set_seal_param(SealParam.ACCELERATION, args.accel, ser)
+        set_seal_param(SealParam.RUN_CURRENT, args.current, ser)
+        set_seal_param(SealParam.STALLGUARD_MIN_VELOCITY, args.stallvelocity, ser)
+        set_seal_param(SealParam.STALLGUARD_THRESHOLD, args.threshold, ser)
+        steps_retracted = move_seal_steps(steps_to_retract, ser)
+        if not args.csv:
+            print(f'Retracted: {steps_retracted} steps')
+        else:
+            print(f'{steps_extended},{steps_retracted}')
+        if (i + 1) < repetitions:
+            time.sleep(5)
