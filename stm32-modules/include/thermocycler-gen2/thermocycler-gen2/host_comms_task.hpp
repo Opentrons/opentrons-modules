@@ -429,8 +429,8 @@ class HostCommsTask {
                         tx_into, tx_limit,
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
                 } else {
-                    return cache_element.write_response_into(tx_into, tx_limit,
-                                                             response.status);
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.status, response.tstep);
                 }
             },
             cache_entry);

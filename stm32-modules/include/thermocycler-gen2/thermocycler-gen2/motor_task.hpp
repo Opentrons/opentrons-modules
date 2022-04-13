@@ -358,11 +358,15 @@ class MotorTask {
     requires MotorExecutionPolicy<Policy>
     auto visit_message(const messages::GetSealDriveStatusMessage& msg,
                        Policy& policy) -> void {
-        auto ret = _tmc2130.get_driver_status(policy);
         auto response =
             messages::GetSealDriveStatusResponse{.responding_to_id = msg.id};
-        if (ret.has_value()) {
-            response.status = ret.value();
+        auto status = _tmc2130.get_driver_status(policy);
+        if (status.has_value()) {
+            response.status = status.value();
+        }
+        auto tstep = _tmc2130.get_tstep(policy);
+        if (tstep.has_value()) {
+            response.tstep = tstep.value();
         }
         static_cast<void>(_task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));

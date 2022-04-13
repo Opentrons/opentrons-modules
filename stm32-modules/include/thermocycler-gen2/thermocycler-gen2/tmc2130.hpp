@@ -264,6 +264,16 @@ class TMC2130 {
     }
 
     /**
+     * @brief Get the current TSTEP register reading. Contains
+     * the step period of the latest
+     * @return The register, or nothing if the register couldn't be read.
+     */
+    template <TMC2130Policy Policy>
+    [[nodiscard]] auto get_tstep(Policy& policy) -> std::optional<TStep> {
+        return read_register<TStep>(policy);
+    }
+
+    /**
      * @brief Get the register map
      */
     [[nodiscard]] auto get_register_map() -> TMC2130RegisterMap& {

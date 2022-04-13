@@ -183,6 +183,7 @@ struct GetSealDriveStatusMessage {
 struct GetSealDriveStatusResponse {
     uint32_t responding_to_id;
     tmc2130::DriveStatus status;
+    tmc2130::TStep tstep;
 };
 
 struct SetSealParameterMessage {
