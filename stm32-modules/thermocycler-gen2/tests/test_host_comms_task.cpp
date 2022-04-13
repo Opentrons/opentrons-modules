@@ -1657,7 +1657,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
                         const char response[] =
-                            "M242.D SG:0 SG_Result:0 STST:0 OK\n";
+                            "M242.D SG:0 SG_Result:0 STST:0 TStep:0 OK\n";
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith(response));
                         REQUIRE(written_secondpass ==
