@@ -282,6 +282,7 @@ class HeaterTask {
     auto visit_message(const messages::DeactivateHeaterMessage& msg,
                        Policy& policy) -> void {
         policy.disable_power_output();
+        setpoint = 0;
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (state.system_status == State::ERROR) {
