@@ -115,23 +115,72 @@ struct LidStepperState {
     // Current position of the lid stepper. Only relevant if the
     // status is IDLE
     motor_util::LidStepper::Position position;
-    // When a movement is complete, respond to this ID
+    // When a movement is complete, respond to this ID. Only relevant for
+    // a simple Hinge movement.
     uint32_t response_id;
 };
 
 // Structure to encapsulate state of the seal stepper
 struct SealStepperState {
+    // Distance to fully extend the seal
+    constexpr static long FULL_EXTEND_MICROSTEPS = -1750000;
+    // Distance to slightly extend the seal before retracting from
+    // an unknown state
+    constexpr static long SHORT_EXTEND_MICROSTEPS = 100000;
+    // Distance to fully retract the seal. This is as long as
+    // the full extension, plus some spare distance to ensure a stall.
+    constexpr static long FULL_RETRACT_MICROSTEPS = 
+        (FULL_EXTEND_MICROSTEPS * -1) + (300000);
+    // Run current value
+    constexpr static double DEFAULT_RUN_CURRENT = 15;
+    // Default velocity in pulses per second
+    constexpr static double DEFAULT_VELOCITY = 90000;
+    // Default acceleration in pulses per second squared
+    constexpr static double DEFAULT_ACCEL = 50000;
+    // Default value of the Stallguard Threshold
+    constexpr static signed int DEFAULT_STALLGUARD_THRESHOLD = 4;
+    // Default minimum velocity for stallguard activation, as a tstep value
+    constexpr static uint32_t DEFAULT_SG_MIN_VELOCITY = 
+        motor_util::SealStepper::velocity_to_tstep(60000);
+    // Stallguard min velocity value that will fully disable stallguard,
+    // as a tstep value
+    constexpr static uint32_t DISABLED_SG_MIN_VELOCITY = 0;
     // Enumeration of legal stepper actions
     enum Status { IDLE, MOVING };
     // Current status of the seal stepper. Declared atomic because
     // this flag is set & cleared by both the actual task context
     // and an interrupt context when the motor interrupt fires.
     std::atomic<Status> status;
-    // When a movement is complete, respond to this ID
+    // When a movement is complete, respond to this ID. Only relevant for
+    // a simple Seal movement.
     uint32_t response_id;
     // Direction of the current movement, since the steps stored in
     // the movement profile are unsigned
     bool direction;
+};
+
+// Structure to encapsulate state of the overall lid system
+struct LidState {
+    // Lid action state machine. Individual hinge/seal motor actions are
+    // handled in their sub-state machines
+    enum class Status {
+        IDLE,                 /**< No lid action.*/
+        OPENING_PARTIAL_EXTEND_SEAL, /**< Partially extend seal because we
+                                          don't know the actual position.*/
+        OPENING_RETRACT_SEAL, /**< Retracting seal before opening lid.*/
+        OPENING_OPEN_HINGE,   /**< Opening lid hinge.*/
+        CLOSING_PARTIAL_EXTEND_SEAL, /**< Partially extend seal because we
+                                          don't know the actual position.*/
+        CLOSING_RETRACT_SEAL, /**< Retracting seal before closing lid.*/
+        CLOSING_CLOSE_HINGE,  /**< Closing lid hinge.*/
+        CLOSING_EXTEND_SEAL   /**< Extending seal after closing lid hinge.*/
+    };
+    // Current status of the lid. Declared atomic because
+    // this flag is set & cleared by both the actual task context
+    // and an interrupt context when the motor interrupt fires.
+    std::atomic<Status> status;
+    // When the full action is complete, respond to this ID
+    uint32_t response_id;
 };
 
 static constexpr tmc2130::TMC2130RegisterMap default_tmc_config = {
@@ -167,6 +216,8 @@ class MotorTask {
     explicit MotorTask(Queue& q)
         : _message_queue(q),
           _task_registry(nullptr),
+          _state{
+              .status = LidState::Status::IDLE },
           _lid_stepper_state{
               .status = LidStepperState::Status::IDLE,
               .position = motor_util::LidStepper::Position::BETWEEN,
@@ -725,6 +776,7 @@ class MotorTask {
 
     Queue& _message_queue;
     tasks::Tasks<QueueImpl>* _task_registry;
+    LidState _state;
     LidStepperState _lid_stepper_state;
     SealStepperState _seal_stepper_state;
     tmc2130::TMC2130 _tmc2130;

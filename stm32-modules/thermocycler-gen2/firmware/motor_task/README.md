@@ -2,7 +2,7 @@
 
 ## Lid state machines
 
-Overall state machine
+### Overall state machine
 ```mermaid
 graph LR
     A(Idle)
@@ -31,7 +31,7 @@ graph LR
     H ---> E
 ```
 
-Seal motor sub-state machine
+### Seal motor sub-state machine
 ```mermaid
 graph TD
     Start1[Extend seal]
@@ -57,7 +57,7 @@ graph TD
     RetractFull2 --> Done2
 ```
 
-Hinge motor sub-state machine
+### Hinge motor sub-state machine
 ```mermaid
 graph TD
     StartO[Open hinge]
