@@ -167,7 +167,9 @@ class HeaterTask {
     auto get_message_queue() -> Queue& { return message_queue; }
     // Please don't use this for cross-thread communication it's primarily
     // there for the simulator
-    [[nodiscard]] auto get_setpoint() const -> double { return setpoint; }
+    [[nodiscard]] auto get_setpoint() const -> double {
+        return setpoint.value_or(0.0);
+    }
 
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
         task_registry = other_tasks;
@@ -240,7 +242,7 @@ class HeaterTask {
         static_cast<void>(
             task_registry->comms->get_message_queue().try_send(error_message));
         state.system_status = State::ERROR;
-        setpoint = 0;
+        setpoint = std::nullopt;
     }
 
     template <typename Policy>
@@ -253,7 +255,7 @@ class HeaterTask {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (state.system_status == State::ERROR) {
-            setpoint = 0;
+            setpoint = std::nullopt;
             response.with_error = most_relevant_error();
         } else {
             if (msg.target_temperature > MAX_APPLICATION_TEMPERATURE_C ||
@@ -262,7 +264,7 @@ class HeaterTask {
                     errors::ErrorCode::HEATER_ILLEGAL_TARGET_TEMPERATURE;
             } else {
                 setpoint = msg.target_temperature;
-                pid.arm_integrator_reset(setpoint - pad_temperature());
+                pid.arm_integrator_reset(setpoint.value() - pad_temperature());
                 state.system_status = State::CONTROLLING;
             }
         }
@@ -282,7 +284,7 @@ class HeaterTask {
     auto visit_message(const messages::DeactivateHeaterMessage& msg,
                        Policy& policy) -> void {
         policy.disable_power_output();
-        setpoint = 0;
+        setpoint = std::nullopt;
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (state.system_status == State::ERROR) {
@@ -385,11 +387,11 @@ class HeaterTask {
                         task_registry->comms->get_message_queue().try_send(
                             error_message));
                     state.system_status = State::ERROR;
-                    setpoint = 0;
+                    setpoint = std::nullopt;
                 }
             } else {
                 state.system_status = State::ERROR;
-                setpoint = 0;
+                setpoint = std::nullopt;
             }
         } else if ((changes & State::POWER_GOOD_ERROR) != 0) {
             auto error_message =
@@ -399,11 +401,12 @@ class HeaterTask {
                 task_registry->comms->get_message_queue().try_send(
                     error_message));
             state.system_status = State::ERROR;
-            setpoint = 0;
+            setpoint = std::nullopt;
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (state.system_status == State::CONTROLLING) {
-            policy.set_power_output(pid.compute(setpoint - pad_temperature()));
+            policy.set_power_output(
+                pid.compute(setpoint.value() - pad_temperature()));
         } else if (state.system_status != State::POWER_TEST) {
             policy.disable_power_output();
         }
@@ -625,7 +628,7 @@ class HeaterTask {
     TemperatureSensor board;
     State state;
     PID pid;
-    double setpoint;
+    std::optional<double> setpoint;
     bool hot_LED_set = false;
     flash::Flash _flash;
     flash::OffsetConstants _offset_constants;
