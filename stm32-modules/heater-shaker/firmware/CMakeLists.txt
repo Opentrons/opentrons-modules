@@ -211,8 +211,8 @@ add_custom_target(heater-shaker-flash
 add_custom_command(
     OUTPUT heater-shaker-image.hex
     DEPENDS $<TARGET_FILE_DIR:heater-shaker>/heater-shaker.hex
-    DEPENDS STM32F303-startup
     DEPENDS STM32F303-startup-hex
+    DEPENDS $<TARGET_FILE_DIR:STM32F303-startup>/STM32F303-startup.hex
     COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py heater-shaker-image.hex $<TARGET_FILE_DIR:STM32F303-startup>/STM32F303-startup.hex heater-shaker.hex
     VERBATIM
     COMMENT "Generating full image")

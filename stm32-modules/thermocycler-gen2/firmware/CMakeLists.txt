@@ -189,7 +189,7 @@ add_custom_target(${TARGET_MODULE_NAME}-flash
 add_custom_command(
     OUTPUT ${TARGET_MODULE_NAME}-image.hex
     DEPENDS $<TARGET_FILE_DIR:${TARGET_MODULE_NAME}>/${TARGET_MODULE_NAME}.hex
-    DEPENDS STM32G491-startup
+    DEPENDS STM32G491-startup-hex
     DEPENDS $<TARGET_FILE_DIR:STM32G491-startup>/STM32G491-startup.hex
     COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py ${TARGET_MODULE_NAME}-image.hex $<TARGET_FILE_DIR:STM32G491-startup>/STM32G491-startup.hex ${TARGET_MODULE_NAME}.hex
     VERBATIM
