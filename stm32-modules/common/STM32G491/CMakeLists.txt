@@ -36,3 +36,9 @@ target_link_options(${TARGET_MODULE_NAME}-STM32G491
 set_source_files_properties(./startup_stm32g491vetx.s
   PROPERTIES
   OBJECT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/STM32G491VETx_FLASH.ld)
+
+add_executable(STM32G491-startup)
+target_compile_definitions(STM32G491-startup PUBLIC
+    SYSMEM_ADDRESS=0x1FFF0000
+    BOOTLOADER_START_ADDRESS=0x1FFF0004)
+target_module_startup(STM32G491-startup)

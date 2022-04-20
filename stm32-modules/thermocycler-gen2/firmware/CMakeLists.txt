@@ -185,17 +185,15 @@ add_custom_target(${TARGET_MODULE_NAME}-flash
   COMMENT "Flashing board"
   DEPENDS ${TARGET_MODULE_NAME})
 
-
-set(MODULE_STARTUP_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../common/module-startup")
-
 # Targets to create full image hex file containing both bootloader and application
 add_custom_command(
     OUTPUT ${TARGET_MODULE_NAME}-image.hex
-    DEPENDS ${TARGET_MODULE_NAME}-hex 
-    DEPENDS module-startup
-    DEPENDS module-startup-hex
-    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py ${TARGET_MODULE_NAME}-image.hex $<TARGET_FILE_DIR:module-startup>/module-startup.hex ${TARGET_MODULE_NAME}.hex
-    VERBATIM)
+    DEPENDS $<TARGET_FILE_DIR:${TARGET_MODULE_NAME}>/${TARGET_MODULE_NAME}.hex
+    DEPENDS STM32G491-startup
+    DEPENDS $<TARGET_FILE_DIR:STM32G491-startup>/STM32G491-startup.hex
+    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py ${TARGET_MODULE_NAME}-image.hex $<TARGET_FILE_DIR:STM32G491-startup>/STM32G491-startup.hex ${TARGET_MODULE_NAME}.hex
+    VERBATIM
+    COMMENT "Generating full image")
 add_custom_target(${TARGET_MODULE_NAME}-image-hex ALL
     DEPENDS ${TARGET_MODULE_NAME}-image.hex
-    DEPENDS ${TARGET_MODULE_NAME}.hex)
+    DEPENDS ${TARGET_MODULE_NAME})
