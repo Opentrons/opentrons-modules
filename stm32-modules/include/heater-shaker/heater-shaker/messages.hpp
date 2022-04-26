@@ -198,7 +198,7 @@ struct CheckPlateLockStatusMessage {
 struct GetTemperatureResponse {
     uint32_t responding_to_id;
     double current_temperature;
-    double setpoint_temperature;
+    std::optional<double> setpoint_temperature;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
