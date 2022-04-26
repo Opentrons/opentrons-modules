@@ -4,23 +4,21 @@
 
 ### Overall state machine
 ```mermaid
-graph LR
+graph TD
     A(Idle)
-    B{Check state}
     C{Check state}
     D{Check state}
     F(Retract Seal)
     Falt(Retract Seal)
     G(Extend Seal)
-    E[Return to idle]
+    E[Send ACK and return to idle]
     H(Open hinge motor)
     I(Close hinge motor)
 
 
-    A --->|Button press| B
     A -->|Open Lid command| C
     A -->|Close Lid command| D
-    C ---->|Lid open| E
+    C ---->|Lid open| H
     D ---->|Lid closed| E
     C -->|Lid closed or unknown| F
     D -->|Lid Open or unknown| Falt
