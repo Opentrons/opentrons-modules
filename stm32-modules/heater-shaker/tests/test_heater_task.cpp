@@ -199,6 +199,9 @@ SCENARIO("heater task message passing") {
                                 "host") {
                                 REQUIRE(tasks->get_heater_policy()
                                             .last_enable_setting() == false);
+                                REQUIRE(
+                                    tasks->get_heater_task().get_setpoint() ==
+                                    0.0);
                                 REQUIRE(!tasks->get_host_comms_queue()
                                              .backing_deque.empty());
                                 auto response = tasks->get_host_comms_queue()
@@ -232,6 +235,9 @@ SCENARIO("heater task message passing") {
                                         REQUIRE(tasks->get_heater_policy()
                                                     .last_enable_setting() ==
                                                 true);
+                                        REQUIRE(tasks->get_heater_task()
+                                                    .get_setpoint() ==
+                                                _valid_temp);
                                     }
                                 }
                             }
