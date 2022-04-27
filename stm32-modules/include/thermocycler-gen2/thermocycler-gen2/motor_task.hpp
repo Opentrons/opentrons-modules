@@ -239,11 +239,6 @@ class MotorTask {
         _task_registry = other_tasks;
     }
 
-    // Primarily for test integration, do not use for interprocess logic!!!
-    [[nodiscard]] auto get_lid_state() const -> LidState::Status {
-        return _state.status;
-    }
-
     template <typename Policy>
     requires MotorExecutionPolicy<Policy>
     auto run_once(Policy& policy) -> void {
@@ -262,6 +257,19 @@ class MotorTask {
                 this->visit_message(msg, policy);
             },
             message);
+    }
+
+    // Primarily for test integration, do not use for interprocess logic!!!
+    [[nodiscard]] auto get_lid_state() const -> LidState::Status {
+        return _state.status;
+    }
+
+    [[nodiscard]] auto get_seal_position() const
+        -> motor_util::SealStepper::Status {
+        if (_seal_stepper_state.status != SealStepperState::Status::IDLE) {
+            return motor_util::SealStepper::Status::BETWEEN;
+        }
+        return _seal_position;
     }
 
   private:
@@ -689,14 +697,6 @@ class MotorTask {
             return _lid_stepper_state.position;
         }
         return motor_util::LidStepper::Position::BETWEEN;
-    }
-
-    [[nodiscard]] auto get_seal_position() const
-        -> motor_util::SealStepper::Status {
-        if (_seal_stepper_state.status != SealStepperState::Status::IDLE) {
-            return motor_util::SealStepper::Status::BETWEEN;
-        }
-        return _seal_position;
     }
 
     [[nodiscard]] auto is_any_motor_moving() const -> bool {
