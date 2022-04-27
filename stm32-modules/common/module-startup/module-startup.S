@@ -144,13 +144,13 @@ FlashMemorySwap:
 
 SetMsp:
     /* point the main stack pointer to sysmem right before jumping */
-    ldr     r0, =_sysmem_start
+    ldr     r0, =SYSMEM_ADDRESS
     ldr     r1, [r0]
     msr     MSP, r1
 
 BootloaderJump:
     /* Perform the jump to the bootloader */
-    ldr     r0, =_bootloader_start
+    ldr     r0, =BOOTLOADER_START_ADDRESS
     ldr     r1, [r0]
     cpsie   if
     bx      r1

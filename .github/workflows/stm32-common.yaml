@@ -58,8 +58,10 @@ jobs:
         run: cmake --build ./build-stm32-cross --target common-format-ci
       - name: 'Lint'
         run: cmake --build ./build-stm32-cross --target common-lint
-      - name: 'Build startup script'
-        run: cmake --build ./build-stm32-cross --target module-startup
+      - name: 'Build STM32F303 startup script'
+        run: cmake --build ./build-stm32-cross --target STM32F303-startup
+      - name: 'Build STM32G491 startup script'
+        run: cmake --build ./build-stm32-cross --target STM32G491-startup
   host-compile-test:
     name: 'Host-Compile/Test'
     runs-on: 'ubuntu-20.04'
