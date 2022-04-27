@@ -239,6 +239,11 @@ class MotorTask {
         _task_registry = other_tasks;
     }
 
+    // Primarily for test integration, do not use for interprocess logic!!!
+    [[nodiscard]] auto get_lid_state() const -> LidState::Status {
+        return _state.status;
+    }
+
     template <typename Policy>
     requires MotorExecutionPolicy<Policy>
     auto run_once(Policy& policy) -> void {
