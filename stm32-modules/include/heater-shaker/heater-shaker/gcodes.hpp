@@ -123,10 +123,16 @@ struct GetTemperature {
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit,
                                     double current_temperature,
-                                    double setpoint_temperature) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M105 C:%0.2f T:%0.2f OK\n",
-                            static_cast<float>(current_temperature),
-                            static_cast<float>(setpoint_temperature));
+                                    std::optional<double> setpoint_temperature)
+        -> InputIt {
+        int res = 0;
+        if (setpoint_temperature) {
+            res = snprintf(&*buf, (limit - buf), "M105 C:%0.2f T:%0.2f OK\n",
+                           current_temperature, setpoint_temperature.value());
+        } else {
+            res = snprintf(&*buf, (limit - buf), "M105 C:%0.2f T:None OK\n",
+                           current_temperature);
+        }
         if (res <= 0) {
             return buf;
         }
