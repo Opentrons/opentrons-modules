@@ -417,10 +417,10 @@ static void init_motor_gpio(void)
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
     HAL_GPIO_Init(SEAL_STEPPER_DIAG1_PORT, &GPIO_InitStruct);
 
-    HAL_NVIC_SetPriority(SEAL_STEPPER_DIAG0_IRQ, 5, 0);
+    HAL_NVIC_SetPriority(SEAL_STEPPER_DIAG0_IRQ, 4, 0);
     HAL_NVIC_EnableIRQ(SEAL_STEPPER_DIAG0_IRQ);
 
-    HAL_NVIC_SetPriority(SEAL_STEPPER_DIAG1_IRQ, 5, 0);
+    HAL_NVIC_SetPriority(SEAL_STEPPER_DIAG1_IRQ, 4, 0);
     HAL_NVIC_EnableIRQ(SEAL_STEPPER_DIAG1_IRQ);
 }
 

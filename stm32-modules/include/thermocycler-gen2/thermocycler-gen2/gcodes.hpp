@@ -913,11 +913,13 @@ struct GetSealDriveStatus {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
     static auto write_response_into(InputIt buf, InputLimit limit,
-                                    tmc2130::DriveStatus status) -> InputIt {
+                                    tmc2130::DriveStatus status,
+                                    tmc2130::TStep tstep) -> InputIt {
         int res = 0;
         res = snprintf(&*buf, (limit - buf),
-                       "M242.D SG:%u SG_Result:%u STST:%u OK\n",
-                       status.stallguard, status.sg_result, status.stst);
+                       "M242.D SG:%u SG_Result:%u STST:%u TStep:%u OK\n",
+                       status.stallguard, status.sg_result, status.stst,
+                       tstep.value);
         if (res <= 0) {
             return buf;
         }

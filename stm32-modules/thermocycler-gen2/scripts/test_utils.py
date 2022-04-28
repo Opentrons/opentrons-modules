@@ -242,12 +242,15 @@ def set_solenoid(engaged: bool, ser: serial.Serial):
     guard_error(res, b'G28.D OK')
     print(res)
 
-def move_seal_steps(steps: int, ser: serial.Serial):
-    print(f'Moving seal by {steps} steps')
+_SEAL_STEPS_RE = re.compile('^M241.D S:(?P<steps>.+) OK\n')
+def move_seal_steps(steps: int, ser: serial.Serial) -> float:
+    #print(f'Moving seal by {steps} steps')
     ser.write(f'M241.D {steps}\n'.encode())
     res = ser.readline()
     guard_error(res, b'M241.D S:')
-    print(res)
+    res_s = res.decode()
+    match = re.match(_SEAL_STEPS_RE, res_s)
+    return int(match.group('steps'))
 
 class SealParam(Enum):
     VELOCITY = 'V'
@@ -260,10 +263,15 @@ class SealParam(Enum):
 
 # Debug command to set a seal parameter
 def set_seal_param(param: SealParam, value: int, ser: serial.Serial):
-    print(f'Setting {param} ({param.value}) to {value}')
+    #print(f'Setting {param} ({param.value}) to {value}')
     ser.write(f'M243.D {param.value} {value}\n'.encode())
     res = ser.readline()
     guard_error(res, b'M243.D OK')
+    #print(res)
+
+def get_seal_status(ser: serial.Serial):
+    ser.write('M242.D\n'.encode())
+    res = ser.readline()
     print(res)
 
 class PositionStatus(Enum):

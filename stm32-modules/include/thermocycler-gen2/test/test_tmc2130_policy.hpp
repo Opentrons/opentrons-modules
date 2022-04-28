@@ -117,7 +117,7 @@ class TestTMC2130Policy {
 
     // -------------- Test integration methods
     auto get_tmc2130_steps() -> long { return _steps; }
-    auto get_tmc2130_direction() -> bool { return _direction; }
+    auto get_tmc2130_direction() -> bool { return _direction == 1; }
     auto get_tmc2130_enabled() -> bool { return _enable; }
     auto has_been_written() -> bool { return _has_been_written; }
 
