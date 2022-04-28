@@ -3,42 +3,50 @@
 
 find_package(GDBSVDTools)
 
-add_executable(module-startup ./module-startup.S)
-
-target_compile_options(module-startup
-    PUBLIC
-    -Wall
-    -Werror)
-
-target_link_options(module-startup
-    PUBLIC
-    "LINKER:-T,${CMAKE_CURRENT_SOURCE_DIR}/STM32_MODULE_STARTUP.ld"
-    "LINKER:--print-memory-usage"
-    "LINKER:--error-unresolved-symbols"
-    "LINKER:--gc-sections")
-
 find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
     PATHS "${CrossGCC_BINDIR}"
     NO_DEFAULT_PATH
     REQUIRED)
+
+# Function to configure a target to compile the module startup for a specific
+# microcontroller. The target passed in should include a definition of the
+# constants:
+#  - SYSMEM_ADDRESS for the address where the System Memory region begins
+#  - BOOTLOADER_START_ADDRESS for the address to jump to start the bootloader
+function(target_module_startup TARGET)
+
+    target_sources(${TARGET} PUBLIC
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/module-startup.S)
+
+    target_compile_options(${TARGET} PUBLIC
+        -Wall
+        -Werror)
+
+    target_link_options(${TARGET} PUBLIC
+        "LINKER:-T,${CMAKE_CURRENT_FUNCTION_LIST_DIR}/STM32_MODULE_STARTUP.ld"
+        "LINKER:--print-memory-usage"
+        "LINKER:--error-unresolved-symbols"
+        "LINKER:--gc-sections")
+
+    add_custom_command(OUTPUT ${TARGET}.hex
+        COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET} "-Oihex" ${TARGET}.hex
+        DEPENDS ${TARGET}
+        VERBATIM)
+    
+    add_custom_target(${TARGET}-hex ALL
+        DEPENDS ${TARGET}.hex)
+    
+    add_custom_command(OUTPUT ${TARGET}.bin
+        COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET} "-Obinary" ${TARGET}.bin
+        DEPENDS ${TARGET}
+        VERBATIM)
+    add_custom_target(${TARGET}-bin ALL
+        DEPENDS ${TARGET}.bin)
+
+endfunction()
 
 # Incurs at least a relink when you change the linker file (and a recompile of main
 # but hopefully that's quick)
 set_source_files_properties(./module-startup.S
     PROPERTIES
     OBJECT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/STM32_MODULE_STARTUP.ld)
-
-add_custom_command(OUTPUT module-startup.hex
-    COMMAND ${CROSS_OBJCOPY} ARGS module-startup "-Oihex" module-startup.hex
-    DEPENDS module-startup
-    VERBATIM)
-
-add_custom_target(module-startup-hex ALL
-    DEPENDS module-startup.hex)
-
-add_custom_command(OUTPUT module-startup.bin
-    COMMAND ${CROSS_OBJCOPY} ARGS module-startup "-Obinary" module-startup.bin
-    DEPENDS module-startup
-    VERBATIM)
-add_custom_target(module-startup-bin ALL
-    DEPENDS module-startup.bin)
