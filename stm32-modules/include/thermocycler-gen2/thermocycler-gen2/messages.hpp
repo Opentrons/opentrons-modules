@@ -255,6 +255,7 @@ struct SetPlateTemperatureMessage {
     uint32_t id;
     double setpoint;
     double hold_time;
+    double volume;
 };
 
 struct SetFanAutomaticMessage {

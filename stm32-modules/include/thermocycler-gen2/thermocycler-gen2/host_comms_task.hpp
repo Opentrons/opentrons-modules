@@ -1094,7 +1094,7 @@ class HostCommsTask {
         }
 
         auto message = messages::SetPlateTemperatureMessage{
-            .id = id, .setpoint = gcode.setpoint, .hold_time = gcode.hold_time};
+            .id = id, .setpoint = gcode.setpoint, .hold_time = gcode.hold_time, .volume = gcode.volume};
         if (!task_registry->thermal_plate->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
