@@ -5,16 +5,18 @@
 #pragma GCC diagnostic pop
 
 SCENARIO("gcode m242.d works", "[gcode][parse][m242d]") {
-    auto reg = tmc2130::DriveStatus{.sg_result = 123, .stallguard = 1};
+    auto status = tmc2130::DriveStatus{.sg_result = 123, .stallguard = 1};
+    auto tstep = tmc2130::TStep{.value = 456};
     GIVEN("a response buffer large enough for the formatted response") {
         std::string buffer(64, 'c');
         WHEN("filling response") {
             auto written = gcode::GetSealDriveStatus::write_response_into(
-                buffer.begin(), buffer.end(), reg);
+                buffer.begin(), buffer.end(), status, tstep);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::StartsWith(
-                                 "M242.D SG:1 SG_Result:123 STST:0 OK\n"));
+                REQUIRE_THAT(
+                    buffer,
+                    Catch::Matchers::StartsWith(
+                        "M242.D SG:1 SG_Result:123 STST:0 TStep:456 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
@@ -23,7 +25,7 @@ SCENARIO("gcode m242.d works", "[gcode][parse][m242d]") {
         std::string buffer(16, 'c');
         WHEN("filling response") {
             auto written = gcode::GetSealDriveStatus::write_response_into(
-                buffer.begin(), buffer.begin() + 8, reg);
+                buffer.begin(), buffer.begin() + 8, status, tstep);
             THEN("the response should write only up to the available space") {
                 std::string response = "M242.D Scccccccc";
                 response.at(7) = '\0';

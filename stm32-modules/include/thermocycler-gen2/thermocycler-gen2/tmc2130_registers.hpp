@@ -174,6 +174,17 @@ struct __attribute__((packed, __may_alias__)) THigh {
 };
 
 /**
+ * This is the measured time per step of the motor.
+ */
+struct __attribute__((packed, __may_alias__)) TStep {
+    static constexpr Registers address = Registers::TSTEP;
+    static constexpr bool readable = true;
+    static constexpr uint32_t value_mask = (1 << 20) - 1;
+
+    uint32_t value : 20 = 0;
+};
+
+/**
  * The CHOPCONFIG register contains a number of configuration options for the
  * Chopper control.
  */

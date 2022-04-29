@@ -65,7 +65,7 @@ class TestMotorPolicy : public TestTMC2130Policy {
     /** Next movement will be an error.*/
     auto trigger_lid_fault() -> void { _lid_fault = true; }
     auto get_vref() -> uint8_t { return _dac_val; }
-    auto get_angle() -> double { return _actual_angle; }
+    auto get_angle() -> int32_t { return _actual_angle; }
     auto seal_moving() -> bool { return _seal_moving; }
 
     auto set_lid_open_switch(bool val) -> void { _lid_open_switch = val; }

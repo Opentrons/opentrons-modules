@@ -137,7 +137,7 @@ class SealStepper {
      * @return uint32_t containing the number of \c clock ticks per each motor
      * step
      */
-    [[nodiscard]] static auto inline velocity_to_tstep(
+    [[nodiscard]] constexpr static auto inline velocity_to_tstep(
         double velocity, double clock = tmc_external_clock) -> uint32_t {
         return static_cast<uint32_t>(clock / velocity);
     }
@@ -151,7 +151,7 @@ class SealStepper {
      * tmc_external_clock
      * @return double containing the velocity in steps/second
      */
-    [[nodiscard]] static auto inline tstep_to_velocity(
+    [[nodiscard]] constexpr static auto inline tstep_to_velocity(
         uint32_t tstep, double clock = tmc_external_clock) -> double {
         // Avoid divide-by-zero issues, bound tstep to at least 1
         tstep = std::max(tstep, static_cast<uint32_t>(1));
