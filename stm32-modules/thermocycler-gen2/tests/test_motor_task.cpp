@@ -576,8 +576,9 @@ SCENARIO("motor task open and close lid behavior") {
                         messages::LidStepperComplete());
                     lid_position = motor_policy.get_angle();
                     tasks->run_motor_task();
-                    THEN("the lid moves back down a bit") {
-                        REQUIRE(motor_policy.get_angle() < lid_position);
+                    THEN("the lid overdrives into the switch a bit") {
+                        REQUIRE(motor_policy.get_angle() > lid_position);
+                        REQUIRE(motor_policy.get_lid_overdrive());
                     }
                     WHEN("the lid movement completes") {
                         motor_queue.backing_deque.push_back(
@@ -620,6 +621,24 @@ SCENARIO("motor task open and close lid behavior") {
         motor_policy.set_lid_open_switch(false);
         REQUIRE(motor_task.get_seal_position() ==
                 motor_util::SealStepper::Status::UNKNOWN);
+        WHEN("sending plate lift command") {
+            motor_queue.backing_deque.push_back(
+                messages::PlateLiftMessage{.id = 123});
+            tasks->run_motor_task();
+            THEN("an error is returned") {
+                REQUIRE(tasks->get_host_comms_queue().has_message());
+                auto msg = tasks->get_host_comms_queue().backing_deque.front();
+                REQUIRE(
+                    std::holds_alternative<messages::AcknowledgePrevious>(msg));
+                auto response = std::get<messages::AcknowledgePrevious>(msg);
+                REQUIRE(response.responding_to_id == 123);
+                REQUIRE(response.with_error == errors::ErrorCode::LID_CLOSED);
+            }
+            THEN("no movement occurs") {
+                REQUIRE(motor_task.get_lid_state() ==
+                        motor_task::LidState::Status::IDLE);
+            }
+        }
         WHEN("sending open lid command") {
             motor_queue.backing_deque.push_back(
                 messages::OpenLidMessage{.id = 123});
@@ -662,8 +681,9 @@ SCENARIO("motor task open and close lid behavior") {
                             messages::LidStepperComplete());
                         lid_position = motor_policy.get_angle();
                         tasks->run_motor_task();
-                        THEN("the lid moves back down a bit") {
-                            REQUIRE(motor_policy.get_angle() < lid_position);
+                        THEN("the lid overdrives into the switch a bit") {
+                            REQUIRE(motor_policy.get_angle() > lid_position);
+                            REQUIRE(motor_policy.get_lid_overdrive());
                         }
                         WHEN("the lid movement completes") {
                             motor_queue.backing_deque.push_back(
@@ -768,6 +788,105 @@ SCENARIO("motor task open and close lid behavior") {
                                     REQUIRE(response.responding_to_id == 456);
                                     REQUIRE(response.with_error ==
                                             errors::ErrorCode::NO_ERROR);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    GIVEN("lid open on startup") {
+        motor_policy.set_lid_closed_switch(false);
+        motor_policy.set_lid_open_switch(true);
+        WHEN("sending open lid command") {
+            motor_queue.backing_deque.push_back(
+                messages::OpenLidMessage{.id = 123});
+            tasks->run_motor_task();
+            THEN("an ACK is returned") {
+                REQUIRE(tasks->get_host_comms_queue().has_message());
+                auto msg = tasks->get_host_comms_queue().backing_deque.front();
+                REQUIRE(
+                    std::holds_alternative<messages::AcknowledgePrevious>(msg));
+                auto response = std::get<messages::AcknowledgePrevious>(msg);
+                REQUIRE(response.responding_to_id == 123);
+                REQUIRE(response.with_error == errors::ErrorCode::NO_ERROR);
+            }
+            THEN("no movement occurs") {
+                REQUIRE(motor_task.get_lid_state() ==
+                        motor_task::LidState::Status::IDLE);
+            }
+        }
+        WHEN("sending plate lift command") {
+            motor_queue.backing_deque.push_back(
+                messages::PlateLiftMessage{.id = 123});
+            auto lid_angle = motor_policy.get_angle();
+            tasks->run_motor_task();
+            THEN("the lid opens further") {
+                REQUIRE(motor_policy.get_angle() > lid_angle);
+                REQUIRE(motor_policy.get_lid_overdrive());
+                REQUIRE(motor_task.get_lid_state() ==
+                        motor_task::LidState::Status::PLATE_LIFTING);
+                AND_WHEN("the lid movement ends") {
+                    motor_queue.backing_deque.push_back(
+                        messages::LidStepperComplete());
+                    tasks->run_motor_task();
+                    THEN("the lid moves back down past the switch") {
+                        // Compare to the ORIGINAL angle
+                        REQUIRE(motor_policy.get_angle() < lid_angle);
+                        REQUIRE(motor_policy.get_lid_overdrive());
+                        AND_WHEN("the lid movement ends") {
+                            motor_queue.backing_deque.push_back(
+                                messages::LidStepperComplete());
+                            tasks->run_motor_task();
+                            THEN("the lid moves back to the switch") {
+                                // Compare to the ORIGINAL angle
+                                REQUIRE(motor_policy.get_angle() > lid_angle);
+                                REQUIRE(!motor_policy.get_lid_overdrive());
+                                lid_angle = motor_policy.get_angle();
+                                AND_WHEN("the lid movement ends") {
+                                    motor_queue.backing_deque.push_back(
+                                        messages::LidStepperComplete());
+                                    tasks->run_motor_task();
+                                    THEN("the lid overdrives into the switch") {
+                                        REQUIRE(motor_policy.get_angle() >
+                                                lid_angle);
+                                        REQUIRE(
+                                            motor_policy.get_lid_overdrive());
+                                        AND_WHEN("the final lid motion ends") {
+                                            motor_queue.backing_deque.push_back(
+                                                messages::LidStepperComplete());
+                                            tasks->run_motor_task();
+                                            THEN("an ACK is sent") {
+                                                REQUIRE(motor_task
+                                                            .get_lid_state() ==
+                                                        motor_task::LidState::
+                                                            Status::IDLE);
+                                                REQUIRE(
+                                                    tasks
+                                                        ->get_host_comms_queue()
+                                                        .has_message());
+                                                auto msg =
+                                                    tasks
+                                                        ->get_host_comms_queue()
+                                                        .backing_deque.front();
+                                                REQUIRE(std::holds_alternative<
+                                                        messages::
+                                                            AcknowledgePrevious>(
+                                                    msg));
+                                                auto response = std::get<
+                                                    messages::
+                                                        AcknowledgePrevious>(
+                                                    msg);
+                                                REQUIRE(
+                                                    response.responding_to_id ==
+                                                    123);
+                                                REQUIRE(response.with_error ==
+                                                        errors::ErrorCode::
+                                                            NO_ERROR);
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

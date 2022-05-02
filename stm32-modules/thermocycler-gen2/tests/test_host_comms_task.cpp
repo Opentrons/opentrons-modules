@@ -2208,7 +2208,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 auto motor_message =
                     tasks->get_motor_queue().backing_deque.front();
                 auto lid_motor_message =
-                    std::get<messages::LiftPlateMessage>(motor_message);
+                    std::get<messages::PlateLiftMessage>(motor_message);
                 tasks->get_motor_queue().backing_deque.pop_front();
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
