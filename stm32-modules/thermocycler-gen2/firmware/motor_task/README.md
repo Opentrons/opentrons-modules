@@ -15,6 +15,9 @@ graph TD
     H(Open hinge motor)
     I(Close hinge motor)
 
+    LiftCheck{Lid is open?}
+    LiftFail[Return error]
+    LiftRun(Run Plate Lift action)
 
     A -->|Open Lid command| C
     A -->|Close Lid command| D
@@ -27,6 +30,9 @@ graph TD
     I --> G 
     G --> E
     H ---> E
+    A -->|Plate Lift command| LiftCheck
+    LiftCheck -->|No| LiftFail
+    LiftCheck -->|Yes| LiftRun --> E
 ```
 
 ### Seal motor sub-state machine
@@ -60,12 +66,16 @@ graph TD
 graph TD
     StartO[Open hinge]
     OpenToSwitch(Open to limit switch)
-    BackTo90(Close from switch to reach 90º)
+    OpenOverdrive(Overdrive into limit switch)
     DoneO[Done]
     StartC[Close hinge]
     CloseToSwitch(Close to limit switch)
     CloseOverdrive(Overdrive into limit switch)
     DoneC[Done]
+    LiftStart[Plate Lift]
+    LiftOpen(Open past 90º)
+    LiftReturn(Close past limit switch)
+    RunOpenHinge[Start Open Hinge action]
 
     LatchO1(Open latch)
     LatchO2(Close latch)
@@ -74,9 +84,11 @@ graph TD
 
     StartO -->|Hinge at open position| DoneO
     StartO -->|Hinge close or unknown| LatchO1 --> OpenToSwitch
-    OpenToSwitch --> LatchO2 --> BackTo90 --> DoneO
+    OpenToSwitch --> LatchO2 --> OpenOverdrive --> DoneO
 
     StartC -->|Closed switch engaged| DoneC
     StartC -->|Closed switch not engaged| LatchC1 --> CloseToSwitch
     CloseToSwitch --> CloseOverdrive --> LatchC2 --> DoneC
+
+    LiftStart --> LiftOpen --> LiftReturn --> RunOpenHinge
 ```
