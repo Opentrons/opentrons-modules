@@ -345,6 +345,10 @@ struct CloseLidMessage {
     uint32_t id;
 };
 
+struct PlateLiftMessage {
+    uint32_t id;
+};
+
 struct FrontButtonPressMessage {};
 
 // This is a two-stage message that is first sent to the Plate task,
@@ -402,11 +406,10 @@ using LidHeaterMessage =
                    GetLidTempMessage, SetLidTemperatureMessage,
                    DeactivateLidHeatingMessage, SetPIDConstantsMessage,
                    GetThermalPowerMessage, DeactivateAllMessage>;
-using MotorMessage =
-    ::std::variant<std::monostate, ActuateSolenoidMessage,
-                   LidStepperDebugMessage, LidStepperComplete,
-                   SealStepperDebugMessage, SealStepperComplete,
-                   GetSealDriveStatusMessage, SetSealParameterMessage,
-                   GetLidStatusMessage, OpenLidMessage, CloseLidMessage,
-                   FrontButtonPressMessage, GetLidSwitchesMessage>;
+using MotorMessage = ::std::variant<
+    std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
+    LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,
+    GetSealDriveStatusMessage, SetSealParameterMessage, GetLidStatusMessage,
+    OpenLidMessage, CloseLidMessage, PlateLiftMessage, FrontButtonPressMessage,
+    GetLidSwitchesMessage>;
 };  // namespace messages
