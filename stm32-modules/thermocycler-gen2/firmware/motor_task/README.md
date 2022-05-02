@@ -21,7 +21,7 @@ graph TD
 
     A -->|Open Lid command| C
     A -->|Close Lid command| D
-    C ---->|Lid open| H
+    C ---->|Lid open| E
     D ---->|Lid closed| E
     C -->|Lid closed or unknown| F
     D -->|Lid Open or unknown| Falt
