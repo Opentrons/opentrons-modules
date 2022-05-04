@@ -127,14 +127,22 @@ struct LidStepperState {
 // Structure to encapsulate state of the seal stepper
 struct SealStepperState {
     // Distance to fully extend the seal
-    constexpr static long FULL_EXTEND_MICROSTEPS = -1750000;
+    constexpr static signed long FULL_EXTEND_MICROSTEPS = -1750000;
     // Distance to slightly extend the seal before retracting from
     // an unknown state
-    constexpr static long SHORT_EXTEND_MICROSTEPS = -100000;
+    constexpr static signed long SHORT_EXTEND_MICROSTEPS = -100000;
     // Distance to fully retract the seal. This is as long as
     // the full extension, plus some spare distance to ensure a stall.
-    constexpr static long FULL_RETRACT_MICROSTEPS =
-        (FULL_EXTEND_MICROSTEPS * -1) + (300000);
+    constexpr static signed long FULL_RETRACT_MICROSTEPS =
+        (FULL_EXTEND_MICROSTEPS * -1);
+    // Distance to back off after triggering a limit switch
+    constexpr static double SWITCH_BACKOFF_MM = 0.5F;
+    // Distance to RETRACT to back off a limit switch
+    constexpr static signed long SWITCH_BACKOFF_MICROSTEPS_RETRACT =
+        motor_util::SealStepper::mm_to_steps(SWITCH_BACKOFF_MM);
+    // Distance to EXTEND to back off a limit switch
+    constexpr static signed long SWITCH_BACKOFF_MICROSTEPS_EXTEND =
+        motor_util::SealStepper::mm_to_steps(SWITCH_BACKOFF_MM) * -1;
     // Run current value, approximately 825 mA
     constexpr static int DEFAULT_RUN_CURRENT = 15;
     // Default velocity for the seal stepper, in steps/second
@@ -168,16 +176,19 @@ struct LidState {
     // Lid action state machine. Individual hinge/seal motor actions are
     // handled in their sub-state machines
     enum class Status {
-        IDLE,                        /**< No lid action.*/
-        OPENING_PARTIAL_EXTEND_SEAL, /**< Partially extend seal because we
-                                          don't know the actual position.*/
-        OPENING_RETRACT_SEAL,        /**< Retracting seal before opening lid.*/
-        OPENING_OPEN_HINGE,          /**< Opening lid hinge.*/
-        CLOSING_PARTIAL_EXTEND_SEAL, /**< Partially extend seal because we
-                                          don't know the actual position.*/
-        CLOSING_RETRACT_SEAL,        /**< Retracting seal before closing lid.*/
-        CLOSING_CLOSE_HINGE,         /**< Closing lid hinge.*/
-        CLOSING_EXTEND_SEAL /**< Extending seal after closing lid hinge.*/
+        IDLE,                         /**< No lid action.*/
+        OPENING_RETRACT_SEAL,         /**< Retracting seal before opening lid.*/
+        OPENING_RETRACT_SEAL_BACKOFF, /**< Extend seal to ease off of the 
+                                           limit switch.*/
+        OPENING_OPEN_HINGE,           /**< Opening lid hinge.*/
+        CLOSING_RETRACT_SEAL,         /**< Retracting seal before closing lid.*/
+        CLOSING_RETRACT_SEAL_BACKOFF, /**< Extend seal to ease off of the 
+                                           limit switch.*/
+        CLOSING_CLOSE_HINGE,          /**< Closing lid hinge.*/
+        CLOSING_EXTEND_SEAL,          /**< Extending seal after closing 
+                                           lid hinge.*/
+        CLOSING_EXTEND_SEAL_BACKOFF,  /**< Retract seal to ease off of the 
+                                           limit switch.*/
     };
     // Current status of the lid. Declared atomic because
     // this flag is set & cleared by both the actual task context
@@ -900,30 +911,30 @@ class MotorTask {
             case LidState::Status::IDLE:
                 lid_response_send_and_clear();
                 break;
-            case LidState::Status::OPENING_PARTIAL_EXTEND_SEAL:
-                // The seal stepper is extended a small amount
-                error = start_seal_movement(
-                    SealStepperState::SHORT_EXTEND_MICROSTEPS, true, policy);
-                break;
             case LidState::Status::OPENING_RETRACT_SEAL:
-                // The seal stepper is retracted to a stall
+                // The seal stepper is retracted to the limit switch
                 error = start_seal_movement(
                     SealStepperState::FULL_RETRACT_MICROSTEPS, true, policy);
+                break;
+            case LidState::Status::OPENING_RETRACT_SEAL_BACKOFF:
+                // The seal stepper is extended to back off the limit switch
+                error = start_seal_movement(
+                    SealStepperState::SWITCH_BACKOFF_MICROSTEPS_EXTEND, false, policy);
                 break;
             case LidState::Status::OPENING_OPEN_HINGE:
                 if (!start_lid_hinge_open(INVALID_ID, policy)) {
                     error = errors::ErrorCode::LID_MOTOR_BUSY;
                 }
                 break;
-            case LidState::Status::CLOSING_PARTIAL_EXTEND_SEAL:
-                // The seal stepper is extended a small amount
-                error = start_seal_movement(
-                    SealStepperState::SHORT_EXTEND_MICROSTEPS, true, policy);
-                break;
             case LidState::Status::CLOSING_RETRACT_SEAL:
                 // The seal stepper is retracted to a stall
                 error = start_seal_movement(
                     SealStepperState::FULL_RETRACT_MICROSTEPS, true, policy);
+                break;
+            case LidState::Status::CLOSING_RETRACT_SEAL_BACKOFF:
+                // The seal stepper is extended to back off the limit switch
+                error = start_seal_movement(
+                    SealStepperState::SWITCH_BACKOFF_MICROSTEPS_EXTEND, false, policy);
                 break;
             case LidState::Status::CLOSING_CLOSE_HINGE:
                 if (!start_lid_hinge_close(INVALID_ID, policy)) {
@@ -934,6 +945,11 @@ class MotorTask {
                 // The seal stepper is extended to engage with the plate
                 error = start_seal_movement(
                     SealStepperState::FULL_EXTEND_MICROSTEPS, true, policy);
+                break;
+            case LidState::Status::CLOSING_EXTEND_SEAL_BACKOFF:
+                // The seal stepper is extended to back off the limit switch
+                error = start_seal_movement(
+                    SealStepperState::SWITCH_BACKOFF_MICROSTEPS_RETRACT, false, policy);
                 break;
         }
         if (error == errors::ErrorCode::NO_ERROR) {

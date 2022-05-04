@@ -109,6 +109,10 @@ class SealStepper {
 
     // 16MHz external oscillator
     static constexpr const double tmc_external_clock = 16000000;
+    // Ratio of millimeters to microsteps
+    static constexpr const double microsteps_per_mm = 1750000 / 9.043375651;
+    // Ratio of microsteps to millimeters
+    static constexpr const double mm_per_microstep = 9.043375651 / 1750000;
 
     [[nodiscard]] static auto status_to_string(Status status) -> const char* {
         switch (status) {
@@ -156,6 +160,14 @@ class SealStepper {
         // Avoid divide-by-zero issues, bound tstep to at least 1
         tstep = std::max(tstep, static_cast<uint32_t>(1));
         return clock / static_cast<double>(tstep);
+    }
+
+    [[nodiscard]] constexpr static auto inline mm_to_steps(double mm) -> signed long {
+        return static_cast<signed long>(microsteps_per_mm * mm);
+    }
+
+    [[nodiscard]] constexpr static auto inline steps_to_mm(signed int steps) -> double {
+        return static_cast<double>(steps) * mm_per_microstep;
     }
 };
 
