@@ -45,6 +45,13 @@ extern "C" {
 /** Pin for the lid open optical switch.*/
 #define LID_OPEN_SWITCH_PIN (GPIO_PIN_7)
 
+/** Port for Seal Limit Switch input.*/
+#define SEAL_SWITCH_PORT (GPIOD)
+/** Pin for Seal Limit Switch input.*/
+#define SEAL_SWITCH_PIN  (GPIO_PIN_6)
+/** IRQ for the seal limit switch.*/
+#define SEAL_STEPPER_DIAG1_IRQ (EXTI4_IRQn)
+
 /** Port for the Photointerrupt Enable line.*/
 #define PHOTOINTERRUPT_ENABLE_PORT (GPIOE)
 /** Pin for the photointerrupt enable line.*/
@@ -110,6 +117,9 @@ typedef struct seal_hardware_struct {
     // Current direction of the seal stepper.
     // True = forwards, False = backwards
     bool direction;
+    // Bool check for whether the next switch interrupt
+    // should trigger a callback
+    bool limit_switch_armed;
     // Timer handle for the seal stepper
     TIM_HandleTypeDef timer;
 } seal_hardware_t;
@@ -131,7 +141,9 @@ static motor_hardware_t _motor_hardware = {
     .initialized = false,
     .callbacks = {
         .lid_stepper_complete = NULL,
-        .seal_stepper_tick = NULL
+        .seal_stepper_tick = NULL,
+        .seal_stepper_error = NULL,
+        .seal_stepper_limit_switch = NULL
     },
     .lid_stepper = {
         .moving = false,
@@ -146,6 +158,7 @@ static motor_hardware_t _motor_hardware = {
         .enabled = false,
         .moving = false,
         .direction = false,
+        .limit_switch_armed = false,
         .timer = {0}
     }
 };
@@ -167,6 +180,7 @@ void motor_hardware_setup(const motor_hardware_callbacks* callbacks) {
     configASSERT(callbacks->lid_stepper_complete != NULL);
     configASSERT(callbacks->seal_stepper_tick != NULL);
     configASSERT(callbacks->seal_stepper_error != NULL);
+    configASSERT(callbacks->seal_stepper_limit_switch != NULL);
 
     memcpy(&_motor_hardware.callbacks, callbacks, sizeof(_motor_hardware.callbacks));
 
@@ -310,6 +324,31 @@ void motor_hardware_solenoid_release() {
     //delay to ensure disengaged
 }
 
+bool motor_hardware_seal_switch_triggered() {
+    // Active low - the switches pull to ground when triggered
+    return (HAL_GPIO_ReadPin(SEAL_SWITCH_PORT, SEAL_SWITCH_PIN) == GPIO_PIN_RESET) ? true : false; 
+}
+
+void motor_hardware_seal_switch_interrupt() {
+    if(__HAL_GPIO_EXTI_GET_IT(SEAL_SWITCH_PIN) != 0x00u) {
+        __HAL_GPIO_EXTI_CLEAR_IT(SEAL_SWITCH_PIN);
+        if(_motor_hardware.seal.limit_switch_armed) {
+            if(_motor_hardware.callbacks.seal_stepper_limit_switch != NULL) {
+                _motor_hardware.callbacks.seal_stepper_limit_switch();
+            }
+            _motor_hardware.seal.limit_switch_armed = false;
+        }
+    }
+}
+
+void motor_hardware_seal_switch_set_armed() {
+    _motor_hardware.seal.limit_switch_armed = true;
+}
+
+void motor_hardware_seal_switch_set_disarmed() {
+    _motor_hardware.seal.limit_switch_armed = false;
+}
+
 // ----------------------------------------------------------------------------
 // Local function implementation
 
@@ -416,6 +455,14 @@ static void init_motor_gpio(void)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
     HAL_GPIO_Init(SEAL_STEPPER_DIAG1_PORT, &GPIO_InitStruct);
+
+    // The IRQ for this line (EXTI 5 through 9) is enabled by 
+    // the thermal subsystem.
+    GPIO_InitStruct.Pin = SEAL_SWITCH_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    HAL_GPIO_Init(SEAL_SWITCH_PORT, &GPIO_InitStruct);
 
     HAL_NVIC_SetPriority(SEAL_STEPPER_DIAG0_IRQ, 4, 0);
     HAL_NVIC_EnableIRQ(SEAL_STEPPER_DIAG0_IRQ);

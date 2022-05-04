@@ -71,6 +71,10 @@ concept MotorExecutionPolicy = requires(Policy& p,
     { p.seal_stepper_start(callback) } -> std::same_as<bool>;
     // A function to stop a seal stepper movement
     {p.seal_stepper_stop()};
+    // A function to arm the seal stepper limit switch
+    {p.seal_switch_set_armed()};
+    // A function to disarm the seal stepper limit switch
+    {p.seal_switch_set_disarmed()};
     // Policy defines a number that provides the number of seal motor ticks
     // in a second
     {std::is_integral_v<decltype(Policy::MotorTickFrequency)>};
@@ -343,7 +347,7 @@ class MotorTask {
         }
         if (error == errors::ErrorCode::NO_ERROR) {
             _seal_stepper_state.response_id = msg.id;
-            error = start_seal_movement(msg.steps, policy);
+            error = start_seal_movement(msg.steps, true, policy);
         }
 
         // Check for error after starting movement
@@ -606,7 +610,8 @@ class MotorTask {
      * @param[in] policy Instance of the policy for motor control.
      */
     template <MotorExecutionPolicy Policy>
-    auto start_seal_movement(long steps, Policy& policy) -> errors::ErrorCode {
+    auto start_seal_movement(long steps, bool arm_limit_switch, Policy& policy)
+        -> errors::ErrorCode {
         if (_seal_stepper_state.status != SealStepperState::Status::IDLE) {
             return errors::ErrorCode::SEAL_MOTOR_BUSY;
         }
@@ -641,6 +646,12 @@ class MotorTask {
 
         _seal_stepper_state.status = SealStepperState::Status::MOVING;
         _seal_position = motor_util::SealStepper::Status::UNKNOWN;
+
+        if (arm_limit_switch) {
+            policy.seal_switch_set_armed();
+        } else {
+            policy.seal_switch_set_disarmed();
+        }
 
         ret = policy.seal_stepper_start(
             [&] { this->seal_step_callback(policy); });
@@ -892,12 +903,12 @@ class MotorTask {
             case LidState::Status::OPENING_PARTIAL_EXTEND_SEAL:
                 // The seal stepper is extended a small amount
                 error = start_seal_movement(
-                    SealStepperState::SHORT_EXTEND_MICROSTEPS, policy);
+                    SealStepperState::SHORT_EXTEND_MICROSTEPS, true, policy);
                 break;
             case LidState::Status::OPENING_RETRACT_SEAL:
                 // The seal stepper is retracted to a stall
                 error = start_seal_movement(
-                    SealStepperState::FULL_RETRACT_MICROSTEPS, policy);
+                    SealStepperState::FULL_RETRACT_MICROSTEPS, true, policy);
                 break;
             case LidState::Status::OPENING_OPEN_HINGE:
                 if (!start_lid_hinge_open(INVALID_ID, policy)) {
@@ -907,12 +918,12 @@ class MotorTask {
             case LidState::Status::CLOSING_PARTIAL_EXTEND_SEAL:
                 // The seal stepper is extended a small amount
                 error = start_seal_movement(
-                    SealStepperState::SHORT_EXTEND_MICROSTEPS, policy);
+                    SealStepperState::SHORT_EXTEND_MICROSTEPS, true, policy);
                 break;
             case LidState::Status::CLOSING_RETRACT_SEAL:
                 // The seal stepper is retracted to a stall
                 error = start_seal_movement(
-                    SealStepperState::FULL_RETRACT_MICROSTEPS, policy);
+                    SealStepperState::FULL_RETRACT_MICROSTEPS, true, policy);
                 break;
             case LidState::Status::CLOSING_CLOSE_HINGE:
                 if (!start_lid_hinge_close(INVALID_ID, policy)) {
@@ -922,7 +933,7 @@ class MotorTask {
             case LidState::Status::CLOSING_EXTEND_SEAL:
                 // The seal stepper is extended to engage with the plate
                 error = start_seal_movement(
-                    SealStepperState::FULL_EXTEND_MICROSTEPS, policy);
+                    SealStepperState::FULL_EXTEND_MICROSTEPS, true, policy);
                 break;
         }
         if (error == errors::ErrorCode::NO_ERROR) {
