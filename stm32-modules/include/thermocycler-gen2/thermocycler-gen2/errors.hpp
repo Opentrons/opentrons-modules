@@ -59,6 +59,7 @@ enum class ErrorCode {
     SEAL_MOTOR_FAULT = 505,
     SEAL_MOTOR_STALL = 506,
     LID_CLOSED = 507,
+    SEAL_MOTOR_SWITCH = 508,
 };
 
 auto errorstring(ErrorCode code) -> const char*;

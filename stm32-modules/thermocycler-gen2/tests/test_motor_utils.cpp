@@ -115,15 +115,16 @@ SCENARIO("seal stepper microstep conversion works") {
     GIVEN("a distance in mm") {
         double mm = 9.043375651;
         WHEN("converting to steps") {
-            auto result = SealStepper::mm_to_steps(steps);
+            auto steps = SealStepper::mm_to_steps(mm);
             THEN("the result is as expected") {
                 signed int expected = 1750000;
-                REQUIRE(result == expected);
+                REQUIRE(steps == expected);
             }
             AND_WHEN("backconverting") {
-                auto backconvert = SealStepper::steps_to_mm(result);
+                auto backconvert = SealStepper::steps_to_mm(steps);
                 THEN("the conversion matches") {
-                    REQUIRE_THAT(backconvert, Catch::Matchers::WithinAbs(mm, 0.0001));
+                    REQUIRE_THAT(backconvert,
+                                 Catch::Matchers::WithinAbs(mm, 0.0001));
                 }
             }
         }

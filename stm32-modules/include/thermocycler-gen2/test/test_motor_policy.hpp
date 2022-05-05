@@ -54,14 +54,9 @@ class TestMotorPolicy : public TestTMC2130Policy {
 
     auto seal_stepper_stop() -> void { _seal_moving = false; }
 
-    auto seal_switch_set_armed() -> void {
-        _seal_switch_armed = true;
-    }
+    auto seal_switch_set_armed() -> void { _seal_switch_armed = true; }
 
-    auto seal_switch_set_disarmed() -> void {
-        _seal_switch_armed = false;
-    }
-
+    auto seal_switch_set_disarmed() -> void { _seal_switch_armed = false; }
 
     // Test-specific functions
 

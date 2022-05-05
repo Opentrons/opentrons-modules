@@ -162,11 +162,13 @@ class SealStepper {
         return clock / static_cast<double>(tstep);
     }
 
-    [[nodiscard]] constexpr static auto inline mm_to_steps(double mm) -> signed long {
+    [[nodiscard]] constexpr static auto inline mm_to_steps(double mm)
+        -> signed long {
         return static_cast<signed long>(microsteps_per_mm * mm);
     }
 
-    [[nodiscard]] constexpr static auto inline steps_to_mm(signed int steps) -> double {
+    [[nodiscard]] constexpr static auto inline steps_to_mm(signed int steps)
+        -> double {
         return static_cast<double>(steps) * mm_per_microstep;
     }
 };
