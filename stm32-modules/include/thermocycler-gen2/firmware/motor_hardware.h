@@ -32,6 +32,7 @@ typedef struct {
     motor_step_callback_t lid_stepper_complete;
     motor_step_callback_t seal_stepper_tick;
     motor_error_callback_t seal_stepper_error;
+    motor_step_callback_t seal_stepper_limit_switch;
 } motor_hardware_callbacks;
 
 // ----------------------------------------------------------------------------
@@ -137,6 +138,33 @@ void motor_hardware_solenoid_engage();
  *
  */
 void motor_hardware_solenoid_release();
+
+/**
+ * @brief Check if the seal switch is currently triggered
+ *
+ * @return True if the switch is pressed, false otherwise
+ */
+bool motor_hardware_seal_switch_triggered();
+
+/**
+ * @brief Arm the seal switch interrupt for triggering. The switch must
+ * be armed before it will invoke its callback, and it will only invoke
+ * the callback one time per arming.
+ */
+void motor_hardware_seal_switch_set_armed();
+
+/**
+ * @brief Disarm the seal switch if it is armed.
+ * @see #motor_hardware_seal_switch_arm
+ */
+void motor_hardware_seal_switch_set_disarmed();
+
+/**
+ * @brief Should be invoked whenever the Seal Limit Switch line
+ * triggers an interrupt
+ *
+ */
+void motor_hardware_seal_switch_interrupt();
 
 #ifdef __cplusplus
 }  // extern "C"

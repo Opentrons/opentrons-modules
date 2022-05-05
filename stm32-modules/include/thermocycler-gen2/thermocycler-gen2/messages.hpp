@@ -170,6 +170,7 @@ struct SealStepperComplete {
     enum class CompletionReason {
         ERROR,  // There was an error flag
         STALL,  // There was a stall
+        LIMIT,  // Limit switch was triggered
         DONE,   // No error
     };
     // Defaults to no-error

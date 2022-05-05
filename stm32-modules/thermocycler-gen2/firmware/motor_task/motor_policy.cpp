@@ -89,3 +89,13 @@ auto MotorPolicy::tmc2130_step_pulse() -> bool {
     motor_hardware_seal_step_pulse();
     return true;
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::seal_switch_set_armed() -> void {
+    motor_hardware_seal_switch_set_armed();
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::seal_switch_set_disarmed() -> void {
+    motor_hardware_seal_switch_set_disarmed();
+}
