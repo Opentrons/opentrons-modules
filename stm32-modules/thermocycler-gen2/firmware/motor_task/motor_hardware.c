@@ -4,6 +4,7 @@
  */
 #include "firmware/motor_hardware.h"
 
+#include <stdatomic.h>
 #include <string.h>  // for memset
 #include <stdlib.h> // for abs
 
@@ -119,7 +120,7 @@ typedef struct seal_hardware_struct {
     bool direction;
     // Bool check for whether the next switch interrupt
     // should trigger a callback
-    bool limit_switch_armed;
+    atomic_bool limit_switch_armed;
     // Timer handle for the seal stepper
     TIM_HandleTypeDef timer;
 } seal_hardware_t;
@@ -158,7 +159,7 @@ static motor_hardware_t _motor_hardware = {
         .enabled = false,
         .moving = false,
         .direction = false,
-        .limit_switch_armed = false,
+        .limit_switch_armed = ATOMIC_VAR_INIT(false),
         .timer = {0}
     }
 };
