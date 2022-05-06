@@ -54,7 +54,7 @@ const char* const HEATER_HARDWARE_ERROR_LATCH =
 const char* const HEATER_CONSTANT_OUT_OF_RANGE =
     "ERR212:heater:control constant out of range\n";
 const char* const HEATER_HARDWARE_ERROR_CIRCUIT =
-    "ERR213:heater:heatpad circuit open or shorted\n";
+    "ERR213:heater:heatpad overcurrent or circuit open or shorted\n";
 const char* const SYSTEM_SERIAL_NUMBER_INVALID =
     "ERR301:system:serial number invalid format\n";
 const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =

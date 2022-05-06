@@ -274,7 +274,7 @@ bool heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
     } else {
         HEATER_PAD_LL_SETCOMPARE(internal->pad_tim.Instance, setting);
     }
-    if ((internal->heatpad_cs_status == ERROR_OPEN_CIRCUIT) || (internal->heatpad_cs_status == ERROR_SHORT_CIRCUIT)) {
+    if (internal->heatpad_cs_status == (ERROR_OPEN_CIRCUIT || ERROR_SHORT_CIRCUIT || ERROR_OVERCURRENT)) {
         return false;
     } else {
         return true;
@@ -355,8 +355,8 @@ static uint16_t period_count = 0;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
-    if(htim->Instance == TIM4) {
-        if ((internal->heatpad_cs_status != (IDLE || ERROR_OPEN_CIRCUIT || ERROR_SHORT_CIRCUIT))) {
+    if (htim->Instance == TIM4) {
+        if (internal->heatpad_cs_status != (IDLE || ERROR_OPEN_CIRCUIT || ERROR_SHORT_CIRCUIT || ERROR_OVERCURRENT)) {
             period_count++;
             if ((internal->heatpad_cs_status == RUNNING) && (period_count > 1000)) {
                 internal->heatpad_cs_status = PREP_CHECK;
@@ -384,6 +384,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
                         //add below
                         heater_hardware_power_disable(HEATER_HW_HANDLE->hardware_internal);
                         internal->heatpad_cs_status = ERROR_OPEN_CIRCUIT;
+                        //return_error = return_error | (1U<<OPEN_BIT); //implement! Initialize variable appropriately. Can just be a uint8_t. Define bits in header
                         return;
                     } /*else {
                         //create success msg for debug?
@@ -420,6 +421,7 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
             if (HAL_COMP_GetOutputLevel(&internal->comp4)) {
                 heater_hardware_power_disable(HEATER_HW_HANDLE->hardware_internal);
                 internal->heatpad_cs_status = ERROR_SHORT_CIRCUIT;
+                //return_error = return_error | (1U<<SHORT_BIT);
                 return;
             } /*else {
                 //create success msg for debug
@@ -444,6 +446,14 @@ bool can_heatpad_cs_open_check(void)
 bool can_heatpad_cs_short_check(void)
 {
     return (pwm_pulse_duration < 13000);
+}
+
+void HAL_TIMEx_Break2Callback(TIM_HandleTypeDef *htim) {
+    hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
+    if (htim->Instance == TIM4) {
+        internal->heatpad_cs_status = ERROR_OVERCURRENT;
+        //return_error = return_error | (1U<<OVERCURRENT_BIT);
+    }
 }
 
 void TIM4_IRQHandler(void)
