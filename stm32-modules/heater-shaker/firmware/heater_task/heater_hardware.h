@@ -38,6 +38,17 @@ typedef struct {
     uint16_t onboard_val;
 } conversion_results;
 
+typedef enum {
+    IDLE = 1,
+    RUNNING = 2,
+    PREP_CHECK = 3,
+    OPEN_CHECK_STARTED = 4,
+    OPEN_CHECK_COMPLETE = 5,
+    SHORT_CHECK_STARTED = 6,
+    SHORT_CHECK_COMPLETE = 7,
+    PREP_RUNNING = 8,
+} heatpad_cs_state;
+
 typedef struct {
     void (*conversions_complete)(const conversion_results* results);
     void* hardware_internal;

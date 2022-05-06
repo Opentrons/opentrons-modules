@@ -17,6 +17,9 @@ static void adc_setup(ADC_HandleTypeDef* adc);
 static void gpio_setup(void);
 static ntc_selection next_channel(ntc_selection from_which);
 static void tim_setup(TIM_HandleTypeDef* tim);
+bool peripherals_ready(void);
+bool can_heatpad_cs_open_check(void);
+bool can_heatpad_cs_short_check(void);
 
 typedef struct {
     ntc_selection reading_which;
@@ -27,6 +30,7 @@ typedef struct {
     COMP_HandleTypeDef comp4;
     TIM_OC_InitTypeDef pwm_config;
     bool heater_started;
+    heatpad_cs_state heatpad_cs_status;
 } hw_internal;
 
 hw_internal _internals = {
@@ -44,6 +48,7 @@ hw_internal _internals = {
 .OCNIdleState=TIM_OCNIDLESTATE_RESET,
 },
 .heater_started = false,
+.heatpad_cs_status = IDLE,
 };
 
 heater_hardware *HEATER_HW_HANDLE = NULL;
@@ -164,7 +169,7 @@ static void comp_setup(COMP_HandleTypeDef* comp) {
   comp->Instance = COMP4;
   comp->Init.InvertingInput = COMP_INVERTINGINPUT_DAC1_CH1;
   comp->Init.NonInvertingInput = COMP_NONINVERTINGINPUT_IO1; //PB0
-  comp->Init.Output = COMP_OUTPUT_TIM1BKIN2; //change to interrupt
+  comp->Init.Output = COMP_OUTPUT_TIM1BKIN2; //change to interrupt? No
   //comp->Init.TriggerMode = ;
   if (HAL_OK != HAL_COMP_Init(comp)) {
     init_error();
@@ -176,6 +181,7 @@ void heater_hardware_setup(heater_hardware* hardware) {
     HEATER_HW_HANDLE = hardware;
     hardware->hardware_internal = (void*)&_internals;
     _internals.reading_which = NTC_PAD_A;
+    _internals.heatpad_cs_status = IDLE;
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -243,19 +249,25 @@ void heater_hardware_power_disable(heater_hardware* hardware) {
     }
     HAL_TIM_PWM_Stop(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
     internal->heater_started = false;
+    internal->heatpad_cs_status = IDLE;
 }
 
+static uint16_t pwm_pulse_duration = 0;
 void heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
     hw_internal* internal = (hw_internal*)hardware->hardware_internal;
     if (!internal) {
         init_error();
     }
+    internal->heatpad_cs_status = RUNNING;
+    pwm_pulse_duration = setting;
     internal->pwm_config.Pulse = setting;
     if (!internal->heater_started) {
         HAL_TIM_PWM_Stop(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
         HAL_TIM_PWM_ConfigChannel(
             &internal->pad_tim, &internal->pwm_config, HEATER_PAD_ENABLE_TIM_CHANNEL);
-        HAL_TIM_PWM_Start(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
+        HAL_TIM_PWM_Start_IT(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
+        HAL_NVIC_EnableIRQ(TIM4_IRQn);
+        HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0); //verify priority
         internal->heater_started = true;
     } else {
         HEATER_PAD_LL_SETCOMPARE(internal->pad_tim.Instance, setting);
@@ -323,6 +335,109 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
             }
             break;}
     }
+}
+
+//complete interrupt setup
+//create enum, state machine
+//EXTI30 interrupt for COMP4
+//compare PWM setting to GRANULARITY constant to determine if enough time for COMP
+//check if MspInitCallback hits after re-initializing
+//Check if OperationCpltCallback hits before PWM Pulse Cplt Callback. Indicates we've got enough time for COMP to work?
+//utilize READY state for COMP and DAC? COMP will generate interrupt each time threshold hit?!
+static uint16_t period_count = 0;
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
+    if(htim->Instance == TIM4) {
+        if (internal->heatpad_cs_status != IDLE) {
+            period_count++;
+            if ((internal->heatpad_cs_status == RUNNING) && (period_count > 1000)) {
+                internal->heatpad_cs_status = PREP_CHECK;
+                uint8_t dac_val = (uint8_t) (0x0F); //roughly 0.2V
+                HAL_DAC_SetValue(&internal->dac1, HEATPAD_CS_DAC_CHANNEL, DAC_ALIGN_8B_R, dac_val);
+                HAL_COMP_Stop(&internal->comp4); //also HAL_Stop_IT
+                internal->comp4.Init.Output = COMP_OUTPUT_NONE; //change to interrupt? Change Start and Stop to _IT
+                //complete interrupt setup with HAL_NVIC_SetPriority() and HAL_NVIC_EnableIRQ()
+                //comp->Init.TriggerMode = ; //use?
+                if (HAL_OK != HAL_COMP_Init(&internal->comp4)) {
+                    init_error();
+                }
+                HAL_COMP_Start(&internal->comp4);
+            } else if ((internal->heatpad_cs_status == PREP_CHECK) && (peripherals_ready())) {
+                if (can_heatpad_cs_open_check()) {
+                    internal->heatpad_cs_status = OPEN_CHECK_STARTED;
+                } else if (can_heatpad_cs_short_check()) {
+                    internal->heatpad_cs_status = SHORT_CHECK_STARTED;
+                }
+            } else if (internal->heatpad_cs_status == OPEN_CHECK_STARTED) {
+                if (can_heatpad_cs_open_check()) { //confirm checking window still sufficient on next period
+                    if (!HAL_COMP_GetOutputLevel(&internal->comp4)) {
+                        //disable power
+                        //state is in error? Make "IDLE || ERROR". Pass back via set_pwm function?
+                        //create msg that disables power and throws error
+                    } else {
+                        //create success msg for debug
+                    }
+                }
+                //check for multiple cycles?
+                internal->heatpad_cs_status = OPEN_CHECK_COMPLETE;
+            } else if ((internal->heatpad_cs_status == OPEN_CHECK_COMPLETE) && (can_heatpad_cs_open_check())) {
+                internal->heatpad_cs_status = SHORT_CHECK_STARTED;
+            } else if (((internal->heatpad_cs_status == OPEN_CHECK_COMPLETE) && (!can_heatpad_cs_open_check())) || (internal->heatpad_cs_status == SHORT_CHECK_COMPLETE)) {
+                internal->heatpad_cs_status = PREP_RUNNING;
+                uint8_t dac_val = (uint8_t) (0xF7); //roughly 3.2V
+                HAL_DAC_SetValue(&internal->dac1, HEATPAD_CS_DAC_CHANNEL, DAC_ALIGN_8B_R, dac_val);
+                HAL_COMP_Stop(&internal->comp4); //also HAL_Stop_IT
+                internal->comp4.Init.Output = COMP_OUTPUT_TIM1BKIN2; //change to interrupt? Change Start and Stop to _IT
+                //complete interrupt setup with HAL_NVIC_SetPriority() and HAL_NVIC_EnableIRQ()
+                //comp->Init.TriggerMode = ; //use?
+                if (HAL_OK != HAL_COMP_Init(&internal->comp4)) {
+                    init_error();
+                }
+            } else if ((internal->heatpad_cs_status == PREP_RUNNING) && (peripherals_ready())) {
+                period_count = 0;
+                internal->heatpad_cs_status = RUNNING;
+            }
+        }
+    }
+}
+
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
+{
+    hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
+    if ((htim->Instance == TIM4) && (internal->heatpad_cs_status != IDLE) && (internal->heatpad_cs_status == SHORT_CHECK_STARTED)) {
+        if (can_heatpad_cs_open_check()) { //confirm checking window still sufficient on next period
+            if (HAL_COMP_GetOutputLevel(&internal->comp4)) {
+                //create msg that disables power and throws error
+            } else {
+                //create success msg for debug
+            }
+        }
+        //check for multiple cycles?
+        internal->heatpad_cs_status = SHORT_CHECK_COMPLETE;
+    }
+}
+
+bool peripherals_ready(void) {
+    hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
+    //will DAC/COMP be in RUNNING state?
+    return ((HAL_DAC_GetState(&internal->dac1) == HAL_DAC_STATE_READY) && (HAL_COMP_GetState(&internal->comp4) == HAL_COMP_STATE_READY));
+}
+
+bool can_heatpad_cs_open_check(void)
+{
+    return (pwm_pulse_duration > 2000);
+}
+
+bool can_heatpad_cs_short_check(void)
+{
+    return (pwm_pulse_duration < 13000);
+}
+
+void TIM4_IRQHandler(void)
+{
+    hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
+ 	HAL_TIM_IRQHandler(&internal->pad_tim);
 }
 
 static void init_error(void) {
