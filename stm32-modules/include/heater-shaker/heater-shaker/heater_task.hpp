@@ -366,11 +366,13 @@ class HeaterTask {
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (state.system_status == State::CONTROLLING) {
-            if (!policy.set_power_output(pid.compute(setpoint - pad_temperature()))) {
+            if (!policy.set_power_output(
+                    pid.compute(setpoint - pad_temperature()))) {
                 state.system_status = State::ERROR;
                 auto error_message =
                     messages::HostCommsMessage(messages::ErrorMessage{
-                        .code = errors::ErrorCode::HEATER_HARDWARE_ERROR_CIRCUIT});
+                        .code =
+                            errors::ErrorCode::HEATER_HARDWARE_ERROR_CIRCUIT});
                 static_cast<void>(
                     task_registry->comms->get_message_queue().try_send(
                         error_message));
