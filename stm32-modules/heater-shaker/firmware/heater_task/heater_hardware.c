@@ -253,12 +253,14 @@ void heater_hardware_power_disable(heater_hardware* hardware) {
 }
 
 static uint16_t pwm_pulse_duration = 0;
-void heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
+bool heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
     hw_internal* internal = (hw_internal*)hardware->hardware_internal;
     if (!internal) {
         init_error();
     }
-    internal->heatpad_cs_status = RUNNING;
+    if (internal->heatpad_cs_status == IDLE) {
+        internal->heatpad_cs_status = RUNNING;
+    }
     pwm_pulse_duration = setting;
     internal->pwm_config.Pulse = setting;
     if (!internal->heater_started) {
@@ -271,6 +273,11 @@ void heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
         internal->heater_started = true;
     } else {
         HEATER_PAD_LL_SETCOMPARE(internal->pad_tim.Instance, setting);
+    }
+    if ((internal->heatpad_cs_status == ERROR_OPEN_CIRCUIT) || (internal->heatpad_cs_status == ERROR_SHORT_CIRCUIT)) {
+        return false;
+    } else {
+        return true;
     }
 }
 
@@ -349,7 +356,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
     if(htim->Instance == TIM4) {
-        if (internal->heatpad_cs_status != IDLE) {
+        if ((internal->heatpad_cs_status != (IDLE || ERROR_OPEN_CIRCUIT || ERROR_SHORT_CIRCUIT))) {
             period_count++;
             if ((internal->heatpad_cs_status == RUNNING) && (period_count > 1000)) {
                 internal->heatpad_cs_status = PREP_CHECK;
@@ -372,12 +379,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
             } else if (internal->heatpad_cs_status == OPEN_CHECK_STARTED) {
                 if (can_heatpad_cs_open_check()) { //confirm checking window still sufficient on next period
                     if (!HAL_COMP_GetOutputLevel(&internal->comp4)) {
-                        //disable power
-                        //state is in error? Make "IDLE || ERROR". Pass back via set_pwm function?
-                        //create msg that disables power and throws error
-                    } else {
-                        //create success msg for debug
-                    }
+                        //create msg that disables power and throws error? Eh
+                        //Pass error back via set_pwm function? Have sending layers (policy and task) pass back and update their error state
+                        //add below
+                        heater_hardware_power_disable(HEATER_HW_HANDLE->hardware_internal);
+                        internal->heatpad_cs_status = ERROR_OPEN_CIRCUIT;
+                        return;
+                    } /*else {
+                        //create success msg for debug?
+                    }*/
                 }
                 //check for multiple cycles?
                 internal->heatpad_cs_status = OPEN_CHECK_COMPLETE;
@@ -408,10 +418,12 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
     if ((htim->Instance == TIM4) && (internal->heatpad_cs_status != IDLE) && (internal->heatpad_cs_status == SHORT_CHECK_STARTED)) {
         if (can_heatpad_cs_open_check()) { //confirm checking window still sufficient on next period
             if (HAL_COMP_GetOutputLevel(&internal->comp4)) {
-                //create msg that disables power and throws error
-            } else {
+                heater_hardware_power_disable(HEATER_HW_HANDLE->hardware_internal);
+                internal->heatpad_cs_status = ERROR_SHORT_CIRCUIT;
+                return;
+            } /*else {
                 //create success msg for debug
-            }
+            }*/
         }
         //check for multiple cycles?
         internal->heatpad_cs_status = SHORT_CHECK_COMPLETE;
