@@ -79,6 +79,9 @@ const char* const SEAL_MOTOR_SPI_ERROR = "ERR503:seal:SPI error\n";
 const char* const SEAL_MOTOR_BUSY = "EERR504:seal:Seal motor busy\n";
 const char* const SEAL_MOTOR_FAULT = "ERR505:seal:Seal motor fault\n";
 const char* const SEAL_MOTOR_STALL = "ERR5006:seal:Seal motor stall event\n";
+const char* const LID_CLOSED = "ERR507:lid:Lid must be opened\n";
+const char* const SEAL_MOTOR_SWITCH =
+    "ERR508:seal:Seal switch should not be engaged\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -135,6 +138,8 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(SEAL_MOTOR_BUSY);
         HANDLE_CASE(SEAL_MOTOR_FAULT);
         HANDLE_CASE(SEAL_MOTOR_STALL);
+        HANDLE_CASE(LID_CLOSED);
+        HANDLE_CASE(SEAL_MOTOR_SWITCH);
     }
     return UNKNOWN_ERROR;
 }

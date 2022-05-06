@@ -111,6 +111,26 @@ SCENARIO("seal status stringification works") {
     }
 }
 
+SCENARIO("seal stepper microstep conversion works") {
+    GIVEN("a distance in mm") {
+        double mm = 9.043375651;
+        WHEN("converting to steps") {
+            auto steps = SealStepper::mm_to_steps(mm);
+            THEN("the result is as expected") {
+                signed int expected = 1750000;
+                REQUIRE(steps == expected);
+            }
+            AND_WHEN("backconverting") {
+                auto backconvert = SealStepper::steps_to_mm(steps);
+                THEN("the conversion matches") {
+                    REQUIRE_THAT(backconvert,
+                                 Catch::Matchers::WithinAbs(mm, 0.0001));
+                }
+            }
+        }
+    }
+}
+
 SCENARIO("MovementProfile functionality with flat acceleration") {
     GIVEN("a movement profile with a 1Hz interrupt") {
         constexpr int frequency = 1;

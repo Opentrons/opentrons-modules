@@ -134,6 +134,7 @@ void TIM7_IRQHandler(void)
 void EXTI9_5_IRQHandler(void)
 {
     thermal_adc_ready_callback(ADC1_ITR);
+    motor_hardware_seal_switch_interrupt();
 }
 
 /**
