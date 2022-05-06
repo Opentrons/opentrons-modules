@@ -27,7 +27,7 @@
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 // TODO(frank 05-06-2022): Uncomment these VID/PID definitions and replace
-// the temporary values that replicate the Gen1 thermocycler
+// the temporary values that replicate the Gen1 thermocycler.
 //#define USBD_VID                      0x04D8
 //#define USBD_PID                      0xed8c
 #define USBD_VID                      0x04D8  /* same as Gen1 TC */
