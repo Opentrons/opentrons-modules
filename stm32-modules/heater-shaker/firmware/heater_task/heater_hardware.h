@@ -52,6 +52,7 @@ typedef enum {
     PREP_RUNNING = 8,
     ERROR_OPEN_CIRCUIT = 9,
     ERROR_SHORT_CIRCUIT = 10,
+    ERROR_OVERCURRENT = 11,
 } heatpad_cs_state;
 
 typedef struct {
