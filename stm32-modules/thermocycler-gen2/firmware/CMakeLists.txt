@@ -75,6 +75,7 @@ target_compile_options(${TARGET_MODULE_NAME}
   PUBLIC
   -Wall
   -Werror
+  -Wimplicit-fallthrough
   $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
   $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
   $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
@@ -155,15 +156,17 @@ add_custom_target(${TARGET_MODULE_NAME}-bin ALL
 # include directories. So we can use the actually fairly cool transform command to turn them all into
 # extra-arg invocations and it'll figure it out.
 set(CLANG_EXTRA_ARGS ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+get_target_property(SRC_INCLUDE_DIRS ${TARGET_MODULE_NAME} INCLUDE_DIRECTORIES)
+list(APPEND CLANG_EXTRA_ARGS ${SRC_INCLUDE_DIRS})
 list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
 # This helps with clang accepting what GCC accepts around the implementations of the message queue
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Werror=implicit-fallthrough")
 add_custom_target(${TARGET_MODULE_NAME}-lint
-  COMMENT "Linting"
   ALL
+  COMMENT "Linting"
   COMMAND ${Clang_CLANGTIDY_EXECUTABLE} ${CLANG_EXTRA_ARGS} -p ${CMAKE_BINARY_DIR} ${${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS} ${CORE_LINTABLE_SOURCES}
-  DEPENDS thermocycler-gen2-core # Required to include the thermistor_lookups file, and possibly generate it if not present
+  DEPENDS ${TARGET_MODULE_NAME}-core # Required to include the thermistor_lookups file, and possibly generate it if not present
 )
 
 # Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an
