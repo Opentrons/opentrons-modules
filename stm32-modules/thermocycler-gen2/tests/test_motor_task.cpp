@@ -159,11 +159,12 @@ SCENARIO("motor task message passing") {
                         !tasks->get_host_comms_queue().backing_deque.empty());
                     auto ack =
                         tasks->get_host_comms_queue().backing_deque.front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            ack));
-                    auto ack_msg = std::get<messages::AcknowledgePrevious>(ack);
+                    REQUIRE(std::holds_alternative<
+                            messages::SealStepperDebugResponse>(ack));
+                    auto ack_msg =
+                        std::get<messages::SealStepperDebugResponse>(ack);
                     REQUIRE(ack_msg.responding_to_id == 999);
+                    REQUIRE(ack_msg.steps_taken == 0);
                     REQUIRE(ack_msg.with_error ==
                             errors::ErrorCode::SEAL_MOTOR_BUSY);
                 }

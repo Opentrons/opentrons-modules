@@ -99,3 +99,8 @@ auto MotorPolicy::seal_switch_set_armed() -> void {
 auto MotorPolicy::seal_switch_set_disarmed() -> void {
     motor_hardware_seal_switch_set_disarmed();
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::seal_read_limit_switch() -> bool {
+    return motor_hardware_seal_switch_triggered();
+}

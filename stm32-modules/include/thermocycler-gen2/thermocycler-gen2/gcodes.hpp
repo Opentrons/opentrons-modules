@@ -1596,10 +1596,10 @@ struct GetLidSwitches {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit, int closed,
-                                    int open) -> InputIt {
+                                    int open, int seal) -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M901.D C:%i O:%i OK\n", closed,
-                       open);
+        res = snprintf(&*buf, (limit - buf), "M901.D C:%i O:%i S:%i OK\n",
+                       closed, open, seal);
         if (res <= 0) {
             return buf;
         }
