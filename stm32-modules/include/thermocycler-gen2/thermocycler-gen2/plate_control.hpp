@@ -74,6 +74,10 @@ class PlateControl {
     static constexpr double UNDERSHOOT_M_CONST = -0.0133;
     /** Undershoot B constant in ºC*/
     static constexpr double UNDERSHOOT_B_CONST = -0.4302;
+    /** Minimum temperature difference to trigger overshoot, in ºC.*/
+    static constexpr double UNDERSHOOT_MIN_DIFFERENCE = 0.5;
+    /** Amount of time to stay in overshoot, in seconds.*/
+    static constexpr Seconds OVERSHOOT_TIME = 10.0F;
 
     PlateControl() = delete;
     /**
@@ -114,7 +118,8 @@ class PlateControl {
      * celsius per second.
      * @return True if the temperature target could be updated
      */
-    auto set_new_target(double setpoint, double hold_time = HOLD_INFINITE,
+    auto set_new_target(double setpoint, double volume_ul,
+                        double hold_time = HOLD_INFINITE,
                         double ramp_rate = RAMP_INFINITE) -> bool;
 
     /**
@@ -163,8 +168,8 @@ class PlateControl {
      * @return The overshoot setpoint that the thermocycler should target,
      *         in ºC
      */
-    [[nodiscard]] auto calculate_overshoot(double setpoint, double volume_ul)
-        -> double;
+    [[nodiscard]] static auto calculate_overshoot(double setpoint,
+                                                  double volume_ul) -> double;
 
     /**
      * @brief Calculate the undershoot target temperature based off of a
@@ -175,8 +180,8 @@ class PlateControl {
      * @return The undershoot setpoint that the thermocycler should target,
      *         in ºC
      */
-    [[nodiscard]] auto calculate_undershoot(double setpoint, double volume_ul)
-        -> double;
+    [[nodiscard]] static auto calculate_undershoot(double setpoint,
+                                                   double volume_ul) -> double;
 
   private:
     /**
@@ -224,6 +229,7 @@ class PlateControl {
     double _current_setpoint = 0.0F;
     double _setpoint = 0.0F;  // User-provided setpoint
     double _ramp_rate = 0.0F;
+    Seconds _remaining_overshoot_time = 0.0F;
     Seconds _hold_time = 0.0F;            // Total hold time
     Seconds _remaining_hold_time = 0.0F;  // Hold time left, out of _hold_time
 };

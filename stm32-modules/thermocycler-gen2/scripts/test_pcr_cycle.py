@@ -15,8 +15,8 @@ def cycle(ser : serial.Serial):
         (5.0, 50.0),
         (20.0, 20.0) ]
     targets = [
-        (35.0, 5.0),
-        (50.0, 5.0),
+        (35.0, 10.0),
+        (20.0, 40.0),
         (65.0, 5.0),
         (80.0, 5.0),
         (95.0, 5.0),
@@ -52,13 +52,14 @@ def cycle(ser : serial.Serial):
                         test_utils.deactivate_lid(ser)
                     else:
                         new_temp = targets[target_idx][0]
-                        print(f'Moving to {new_temp}')
-                        test_utils.set_plate_temperature(new_temp, ser)
+                        new_hold = targets[target_idx][1]
+                        print(f'Moving to {new_temp} for {new_hold} seconds')
+                        test_utils.set_plate_temperature(new_temp, ser, hold_time=new_hold)
         sys.stdout.flush()
         return
     
-    print(f'Moving to {targets[0][0]}')
-    test_utils.set_plate_temperature(targets[0][0], ser)
+    print(f'Moving to {targets[0][0]} for {targets[0][1]} seconds')
+    test_utils.set_plate_temperature(targets[0][0], ser, targets[0][1])
     plot_temp.graphTemperatures(ser, update_callback)
 
 if __name__ == '__main__':
