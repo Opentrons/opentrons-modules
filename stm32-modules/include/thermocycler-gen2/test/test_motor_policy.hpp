@@ -58,6 +58,8 @@ class TestMotorPolicy : public TestTMC2130Policy {
 
     auto seal_switch_set_disarmed() -> void { _seal_switch_armed = false; }
 
+    auto seal_read_limit_switch() -> bool { return _seal_switch_triggered; }
+
     // Test-specific functions
 
     auto tick() -> void {
@@ -80,6 +82,10 @@ class TestMotorPolicy : public TestTMC2130Policy {
 
     auto seal_switch_is_armed() -> bool { return _seal_switch_armed; }
 
+    auto set_seal_switch_triggered(bool val) -> void {
+        _seal_switch_triggered = val;
+    }
+
   private:
     // Solenoid is engaged when unpowered
     bool _solenoid_engaged = true;
@@ -91,6 +97,7 @@ class TestMotorPolicy : public TestTMC2130Policy {
     bool _lid_open_switch = false;
     bool _lid_closed_switch = false;
     bool _lid_overdrive = false;
+    bool _seal_switch_triggered = false;
     bool _seal_switch_armed = false;
     Callback _callback;
 };
