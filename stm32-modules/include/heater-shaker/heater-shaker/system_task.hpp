@@ -110,7 +110,7 @@ class SystemTask {
         }
 
         auto cool_message = messages::SetTemperatureMessage{
-            .id = 1, .target_temperature = 0, .from_system = true};
+            .id = 0, .target_temperature = 0, .from_system = true};
         auto cool_id = prep_cache.add(cool_message);
         cool_message.id = cool_id;
         if (!task_registry->heater->get_message_queue().try_send(cool_message,
@@ -118,7 +118,7 @@ class SystemTask {
             prep_cache.remove_if_present(cool_id);
         }
 
-        auto disconnect_message = messages::ForceUSBDisconnectMessage{.id = 2};
+        auto disconnect_message = messages::ForceUSBDisconnectMessage{.id = 0};
         auto disconnect_id = prep_cache.add(disconnect_message);
         disconnect_message.id = disconnect_id;
         if (!task_registry->comms->get_message_queue().try_send(
