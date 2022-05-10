@@ -19,6 +19,7 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
     PlateControlVals values = {0.0F};
     switch (_status) {
         case PlateStatus::INITIAL_HEAT:
+            [[fallthrough]];
         case PlateStatus::INITIAL_COOL:
             if (temp_within_setpoint()) {
                 _status = PlateStatus::OVERSHOOT;
@@ -109,6 +110,9 @@ auto PlateControl::set_new_target(double setpoint, double hold_time,
     return setpoint + (UNDERSHOOT_M_CONST * volume_ul) + UNDERSHOOT_B_CONST;
 }
 
+// This function *could* be made const, but that obfuscates the intention,
+// which is to update the ramp target of a *member* of the class.
+// NOLINTNEXTLINE(readability-make-member-function-const)
 auto PlateControl::update_ramp(thermal_general::Peltier &peltier, Seconds time)
     -> void {
     if (_ramp_rate == RAMP_INFINITE) {
@@ -123,6 +127,9 @@ auto PlateControl::update_ramp(thermal_general::Peltier &peltier, Seconds time)
     }
 }
 
+// This function *could* be made static, but that obfuscates the intention,
+// which is to update the PID of a *member* of the class.
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto PlateControl::update_pid(thermal_general::Peltier &peltier, Seconds time)
     -> double {
     return peltier.pid.compute(peltier.temp_target - peltier.current_temp(),
@@ -143,19 +150,18 @@ auto PlateControl::update_fan(Seconds time) -> double {
         if (_status == PlateStatus::INITIAL_COOL) {
             // Ramping down to a cold temp is always 70% drive
             return FAN_POWER_RAMP_COLD;
-        } else {
-            // Holding at a cold temp is PID controlling the heatsink to 60ºC
-            if (_fan.temp_target != FAN_TARGET_TEMP_COLD) {
-                _fan.temp_target = FAN_TARGET_TEMP_COLD;
-                _fan.pid.arm_integrator_reset(_fan.current_temp() -
-                                              FAN_TARGET_TEMP_COLD);
-            }
-            // Power is clamped in range [0.35,0.7]
-            auto power =
-                _fan.pid.compute(_fan.current_temp() - _fan.temp_target, time);
-            return std::clamp(power, FAN_POWER_LIMITS_COLD.first,
-                              FAN_POWER_LIMITS_COLD.second);
         }
+        // Holding at a cold temp is PID controlling the heatsink to 60ºC
+        if (_fan.temp_target != FAN_TARGET_TEMP_COLD) {
+            _fan.temp_target = FAN_TARGET_TEMP_COLD;
+            _fan.pid.arm_integrator_reset(_fan.current_temp() -
+                                          FAN_TARGET_TEMP_COLD);
+        }
+        // Power is clamped in range [0.35,0.7]
+        auto power =
+            _fan.pid.compute(_fan.current_temp() - _fan.temp_target, time);
+        return std::clamp(power, FAN_POWER_LIMITS_COLD.first,
+                          FAN_POWER_LIMITS_COLD.second);
     }
     if (_status == PlateStatus::INITIAL_COOL) {
         // Ramping down to a non-cold temp is always just 55% drive
@@ -164,8 +170,8 @@ auto PlateControl::update_fan(Seconds time) -> double {
     // Ramping up OR holding at a warm/hot temperature means we want to
     // regulate the heatsink to stay under (setpoint - 2)º.
     // There is also a safety threshold of 70º.
-    auto threshold =
-        std::min(HEATSINK_SAFETY_THRESHOLD_WARM, setpoint() - 2.0F);
+    auto threshold = std::min(HEATSINK_SAFETY_THRESHOLD_WARM,
+                              setpoint() + FAN_TARGET_DIFF_WARM);
     if (_fan.current_temp() < threshold) {
         return FAN_POWER_UNDER_WARM_THRESHOLD;
     }
@@ -182,6 +188,9 @@ auto PlateControl::update_fan(Seconds time) -> double {
                       FAN_POWER_LIMITS_WARM.second);
 }
 
+// This function *could* be made const, but that obfuscates the intention,
+// which is to reset a *member* of the class.
+// NOLINTNEXTLINE(readability-make-member-function-const)
 auto PlateControl::reset_control(thermal_general::Peltier &peltier) -> void {
     if (_ramp_rate == RAMP_INFINITE) {
         peltier.temp_target = setpoint();
@@ -192,6 +201,9 @@ auto PlateControl::reset_control(thermal_general::Peltier &peltier) -> void {
                                      peltier.current_temp());
 }
 
+// This function *could* be made const, but that obfuscates the intention,
+// which is to reset a *member* of the class.
+// NOLINTNEXTLINE(readability-make-member-function-const)
 auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
     // The fan always just targets the target temperature w/ an offset
     fan.temp_target = _setpoint + FAN_SETPOINT_OFFSET;
@@ -204,6 +216,7 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
            PELTIER_COUNT;
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 [[nodiscard]] auto PlateControl::temperature_zone(double temp) const
     -> TemperatureZone {
     if (temp < (double)TemperatureZone::COLD) {

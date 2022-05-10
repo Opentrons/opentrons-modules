@@ -58,6 +58,9 @@ class PlateControl {
     static constexpr double HEATSINK_SAFETY_THRESHOLD_WARM = 70.0F;
     /** Fan power when under safety threshold in warm/hot zone.*/
     static constexpr double FAN_POWER_UNDER_WARM_THRESHOLD = 0.15F;
+    /** When controlling to a warm temperature, scale fans to try to keep the
+     *  heatsink at (setpoint - 2º).*/
+    static constexpr double FAN_TARGET_DIFF_WARM = -2.0F;
     /** Min & max power settings when holding at a warm temp.*/
     static constexpr std::pair<double, double> FAN_POWER_LIMITS_WARM{0.35,
                                                                      0.55};
