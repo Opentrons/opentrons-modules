@@ -12,10 +12,10 @@ SCENARIO("GetLidSwitches (M901.D) parser works", "[gcode][parse][m901d]") {
         std::string buffer(256, 'c');
         WHEN("filling response") {
             auto written = gcode::GetLidSwitches::write_response_into(
-                buffer.begin(), buffer.end(), true, true);
+                buffer.begin(), buffer.end(), true, true, true);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(
-                    buffer, Catch::Matchers::StartsWith("M901.D C:1 O:1 OK\n"));
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
+                                         "M901.D C:1 O:1 S:1 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
@@ -25,7 +25,7 @@ SCENARIO("GetLidSwitches (M901.D) parser works", "[gcode][parse][m901d]") {
         std::string buffer(16, 'c');
         WHEN("filling response") {
             auto written = gcode::GetLidSwitches::write_response_into(
-                buffer.begin(), buffer.begin() + 7, true, true);
+                buffer.begin(), buffer.begin() + 7, true, true, true);
             THEN("the response should write only up to the available space") {
                 std::string response = "M901.Dcccccccccc";
                 response[6] = '\0';
