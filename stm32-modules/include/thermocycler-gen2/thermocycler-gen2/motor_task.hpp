@@ -75,6 +75,8 @@ concept MotorExecutionPolicy = requires(Policy& p,
     {p.seal_switch_set_armed()};
     // A function to disarm the seal stepper limit switch
     {p.seal_switch_set_disarmed()};
+    // A function to read the seal limit switches
+    { p.seal_read_limit_switch() } -> std::same_as<bool>;
     // Policy defines a number that provides the number of seal motor ticks
     // in a second
     {std::is_integral_v<decltype(Policy::MotorTickFrequency)>};
@@ -87,10 +89,10 @@ struct LidStepperState {
     // distance is 120 degrees which is far wider than the actual travel angle.
     constexpr static double FULL_OPEN_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(120);
-    // After opening to the open switch, the lid must open a few extra
-    // degrees to be fully seated in the open switch.
+    // After opening to the open switch, the lid must re-close a few
+    // degrees to be at exactly 90º
     constexpr static double OPEN_OVERDRIVE_DEGREES =
-        motor_util::LidStepper::angle_to_microsteps(3);
+        motor_util::LidStepper::angle_to_microsteps(-5);
     // Full open/close movements run until they hit an endstop switch, so the
     // distance is 120 degrees which is far wider than the actual travel angle.
     constexpr static double FULL_CLOSE_DEGREES =
@@ -101,9 +103,9 @@ struct LidStepperState {
     constexpr static double CLOSE_OVERDRIVE_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(-5);
     constexpr static double PLATE_LIFT_RAISE_DEGREES =
-        motor_util::LidStepper::angle_to_microsteps(5);
+        motor_util::LidStepper::angle_to_microsteps(20);
     constexpr static double PLATE_LIFT_LOWER_DEGREES =
-        motor_util::LidStepper::angle_to_microsteps(-30);
+        motor_util::LidStepper::angle_to_microsteps(-40);
     // Default run current is 1200 milliamperes
     constexpr static double DEFAULT_RUN_CURRENT =
         motor_util::LidStepper::current_to_dac(1200);
@@ -351,6 +353,7 @@ class MotorTask {
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
+            _lid_stepper_state.response_id = INVALID_ID;
         }
     }
 
@@ -370,8 +373,10 @@ class MotorTask {
 
         // Check for error after starting movement
         if (error != errors::ErrorCode::NO_ERROR) {
-            auto response = messages::AcknowledgePrevious{
-                .responding_to_id = msg.id, .with_error = error};
+            auto response =
+                messages::SealStepperDebugResponse{.responding_to_id = msg.id,
+                                                   .steps_taken = 0,
+                                                   .with_error = error};
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
@@ -423,6 +428,7 @@ class MotorTask {
                 static_cast<void>(
                     _task_registry->comms->get_message_queue().try_send(
                         messages::HostCommsMessage(response)));
+                _seal_stepper_state.response_id = INVALID_ID;
             }
         }
     }
@@ -611,7 +617,8 @@ class MotorTask {
         auto response = messages::GetLidSwitchesResponse{
             .responding_to_id = msg.id,
             .close_switch_pressed = policy.lid_read_closed_switch(),
-            .open_switch_pressed = policy.lid_read_open_switch()};
+            .open_switch_pressed = policy.lid_read_open_switch(),
+            .seal_switch_pressed = policy.seal_read_limit_switch()};
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));
@@ -655,6 +662,17 @@ class MotorTask {
 
         _seal_stepper_state.direction = steps > 0;
 
+        if (arm_limit_switch) {
+            // If we are moving until a seal limit switch event, it is
+            // important that the switch is NOT already triggered.
+            if (policy.seal_read_limit_switch()) {
+                return errors::ErrorCode::SEAL_MOTOR_SWITCH;
+            }
+            policy.seal_switch_set_armed();
+        } else {
+            policy.seal_switch_set_disarmed();
+        }
+
         // Steps is signed, so set direction accordingly
         auto ret = policy.tmc2130_set_direction(steps > 0);
         if (!ret) {
@@ -678,12 +696,6 @@ class MotorTask {
 
         _seal_stepper_state.status = SealStepperState::Status::MOVING;
         _seal_position = motor_util::SealStepper::Status::UNKNOWN;
-
-        if (arm_limit_switch) {
-            policy.seal_switch_set_armed();
-        } else {
-            policy.seal_switch_set_disarmed();
-        }
 
         ret = policy.seal_stepper_start(
             [&] { this->seal_step_callback(policy); });

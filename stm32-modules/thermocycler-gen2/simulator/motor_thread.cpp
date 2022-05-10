@@ -62,6 +62,8 @@ class SimMotorPolicy : public SimTMC2130Policy {
 
     auto seal_switch_set_disarmed() -> void { _seal_switch_armed = false; }
 
+    auto seal_read_limit_switch() -> bool { return false; }
+
     // For simulation
     auto tick() -> void {
         if (_seal_moving) {
