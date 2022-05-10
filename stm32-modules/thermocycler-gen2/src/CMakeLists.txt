@@ -60,8 +60,10 @@ set(CORE_LINTABLE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/plate_control.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/board_revision.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/colors.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/motor_utils.cpp
-    )
+    ${CMAKE_CURRENT_SOURCE_DIR}/motor_utils.cpp)
+set(CORE_LINTABLE_SOURCES
+    ${CORE_LINTABLE_SOURCES}
+    PARENT_SCOPE)
 set(CORE_NONLINTABLE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/putchar.c
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
@@ -91,6 +93,7 @@ target_compile_options(${TARGET_MODULE_NAME}-core
   PRIVATE
   -Wall
   -Werror
+  -Wimplicit-fallthrough
   $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
   $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
   $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
