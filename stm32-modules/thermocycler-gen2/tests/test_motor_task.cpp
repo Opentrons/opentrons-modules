@@ -659,7 +659,7 @@ SCENARIO("motor task lid state machine") {
                  .seal_on = true,
                  .seal_direction = true,
                  .seal_switch_armed = true},
-                // Second step extends seeal switch
+                // Second step extends seal switch
                 {.msg =
                      messages::SealStepperComplete{
                          .reason = messages::SealStepperComplete::
@@ -676,7 +676,7 @@ SCENARIO("motor task lid state machine") {
                  .lid_overdrive = false},
                 // Fourth step overdrives hinge
                 {.msg = messages::LidStepperComplete(),
-                 .lid_angle_increased = true,
+                 .lid_angle_decreased = true,
                  .lid_overdrive = true},
                 // Should send ACK now
                 {.msg = messages::LidStepperComplete(),
@@ -798,7 +798,7 @@ SCENARIO("motor task lid state machine") {
                  .lid_overdrive = false},
                 // Now overdrive into the switch
                 {.msg = messages::LidStepperComplete(),
-                 .lid_angle_increased = true,
+                 .lid_angle_decreased = true,
                  .lid_overdrive = true},
                 // Should send ACK now
                 {.msg = messages::LidStepperComplete(),
@@ -837,7 +837,7 @@ SCENARIO("motor task lid state machine") {
                  .lid_overdrive = false},
                 // Fourth step overdrives hinge
                 {.msg = messages::LidStepperComplete(),
-                 .lid_angle_increased = true,
+                 .lid_angle_decreased = true,
                  .lid_overdrive = true},
                 // Should send ACK now
                 {.msg = messages::LidStepperComplete(),

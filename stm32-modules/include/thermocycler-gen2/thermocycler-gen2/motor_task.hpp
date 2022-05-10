@@ -89,10 +89,10 @@ struct LidStepperState {
     // distance is 120 degrees which is far wider than the actual travel angle.
     constexpr static double FULL_OPEN_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(120);
-    // After opening to the open switch, the lid must open a few extra
-    // degrees to be fully seated in the open switch.
+    // After opening to the open switch, the lid must re-close a few
+    // degrees to be at exactly 90º
     constexpr static double OPEN_OVERDRIVE_DEGREES =
-        motor_util::LidStepper::angle_to_microsteps(3);
+        motor_util::LidStepper::angle_to_microsteps(-5);
     // Full open/close movements run until they hit an endstop switch, so the
     // distance is 120 degrees which is far wider than the actual travel angle.
     constexpr static double FULL_CLOSE_DEGREES =
@@ -103,9 +103,9 @@ struct LidStepperState {
     constexpr static double CLOSE_OVERDRIVE_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(-5);
     constexpr static double PLATE_LIFT_RAISE_DEGREES =
-        motor_util::LidStepper::angle_to_microsteps(5);
+        motor_util::LidStepper::angle_to_microsteps(20);
     constexpr static double PLATE_LIFT_LOWER_DEGREES =
-        motor_util::LidStepper::angle_to_microsteps(-30);
+        motor_util::LidStepper::angle_to_microsteps(-40);
     // Default run current is 1200 milliamperes
     constexpr static double DEFAULT_RUN_CURRENT =
         motor_util::LidStepper::current_to_dac(1200);
