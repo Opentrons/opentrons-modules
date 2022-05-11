@@ -1106,8 +1106,9 @@ struct SetPlateTemperature {
 
     // 0 seconds means infinite hold time
     constexpr static double infinite_hold = 0.0F;
-    // If no volume is specified, set to 0
-    constexpr static double default_volume = 0.0F;
+    // If no volume is specified, set to a negative number and let
+    // the rest of the firmware decide a default value
+    constexpr static double default_volume = -1.0F;
 
     double setpoint;
     double hold_time;
