@@ -505,7 +505,7 @@ class ThermalPlateTask {
             }
         }
 
-        double volume_ul = (msg.volume < 0.0F) ? DEFAULT_VOLUME_UL : msg.volume ;
+        double volume_ul = (msg.volume < 0.0F) ? DEFAULT_VOLUME_UL : msg.volume;
 
         if (msg.setpoint <= 0.0F) {
             _state.system_status = State::IDLE;
