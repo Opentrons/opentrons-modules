@@ -105,7 +105,7 @@ struct LidStepperState {
     constexpr static double PLATE_LIFT_RAISE_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(20);
     constexpr static double PLATE_LIFT_LOWER_DEGREES =
-        motor_util::LidStepper::angle_to_microsteps(-40);
+        motor_util::LidStepper::angle_to_microsteps(-30);
     // Default run current is 1200 milliamperes
     constexpr static double DEFAULT_RUN_CURRENT =
         motor_util::LidStepper::current_to_dac(1200);
@@ -154,7 +154,7 @@ struct SealStepperState {
     // Run current value, approximately 825 mA
     constexpr static int DEFAULT_RUN_CURRENT = 15;
     // Default velocity for the seal stepper, in steps/second
-    constexpr static double DEFAULT_VELOCITY = 90000;
+    constexpr static double DEFAULT_VELOCITY = 200000;
     // Default acceleration for the seal stepper, in steps/second^2
     constexpr static double DEFAULT_ACCEL = 50000;
     // Default value of the Stallguard Threshold
