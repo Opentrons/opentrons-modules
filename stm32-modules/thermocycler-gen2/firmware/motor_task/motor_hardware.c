@@ -511,7 +511,7 @@ static void init_tim2(TIM_HandleTypeDef* htim) {
     uint32_t uwTimClock = HAL_RCC_GetPCLK1Freq();
     /* Compute the prescaler value to have TIM2 counter clock equal to 1MHz */
     uint32_t uwPrescalerValue = (uint32_t) ((uwTimClock / 1000000U) - 1U);
-    uint32_t uwPeriodValue = __HAL_TIM_CALC_PERIOD(uwTimClock, uwPrescalerValue, 32000); //75rpm, from TC1
+    uint32_t uwPeriodValue = __HAL_TIM_CALC_PERIOD(uwTimClock, uwPrescalerValue, 64000); //150rpm
     
     htim->Instance = TIM2;
     htim->Init.Prescaler = uwPrescalerValue;
