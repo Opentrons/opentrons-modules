@@ -207,7 +207,7 @@ add_custom_target(heater-shaker-flash
   COMMENT "Flashing board"
   DEPENDS heater-shaker)
 
-# Targets to create full image hex file containing both bootloader and application
+# Targets to create full image hex and binary files containing both bootloader and application
 add_custom_command(
     OUTPUT heater-shaker-image.hex
     DEPENDS $<TARGET_FILE_DIR:heater-shaker>/heater-shaker.hex
@@ -219,3 +219,10 @@ add_custom_command(
 add_custom_target(heater-shaker-image-hex ALL
     DEPENDS heater-shaker-image.hex
     DEPENDS heater-shaker)
+
+add_custom_command(OUTPUT heater-shaker-image.bin
+  COMMAND ${CROSS_OBJCOPY} ARGS "-Iihex" "-Obinary" heater-shaker-image.hex heater-shaker-image.bin
+  DEPENDS heater-shaker-image.hex
+  VERBATIM)
+add_custom_target(heater-shaker-image-bin ALL
+  DEPENDS heater-shaker-image.bin)
