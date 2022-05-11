@@ -20,7 +20,7 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
     switch (_status) {
         case PlateStatus::INITIAL_HEAT:
             // Check if we crossed the TRUE threshold temp
-            if (plate_temp() > _setpoint) {
+            if (plate_temp() >= _setpoint) {
                 _status = PlateStatus::OVERSHOOT;
                 _remaining_overshoot_time = OVERSHOOT_TIME;
                 _left.temp_target = _current_setpoint;
@@ -34,7 +34,7 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
             break;
         case PlateStatus::INITIAL_COOL:
             // Check if we crossed the TRUE threshold temp
-            if (plate_temp() < _setpoint) {
+            if (plate_temp() <= _setpoint) {
                 _status = PlateStatus::OVERSHOOT;
                 _remaining_overshoot_time = OVERSHOOT_TIME;
                 _left.temp_target = _current_setpoint;
