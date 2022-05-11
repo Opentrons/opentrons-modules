@@ -7,7 +7,7 @@ import time
 import sys
 import argparse
 
-def cycle(ser : serial.Serial):
+def cycle(ser : serial.Serial, volume: float):
     # Cycle to 95 then 5 and finally back
     # Format is target temp, then hold time
     targets_pcr = [
@@ -15,8 +15,8 @@ def cycle(ser : serial.Serial):
         (5.0, 50.0),
         (20.0, 20.0) ]
     targets = [
-        (35.0, 10.0),
-        (20.0, 40.0),
+        (25.0, 30.0),
+        (20.0, 30.0),
         (65.0, 5.0),
         (80.0, 5.0),
         (95.0, 5.0),
@@ -54,12 +54,12 @@ def cycle(ser : serial.Serial):
                         new_temp = targets[target_idx][0]
                         new_hold = targets[target_idx][1]
                         print(f'Moving to {new_temp} for {new_hold} seconds')
-                        test_utils.set_plate_temperature(new_temp, ser, hold_time=new_hold)
+                        test_utils.set_plate_temperature(new_temp, ser, hold_time=new_hold, volume=volume)
         sys.stdout.flush()
         return
     
     print(f'Moving to {targets[0][0]} for {targets[0][1]} seconds')
-    test_utils.set_plate_temperature(targets[0][0], ser, targets[0][1])
+    test_utils.set_plate_temperature(targets[0][0], ser, targets[0][1], volume=volume)
     plot_temp.graphTemperatures(ser, update_callback)
 
 if __name__ == '__main__':
@@ -82,6 +82,6 @@ if __name__ == '__main__':
         test_utils.set_peltier_pid(args.constants[0], args.constants[1], args.constants[2], ser)
 
     test_utils.set_lid_temperature(105, ser)
-    cycle(ser)
+    cycle(ser, 400.0)
     test_utils.deactivate_lid(ser)
     test_utils.deactivate_plate(ser)
