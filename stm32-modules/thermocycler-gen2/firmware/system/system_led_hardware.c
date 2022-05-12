@@ -21,14 +21,17 @@
 // ----------------------------------------------------------------------------
 // LOCAL DEFINITIONS
 
-
-#define PULSE_WIDTH_FREQ (800000)
 #define TIMER_CLOCK_FREQ (170000000)
-// These two together give a 400kHz total period
+// These two together give an 800kHz total period
 #define TIM17_PRESCALER (0)
-#define TIM17_RELOAD (424)
+#define TIM17_RELOAD (212)
 // PWM should be scaled from 0 to MAX_PWM, inclusive
 #define MAX_PWM (TIM17_RELOAD + 1)
+
+// Port to enable the LED power return
+#define LED_ENABLE_PORT (GPIOC)
+// Pin to enable the LED power return
+#define LED_ENABLE_PIN (GPIO_PIN_11)
 
 struct led_hardware {
     TIM_HandleTypeDef tim; // Timer handle
@@ -103,6 +106,14 @@ void system_led_initialize(void) {
     sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
     hal_ret = HAL_TIMEx_ConfigBreakDeadTime(&_leds.tim, &sBreakDeadTimeConfig);
     configASSERT(hal_ret == HAL_OK);
+
+    // Enable the LED Power Enable output
+    GPIO_InitStruct.Pin = LED_ENABLE_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+    HAL_GPIO_Init(LED_ENABLE_PORT, &GPIO_InitStruct);
+    HAL_GPIO_WritePin(LED_ENABLE_PORT, LED_ENABLE_PIN, GPIO_PIN_SET);
 
     // This is generated as the "post-init" function from STM32Cube
     __HAL_RCC_GPIOB_CLK_ENABLE();

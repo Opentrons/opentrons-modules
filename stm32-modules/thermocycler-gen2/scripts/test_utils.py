@@ -197,9 +197,13 @@ def set_heater_pid(p: float, i: float, d: float, ser: serial.Serial):
     print(res)
 
 # Sets the plate target as a temperature in celsius
-def set_plate_temperature(temperature: float, ser: serial.Serial, hold_time: float = 0):
+def set_plate_temperature(temperature: float, ser: serial.Serial, hold_time: float = 0, volume: float = None):
     print(f'Setting plate temperature target to {temperature}C and hold time to {hold_time} sec')
-    ser.write(f'M104 S{temperature} H{hold_time}\n'.encode())
+    toWrite = f'M104 S{temperature} H{hold_time}'
+    if(volume):
+        toWrite = toWrite + f' V{volume}'
+    toWrite = toWrite + '\n'
+    ser.write(toWrite.encode())
     res = ser.readline()
     guard_error(res, b'M104 OK')
     print(res)

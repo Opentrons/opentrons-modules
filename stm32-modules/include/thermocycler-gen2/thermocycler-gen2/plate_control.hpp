@@ -66,6 +66,18 @@ class PlateControl {
                                                                      0.55};
     /** Min & max power settings when holding at a hot temp.*/
     static constexpr std::pair<double, double> FAN_POWER_LIMITS_HOT{0.30, 0.55};
+    /** Overshoot M constant */
+    static constexpr double OVERSHOOT_M_CONST = 0.0105;
+    /** Overshoot B constant in ºC*/
+    static constexpr double OVERSHOOT_B_CONST = 1.0869;
+    /** Undershoot M constant */
+    static constexpr double UNDERSHOOT_M_CONST = -0.0133;
+    /** Undershoot B constant in ºC*/
+    static constexpr double UNDERSHOOT_B_CONST = -0.4302;
+    /** Minimum temperature difference to trigger overshoot, in ºC.*/
+    static constexpr double UNDERSHOOT_MIN_DIFFERENCE = 0.5;
+    /** Amount of time to stay in overshoot, in seconds.*/
+    static constexpr Seconds OVERSHOOT_TIME = 10.0F;
 
     PlateControl() = delete;
     /**
@@ -106,7 +118,8 @@ class PlateControl {
      * celsius per second.
      * @return True if the temperature target could be updated
      */
-    auto set_new_target(double setpoint, double hold_time = HOLD_INFINITE,
+    auto set_new_target(double setpoint, double volume_ul,
+                        double hold_time = HOLD_INFINITE,
                         double ramp_rate = RAMP_INFINITE) -> bool;
 
     /**
@@ -145,6 +158,34 @@ class PlateControl {
      * degrees of the setpoint, false otherwise
      */
     [[nodiscard]] auto temp_within_setpoint() const -> bool;
+
+    /**
+     * @brief Calculate the overshoot target temperature based off of a
+     * setpoint temperature and a liquid volume
+     *
+     * @param setpoint  The temperature setpoint in ºC
+     * @param volume_ul The max volume in the plate, in microliters
+     * @return The overshoot setpoint that the thermocycler should target,
+     *         in ºC
+     */
+    [[nodiscard]] static auto calculate_overshoot(double setpoint,
+                                                  double volume_ul) -> double {
+        return setpoint + (OVERSHOOT_M_CONST * volume_ul) + OVERSHOOT_B_CONST;
+    }
+
+    /**
+     * @brief Calculate the undershoot target temperature based off of a
+     * setpoint temperature and a liquid volume
+     *
+     * @param setpoint  The temperature setpoint in ºC
+     * @param volume_ul The max volume in the plate, in microliters
+     * @return The undershoot setpoint that the thermocycler should target,
+     *         in ºC
+     */
+    [[nodiscard]] static auto calculate_undershoot(double setpoint,
+                                                   double volume_ul) -> double {
+        return setpoint + (UNDERSHOOT_M_CONST * volume_ul) + UNDERSHOOT_B_CONST;
+    }
 
   private:
     /**
@@ -188,8 +229,11 @@ class PlateControl {
     thermal_general::Peltier &_center;
     thermal_general::HeatsinkFan &_fan;
 
-    double _setpoint = 0.0F;
+    // Adjusted setpoint based on overshoot status
+    double _current_setpoint = 0.0F;
+    double _setpoint = 0.0F;  // User-provided setpoint
     double _ramp_rate = 0.0F;
+    Seconds _remaining_overshoot_time = 0.0F;
     Seconds _hold_time = 0.0F;            // Total hold time
     Seconds _remaining_hold_time = 0.0F;  // Hold time left, out of _hold_time
 };
