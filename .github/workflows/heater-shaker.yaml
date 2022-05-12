@@ -63,6 +63,10 @@ jobs:
         run: cmake --build ./build-stm32-cross --target heater-shaker-lint
       - name: 'Build'
         run: cmake --build ./build-stm32-cross --target heater-shaker-hex
+      - name: 'Build Combo Image Hex'
+        run: cmake --build ./build-stm32-cross --target heater-shaker-image-hex
+      - name: 'Build Combo Image Binary'
+        run: cmake --build ./build-stm32-cross --target heater-shaker-image-bin
   host-compile-test:
     name: 'Host-Compile/Test'
     runs-on: 'ubuntu-20.04'
