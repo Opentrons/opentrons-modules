@@ -107,6 +107,8 @@ class ThermalPlateTask {
     static constexpr double KD_MIN = -200;
     static constexpr double KD_MAX = 200;
     static constexpr double OVERTEMP_LIMIT_C = 115;
+    // If no volume is specified, this is the default
+    static constexpr double DEFAULT_VOLUME_UL = 25.0F;
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     static constexpr const double CONTROL_PERIOD_SECONDS =
         CONTROL_PERIOD_TICKS * 0.001;
@@ -503,11 +505,14 @@ class ThermalPlateTask {
             }
         }
 
+        double volume_ul = (msg.volume < 0.0F) ? DEFAULT_VOLUME_UL : msg.volume;
+
         if (msg.setpoint <= 0.0F) {
             _state.system_status = State::IDLE;
             policy.set_enabled(false);
         } else {
-            if (_plate_control.set_new_target(msg.setpoint, msg.hold_time)) {
+            if (_plate_control.set_new_target(msg.setpoint, volume_ul,
+                                              msg.hold_time)) {
                 _state.system_status = State::CONTROLLING;
             } else {
                 response.with_error = errors::ErrorCode::THERMAL_TARGET_BAD;

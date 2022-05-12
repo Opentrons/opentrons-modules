@@ -19,10 +19,27 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
     PlateControlVals values = {0.0F};
     switch (_status) {
         case PlateStatus::INITIAL_HEAT:
-            [[fallthrough]];
-        case PlateStatus::INITIAL_COOL:
-            if (temp_within_setpoint()) {
+            // Check if we crossed the TRUE threshold temp
+            if (plate_temp() >= _setpoint) {
                 _status = PlateStatus::OVERSHOOT;
+                _remaining_overshoot_time = OVERSHOOT_TIME;
+                _left.temp_target = _current_setpoint;
+                _right.temp_target = _current_setpoint;
+                _center.temp_target = _current_setpoint;
+            } else {
+                update_ramp(_left, time);
+                update_ramp(_right, time);
+                update_ramp(_center, time);
+            }
+            break;
+        case PlateStatus::INITIAL_COOL:
+            // Check if we crossed the TRUE threshold temp
+            if (plate_temp() <= _setpoint) {
+                _status = PlateStatus::OVERSHOOT;
+                _remaining_overshoot_time = OVERSHOOT_TIME;
+                _left.temp_target = _current_setpoint;
+                _right.temp_target = _current_setpoint;
+                _center.temp_target = _current_setpoint;
             } else {
                 update_ramp(_left, time);
                 update_ramp(_right, time);
@@ -30,26 +47,25 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
             }
             break;
         case PlateStatus::OVERSHOOT:
-            // TODO overshoot control...  update target, track time
-            _status = PlateStatus::STEADY_STATE;
+            _remaining_overshoot_time -= time;
+            if (_remaining_overshoot_time <= 0.0F) {
+                _current_setpoint = _setpoint;
+                _left.temp_target = _setpoint;
+                _right.temp_target = _setpoint;
+                _center.temp_target = _setpoint;
+                _status = PlateStatus::STEADY_STATE;
+            }
             break;
         case PlateStatus::STEADY_STATE:
-            if (plate_temp() > _setpoint) {
-                _status = PlateStatus::OVERSHOOT;
-            }
+            // Hold time is ONLY updated in steady state!
+            _remaining_hold_time = std::max(_remaining_hold_time - time,
+                                            static_cast<double>(0.0F));
             break;
     }
 
     values.left_power = update_pid(_left, time);
     values.right_power = update_pid(_right, time);
     values.center_power = update_pid(_center, time);
-
-    // Hold time decreases whenever temp has reached the target
-    if (_status == PlateStatus::OVERSHOOT ||
-        _status == PlateStatus::STEADY_STATE) {
-        _remaining_hold_time =
-            std::max(_remaining_hold_time - time, static_cast<double>(0.0F));
-    }
 
     // Caller should check whether fan is manual after this function runs
     if (_fan.manual_control) {
@@ -66,8 +82,8 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
     return UpdateRet(values);
 }
 
-auto PlateControl::set_new_target(double setpoint, double hold_time,
-                                  double ramp_rate) -> bool {
+auto PlateControl::set_new_target(double setpoint, double volume_ul,
+                                  double hold_time, double ramp_rate) -> bool {
     _ramp_rate = ramp_rate;
     _hold_time = hold_time;
     _remaining_hold_time = hold_time;
@@ -82,6 +98,19 @@ auto PlateControl::set_new_target(double setpoint, double hold_time,
     // have to reconsider this, see how it works for small changes.
     _status = (setpoint > plate_temp()) ? PlateStatus::INITIAL_HEAT
                                         : PlateStatus::INITIAL_COOL;
+
+    auto distance_to_target = std::abs(setpoint - plate_temp());
+    if (distance_to_target > UNDERSHOOT_MIN_DIFFERENCE) {
+        if (_status == PlateStatus::INITIAL_HEAT) {
+            _current_setpoint = calculate_overshoot(_setpoint, volume_ul);
+        } else {
+            _current_setpoint = calculate_undershoot(_setpoint, volume_ul);
+        }
+    } else {
+        // If we aren't changing by at least UNDERSHOOT_MIN_DIFFERENCE, just
+        // go directly to the setpoint
+        _current_setpoint = setpoint;
+    }
     return true;
 }
 
@@ -104,14 +133,14 @@ auto PlateControl::set_new_target(double setpoint, double hold_time,
 auto PlateControl::update_ramp(thermal_general::Peltier &peltier, Seconds time)
     -> void {
     if (_ramp_rate == RAMP_INFINITE) {
-        peltier.temp_target = _setpoint;
+        peltier.temp_target = _current_setpoint;
     }
-    if (peltier.temp_target < _setpoint) {
-        peltier.temp_target =
-            std::min(peltier.temp_target + (_ramp_rate * time), _setpoint);
-    } else if (peltier.temp_target > _setpoint) {
-        peltier.temp_target =
-            std::max(peltier.temp_target - (_ramp_rate * time), _setpoint);
+    if (peltier.temp_target < _current_setpoint) {
+        peltier.temp_target = std::min(
+            peltier.temp_target + (_ramp_rate * time), _current_setpoint);
+    } else if (peltier.temp_target > _current_setpoint) {
+        peltier.temp_target = std::max(
+            peltier.temp_target - (_ramp_rate * time), _current_setpoint);
     }
 }
 
@@ -194,7 +223,7 @@ auto PlateControl::reset_control(thermal_general::Peltier &peltier) -> void {
 // NOLINTNEXTLINE(readability-make-member-function-const)
 auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
     // The fan always just targets the target temperature w/ an offset
-    fan.temp_target = _setpoint + FAN_SETPOINT_OFFSET;
+    fan.temp_target = _current_setpoint + FAN_SETPOINT_OFFSET;
     fan.pid.arm_integrator_reset(fan.current_temp() - fan.temp_target);
 }
 
@@ -222,5 +251,5 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
 }
 
 [[nodiscard]] auto PlateControl::temp_within_setpoint() const -> bool {
-    return std::abs(_setpoint - plate_temp()) < SETPOINT_THRESHOLD;
+    return std::abs(_current_setpoint - plate_temp()) < SETPOINT_THRESHOLD;
 }

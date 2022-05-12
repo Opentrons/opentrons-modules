@@ -12,8 +12,52 @@ static constexpr double COLD_TEMP = 4.0F;
 static constexpr double WARM_TEMP = 28.0F;
 static constexpr double THRESHOLD = 0.5F;
 
+// Useful test functions
+
+static void set_temp(std::vector<Thermistor> &thermistors,
+                     const double plate_temp, const double heatsink_temp) {
+    for (auto &therm : thermistors) {
+        therm.temp_c = plate_temp;
+    }
+    thermistors.at(THERM_HEATSINK).temp_c = heatsink_temp;
+}
+
+static void set_temp(std::vector<Thermistor> &thermistors,
+                     const double plate_temp) {
+    set_temp(thermistors, plate_temp, plate_temp);
+}
+
+TEST_CASE("PlateControl overshoot and undershoot calculation") {
+    using namespace plate_control;
+    const double input_volume = GENERATE(0.0F, 10.0F, 25.0F, 100.0F);
+    const double input_temp = GENERATE(0.0F, 10.0F, 25.0F, 90.0F);
+    WHEN("calculating overshoot") {
+        const double output_temp_diff =
+            (input_volume * PlateControl::OVERSHOOT_M_CONST) +
+            PlateControl::OVERSHOOT_B_CONST;
+        auto output =
+            PlateControl::calculate_overshoot(input_temp, input_volume);
+        THEN("overshoot is correct") {
+            REQUIRE_THAT(output, Catch::Matchers::WithinAbs(
+                                     input_temp + output_temp_diff, 0.001));
+        }
+    }
+    WHEN("calculating undershoot") {
+        const double output_temp_diff =
+            (input_volume * PlateControl::UNDERSHOOT_M_CONST) +
+            PlateControl::UNDERSHOOT_B_CONST;
+        auto output =
+            PlateControl::calculate_undershoot(input_temp, input_volume);
+        THEN("overshoot is correct") {
+            REQUIRE_THAT(output, Catch::Matchers::WithinAbs(
+                                     input_temp + output_temp_diff, 0.001));
+        }
+    }
+}
+
 SCENARIO("PlateControl peltier control works") {
     GIVEN("a PlateControl object with room temperature thermistors") {
+        constexpr double input_volume = 25.0F;
         std::vector<Thermistor> thermistors;
         for (int i = 0; i < (PeltierID::PELTIER_NUMBER * 2) + 1; ++i) {
             thermistors.push_back(Thermistor{
@@ -50,7 +94,7 @@ SCENARIO("PlateControl peltier control works") {
             REQUIRE(plateControl.setpoint() == 0.0F);
         }
         WHEN("setting a hot target temperature with 10 second hold time") {
-            plateControl.set_new_target(HOT_TEMP, 10.0F);
+            plateControl.set_new_target(HOT_TEMP, input_volume, 10.0F);
             THEN("the plate control object is initialized properly") {
                 REQUIRE(plateControl.setpoint() == HOT_TEMP);
                 REQUIRE(plateControl.status() ==
@@ -69,55 +113,65 @@ SCENARIO("PlateControl peltier control works") {
             WHEN("simulating a ramp") {
                 auto temperature = plateControl.plate_temp();
                 while ((temperature += 1.0F) < (HOT_TEMP - THRESHOLD)) {
-                    for (auto &therm : thermistors) {
-                        therm.temp_c = temperature;
-                    }
+                    set_temp(thermistors, temperature);
                     auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
-                    REQUIRE(ctrl.has_value());
-                    REQUIRE(plateControl.status() ==
-                            plate_control::PlateStatus::INITIAL_HEAT);
+                    DYNAMIC_SECTION("temp at " << temperature) {
+                        REQUIRE(ctrl.has_value());
+                        REQUIRE(plateControl.status() ==
+                                plate_control::PlateStatus::INITIAL_HEAT);
+                    }
                 }
                 temperature = HOT_TEMP;
-                for (auto &therm : thermistors) {
-                    therm.temp_c = temperature;
-                }
+                set_temp(thermistors, temperature);
 
                 auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
-                REQUIRE(plateControl.status() !=
-                        plate_control::PlateStatus::INITIAL_HEAT);
+                REQUIRE(plateControl.status() ==
+                        plate_control::PlateStatus::OVERSHOOT);
             }
             WHEN(
                 "the thermistors hit the target temperature and control is "
                 "updated") {
-                for (auto &therm : thermistors) {
-                    therm.temp_c = HOT_TEMP;
-                }
+                set_temp(thermistors, HOT_TEMP);
                 static_cast<void>(plateControl.update_control(UPDATE_RATE_SEC));
-                THEN("hold time should decrease") {
-                    double remaining_hold, total_hold;
-                    std::tie(remaining_hold, total_hold) =
-                        plateControl.get_hold_time();
-                    REQUIRE_THAT(remaining_hold,
-                                 Catch::Matchers::WithinAbs(
-                                     total_hold - UPDATE_RATE_SEC, 0.001));
+                THEN("plate control should be in overshoot mode") {
+                    REQUIRE(plateControl.status() ==
+                            plate_control::PlateStatus::OVERSHOOT);
+                    REQUIRE(!plateControl.temp_within_setpoint());
                 }
-                AND_WHEN(
-                    "control is updated for long enough to exceed the hold "
-                    "time") {
-                    for (int i = 0; i < (10.0F / UPDATE_RATE_SEC) + 5; ++i) {
-                        static_cast<void>(
-                            plateControl.update_control(UPDATE_RATE_SEC));
+                AND_WHEN("holding at temperature for >10 seconds") {
+                    static_cast<void>(plateControl.update_control(
+                        plateControl.OVERSHOOT_TIME));
+                    THEN("the plate should move to Holding mode") {
+                        REQUIRE(plateControl.status() ==
+                                plate_control::PlateStatus::STEADY_STATE);
+                        REQUIRE(plateControl.temp_within_setpoint());
                     }
-                    THEN("the hold time should not go below zero") {
-                        REQUIRE(plateControl.get_hold_time().first == 0.0F);
-                        REQUIRE(plateControl.get_hold_time().second == 10.0F);
+                    static_cast<void>(
+                        plateControl.update_control(UPDATE_RATE_SEC));
+                    THEN("hold time should decrease") {
+                        double remaining_hold, total_hold;
+                        std::tie(remaining_hold, total_hold) =
+                            plateControl.get_hold_time();
+                        REQUIRE_THAT(remaining_hold,
+                                     Catch::Matchers::WithinAbs(
+                                         total_hold - UPDATE_RATE_SEC, 0.001));
+                    }
+                    AND_WHEN(
+                        "control is updated for long enough to exceed the hold "
+                        "time") {
+                        static_cast<void>(plateControl.update_control(12.0F));
+                        THEN("the hold time should not go below zero") {
+                            REQUIRE(plateControl.get_hold_time().first == 0.0F);
+                            REQUIRE(plateControl.get_hold_time().second ==
+                                    10.0F);
+                        }
                     }
                 }
             }
         }
-        WHEN("setting a cold target temperature") {
-            plateControl.set_new_target(COLD_TEMP);
+        WHEN("setting a cold target temperature with 10 second hold time") {
+            plateControl.set_new_target(COLD_TEMP, input_volume, 10.0F);
             REQUIRE(plateControl.setpoint() == COLD_TEMP);
             THEN("updating control should drive peltiers cold") {
                 auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
@@ -130,23 +184,61 @@ SCENARIO("PlateControl peltier control works") {
             WHEN("simulating a ramp") {
                 auto temperature = plateControl.plate_temp();
                 while ((temperature -= 1.0F) > (COLD_TEMP + THRESHOLD)) {
-                    for (auto &therm : thermistors) {
-                        therm.temp_c = temperature;
-                    }
+                    set_temp(thermistors, temperature);
                     auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
-                    REQUIRE(ctrl.has_value());
-                    REQUIRE(plateControl.status() ==
-                            plate_control::PlateStatus::INITIAL_COOL);
+                    DYNAMIC_SECTION("temp at " << temperature) {
+                        REQUIRE(ctrl.has_value());
+                        REQUIRE(plateControl.status() ==
+                                plate_control::PlateStatus::INITIAL_COOL);
+                    }
                 }
                 temperature = COLD_TEMP;
-                for (auto &therm : thermistors) {
-                    therm.temp_c = temperature;
-                }
+                set_temp(thermistors, temperature);
 
                 auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
-                REQUIRE(plateControl.status() !=
-                        plate_control::PlateStatus::INITIAL_COOL);
+                REQUIRE(plateControl.status() ==
+                        plate_control::PlateStatus::OVERSHOOT);
+            }
+            WHEN(
+                "the thermistors hit the target temperature and control is "
+                "updated") {
+                set_temp(thermistors, COLD_TEMP);
+                static_cast<void>(plateControl.update_control(UPDATE_RATE_SEC));
+                THEN("plate control should be in overshoot mode") {
+                    REQUIRE(plateControl.status() ==
+                            plate_control::PlateStatus::OVERSHOOT);
+                    REQUIRE(!plateControl.temp_within_setpoint());
+                }
+                AND_WHEN("holding at temperature for >10 seconds") {
+                    static_cast<void>(plateControl.update_control(
+                        plateControl.OVERSHOOT_TIME));
+                    THEN("the plate should move to Holding mode") {
+                        REQUIRE(plateControl.status() ==
+                                plate_control::PlateStatus::STEADY_STATE);
+                        REQUIRE(plateControl.temp_within_setpoint());
+                    }
+                    static_cast<void>(
+                        plateControl.update_control(UPDATE_RATE_SEC));
+                    THEN("hold time should decrease") {
+                        double remaining_hold, total_hold;
+                        std::tie(remaining_hold, total_hold) =
+                            plateControl.get_hold_time();
+                        REQUIRE_THAT(remaining_hold,
+                                     Catch::Matchers::WithinAbs(
+                                         total_hold - UPDATE_RATE_SEC, 0.001));
+                    }
+                    AND_WHEN(
+                        "control is updated for long enough to exceed the hold "
+                        "time") {
+                        static_cast<void>(plateControl.update_control(12.0F));
+                        THEN("the hold time should not go below zero") {
+                            REQUIRE(plateControl.get_hold_time().first == 0.0F);
+                            REQUIRE(plateControl.get_hold_time().second ==
+                                    10.0F);
+                        }
+                    }
+                }
             }
         }
     }
@@ -212,6 +304,7 @@ SCENARIO("PlateControl idle fan control works") {
 }
 
 SCENARIO("PlateControl active fan control works") {
+    constexpr double input_volume = 25.0F;
     GIVEN(
         "a PlateControl object with room temperature thermistors and FAN pid "
         "of (1,0,0)") {
@@ -249,7 +342,7 @@ SCENARIO("PlateControl active fan control works") {
         GIVEN("a fan in manual mode") {
             fan.manual_control = true;
             WHEN("the setpoint is set to ramp the peltiers down") {
-                plateControl.set_new_target(COLD_TEMP);
+                plateControl.set_new_target(COLD_TEMP, input_volume);
                 AND_WHEN("the heatsink is at a reasonable temperature") {
                     THEN("updating control should give fan power of 0") {
                         auto ctrl =
@@ -272,17 +365,17 @@ SCENARIO("PlateControl active fan control works") {
             }
         }
         WHEN("the setpoint is set to ramp the peltiers down") {
-            plateControl.set_new_target(COLD_TEMP);
+            plateControl.set_new_target(COLD_TEMP, input_volume);
+            // We need the undershot target to accurately asses the control
+            const auto undershot_target =
+                plateControl.calculate_undershoot(COLD_TEMP, input_volume);
             auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
             REQUIRE(ctrl.has_value());
             THEN("the fan should drive at exactly 0.7") {
                 REQUIRE(ctrl.value().fan_power == 0.7F);
             }
             AND_WHEN("the target temperature is reached with heatsink at 60") {
-                for (auto &therm : thermistors) {
-                    therm.temp_c = COLD_TEMP;
-                }
-                fan.thermistor.temp_c = 60.0F;
+                set_temp(thermistors, undershot_target, 60.0F);
                 ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
                 THEN("the fan is driven between 0.35 and 0.55") {
@@ -292,7 +385,7 @@ SCENARIO("PlateControl active fan control works") {
             }
         }
         WHEN("the setpoint is set to ramp the peltiers up to a warm temp") {
-            plateControl.set_new_target(WARM_TEMP);
+            plateControl.set_new_target(WARM_TEMP, input_volume);
             auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
             REQUIRE(ctrl.has_value());
             THEN("the fan should drive at exactly 0.15") {
@@ -301,10 +394,7 @@ SCENARIO("PlateControl active fan control works") {
             AND_WHEN(
                 "the target temperature is reached with heatsink at target + "
                 "2") {
-                for (auto &therm : thermistors) {
-                    therm.temp_c = WARM_TEMP;
-                }
-                fan.thermistor.temp_c = WARM_TEMP + 2.0F;
+                set_temp(thermistors, WARM_TEMP, WARM_TEMP + 2.0F);
                 ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
                 THEN("the fan is driven between 0.35 and 0.55") {
@@ -319,17 +409,14 @@ SCENARIO("PlateControl active fan control works") {
             }
         }
         WHEN("the setpoint is set to ramp the peltiers up to a hot temp") {
-            plateControl.set_new_target(HOT_TEMP);
+            plateControl.set_new_target(HOT_TEMP, input_volume);
             auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
             REQUIRE(ctrl.has_value());
             THEN("the fan should drive at exactly 0.15") {
                 REQUIRE(ctrl.value().fan_power == 0.15F);
             }
             AND_WHEN("the target temperature is reached with heatsink at 73") {
-                for (auto &therm : thermistors) {
-                    therm.temp_c = HOT_TEMP;
-                }
-                fan.thermistor.temp_c = 73;
+                set_temp(thermistors, HOT_TEMP, 73);
                 ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
                 THEN("the fan is driven between 0.30 and 0.55") {
@@ -341,10 +428,7 @@ SCENARIO("PlateControl active fan control works") {
             }
             AND_WHEN(
                 "the target temperature is reached with heatsink at HOT_TEMP") {
-                for (auto &therm : thermistors) {
-                    therm.temp_c = HOT_TEMP;
-                }
-                fan.thermistor.temp_c = HOT_TEMP;
+                set_temp(thermistors, HOT_TEMP);
                 ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
                 THEN("the fan is driven at 0.8") {
