@@ -127,18 +127,6 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
     return temp * IDLE_FAN_POWER_SLOPE;
 }
 
-[[nodiscard]] auto PlateControl::calculate_overshoot(double setpoint,
-                                                     double volume_ul)
-    -> double {
-    return setpoint + (OVERSHOOT_M_CONST * volume_ul) + OVERSHOOT_B_CONST;
-}
-
-[[nodiscard]] auto PlateControl::calculate_undershoot(double setpoint,
-                                                      double volume_ul)
-    -> double {
-    return setpoint + (UNDERSHOOT_M_CONST * volume_ul) + UNDERSHOOT_B_CONST;
-}
-
 // This function *could* be made const, but that obfuscates the intention,
 // which is to update the ramp target of a *member* of the class.
 // NOLINTNEXTLINE(readability-make-member-function-const)

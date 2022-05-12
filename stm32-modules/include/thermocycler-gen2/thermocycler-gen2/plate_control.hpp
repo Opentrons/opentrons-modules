@@ -169,7 +169,9 @@ class PlateControl {
      *         in ºC
      */
     [[nodiscard]] static auto calculate_overshoot(double setpoint,
-                                                  double volume_ul) -> double;
+                                                  double volume_ul) -> double {
+        return setpoint + (OVERSHOOT_M_CONST * volume_ul) + OVERSHOOT_B_CONST;
+    }
 
     /**
      * @brief Calculate the undershoot target temperature based off of a
@@ -181,7 +183,9 @@ class PlateControl {
      *         in ºC
      */
     [[nodiscard]] static auto calculate_undershoot(double setpoint,
-                                                   double volume_ul) -> double;
+                                                   double volume_ul) -> double {
+        return setpoint + (UNDERSHOOT_M_CONST * volume_ul) + UNDERSHOOT_B_CONST;
+    }
 
   private:
     /**
