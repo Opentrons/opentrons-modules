@@ -204,10 +204,15 @@ if __name__ == '__main__':
 
         thermocycler.open_lid()
         print('Done!')
-
     except KeyboardInterrupt:
+        # If the script is ended early, turn the thermocycler off
+        # for safety. When the script ends normally, it is okay for
+        # the plate to be kept at 4ºC indefinitely.
         print(f'Ending early')
-    finally:
         print('Turning off Thermocycler')
         thermocycler.deactivate_all()
-
+    except RuntimeError:
+        # Same error handling if the thermocycler throws an error
+        print(f'Ending early due to error')
+        print('Turning off Thermocycler')
+        thermocycler.deactivate_all()
