@@ -1,12 +1,11 @@
 
 import serial
 import time
-import sys
 import re
 import argparse
 
 from serial.tools.list_ports import grep
-from typing import Any, Callable, Dict, Tuple, List, Optional
+from typing import  Dict, Tuple, List
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run a simple PCR cycle")
@@ -54,15 +53,16 @@ class Thermocycler():
 
     _PLATE_TEMP_RE = re.compile('^M105 T:(?P<target>.+) C:(?P<temp>.+) H:(?P<hold>.+) Total_H:(?P<total_hold>.+) At_target\?:(?P<at_target>.+) OK\n')
     
-    def get_plate_temperature(self) -> Tuple[float, float]:
+    def get_plate_temperature(self) -> Tuple[float, float, bool]:
         '''
         Get the temperature of the plate.
 
-        Returns Tuple[temperature, remaining hold time]
+        Returns Tuple[temperature, remaining hold time, at_target]
         '''
         res = self._send_and_recv('M105\n', 'M105 T:')
         match = re.match(self._PLATE_TEMP_RE, res)
-        return float(match.group('temp')), float(match.group('hold'))
+        at_target = int(match.group('at_target')) == 1
+        return float(match.group('temp')), float(match.group('hold')), at_target
     
     _LID_TEMP_RE = re.compile('^M141 T:(?P<target>.+) C:(?P<temp>.+) OK\n')
     def get_lid_temperature(self) -> Tuple[float, float]:
@@ -112,22 +112,26 @@ class Thermocycler():
         # Poll for remaining time
         while not done:
             time.sleep(1 / self._POLL_FREQ)
-            res = self.get_plate_temperature()
+            temp, remaining_time, at_target = self.get_plate_temperature()
             if(self.debug):
-                print(f'Temp: {res[0]} Remaining: {res[1]}')
-            if res[1] < 0.1 and abs(res[0] - temperature) < 1.0:
+                print(f'Temp: {temp} Remaining: {remaining_time}')
+            if (remaining_time < 0.1) and at_target:
                 done = True
     
     def set_lid_temperature(self, temperature: float = None):
+        '''
+        Commands the thermocycler to move the lid to a temperature, and then
+        waits for the temperature to be reached
+        '''
         self.set_lid_target(temperature)
         done = False 
         # Poll for remaining time
         while not done:
             time.sleep(1/ self._POLL_FREQ)
-            res = self.get_lid_temperature()
+            temp, target = self.get_lid_temperature()
             if(self.debug):
-                print(f'Lid: {res[0]} Target: {res[1]}')
-            if abs(res[0] - res[1]) < 2.0:
+                print(f'Lid: {temp} Target: {target}')
+            if abs(temp - target) < 2.0:
                 done = True
 
     def execute_profile(self, steps: List[Dict], cycles: int = 1, volume: float = None):
@@ -173,7 +177,6 @@ if __name__ == '__main__':
     args = parse_args()
 
     thermocycler = Thermocycler(port=args.port, debug=args.debug)
-
     
     try:
         thermocycler.open_lid()
@@ -182,9 +185,9 @@ if __name__ == '__main__':
         thermocycler.set_block_temperature(4)
         print('Closing lid')
         thermocycler.close_lid()
-        print('Preheating lid')
-        thermocycler.set_lid_temperature(thermocycler.get_lid_temperature()[0])
-        print('Preheating block to 95ºC')
+        print('Preheating lid to 105ºC')
+        thermocycler.set_lid_temperature(105)
+        print('Preheating block to 95ºC for 3 minutes')
         thermocycler.set_block_temperature(95, hold_time=60*3)
 
         steps = [
