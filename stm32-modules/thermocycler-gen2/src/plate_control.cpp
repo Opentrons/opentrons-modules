@@ -251,5 +251,6 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
 }
 
 [[nodiscard]] auto PlateControl::temp_within_setpoint() const -> bool {
-    return std::abs(_current_setpoint - plate_temp()) < SETPOINT_THRESHOLD;
+    return (_status == PlateStatus::STEADY_STATE) &&
+           (std::abs(_current_setpoint - plate_temp()) < SETPOINT_THRESHOLD);
 }
