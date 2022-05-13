@@ -15,16 +15,11 @@ def cycle(ser : serial.Serial, volume: float):
         (5.0, 50.0),
         (20.0, 20.0) ]
     targets = [
-        (25.0, 30.0),
-        (20.0, 30.0),
-        (65.0, 5.0),
-        (80.0, 5.0),
-        (95.0, 5.0),
-        (50.0, 5.0),
-        (4.0, 5.0),
-        (20.0, 5.0),
-        (10.0, 5.0),
-        (1.0, 5.0) ]
+        (4.0, 35.0),
+        (15.0, 35.0),
+        (45.0, 35.0),
+        (90.0, 35.0),
+        (95.0, 35.0),]
     target_idx = 0
 
     hold_timer = 0.0
@@ -82,6 +77,6 @@ if __name__ == '__main__':
         test_utils.set_peltier_pid(args.constants[0], args.constants[1], args.constants[2], ser)
 
     test_utils.set_lid_temperature(105, ser)
-    cycle(ser, 400.0)
+    cycle(ser, 0.0)
     test_utils.deactivate_lid(ser)
     test_utils.deactivate_plate(ser)
