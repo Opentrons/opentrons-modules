@@ -14,6 +14,8 @@ def parse_args():
                         default=25.00, help='Volume of liquid (in uL)')
     parser.add_argument('-c', '--cycles', type=int, required=False,
                         default=35, help='Number of cycles to run')
+    parser.add_argument('-p', '--port', type=str, required=False, default=None,
+                        help='The USB port that the thermocycler is connected to')
     parser.add_argument('-d', '--debug', required=False, action='store_true',
                         help='Enable debugging print outputs with the temperature')
     return parser.parse_args()
@@ -170,39 +172,39 @@ class Thermocycler():
 if __name__ == '__main__':
     args = parse_args()
 
-    tc = Thermocycler(debug=args.debug)
+    thermocycler = Thermocycler(port=args.port, debug=args.debug)
 
-    steps = [
-        {'temperature': 94, 'hold_time_seconds': 10},
-        {'temperature': 70, 'hold_time_seconds': 30},
-        {'temperature': 72, 'hold_time_seconds': 30}
-    ]
+    
     try:
-        tc.execute_profile(steps, args.cycles, args.volume)
-        tc.open_lid()
+        thermocycler.open_lid()
         input('Load the wellplate into the module and then press Enter to continue...')
         print('Setting block to 4ºC')
-        tc.set_block_temperature(4)
+        thermocycler.set_block_temperature(4)
         print('Closing lid')
-        tc.close_lid()
+        thermocycler.close_lid()
         print('Preheating lid')
-        tc.set_lid_temperature(tc.get_lid_temperature()[0])
+        thermocycler.set_lid_temperature(thermocycler.get_lid_temperature()[0])
         print('Preheating block to 95ºC')
-        tc.set_block_temperature(95, hold_time=60*5)
+        thermocycler.set_block_temperature(95, hold_time=60*3)
 
-        tc.execute_profile(steps, args.cycles, args.volume)
+        steps = [
+            {'temperature': 70, 'hold_time_seconds': 30},
+            {'temperature': 72, 'hold_time_seconds': 30},
+            {'temperature': 95, 'hold_time_seconds': 10}
+        ]
+        thermocycler.execute_profile(steps, args.cycles, args.volume)
 
         print('Setting block to 72º for 5 minutes')
-        tc.set_block_temperature(72, hold_time=5*60)
+        thermocycler.set_block_temperature(72, hold_time=5*60)
         print('Cooling block to 4º')
-        tc.set_block_temperature(4)
+        thermocycler.set_block_temperature(4)
 
-        tc.open_lid()
+        thermocycler.open_lid()
         print('Done!')
 
     except KeyboardInterrupt:
         print(f'Ending early')
     finally:
         print('Turning off Thermocycler')
-        tc.deactivate_all()
+        thermocycler.deactivate_all()
 
