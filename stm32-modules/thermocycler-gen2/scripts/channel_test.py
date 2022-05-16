@@ -1,5 +1,6 @@
 #! python3
 
+from dataclasses import dataclass
 import serial
 import time
 import re
@@ -30,41 +31,43 @@ def build_serial(port: str = None) -> serial.Serial:
 
 class Thermocycler():
     def __init__(self, port: str = None, debug: bool = False):
-        '''
+        """
         Constructs a new Thermocycler. Leave `port` empty to connect to
         the first Thermocycler connected over USB.
-        '''
+        """
         self.ser = build_serial(port)
         self.debug = debug
     
     
     _POLL_FREQ = 2.0 
-    '''Poll frequency in Hz'''
+    """Poll frequency in Hz"""
 
-    class Thermistors():
-        def __init__(self, hs, fr, fc, fl, br, bc, bl):
-            self.hs = hs # heat sink
-            self.fr = fr # front right
-            self.fc = fc # front center
-            self.fl = fl # front left
-            self.br = br # back right
-            self.bc = bc # back center
-            self.bl = bl # back left
+    @dataclass
+    class Thermistors:
+        """Class to encapsulate thermistor temperatures"""
+        hs: float # heat sink
+        fr: float # front right
+        fc: float # front center
+        fl: float # front left
+        br: float # back right
+        bc: float # back center
+        bl: float # back left
         
         def __str__(self):
             return f'{self.hs},{self.fr},{self.fc},{self.fl},{self.br},{self.bc},{self.bl}'
         
-    class Power():
-        def __init__(self, left, center, right):
-            self.left = left 
-            self.center = center 
-            self.right = right 
+    @dataclass
+    class Power:
+        """Class to encapsulate peltier power values"""
+        left:   float
+        center: float
+        right:  float
         
         def __str__(self):
             return f'{self.left},{self.center},{self.right}'
 
     def _send_and_recv(self, msg: str, guard_ret: str = None) -> str:
-        '''Internal utility to send a command and receive the response'''
+        """Internal utility to send a command and receive the response"""
         self.ser.write(msg.encode())
         ret = self.ser.readline()
         if guard_ret:
@@ -76,9 +79,9 @@ class Thermocycler():
 
     _TEMP_DEBUG_RE = re.compile('^M105.D HST:(?P<HST>.+) FRT:(?P<FRT>.+) FLT:(?P<FLT>.+) FCT:(?P<FCT>.+) BRT:(?P<BRT>.+) BLT:(?P<BLT>.+) BCT:(?P<BCT>.+) HSA.* OK\n')
     def get_plate_thermistors(self) -> Thermistors:
-        '''
+        """
         Gets each thermistor on the plate.
-        '''
+        """
         res = self._send_and_recv('M105.D\n', 'M105.D HST:')
         match = re.match(self._TEMP_DEBUG_RE, res)
         fr = float(match.group('FRT'))
@@ -92,9 +95,9 @@ class Thermocycler():
     
     _POWER_RE = re.compile('^M103.D L:(?P<left>.+) C:(?P<center>.+) R:(?P<right>.+) H:(?P<heater>.+) F:(?P<fans>.+) OK\n')
     def get_peltier_power(self) -> Power:
-        '''
+        """
         Get the power of all peltiers.
-        '''
+        """
         res = self._send_and_recv('M103.D\n', 'M103.D L:')
         match = re.match(self._POWER_RE, res)
         left = float(match.group('left'))
@@ -103,10 +106,10 @@ class Thermocycler():
         return Thermocycler.Power(left, center, right)
     
     def set_plate_target(self, temperature: float, hold_time: float = 0, volume: float = None):
-        '''
+        """
         Sets the target temperature of the thermal plate. The temperature is required,
         but the hold_time and volume parameters may be left as defaults.
-        '''
+        """
         send = f'M104 S{temperature} H{hold_time}'
         if(volume):
             send = send + f' V{volume}'
@@ -114,15 +117,15 @@ class Thermocycler():
         self._send_and_recv(send, 'M104')
     
     def deactivate_all(self):
-        '''Turn off the lid heater and the peltiers'''
+        """Turn off the lid heater and the peltiers"""
         self._send_and_recv('M18\n', 'M18 OK')
     
     def open_lid(self):
-        '''Opens the lid and blocks'''
+        """Opens the lid and blocks"""
         self._send_and_recv('M126\n', 'M126 OK')
 
     def close_lid(self):
-        '''Closes the lid and blocks'''
+        """Closes the lid and blocks"""
         self._send_and_recv('M127\n', 'M127 OK')
 
 if __name__ == '__main__':
@@ -143,6 +146,7 @@ if __name__ == '__main__':
         file.write('time,target,heatsink,front right,front center,front left,back right,back center,back left,left power,center power,right power')
         file.write('\n')
         for temp in temperatures:
+            print('Moving to temperature ' + str(temp))
             thermocycler.set_plate_target(temp)
             temp_start_time = time.time()
             while time.time() < (temp_start_time + args.time):
@@ -154,6 +158,7 @@ if __name__ == '__main__':
                 file.write(toprint)
                 file.write('\n')
                 time.sleep(0.5)
+        print('Done!')
         thermocycler.deactivate_all()
         
     except KeyboardInterrupt:
