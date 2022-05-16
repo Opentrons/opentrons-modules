@@ -14,7 +14,7 @@ def parse_args():
     parser.add_argument('-p', '--port', type=str, required=False, default=None,
                         help='The USB port that the thermocycler is connected to')
     parser.add_argument('-f', '--file', type=argparse.FileType('w'), required=False, default=None,
-                        help='File to write data to. If not specified, data is printed to the command line.')
+                        help='File to write data to. If not specified, a new file will be generated.')
     parser.add_argument('-t', '--time', type=float, required=False, default=180,
                         help='Number of seconds to measure data for each temperature')
     return parser.parse_args()
