@@ -116,9 +116,9 @@ class ThermalPlateTask {
         CONTROL_PERIOD_TICKS * 0.001;
     static constexpr size_t EEPROM_PAGES = 32;
     static constexpr uint8_t EEPROM_ADDRESS = 0b1010010;
-    static constexpr const double OFFSET_DEFAULT_CONST_A = 0.0F;
-    static constexpr const double OFFSET_DEFAULT_CONST_B = 0.0F;
-    static constexpr const double OFFSET_DEFAULT_CONST_C = 0.0F;
+    static constexpr const double OFFSET_DEFAULT_CONST_A = -0.02F;
+    static constexpr const double OFFSET_DEFAULT_CONST_B = 0.022F;
+    static constexpr const double OFFSET_DEFAULT_CONST_C = -0.154F;
 
     explicit ThermalPlateTask(Queue& q)
         : _message_queue(q),
