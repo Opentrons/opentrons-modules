@@ -8,7 +8,15 @@ The plate consists of a 3 column array of peltier modules, where each column is 
 
 ### Plate Offset
 
-The temperature measured by the thermistors is not necessarily equal to the temperature of the plate. In order to compensate for this temperature differential, a set of calibration coefficients can be programmed to set a function in the form of `y = mx + b`, wherein `x` is the temperature measured by a thermistor and `y` is the approximate temperature on the actual plate.
+The temperature measured by the thermistors is not necessarily equal to the temperature of the plate. In order to compensate for this temperature differential, a set of calibration coefficients are provided to make a more accurate estimate of the temperature in the wells.
+
+- There are three offset coefficents, `A`, `B`, and `C`.
+- There are two inputs to the calibration function: The current uncalibrated temperature of the thermistor (`T`), and the current temperature measured on the heat sink (`H`).
+- The output is the Calibrated Temperature, `C`
+
+The offset compensation is as follows:
+
+> C = (A * H) + ((B + 1) * T) + C
 
 ### Ramp Control & Volumetric Overshoot
 
