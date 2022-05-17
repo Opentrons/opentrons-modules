@@ -1315,11 +1315,11 @@ struct SetPIDConstants {
 /**
  * Uses M116, as defined on Gen 1 thermocyclers.
  *
- * Accepts two optional constants, B and C. These are
+ * Accepts two optional constants, A B and C. These are
  * used in the calculation of the plate temperature for
  * each thermistor on the system with the following equation:
  *
- * > temp = (1+B)*(measured temp) + C
+ * > temp = (A*heatsink temp) + (1+B)*(measured temp) + C
  *
  * Format: M116 B0.102 C-0.245\n
  *
@@ -1327,6 +1327,7 @@ struct SetPIDConstants {
 struct SetOffsetConstants {
     using ParseResult = std::optional<SetOffsetConstants>;
     static constexpr auto prefix = std::array{'M', '1', '1', '6'};
+    static constexpr auto prefix_a = std::array{' ', 'A'};
     static constexpr auto prefix_b = std::array{' ', 'B'};
     static constexpr auto prefix_c = std::array{' ', 'C'};
     static constexpr const char* response = "M116 OK\n";
@@ -1341,6 +1342,7 @@ struct SetOffsetConstants {
         double value;
     };
 
+    OffsetConstant const_a = {.defined = false, .value = 0.0F};
     OffsetConstant const_b = {.defined = false, .value = 0.0F};
     OffsetConstant const_c = {.defined = false, .value = 0.0F};
 
@@ -1363,6 +1365,19 @@ struct SetOffsetConstants {
         }
         auto old_working = working;
         auto ret = SetOffsetConstants();
+        working = prefix_matches(old_working, limit, prefix_a);
+        if (working != old_working) {
+            old_working = working;
+            auto a = parse_value<float>(working, limit);
+            if (!a.first.has_value()) {
+                return std::make_pair(std::nullopt, input);
+            }
+            ret.const_a.defined = true;
+            ret.const_a.value = a.first.value();
+            working = a.second;
+        }
+        old_working = working;
+
         working = prefix_matches(old_working, limit, prefix_b);
         if (working != old_working) {
             old_working = working;
@@ -1394,7 +1409,7 @@ struct SetOffsetConstants {
 /**
  * Uses M117, as defined on Gen 1 thermocyclers.
  *
- * Returns the programmed offset constants on the device, B and C.
+ * Returns the programmed offset constants on the device, A B and C.
  *
  * Format: M117\n
  *
@@ -1420,10 +1435,12 @@ struct GetOffsetConstants {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    static auto write_response_into(InputIt buf, InputLimit limit, double b,
-                                    double c) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M117 B:%0.2f C:%0.2f OK\n",
-                            static_cast<float>(b), static_cast<float>(c));
+    static auto write_response_into(InputIt buf, InputLimit limit, double a,
+                                    double b, double c) -> InputIt {
+        auto res =
+            snprintf(&*buf, (limit - buf), "M117 A:%0.3f B:%0.3f C:%0.3f OK\n",
+                     static_cast<float>(a), static_cast<float>(b),
+                     static_cast<float>(c));
         if (res <= 0) {
             return buf;
         }
