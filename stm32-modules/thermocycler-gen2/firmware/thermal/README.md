@@ -12,11 +12,9 @@ The temperature measured by the thermistors is not necessarily equal to the temp
 
 - There are three offset coefficents, `A`, `B`, and `C`.
 - There are two inputs to the calibration function: The current uncalibrated temperature of the thermistor (`T`), and the current temperature measured on the heat sink (`H`).
-- The output is the Calibrated Temperature, `C`
+- The output is the Calibrated Temperature, `Tc`
 
-The offset compensation is as follows:
-
-> C = (A * H) + ((B + 1) * T) + C
+The offset compensation is as follows: `Tc = (A * H) + ((B + 1) * T) + C`
 
 ### Ramp Control & Volumetric Overshoot
 
