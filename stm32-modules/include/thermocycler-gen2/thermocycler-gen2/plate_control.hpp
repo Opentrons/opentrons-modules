@@ -33,7 +33,7 @@ class PlateControl {
     /** Number of peltiers on system.*/
     static constexpr size_t PELTIER_COUNT = 3;
     /** Max ∆T to be considered "at" the setpoint.*/
-    static constexpr double SETPOINT_THRESHOLD = 0.5F;
+    static constexpr double SETPOINT_THRESHOLD = 1.5F;
 
     /** Degrees C *under* the threshold to set the fan.*/
     static constexpr double FAN_SETPOINT_OFFSET = (-2.0F);

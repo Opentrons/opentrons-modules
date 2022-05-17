@@ -224,6 +224,16 @@ def set_peltier_pid(p: float, i: float, d: float, ser: serial.Serial):
     guard_error(res, b'M301 OK')
     print(res)
 
+_POWER_RE = re.compile('^M103.D L:(?P<left>.+) C:(?P<center>.+) R:(?P<right>.+) H:(?P<heater>.+) F:(?P<fans>.+) OK\n')
+
+def get_thermal_power(ser: serial.Serial):
+    ser.write(b'M103.D\n')
+    res = ser.readline()
+    guard_error(res, b'M103.D')
+    res_s = res.decode()
+    match = re.match(_POWER_RE, res_s)
+    return float(match.group('left')), float(match.group('center')), float(match.group('right'))
+
 # Debug command to move the hinge motor
 def move_lid_angle(angle: float, overdrive: bool, ser: serial.Serial):
     print(f'Moving lid by {angle}º overdrive = {overdrive}')

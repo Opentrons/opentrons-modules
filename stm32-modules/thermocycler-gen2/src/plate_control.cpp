@@ -127,32 +127,6 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
     return temp * IDLE_FAN_POWER_SLOPE;
 }
 
-[[nodiscard]] auto PlateControl::temp_within_setpoint() const -> bool {
-    return std::abs(_current_setpoint - plate_temp()) < SETPOINT_THRESHOLD;
-}
-
-[[nodiscard]] auto PlateControl::thermistor_drift_check() const -> bool {
-    auto temperatures = get_peltier_temps();
-    double lowest_temp = temperatures.at(0);
-    double highest_temp = temperatures.at(0);
-    for(auto &temperature : temperatures) {
-        lowest_temp = std::min(lowest_temp, temperature);
-        highest_temp = std::max(highest_temp, temperature);
-    }
-    return std::abs(highest_temp - lowest_temp) < THERMISTOR_DRIFT_MAX_C;
-}
-
-[[nodiscard]] auto PlateControl::get_peltier_temps() const -> std::array<double, PELTIER_COUNT> {
-    return std::array<double, PELTIER_COUNT>{
-        _left.thermistors.first.temp_c,
-        _left.thermistors.second.temp_c,
-        _center.thermistors.first.temp_c,
-        _center.thermistors.second.temp_c,
-        _right.thermistors.first.temp_c,
-        _right.thermistors.second.temp_c,
-    };
-}
-
 // This function *could* be made const, but that obfuscates the intention,
 // which is to update the ramp target of a *member* of the class.
 // NOLINTNEXTLINE(readability-make-member-function-const)
@@ -256,7 +230,7 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
 [[nodiscard]] auto PlateControl::plate_temp() const -> double {
     return (_left.current_temp() + _right.current_temp() +
             _center.current_temp()) /
-           static_cast<double>(PELTIER_COUNT);
+           PELTIER_COUNT;
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
@@ -274,4 +248,9 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
 [[nodiscard]] auto PlateControl::get_hold_time() const
     -> std::pair<Seconds, Seconds> {
     return std::make_pair(_remaining_hold_time, _hold_time);
+}
+
+[[nodiscard]] auto PlateControl::temp_within_setpoint() const -> bool {
+    return (_status == PlateStatus::STEADY_STATE) &&
+           (std::abs(_current_setpoint - plate_temp()) < SETPOINT_THRESHOLD);
 }

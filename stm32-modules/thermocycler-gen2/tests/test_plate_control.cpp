@@ -222,6 +222,18 @@ SCENARIO("PlateControl peltier control works") {
                             plate_control::PlateStatus::OVERSHOOT);
                     REQUIRE(!plateControl.temp_within_setpoint());
                 }
+                AND_WHEN("the temperature is at the overshoot temperature") {
+                    const auto real_target =
+                        HOT_TEMP +
+                        plate_control::PlateControl::calculate_overshoot(
+                            HOT_TEMP, input_volume);
+                    set_temp(thermistors, real_target);
+                    static_cast<void>(
+                        plateControl.update_control(UPDATE_RATE_SEC));
+                    THEN("temp_within_setpoint still returns false") {
+                        REQUIRE(!plateControl.temp_within_setpoint());
+                    }
+                }
                 AND_WHEN("holding at temperature for >10 seconds") {
                     static_cast<void>(plateControl.update_control(
                         plateControl.OVERSHOOT_TIME));
