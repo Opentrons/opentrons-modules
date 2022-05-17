@@ -83,7 +83,8 @@ SCENARIO("motor task message passing") {
                 motor_queue.backing_deque.push_back(done_msg);
                 tasks->run_motor_task();
                 THEN("the ACK is sent to the host comms task") {
-                    REQUIRE(motor_policy.get_vref() == 0);
+                    REQUIRE(motor_policy.get_vref() ==
+                            motor_task.LID_STEPPER_HOLD_CURRENT);
                     REQUIRE(motor_queue.backing_deque.empty());
                     REQUIRE(
                         !tasks->get_host_comms_queue().backing_deque.empty());
@@ -132,7 +133,8 @@ SCENARIO("motor task message passing") {
                             errors::ErrorCode::LID_MOTOR_FAULT);
                 }
                 THEN("no motion is started") {
-                    REQUIRE(motor_policy.get_vref() == 0);
+                    REQUIRE(motor_policy.get_vref() ==
+                            motor_task.LID_STEPPER_HOLD_CURRENT);
                 }
             }
         }

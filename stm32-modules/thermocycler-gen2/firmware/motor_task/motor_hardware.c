@@ -90,6 +90,14 @@ extern "C" {
 /** Calculated TIM6 period.*/
 #define TIM6_PERIOD (((TIM6_APB_FREQ/(TIM6_PRELOAD + 1)) / MOTOR_INTERRUPT_FREQ) - 1)
 
+/**
+ * @brief Calculates the frequency of ticks to get a Lid Motor RPM. The ratio
+ * is 32000 Hz to 75 rpm, which reduces to 1280/3
+ * @param[in] rpm The requested RPM
+ * @return the frequency for the timer
+ */
+#define LID_RPM_TO_FREQ(rpm) ((rpm * 1280) / 3)
+
 // ----------------------------------------------------------------------------
 // Local typedefs
 
@@ -511,7 +519,7 @@ static void init_tim2(TIM_HandleTypeDef* htim) {
     uint32_t uwTimClock = HAL_RCC_GetPCLK1Freq();
     /* Compute the prescaler value to have TIM2 counter clock equal to 1MHz */
     uint32_t uwPrescalerValue = (uint32_t) ((uwTimClock / 1000000U) - 1U);
-    uint32_t uwPeriodValue = __HAL_TIM_CALC_PERIOD(uwTimClock, uwPrescalerValue, 32000); //75rpm, from TC1
+    uint32_t uwPeriodValue = __HAL_TIM_CALC_PERIOD(uwTimClock, uwPrescalerValue, LID_RPM_TO_FREQ(125));
     
     htim->Instance = TIM2;
     htim->Init.Prescaler = uwPrescalerValue;

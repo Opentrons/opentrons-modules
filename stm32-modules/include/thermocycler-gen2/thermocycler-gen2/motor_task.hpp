@@ -105,10 +105,7 @@ struct LidStepperState {
     constexpr static double PLATE_LIFT_RAISE_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(20);
     constexpr static double PLATE_LIFT_LOWER_DEGREES =
-        motor_util::LidStepper::angle_to_microsteps(-40);
-    // Default run current is 1200 milliamperes
-    constexpr static double DEFAULT_RUN_CURRENT =
-        motor_util::LidStepper::current_to_dac(1200);
+        motor_util::LidStepper::angle_to_microsteps(-30);
     // States for lid stepper
     enum Status {
         IDLE,            /**< Not moving.*/
@@ -154,7 +151,7 @@ struct SealStepperState {
     // Run current value, approximately 825 mA
     constexpr static int DEFAULT_RUN_CURRENT = 15;
     // Default velocity for the seal stepper, in steps/second
-    constexpr static double DEFAULT_VELOCITY = 90000;
+    constexpr static double DEFAULT_VELOCITY = 200000;
     // Default acceleration for the seal stepper, in steps/second^2
     constexpr static double DEFAULT_ACCEL = 50000;
     // Default value of the Stallguard Threshold
@@ -226,15 +223,18 @@ class MotorTask {
     using Queue = QueueImpl<Message>;
 
     // Default current to set for the lid stepper, in milliamperes
-    static constexpr double LID_STEPPER_DEFAULT_VOLTAGE = 1200;
+    static constexpr double LID_STEPPER_RUN_CURRENT =
+        motor_util::LidStepper::current_to_dac(1200);
     // Default current to set for lid stepper for holding, in milliamperes
-    static constexpr double LID_STEPPER_HOLD_CURRENT = 0;
+    static constexpr double LID_STEPPER_HOLD_CURRENT =
+        motor_util::LidStepper::current_to_dac(300);
     // ID value to indicate that no response is actually needed from a
     // motor completion
     static constexpr uint32_t INVALID_ID = 0;
 
     explicit MotorTask(Queue& q)
         : _message_queue(q),
+          _initialized(false),
           _task_registry(nullptr),
           _state{.status = LidState::Status::IDLE, .response_id = INVALID_ID},
           _lid_stepper_state{
@@ -268,8 +268,10 @@ class MotorTask {
     auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
 
-        if (!_tmc2130.initialized()) {
+        if (!_initialized) {
+            _initialized = true;
             _tmc2130.write_config(policy);
+            policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
         }
 
         // This is the call down to the provided queue. It will block for
@@ -317,8 +319,7 @@ class MotorTask {
         }
         if (error == errors::ErrorCode::NO_ERROR) {
             // Start movement and cache the id for later
-            policy.lid_stepper_set_dac(motor_util::LidStepper::current_to_dac(
-                LID_STEPPER_DEFAULT_VOLTAGE));
+            policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
             policy.lid_stepper_start(
                 motor_util::LidStepper::angle_to_microsteps(msg.angle),
                 msg.overdrive);
@@ -890,7 +891,7 @@ class MotorTask {
         // First release the latch
         policy.lid_solenoid_engage();
         // Now start a lid motor movement to the endstop
-        policy.lid_stepper_set_dac(LidStepperState::DEFAULT_RUN_CURRENT);
+        policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
         policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES, false);
         // Store the new state, as well as the response ID
         _lid_stepper_state.status = LidStepperState::Status::OPEN_TO_SWITCH;
@@ -907,7 +908,7 @@ class MotorTask {
         // First release the latch
         policy.lid_solenoid_engage();
         // Now start a lid motor movement to closed position
-        policy.lid_stepper_set_dac(LidStepperState::DEFAULT_RUN_CURRENT);
+        policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
         policy.lid_stepper_start(LidStepperState::FULL_CLOSE_DEGREES, false);
         // Store the new state, as well as the response ID
         _lid_stepper_state.status = LidStepperState::Status::CLOSE_TO_SWITCH;
@@ -923,7 +924,7 @@ class MotorTask {
             return false;
         }
         // Now start a lid motor movement to closed position
-        policy.lid_stepper_set_dac(LidStepperState::DEFAULT_RUN_CURRENT);
+        policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
         policy.lid_stepper_start(LidStepperState::PLATE_LIFT_RAISE_DEGREES,
                                  true);
         // Store the new state, as well as the response ID
@@ -1106,7 +1107,7 @@ class MotorTask {
         switch (_lid_stepper_state.status.load()) {
             case LidStepperState::Status::SIMPLE_MOVEMENT:
                 // Turn off the drive current
-                policy.lid_stepper_set_dac(0);
+                policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
                 // Movement is done
                 _lid_stepper_state.status = LidStepperState::Status::IDLE;
                 _lid_stepper_state.position =
@@ -1124,7 +1125,7 @@ class MotorTask {
                 break;
             case LidStepperState::Status::OPEN_OVERDRIVE:
                 // Turn off lid stepper current
-                policy.lid_stepper_set_dac(0);
+                policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
                 // Movement is done
                 _lid_stepper_state.status = LidStepperState::Status::IDLE;
                 _lid_stepper_state.position =
@@ -1144,7 +1145,7 @@ class MotorTask {
                 // the solenoid can be safely turned off
                 policy.lid_solenoid_disengage();
                 // Turn off lid stepper current
-                policy.lid_stepper_set_dac(0);
+                policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
                 // Movement is done
                 _lid_stepper_state.status = LidStepperState::Status::IDLE;
                 _lid_stepper_state.position =
@@ -1179,6 +1180,7 @@ class MotorTask {
     }
 
     Queue& _message_queue;
+    bool _initialized;
     tasks::Tasks<QueueImpl>* _task_registry;
     LidState _state;
     LidStepperState _lid_stepper_state;
