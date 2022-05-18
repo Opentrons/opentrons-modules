@@ -35,6 +35,7 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
                 REQUIRE(parsed.second != input.begin());
                 REQUIRE(parsed.first.has_value());
                 auto &val = parsed.first.value();
+                REQUIRE(!val.const_a.defined);
                 REQUIRE(!val.const_b.defined);
                 REQUIRE(!val.const_c.defined);
             }
@@ -49,6 +50,7 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
                 REQUIRE(parsed.second != input.begin());
                 REQUIRE(parsed.first.has_value());
                 auto &val = parsed.first.value();
+                REQUIRE(!val.const_a.defined);
                 REQUIRE(val.const_b.defined);
                 REQUIRE_THAT(val.const_b.value,
                              Catch::Matchers::WithinAbs(-0.543, 0.01));
@@ -65,6 +67,7 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
                 REQUIRE(parsed.second != input.begin());
                 REQUIRE(parsed.first.has_value());
                 auto &val = parsed.first.value();
+                REQUIRE(!val.const_a.defined);
                 REQUIRE(!val.const_b.defined);
                 REQUIRE(val.const_c.defined);
                 REQUIRE_THAT(val.const_c.value,
@@ -72,7 +75,24 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
             }
         }
     }
-    GIVEN("input to set both constants") {
+    GIVEN("input to set A constant") {
+        std::string input = "M116 A123.5\n";
+        WHEN("parsing") {
+            auto parsed =
+                gcode::SetOffsetConstants::parse(input.begin(), input.end());
+            THEN("parsing should be succesful") {
+                REQUIRE(parsed.second != input.begin());
+                REQUIRE(parsed.first.has_value());
+                auto &val = parsed.first.value();
+                REQUIRE(!val.const_b.defined);
+                REQUIRE(!val.const_c.defined);
+                REQUIRE(val.const_a.defined);
+                REQUIRE_THAT(val.const_a.value,
+                             Catch::Matchers::WithinAbs(123.5, 0.01));
+            }
+        }
+    }
+    GIVEN("input to set B and C constants") {
         std::string input = "M116 B543 C123.5\n";
         WHEN("parsing") {
             auto parsed =
@@ -81,12 +101,34 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
                 REQUIRE(parsed.second != input.begin());
                 REQUIRE(parsed.first.has_value());
                 auto &val = parsed.first.value();
+                REQUIRE(!val.const_a.defined);
                 REQUIRE(val.const_b.defined);
                 REQUIRE_THAT(val.const_b.value,
                              Catch::Matchers::WithinAbs(543, 0.01));
                 REQUIRE(val.const_c.defined);
                 REQUIRE_THAT(val.const_c.value,
                              Catch::Matchers::WithinAbs(123.5, 0.01));
+            }
+        }
+    }
+    GIVEN("input to set A, B, and C constants") {
+        std::string input = "M116 A2.043 B543 C123.5\n";
+        WHEN("parsing") {
+            auto parsed =
+                gcode::SetOffsetConstants::parse(input.begin(), input.end());
+            THEN("parsing should be succesful") {
+                REQUIRE(parsed.second != input.begin());
+                REQUIRE(parsed.first.has_value());
+                auto &val = parsed.first.value();
+                REQUIRE(val.const_a.defined);
+                REQUIRE_THAT(val.const_a.value,
+                             Catch::Matchers::WithinAbs(2.043, 0.001));
+                REQUIRE(val.const_b.defined);
+                REQUIRE_THAT(val.const_b.value,
+                             Catch::Matchers::WithinAbs(543, 0.001));
+                REQUIRE(val.const_c.defined);
+                REQUIRE_THAT(val.const_c.value,
+                             Catch::Matchers::WithinAbs(123.5, 0.001));
             }
         }
     }

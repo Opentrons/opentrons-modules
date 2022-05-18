@@ -1941,6 +1941,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     std::get<messages::SetOffsetConstantsMessage>(plate_msg);
                 REQUIRE(!tasks->get_host_comms_queue().has_message());
                 REQUIRE(written_firstpass == tx_buf.begin());
+                REQUIRE(!message.a_set);
                 REQUIRE(!message.b_set);
                 REQUIRE(!message.c_set);
                 AND_WHEN("sending good response back") {
@@ -2006,6 +2007,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::GetOffsetConstantsResponse{
                             .responding_to_id = message.id,
+                            .const_a = 2.0,
                             .const_b = 10.0,
                             .const_c = 15.0});
                     tasks->get_host_comms_queue().backing_deque.push_back(
@@ -2014,7 +2016,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
-                        auto response = "M117 B:10.00 C:15.00 OK\n";
+                        auto response = "M117 A:2.000 B:10.000 C:15.000 OK\n";
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith(response));
                         REQUIRE(written_secondpass ==
@@ -2027,6 +2029,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::GetOffsetConstantsResponse{
                             .responding_to_id = message.id + 1,
+                            .const_a = 2.0,
                             .const_b = 10.0,
                             .const_c = 15.0});
                     tasks->get_host_comms_queue().backing_deque.push_back(
