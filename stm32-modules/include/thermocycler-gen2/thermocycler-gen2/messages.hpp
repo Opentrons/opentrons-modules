@@ -277,6 +277,8 @@ struct SetPIDConstantsMessage {
 
 struct SetOffsetConstantsMessage {
     uint32_t id;
+    bool a_set;
+    double const_a;
     bool b_set;
     double const_b;
     bool c_set;
@@ -289,7 +291,7 @@ struct GetOffsetConstantsMessage {
 
 struct GetOffsetConstantsResponse {
     uint32_t responding_to_id;
-    double const_b, const_c;
+    double const_a, const_b, const_c;
 };
 
 struct UpdateUIMessage {

@@ -23,7 +23,7 @@ namespace eeprom {
  * readings. Using two constants, B and C (for legacy purposes), the
  * resulting temperature relationship can be summarized as follows:
  *
- * > Plate Temp = ((B + 1) * Measured Temp) + C
+ * > Plate Temp = A * (heatsink temp) + ((B + 1) * Measured Temp) + C
  *
  * One of the EEPROM pages is reserved for a flag to indicate whether
  * the values have been written. The \ref EEPROMFlag enum captures the
@@ -32,8 +32,8 @@ namespace eeprom {
  *
  */
 struct OffsetConstants {
-    // The value of the constants B and C
-    double b, c;
+    // The value of the constants A, B and C
+    double a, b, c;
 };
 
 /**
@@ -49,18 +49,21 @@ class Eeprom {
      * @brief Get the offset constants from the EEPROM
      *
      * @tparam Policy for reading from EEPROM
+     * @param defaults OffsetConstants containing default values to return
+     *                 in the case that the EEPROM is not written.
      * @param policy Instance of Policy
-     * @return OffsetConstants containing the B and C constants, or the
+     * @return OffsetConstants containing the A, B and C constants, or the
      * default values if the EEPROM doesn't have programmed values.
      */
     template <at24c0xc::AT24C0xC_Policy Policy>
-    [[nodiscard]] auto get_offset_constants(Policy& policy) -> OffsetConstants {
-        OffsetConstants ret = {.b = OFFSET_DEFAULT_CONST,
-                               .c = OFFSET_DEFAULT_CONST};
+    [[nodiscard]] auto get_offset_constants(const OffsetConstants& defaults,
+                                            Policy& policy) -> OffsetConstants {
+        OffsetConstants ret = defaults;
         // Read the constantsss
         auto flag = read_const_flag(policy);
 
-        if (flag == EEPROMFlag::WRITTEN_NO_CHECKSUM) {
+        if (flag == EEPROMFlag::CONSTANTS_WRITTEN) {
+            ret.a = read_const(EEPROMPageMap::CONST_A, policy);
             ret.b = read_const(EEPROMPageMap::CONST_B, policy);
             ret.c = read_const(EEPROMPageMap::CONST_C, policy);
         }
@@ -72,7 +75,7 @@ class Eeprom {
      * @brief Write new offset constants to the EEPROM
      *
      * @tparam Policy for writing to the EEPROM
-     * @param constants OffsetConstants containing the B and C constants to
+     * @param constants OffsetConstants containing the constants to
      * be written to EEPROM
      * @param policy Instance of Policy
      * @return True if the constants were written, false otherwise
@@ -81,6 +84,15 @@ class Eeprom {
     auto write_offset_constants(OffsetConstants constants, Policy& policy)
         -> bool {
         // Write the constants
+        if (!_eeprom.template write_value(
+                static_cast<uint8_t>(EEPROMPageMap::CONST_A), constants.a,
+                policy)) {
+            // Attempt to flag that the constants are not valid
+            static_cast<void>(_eeprom.template write_value(
+                static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG),
+                static_cast<uint32_t>(EEPROMFlag::INVALID), policy));
+            return false;
+        }
         if (!_eeprom.template write_value(
                 static_cast<uint8_t>(EEPROMPageMap::CONST_B), constants.b,
                 policy)) {
@@ -102,7 +114,7 @@ class Eeprom {
         // Flag that the constants are good
         return _eeprom.template write_value(
             static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG),
-            static_cast<uint32_t>(EEPROMFlag::WRITTEN_NO_CHECKSUM), policy);
+            static_cast<uint32_t>(EEPROMFlag::CONSTANTS_WRITTEN), policy);
     }
 
     /**
@@ -118,12 +130,16 @@ class Eeprom {
         CONST_B = 0,  // Value of the B constant
         CONST_C = 1,  // Value of the C constant
         // Flag indicating whether constants have been written.
-        // Set to 1 to mark that constants are written with no checksum
-        CONST_FLAG = 2
+        // See \ref EEPROMFlag
+        CONST_FLAG = 2,
+        CONST_A = 3,  // Value of the A constant
     };
 
     // Enumeration of the EEPROM_CONST_FLAG values
-    enum class EEPROMFlag { WRITTEN_NO_CHECKSUM = 1, INVALID = 0xFF };
+    enum class EEPROMFlag {
+        CONSTANTS_WRITTEN = 2,  // Values of all constants are written
+        INVALID = 0xFF          // No values are written
+    };
 
     static_assert(sizeof(EEPROMPageMap) == sizeof(uint8_t),
                   "EEPROM API requires uint8_t page address");
@@ -135,7 +151,7 @@ class Eeprom {
      * @brief Read one of the constants on the device
      *
      * @tparam Policy class for reading from the eeprom
-     * @param page Which page to read. Must be CONST_B or CONST_C
+     * @param page Which page to read. Must be a valid page
      * @param policy Instance of Policy for reading
      * @return double containing the constant
      */
@@ -166,9 +182,8 @@ class Eeprom {
             static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG), policy);
         if (val.has_value()) {
             auto flag = val.value();
-            if (flag ==
-                static_cast<uint32_t>(EEPROMFlag::WRITTEN_NO_CHECKSUM)) {
-                return EEPROMFlag::WRITTEN_NO_CHECKSUM;
+            if (flag == static_cast<uint32_t>(EEPROMFlag::CONSTANTS_WRITTEN)) {
+                return EEPROMFlag::CONSTANTS_WRITTEN;
             }
         }
         // Default
