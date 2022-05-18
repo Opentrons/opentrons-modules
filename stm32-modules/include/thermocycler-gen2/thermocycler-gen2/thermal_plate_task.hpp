@@ -673,8 +673,7 @@ class ThermalPlateTask {
     auto handle_temperature_conversion(uint16_t conversion_result,
                                        Thermistor& thermistor,
                                        bool apply_offset,
-                                       const double heatsink_temp = 0.0F)
-        -> void {
+                                       double heatsink_temp = 0.0F) -> void {
         auto visitor = [this, &thermistor](const auto value) -> void {
             this->visit_conversion(thermistor, value);
         };

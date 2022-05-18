@@ -32,7 +32,7 @@ namespace eeprom {
  *
  */
 struct OffsetConstants {
-    // The value of the constants B and C
+    // The value of the constants A, B and C
     double a, b, c;
 };
 
@@ -49,8 +49,10 @@ class Eeprom {
      * @brief Get the offset constants from the EEPROM
      *
      * @tparam Policy for reading from EEPROM
+     * @param defaults OffsetConstants containing default values to return
+     *                 in the case that the EEPROM is not written.
      * @param policy Instance of Policy
-     * @return OffsetConstants containing the B and C constants, or the
+     * @return OffsetConstants containing the A, B and C constants, or the
      * default values if the EEPROM doesn't have programmed values.
      */
     template <at24c0xc::AT24C0xC_Policy Policy>
@@ -60,12 +62,10 @@ class Eeprom {
         // Read the constantsss
         auto flag = read_const_flag(policy);
 
-        if (flag != EEPROMFlag::INVALID) {
+        if (flag == EEPROMFlag::CONSTANTS_WRITTEN) {
+            ret.a = read_const(EEPROMPageMap::CONST_A, policy);
             ret.b = read_const(EEPROMPageMap::CONST_B, policy);
             ret.c = read_const(EEPROMPageMap::CONST_C, policy);
-        }
-        if (flag == EEPROMFlag::WRITTEN_WITH_A) {
-            ret.a = read_const(EEPROMPageMap::CONST_A, policy);
         }
         _initialized = true;
         return ret;
@@ -75,7 +75,7 @@ class Eeprom {
      * @brief Write new offset constants to the EEPROM
      *
      * @tparam Policy for writing to the EEPROM
-     * @param constants OffsetConstants containing the B and C constants to
+     * @param constants OffsetConstants containing the constants to
      * be written to EEPROM
      * @param policy Instance of Policy
      * @return True if the constants were written, false otherwise
@@ -114,7 +114,7 @@ class Eeprom {
         // Flag that the constants are good
         return _eeprom.template write_value(
             static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG),
-            static_cast<uint32_t>(EEPROMFlag::WRITTEN_WITH_A), policy);
+            static_cast<uint32_t>(EEPROMFlag::CONSTANTS_WRITTEN), policy);
     }
 
     /**
@@ -137,9 +137,8 @@ class Eeprom {
 
     // Enumeration of the EEPROM_CONST_FLAG values
     enum class EEPROMFlag {
-        WRITTEN_NO_A = 1,    // Values of B and C are written
-        WRITTEN_WITH_A = 2,  // Values of all constants are written
-        INVALID = 0xFF       // No values are written
+        CONSTANTS_WRITTEN = 2,  // Values of all constants are written
+        INVALID = 0xFF          // No values are written
     };
 
     static_assert(sizeof(EEPROMPageMap) == sizeof(uint8_t),
@@ -183,11 +182,8 @@ class Eeprom {
             static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG), policy);
         if (val.has_value()) {
             auto flag = val.value();
-            if (flag == static_cast<uint32_t>(EEPROMFlag::WRITTEN_NO_A)) {
-                return EEPROMFlag::WRITTEN_NO_A;
-            }
-            if (flag == static_cast<uint32_t>(EEPROMFlag::WRITTEN_WITH_A)) {
-                return EEPROMFlag::WRITTEN_WITH_A;
+            if (flag == static_cast<uint32_t>(EEPROMFlag::CONSTANTS_WRITTEN)) {
+                return EEPROMFlag::CONSTANTS_WRITTEN;
             }
         }
         // Default
