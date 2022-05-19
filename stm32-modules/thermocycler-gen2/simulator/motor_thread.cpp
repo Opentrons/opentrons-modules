@@ -1,6 +1,7 @@
 #include "simulator/motor_thread.hpp"
 
 #include <algorithm>
+#include <atomic>
 
 #include "simulator/sim_tmc2130_policy.hpp"
 #include "systemwide.h"
@@ -18,7 +19,7 @@ class SimMotorPolicy : public SimTMC2130Policy {
     static constexpr const uint32_t MotorTickFrequency = 1000000;
 
     SimMotorPolicy(SimMotorTask::Queue &queue)
-        : SimTMC2130Policy(), _callback(), _task_queue(queue) {}
+        : SimTMC2130Policy(), _task_queue(queue) {}
 
     // Functionality to fulfill concept
 
@@ -86,29 +87,25 @@ class SimMotorPolicy : public SimTMC2130Policy {
     }
 
     auto seal_stepper_start(Callback cb) -> bool {
-        if (_seal_moving) {
-            return false;
+        _seal_active = true;
+
+        while(_seal_active) {
+            cb();
         }
 
-        _seal_moving = true;
-        _callback = cb;
+        static_cast<void>(_task_queue.try_send(messages::SealStepperComplete{
+            .reason = messages::SealStepperComplete::CompletionReason::DONE}));
+
         return true;
     }
 
-    auto seal_stepper_stop() -> void { _seal_moving = false; }
+    auto seal_stepper_stop() -> void { _seal_active = false; }
 
     auto seal_switch_set_armed() -> void { _seal_switch_armed = true; }
 
     auto seal_switch_set_disarmed() -> void { _seal_switch_armed = false; }
 
     auto seal_read_limit_switch() -> bool { return false; }
-
-    // For simulation
-    auto tick() -> void {
-        if (_seal_moving) {
-            _callback();
-        }
-    }
 
   private:
     // Lowest position the lid can move before stalling
@@ -147,9 +144,8 @@ class SimMotorPolicy : public SimTMC2130Policy {
     bool _solenoid_engaged = true;
     uint8_t _dac_val = 0;
     int32_t _lid_step_position = 0;
-    bool _seal_moving = false;
-    bool _seal_switch_armed = false;
-    Callback _callback;
+    std::atomic_bool _seal_active = false;
+    std::atomic_bool _seal_switch_armed = false;
     SimMotorTask::Queue &_task_queue;
 };
 
