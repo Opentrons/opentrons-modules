@@ -89,7 +89,7 @@ class SimMotorPolicy : public SimTMC2130Policy {
     auto seal_stepper_start(Callback cb) -> bool {
         _seal_active = true;
 
-        while(_seal_active) {
+        while (_seal_active) {
             cb();
         }
 
