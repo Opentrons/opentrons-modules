@@ -259,15 +259,16 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
     auto temperatures = get_peltier_temps();
     double min = temperatures.at(0);
     double max = temperatures.at(0);
-    for(auto temperature : temperatures) {
+    for (auto temperature : temperatures) {
         min = std::min(temperature, min);
         max = std::max(temperature, max);
     }
     return std::abs(max - min) <= THERMISTOR_DRIFT_MAX_C;
 }
 
-[[nodiscard]] auto PlateControl::get_peltier_temps() const -> std::array<double, PELTIER_COUNT*THERM_PER_PELTIER> {
-    return std::array<double, PELTIER_COUNT*THERM_PER_PELTIER> {{
+[[nodiscard]] auto PlateControl::get_peltier_temps() const
+    -> std::array<double, PELTIER_COUNT * THERM_PER_PELTIER> {
+    return std::array<double, PELTIER_COUNT * THERM_PER_PELTIER>{{
         _left.thermistors.first.temp_c,
         _left.thermistors.second.temp_c,
         _center.thermistors.first.temp_c,

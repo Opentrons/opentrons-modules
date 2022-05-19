@@ -285,10 +285,11 @@ class ThermalPlateTask {
             msg.back_left, _thermistors[THERM_BACK_LEFT], true, heatsink);
         handle_temperature_conversion(
             msg.back_center, _thermistors[THERM_BACK_CENTER], true, heatsink);
-        
-        if(_state.system_status == State::CONTROLLING &&
-           _plate_control.status() == plate_control::PlateStatus::STEADY_STATE) {
-            if(!_plate_control.thermistor_drift_check()) {
+
+        if (_state.system_status == State::CONTROLLING &&
+            _plate_control.status() ==
+                plate_control::PlateStatus::STEADY_STATE) {
+            if (!_plate_control.thermistor_drift_check()) {
                 _state.error_bitmap |= State::DRIFT_ERROR;
             }
         }
@@ -757,8 +758,7 @@ class ThermalPlateTask {
         // Thermistor out-of-range errors are prioritized over drift because
         // the former may be the root cause of the latter; sending a drift
         // error when a thermistor is entirely disconnected is misleading.
-        if ((_state.error_bitmap & State::DRIFT_ERROR) ==
-            State::DRIFT_ERROR) {
+        if ((_state.error_bitmap & State::DRIFT_ERROR) == State::DRIFT_ERROR) {
             return errors::ErrorCode::THERMAL_DRIFT;
         }
         return errors::ErrorCode::NO_ERROR;

@@ -933,3 +933,88 @@ SCENARIO("thermal plate task message passing") {
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
     }
 }
+
+TEST_CASE("thermal plate drift error check") {
+    uint32_t timestamp = TIME_DELTA;
+    GIVEN("thermal plate with good temperatures") {
+        auto tasks = TaskBuilder::build();
+        auto &plate_queue = tasks->get_thermal_plate_queue();
+        auto &plate_policy = tasks->get_thermal_plate_policy();
+        auto &host_queue = tasks->get_host_comms_queue();
+        const double target_temp = 50.0F;  // in ºC
+        auto adc_value = _converter.backconvert(target_temp - 1.0F);
+        auto read_message =
+            messages::ThermalPlateTempReadComplete{.heat_sink = adc_value,
+                                                   .front_right = adc_value,
+                                                   .front_center = adc_value,
+                                                   .front_left = adc_value,
+                                                   .back_right = adc_value,
+                                                   .back_center = adc_value,
+                                                   .back_left = adc_value,
+                                                   .timestamp_ms = timestamp};
+        static_cast<void>(plate_queue.try_send(read_message));
+        tasks->run_thermal_plate_task();
+        WHEN("setting temperature and letting overshoot settle") {
+            auto target_message = messages::SetPlateTemperatureMessage{
+                .id = 456, .setpoint = target_temp, .hold_time = 0.0F};
+            static_cast<void>(plate_queue.try_send(target_message));
+            // Move temperatures just above the base target
+            adc_value = _converter.backconvert(target_temp + 1.0F);
+            read_message.front_right = adc_value;
+            read_message.front_center = adc_value;
+            read_message.front_left = adc_value;
+            read_message.back_right = adc_value;
+            read_message.back_center = adc_value;
+            read_message.back_left = adc_value;
+            tasks->run_thermal_plate_task();
+            timestamp += 1 * 1000;  // advance 1 second (enter overshoot)
+            read_message.timestamp_ms = timestamp;
+            static_cast<void>(plate_queue.try_send(read_message));
+            tasks->run_thermal_plate_task();
+            timestamp += 11 * 1000;  // advance 11 seconds (end overshoot)
+            read_message.timestamp_ms = timestamp;
+            static_cast<void>(plate_queue.try_send(read_message));
+            tasks->run_thermal_plate_task();
+            THEN("the peltiers are enabled") { REQUIRE(plate_policy._enabled); }
+            AND_WHEN("a thermistor moves out of spec") {
+                adc_value = _converter.backconvert(target_temp);
+                read_message.front_right = adc_value;
+                read_message.front_center = adc_value;
+                read_message.front_left = adc_value;
+                read_message.back_center = adc_value;
+                read_message.back_left = adc_value;
+                read_message.back_right =
+                    _converter.backconvert(target_temp + 4.5F);
+                timestamp += TIME_DELTA;
+                static_cast<void>(plate_queue.try_send(read_message));
+                tasks->run_thermal_plate_task();
+
+                THEN("the peltiers are disabled") {
+                    REQUIRE(!plate_policy._enabled);
+                }
+                AND_WHEN("sending another Set Temperature message") {
+                    host_queue.backing_deque.clear();
+                    target_message.id = 999;
+                    static_cast<void>(plate_queue.try_send(target_message));
+                    tasks->run_thermal_plate_task();
+                    THEN("it is acked with an error") {
+                        REQUIRE(host_queue.has_message());
+                        messages::HostCommsMessage response;
+                        host_queue.recv(&response);
+                        REQUIRE(std::holds_alternative<
+                                messages::AcknowledgePrevious>(response));
+                        auto response_ack =
+                            std::get<messages::AcknowledgePrevious>(response);
+                        REQUIRE(response_ack.responding_to_id ==
+                                target_message.id);
+                        REQUIRE(response_ack.with_error ==
+                                errors::ErrorCode::THERMAL_DRIFT);
+                    }
+                    THEN("control does not start") {
+                        REQUIRE(!plate_policy._enabled);
+                    }
+                }
+            }
+        }
+    }
+}

@@ -163,7 +163,7 @@ class PlateControl {
      */
     [[nodiscard]] auto temp_within_setpoint() const -> bool;
 
-    /** 
+    /**
      * @brief Check for thermistor drift.
      * @return true if the thermistors are \b within spec, false if the
      *         drift between any two thermistors is over 4ºC
@@ -172,10 +172,11 @@ class PlateControl {
 
     /**
      * @brief Get the temperature of every peltier
-     * 
+     *
      * @return std::array containing each peltier thermistor temperature.
      */
-    [[nodiscard]] auto get_peltier_temps() const -> std::array<double, PELTIER_COUNT*THERM_PER_PELTIER>;
+    [[nodiscard]] auto get_peltier_temps() const
+        -> std::array<double, PELTIER_COUNT * THERM_PER_PELTIER>;
 
     /**
      * @brief Calculate the overshoot target temperature based off of a

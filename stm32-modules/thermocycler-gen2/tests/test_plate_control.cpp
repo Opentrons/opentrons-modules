@@ -1,5 +1,5 @@
-#include <vector>
 #include <map>
+#include <vector>
 
 #include "catch2/catch.hpp"
 #include "thermocycler-gen2/plate_control.hpp"
@@ -59,7 +59,8 @@ TEST_CASE("PlateControl overshoot and undershoot calculation") {
 TEST_CASE("PlateControl thermistor temperature getter") {
     using namespace plate_control;
     GIVEN("a plate control object with a set of thermistors") {
-        auto thermistors = std::vector<Thermistor>((PeltierID::PELTIER_NUMBER * 2) + 1,
+        auto thermistors = std::vector<Thermistor>(
+            (PeltierID::PELTIER_NUMBER * 2) + 1,
             Thermistor{
                 .temp_c = ROOM_TEMP,
                 .overtemp_limit_c = 105.0,
@@ -68,8 +69,7 @@ TEST_CASE("PlateControl thermistor temperature getter") {
                 .short_error = errors::ErrorCode::THERMISTOR_HEATSINK_SHORT,
                 .overtemp_error =
                     errors::ErrorCode::THERMISTOR_HEATSINK_OVERTEMP,
-                .error_bit = (uint8_t)(1) }
-        );
+                .error_bit = (uint8_t)(1)});
         Peltier left{.id = PeltierID::PELTIER_LEFT,
                      .thermistors = Peltier::ThermistorPair(
                          thermistors.at(THERM_BACK_LEFT),
@@ -94,7 +94,7 @@ TEST_CASE("PlateControl thermistor temperature getter") {
             WHEN("getting array of thermistor temperatures") {
                 auto result = plateControl.get_peltier_temps();
                 THEN("the temperatures are as expected") {
-                    for(size_t i = 0; i < PeltierID::PELTIER_NUMBER * 2; ++i) {
+                    for (size_t i = 0; i < PeltierID::PELTIER_NUMBER * 2; ++i) {
                         DYNAMIC_SECTION("thermistor " << i) {
                             REQUIRE(result[i] == HOT_TEMP);
                         }
@@ -103,7 +103,7 @@ TEST_CASE("PlateControl thermistor temperature getter") {
             }
         }
         GIVEN("different temperatures for each thermistor") {
-            auto temps = std::map<ThermistorID, double> {
+            auto temps = std::map<ThermistorID, double>{
                 {ThermistorID::THERM_BACK_LEFT, 1.0F},
                 {ThermistorID::THERM_FRONT_LEFT, 2.0F},
                 {ThermistorID::THERM_BACK_RIGHT, 3.0F},
@@ -111,24 +111,20 @@ TEST_CASE("PlateControl thermistor temperature getter") {
                 {ThermistorID::THERM_BACK_CENTER, 5.0F},
                 {ThermistorID::THERM_FRONT_CENTER, 6.0F},
             };
-            for(const auto& [id, temp] : temps) {
+            for (const auto &[id, temp] : temps) {
                 thermistors.at(id).temp_c = temp;
             }
             WHEN("getting array of thermistor temperatures") {
                 auto result = plateControl.get_peltier_temps();
                 THEN("each temperature is present exactly once") {
-                    auto result_check = std::map<double, int> {
-                        {1.0F, 0},
-                        {2.0F, 0},
-                        {3.0F, 0},
-                        {4.0F, 0},
-                        {5.0F, 0},
-                        {6.0F, 0},
+                    auto result_check = std::map<double, int>{
+                        {1.0F, 0}, {2.0F, 0}, {3.0F, 0},
+                        {4.0F, 0}, {5.0F, 0}, {6.0F, 0},
                     };
-                    for(const double &temp : result) {
+                    for (const double &temp : result) {
                         result_check[temp] += 1;
                     }
-                    for(const auto& [key, value]: result_check) {
+                    for (const auto &[key, value] : result_check) {
                         DYNAMIC_SECTION("check temperature " << key) {
                             REQUIRE(value == 1);
                         }
@@ -142,7 +138,8 @@ TEST_CASE("PlateControl thermistor temperature getter") {
 TEST_CASE("PlateControl drift error check") {
     using namespace plate_control;
     GIVEN("a plate control object with a set of thermistors") {
-        auto thermistors = std::vector<Thermistor>((PeltierID::PELTIER_NUMBER * 2) + 1,
+        auto thermistors = std::vector<Thermistor>(
+            (PeltierID::PELTIER_NUMBER * 2) + 1,
             Thermistor{
                 .temp_c = ROOM_TEMP,
                 .overtemp_limit_c = 105.0,
@@ -151,8 +148,7 @@ TEST_CASE("PlateControl drift error check") {
                 .short_error = errors::ErrorCode::THERMISTOR_HEATSINK_SHORT,
                 .overtemp_error =
                     errors::ErrorCode::THERMISTOR_HEATSINK_OVERTEMP,
-                .error_bit = (uint8_t)(1) }
-        );
+                .error_bit = (uint8_t)(1)});
         Peltier left{.id = PeltierID::PELTIER_LEFT,
                      .thermistors = Peltier::ThermistorPair(
                          thermistors.at(THERM_BACK_LEFT),
@@ -176,23 +172,19 @@ TEST_CASE("PlateControl drift error check") {
             set_temp(thermistors, HOT_TEMP);
             WHEN("checking for thermistor drift") {
                 auto result = plateControl.thermistor_drift_check();
-                THEN("the result is true") {
-                    REQUIRE(result == true);
-                }
+                THEN("the result is true") { REQUIRE(result == true); }
             }
         }
         GIVEN("thermistor temperatures non-uniform but within spec") {
-            thermistors.at(THERM_BACK_LEFT).temp_c    = HOT_TEMP - 1.5;
-            thermistors.at(THERM_FRONT_LEFT).temp_c   = HOT_TEMP - 1.0;
-            thermistors.at(THERM_BACK_RIGHT).temp_c   = HOT_TEMP - 0.5;
-            thermistors.at(THERM_FRONT_RIGHT).temp_c  = HOT_TEMP + 0.0;
-            thermistors.at(THERM_BACK_CENTER).temp_c  = HOT_TEMP + 1.5;
+            thermistors.at(THERM_BACK_LEFT).temp_c = HOT_TEMP - 1.5;
+            thermistors.at(THERM_FRONT_LEFT).temp_c = HOT_TEMP - 1.0;
+            thermistors.at(THERM_BACK_RIGHT).temp_c = HOT_TEMP - 0.5;
+            thermistors.at(THERM_FRONT_RIGHT).temp_c = HOT_TEMP + 0.0;
+            thermistors.at(THERM_BACK_CENTER).temp_c = HOT_TEMP + 1.5;
             thermistors.at(THERM_FRONT_CENTER).temp_c = HOT_TEMP + 1.0;
             WHEN("checking for thermistor drift") {
                 auto result = plateControl.thermistor_drift_check();
-                THEN("the result is true") {
-                    REQUIRE(result == true);
-                }
+                THEN("the result is true") { REQUIRE(result == true); }
             }
         }
         GIVEN("thermistors non-uniform and out of spec") {
@@ -201,13 +193,10 @@ TEST_CASE("PlateControl drift error check") {
             thermistors.at(THERM_FRONT_CENTER).temp_c = HOT_TEMP + 2.1;
             WHEN("checking for thermistor drift") {
                 auto result = plateControl.thermistor_drift_check();
-                THEN("the result is false") {
-                    REQUIRE(result == false);
-                }
+                THEN("the result is false") { REQUIRE(result == false); }
             }
         }
     }
-
 }
 
 SCENARIO("PlateControl peltier control works") {
