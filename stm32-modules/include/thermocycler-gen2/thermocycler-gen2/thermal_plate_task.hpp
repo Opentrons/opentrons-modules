@@ -76,6 +76,7 @@ struct State {
     // error is (1 << 6), for the heat sink
     static constexpr uint16_t PELTIER_ERROR = (1 << 7);
     static constexpr uint16_t FAN_ERROR = (1 << 8);
+    static constexpr uint16_t DRIFT_ERROR = (1 << 9);
 };
 
 // By using a template template parameter here, we allow the code instantiating
@@ -284,6 +285,13 @@ class ThermalPlateTask {
             msg.back_left, _thermistors[THERM_BACK_LEFT], true, heatsink);
         handle_temperature_conversion(
             msg.back_center, _thermistors[THERM_BACK_CENTER], true, heatsink);
+        
+        if(_state.system_status == State::CONTROLLING &&
+           _plate_control.status() == plate_control::PlateStatus::STEADY_STATE) {
+            if(!_plate_control.thermistor_drift_check()) {
+                _state.error_bitmap |= State::DRIFT_ERROR;
+            }
+        }
 
         if (old_error_bitmap != _state.error_bitmap) {
             if (_state.error_bitmap != 0) {
@@ -745,6 +753,13 @@ class ThermalPlateTask {
             if ((_state.error_bitmap & therm.error_bit) == therm.error_bit) {
                 return therm.error;
             }
+        }
+        // Thermistor out-of-range errors are prioritized over drift because
+        // the former may be the root cause of the latter; sending a drift
+        // error when a thermistor is entirely disconnected is misleading.
+        if ((_state.error_bitmap & State::DRIFT_ERROR) ==
+            State::DRIFT_ERROR) {
+            return errors::ErrorCode::THERMAL_DRIFT;
         }
         return errors::ErrorCode::NO_ERROR;
     }

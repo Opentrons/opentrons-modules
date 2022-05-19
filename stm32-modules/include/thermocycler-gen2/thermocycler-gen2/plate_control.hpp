@@ -32,6 +32,8 @@ class PlateControl {
     static constexpr double HOLD_INFINITE = (0.0F);
     /** Number of peltiers on system.*/
     static constexpr size_t PELTIER_COUNT = 3;
+    /** Number of thermistors per peltier.*/
+    static constexpr size_t THERM_PER_PELTIER = 2;
     /** Max ∆T to be considered "at" the setpoint.*/
     static constexpr double SETPOINT_THRESHOLD = 1.5F;
 
@@ -173,7 +175,7 @@ class PlateControl {
      * 
      * @return std::array containing each peltier thermistor temperature.
      */
-    [[nodiscard]] auto get_peltier_temps() const -> std::array<double, PELTIER_COUNT>;
+    [[nodiscard]] auto get_peltier_temps() const -> std::array<double, PELTIER_COUNT*THERM_PER_PELTIER>;
 
     /**
      * @brief Calculate the overshoot target temperature based off of a
