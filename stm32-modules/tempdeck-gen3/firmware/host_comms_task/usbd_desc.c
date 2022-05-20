@@ -27,15 +27,15 @@
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 // TODO(frank 05-06-2022): Uncomment these VID/PID definitions and replace
-// the temporary values that replicate the Gen1 thermocycler.
+// the temporary values that replicate the Gen1 tempdeck.
 //#define USBD_VID                      0x04D8
 //#define USBD_PID                      0xed8c
-#define USBD_VID                      0x04D8  /* same as Gen1 TC */
-#define USBD_PID                      0xED8C  /* same as Gen1 TC */
+#define USBD_VID                      0x04D8  /* same as Gen1 TD */
+#define USBD_PID                      0xee93  /* same as Gen1 TD */
 #define USBD_LANGID_STRING            0x0409  /* Replace '0xbbb' with your device language ID */
 #define USBD_MANUFACTURER_STRING      "Opentrons" /* Add your manufacturer string */
-#define USBD_PRODUCT_HS_STRING        "Thermocycler HS" /* Add your product High Speed string */
-#define USBD_PRODUCT_FS_STRING        "Thermocycler FS" /* Add your product Full Speed string */
+#define USBD_PRODUCT_HS_STRING        "Tempdeck HS" /* Add your product High Speed string */
+#define USBD_PRODUCT_FS_STRING        "Tempdeck FS" /* Add your product Full Speed string */
 #define USBD_CONFIGURATION_HS_STRING  "Serial Config HS" /* Add your configuration High Speed string */
 #define USBD_INTERFACE_HS_STRING      "Serial Interface HS" /* Add your Interface High Speed string */
 #define USBD_CONFIGURATION_FS_STRING  "Serial Config FS" /* Add your configuration Full Speed string */
