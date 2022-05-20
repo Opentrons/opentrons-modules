@@ -34,6 +34,9 @@ class LidStepper {
     constexpr static double DEGREES_TO_MICROSTEPS =
         STEPS_PER_REV * MICROSTEPPING * GEAR_RATIO_SCALAR;
     constexpr static double ROTATION_TO_STEPS = DEGREES_TO_MICROSTEPS * 360;
+    // Total factor to multiply from degrees to microsteps
+    constexpr static double MICROSTEPS_TO_DEGREES =
+        1.0F / DEGREES_TO_MICROSTEPS;
 
   public:
     /** Possible states of the lid stepper.*/
@@ -89,6 +92,11 @@ class LidStepper {
     [[nodiscard]] constexpr static auto angle_to_microsteps(double angle)
         -> int32_t {
         return static_cast<int32_t>(angle * DEGREES_TO_MICROSTEPS);
+    }
+
+    [[nodiscard]] constexpr static auto microsteps_to_angle(int32_t steps)
+        -> double {
+        return static_cast<double>(steps) * MICROSTEPS_TO_DEGREES;
     }
 };
 
