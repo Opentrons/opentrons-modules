@@ -31,7 +31,9 @@ class PlateControl {
     /** This hold time means there's no timer for holding.*/
     static constexpr double HOLD_INFINITE = (0.0F);
     /** Number of peltiers on system.*/
-    static constexpr double PELTIER_COUNT = 3.0F;
+    static constexpr size_t PELTIER_COUNT = 3;
+    /** Number of thermistors per peltier.*/
+    static constexpr size_t THERM_PER_PELTIER = 2;
     /** Max ∆T to be considered "at" the setpoint.*/
     static constexpr double SETPOINT_THRESHOLD = 1.5F;
 
@@ -78,6 +80,8 @@ class PlateControl {
     static constexpr double UNDERSHOOT_MIN_DIFFERENCE = 0.5;
     /** Amount of time to stay in overshoot, in seconds.*/
     static constexpr Seconds OVERSHOOT_TIME = 10.0F;
+    /** Maximum drift between thermistors at steady state, in ºC.*/
+    static constexpr double THERMISTOR_DRIFT_MAX_C = 4.0F;
 
     PlateControl() = delete;
     /**
@@ -158,6 +162,21 @@ class PlateControl {
      * degrees of the setpoint, false otherwise
      */
     [[nodiscard]] auto temp_within_setpoint() const -> bool;
+
+    /**
+     * @brief Check for thermistor drift.
+     * @return true if the thermistors are \b within spec, false if the
+     *         drift between any two thermistors is over 4ºC
+     */
+    [[nodiscard]] auto thermistor_drift_check() const -> bool;
+
+    /**
+     * @brief Get the temperature of every peltier
+     *
+     * @return std::array containing each peltier thermistor temperature.
+     */
+    [[nodiscard]] auto get_peltier_temps() const
+        -> std::array<double, PELTIER_COUNT * THERM_PER_PELTIER>;
 
     /**
      * @brief Calculate the overshoot target temperature based off of a
