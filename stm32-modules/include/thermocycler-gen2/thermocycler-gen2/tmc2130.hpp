@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <bit>
 #include <concepts>
 #include <cstdint>
 #include <functional>
@@ -295,10 +296,7 @@ class TMC2130 {
     template <TMC2130Register Reg, TMC2130Policy Policy>
     requires WritableRegister<Reg>
     auto set_register(Policy& policy, Reg reg) -> bool {
-        // Ignore the typical linter warning because we're only using
-        // this on __packed structures that mimic hardware registers
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-        auto value = *reinterpret_cast<RegisterSerializedTypeA*>(&reg);
+        auto value = std::bit_cast<uint32_t>(reg);
         value &= Reg::value_mask;
         return _spi.write(Reg::address, value, policy);
     }

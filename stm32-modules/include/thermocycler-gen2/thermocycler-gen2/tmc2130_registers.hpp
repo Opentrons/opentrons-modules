@@ -91,7 +91,11 @@ struct __attribute__((packed, __may_alias__)) GConfig {
     uint32_t stop_enable : 1 = 0;
     uint32_t direct_mode : 1 = 0;
     uint32_t test_mode : 1 = 0;  // MUST be 0
+    uint32_t fill_padding : 14 = 0; // Fill to 32
 };
+
+static_assert(sizeof(GConfig) == sizeof(uint32_t),
+              "Register must be 32 bit serializeable");
 
 struct __attribute__((packed, __may_alias__)) GStatus {
     static constexpr Registers address = Registers::GSTAT;
@@ -101,7 +105,11 @@ struct __attribute__((packed, __may_alias__)) GStatus {
     uint32_t undervoltage_error : 1 = 0;
     uint32_t driver_error : 1 = 0;
     uint32_t reset : 1 = 0;
+    uint32_t fill_padding : 29 = 0; // Fill to 32
 };
+
+static_assert(sizeof(GStatus) == sizeof(uint32_t),
+              "Register must be 32 bit serializeable");
 
 /**
  * This register sets the control current for holding and running.
@@ -119,7 +127,11 @@ struct __attribute__((packed, __may_alias__)) CurrentControl {
     uint32_t bit_padding_2 : 3 = 0;
     // Motor powers down after (hold_current_delay * (2^18)) clock cycles
     uint32_t hold_current_delay : 4 = 0;
+    uint32_t fill_padding : 12 = 0; // Fill to 32
 };
+
+static_assert(sizeof(CurrentControl) == sizeof(uint32_t),
+              "Register must be 32 bit serializeable");
 
 /**
  * This is the time to delay between ending a movement and moving to power-down
@@ -146,7 +158,11 @@ struct __attribute__((packed, __may_alias__)) PowerDownDelay {
     }
 
     uint32_t time : 8 = 0;
+    uint32_t fill_padding : 24 = 0; // Fill to 32
 };
+
+static_assert(sizeof(PowerDownDelay) == sizeof(uint32_t),
+              "Register must be 32 bit serializeable");
 
 /**
  * This is the threshold velocity for switching on smart energy coolStep
@@ -158,7 +174,11 @@ struct __attribute__((packed, __may_alias__)) TCoolThreshold {
     static constexpr uint32_t value_mask = (1 << 20) - 1;
 
     uint32_t threshold : 20 = 0;
+    uint32_t fill_padding : 12 = 0; // Fill to 32
 };
+
+static_assert(sizeof(TCoolThreshold) == sizeof(uint32_t),
+              "Register must be 32 bit serializeable");
 
 /**
  * This is the velocity threshold at which the controller will automatically
@@ -171,7 +191,11 @@ struct __attribute__((packed, __may_alias__)) THigh {
     static constexpr uint32_t value_mask = (1 << 20) - 1;
 
     uint32_t threshold : 20 = 0;
+    uint32_t fill_padding : 12 = 0; // Fill to 32
 };
+
+static_assert(sizeof(THigh) == sizeof(uint32_t),
+              "Register must be 32 bit serializeable");
 
 /**
  * This is the measured time per step of the motor.
@@ -182,7 +206,11 @@ struct __attribute__((packed, __may_alias__)) TStep {
     static constexpr uint32_t value_mask = (1 << 20) - 1;
 
     uint32_t value : 20 = 0;
+    uint32_t fill_padding : 12 = 0; // Fill to 32
 };
+
+static_assert(sizeof(TStep) == sizeof(uint32_t),
+              "Register must be 32 bit serializeable");
 
 /**
  * The CHOPCONFIG register contains a number of configuration options for the
@@ -295,7 +323,11 @@ struct __attribute__((packed, __may_alias__)) ChopConfig {
      * 1 = short to gnd protection disabled
      */
     uint32_t diss2g : 1 = 0;
+    uint32_t fill_padding : 1 = 0; // Fill to 32
 };
+
+static_assert(sizeof(ChopConfig) == sizeof(uint32_t),
+              "Register must be 32 bit serializeable");
 
 /**
  * COOLCONF contains information to configure the Coolstep and Smartguard (SG)
@@ -370,7 +402,11 @@ struct __attribute__((packed, __may_alias__)) CoolConfig {
      * 1 = filtered mode, SG signal updated for each 4 full steps
      */
     uint32_t sfilt : 1 = 0;
+    uint32_t fill_padding : 7 = 0; // Fill to 32
 };
+
+static_assert(sizeof(CoolConfig) == sizeof(uint32_t),
+              "Register must be 32 bit serializeable");
 
 /**
  * Holds error & stallguard information. Read only.
@@ -410,6 +446,9 @@ struct __attribute__((packed, __may_alias__)) DriveStatus {
     // Standstill indicator. Occurs 2^20 clocks after last step.
     uint32_t stst : 1 = 0;
 };
+
+static_assert(sizeof(DriveStatus) == sizeof(uint32_t),
+              "Register must be 32 bit serializeable");
 
 // Encapsulates all of the registers that should be configured by software
 struct TMC2130RegisterMap {
