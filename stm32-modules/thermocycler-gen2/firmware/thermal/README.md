@@ -16,6 +16,8 @@ The temperature measured by the thermistors is not necessarily equal to the temp
 
 The offset compensation is as follows: `Tc = (A * H) + ((B + 1) * T) + C`
 
+Furthermore, there are separate B and C coefficients for each channel (L/C/R).
+
 ### Ramp Control & Volumetric Overshoot
 
 When a new target temperature is set, the `plate_control` module enters a simple state machine. In order to ensure that the temperature of liquids in the plate is appropriate, the state machine includes __volumetric overshoot__ based on the maximum volume of liquid in a well (configured by the command to set the plate temperature).
