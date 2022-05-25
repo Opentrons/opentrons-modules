@@ -54,7 +54,7 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
         }
     }
     GIVEN("input to set B constant") {
-        std::string input = "M116 B-0.543\n";
+        std::string input = "M116.L B-0.543\n";
         WHEN("parsing") {
             auto parsed =
                 gcode::SetOffsetConstants::parse(input.begin(), input.end());
@@ -62,6 +62,7 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
                 REQUIRE(parsed.second != input.begin());
                 REQUIRE(parsed.first.has_value());
                 auto &val = parsed.first.value();
+                REQUIRE(val.channel == PeltierSelection::LEFT);
                 REQUIRE(!val.const_a.defined);
                 REQUIRE(val.const_b.defined);
                 REQUIRE_THAT(val.const_b.value,
@@ -71,7 +72,7 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
         }
     }
     GIVEN("input to set C constant") {
-        std::string input = "M116 C123.5\n";
+        std::string input = "M116.C C123.5\n";
         WHEN("parsing") {
             auto parsed =
                 gcode::SetOffsetConstants::parse(input.begin(), input.end());
@@ -79,6 +80,7 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
                 REQUIRE(parsed.second != input.begin());
                 REQUIRE(parsed.first.has_value());
                 auto &val = parsed.first.value();
+                REQUIRE(val.channel == PeltierSelection::CENTER);
                 REQUIRE(!val.const_a.defined);
                 REQUIRE(!val.const_b.defined);
                 REQUIRE(val.const_c.defined);
@@ -96,6 +98,7 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
                 REQUIRE(parsed.second != input.begin());
                 REQUIRE(parsed.first.has_value());
                 auto &val = parsed.first.value();
+                REQUIRE(val.channel == PeltierSelection::ALL);
                 REQUIRE(!val.const_b.defined);
                 REQUIRE(!val.const_c.defined);
                 REQUIRE(val.const_a.defined);
