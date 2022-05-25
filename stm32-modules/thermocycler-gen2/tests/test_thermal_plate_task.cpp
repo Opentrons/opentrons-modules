@@ -288,15 +288,15 @@ SCENARIO("thermal plate task message passing") {
                                 response);
                         REQUIRE(constants.responding_to_id == get_offsets.id);
                         REQUIRE_THAT(
-                            constants.const_a,
+                            constants.a,
                             Catch::Matchers::WithinAbs(
                                 plate_task.OFFSET_DEFAULT_CONST_A, 0.001F));
                         REQUIRE_THAT(
-                            constants.const_b,
+                            constants.bl,
                             Catch::Matchers::WithinAbs(
                                 plate_task.OFFSET_DEFAULT_CONST_B, 0.001F));
                         REQUIRE_THAT(
-                            constants.const_c,
+                            constants.cl,
                             Catch::Matchers::WithinAbs(
                                 plate_task.OFFSET_DEFAULT_CONST_C, 0.001F));
                     }

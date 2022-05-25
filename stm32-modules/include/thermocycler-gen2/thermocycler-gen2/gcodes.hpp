@@ -1323,6 +1323,11 @@ struct SetPIDConstants {
  *
  * Format: M116 B0.102 C-0.245\n
  *
+ * Can also accept an optional channel specification right after
+ * the identifying gcode. The channels are L, C, and R. If no channel
+ * is provided, the command implicitly configures all three channels.
+ *
+ * Example to set Left Channel B to 4: M116.L B4\n
  */
 struct SetOffsetConstants {
     using ParseResult = std::optional<SetOffsetConstants>;
@@ -1330,6 +1335,7 @@ struct SetOffsetConstants {
     static constexpr auto prefix_a = std::array{' ', 'A'};
     static constexpr auto prefix_b = std::array{' ', 'B'};
     static constexpr auto prefix_c = std::array{' ', 'C'};
+    static constexpr auto prefix_channel = std::array{'.'};
     static constexpr const char* response = "M116 OK\n";
 
     /**
@@ -1341,10 +1347,12 @@ struct SetOffsetConstants {
         bool defined;
         double value;
     };
+    enum class Channel { ALL, LEFT, CENTER, RIGHT };
 
     OffsetConstant const_a = {.defined = false, .value = 0.0F};
     OffsetConstant const_b = {.defined = false, .value = 0.0F};
     OffsetConstant const_c = {.defined = false, .value = 0.0F};
+    PeltierSelection channel = PeltierSelection::ALL;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -1365,6 +1373,26 @@ struct SetOffsetConstants {
         }
         auto old_working = working;
         auto ret = SetOffsetConstants();
+        working = prefix_matches(old_working, limit, prefix_channel);
+        if (working != old_working) {
+            // Next character must be the channel selection
+            auto chan = *working;
+            switch (chan) {
+                case 'L':
+                    ret.channel = PeltierSelection::LEFT;
+                    break;
+                case 'C':
+                    ret.channel = PeltierSelection::CENTER;
+                    break;
+                case 'R':
+                    ret.channel = PeltierSelection::RIGHT;
+                    break;
+                default:
+                    // Invalid selection
+                    return std::make_pair(std::nullopt, input);
+            }
+            std::advance(working, 1);
+        }
         working = prefix_matches(old_working, limit, prefix_a);
         if (working != old_working) {
             old_working = working;
@@ -1436,11 +1464,15 @@ struct GetOffsetConstants {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
     static auto write_response_into(InputIt buf, InputLimit limit, double a,
-                                    double b, double c) -> InputIt {
-        auto res =
-            snprintf(&*buf, (limit - buf), "M117 A:%0.3f B:%0.3f C:%0.3f OK\n",
-                     static_cast<float>(a), static_cast<float>(b),
-                     static_cast<float>(c));
+                                    double bl, double cl, double bc, double cc,
+                                    double br, double cr) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf),
+                            "M117 A:%0.3f BL:%0.3f CL:%0.3f BC:%0.3f CC:%0.3f "
+                            "BR:%0.3f CR:%0.3f OK\n",
+                            static_cast<float>(a), static_cast<float>(bl),
+                            static_cast<float>(cl), static_cast<float>(bc),
+                            static_cast<float>(cc), static_cast<float>(br),
+                            static_cast<float>(cr));
         if (res <= 0) {
             return buf;
         }

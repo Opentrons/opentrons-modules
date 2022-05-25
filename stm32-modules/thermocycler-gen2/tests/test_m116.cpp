@@ -1,4 +1,7 @@
+#include <utility>
+
 #include "catch2/catch.hpp"
+#include "systemwide.h"
 #include "thermocycler-gen2/gcodes.hpp"
 
 SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
@@ -27,8 +30,16 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
         }
     }
     GIVEN("input to set no constants") {
-        std::string input = "M116\n";
+        using TestCaseType = std::pair<std::string, PeltierSelection>;
+        const auto cases = GENERATE(
+            as<TestCaseType>{},
+            std::make_pair(std::string("M116\n"), PeltierSelection::ALL),
+            std::make_pair(std::string("M116.L\n"), PeltierSelection::LEFT),
+            std::make_pair(std::string("M116.R\n"), PeltierSelection::RIGHT),
+            std::make_pair(std::string("M116.C\n"), PeltierSelection::CENTER),
+            std::make_pair(std::string("M116.L \n"), PeltierSelection::LEFT));
         WHEN("parsing") {
+            auto input = cases.first;
             auto parsed =
                 gcode::SetOffsetConstants::parse(input.begin(), input.end());
             THEN("parsing should be succesful") {
@@ -38,6 +49,7 @@ SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
                 REQUIRE(!val.const_a.defined);
                 REQUIRE(!val.const_b.defined);
                 REQUIRE(!val.const_c.defined);
+                REQUIRE(val.channel == cases.second);
             }
         }
     }

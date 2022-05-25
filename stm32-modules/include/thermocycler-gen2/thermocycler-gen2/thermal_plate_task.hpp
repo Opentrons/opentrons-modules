@@ -201,9 +201,15 @@ class ThermalPlateTask {
           _plate_control(_peltier_left, _peltier_right, _peltier_center, _fans),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _eeprom(),
-          _offset_constants{.a = OFFSET_DEFAULT_CONST_A,
-                            .b = OFFSET_DEFAULT_CONST_B,
-                            .c = OFFSET_DEFAULT_CONST_C},
+          _offset_constants{
+              .a = OFFSET_DEFAULT_CONST_A,
+              .bl = OFFSET_DEFAULT_CONST_B,
+              .cl = OFFSET_DEFAULT_CONST_C,
+              .bc = OFFSET_DEFAULT_CONST_B,
+              .cc = OFFSET_DEFAULT_CONST_C,
+              .br = OFFSET_DEFAULT_CONST_B,
+              .cr = OFFSET_DEFAULT_CONST_C,
+          },
           _last_update(0) {}
     ThermalPlateTask(const ThermalPlateTask& other) = delete;
     auto operator=(const ThermalPlateTask& other) -> ThermalPlateTask& = delete;
@@ -648,10 +654,14 @@ class ThermalPlateTask {
             _offset_constants.a = msg.const_a;
         }
         if (msg.b_set) {
-            _offset_constants.b = msg.const_b;
+            _offset_constants.bl = msg.const_b;
+            _offset_constants.bc = msg.const_b;
+            _offset_constants.br = msg.const_b;
         }
         if (msg.c_set) {
-            _offset_constants.c = msg.const_c;
+            _offset_constants.cl = msg.const_c;
+            _offset_constants.cc = msg.const_c;
+            _offset_constants.cr = msg.const_c;
         }
 
         if (!_eeprom.template write_offset_constants(_offset_constants,
@@ -669,11 +679,15 @@ class ThermalPlateTask {
                        Policy& policy) -> void {
         _offset_constants =
             _eeprom.get_offset_constants(_offset_constants, policy);
-        auto response = messages::GetOffsetConstantsResponse{
-            .responding_to_id = msg.id,
-            .const_a = _offset_constants.a,
-            .const_b = _offset_constants.b,
-            .const_c = _offset_constants.c};
+        auto response =
+            messages::GetOffsetConstantsResponse{.responding_to_id = msg.id,
+                                                 .a = _offset_constants.a,
+                                                 .bl = _offset_constants.bl,
+                                                 .cl = _offset_constants.cl,
+                                                 .bc = _offset_constants.bc,
+                                                 .cc = _offset_constants.cc,
+                                                 .br = _offset_constants.br,
+                                                 .cr = _offset_constants.cr};
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));
@@ -906,7 +920,7 @@ class ThermalPlateTask {
             return temp;
         }
         return (_offset_constants.a * heatsink_temp) +
-               ((1.0F + _offset_constants.b) * temp) + _offset_constants.c;
+               ((1.0F + _offset_constants.bl) * temp) + _offset_constants.cl;
     }
 
     Queue& _message_queue;
