@@ -1944,7 +1944,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 REQUIRE(!message.a_set);
                 REQUIRE(!message.b_set);
                 REQUIRE(!message.c_set);
-                // REQUIRE(message.channel == PeltierSelection::ALL);
+                REQUIRE(message.channel == PeltierSelection::ALL);
                 AND_WHEN("sending good response back") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{.responding_to_id =

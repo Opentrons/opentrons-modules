@@ -280,17 +280,23 @@ class ThermalPlateTask {
                                       _thermistors[THERM_HEATSINK], false);
         auto heatsink = _thermistors[THERM_HEATSINK].temp_c;
         handle_temperature_conversion(
-            msg.front_right, _thermistors[THERM_FRONT_RIGHT], true, heatsink);
+            msg.front_right, _thermistors[THERM_FRONT_RIGHT], true, heatsink,
+            _offset_constants.a, _offset_constants.br, _offset_constants.cr);
         handle_temperature_conversion(
-            msg.front_left, _thermistors[THERM_FRONT_LEFT], true, heatsink);
+            msg.front_left, _thermistors[THERM_FRONT_LEFT], true, heatsink,
+            _offset_constants.a, _offset_constants.bl, _offset_constants.cl);
         handle_temperature_conversion(
-            msg.front_center, _thermistors[THERM_FRONT_CENTER], true, heatsink);
+            msg.front_center, _thermistors[THERM_FRONT_CENTER], true, heatsink,
+            _offset_constants.a, _offset_constants.bc, _offset_constants.cc);
         handle_temperature_conversion(
-            msg.back_right, _thermistors[THERM_BACK_RIGHT], true, heatsink);
+            msg.back_right, _thermistors[THERM_BACK_RIGHT], true, heatsink,
+            _offset_constants.a, _offset_constants.br, _offset_constants.cr);
         handle_temperature_conversion(
-            msg.back_left, _thermistors[THERM_BACK_LEFT], true, heatsink);
+            msg.back_left, _thermistors[THERM_BACK_LEFT], true, heatsink,
+            _offset_constants.a, _offset_constants.bl, _offset_constants.cl);
         handle_temperature_conversion(
-            msg.back_center, _thermistors[THERM_BACK_CENTER], true, heatsink);
+            msg.back_center, _thermistors[THERM_BACK_CENTER], true, heatsink,
+            _offset_constants.a, _offset_constants.bc, _offset_constants.cc);
 
         if (_state.system_status == State::CONTROLLING &&
             _plate_control.status() ==
@@ -654,14 +660,32 @@ class ThermalPlateTask {
             _offset_constants.a = msg.const_a;
         }
         if (msg.b_set) {
-            _offset_constants.bl = msg.const_b;
-            _offset_constants.bc = msg.const_b;
-            _offset_constants.br = msg.const_b;
+            if (msg.channel == PeltierSelection::ALL ||
+                msg.channel == PeltierSelection::LEFT) {
+                _offset_constants.bl = msg.const_b;
+            }
+            if (msg.channel == PeltierSelection::ALL ||
+                msg.channel == PeltierSelection::CENTER) {
+                _offset_constants.bc = msg.const_b;
+            }
+            if (msg.channel == PeltierSelection::ALL ||
+                msg.channel == PeltierSelection::RIGHT) {
+                _offset_constants.br = msg.const_b;
+            }
         }
         if (msg.c_set) {
-            _offset_constants.cl = msg.const_c;
-            _offset_constants.cc = msg.const_c;
-            _offset_constants.cr = msg.const_c;
+            if (msg.channel == PeltierSelection::ALL ||
+                msg.channel == PeltierSelection::LEFT) {
+                _offset_constants.cl = msg.const_c;
+            }
+            if (msg.channel == PeltierSelection::ALL ||
+                msg.channel == PeltierSelection::CENTER) {
+                _offset_constants.cc = msg.const_c;
+            }
+            if (msg.channel == PeltierSelection::ALL ||
+                msg.channel == PeltierSelection::RIGHT) {
+                _offset_constants.cr = msg.const_c;
+            }
         }
 
         if (!_eeprom.template write_offset_constants(_offset_constants,
@@ -693,10 +717,10 @@ class ThermalPlateTask {
             _task_registry->comms->get_message_queue().try_send(response));
     }
 
-    auto handle_temperature_conversion(uint16_t conversion_result,
-                                       Thermistor& thermistor,
-                                       bool apply_offset,
-                                       double heatsink_temp = 0.0F) -> void {
+    auto handle_temperature_conversion(
+        uint16_t conversion_result, Thermistor& thermistor, bool apply_offset,
+        double heatsink_temp = 0.0F, double const_a = 0.0F,
+        double const_b = 0.0F, double const_c = 0.0F) -> void {
         auto visitor = [this, &thermistor](const auto value) -> void {
             this->visit_conversion(thermistor, value);
         };
@@ -706,8 +730,8 @@ class ThermalPlateTask {
         std::visit(visitor, _converter.convert(conversion_result));
         // If there was an error, don't apply the offset
         if (apply_offset && (thermistor.error == errors::ErrorCode::NO_ERROR)) {
-            thermistor.temp_c =
-                calculate_thermistor_offset(thermistor.temp_c, heatsink_temp);
+            thermistor.temp_c = calculate_thermistor_offset(
+                thermistor.temp_c, heatsink_temp, const_a, const_b, const_c);
         }
         if (old_error != thermistor.error) {
             if (thermistor.error != errors::ErrorCode::NO_ERROR) {
@@ -913,14 +937,13 @@ class ThermalPlateTask {
      * @param heatsink_temp the current measured temperature of the heatsink
      * @return double containing the adjusted thermistor temperature
      */
-    [[nodiscard]] auto calculate_thermistor_offset(double temp,
-                                                   double heatsink_temp) const
-        -> double {
+    [[nodiscard]] auto calculate_thermistor_offset(
+        double temp, double heatsink_temp, double const_a, double const_b,
+        double const_c) const -> double {
         if (!_eeprom.initialized()) {
             return temp;
         }
-        return (_offset_constants.a * heatsink_temp) +
-               ((1.0F + _offset_constants.bl) * temp) + _offset_constants.cl;
+        return (const_a * heatsink_temp) + ((1.0F + const_b) * temp) + const_c;
     }
 
     Queue& _message_queue;

@@ -32,6 +32,7 @@ SCENARIO("thermal plate task message passing") {
         // Clear out the offsets for the first temperature set message
         auto default_offset_msg = messages::SetOffsetConstantsMessage{
             .id = 456,
+            .channel = PeltierSelection::ALL,
             .a_set = true,
             .const_a = 0,
             .b_set = true,
@@ -168,6 +169,7 @@ SCENARIO("thermal plate task message passing") {
             "temperature readings") {
             auto offset_set_msg = messages::SetOffsetConstantsMessage{
                 .id = 456,
+                .channel = PeltierSelection::ALL,
                 .a_set = true,
                 .const_a = plate_task.OFFSET_DEFAULT_CONST_A,
                 .b_set = true,
@@ -1012,6 +1014,113 @@ TEST_CASE("thermal plate drift error check") {
                     }
                     THEN("control does not start") {
                         REQUIRE(!plate_policy._enabled);
+                    }
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("sending individual channel offset constants") {
+    uint32_t timestamp = TIME_DELTA;
+    GIVEN("a thermal plate task") {
+        auto tasks = TaskBuilder::build();
+        auto &plate_queue = tasks->get_thermal_plate_queue();
+        auto &host_queue = tasks->get_host_comms_queue();
+
+        auto valid_adc = _converter.backconvert(_valid_temp);
+        auto read_message =
+            messages::ThermalPlateTempReadComplete{.heat_sink = valid_adc,
+                                                   .front_right = valid_adc,
+                                                   .front_center = valid_adc,
+                                                   .front_left = valid_adc,
+                                                   .back_right = valid_adc,
+                                                   .back_center = valid_adc,
+                                                   .back_left = valid_adc,
+                                                   .timestamp_ms = timestamp};
+        timestamp += TIME_DELTA;
+
+        GIVEN("offset constants for each channel") {
+            double a = GENERATE(0.0, 0.1, 0.2);
+            double bl = 0.1, cl = 0.2, bc = 0.3, cc = 0.4, br = 0.5, cr = 0.6;
+            WHEN(
+                "updating the plate task with the new values and sending new "
+                "thermistor readings") {
+                plate_queue.backing_deque.push_back(
+                    messages::SetOffsetConstantsMessage{
+                        .id = 1,
+                        .channel = PeltierSelection::LEFT,
+                        .a_set = true,
+                        .const_a = a,
+                        .b_set = true,
+                        .const_b = bl,
+                        .c_set = true,
+                        .const_c = cl});
+                tasks->run_thermal_plate_task();
+                plate_queue.backing_deque.push_back(
+                    messages::SetOffsetConstantsMessage{
+                        .id = 1,
+                        .channel = PeltierSelection::CENTER,
+                        .a_set = false,
+                        .b_set = true,
+                        .const_b = bc,
+                        .c_set = true,
+                        .const_c = cc});
+                tasks->run_thermal_plate_task();
+                plate_queue.backing_deque.push_back(
+                    messages::SetOffsetConstantsMessage{
+                        .id = 1,
+                        .channel = PeltierSelection::RIGHT,
+                        .a_set = false,
+                        .b_set = true,
+                        .const_b = br,
+                        .c_set = true,
+                        .const_c = cr});
+                tasks->run_thermal_plate_task();
+                host_queue.backing_deque.clear();
+                plate_queue.backing_deque.push_back(read_message);
+                tasks->run_thermal_plate_task();
+                AND_THEN("reading back the temperatures") {
+                    uint32_t id = 524;
+                    plate_queue.backing_deque.push_back(
+                        messages::GetPlateTemperatureDebugMessage{.id = id});
+                    tasks->run_thermal_plate_task();
+                    THEN(
+                        "the temperatures are compensated by each "
+                        "channel's coefficients") {
+                        REQUIRE(host_queue.has_message());
+                        auto msg = host_queue.backing_deque.front();
+                        REQUIRE(std::holds_alternative<
+                                messages::GetPlateTemperatureDebugResponse>(
+                            msg));
+                        auto temperatures = std::get<
+                            messages::GetPlateTemperatureDebugResponse>(msg);
+                        double expected_left = (a * _valid_temp) +
+                                               ((bl + 1.0F) * _valid_temp) + cl;
+                        double expected_center = (a * _valid_temp) +
+                                                 ((bc + 1.0F) * _valid_temp) +
+                                                 cc;
+                        double expected_right = (a * _valid_temp) +
+                                                ((br + 1.0F) * _valid_temp) +
+                                                cr;
+                        REQUIRE_THAT(
+                            temperatures.back_left_temp,
+                            Catch::Matchers::WithinAbs(expected_left, 0.001));
+                        REQUIRE_THAT(
+                            temperatures.front_left_temp,
+                            Catch::Matchers::WithinAbs(expected_left, 0.001));
+                        REQUIRE_THAT(
+                            temperatures.back_center_temp,
+                            Catch::Matchers::WithinAbs(expected_center, 0.001));
+                        REQUIRE_THAT(
+                            temperatures.front_center_temp,
+                            Catch::Matchers::WithinAbs(expected_center, 0.001));
+                        REQUIRE_THAT(
+                            temperatures.back_right_temp,
+                            Catch::Matchers::WithinAbs(expected_right, 0.001));
+                        REQUIRE_THAT(
+                            temperatures.front_right_temp,
+                            Catch::Matchers::WithinAbs(expected_right, 0.001));
                     }
                 }
             }

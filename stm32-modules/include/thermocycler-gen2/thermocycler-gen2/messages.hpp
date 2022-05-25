@@ -277,6 +277,7 @@ struct SetPIDConstantsMessage {
 
 struct SetOffsetConstantsMessage {
     uint32_t id;
+    PeltierSelection channel;
     bool a_set;
     double const_a;
     bool b_set;

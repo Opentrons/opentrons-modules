@@ -1264,6 +1264,7 @@ class HostCommsTask {
         }
         auto message =
             messages::SetOffsetConstantsMessage{.id = id,
+                                                .channel = gcode.channel,
                                                 .a_set = gcode.const_a.defined,
                                                 .const_a = gcode.const_a.value,
                                                 .b_set = gcode.const_b.defined,

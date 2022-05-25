@@ -1375,9 +1375,11 @@ struct SetOffsetConstants {
         auto ret = SetOffsetConstants();
         working = prefix_matches(old_working, limit, prefix_channel);
         if (working != old_working) {
+            if (working == limit) {
+                return std::make_pair(std::nullopt, input);
+            }
             // Next character must be the channel selection
-            auto chan = *working;
-            switch (chan) {
+            switch (static_cast<char>(*working)) {
                 case 'L':
                     ret.channel = PeltierSelection::LEFT;
                     break;
@@ -1392,6 +1394,7 @@ struct SetOffsetConstants {
                     return std::make_pair(std::nullopt, input);
             }
             std::advance(working, 1);
+            old_working = working;
         }
         working = prefix_matches(old_working, limit, prefix_a);
         if (working != old_working) {
