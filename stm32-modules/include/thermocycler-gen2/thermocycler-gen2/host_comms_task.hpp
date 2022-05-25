@@ -476,8 +476,8 @@ class HostCommsTask {
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
                 } else {
                     return cache_element.write_response_into(
-                        tx_into, tx_limit, response.const_a, response.const_b,
-                        response.const_c);
+                        tx_into, tx_limit, response.a, response.bl, response.cl,
+                        response.bc, response.cc, response.br, response.cr);
                 }
             },
             cache_entry);
@@ -1264,6 +1264,7 @@ class HostCommsTask {
         }
         auto message =
             messages::SetOffsetConstantsMessage{.id = id,
+                                                .channel = gcode.channel,
                                                 .a_set = gcode.const_a.defined,
                                                 .const_a = gcode.const_a.value,
                                                 .b_set = gcode.const_b.defined,
