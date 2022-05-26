@@ -66,6 +66,12 @@ class Multiprobe():
 
         def average(self) -> float:
             return average(self.as_list())
+
+        def to_csv(self) -> str:
+            ret = ''
+            for well in self.as_list():
+                ret += f'{well},'
+            return ret
     
     def _read_probe_line(self) -> bytes:
         """
@@ -242,9 +248,7 @@ if __name__ == '__main__':
     MINUTES = 3
     csv_data = []
 
-    csv_data.append('target,left pre, center pre, right pre, average pre, uniformity pre')
-    if(args.check):
-        csv_data[0] += ',left post, center post, right post, average post, uniformity post'
+    csv_data.append('target,calibrated,h1,a1,f4,c4,f9,c9,h12,a12,average,uniformity')
 
     for temperature in target_temps:
         print('')
@@ -264,7 +268,8 @@ if __name__ == '__main__':
         left_offsets.append(readings.left_temp() - temperature)
         center_offsets.append(readings.center_temp() - temperature)
         right_offsets.append(readings.right_temp() - temperature)
-        csv_data.append(f'{temperature},{readings.left_temp()},{readings.center_temp()},{readings.right_temp()},{readings.average()},{readings.uniformity()}')
+
+        csv_data.append(f'{temperature},NO,{readings.to_csv()}{readings.average()},{readings.uniformity()}')
 
     thermocycler.deactivate_all()
 
@@ -289,7 +294,6 @@ if __name__ == '__main__':
     if args.check:
         print('')
         print('Re-running temperatures to check constants...')
-        i = 1
         for temperature in target_temps:
             print('')
             print(f'Moving to {temperature}ºC and waiting {MINUTES} minutes...')
@@ -303,9 +307,8 @@ if __name__ == '__main__':
             print(f'Probe readings: Left={readings.left_temp()} Center={readings.center_temp()} Right={readings.right_temp()}')
             print(f'Average:    {readings.average()}')
             print(f'Uniformity: {readings.uniformity()}')
-            csv_data[i] += f',{readings.left_temp()},{readings.center_temp()},{readings.right_temp()},{readings.average()},{readings.uniformity()}'
-            
-            i += 1
+            csv_data.append(f'{temperature},YES,{readings.to_csv()}{readings.average()},{readings.uniformity()}')
+        
     
     thermocycler.deactivate_all()
     
