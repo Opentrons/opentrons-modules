@@ -73,18 +73,6 @@ class Multiprobe():
                 ret += f'{well},'
             return ret
     
-    def _read_probe_line(self) -> bytes:
-        """
-        Replaces `serial.readline` because readline does not work with the 
-        endline character used by the probe
-        """
-        ret = bytes()
-        char = b' '
-        while char != b'\r':
-            char = self.ser.read(1)
-            ret += char
-        return ret
-    
     def get_reading(self, retries=3) -> Readings:
         """Get a temperature reading from the probe"""
         self.ser.reset_input_buffer()
@@ -92,9 +80,9 @@ class Multiprobe():
         line_ready = False 
         data = []
         # Clear out the possible last reading
-        self._read_probe_line()
+        self.ser.read_until(expected=b'\r')
         while not line_ready:
-            reading = self._read_probe_line()
+            reading = self.ser.read_until(expected=b'\r')
             if reading != '':
                 data = reading.decode().strip().split()
                 if len(data) == 9:
