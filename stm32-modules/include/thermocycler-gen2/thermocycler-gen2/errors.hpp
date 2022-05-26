@@ -51,6 +51,7 @@ enum class ErrorCode {
     THERMAL_HEATER_ERROR = 405,
     THERMAL_CONSTANT_OUT_OF_RANGE = 406,
     THERMAL_TARGET_BAD = 407,
+    THERMAL_DRIFT = 408,
     // 5xx - Mechanical subsystem errors
     LID_MOTOR_BUSY = 501,
     LID_MOTOR_FAULT = 502,

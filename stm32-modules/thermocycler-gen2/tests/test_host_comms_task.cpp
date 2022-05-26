@@ -1944,6 +1944,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 REQUIRE(!message.a_set);
                 REQUIRE(!message.b_set);
                 REQUIRE(!message.c_set);
+                REQUIRE(message.channel == PeltierSelection::ALL);
                 AND_WHEN("sending good response back") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{.responding_to_id =
@@ -2007,16 +2008,22 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::GetOffsetConstantsResponse{
                             .responding_to_id = message.id,
-                            .const_a = 2.0,
-                            .const_b = 10.0,
-                            .const_c = 15.0});
+                            .a = 2.0,
+                            .bl = 10.0,
+                            .cl = 15.0,
+                            .bc = 10.0,
+                            .cc = 15.0,
+                            .br = 10.0,
+                            .cr = 15.0});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
-                        auto response = "M117 A:2.000 B:10.000 C:15.000 OK\n";
+                        auto response =
+                            "M117 A:2.000 BL:10.000 CL:15.000 BC:10.000 "
+                            "CC:15.000 BR:10.000 CR:15.000 OK\n";
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith(response));
                         REQUIRE(written_secondpass ==
@@ -2029,9 +2036,13 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::GetOffsetConstantsResponse{
                             .responding_to_id = message.id + 1,
-                            .const_a = 2.0,
-                            .const_b = 10.0,
-                            .const_c = 15.0});
+                            .a = 2.0,
+                            .bl = 10.0,
+                            .cl = 15.0,
+                            .bc = 10.0,
+                            .cc = 15.0,
+                            .br = 10.0,
+                            .cr = 15.0});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =

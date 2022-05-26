@@ -32,8 +32,11 @@ namespace eeprom {
  *
  */
 struct OffsetConstants {
-    // The value of the constants A, B and C
-    double a, b, c;
+    // Constant A is the same for each channel
+    double a;
+    double bl, cl;  // B and C for left
+    double bc, cc;  // B and C for center
+    double br, cr;  // B and C for right
 };
 
 /**
@@ -64,8 +67,12 @@ class Eeprom {
 
         if (flag == EEPROMFlag::CONSTANTS_WRITTEN) {
             ret.a = read_const(EEPROMPageMap::CONST_A, policy);
-            ret.b = read_const(EEPROMPageMap::CONST_B, policy);
-            ret.c = read_const(EEPROMPageMap::CONST_C, policy);
+            ret.bl = read_const(EEPROMPageMap::CONST_BL, policy);
+            ret.cl = read_const(EEPROMPageMap::CONST_CL, policy);
+            ret.bc = read_const(EEPROMPageMap::CONST_BC, policy);
+            ret.cc = read_const(EEPROMPageMap::CONST_CC, policy);
+            ret.br = read_const(EEPROMPageMap::CONST_BR, policy);
+            ret.cr = read_const(EEPROMPageMap::CONST_CR, policy);
         }
         _initialized = true;
         return ret;
@@ -84,37 +91,51 @@ class Eeprom {
     auto write_offset_constants(OffsetConstants constants, Policy& policy)
         -> bool {
         // Write the constants
-        if (!_eeprom.template write_value(
-                static_cast<uint8_t>(EEPROMPageMap::CONST_A), constants.a,
-                policy)) {
+        auto ret = _eeprom.template write_value(
+            static_cast<uint8_t>(EEPROMPageMap::CONST_A), constants.a, policy);
+        if (ret) {
+            ret = _eeprom.template write_value(
+                static_cast<uint8_t>(EEPROMPageMap::CONST_BL), constants.bl,
+                policy);
+        }
+        if (ret) {
+            ret = _eeprom.template write_value(
+                static_cast<uint8_t>(EEPROMPageMap::CONST_CL), constants.cl,
+                policy);
+        }
+        if (ret) {
+            ret = _eeprom.template write_value(
+                static_cast<uint8_t>(EEPROMPageMap::CONST_BC), constants.bc,
+                policy);
+        }
+        if (ret) {
+            ret = _eeprom.template write_value(
+                static_cast<uint8_t>(EEPROMPageMap::CONST_CC), constants.cc,
+                policy);
+        }
+        if (ret) {
+            ret = _eeprom.template write_value(
+                static_cast<uint8_t>(EEPROMPageMap::CONST_BR), constants.br,
+                policy);
+        }
+        if (ret) {
+            ret = _eeprom.template write_value(
+                static_cast<uint8_t>(EEPROMPageMap::CONST_CR), constants.cr,
+                policy);
+        }
+        if (ret) {
+            // Flag that the constants are good
+            ret = _eeprom.template write_value(
+                static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG),
+                static_cast<uint32_t>(EEPROMFlag::CONSTANTS_WRITTEN), policy);
+        }
+        if (!ret) {
             // Attempt to flag that the constants are not valid
             static_cast<void>(_eeprom.template write_value(
                 static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG),
                 static_cast<uint32_t>(EEPROMFlag::INVALID), policy));
-            return false;
         }
-        if (!_eeprom.template write_value(
-                static_cast<uint8_t>(EEPROMPageMap::CONST_B), constants.b,
-                policy)) {
-            // Attempt to flag that the constants are not valid
-            static_cast<void>(_eeprom.template write_value(
-                static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG),
-                static_cast<uint32_t>(EEPROMFlag::INVALID), policy));
-            return false;
-        }
-        if (!_eeprom.template write_value(
-                static_cast<uint8_t>(EEPROMPageMap::CONST_C), constants.c,
-                policy)) {
-            // Attempt to flag that the constants are not valid
-            static_cast<void>(_eeprom.template write_value(
-                static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG),
-                static_cast<uint32_t>(EEPROMFlag::INVALID), policy));
-            return false;
-        }
-        // Flag that the constants are good
-        return _eeprom.template write_value(
-            static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG),
-            static_cast<uint32_t>(EEPROMFlag::CONSTANTS_WRITTEN), policy);
+        return ret;
     }
 
     /**
@@ -127,17 +148,21 @@ class Eeprom {
   private:
     // Enumeration of memory locations to be used on the EEPROM
     enum class EEPROMPageMap : uint8_t {
-        CONST_B = 0,  // Value of the B constant
-        CONST_C = 1,  // Value of the C constant
+        CONST_BL = 0,  // Value of the B constant for the left channel
+        CONST_CL = 1,  // Value of the C constant for the left channel
         // Flag indicating whether constants have been written.
         // See \ref EEPROMFlag
         CONST_FLAG = 2,
-        CONST_A = 3,  // Value of the A constant
+        CONST_A = 3,   // Value of the A constant
+        CONST_BC = 4,  // Value of the B constant for the center channel
+        CONST_CC = 5,  // Value of the C constant for the center channel
+        CONST_BR = 6,  // Value of the B constant for the right channel
+        CONST_CR = 7,  // Value of the C constant for the right channel
     };
 
     // Enumeration of the EEPROM_CONST_FLAG values
     enum class EEPROMFlag {
-        CONSTANTS_WRITTEN = 2,  // Values of all constants are written
+        CONSTANTS_WRITTEN = 3,  // Values of all constants are written (7 total)
         INVALID = 0xFF          // No values are written
     };
 

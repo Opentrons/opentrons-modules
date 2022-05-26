@@ -277,6 +277,7 @@ struct SetPIDConstantsMessage {
 
 struct SetOffsetConstantsMessage {
     uint32_t id;
+    PeltierSelection channel;
     bool a_set;
     double const_a;
     bool b_set;
@@ -291,7 +292,7 @@ struct GetOffsetConstantsMessage {
 
 struct GetOffsetConstantsResponse {
     uint32_t responding_to_id;
-    double const_a, const_b, const_c;
+    double a, bl, cl, bc, cc, br, cr;
 };
 
 struct UpdateUIMessage {

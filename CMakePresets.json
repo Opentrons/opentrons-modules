@@ -108,6 +108,26 @@
             ]
         },
         {
+            "name": "tempdeck-gen3-binary",
+            "displayName": "tempdeck-gen3 binary",
+            "description": "Build the tempdeck-gen3 cross binary",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "tempdeck-gen3"
+            ]
+        },
+        {
+            "name": "tempdeck-gen3-debug",
+            "displayName": "thermocycler gen2 debug",
+            "description": "Build the tempdeck-gen3 cross debug",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "tempdeck-gen3-debug"
+            ]
+        },
+        {
             "name": "lint",
             "displayName": "lint all",
             "description": "Runs clang-tidy on all targets",
@@ -116,7 +136,8 @@
             "targets": [
                 "heater-shaker-lint",
                 "common-lint",
-                "thermocycler-gen2-lint"
+                "thermocycler-gen2-lint",
+                "tempdeck-gen3-lint"
             ]
         },
         {
@@ -128,7 +149,8 @@
             "targets": [
                 "heater-shaker-format",
                 "common-format",
-                "thermocycler-gen2-format"
+                "thermocycler-gen2-format",
+                "tempdeck-gen3-format"
             ]
         },
         {
@@ -140,7 +162,8 @@
             "targets": [
                 "heater-shaker-format",
                 "common-format",
-                "thermocycler-gen2-format"
+                "thermocycler-gen2-format",
+                "tempdeck-gen3-format"
             ]
         },
         {
@@ -151,7 +174,8 @@
             "jobs": 4,
             "targets": [
                 "heater-shaker-simulator",
-                "thermocycler-gen2-simulator"
+                "thermocycler-gen2-simulator",
+                "tempdeck-gen3-simulator"
             ]
         },
         {
@@ -162,7 +186,8 @@
             "jobs": 4,
             "targets": [
                 "heater-shaker-simulator",
-                "thermocycler-gen2-simulator"
+                "thermocycler-gen2-simulator",
+                "tempdeck-gen3-simulator"
             ]
         },
         {
@@ -174,13 +199,14 @@
             "targets": [
                 "heater-shaker-build-and-test",
                 "common-build-and-test",
-                "thermocycler-gen2-build-and-test"
+                "thermocycler-gen2-build-and-test",
+                "tempdeck-gen3-build-and-test"
             ]
         },
         {
             "name": "thermocycler-gen2-tests",
             "displayName": "tests",
-            "description": "Runs build-and-test target for all subprojects",
+            "description": "Runs build-and-test target for thermocycler-gen2",
             "configurePreset": "stm32-host",
             "jobs": 4,
             "targets": [
@@ -190,7 +216,7 @@
         {
             "name": "heater-shaker-tests",
             "displayName": "tests",
-            "description": "Runs build-and-test target for all subprojects",
+            "description": "Runs build-and-test target for heater-shaker",
             "configurePreset": "stm32-host",
             "jobs": 4,
             "targets": [
@@ -198,9 +224,19 @@
             ]
         },
         {
+            "name": "tempdeck-gen3-tests",
+            "displayName": "tests",
+            "description": "Runs build-and-test target for tempdeck-gen3",
+            "configurePreset": "stm32-host",
+            "jobs": 4,
+            "targets": [
+                "tempdeck-gen3-build-and-test"
+            ]
+        },
+        {
             "name": "common-tests",
             "displayName": "tests",
-            "description": "Runs build-and-test target for all subprojects",
+            "description": "Runs build-and-test target for common code",
             "configurePreset": "stm32-host",
             "jobs": 4,
             "targets": [
