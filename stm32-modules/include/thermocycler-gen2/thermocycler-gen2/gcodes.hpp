@@ -1106,8 +1106,9 @@ struct SetPlateTemperature {
 
     // 0 seconds means infinite hold time
     constexpr static double infinite_hold = 0.0F;
-    // If no volume is specified, set to 0
-    constexpr static double default_volume = 0.0F;
+    // If no volume is specified, set to a negative number and let
+    // the rest of the firmware decide a default value
+    constexpr static double default_volume = -1.0F;
 
     double setpoint;
     double hold_time;
@@ -1314,20 +1315,27 @@ struct SetPIDConstants {
 /**
  * Uses M116, as defined on Gen 1 thermocyclers.
  *
- * Accepts two optional constants, B and C. These are
+ * Accepts two optional constants, A B and C. These are
  * used in the calculation of the plate temperature for
  * each thermistor on the system with the following equation:
  *
- * > temp = (1+B)*(measured temp) + C
+ * > temp = (A*heatsink temp) + (1+B)*(measured temp) + C
  *
  * Format: M116 B0.102 C-0.245\n
  *
+ * Can also accept an optional channel specification right after
+ * the identifying gcode. The channels are L, C, and R. If no channel
+ * is provided, the command implicitly configures all three channels.
+ *
+ * Example to set Left Channel B to 4: M116.L B4\n
  */
 struct SetOffsetConstants {
     using ParseResult = std::optional<SetOffsetConstants>;
     static constexpr auto prefix = std::array{'M', '1', '1', '6'};
+    static constexpr auto prefix_a = std::array{' ', 'A'};
     static constexpr auto prefix_b = std::array{' ', 'B'};
     static constexpr auto prefix_c = std::array{' ', 'C'};
+    static constexpr auto prefix_channel = std::array{'.'};
     static constexpr const char* response = "M116 OK\n";
 
     /**
@@ -1339,9 +1347,12 @@ struct SetOffsetConstants {
         bool defined;
         double value;
     };
+    enum class Channel { ALL, LEFT, CENTER, RIGHT };
 
+    OffsetConstant const_a = {.defined = false, .value = 0.0F};
     OffsetConstant const_b = {.defined = false, .value = 0.0F};
     OffsetConstant const_c = {.defined = false, .value = 0.0F};
+    PeltierSelection channel = PeltierSelection::ALL;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -1362,6 +1373,42 @@ struct SetOffsetConstants {
         }
         auto old_working = working;
         auto ret = SetOffsetConstants();
+        working = prefix_matches(old_working, limit, prefix_channel);
+        if (working != old_working) {
+            if (working == limit) {
+                return std::make_pair(std::nullopt, input);
+            }
+            // Next character must be the channel selection
+            switch (static_cast<char>(*working)) {
+                case 'L':
+                    ret.channel = PeltierSelection::LEFT;
+                    break;
+                case 'C':
+                    ret.channel = PeltierSelection::CENTER;
+                    break;
+                case 'R':
+                    ret.channel = PeltierSelection::RIGHT;
+                    break;
+                default:
+                    // Invalid selection
+                    return std::make_pair(std::nullopt, input);
+            }
+            std::advance(working, 1);
+            old_working = working;
+        }
+        working = prefix_matches(old_working, limit, prefix_a);
+        if (working != old_working) {
+            old_working = working;
+            auto a = parse_value<float>(working, limit);
+            if (!a.first.has_value()) {
+                return std::make_pair(std::nullopt, input);
+            }
+            ret.const_a.defined = true;
+            ret.const_a.value = a.first.value();
+            working = a.second;
+        }
+        old_working = working;
+
         working = prefix_matches(old_working, limit, prefix_b);
         if (working != old_working) {
             old_working = working;
@@ -1393,7 +1440,7 @@ struct SetOffsetConstants {
 /**
  * Uses M117, as defined on Gen 1 thermocyclers.
  *
- * Returns the programmed offset constants on the device, B and C.
+ * Returns the programmed offset constants on the device, A B and C.
  *
  * Format: M117\n
  *
@@ -1419,10 +1466,16 @@ struct GetOffsetConstants {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    static auto write_response_into(InputIt buf, InputLimit limit, double b,
-                                    double c) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M117 B:%0.2f C:%0.2f OK\n",
-                            static_cast<float>(b), static_cast<float>(c));
+    static auto write_response_into(InputIt buf, InputLimit limit, double a,
+                                    double bl, double cl, double bc, double cc,
+                                    double br, double cr) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf),
+                            "M117 A:%0.3f BL:%0.3f CL:%0.3f BC:%0.3f CC:%0.3f "
+                            "BR:%0.3f CR:%0.3f OK\n",
+                            static_cast<float>(a), static_cast<float>(bl),
+                            static_cast<float>(cl), static_cast<float>(bc),
+                            static_cast<float>(cc), static_cast<float>(br),
+                            static_cast<float>(cr));
         if (res <= 0) {
             return buf;
         }
@@ -1478,6 +1531,39 @@ struct CloseLid {
             return std::make_pair(ParseResult(), input);
         }
         return std::make_pair(ParseResult(CloseLid()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+/**
+ * @brief Uses M128. Commands the thermocycler to lift the plate.
+ *
+ * This command is only intended to be sent when the lid is already
+ * in the open position. The lid will open further to lift the plate,
+ * and then return to the open position.
+ *
+ */
+struct LiftPlate {
+    using ParseResult = std::optional<LiftPlate>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '8'};
+    static constexpr const char* response = "M128 OK\n";
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(LiftPlate()), working);
     }
 
     template <typename InputIt, typename InLimit>
@@ -1563,10 +1649,10 @@ struct GetLidSwitches {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit, int closed,
-                                    int open) -> InputIt {
+                                    int open, int seal) -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M901.D C:%i O:%i OK\n", closed,
-                       open);
+        res = snprintf(&*buf, (limit - buf), "M901.D C:%i O:%i S:%i OK\n",
+                       closed, open, seal);
         if (res <= 0) {
             return buf;
         }

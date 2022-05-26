@@ -7,7 +7,7 @@
 #include <array>
 #include <optional>
 
-using namespace board_revision;
+namespace board_revision {
 
 // Holds the expected inputs for a board rev
 struct BoardRevSetting {
@@ -22,6 +22,7 @@ constexpr static std::array<BoardRevSetting, BOARD_REV_INVALID> _revisions{
      {.pins = {INPUT_PULLDOWN, INPUT_PULLDOWN, INPUT_PULLDOWN},
       .revision = BOARD_REV_2}}};
 // The actual revision
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _revision = BoardRevision::BOARD_REV_INVALID;
 
 auto BoardRevisionIface::get() -> BoardRevision {
@@ -45,3 +46,5 @@ auto BoardRevisionIface::read() -> BoardRevision {
     _revision = BoardRevision::BOARD_REV_INVALID;
     return _revision;
 }
+
+};  // namespace board_revision

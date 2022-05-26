@@ -51,6 +51,7 @@ enum class ErrorCode {
     THERMAL_HEATER_ERROR = 405,
     THERMAL_CONSTANT_OUT_OF_RANGE = 406,
     THERMAL_TARGET_BAD = 407,
+    THERMAL_DRIFT = 408,
     // 5xx - Mechanical subsystem errors
     LID_MOTOR_BUSY = 501,
     LID_MOTOR_FAULT = 502,
@@ -58,6 +59,8 @@ enum class ErrorCode {
     SEAL_MOTOR_BUSY = 504,
     SEAL_MOTOR_FAULT = 505,
     SEAL_MOTOR_STALL = 506,
+    LID_CLOSED = 507,
+    SEAL_MOTOR_SWITCH = 508,
 };
 
 auto errorstring(ErrorCode code) -> const char*;

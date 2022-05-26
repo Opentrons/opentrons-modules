@@ -50,8 +50,8 @@ class HostCommsTask {
         gcode::GetSealDriveStatus, gcode::SetSealParameter, gcode::GetLidStatus,
         gcode::GetThermalPowerDebug, gcode::SetOffsetConstants,
         gcode::GetOffsetConstants, gcode::OpenLid, gcode::CloseLid,
-        gcode::DeactivateAll, gcode::GetBoardRevision, gcode::GetLidSwitches,
-        gcode::GetFrontButton>;
+        gcode::LiftPlate, gcode::DeactivateAll, gcode::GetBoardRevision,
+        gcode::GetLidSwitches, gcode::GetFrontButton>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
@@ -60,7 +60,8 @@ class HostCommsTask {
                  gcode::DeactivateLidHeating, gcode::SetPIDConstants,
                  gcode::SetPlateTemperature, gcode::DeactivatePlate,
                  gcode::SetFanAutomatic, gcode::SetSealParameter,
-                 gcode::SetOffsetConstants, gcode::OpenLid, gcode::CloseLid>;
+                 gcode::SetOffsetConstants, gcode::OpenLid, gcode::CloseLid,
+                 gcode::LiftPlate>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetLidTempDebugCache = AckCache<8, gcode::GetLidTemperatureDebug>;
     using GetPlateTempDebugCache = AckCache<8, gcode::GetPlateTemperatureDebug>;
@@ -475,7 +476,8 @@ class HostCommsTask {
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
                 } else {
                     return cache_element.write_response_into(
-                        tx_into, tx_limit, response.const_b, response.const_c);
+                        tx_into, tx_limit, response.a, response.bl, response.cl,
+                        response.bc, response.cc, response.br, response.cr);
                 }
             },
             cache_entry);
@@ -633,7 +635,8 @@ class HostCommsTask {
                 } else {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.close_switch_pressed,
-                        response.open_switch_pressed);
+                        response.open_switch_pressed,
+                        response.seal_switch_pressed);
                 }
             },
             cache_entry);
@@ -1093,8 +1096,11 @@ class HostCommsTask {
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
 
-        auto message = messages::SetPlateTemperatureMessage{
-            .id = id, .setpoint = gcode.setpoint, .hold_time = gcode.hold_time};
+        auto message =
+            messages::SetPlateTemperatureMessage{.id = id,
+                                                 .setpoint = gcode.setpoint,
+                                                 .hold_time = gcode.hold_time,
+                                                 .volume = gcode.volume};
         if (!task_registry->thermal_plate->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
@@ -1258,6 +1264,9 @@ class HostCommsTask {
         }
         auto message =
             messages::SetOffsetConstantsMessage{.id = id,
+                                                .channel = gcode.channel,
+                                                .a_set = gcode.const_a.defined,
+                                                .const_a = gcode.const_a.value,
                                                 .b_set = gcode.const_b.defined,
                                                 .const_b = gcode.const_b.value,
                                                 .c_set = gcode.const_c.defined,
@@ -1329,6 +1338,28 @@ class HostCommsTask {
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
         auto message = messages::OpenLidMessage{.id = id};
+        if (!task_registry->motor->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::LiftPlate& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::PlateLiftMessage{.id = id};
         if (!task_registry->motor->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(

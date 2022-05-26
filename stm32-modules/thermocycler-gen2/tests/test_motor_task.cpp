@@ -83,7 +83,8 @@ SCENARIO("motor task message passing") {
                 motor_queue.backing_deque.push_back(done_msg);
                 tasks->run_motor_task();
                 THEN("the ACK is sent to the host comms task") {
-                    REQUIRE(motor_policy.get_vref() == 0);
+                    REQUIRE(motor_policy.get_vref() ==
+                            motor_task.LID_STEPPER_HOLD_CURRENT);
                     REQUIRE(motor_queue.backing_deque.empty());
                     REQUIRE(
                         !tasks->get_host_comms_queue().backing_deque.empty());
@@ -132,7 +133,8 @@ SCENARIO("motor task message passing") {
                             errors::ErrorCode::LID_MOTOR_FAULT);
                 }
                 THEN("no motion is started") {
-                    REQUIRE(motor_policy.get_vref() == 0);
+                    REQUIRE(motor_policy.get_vref() ==
+                            motor_task.LID_STEPPER_HOLD_CURRENT);
                 }
             }
         }
@@ -159,11 +161,12 @@ SCENARIO("motor task message passing") {
                         !tasks->get_host_comms_queue().backing_deque.empty());
                     auto ack =
                         tasks->get_host_comms_queue().backing_deque.front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            ack));
-                    auto ack_msg = std::get<messages::AcknowledgePrevious>(ack);
+                    REQUIRE(std::holds_alternative<
+                            messages::SealStepperDebugResponse>(ack));
+                    auto ack_msg =
+                        std::get<messages::SealStepperDebugResponse>(ack);
                     REQUIRE(ack_msg.responding_to_id == 999);
+                    REQUIRE(ack_msg.steps_taken == 0);
                     REQUIRE(ack_msg.with_error ==
                             errors::ErrorCode::SEAL_MOTOR_BUSY);
                 }
@@ -413,9 +416,8 @@ SCENARIO("motor task message passing") {
                 messages::OpenLidMessage{.id = 123});
             tasks->run_motor_task();
             THEN("the lid starts opening") {
-                REQUIRE(
-                    motor_task.get_lid_state() ==
-                    motor_task::LidState::Status::OPENING_PARTIAL_EXTEND_SEAL);
+                REQUIRE(motor_task.get_lid_state() ==
+                        motor_task::LidState::Status::OPENING_RETRACT_SEAL);
             }
             AND_WHEN("sending another OpenLid command immediately") {
                 tasks->get_motor_queue().backing_deque.push_back(
@@ -438,9 +440,8 @@ SCENARIO("motor task message passing") {
                 messages::CloseLidMessage{.id = 123});
             tasks->run_motor_task();
             THEN("the lid starts moving to the endstop") {
-                REQUIRE(
-                    motor_task.get_lid_state() ==
-                    motor_task::LidState::Status::CLOSING_PARTIAL_EXTEND_SEAL);
+                REQUIRE(motor_task.get_lid_state() ==
+                        motor_task::LidState::Status::CLOSING_RETRACT_SEAL);
             }
             AND_WHEN("sending another CloseLid command immediately") {
                 tasks->get_motor_queue().backing_deque.push_back(
@@ -463,14 +464,14 @@ SCENARIO("motor task message passing") {
                 messages::FrontButtonPressMessage());
             tasks->run_motor_task();
             THEN("the lid starts to open") {
-                REQUIRE(
-                    motor_task.get_lid_state() ==
-                    motor_task::LidState::Status::OPENING_PARTIAL_EXTEND_SEAL);
+                REQUIRE(motor_task.get_lid_state() ==
+                        motor_task::LidState::Status::OPENING_RETRACT_SEAL);
             }
         }
         GIVEN("lid closed sensor triggered") {
             motor_policy.set_lid_closed_switch(true);
             motor_policy.set_lid_open_switch(false);
+            motor_policy.set_seal_switch_triggered(false);
             WHEN("sending a Front Button message") {
                 tasks->get_motor_queue().backing_deque.push_back(
                     messages::FrontButtonPressMessage());
@@ -497,20 +498,21 @@ SCENARIO("motor task message passing") {
                     REQUIRE(response.responding_to_id == message.id);
                     REQUIRE(response.close_switch_pressed);
                     REQUIRE(!response.open_switch_pressed);
+                    REQUIRE(!response.seal_switch_pressed);
                 }
             }
         }
         GIVEN("lid open sensor triggered") {
             motor_policy.set_lid_open_switch(true);
             motor_policy.set_lid_closed_switch(false);
+            motor_policy.set_seal_switch_triggered(false);
             WHEN("sending a Front Button message") {
                 tasks->get_motor_queue().backing_deque.push_back(
                     messages::FrontButtonPressMessage());
                 tasks->run_motor_task();
                 THEN("the lid starts to close") {
                     REQUIRE(motor_task.get_lid_state() ==
-                            motor_task::LidState::Status::
-                                CLOSING_PARTIAL_EXTEND_SEAL);
+                            motor_task::LidState::Status::CLOSING_RETRACT_SEAL);
                 }
             }
             WHEN("sending a GetLidSwitches message") {
@@ -530,250 +532,383 @@ SCENARIO("motor task message passing") {
                     REQUIRE(response.responding_to_id == message.id);
                     REQUIRE(!response.close_switch_pressed);
                     REQUIRE(response.open_switch_pressed);
+                    REQUIRE(!response.seal_switch_pressed);
+                }
+            }
+            GIVEN("seal sensor triggered") {
+                motor_policy.set_seal_switch_triggered(true);
+                WHEN("sending a GetLidSwitches message") {
+                    auto message = messages::GetLidSwitchesMessage{.id = 123};
+                    tasks->get_motor_queue().backing_deque.push_back(message);
+                    tasks->run_motor_task();
+                    THEN(
+                        "a response is sent to host comms with the correct "
+                        "data") {
+                        REQUIRE(!tasks->get_motor_queue().has_message());
+                        auto host_message =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        REQUIRE(std::holds_alternative<
+                                messages::GetLidSwitchesResponse>(
+                            host_message));
+                        auto response =
+                            std::get<messages::GetLidSwitchesResponse>(
+                                host_message);
+                        REQUIRE(response.responding_to_id == message.id);
+                        REQUIRE(!response.close_switch_pressed);
+                        REQUIRE(response.open_switch_pressed);
+                        REQUIRE(response.seal_switch_pressed);
+                    }
                 }
             }
         }
     }
 }
 
-SCENARIO("motor task open and close lid behavior") {
-    auto tasks = TaskBuilder::build();
+struct MotorStep {
+    // Message to send on this step
+    messages::MotorMessage msg;
+    // If true, expect that the lid angle increased after this message
+    bool lid_angle_increased = false;
+    // If true, expect that the lid angle decreased after this message
+    bool lid_angle_decreased = false;
+    // If the lid moved (increase or decrease), check that the limit switches
+    // are either ignored or checked
+    bool lid_overdrive = false;
+    // Expected seal motor state
+    bool seal_on = false;
+    // Retraction is true, extension is false
+    bool seal_direction = false;
+    // If true, seal switch should be armed. If nullopt, doesn't matter.
+    std::optional<bool> seal_switch_armed = std::nullopt;
+
+    using SealPos = motor_util::SealStepper::Status;
+    // If this variable is set, expect seal in a specific position
+    std::optional<SealPos> seal_pos = std::nullopt;
+    // If true, expect an ack in the host comms task
+    std::optional<messages::AcknowledgePrevious> ack = std::nullopt;
+};
+
+/**
+ * @brief Executes a set of steps to exercise the lid motor state machine.
+ *
+ * @pre The state of any switches should be set \e before invoking this
+ */
+void test_motor_state_machine(std::shared_ptr<TaskBuilder> tasks,
+                              std::vector<MotorStep> &steps) {
     auto &motor_task = tasks->get_motor_task();
     auto &motor_policy = tasks->get_motor_policy();
     auto &motor_queue = tasks->get_motor_queue();
-    GIVEN("lid closed on startup") {
-        motor_policy.set_lid_closed_switch(true);
-        motor_policy.set_lid_open_switch(false);
-        WHEN("sending open lid command") {
-            motor_queue.backing_deque.push_back(
-                messages::OpenLidMessage{.id = 123});
-            tasks->run_motor_task();
-            THEN("the seal starts retracting") {
-                REQUIRE(motor_policy.seal_moving());
-                REQUIRE(
-                    motor_policy
-                        .get_tmc2130_direction());  // Retracting is positive
-            }
-            auto lid_position = motor_policy.get_angle();
-            WHEN("seal movement ends with a stall") {
-                motor_queue.backing_deque.push_back(
-                    messages::SealStepperComplete{
-                        .reason = messages::SealStepperComplete::
-                            CompletionReason::STALL});
-                tasks->run_motor_task();
-                THEN("the seal stops moving") {
-                    REQUIRE(!motor_policy.seal_moving());
+    for (size_t i = 0; i < steps.size(); ++i) {
+        auto &step = steps[i];
+
+        auto lid_angle_before = motor_policy.get_angle();
+        motor_queue.backing_deque.push_back(step.msg);
+        tasks->run_motor_task();
+
+        DYNAMIC_SECTION("Step " << i) {
+            if (step.lid_angle_increased) {
+                THEN("the lid motor opened") {
+                    REQUIRE(motor_policy.get_angle() > lid_angle_before);
                 }
-                THEN("the seal is in the Retracted position") {
+            }
+            if (step.lid_angle_decreased) {
+                THEN("the lid motor closed") {
+                    REQUIRE(motor_policy.get_angle() < lid_angle_before);
+                }
+            }
+            THEN("the seal is controlled correctly") {
+                REQUIRE(motor_policy.seal_moving() == step.seal_on);
+                if (step.seal_on) {
+                    REQUIRE(motor_policy.get_tmc2130_direction() ==
+                            step.seal_direction);
+                }
+            }
+            if (step.seal_pos.has_value()) {
+                THEN("the seal position is set correctly") {
                     REQUIRE(motor_task.get_seal_position() ==
-                            motor_util::SealStepper::Status::RETRACTED);
-                }
-                THEN("the lid starts opening") {
-                    REQUIRE(motor_policy.get_angle() > lid_position);
-                }
-                WHEN("lid movement completes") {
-                    motor_queue.backing_deque.push_back(
-                        messages::LidStepperComplete());
-                    lid_position = motor_policy.get_angle();
-                    tasks->run_motor_task();
-                    THEN("the lid moves back down a bit") {
-                        REQUIRE(motor_policy.get_angle() < lid_position);
-                    }
-                    WHEN("the lid movement completes") {
-                        motor_queue.backing_deque.push_back(
-                            messages::LidStepperComplete());
-                        tasks->run_motor_task();
-                        THEN("the command is acknowledged") {
-                            REQUIRE(
-                                tasks->get_host_comms_queue().has_message());
-                            auto msg = tasks->get_host_comms_queue()
-                                           .backing_deque.front();
-                            REQUIRE(std::holds_alternative<
-                                    messages::AcknowledgePrevious>(msg));
-                            auto response =
-                                std::get<messages::AcknowledgePrevious>(msg);
-                            REQUIRE(response.responding_to_id == 123);
-                            REQUIRE(response.with_error ==
-                                    errors::ErrorCode::NO_ERROR);
-                        }
-                    }
+                            step.seal_pos.value());
                 }
             }
-        }
-        WHEN("sending a lid close command") {
-            motor_queue.backing_deque.push_back(
-                messages::CloseLidMessage{.id = 456});
-            tasks->run_motor_task();
-            THEN("the message is immediately acked") {
-                REQUIRE(tasks->get_host_comms_queue().has_message());
-                auto msg = tasks->get_host_comms_queue().backing_deque.front();
-                REQUIRE(
-                    std::holds_alternative<messages::AcknowledgePrevious>(msg));
-                auto response = std::get<messages::AcknowledgePrevious>(msg);
-                REQUIRE(response.responding_to_id == 456);
-                REQUIRE(response.with_error == errors::ErrorCode::NO_ERROR);
+            if (step.ack.has_value()) {
+                THEN("an ack is sent to host comms") {
+                    auto ack = step.ack.value();
+                    REQUIRE(tasks->get_host_comms_queue().has_message());
+                    auto msg =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            msg));
+                    auto response =
+                        std::get<messages::AcknowledgePrevious>(msg);
+                    REQUIRE(response.responding_to_id == ack.responding_to_id);
+                    REQUIRE(response.with_error == ack.with_error);
+                }
             }
         }
     }
-    GIVEN("lid unknown at startup") {
-        motor_policy.set_lid_closed_switch(false);
+}
+
+SCENARIO("motor task lid state machine") {
+    auto tasks = TaskBuilder::build();
+    auto &motor_policy = tasks->get_motor_policy();
+    GIVEN("lid is closed on startup") {
+        motor_policy.set_lid_closed_switch(true);
         motor_policy.set_lid_open_switch(false);
-        REQUIRE(motor_task.get_seal_position() ==
-                motor_util::SealStepper::Status::UNKNOWN);
         WHEN("sending open lid command") {
-            motor_queue.backing_deque.push_back(
-                messages::OpenLidMessage{.id = 123});
-            tasks->run_motor_task();
-            THEN("the seal starts to extend") {
-                REQUIRE(motor_policy.seal_moving());
-                REQUIRE(
-                    !motor_policy
-                         .get_tmc2130_direction());  // Retracting is positive
-            }
-            WHEN("seal movement ends without a stall") {
-                motor_queue.backing_deque.push_back(
-                    messages::SealStepperComplete());
-                tasks->run_motor_task();
-                THEN("the seal starts retracting") {
-                    REQUIRE(motor_policy.seal_moving());
-                    REQUIRE(
-                        motor_policy.get_tmc2130_direction());  // Retracting is
-                                                                // positive
-                }
-                auto lid_position = motor_policy.get_angle();
-                WHEN("seal movement ends with a stall") {
-                    motor_queue.backing_deque.push_back(
-                        messages::SealStepperComplete{
-                            .reason = messages::SealStepperComplete::
-                                CompletionReason::STALL});
-                    tasks->run_motor_task();
-                    THEN("the seal stops moving") {
-                        REQUIRE(!motor_policy.seal_moving());
-                    }
-                    THEN("the seal is in the Retracted position") {
-                        REQUIRE(motor_task.get_seal_position() ==
-                                motor_util::SealStepper::Status::RETRACTED);
-                    }
-                    THEN("the lid starts opening") {
-                        REQUIRE(motor_policy.get_angle() > lid_position);
-                    }
-                    WHEN("lid movement completes") {
-                        motor_queue.backing_deque.push_back(
-                            messages::LidStepperComplete());
-                        lid_position = motor_policy.get_angle();
-                        tasks->run_motor_task();
-                        THEN("the lid moves back down a bit") {
-                            REQUIRE(motor_policy.get_angle() < lid_position);
-                        }
-                        WHEN("the lid movement completes") {
-                            motor_queue.backing_deque.push_back(
-                                messages::LidStepperComplete());
-                            tasks->run_motor_task();
-                            THEN("the command is acknowledged") {
-                                REQUIRE(tasks->get_host_comms_queue()
-                                            .has_message());
-                                auto msg = tasks->get_host_comms_queue()
-                                               .backing_deque.front();
-                                REQUIRE(std::holds_alternative<
-                                        messages::AcknowledgePrevious>(msg));
-                                auto response =
-                                    std::get<messages::AcknowledgePrevious>(
-                                        msg);
-                                REQUIRE(response.responding_to_id == 123);
-                                REQUIRE(response.with_error ==
-                                        errors::ErrorCode::NO_ERROR);
-                            }
-                        }
-                    }
-                }
+            std::vector<MotorStep> steps = {
+                // First step retracts seal switch
+                {.msg = messages::OpenLidMessage{.id = 123},
+                 .seal_on = true,
+                 .seal_direction = true,
+                 .seal_switch_armed = true},
+                // Second step extends seal switch
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::LIMIT},
+                 .seal_on = true,
+                 .seal_direction = false,
+                 .seal_switch_armed = false},
+                // Third step opens hinge
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::DONE},
+                 .lid_angle_increased = true,
+                 .lid_overdrive = false},
+                // Fourth step overdrives hinge
+                {.msg = messages::LidStepperComplete(),
+                 .lid_angle_decreased = true,
+                 .lid_overdrive = true},
+                // Should send ACK now
+                {.msg = messages::LidStepperComplete(),
+                 .ack =
+                     messages::AcknowledgePrevious{
+                         .responding_to_id = 123,
+                         .with_error = errors::ErrorCode::NO_ERROR}},
+            };
+            test_motor_state_machine(tasks, steps);
+        }
+        WHEN("sending close lid command") {
+            std::vector<MotorStep> steps = {
+                // Command should end immediately
+                {.msg = messages::CloseLidMessage{.id = 123},
+                 .ack = messages::AcknowledgePrevious{
+                     .responding_to_id = 123,
+                     .with_error = errors::ErrorCode::NO_ERROR}}};
+            test_motor_state_machine(tasks, steps);
+        }
+        WHEN("sending plate lift command") {
+            std::vector<MotorStep> steps = {
+                // Command should end with error
+                {.msg = messages::PlateLiftMessage{.id = 123},
+                 .ack = messages::AcknowledgePrevious{
+                     .responding_to_id = 123,
+                     .with_error = errors::ErrorCode::LID_CLOSED}}};
+            test_motor_state_machine(tasks, steps);
+        }
+        GIVEN("seal limit switch is triggered") {
+            motor_policy.set_seal_switch_triggered(true);
+            WHEN("sending open lid command") {
+                std::vector<MotorStep> steps = {
+                    {.msg = messages::OpenLidMessage{.id = 123},
+                     .ack = messages::AcknowledgePrevious{
+                         .responding_to_id = 123,
+                         .with_error = errors::ErrorCode::SEAL_MOTOR_SWITCH}}};
+                test_motor_state_machine(tasks, steps);
             }
         }
-        WHEN("sending a lid close command") {
-            motor_queue.backing_deque.push_back(
-                messages::CloseLidMessage{.id = 456});
-            tasks->run_motor_task();
-
-            THEN("the seal starts to extend") {
-                REQUIRE(motor_policy.seal_moving());
-                REQUIRE(
-                    !motor_policy
-                         .get_tmc2130_direction());  // Retracting is positive
-            }
-            WHEN("seal movement ends without a stall") {
-                motor_queue.backing_deque.push_back(
-                    messages::SealStepperComplete());
-                tasks->run_motor_task();
-                THEN("the seal starts retracting") {
-                    REQUIRE(motor_policy.seal_moving());
-                    REQUIRE(
-                        motor_policy.get_tmc2130_direction());  // Retracting is
-                                                                // positive
-                }
-                auto lid_position = motor_policy.get_angle();
-                WHEN("seal movement ends with a stall") {
-                    motor_queue.backing_deque.push_back(
-                        messages::SealStepperComplete{
-                            .reason = messages::SealStepperComplete::
-                                CompletionReason::STALL});
-                    tasks->run_motor_task();
-                    THEN("the seal stops moving") {
-                        REQUIRE(!motor_policy.seal_moving());
-                    }
-                    THEN("the seal is in the Retracted position") {
-                        REQUIRE(motor_task.get_seal_position() ==
-                                motor_util::SealStepper::Status::RETRACTED);
-                    }
-                    THEN("the lid starts closing") {
-                        REQUIRE(motor_policy.get_angle() < lid_position);
-                    }
-                    WHEN("lid movement completes") {
-                        motor_queue.backing_deque.push_back(
-                            messages::LidStepperComplete());
-                        lid_position = motor_policy.get_angle();
-                        tasks->run_motor_task();
-                        THEN("the lid overdrives into the switch") {
-                            REQUIRE(motor_policy.get_angle() < lid_position);
-                            REQUIRE(motor_policy.get_lid_overdrive());
-                        }
-                        WHEN("the lid movement completes") {
-                            motor_queue.backing_deque.push_back(
-                                messages::LidStepperComplete());
-                            tasks->run_motor_task();
-                            THEN("the seal is engaged") {
-                                REQUIRE(motor_policy.seal_moving());
-                                REQUIRE(
-                                    !motor_policy
-                                         .get_tmc2130_direction());  // Retracting
-                                                                     // is
-                                                                     // positive
-                            }
-                            AND_WHEN("the seal movement ends") {
-                                motor_queue.backing_deque.push_back(
-                                    messages::SealStepperComplete());
-                                tasks->run_motor_task();
-                                REQUIRE(
-                                    motor_task.get_seal_position() ==
-                                    motor_util::SealStepper::Status::ENGAGED);
-                                THEN("the command is acknowledged") {
-                                    REQUIRE(tasks->get_host_comms_queue()
-                                                .has_message());
-                                    auto msg = tasks->get_host_comms_queue()
-                                                   .backing_deque.front();
-                                    REQUIRE(std::holds_alternative<
-                                            messages::AcknowledgePrevious>(
-                                        msg));
-                                    auto response =
-                                        std::get<messages::AcknowledgePrevious>(
-                                            msg);
-                                    REQUIRE(response.responding_to_id == 456);
-                                    REQUIRE(response.with_error ==
-                                            errors::ErrorCode::NO_ERROR);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    }
+    GIVEN("lid is open on startup") {
+        motor_policy.set_lid_closed_switch(false);
+        motor_policy.set_lid_open_switch(true);
+        WHEN("sending open lid command") {
+            std::vector<MotorStep> steps = {
+                // No action
+                {.msg = messages::OpenLidMessage{.id = 123},
+                 .ack =
+                     messages::AcknowledgePrevious{
+                         .responding_to_id = 123,
+                         .with_error = errors::ErrorCode::NO_ERROR}},
+            };
+            test_motor_state_machine(tasks, steps);
+        }
+        WHEN("sending close lid command") {
+            std::vector<MotorStep> steps = {
+                // First step retracts seal to switch
+                {.msg = messages::CloseLidMessage{.id = 123},
+                 .seal_on = true,
+                 .seal_direction = true,
+                 .seal_switch_armed = true},
+                // Second step extends seal from switch
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::LIMIT},
+                 .seal_on = true,
+                 .seal_direction = false,
+                 .seal_switch_armed = false},
+                // Third step closes hinge
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::DONE},
+                 .lid_angle_decreased = true,
+                 .lid_overdrive = false},
+                // Fourth step overdrives hinge
+                {.msg = messages::LidStepperComplete(),
+                 .lid_angle_decreased = true,
+                 .lid_overdrive = true},
+                // Now extend seal to switch
+                {.msg = messages::LidStepperComplete(),
+                 .seal_on = true,
+                 .seal_direction = false,
+                 .seal_switch_armed = true},
+                // Retract seal from switch
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::LIMIT},
+                 .seal_on = true,
+                 .seal_direction = true,
+                 .seal_switch_armed = false},
+                // Should send ACK now
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::DONE},
+                 .ack =
+                     messages::AcknowledgePrevious{
+                         .responding_to_id = 123,
+                         .with_error = errors::ErrorCode::NO_ERROR}},
+            };
+            test_motor_state_machine(tasks, steps);
+        }
+        WHEN("sending plate lift command") {
+            std::vector<MotorStep> steps = {
+                // First open past the switch
+                {.msg = messages::PlateLiftMessage{.id = 123},
+                 .lid_angle_increased = true,
+                 .lid_overdrive = true},
+                // Now close back below the switch
+                {.msg = messages::LidStepperComplete(),
+                 .lid_angle_decreased = true,
+                 .lid_overdrive = true},
+                // Now open back to the switch
+                {.msg = messages::LidStepperComplete(),
+                 .lid_angle_increased = true,
+                 .lid_overdrive = false},
+                // Now overdrive into the switch
+                {.msg = messages::LidStepperComplete(),
+                 .lid_angle_decreased = true,
+                 .lid_overdrive = true},
+                // Should send ACK now
+                {.msg = messages::LidStepperComplete(),
+                 .ack =
+                     messages::AcknowledgePrevious{
+                         .responding_to_id = 123,
+                         .with_error = errors::ErrorCode::NO_ERROR}},
+            };
+            test_motor_state_machine(tasks, steps);
+        }
+    }
+    GIVEN("lid is unknown at startup") {
+        motor_policy.set_lid_closed_switch(false);
+        motor_policy.set_lid_open_switch(false);
+        WHEN("sending open lid command") {
+            std::vector<MotorStep> steps = {
+                // First step retracts seal switch
+                {.msg = messages::OpenLidMessage{.id = 123},
+                 .seal_on = true,
+                 .seal_direction = true,
+                 .seal_switch_armed = true},
+                // Second step extends seeal switch
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::LIMIT},
+                 .seal_on = true,
+                 .seal_direction = false,
+                 .seal_switch_armed = false},
+                // Third step opens hinge
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::DONE},
+                 .lid_angle_increased = true,
+                 .lid_overdrive = false},
+                // Fourth step overdrives hinge
+                {.msg = messages::LidStepperComplete(),
+                 .lid_angle_decreased = true,
+                 .lid_overdrive = true},
+                // Should send ACK now
+                {.msg = messages::LidStepperComplete(),
+                 .ack =
+                     messages::AcknowledgePrevious{
+                         .responding_to_id = 123,
+                         .with_error = errors::ErrorCode::NO_ERROR}},
+            };
+            test_motor_state_machine(tasks, steps);
+        }
+        WHEN("sending close lid command") {
+            std::vector<MotorStep> steps = {
+                // First step retracts seal to switch
+                {.msg = messages::CloseLidMessage{.id = 123},
+                 .seal_on = true,
+                 .seal_direction = true,
+                 .seal_switch_armed = true},
+                // Second step extends seal from switch
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::LIMIT},
+                 .seal_on = true,
+                 .seal_direction = false,
+                 .seal_switch_armed = false},
+                // Third step closes hinge
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::DONE},
+                 .lid_angle_decreased = true,
+                 .lid_overdrive = false},
+                // Fourth step overdrives hinge
+                {.msg = messages::LidStepperComplete(),
+                 .lid_angle_decreased = true,
+                 .lid_overdrive = true},
+                // Now extend seal to switch
+                {.msg = messages::LidStepperComplete(),
+                 .seal_on = true,
+                 .seal_direction = false,
+                 .seal_switch_armed = true},
+                // Retract seal from switch
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::LIMIT},
+                 .seal_on = true,
+                 .seal_direction = true,
+                 .seal_switch_armed = false},
+                // Should send ACK now
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::DONE},
+                 .ack =
+                     messages::AcknowledgePrevious{
+                         .responding_to_id = 123,
+                         .with_error = errors::ErrorCode::NO_ERROR}},
+            };
+            test_motor_state_machine(tasks, steps);
+        }
+        WHEN("sending plate lift command") {
+            std::vector<MotorStep> steps = {
+                // Command should end with error
+                {.msg = messages::PlateLiftMessage{.id = 123},
+                 .ack = messages::AcknowledgePrevious{
+                     .responding_to_id = 123,
+                     .with_error = errors::ErrorCode::LID_CLOSED}}};
+            test_motor_state_machine(tasks, steps);
         }
     }
 }

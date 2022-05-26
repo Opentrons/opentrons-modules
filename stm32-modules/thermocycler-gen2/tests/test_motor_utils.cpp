@@ -52,6 +52,13 @@ SCENARIO("Lid stepper microstep conversion works") {
         WHEN("converting") {
             auto result = LidStepper::angle_to_microsteps(angle);
             THEN("the result is 1768 steps") { REQUIRE(result == 1768); }
+            AND_WHEN("backconverting") {
+                auto backconvert = LidStepper::microsteps_to_angle(result);
+                THEN("results match") {
+                    REQUIRE_THAT(backconvert,
+                                 Catch::Matchers::WithinAbs(angle, 0.001));
+                }
+            }
         }
     }
     GIVEN("a target of -1 degree") {
@@ -59,6 +66,13 @@ SCENARIO("Lid stepper microstep conversion works") {
         WHEN("converting") {
             auto result = LidStepper::angle_to_microsteps(angle);
             THEN("the result is -1768 steps") { REQUIRE(result == -1768); }
+            AND_WHEN("backconverting") {
+                auto backconvert = LidStepper::microsteps_to_angle(result);
+                THEN("results match") {
+                    REQUIRE_THAT(backconvert,
+                                 Catch::Matchers::WithinAbs(angle, 0.001));
+                }
+            }
         }
     }
     GIVEN("a target of 360 degrees") {
@@ -66,13 +80,27 @@ SCENARIO("Lid stepper microstep conversion works") {
         WHEN("converting") {
             auto result = LidStepper::angle_to_microsteps(angle);
             THEN("the result is 636800 steps") { REQUIRE(result == 636800); }
+            AND_WHEN("backconverting") {
+                auto backconvert = LidStepper::microsteps_to_angle(result);
+                THEN("results match") {
+                    REQUIRE_THAT(backconvert,
+                                 Catch::Matchers::WithinAbs(angle, 0.001));
+                }
+            }
         }
     }
     GIVEN("a target of 0 degrees") {
         double angle = 0.0F;
         WHEN("converting") {
             auto result = LidStepper::angle_to_microsteps(angle);
-            THEN("the result is 0 steps") { REQUIRE(result == 0); }
+            THEN("the result is correct steps") { REQUIRE(result == 0); }
+            AND_WHEN("backconverting") {
+                auto backconvert = LidStepper::microsteps_to_angle(result);
+                THEN("results match") {
+                    REQUIRE_THAT(backconvert,
+                                 Catch::Matchers::WithinAbs(angle, 0.001));
+                }
+            }
         }
     }
 }
@@ -106,6 +134,26 @@ SCENARIO("seal status stringification works") {
                 motor_util::SealStepper::status_to_string(inputs.at(i));
             DYNAMIC_SECTION("the string is as expected " << i) {
                 REQUIRE_THAT(result, Catch::Matchers::Equals(outputs.at(i)));
+            }
+        }
+    }
+}
+
+SCENARIO("seal stepper microstep conversion works") {
+    GIVEN("a distance in mm") {
+        double mm = 9.043375651;
+        WHEN("converting to steps") {
+            auto steps = SealStepper::mm_to_steps(mm);
+            THEN("the result is as expected") {
+                signed int expected = 1750000;
+                REQUIRE(steps == expected);
+            }
+            AND_WHEN("backconverting") {
+                auto backconvert = SealStepper::steps_to_mm(steps);
+                THEN("the conversion matches") {
+                    REQUIRE_THAT(backconvert,
+                                 Catch::Matchers::WithinAbs(mm, 0.0001));
+                }
             }
         }
     }

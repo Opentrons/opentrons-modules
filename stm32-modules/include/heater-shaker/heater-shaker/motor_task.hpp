@@ -158,17 +158,13 @@ class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::SetRPMMessage& msg, Policy& policy)
         -> void {
+        auto error = errors::ErrorCode::NO_ERROR;
         if ((!policy.plate_lock_closed_sensor_read()) &&
             (plate_lock_state.status != PlateLockState::IDLE_CLOSED)) {
-            static_cast<void>(
-                task_registry->comms->get_message_queue().try_send(
-                    messages::AcknowledgePrevious{
-                        .responding_to_id = msg.id,
-                        .with_error =
-                            errors::ErrorCode::PLATE_LOCK_NOT_CLOSED}));
+            error = errors::ErrorCode::PLATE_LOCK_NOT_CLOSED;
         } else {
             policy.homing_solenoid_disengage();
-            auto error = policy.set_rpm(msg.target_rpm);
+            error = policy.set_rpm(msg.target_rpm);
             state.status = State::RUNNING;
             policy.delay_ticks(MOTOR_START_WAIT_TICKS);
             if ((msg.target_rpm != 0) &&
@@ -177,17 +173,17 @@ class MotorTask {
                 policy.stop();
                 state.status = State::ERROR;
             }
-            auto response = messages::AcknowledgePrevious{
-                .responding_to_id = msg.id, .with_error = error};
-            if (msg.from_system) {
-                static_cast<void>(
-                    task_registry->system->get_message_queue().try_send(
-                        messages::SystemMessage(response)));
-            } else {
-                static_cast<void>(
-                    task_registry->comms->get_message_queue().try_send(
-                        messages::HostCommsMessage(response)));
-            }
+        }
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id = msg.id, .with_error = error};
+        if (msg.from_system) {
+            static_cast<void>(
+                task_registry->system->get_message_queue().try_send(
+                    messages::SystemMessage(response)));
+        } else {
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    messages::HostCommsMessage(response)));
         }
     }
 

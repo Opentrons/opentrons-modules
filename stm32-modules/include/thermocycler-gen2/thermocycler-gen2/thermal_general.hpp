@@ -13,8 +13,6 @@
 
 namespace thermal_general {
 
-static constexpr double thermistor_pair_delta_max = 4.0;
-
 /** Enumeration of thermistors on the board.
  * This is specifically arranged to keep all of the plate-related
  * thermistors before the Lid, so mapping from the thermistors here

@@ -1941,8 +1941,10 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     std::get<messages::SetOffsetConstantsMessage>(plate_msg);
                 REQUIRE(!tasks->get_host_comms_queue().has_message());
                 REQUIRE(written_firstpass == tx_buf.begin());
+                REQUIRE(!message.a_set);
                 REQUIRE(!message.b_set);
                 REQUIRE(!message.c_set);
+                REQUIRE(message.channel == PeltierSelection::ALL);
                 AND_WHEN("sending good response back") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{.responding_to_id =
@@ -2006,15 +2008,22 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::GetOffsetConstantsResponse{
                             .responding_to_id = message.id,
-                            .const_b = 10.0,
-                            .const_c = 15.0});
+                            .a = 2.0,
+                            .bl = 10.0,
+                            .cl = 15.0,
+                            .bc = 10.0,
+                            .cc = 15.0,
+                            .br = 10.0,
+                            .cr = 15.0});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
-                        auto response = "M117 B:10.00 C:15.00 OK\n";
+                        auto response =
+                            "M117 A:2.000 BL:10.000 CL:15.000 BC:10.000 "
+                            "CC:15.000 BR:10.000 CR:15.000 OK\n";
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith(response));
                         REQUIRE(written_secondpass ==
@@ -2027,8 +2036,13 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::GetOffsetConstantsResponse{
                             .responding_to_id = message.id + 1,
-                            .const_b = 10.0,
-                            .const_c = 15.0});
+                            .a = 2.0,
+                            .bl = 10.0,
+                            .cl = 15.0,
+                            .bc = 10.0,
+                            .cc = 15.0,
+                            .br = 10.0,
+                            .cr = 15.0});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -2193,6 +2207,80 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 }
             }
         }
+        WHEN("sending a LiftPlate message") {
+            std::string message_text = std::string("M128\n");
+            auto message_obj =
+                messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                    &*message_text.begin(), &*message_text.end()));
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            auto written_firstpass = tasks->get_host_comms_task().run_once(
+                tx_buf.begin(), tx_buf.end());
+            THEN(
+                "the task should pass the message on to the motor task "
+                "and not immediately ack") {
+                REQUIRE(tasks->get_motor_queue().backing_deque.size() != 0);
+                auto motor_message =
+                    tasks->get_motor_queue().backing_deque.front();
+                auto lid_motor_message =
+                    std::get<messages::PlateLiftMessage>(motor_message);
+                tasks->get_motor_queue().backing_deque.pop_front();
+                REQUIRE(written_firstpass == tx_buf.begin());
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                AND_WHEN("sending a good response back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = lid_motor_message.id});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("the task should ack the previous message") {
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("M128 OK\n"));
+                        REQUIRE(written_secondpass != tx_buf.begin());
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN("sending a bad response back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = lid_motor_message.id + 1});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN(
+                        "the task should pull the message and print an error") {
+                        REQUIRE(written_secondpass > tx_buf.begin());
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN("sending an ack with error back to the comms task") {
+                    auto response = messages::HostCommsMessage(
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = lid_motor_message.id,
+                            .with_error = errors::ErrorCode::LID_CLOSED});
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("the task should print the error rather than ack") {
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR507:"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                        REQUIRE(written_secondpass != tx_buf.begin());
+                    }
+                }
+            }
+        }
         GIVEN("a board revision of Rev1") {
             std::array<TrinaryInput_t, BOARD_REV_PIN_COUNT> inputs = {
                 INPUT_FLOATING, INPUT_FLOATING, INPUT_FLOATING};
@@ -2265,7 +2353,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                         messages::GetLidSwitchesResponse{
                             .responding_to_id = switch_status_messsage.id,
                             .close_switch_pressed = false,
-                            .open_switch_pressed = true});
+                            .open_switch_pressed = true,
+                            .seal_switch_pressed = false});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -2273,7 +2362,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "M901.D C:0 O:1 OK\n"));
+                                                 "M901.D C:0 O:1 S:0 OK\n"));
                         REQUIRE(written_secondpass != tx_buf.begin());
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());

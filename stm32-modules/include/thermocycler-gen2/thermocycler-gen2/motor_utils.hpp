@@ -34,6 +34,9 @@ class LidStepper {
     constexpr static double DEGREES_TO_MICROSTEPS =
         STEPS_PER_REV * MICROSTEPPING * GEAR_RATIO_SCALAR;
     constexpr static double ROTATION_TO_STEPS = DEGREES_TO_MICROSTEPS * 360;
+    // Total factor to multiply from degrees to microsteps
+    constexpr static double MICROSTEPS_TO_DEGREES =
+        1.0F / DEGREES_TO_MICROSTEPS;
 
   public:
     /** Possible states of the lid stepper.*/
@@ -90,6 +93,11 @@ class LidStepper {
         -> int32_t {
         return static_cast<int32_t>(angle * DEGREES_TO_MICROSTEPS);
     }
+
+    [[nodiscard]] constexpr static auto microsteps_to_angle(int32_t steps)
+        -> double {
+        return static_cast<double>(steps) * MICROSTEPS_TO_DEGREES;
+    }
 };
 
 class SealStepper {
@@ -109,6 +117,10 @@ class SealStepper {
 
     // 16MHz external oscillator
     static constexpr const double tmc_external_clock = 16000000;
+    // Ratio of millimeters to microsteps
+    static constexpr const double microsteps_per_mm = 1750000 / 9.043375651;
+    // Ratio of microsteps to millimeters
+    static constexpr const double mm_per_microstep = 9.043375651 / 1750000;
 
     [[nodiscard]] static auto status_to_string(Status status) -> const char* {
         switch (status) {
@@ -156,6 +168,16 @@ class SealStepper {
         // Avoid divide-by-zero issues, bound tstep to at least 1
         tstep = std::max(tstep, static_cast<uint32_t>(1));
         return clock / static_cast<double>(tstep);
+    }
+
+    [[nodiscard]] constexpr static auto inline mm_to_steps(double mm)
+        -> signed long {
+        return static_cast<signed long>(microsteps_per_mm * mm);
+    }
+
+    [[nodiscard]] constexpr static auto inline steps_to_mm(signed int steps)
+        -> double {
+        return static_cast<double>(steps) * mm_per_microstep;
     }
 };
 

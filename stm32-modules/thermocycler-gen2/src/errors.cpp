@@ -73,12 +73,17 @@ const char* const THERMAL_CONSTANT_OUT_OF_RANGE =
     "ERR406:thermal:PID constant(s) out of range\n";
 const char* const THERMAL_TARGET_BAD =
     "ERR407:thermal:Invalid target temperature\n";
+const char* const THERMAL_DRIFT =
+    "ERR408:thermal:Thermal drift of more than 4C\n";
 const char* const LID_MOTOR_BUSY = "ERR501:lid:Lid motor busy\n";
 const char* const LID_MOTOR_FAULT = "EERR502:lid:Lid motor fault\n";
 const char* const SEAL_MOTOR_SPI_ERROR = "ERR503:seal:SPI error\n";
 const char* const SEAL_MOTOR_BUSY = "EERR504:seal:Seal motor busy\n";
 const char* const SEAL_MOTOR_FAULT = "ERR505:seal:Seal motor fault\n";
 const char* const SEAL_MOTOR_STALL = "ERR5006:seal:Seal motor stall event\n";
+const char* const LID_CLOSED = "ERR507:lid:Lid must be opened\n";
+const char* const SEAL_MOTOR_SWITCH =
+    "ERR508:seal:Seal switch should not be engaged\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -129,12 +134,15 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(THERMAL_HEATER_ERROR);
         HANDLE_CASE(THERMAL_CONSTANT_OUT_OF_RANGE);
         HANDLE_CASE(THERMAL_TARGET_BAD);
+        HANDLE_CASE(THERMAL_DRIFT);
         HANDLE_CASE(LID_MOTOR_BUSY);
         HANDLE_CASE(LID_MOTOR_FAULT);
         HANDLE_CASE(SEAL_MOTOR_SPI_ERROR);
         HANDLE_CASE(SEAL_MOTOR_BUSY);
         HANDLE_CASE(SEAL_MOTOR_FAULT);
         HANDLE_CASE(SEAL_MOTOR_STALL);
+        HANDLE_CASE(LID_CLOSED);
+        HANDLE_CASE(SEAL_MOTOR_SWITCH);
     }
     return UNKNOWN_ERROR;
 }

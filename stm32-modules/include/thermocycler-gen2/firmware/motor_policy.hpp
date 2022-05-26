@@ -119,6 +119,25 @@ class MotorPolicy {
     auto tmc2130_step_pulse() -> bool;
 
     /**
+     * @brief Arm the limit switch for the seal motor.
+     *
+     */
+    auto seal_switch_set_armed() -> void;
+
+    /**
+     * @brief Disarm the limit switch for the seal motor.
+     *
+     */
+    auto seal_switch_set_disarmed() -> void;
+
+    /**
+     * @brief Read the seal limit switch
+     *
+     * @return true if the switch is triggered, false otherwise
+     */
+    auto seal_read_limit_switch() -> bool;
+
+    /**
      * @brief Call the seal callback function
      *
      */

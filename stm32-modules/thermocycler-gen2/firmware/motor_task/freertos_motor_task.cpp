@@ -78,6 +78,20 @@ static void handle_seal_error(MotorError_t error) {
     }
 }
 
+/**
+ * @brief Callback invoked when the seal motor triggers one of the limit
+ * switches. As of PCB Rev2, there is a limit switch on each end of travel
+ * but they share a single line. Therefore, the switch triggering this must
+ * be disambiguated by the context of the current movement.
+ *
+ */
+static void handle_seal_limit_switch() {
+    using namespace messages;
+    static_cast<void>(_task.get_message_queue().try_send_from_isr(
+        MotorMessage(SealStepperComplete{
+            .reason = SealStepperComplete::CompletionReason::LIMIT})));
+}
+
 // Actual function that runs inside the task
 void run(void *param) {
     static_cast<void>(param);
@@ -85,7 +99,8 @@ void run(void *param) {
     motor_hardware_callbacks callbacks = {
         .lid_stepper_complete = handle_lid_stepper,
         .seal_stepper_tick = handle_seal_interrupt,
-        .seal_stepper_error = handle_seal_error};
+        .seal_stepper_error = handle_seal_error,
+        .seal_stepper_limit_switch = handle_seal_limit_switch};
     motor_hardware_setup(&callbacks);
     while (true) {
         _task.run_once(_policy);

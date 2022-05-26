@@ -9,9 +9,12 @@ SCENARIO("GetOffsetConstants (M105.D) parser works", "[gcode][parse][m105.d]") {
         std::string buffer(256, 'c');
         WHEN("filling response") {
             auto written = gcode::GetOffsetConstants::write_response_into(
-                buffer.begin(), buffer.end(), 10.0, 15.0);
+                buffer.begin(), buffer.end(), 2.0, 10.0, 15.0, 10.0, 15.0, 10.0,
+                15.0);
             THEN("the response should be written in full") {
-                auto response_str = "M117 B:10.00 C:15.00 OK\n";
+                auto response_str =
+                    "M117 A:2.000 BL:10.000 CL:15.000 BC:10.000 CC:15.000 "
+                    "BR:10.000 CR:15.000 OK\n";
                 REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(response_str));
                 REQUIRE(written == buffer.begin() + strlen(response_str));
             }
@@ -22,9 +25,10 @@ SCENARIO("GetOffsetConstants (M105.D) parser works", "[gcode][parse][m105.d]") {
         std::string buffer(16, 'c');
         WHEN("filling response") {
             auto written = gcode::GetOffsetConstants::write_response_into(
-                buffer.begin(), buffer.begin() + 7, 10.0, 15.0);
+                buffer.begin(), buffer.begin() + 7, 2.0, 10.0, 15.0, 11.0, 12.0,
+                13.0, 14.0);
             THEN("the response should write only up to the available space") {
-                std::string response = "M117 Bcccccccccc";
+                std::string response = "M117 Acccccccccc";
                 response.at(6) = '\0';
                 REQUIRE_THAT(buffer, Catch::Matchers::Equals(response));
                 REQUIRE(written != buffer.begin());

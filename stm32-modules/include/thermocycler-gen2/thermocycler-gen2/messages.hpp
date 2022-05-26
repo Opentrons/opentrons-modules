@@ -170,6 +170,7 @@ struct SealStepperComplete {
     enum class CompletionReason {
         ERROR,  // There was an error flag
         STALL,  // There was a stall
+        LIMIT,  // Limit switch was triggered
         DONE,   // No error
     };
     // Defaults to no-error
@@ -255,6 +256,7 @@ struct SetPlateTemperatureMessage {
     uint32_t id;
     double setpoint;
     double hold_time;
+    double volume = 0.0F;
 };
 
 struct SetFanAutomaticMessage {
@@ -275,6 +277,9 @@ struct SetPIDConstantsMessage {
 
 struct SetOffsetConstantsMessage {
     uint32_t id;
+    PeltierSelection channel;
+    bool a_set;
+    double const_a;
     bool b_set;
     double const_b;
     bool c_set;
@@ -287,7 +292,7 @@ struct GetOffsetConstantsMessage {
 
 struct GetOffsetConstantsResponse {
     uint32_t responding_to_id;
-    double const_b, const_c;
+    double a, bl, cl, bc, cc, br, cr;
 };
 
 struct UpdateUIMessage {
@@ -345,6 +350,10 @@ struct CloseLidMessage {
     uint32_t id;
 };
 
+struct PlateLiftMessage {
+    uint32_t id;
+};
+
 struct FrontButtonPressMessage {};
 
 // This is a two-stage message that is first sent to the Plate task,
@@ -363,7 +372,9 @@ struct GetLidSwitchesMessage {
 
 struct GetLidSwitchesResponse {
     uint32_t responding_to_id;
-    bool close_switch_pressed, open_switch_pressed;
+    bool close_switch_pressed;
+    bool open_switch_pressed;
+    bool seal_switch_pressed;
 };
 
 struct GetFrontButtonMessage {
@@ -402,11 +413,10 @@ using LidHeaterMessage =
                    GetLidTempMessage, SetLidTemperatureMessage,
                    DeactivateLidHeatingMessage, SetPIDConstantsMessage,
                    GetThermalPowerMessage, DeactivateAllMessage>;
-using MotorMessage =
-    ::std::variant<std::monostate, ActuateSolenoidMessage,
-                   LidStepperDebugMessage, LidStepperComplete,
-                   SealStepperDebugMessage, SealStepperComplete,
-                   GetSealDriveStatusMessage, SetSealParameterMessage,
-                   GetLidStatusMessage, OpenLidMessage, CloseLidMessage,
-                   FrontButtonPressMessage, GetLidSwitchesMessage>;
+using MotorMessage = ::std::variant<
+    std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
+    LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,
+    GetSealDriveStatusMessage, SetSealParameterMessage, GetLidStatusMessage,
+    OpenLidMessage, CloseLidMessage, PlateLiftMessage, FrontButtonPressMessage,
+    GetLidSwitchesMessage>;
 };  // namespace messages

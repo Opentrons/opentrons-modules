@@ -197,9 +197,13 @@ def set_heater_pid(p: float, i: float, d: float, ser: serial.Serial):
     print(res)
 
 # Sets the plate target as a temperature in celsius
-def set_plate_temperature(temperature: float, ser: serial.Serial, hold_time: float = 0):
+def set_plate_temperature(temperature: float, ser: serial.Serial, hold_time: float = 0, volume: float = None):
     print(f'Setting plate temperature target to {temperature}C and hold time to {hold_time} sec')
-    ser.write(f'M104 S{temperature} H{hold_time}\n'.encode())
+    toWrite = f'M104 S{temperature} H{hold_time}'
+    if(volume):
+        toWrite = toWrite + f' V{volume}'
+    toWrite = toWrite + '\n'
+    ser.write(toWrite.encode())
     res = ser.readline()
     guard_error(res, b'M104 OK')
     print(res)
@@ -219,6 +223,16 @@ def set_peltier_pid(p: float, i: float, d: float, ser: serial.Serial):
     res = ser.readline()
     guard_error(res, b'M301 OK')
     print(res)
+
+_POWER_RE = re.compile('^M103.D L:(?P<left>.+) C:(?P<center>.+) R:(?P<right>.+) H:(?P<heater>.+) F:(?P<fans>.+) OK\n')
+
+def get_thermal_power(ser: serial.Serial):
+    ser.write(b'M103.D\n')
+    res = ser.readline()
+    guard_error(res, b'M103.D')
+    res_s = res.decode()
+    match = re.match(_POWER_RE, res_s)
+    return float(match.group('left')), float(match.group('center')), float(match.group('right'))
 
 # Debug command to move the hinge motor
 def move_lid_angle(angle: float, overdrive: bool, ser: serial.Serial):
@@ -300,15 +314,18 @@ def get_lid_status(ser: serial.Serial) -> Tuple[PositionStatus, PositionStatus]:
     return ret
 
 # Function to set offset constants
-def set_offset_constants(ser: serial.Serial, const_b = None, const_c = None):
+def set_offset_constants(ser: serial.Serial, const_a = None, const_b = None, const_c = None):
+    a_str = ''
+    if const_a != None:
+        a_str = f' A{const_a}'
     b_str = ''
     if const_b != None:
         b_str = f' B{const_b}'
     c_str = ''
     if const_c != None:
         c_str = f' C{const_c}'
-    print(f'Setting constants{b_str}{c_str}\n')
-    ser.write(f'M116{b_str}{c_str}\n'.encode())
+    print(f'Setting constants{a_str}{b_str}{c_str}\n')
+    ser.write(f'M116{a_str}{b_str}{c_str}\n'.encode())
     res = ser.readline()
     guard_error(res, b'M116 OK\n')
     print(res)
@@ -316,7 +333,7 @@ def set_offset_constants(ser: serial.Serial, const_b = None, const_c = None):
 def get_offset_constants(ser: serial.Serial):
     ser.write('M117\n'.encode())
     res = ser.readline()
-    guard_error(res, b'M117 B:')
+    guard_error(res, b'M117 A:')
     print(res)
 
 # Function to fully open the lid
