@@ -290,7 +290,7 @@ class LidHeaterTask {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
 
-        if (_state.system_status == State::ERROR) {
+        if (_state.system_status == State::ERROR && !msg.from_system) {
             response.with_error = most_relevant_error();
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(response));
@@ -306,8 +306,13 @@ class LidHeaterTask {
             _state.error_bitmap |= State::HEATER_POWER_ERROR;
         }
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        if (msg.from_system) {
+            static_cast<void>(
+                _task_registry->system->get_message_queue().try_send(response));
+        } else {
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+        }
     }
 
     template <LidHeaterExecutionPolicy Policy>

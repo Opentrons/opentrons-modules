@@ -250,6 +250,7 @@ struct SetLidTemperatureMessage {
 
 struct DeactivateLidHeatingMessage {
     uint32_t id;
+    bool from_system = false;
 };
 
 struct SetPlateTemperatureMessage {
@@ -265,6 +266,7 @@ struct SetFanAutomaticMessage {
 
 struct DeactivatePlateMessage {
     uint32_t id;
+    bool from_system = false;
 };
 
 struct SetPIDConstantsMessage {
