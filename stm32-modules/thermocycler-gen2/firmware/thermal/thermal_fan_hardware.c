@@ -12,7 +12,7 @@
 #define SINK_FAN_PWM_Pin (GPIO_PIN_6)
 #define SINK_FAN_PWM_GPIO_Port (GPIOA)
 
-#define PULSE_WIDTH_FREQ (25000)
+#define PULSE_WIDTH_FREQ (1000)
 #define TIMER_CLOCK_FREQ (170000000)
 // These two together give a 25kHz pulse width, and the ARR value
 // of 99 gives us a nice scale of 0-100 for the pulse width.
