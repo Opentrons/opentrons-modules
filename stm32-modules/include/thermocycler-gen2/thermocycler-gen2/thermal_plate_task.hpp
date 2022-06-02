@@ -556,7 +556,7 @@ class ThermalPlateTask {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
 
-        if (_state.system_status == State::ERROR) {
+        if (_state.system_status == State::ERROR && !msg.from_system) {
             response.with_error = most_relevant_error();
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(response));
@@ -566,8 +566,13 @@ class ThermalPlateTask {
         policy.set_enabled(false);
         _state.system_status = State::IDLE;
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        if (msg.from_system) {
+            static_cast<void>(
+                _task_registry->system->get_message_queue().try_send(response));
+        } else {
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+        }
     }
 
     template <ThermalPlateExecutionPolicy Policy>

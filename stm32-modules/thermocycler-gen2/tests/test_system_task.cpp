@@ -37,16 +37,54 @@ SCENARIO("system task message passing") {
                         tasks->get_host_comms_queue().backing_deque.empty());
                 }
             }
+            THEN("the system task should pass on a deactivate-plate message") {
+                REQUIRE(tasks->get_thermal_plate_queue().has_message());
+                auto plate_message =
+                    tasks->get_thermal_plate_queue().backing_deque.front();
+                REQUIRE(
+                    std::holds_alternative<messages::DeactivatePlateMessage>(
+                        plate_message));
+                REQUIRE(
+                    std::get<messages::DeactivatePlateMessage>(plate_message)
+                        .from_system);
+            }
+            THEN("the system task should pass on a deactivate-lid message") {
+                REQUIRE(tasks->get_lid_heater_queue().has_message());
+                auto lid_message =
+                    tasks->get_lid_heater_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<
+                        messages::DeactivateLidHeatingMessage>(lid_message));
+                REQUIRE(
+                    std::get<messages::DeactivateLidHeatingMessage>(lid_message)
+                        .from_system);
+            }
             AND_WHEN("parsing acknowledgements") {
                 auto usb_ack = messages::AcknowledgePrevious{
                     .responding_to_id =
                         std::get<messages::ForceUSBDisconnectMessage>(
                             tasks->get_host_comms_queue().backing_deque.front())
                             .id};
+                auto plate_ack = messages::AcknowledgePrevious{
+                    .responding_to_id =
+                        std::get<messages::DeactivatePlateMessage>(
+                            tasks->get_thermal_plate_queue()
+                                .backing_deque.front())
+                            .id};
+                auto lid_ack = messages::AcknowledgePrevious{
+                    .responding_to_id =
+                        std::get<messages::DeactivateLidHeatingMessage>(
+                            tasks->get_lid_heater_queue().backing_deque.front())
+                            .id};
                 tasks->get_system_queue().backing_deque.push_front(usb_ack);
+                tasks->get_system_queue().backing_deque.push_front(plate_ack);
+                tasks->get_system_queue().backing_deque.push_front(lid_ack);
                 THEN(
                     "the system should not enter the bootloader until all acks "
                     "are in") {
+                    tasks->run_system_task();
+                    REQUIRE(!tasks->get_system_policy().bootloader_entered());
+                    tasks->run_system_task();
+                    REQUIRE(!tasks->get_system_policy().bootloader_entered());
                     tasks->run_system_task();
                     REQUIRE(tasks->get_system_policy().bootloader_entered());
                 }
