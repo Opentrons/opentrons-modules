@@ -16,7 +16,7 @@ SCENARIO("GetPlateLockStateDebug (M241.D) response works",
                 true, false);
             THEN("the response should be written in full") {
                 std::string ok =
-                    "M241.D STATE:hello OpenSensor:1 ClosedSensor:0 OK\n";
+                    "M241.D STATUS:hello OpenSensor:1 ClosedSensor:0 OK\n";
                 REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(ok));
                 REQUIRE(written == buffer.begin() + ok.size());
                 std::string suffix(buffer.size() - ok.size(), 'c');
@@ -29,12 +29,12 @@ SCENARIO("GetPlateLockStateDebug (M241.D) response works",
         std::string buffer(32, 'c');
         WHEN("filling response") {
             auto written = gcode::GetPlateLockStateDebug::write_response_into(
-                buffer.begin(), buffer.begin() + 16,
+                buffer.begin(), buffer.begin() + 17,
                 std::array<char, 14>{"hello"}, true, false);
             THEN("the response should write only up to the available space") {
-                std::string response = "M241.D STATE:helcccccccccccccccc";
+                std::string response = "M241.D STATUS:helccccccccccccccc";
                 REQUIRE_THAT(buffer, Catch::Matchers::Equals(response));
-                REQUIRE(written == buffer.begin() + 16);
+                REQUIRE(written == buffer.begin() + 17);
             }
         }
     }
