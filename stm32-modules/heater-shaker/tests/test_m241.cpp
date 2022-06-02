@@ -13,7 +13,7 @@ SCENARIO("GetPlateLockState (M241) response works", "[gcode][parse][M241]") {
             auto written = gcode::GetPlateLockState::write_response_into(
                 buffer.begin(), buffer.end(), std::array<char, 14>{"hello"});
             THEN("the response should be written in full") {
-                std::string ok = "M241 STATE:hello OK\n";
+                std::string ok = "M241 STATUS:hello OK\n";
                 REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(ok));
                 REQUIRE(written == buffer.begin() + ok.size());
                 std::string suffix(buffer.size() - ok.size(), 'c');
@@ -26,12 +26,12 @@ SCENARIO("GetPlateLockState (M241) response works", "[gcode][parse][M241]") {
         std::string buffer(32, 'c');
         WHEN("filling response") {
             auto written = gcode::GetPlateLockState::write_response_into(
-                buffer.begin(), buffer.begin() + 16,
+                buffer.begin(), buffer.begin() + 17,
                 std::array<char, 14>{"hello"});
             THEN("the response should write only up to the available space") {
-                std::string response = "M241 STATE:hellocccccccccccccccc";
+                std::string response = "M241 STATUS:helloccccccccccccccc";
                 REQUIRE_THAT(buffer, Catch::Matchers::Equals(response));
-                REQUIRE(written == buffer.begin() + 16);
+                REQUIRE(written == buffer.begin() + 17);
             }
         }
     }
