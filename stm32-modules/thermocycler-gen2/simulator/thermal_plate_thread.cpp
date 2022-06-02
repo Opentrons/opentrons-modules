@@ -100,7 +100,7 @@ struct SimThermalPlatePolicy
     auto get_fan() -> double { return _fan_power; }
 
     auto get_fan_rpm() -> std::pair<double, double> {
-        double val = 5000.0F * _fan_power;
+        double val = 17500.0F * _fan_power;
         return std::make_pair(val, val);
     }
 
