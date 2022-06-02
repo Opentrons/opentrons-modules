@@ -81,7 +81,7 @@ static struct Fans _fans = {
 
 static void thermal_fan_init_tach(struct Tachometer *tach);
 static void thermal_fan_restart_tach_dma();
-static void thermal_fan_start_tach_timer();
+static void thermal_fan_setup_tach_timer();
 
 /**
  * @brief Enable or disable the fans (12v power supply)
@@ -158,7 +158,7 @@ void thermal_fan_initialize(void) {
     // Configure timer 4 for Input Capture mode to read the tachometers
     thermal_fan_init_tach(&_fans.tach);
 
-    thermal_fan_start_tach_timer();
+    thermal_fan_setup_tach_timer();
     thermal_fan_restart_tach_dma();
 
     _fans.initialized = true;
@@ -316,15 +316,10 @@ static void thermal_fan_init_tach(struct Tachometer *tach) {
 static void thermal_fan_restart_tach_dma() {
     // The interrupt only checks the last entry in the array to decide whether
     // the fan was moving, so it's ok to leave the rest
-    //__HAL_TIM_DISABLE(&_fans.tach.timer);
     _fans.tach.buffer_1[TACH_NUM_READINGS - 1] = 0;
     _fans.tach.buffer_2[TACH_NUM_READINGS - 1] = 0;
     HAL_DMA_Abort_IT(&_fans.tach.tach_1_dma);
     HAL_DMA_Abort_IT(&_fans.tach.tach_2_dma);
-
-    __HAL_TIM_CLEAR_IT(&_fans.tach.timer, TIM_IT_CC1);
-    __HAL_TIM_CLEAR_IT(&_fans.tach.timer, TIM_IT_CC2);
-
     HAL_DMA_Start_IT(&_fans.tach.tach_1_dma, (uint32_t)&_fans.tach.timer.Instance->CCR1,
                      (uint32_t)_fans.tach.buffer_1, TACH_NUM_READINGS);
     HAL_DMA_Start_IT(&_fans.tach.tach_2_dma, (uint32_t)&_fans.tach.timer.Instance->CCR2,
@@ -333,7 +328,7 @@ static void thermal_fan_restart_tach_dma() {
     __HAL_TIM_ENABLE(&_fans.tach.timer);
 }
 
-static void thermal_fan_start_tach_timer() {
+static void thermal_fan_setup_tach_timer() {
     __HAL_TIM_ENABLE_IT(&_fans.tach.timer, TIM_IT_UPDATE);
     __HAL_TIM_ENABLE_DMA(&_fans.tach.timer, TIM_DMA_CC1);
     __HAL_TIM_ENABLE_DMA(&_fans.tach.timer, TIM_DMA_CC2);
@@ -352,9 +347,13 @@ static bool thermal_fan_set_enable(bool enabled) {
 
 // This interrupt does NOT go through the HAL system because it doesn't
 // work with the requirements for this timer application.
+// For each tachometer, check whether there's a valid pair of Input Capture
+// values. If so, the difference between them is the updated period for this
+// tachometer. Otherwise the period is 0 to indicate an inactive fan.
 void TIM4_IRQHandler(void) {
     if(__HAL_TIM_GET_FLAG(&_fans.tach.timer, TIM_IT_UPDATE)) {
         __HAL_TIM_CLEAR_IT(&_fans.tach.timer, TIM_IT_UPDATE);
+
         if(_fans.tach.buffer_1[2] > _fans.tach.buffer_1[1]) {
             _fans.tach.tach_1_period = _fans.tach.buffer_1[2] - _fans.tach.buffer_1[1];
         } else {
