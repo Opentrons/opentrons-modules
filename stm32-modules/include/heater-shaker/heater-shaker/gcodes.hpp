@@ -915,7 +915,7 @@ struct GetPlateLockState {
                                     const InLimit write_to_limit,
                                     std::array<char, 14> plate_lock_state)
         -> InputIt {
-        static constexpr const char* prefix = "M241 STATE:";
+        static constexpr const char* prefix = "M241 STATUS:";
         auto written =
             write_string_to_iterpair(write_to_buf, write_to_limit, prefix);
         if (written == write_to_limit) {
