@@ -99,6 +99,11 @@ struct SimThermalPlatePolicy
 
     auto get_fan() -> double { return _fan_power; }
 
+    auto get_fan_rpm() -> std::pair<double, double> {
+        double val = 5000.0F * _fan_power;
+        return std::make_pair(val, val);
+    }
+
     auto send_power() -> void {
         _periodic_data->send_message(periodic_data_thread::PeriodicDataMessage(
             periodic_data_thread::PeltierPower{

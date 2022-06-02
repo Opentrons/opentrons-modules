@@ -5,7 +5,7 @@
  */
 #pragma once
 
-#include <utility> // std::pair
+#include <utility>  // std::pair
 
 #include "firmware/thermal_hardware.h"
 #include "thermocycler-gen2/thermal_general.hpp"

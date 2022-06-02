@@ -53,7 +53,7 @@ concept ThermalPlateExecutionPolicy = requires(Policy& p, PeltierID id,
     // A function to get the current power of the heatsink fan.
     { p.get_fan() } -> std::same_as<double>;
     // A function to get the fan RPM from the tachometers
-    { p.get_fan_rpm() } -> std::same_as<std::pair<double,double>>;
+    { p.get_fan_rpm() } -> std::same_as<std::pair<double, double>>;
 }
 &&at24c0xc::AT24C0xC_Policy<Policy>;
 
