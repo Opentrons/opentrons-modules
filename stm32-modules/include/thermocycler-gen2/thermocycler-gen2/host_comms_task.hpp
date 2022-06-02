@@ -540,7 +540,8 @@ class HostCommsTask {
                     return gcode::GetThermalPowerDebug::write_response_into(
                         tx_into, tx_limit, cache_element.left,
                         cache_element.center, cache_element.right,
-                        response.heater, cache_element.fans);
+                        response.heater, cache_element.fans,
+                        cache_element.tach1, cache_element.tach2);
                 }
             },
             cache_entry);

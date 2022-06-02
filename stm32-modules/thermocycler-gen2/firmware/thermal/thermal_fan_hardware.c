@@ -26,10 +26,10 @@
 // PWM should be scaled from 0 to MAX_PWM, inclusive
 #define MAX_PWM (TIM16_RELOAD + 1)
 
-#define TACH_NUM_READINGS (2)
+#define TACH_NUM_READINGS (3)
 // Tachometer timer reload frequency
-#define TACH_TIMER_FREQ (1)
-#define TACH_TIMER_PRESCALE (16999)
+#define TACH_TIMER_FREQ (4)
+#define TACH_TIMER_PRESCALE (1699)
 #define TACH_TIMER_PRESCALED_FREQ (TIMER_CLOCK_FREQ / (TACH_TIMER_PRESCALE + 1))
 #define SEC_PER_MIN (60)
 
@@ -41,10 +41,10 @@ struct Tachometer {
     TIM_HandleTypeDef timer;
     DMA_HandleTypeDef tach_1_dma;
     DMA_HandleTypeDef tach_2_dma;
-    atomic_uint_fast16_t buffer_1[TACH_NUM_READINGS];
-    atomic_uint_fast16_t buffer_2[TACH_NUM_READINGS];
-    atomic_uint_fast16_t tach_1_period;
-    atomic_uint_fast16_t tach_2_period;
+    _Atomic uint16_t buffer_1[TACH_NUM_READINGS];
+    _Atomic uint16_t buffer_2[TACH_NUM_READINGS];
+    _Atomic uint32_t tach_1_period;
+    _Atomic uint32_t tach_2_period;
 };
 
 struct Fans {
@@ -158,8 +158,8 @@ void thermal_fan_initialize(void) {
     // Configure timer 4 for Input Capture mode to read the tachometers
     thermal_fan_init_tach(&_fans.tach);
 
-    thermal_fan_restart_tach_dma();
     thermal_fan_start_tach_timer();
+    thermal_fan_restart_tach_dma();
 
     _fans.initialized = true;
 }
@@ -257,14 +257,16 @@ double thermal_fan_get_tach_1_rpm(void) {
     if(_fans.tach.tach_1_period == 0) {
         return 0;
     }
-    return (SEC_PER_MIN * TACH_TIMER_PRESCALED_FREQ) / ((double)_fans.tach.tach_1_period);
+    return ((double)SEC_PER_MIN * (double)TACH_TIMER_PRESCALED_FREQ) 
+            / ((double)_fans.tach.tach_1_period);
 }
 
 double thermal_fan_get_tach_2_rpm(void) {
     if(_fans.tach.tach_2_period == 0) {
         return 0;
     }
-    return (SEC_PER_MIN * TACH_TIMER_PRESCALED_FREQ) / ((double)_fans.tach.tach_2_period);
+    return ((double)SEC_PER_MIN * (double)TACH_TIMER_PRESCALED_FREQ) 
+            / ((double)_fans.tach.tach_2_period);
 }
 
 // Local function implementations
@@ -292,35 +294,51 @@ static void thermal_fan_init_tach(struct Tachometer *tach) {
     sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
     sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
     sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
-    sConfigIC.ICFilter = 4;
+    sConfigIC.ICFilter = 0;
     hal_ret = HAL_TIM_IC_ConfigChannel(&tach->timer, &sConfigIC, TIM_CHANNEL_1);
     configASSERT(hal_ret == HAL_OK);
     hal_ret = HAL_TIM_IC_ConfigChannel(&tach->timer, &sConfigIC, TIM_CHANNEL_2);
     configASSERT(hal_ret == HAL_OK);
 
+    // Set timer to One Pulse Mode
+    tach->timer.Instance->CR1 |= TIM_OPMODE_SINGLE;
+
+    __HAL_RCC_DMAMUX1_CLK_ENABLE();
+    __HAL_RCC_DMA1_CLK_ENABLE();
+    /* DMA1_Channel2_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+    /* DMA1_Channel3_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
 }
 
 static void thermal_fan_restart_tach_dma() {
     // The interrupt only checks the last entry in the array to decide whether
     // the fan was moving, so it's ok to leave the rest
+    //__HAL_TIM_DISABLE(&_fans.tach.timer);
     _fans.tach.buffer_1[TACH_NUM_READINGS - 1] = 0;
     _fans.tach.buffer_2[TACH_NUM_READINGS - 1] = 0;
     HAL_DMA_Abort_IT(&_fans.tach.tach_1_dma);
+    HAL_DMA_Abort_IT(&_fans.tach.tach_2_dma);
+
+    __HAL_TIM_CLEAR_IT(&_fans.tach.timer, TIM_IT_CC1);
+    __HAL_TIM_CLEAR_IT(&_fans.tach.timer, TIM_IT_CC2);
+
     HAL_DMA_Start_IT(&_fans.tach.tach_1_dma, (uint32_t)&_fans.tach.timer.Instance->CCR1,
                      (uint32_t)_fans.tach.buffer_1, TACH_NUM_READINGS);
-    HAL_DMA_Abort_IT(&_fans.tach.tach_2_dma);
-    HAL_DMA_Start_IT(&_fans.tach.tach_2_dma, (uint32_t)&_fans.tach.timer.Instance->CCR1,
+    HAL_DMA_Start_IT(&_fans.tach.tach_2_dma, (uint32_t)&_fans.tach.timer.Instance->CCR2,
                      (uint32_t)_fans.tach.buffer_2, TACH_NUM_READINGS);
+
+    __HAL_TIM_ENABLE(&_fans.tach.timer);
 }
 
 static void thermal_fan_start_tach_timer() {
+    __HAL_TIM_ENABLE_IT(&_fans.tach.timer, TIM_IT_UPDATE);
     __HAL_TIM_ENABLE_DMA(&_fans.tach.timer, TIM_DMA_CC1);
     __HAL_TIM_ENABLE_DMA(&_fans.tach.timer, TIM_DMA_CC2);
     TIM_CCxChannelCmd(_fans.tach.timer.Instance, TIM_CHANNEL_1, TIM_CCx_ENABLE);
     TIM_CCxChannelCmd(_fans.tach.timer.Instance, TIM_CHANNEL_2, TIM_CCx_ENABLE);
-
-    __HAL_TIM_ENABLE_IT(&_fans.tach.timer, TIM_IT_UPDATE);
-    __HAL_TIM_ENABLE(&_fans.tach.timer);
 }
 
 static bool thermal_fan_set_enable(bool enabled) {
@@ -335,17 +353,32 @@ static bool thermal_fan_set_enable(bool enabled) {
 // This interrupt does NOT go through the HAL system because it doesn't
 // work with the requirements for this timer application.
 void TIM4_IRQHandler(void) {
-    __HAL_TIM_CLEAR_IT(&_fans.tach.timer, TIM_IT_UPDATE);
-    if(_fans.tach.buffer_1[1] > 0) {
-        _fans.tach.tach_1_period = _fans.tach.buffer_1[1] - _fans.tach.buffer_1[0];
-    } else {
-        _fans.tach.tach_1_period = 0;
+    if(__HAL_TIM_GET_FLAG(&_fans.tach.timer, TIM_IT_UPDATE)) {
+        __HAL_TIM_CLEAR_IT(&_fans.tach.timer, TIM_IT_UPDATE);
+        if(_fans.tach.buffer_1[2] > _fans.tach.buffer_1[1]) {
+            _fans.tach.tach_1_period = _fans.tach.buffer_1[2] - _fans.tach.buffer_1[1];
+        } else {
+            _fans.tach.tach_1_period = 0;
+        }
+        if(_fans.tach.buffer_2[2] > _fans.tach.buffer_2[1]) {
+            _fans.tach.tach_2_period = _fans.tach.buffer_2[2] - _fans.tach.buffer_2[1];
+        } else {
+            _fans.tach.tach_2_period = 0;
+        }
+        
+        thermal_fan_restart_tach_dma();
     }
-    if(_fans.tach.buffer_2[1] > 0) {
-        _fans.tach.tach_2_period = _fans.tach.buffer_2[1] - _fans.tach.buffer_2[0];
-    } else {
-        _fans.tach.tach_2_period = 0;
-    }
-    
-    thermal_fan_restart_tach_dma();
+}
+
+void DMA1_Channel2_IRQHandler(void)
+{
+    HAL_DMA_IRQHandler(&_fans.tach.tach_1_dma);
+}
+
+/**
+  * @brief This function handles DMA1 channel3 global interrupt.
+  */
+void DMA1_Channel3_IRQHandler(void)
+{
+    HAL_DMA_IRQHandler(&_fans.tach.tach_2_dma);
 }

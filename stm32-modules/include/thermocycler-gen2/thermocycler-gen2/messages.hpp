@@ -223,7 +223,7 @@ struct GetThermalPowerMessage {
 struct GetPlatePowerResponse {
     uint32_t responding_to_id;
 
-    double left, center, right, fans;
+    double left, center, right, fans, tach1, tach2;
 };
 
 // Lid Task response to GetThermalPowerMessage
