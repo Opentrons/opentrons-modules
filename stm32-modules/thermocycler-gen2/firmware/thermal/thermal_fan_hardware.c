@@ -32,6 +32,7 @@
 #define TACH_TIMER_PRESCALE (1699)
 #define TACH_TIMER_PRESCALED_FREQ (TIMER_CLOCK_FREQ / (TACH_TIMER_PRESCALE + 1))
 #define SEC_PER_MIN (60)
+#define PULSES_PER_ROTATION (2)
 
 #define TACH_TIMER_RELOAD ((TIMER_CLOCK_FREQ / (TACH_TIMER_FREQ * (TACH_TIMER_PRESCALE + 1))) -1)
 
@@ -258,7 +259,7 @@ double thermal_fan_get_tach_1_rpm(void) {
         return 0;
     }
     return ((double)SEC_PER_MIN * (double)TACH_TIMER_PRESCALED_FREQ) 
-            / ((double)_fans.tach.tach_1_period);
+            / ((double)_fans.tach.tach_1_period * PULSES_PER_ROTATION);
 }
 
 double thermal_fan_get_tach_2_rpm(void) {
@@ -266,7 +267,7 @@ double thermal_fan_get_tach_2_rpm(void) {
         return 0;
     }
     return ((double)SEC_PER_MIN * (double)TACH_TIMER_PRESCALED_FREQ) 
-            / ((double)_fans.tach.tach_2_period);
+            / ((double)_fans.tach.tach_2_period * PULSES_PER_ROTATION);
 }
 
 // Local function implementations
