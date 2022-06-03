@@ -23,47 +23,48 @@ concept MsgQueue = requires(Q queue, Message msg, Tag tag) {
 // In order to provide runtime visitation on the tuple of handles,
 // we utilize this helper struct...
 template <size_t N>
-struct send_helper {
-    
-    template <size_t Idx, typename QMessage, typename Message,
-              typename Aggregator>
-    static auto send_resolve(const Message& msg, Aggregator* handle) -> bool {
-        if constexpr (std::is_same_v<
-                          std::decay_t<Message>,
-                          std::variant_alternative_t<N - 1, QMessage>>) {
-            return handle->template send_to<Idx>(msg);
-        }
-        return send_helper<N - 1>::template send_resolve<Idx, QMessage>(msg,
-                                                                        handle);
-    }
-
+struct SendHelper {
+    /**
+     * @brief Helper function to provide runtime resolution of index-based
+     * queue send operations. The function recurses down the range of indices
+     * available for a QueueAggregator, and checks whether the runtime-
+     * provided index `idx` is a match. If that is the case, a constexpr
+     * evaluation checks wither the type `Message` can be used to construct
+     * the message type we want to send to. If yes, the message is sent;
+     * otherwise, we return `false` to indicate that the message and index
+     * were mismatched.
+     * 
+     * @tparam Message The message type to send
+     * @tparam Aggregator Instantiation of the QueueAggregator class
+     * @param msg The message to send
+     * @param idx The queue index we want to send to; this should be derived
+     *            from the `get_message_idx` or `get_task_idx` function
+     *            provided by QueueAggregator
+     * @param handle Handle to the Aggregator
+     * @return true if the messsage was succesfully sent, false otherwise
+     */
     template <typename Message, typename Aggregator>
     static auto send(const Message& msg, size_t idx, Aggregator* handle)
         -> bool {
-        using QM =
+        using VariantType =
             std::variant_alternative_t<N - 1,
                                        typename Aggregator::MessageTypes>;
         if (N - 1 == idx) {
-            return send_helper<Aggregator::TaskCount>::template send_resolve<
-                N - 1, QM>(msg, handle);
+            if constexpr (std::is_constructible_v<VariantType, Message>) {
+                return handle->template send_to<N - 1>(msg);
+            }
+            // Can't send to this queue type
+            return false;
         } else {
-            return send_helper<N - 1>::send(msg, idx, handle);
+            return SendHelper<N - 1>::send(msg, idx, handle);
         }
     }
 };
 
-/**
- * @brief Specialization of \ref send_helper for cases of N=0, in which case
- * all functions return `false` to indicate a failure to resolve.
- */
+// Specialization for cases of N=0, in which case all functions return false
+// to indicate a failure to resolve.
 template <>
-struct send_helper<0> {
-    template <size_t Idx, typename QMessage, typename Message,
-              typename Aggregator>
-    static auto send_resolve(const Message& msg, Aggregator* handle) -> bool {
-        return false;
-    }
-
+struct SendHelper<0> {
     template <typename Message, typename Aggregator>
     static auto send(const Message&, size_t, Aggregator*) -> bool {
         return false;
@@ -165,11 +166,13 @@ class QueueAggregator {
         if (!(address < TaskCount)) {
             return false;
         }
-        return send_helper<TaskCount>::send(msg, address, this);
+        return SendHelper<TaskCount>::send(msg, address, this);
     }
 
+  private:
+
     /**
-     * @brief Send a message
+     * @brief Internal function for sending a message
      *
      * @tparam Idx The index of the message to send to, as returned by
      *             \ref get_task_idx()
@@ -190,7 +193,6 @@ class QueueAggregator {
         return std::get<Idx>(_handles)._handle->try_send(msg);
     }
 
-  private:
     /**
      * @brief Wrapper class for holding a pointer to a queue with
      * a default nullptr value
@@ -207,6 +209,10 @@ class QueueAggregator {
     [[nodiscard]] auto check_initialized() const -> bool {
         return std::get<get_task_idx<Queue>()>(_handles)._handle != nullptr;
     }
+
+    // SendHelper uses the internal send_to function...
+    template <size_t N>
+    friend struct SendHelper;
 
     // Handle for each of the tasks
     // Replace ptr with struct holding ptr
