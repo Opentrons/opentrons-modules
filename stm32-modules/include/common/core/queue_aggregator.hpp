@@ -1,6 +1,7 @@
 /**
  * @file queue_aggregator.hpp
- * @brief Provides a templated type to aggregate queues
+ * @brief Provides a templated type to aggregate queues. See the description
+ * of QueueAggregator for more detail.
  */
 
 #include <atomic>
@@ -33,7 +34,7 @@ struct SendHelper {
      * the message type we want to send to. If yes, the message is sent;
      * otherwise, we return `false` to indicate that the message and index
      * were mismatched.
-     * 
+     *
      * @tparam Message The message type to send
      * @tparam Aggregator Instantiation of the QueueAggregator class
      * @param msg The message to send
@@ -72,11 +73,33 @@ struct SendHelper<0> {
 };
 
 /**
- * @brief Class to encapsulate a tasklist. This class functions as a central
- * mail-forwarding system in essence, redirecting messages to their
- * appropriate messages.
+ * @brief Class to encapsulate a list of queues. This class functions as a
+ * central mail-forwarding system in essence, redirecting messages to their
+ * appropriate queues.
  *
- * @tparam MessageQueues
+ * @details
+ * Each task on the system must provide its queue handle to the Aggregator,
+ * as it has no forward declaration or knowledge of the full task types.
+ * It is important that the tasks do not modify the memory address of
+ * their queue handle (e.g. by reconstructing the queue), as the Aggregator
+ * maintains links using pointers that last for the lifetime of the program.
+ *
+ * QueueAggregator provides a few mechanisms for sending messages:
+ * - Tag Dispatching, wherein the caller provides both a message and a
+ *   type of a "tag" struct that is associated with each message queue.
+ * - Automatic resolution, wherein the caller can either:
+ *    - Send a message that is unique to only one queue, in which case the
+ *      recipient can be implicitly deduced
+ *    - Send an instance of the actual \e variant used as the backing item
+ *      in the intended queue, so long as that variant type is only used for
+ *      one single message queue
+ * - Index based resolution, where the address (index) of the recipient is
+ *   passed as a runtime parameter and the QueueAggregator resolves the
+ *   handle for the queue to send to & checks whether that queue can actually
+ *   receive the Message type before sending it.
+ *
+ * @tparam MessageQueues Parameter pack of the types of all of the message
+ * queues. E.g. QueueAggregator<Queue1, Queue2, Queue3>
  */
 template <MsgQueue... MessageQueues>
 class QueueAggregator {
@@ -88,7 +111,13 @@ class QueueAggregator {
 
     static_assert(TaskCount > 0, "Must have at least one queue");
 
+    // Empty constructor
     QueueAggregator() : _handles() {}
+
+    // Construct from a complete set of message queues. The handles are
+    // passed as a reference rather than pointers in order to simplify type
+    // deduction.
+    QueueAggregator(MessageQueues&... handles) : _handles(&handles...) {}
 
     /**
      * @brief Register a queue handle with the task list
@@ -161,6 +190,16 @@ class QueueAggregator {
         return send_to<idx>(msg);
     }
 
+    /**
+     * @brief Send a queue message to an address, specified as an
+     * index at runtime
+     *
+     * @tparam Message The type of the message to send
+     * @param msg The message to send
+     * @param address The index of the queue to send the message to.
+     * This should be derived from `get_task_idx` or `get_message_idx`.
+     * @return true if the message could be sent, false otherwise
+     */
     template <typename Message>
     auto send_to_address(const Message& msg, size_t address) -> bool {
         if (!(address < TaskCount)) {
@@ -170,7 +209,6 @@ class QueueAggregator {
     }
 
   private:
-
     /**
      * @brief Internal function for sending a message
      *
@@ -201,7 +239,7 @@ class QueueAggregator {
      */
     template <typename Queue>
     struct QueueHandle {
-        QueueHandle() : _handle(nullptr) {}
+        QueueHandle(Queue* ptr = nullptr) : _handle(ptr) {}
         Queue* _handle;
     };
 

@@ -114,7 +114,7 @@ TEST_CASE("queue aggregator index-based sending") {
                 REQUIRE(received.a == 5);
                 REQUIRE(received.return_address == 0);
                 THEN("recipient can reply to the return address") {
-                    Message2 reply{.a=1,.b=2};
+                    Message2 reply{.a = 1, .b = 2};
                     REQUIRE(aggregator.send_to_address(
                         reply, received.return_address));
                     REQUIRE(q1.has_message());
@@ -144,9 +144,26 @@ TEST_CASE("queue aggregator index-based sending") {
                 REQUIRE(q2.has_message());
             }
             THEN("sending to the wrong queue fails") {
-                REQUIRE(!aggregator.send_to_address(message, TaskIndex::Index1));
+                REQUIRE(
+                    !aggregator.send_to_address(message, TaskIndex::Index1));
                 REQUIRE(!q1.has_message());
                 REQUIRE(!q2.has_message());
+            }
+        }
+    }
+}
+
+TEST_CASE("queue aggregator constructor") {
+    GIVEN("queue handles") {
+        Queue1 q1("1");
+        Queue2 q2("2");
+        WHEN("constructing aggregator with handles") {
+            auto aggregator = queue_aggregator::QueueAggregator(q1, q2);
+            THEN("the handles have been registered") {
+                REQUIRE(aggregator.send(Message1{}));
+                REQUIRE(q1.has_message());
+                REQUIRE(aggregator.send(Message3{}));
+                REQUIRE(q2.has_message());
             }
         }
     }
