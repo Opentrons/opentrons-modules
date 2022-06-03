@@ -114,10 +114,16 @@ TEST_CASE("queue aggregator index-based sending") {
                 REQUIRE(received.a == 5);
                 REQUIRE(received.return_address == 0);
                 THEN("recipient can reply to the return address") {
-                    Message2 reply{};
+                    Message2 reply{.a=1,.b=2};
                     REQUIRE(aggregator.send_to_address(
                         reply, received.return_address));
                     REQUIRE(q1.has_message());
+                    Queue1::Message rcv_2;
+                    REQUIRE(q1.try_recv(&rcv_2));
+                    REQUIRE(std::holds_alternative<Message2>(rcv_2));
+                    auto received_2 = std::get<Message2>(rcv_2);
+                    REQUIRE(received_2.a == 1);
+                    REQUIRE(received_2.b == 2);
                 }
             }
         }
@@ -132,12 +138,12 @@ TEST_CASE("queue aggregator index-based sending") {
         }
         GIVEN("a message NOT shared by each queue type") {
             Message3 message;
-            THEN("sending the right queue succeeds") {
+            THEN("sending to the correct queue succeeds") {
                 REQUIRE(aggregator.send_to_address(message, TaskIndex::Index2));
                 REQUIRE(!q1.has_message());
                 REQUIRE(q2.has_message());
             }
-            THEN("sending the wrong queue fails") {
+            THEN("sending to the wrong queue fails") {
                 REQUIRE(!aggregator.send_to_address(message, TaskIndex::Index1));
                 REQUIRE(!q1.has_message());
                 REQUIRE(!q2.has_message());
