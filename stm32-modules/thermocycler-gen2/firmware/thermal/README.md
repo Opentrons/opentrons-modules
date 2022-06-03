@@ -59,7 +59,7 @@ The fans are controlled by a PWM channel on Timer 16
 
 ### Tachometer Feedback
 
-The tachometers for the fans are monitored by Channels 1 and 2 on Timer 4. The input channels are configured for Input Capture monitoring on rising edges. Testing shows that the approximate low range of the fan velocity is ~40 RPM
+The tachometers for the fans are monitored by Channels 1 and 2 on Timer 4. The input channels are configured for Input Capture monitoring on rising edges. Testing shows that the approximate low range of the fan tachometer is ~40 pulses per second
 
 - The timer is set to run at 100kHz and run for a total period of 0.25 seconds
 - When the timer starts, a DMA transaction is configured for each channel to move the first three Input Capture readings into buffers. The first reading is effectively ignored.
