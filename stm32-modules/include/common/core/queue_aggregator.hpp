@@ -24,19 +24,46 @@ concept MsgQueue = requires(Q queue, Message msg, Tag tag) {
 // we utilize this helper struct...
 template <size_t N>
 struct send_helper {
+    
+    template <size_t Idx, typename QMessage, typename Message,
+              typename Aggregator>
+    static auto send_resolve(const Message& msg, Aggregator* handle) -> bool {
+        if constexpr (std::is_same_v<
+                          std::decay_t<Message>,
+                          std::variant_alternative_t<N - 1, QMessage>>) {
+            return handle->template send_to<Idx>(msg);
+        }
+        return send_helper<N - 1>::template send_resolve<Idx, QMessage>(msg,
+                                                                        handle);
+    }
+
     template <typename Message, typename Aggregator>
     static auto send(const Message& msg, size_t idx, Aggregator* handle)
         -> bool {
+        using QM =
+            std::variant_alternative_t<N - 1,
+                                       typename Aggregator::MessageTypes>;
         if (N - 1 == idx) {
-            return handle->template send_to<N - 1>(msg);
+            return send_helper<Aggregator::TaskCount>::template send_resolve<
+                N - 1, QM>(msg, handle);
         } else {
             return send_helper<N - 1>::send(msg, idx, handle);
         }
     }
 };
 
+/**
+ * @brief Specialization of \ref send_helper for cases of N=0, in which case
+ * all functions return `false` to indicate a failure to resolve.
+ */
 template <>
 struct send_helper<0> {
+    template <size_t Idx, typename QMessage, typename Message,
+              typename Aggregator>
+    static auto send_resolve(const Message& msg, Aggregator* handle) -> bool {
+        return false;
+    }
+
     template <typename Message, typename Aggregator>
     static auto send(const Message&, size_t, Aggregator*) -> bool {
         return false;
@@ -107,6 +134,8 @@ class QueueAggregator {
      * to forward it to.
      *
      * @tparam Message The type of message to send
+     * @tparam Tag The tag type of the queue to send to. This must be
+     * provided by each queue type delcared for the QueueAggregator.
      * @param msg The message to send
      * @return true if the message could be sent, false otherwise
      */
@@ -117,6 +146,14 @@ class QueueAggregator {
         return send_to<idx>(msg);
     }
 
+    /**
+     * @brief Send a message and automatically deduce the mailbox
+     * to forward it to.
+     *
+     * @tparam Message The type of message to send
+     * @param msg
+     * @return true if the message could be sent, false otherwise
+     */
     template <typename Message>
     auto send(const Message& msg) -> bool {
         constexpr auto idx = get_message_idx<Message>();
@@ -151,7 +188,6 @@ class QueueAggregator {
             return false;
         }
         return std::get<Idx>(_handles)._handle->try_send(msg);
-        ;
     }
 
   private:

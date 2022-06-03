@@ -108,7 +108,7 @@ TEST_CASE("queue aggregator index-based sending") {
                 REQUIRE(received.a == 5);
                 REQUIRE(received.return_address == 0);
                 THEN("recipient can reply to the return address") {
-                    Message1 reply{};
+                    Message2 reply{};
                     REQUIRE(aggregator.send_to_address(
                         reply, received.return_address));
                     REQUIRE(q1.has_message());
