@@ -1834,7 +1834,9 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                             .left = 0.0,
                             .center = 0.1,
                             .right = 0.2,
-                            .fans = 0.5});
+                            .fans = 0.5,
+                            .tach1 = 123,
+                            .tach2 = 345});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -1867,7 +1869,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                             THEN("the task should ack the previous message") {
                                 const char response_msg[] =
                                     "M103.D L:0.00 C:0.10 R:0.20 H:0.30 F:0.50 "
-                                    "OK\n";
+                                    "T1:123.00 T2:345.00 OK\n";
                                 REQUIRE_THAT(
                                     tx_buf,
                                     Catch::Matchers::StartsWith(response_msg));

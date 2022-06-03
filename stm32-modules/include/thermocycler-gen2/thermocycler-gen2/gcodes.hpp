@@ -669,6 +669,7 @@ struct GetPlateTemperatureDebug {
  *
  * Format: M103.D\n
  * Return: M103.D L:<left peltier> C:<center> R:<right> H:<heater> F:<fans>
+ * T1:<tach1> T2:<tach2>
  *
  */
 struct GetThermalPowerDebug {
@@ -693,13 +694,16 @@ struct GetThermalPowerDebug {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     double left_power, double center_power,
                                     double right_power, double heater_power,
-                                    double fan_power) -> InputIt {
+                                    double fan_power, double tach1,
+                                    double tach2) -> InputIt {
         auto res = snprintf(
             &*buf, (limit - buf),
-            "M103.D L:%0.2f C:%0.2f R:%0.2f H:%0.2f F:%0.2f OK\n",
+            "M103.D L:%0.2f C:%0.2f R:%0.2f H:%0.2f F:%0.2f T1:%3.2f T2:%3.2f "
+            "OK\n",
             static_cast<float>(left_power), static_cast<float>(center_power),
             static_cast<float>(right_power), static_cast<float>(heater_power),
-            static_cast<float>(fan_power));
+            static_cast<float>(fan_power), static_cast<float>(tach1),
+            static_cast<float>(tach2));
         if (res <= 0) {
             return buf;
         }

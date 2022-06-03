@@ -50,6 +50,13 @@ auto ThermalPlatePolicy::set_fan(double power) -> bool {
 auto ThermalPlatePolicy::get_fan() -> double { return thermal_fan_get_power(); }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto ThermalPlatePolicy::get_fan_rpm() -> std::pair<double, double> {
+    auto t1 = thermal_fan_get_tach_1_rpm();
+    auto t2 = thermal_fan_get_tach_2_rpm();
+    return std::make_pair(t1, t2);
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPlatePolicy::set_write_protect(bool write_protect) -> void {
     thermal_eeprom_set_write_protect(write_protect);
     if (!write_protect) {

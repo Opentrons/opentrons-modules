@@ -714,6 +714,7 @@ SCENARIO("thermal plate task message passing") {
             policy._center.direction = PeltierDirection::PELTIER_COOLING;
             policy._right.power = 0.3;
             policy._fan_power = 1.0;
+            auto expected_rpm = policy.get_fan_rpm().first;
             WHEN("sending GetThermalPowerMessage") {
                 auto message = messages::GetThermalPowerMessage{.id = 123};
                 plate_queue.backing_deque.push_back(message);
@@ -732,6 +733,10 @@ SCENARIO("thermal plate task message passing") {
                                  Catch::Matchers::WithinAbs(0.3, 0.01));
                     REQUIRE_THAT(response.fans,
                                  Catch::Matchers::WithinAbs(1.0, 0.01));
+                    REQUIRE_THAT(response.tach1, Catch::Matchers::WithinAbs(
+                                                     expected_rpm, 0.01));
+                    REQUIRE_THAT(response.tach2, Catch::Matchers::WithinAbs(
+                                                     expected_rpm, 0.01));
                 }
             }
         }
