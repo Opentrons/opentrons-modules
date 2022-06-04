@@ -104,10 +104,10 @@ struct SendHelper<0> {
 template <MsgQueue... MessageQueues>
 class QueueAggregator {
   public:
-    using QueueTypes = std::variant<typename MessageQueues::Tag...>;
+    using TagTypes = std::variant<typename MessageQueues::Tag...>;
     using MessageTypes = std::variant<typename MessageQueues::Message...>;
 
-    static constexpr size_t TaskCount = std::variant_size_v<QueueTypes>;
+    static constexpr size_t TaskCount = std::variant_size_v<TagTypes>;
 
     static_assert(TaskCount > 0, "Must have at least one queue");
 
@@ -128,7 +128,7 @@ class QueueAggregator {
      */
     template <MsgQueue Queue>
     auto register_queue(Queue& queue) -> bool {
-        constexpr auto idx = get_task_idx<Queue>();
+        constexpr auto idx = get_task_idx<typename Queue::Tag>();
         if (check_initialized<Queue>()) {
             // Not allowed to re-register
             return false;
@@ -146,17 +146,7 @@ class QueueAggregator {
     template <typename Queue>
     constexpr static auto get_task_idx() -> size_t {
         using Tag = typename Queue::Tag;
-        return QueueTypes((Tag())).index();
-    }
-
-    /**
-     * @brief Get the index of a queue, based on an individual message
-     * definition. This deduction will ONLY work if the message is unique
-     * to a specific queue (i.e. it is not sent to multiple tasks)
-     */
-    template <typename Message>
-    constexpr static auto get_message_idx() -> size_t {
-        return MessageTypes((Message())).index();
+        return TagTypes((Tag())).index();
     }
 
     /**
@@ -178,10 +168,11 @@ class QueueAggregator {
 
     /**
      * @brief Send a message and automatically deduce the mailbox
-     * to forward it to.
+     * to forward it to. This will fail if the type of the message
+     * is not unique.
      *
      * @tparam Message The type of message to send
-     * @param msg
+     * @param msg The message to send
      * @return true if the message could be sent, false otherwise
      */
     template <typename Message>
@@ -197,7 +188,7 @@ class QueueAggregator {
      * @tparam Message The type of the message to send
      * @param msg The message to send
      * @param address The index of the queue to send the message to.
-     * This should be derived from `get_task_idx` or `get_message_idx`.
+     * This should be derived from `get_task_idx`.
      * @return true if the message could be sent, false otherwise
      */
     template <typename Message>
@@ -229,6 +220,16 @@ class QueueAggregator {
             return false;
         }
         return std::get<Idx>(_handles)._handle->try_send(msg);
+    }
+
+    /**
+     * @brief Get the index of a queue, based on an individual message
+     * definition. This deduction will ONLY work if the message is unique
+     * to a specific queue (i.e. it is not sent to multiple tasks)
+     */
+    template <typename Message>
+    constexpr static auto get_message_idx() -> size_t {
+        return MessageTypes((Message())).index();
     }
 
     /**

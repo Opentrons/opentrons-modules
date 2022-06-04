@@ -4,13 +4,14 @@
 #include <stdexcept>
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-template <typename M, size_t queue_size = 10>
+template <typename M, size_t Index = 0, size_t queue_size = 10>
 class TestMessageQueue {
   public:
     using Message = M;
     std::deque<Message> backing_deque;
     bool act_full;
     std::string name;
+    const static size_t index = Index;
 
     struct Tag {};
 
