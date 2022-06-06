@@ -163,7 +163,7 @@ class QueueAggregator {
      * to forward it to.
      *
      * @tparam Tag The tag type of the queue to send to. This must be
-     * provided by each queue type delcared for the QueueAggregator.
+     * provided by each queue type declared for the QueueAggregator.
      * @tparam Message The type of message to send
      * @param msg The message to send
      * @param tag An instance of the tag type
