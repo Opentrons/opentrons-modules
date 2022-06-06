@@ -153,7 +153,7 @@ class QueueAggregator {
      * @tparam Queue The type of the queue
      * @return size_t A unique index for this queue type
      */
-    template <typename Queue>
+    template <MsgQueue Queue>
     consteval static auto get_queue_idx() -> size_t {
         static_assert(std::is_class_v<typename Queue::Tag>);
         return get_tag_idx<typename Queue::Tag>();
