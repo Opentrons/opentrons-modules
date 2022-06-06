@@ -98,6 +98,12 @@ struct SendHelper<0> {
  *   handle for the queue to send to & checks whether that queue can actually
  *   receive the Message type before sending it.
  *
+ * One limitation of this configuration is that each message queue type
+ * within MessageQueues must have a unique class definition. In the case
+ * of two message queues with the same exact message type, this may be
+ * as simple as providing a `size_t` template parameter for the queue
+ * type, and providing a different value for each "version" of the queue.
+ *
  * @tparam MessageQueues Parameter pack of the types of all of the message
  * queues. E.g. QueueAggregator<Queue1, Queue2, Queue3>
  */
@@ -125,10 +131,13 @@ class QueueAggregator {
      * @tparam Idx The index of this queue
      * @tparam Queue Type of the message queue
      * @param queue Handle to the queue
+     * @return true if the queue handle could be registered, false
+     * if it could not be registered
      */
     template <MsgQueue Queue>
     auto register_queue(Queue& queue) -> bool {
         constexpr auto idx = get_task_idx<typename Queue::Tag>();
+        static_assert(idx < TaskCount, "Must provide a valid queue type");
         if (check_initialized<Queue>()) {
             // Not allowed to re-register
             return false;
@@ -153,10 +162,11 @@ class QueueAggregator {
      * @brief Send a message and automatically deduce the mailbox
      * to forward it to.
      *
-     * @tparam Message The type of message to send
      * @tparam Tag The tag type of the queue to send to. This must be
      * provided by each queue type delcared for the QueueAggregator.
+     * @tparam Message The type of message to send
      * @param msg The message to send
+     * @param tag An instance of the tag type
      * @return true if the message could be sent, false otherwise
      */
     template <typename Tag, typename Message>
@@ -201,6 +211,18 @@ class QueueAggregator {
 
   private:
     /**
+     * @brief Wrapper class for holding a pointer to a queue with
+     * a default nullptr value
+     *
+     * @tparam Queue type of queue to use
+     */
+    template <typename Queue>
+    struct QueueHandle {
+        QueueHandle(Queue* ptr = nullptr) : _handle(ptr) {}
+        Queue* _handle;
+    };
+
+    /**
      * @brief Internal function for sending a message
      *
      * @tparam Idx The index of the message to send to, as returned by
@@ -233,20 +255,16 @@ class QueueAggregator {
     }
 
     /**
-     * @brief Wrapper class for holding a pointer to a queue with
-     * a default nullptr value
+     * @brief Checks whether a queue has been registered yet
      *
-     * @tparam Queue type of queue to use
+     * @tparam Queue The type of the queue to check for
+     * @return true if the queue has been registered, false if it is still
+     *         uninitialized.
      */
     template <typename Queue>
-    struct QueueHandle {
-        QueueHandle(Queue* ptr = nullptr) : _handle(ptr) {}
-        Queue* _handle;
-    };
-
-    template <typename Queue>
     [[nodiscard]] auto check_initialized() const -> bool {
-        return std::get<get_task_idx<Queue>()>(_handles)._handle != nullptr;
+        return std::get<get_task_idx<typename Queue::Tag>()>(_handles)
+                   ._handle != nullptr;
     }
 
     // SendHelper uses the internal send_to function...
@@ -254,7 +272,6 @@ class QueueAggregator {
     friend struct SendHelper;
 
     // Handle for each of the tasks
-    // Replace ptr with struct holding ptr
     std::tuple<QueueHandle<MessageQueues>...> _handles;
 };
 
