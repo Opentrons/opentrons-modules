@@ -233,11 +233,7 @@ class QueueAggregator {
      */
     template <size_t Idx, typename Message>
     auto send_to(const Message& msg) -> bool {
-        // static_assert(Idx < TaskCount,
-        //    "Invalid task index");
-        if (!(Idx < TaskCount)) {
-            return false;
-        }
+        static_assert(Idx < TaskCount, "Invalid task index");
         if (std::get<Idx>(_handles)._handle == nullptr) {
             return false;
         }
