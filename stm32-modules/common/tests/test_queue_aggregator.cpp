@@ -32,9 +32,18 @@ using Aggregator = queue_aggregator::QueueAggregator<Queue1, Queue2>;
 
 // Indices for the queues
 enum TaskIndex {
-    Index1 = Aggregator::get_task_idx<Queue1>(),
-    Index2 = Aggregator::get_task_idx<Queue2>()
+    Index1 = Aggregator::get_queue_idx<Queue1>(),
+    Index2 = Aggregator::get_queue_idx<Queue2>()
 };
+
+TEST_CASE("queue index generation") {
+    GIVEN("queue with two indices") {
+        THEN("they are consecutive size_t values") {
+            REQUIRE(TaskIndex::Index1 == 0);
+            REQUIRE(TaskIndex::Index2 == 1);
+        }
+    }
+}
 
 TEST_CASE("queue aggregator registration and tag dispatching") {
     GIVEN("an uninitialized queue aggregator") {
@@ -105,7 +114,7 @@ TEST_CASE("queue aggregator index-based sending") {
         REQUIRE(aggregator.register_queue(q2));
         GIVEN("a message with a return address") {
             Message3 message{
-                .a = 5, .return_address = aggregator.get_task_idx<Queue1>()};
+                .a = 5, .return_address = aggregator.get_queue_idx<Queue1>()};
             WHEN("sending and receiving message") {
                 REQUIRE(aggregator.send(message));
                 REQUIRE(q2.has_message());
@@ -183,7 +192,7 @@ TEST_CASE("queues with identical message types") {
         Queue1 q1("1");
         Queue3 q3("3");
         auto aggregator = queue_aggregator::QueueAggregator(q1, q3);
-        constexpr auto Index3 = aggregator.get_task_idx<Queue3>();
+        constexpr auto Index3 = aggregator.get_queue_idx<Queue3>();
         THEN("index sending works") {
             Message2 message;
             REQUIRE(aggregator.send_to_address(message, TaskIndex::Index1));
