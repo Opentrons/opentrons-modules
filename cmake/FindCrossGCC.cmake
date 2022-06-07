@@ -45,6 +45,7 @@ macro(FIND_CROSS_GCC REQUIRED)
     CROSS_GCC_EXECUTABLE
     arm-none-eabi-gcc
     PATHS "${GCC_CROSS_DIR}/${CMAKE_HOST_SYSTEM_NAME}/bin"
+    NO_DEFAULT_PATH
     ${REQUIRED})
 endmacro()
 

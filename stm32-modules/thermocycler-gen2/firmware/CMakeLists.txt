@@ -114,7 +114,7 @@ set_target_properties(
 
 
 find_program(ARM_GDB
-  arm-none-eabi-gdb-py
+  ${CrossGDB_EXECUTABLE}
   PATHS "${CrossGCC_BINDIR}"
   NO_DEFAULT_PATH
   REQUIRED)

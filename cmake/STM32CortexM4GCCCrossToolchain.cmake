@@ -11,7 +11,13 @@ stm32-tools/gcc-arm-embedded and set some basic compile and linker flags (the
 CPU flags specified with ``-m``).
 #]=======================================================================]
 
-find_package(CrossGCC)
+if(${USE_GCC_11})
+    find_package(CrossGCC11)
+    find_package(CrossGDB)
+else()
+    find_package(CrossGCC)
+    set(CrossGDB_EXECUTABLE "${CrossGCC_BINDIR}/arm-none-eabi-gdb-py")
+endif()
 
 set(CMAKE_SYSTEM_NAME "Generic")
 set(CMAKE_FIND_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../vendor")

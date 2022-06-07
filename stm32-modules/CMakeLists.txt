@@ -1,7 +1,7 @@
 # All modules that use STM32 should have their subdirs added here
 
 if (${CMAKE_CROSSCOMPILING})
-    find_package(CrossGCC)
+    # GCC is fetched by toolchain file
     find_package(OpenOCD)
     find_package(GDBSVDTools)
 else()

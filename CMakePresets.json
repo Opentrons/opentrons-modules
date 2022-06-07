@@ -46,6 +46,14 @@
             }
         },
         {
+            "name": "stm32-cross-gcc11",
+            "inherits": "stm32-cross",
+            "displayName": "STM32 module cross builds forcing g++11",
+            "cacheVariables": {
+                "USE_GCC_11": true
+            }
+        },
+        {
             "name": "stm32-host",
             "displayName": "STM32 module host compilation for tests",
             "description": "Build module libraries and test executables for modules that use STM32",
