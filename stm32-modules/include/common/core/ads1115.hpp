@@ -8,10 +8,40 @@
 
 #include <cstdint>
 #include <variant>
+#include <optional>
 
 #include "firmware/thermal_hardware.h"
 
 namespace ADS1115 {
+
+/**
+ * @brief The ADS1115 Policy is structured to allow multiple instances of the
+ * ADS1115::ADC class to reference the same exact 
+ * 
+ * @tparam Policy 
+ */
+template<typename Policy>
+concept ADS1115Policy = requires(Policy& p, size_t id, uint8_t u8, uint16_t u16) {
+    // A constant to get the number of ADS1115 on the system, and in effect
+    // get the max ID of an ADS1115
+    std::same_as<size_t, std::decay_t<decltype(Policy::ADS1115_COUNT)>>;
+    // A function to mark that an ADS1115 was initialized. If this returns
+    // false, that means that the ADS1115 initialization was already started
+    // or already completed.
+    {p.ads1115_mark_initialized(id)} -> std::same_as<bool>;
+    // A function to check that an ADS1115 was initialized
+    {p.ads1115_check_initialized(id)} -> std::same_as<bool>;
+    // Acquire the mutex for this ADC
+    {p.ads1115_get_lock(id)} -> {std::same_as<bool>};
+    // Release the mutex for this ADC
+    {p.ads1115_release_lock(id)} -> {std::same_as<bool>};
+    // Arm this ADC for a read operation
+    {p.ads1115_arm_for_read(id)} -> {std::same_as<bool>};
+    // Write a 16 bit register
+    {p.ads1115_i2c_write_16(u8, u8, u16)} -> {std::same_as<bool>};
+    // Read a 16 bit register
+    {p.ads1115_i2c_read_16(u8, u8)} -> {std::same_as<std::optional<uint16_t>};
+};
 
 enum class Error {
     ADCTimeout, /**< Timed out waiting for ADC.*/
