@@ -141,7 +141,7 @@ struct SealStepperState {
     constexpr static signed long FULL_RETRACT_MICROSTEPS =
         (FULL_EXTEND_MICROSTEPS * -1);
     // Distance to back off after triggering a limit switch
-    constexpr static double SWITCH_BACKOFF_MM = 0.5F;
+    constexpr static double SWITCH_BACKOFF_MM = 1.0F;
     // Distance to RETRACT to back off a limit switch
     constexpr static signed long SWITCH_BACKOFF_MICROSTEPS_RETRACT =
         motor_util::SealStepper::mm_to_steps(SWITCH_BACKOFF_MM);
