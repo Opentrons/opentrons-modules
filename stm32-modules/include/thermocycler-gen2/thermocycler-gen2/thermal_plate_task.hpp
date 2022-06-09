@@ -8,6 +8,7 @@
 #include <concepts>
 #include <cstddef>
 #include <tuple>
+#include <utility>
 #include <variant>
 
 #include "core/pid.hpp"
@@ -51,6 +52,8 @@ concept ThermalPlateExecutionPolicy = requires(Policy& p, PeltierID id,
     { p.set_fan(1.0F) } -> std::same_as<bool>;
     // A function to get the current power of the heatsink fan.
     { p.get_fan() } -> std::same_as<double>;
+    // A function to get the fan RPM from the tachometers
+    { p.get_fan_rpm() } -> std::same_as<std::pair<double, double>>;
 }
 &&at24c0xc::AT24C0xC_Policy<Policy>;
 
@@ -556,7 +559,7 @@ class ThermalPlateTask {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
 
-        if (_state.system_status == State::ERROR) {
+        if (_state.system_status == State::ERROR && !msg.from_system) {
             response.with_error = most_relevant_error();
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(response));
@@ -566,8 +569,13 @@ class ThermalPlateTask {
         policy.set_enabled(false);
         _state.system_status = State::IDLE;
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        if (msg.from_system) {
+            static_cast<void>(
+                _task_registry->system->get_message_queue().try_send(response));
+        } else {
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(response));
+        }
     }
 
     template <ThermalPlateExecutionPolicy Policy>
@@ -630,11 +638,14 @@ class ThermalPlateTask {
                                             .left = 0.0F,
                                             .center = 0.0F,
                                             .right = 0.0F,
-                                            .fans = policy.get_fan()};
+                                            .fans = policy.get_fan(),
+                                            .tach1 = 0.0F,
+                                            .tach2 = 0.0F};
 
         auto left = policy.get_peltier(_peltier_left.id);
         auto center = policy.get_peltier(_peltier_center.id);
         auto right = policy.get_peltier(_peltier_right.id);
+        std::tie(response.tach1, response.tach2) = policy.get_fan_rpm();
 
         response.left =
             left.second *

@@ -1279,9 +1279,9 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN("the task should ack the previous message") {
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith(
-                                         "M241.D STATE:IDLE_UNKNOWN "
+                                         "M241.D STATUS:IDLE_UNKNOWN "
                                          "OpenSensor:1 ClosedSensor:1 OK\n"));
-                        REQUIRE(written_secondpass == tx_buf.begin() + 57);
+                        REQUIRE(written_secondpass == tx_buf.begin() + 58);
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }

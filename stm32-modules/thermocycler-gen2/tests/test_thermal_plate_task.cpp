@@ -627,6 +627,21 @@ SCENARIO("thermal plate task message passing") {
                     }
                 }
             }
+            AND_WHEN("sending a DeactivatePlate command from the system task") {
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                auto tempMessage = messages::DeactivatePlateMessage{
+                    .id = 321, .from_system = true};
+                plate_queue.backing_deque.push_back(
+                    messages::ThermalPlateMessage(tempMessage));
+                tasks->get_system_queue().backing_deque.clear();
+                tasks->run_thermal_plate_task();
+                THEN("the task should respond to the message") {
+                    REQUIRE(!tasks->get_system_queue().backing_deque.empty());
+                    REQUIRE(std::get<messages::AcknowledgePrevious>(
+                                tasks->get_system_queue().backing_deque.front())
+                                .responding_to_id == 321);
+                }
+            }
             AND_WHEN("sending a DeactivateAll command") {
                 tasks->get_host_comms_queue().backing_deque.pop_front();
                 auto tempMessage = messages::DeactivateAllMessage{.id = 321};
@@ -699,6 +714,7 @@ SCENARIO("thermal plate task message passing") {
             policy._center.direction = PeltierDirection::PELTIER_COOLING;
             policy._right.power = 0.3;
             policy._fan_power = 1.0;
+            auto expected_rpm = policy.get_fan_rpm().first;
             WHEN("sending GetThermalPowerMessage") {
                 auto message = messages::GetThermalPowerMessage{.id = 123};
                 plate_queue.backing_deque.push_back(message);
@@ -717,6 +733,10 @@ SCENARIO("thermal plate task message passing") {
                                  Catch::Matchers::WithinAbs(0.3, 0.01));
                     REQUIRE_THAT(response.fans,
                                  Catch::Matchers::WithinAbs(1.0, 0.01));
+                    REQUIRE_THAT(response.tach1, Catch::Matchers::WithinAbs(
+                                                     expected_rpm, 0.01));
+                    REQUIRE_THAT(response.tach2, Catch::Matchers::WithinAbs(
+                                                     expected_rpm, 0.01));
                 }
             }
         }

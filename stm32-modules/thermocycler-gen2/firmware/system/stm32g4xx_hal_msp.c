@@ -7,6 +7,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32g4xx_hal.h"
 #include "firmware/system_led_hardware.h"
+#include "firmware/thermal_fan_hardware.h"
 
 /**
   * Initializes the Global MSP.
@@ -131,6 +132,14 @@ void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* htim_pwm)
     __HAL_RCC_TIM15_CLK_DISABLE();
   }
 
+}
+
+void HAL_TIM_IC_MspInit(TIM_HandleTypeDef* htim_ic) 
+{
+    if(htim_ic->Instance==TIM4)
+    {
+        thermal_fan_tim4_msp_init();
+    }
 }
 
 /**
