@@ -12,6 +12,9 @@
 
 #include "heater_hardware.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 static void init_error(void);
 static void adc_setup(ADC_HandleTypeDef* adc);
 static void gpio_setup(void);
@@ -169,8 +172,7 @@ static void comp_setup(COMP_HandleTypeDef* comp) {
   comp->Instance = COMP4;
   comp->Init.InvertingInput = COMP_INVERTINGINPUT_DAC1_CH1;
   comp->Init.NonInvertingInput = COMP_NONINVERTINGINPUT_IO1; //PB0
-  comp->Init.Output = COMP_OUTPUT_TIM1BKIN2; //change to interrupt? No
-  //comp->Init.TriggerMode = ;
+  comp->Init.Output = COMP_OUTPUT_TIM1BKIN2;
   if (HAL_OK != HAL_COMP_Init(comp)) {
     init_error();
   }
@@ -247,9 +249,12 @@ void heater_hardware_power_disable(heater_hardware* hardware) {
     if (!internal) {
         init_error();
     }
-    HAL_TIM_PWM_Stop(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
+    HAL_NVIC_DisableIRQ(TIM4_IRQn);
+    HAL_TIM_PWM_Stop_IT(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
     internal->heater_started = false;
-    internal->heatpad_cs_status = IDLE;
+    if ((internal->heatpad_cs_status != ERROR_OPEN_CIRCUIT) || (internal->heatpad_cs_status != ERROR_SHORT_CIRCUIT) || (internal->heatpad_cs_status != ERROR_OVERCURRENT)) {
+        internal->heatpad_cs_status = IDLE;
+    }
 }
 
 static uint16_t pwm_pulse_duration = 0;
@@ -258,29 +263,26 @@ bool heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
     if (!internal) {
         init_error();
     }
+    if ((internal->heatpad_cs_status == ERROR_OPEN_CIRCUIT) || (internal->heatpad_cs_status == ERROR_SHORT_CIRCUIT) || (internal->heatpad_cs_status == ERROR_OVERCURRENT)) {
+        return false;
+    }
     if (internal->heatpad_cs_status == IDLE) {
         internal->heatpad_cs_status = RUNNING;
     }
-    //pwm_pulse_duration = 12000; //debug/test short_protection
-    //internal->pwm_config.Pulse = 12000;
     pwm_pulse_duration = setting;
     internal->pwm_config.Pulse = setting;
     if (!internal->heater_started) {
-        HAL_TIM_PWM_Stop(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
+        HAL_TIM_PWM_Stop_IT(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
         HAL_TIM_PWM_ConfigChannel(
             &internal->pad_tim, &internal->pwm_config, HEATER_PAD_ENABLE_TIM_CHANNEL);
         HAL_TIM_PWM_Start_IT(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
         HAL_NVIC_EnableIRQ(TIM4_IRQn);
-        HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0); //verify priority
+        HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
         internal->heater_started = true;
     } else {
         HEATER_PAD_LL_SETCOMPARE(internal->pad_tim.Instance, setting);
     }
-    if ((internal->heatpad_cs_status == ERROR_OPEN_CIRCUIT) || (internal->heatpad_cs_status == ERROR_SHORT_CIRCUIT) || (internal->heatpad_cs_status == ERROR_OVERCURRENT)) {
-        return false;
-    } else {
-        return true;
-    }
+    return true;
 }
 
 
@@ -346,13 +348,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     }
 }
 
-//complete interrupt setup
-//create enum, state machine
-//EXTI30 interrupt for COMP4
-//compare PWM setting to GRANULARITY constant to determine if enough time for COMP
-//check if MspInitCallback hits after re-initializing
-//Check if OperationCpltCallback hits before PWM Pulse Cplt Callback. Indicates we've got enough time for COMP to work?
-//utilize READY state for COMP and DAC? COMP will generate interrupt each time threshold hit?!
 static uint16_t period_count = 0;
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -364,10 +359,8 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
                 internal->heatpad_cs_status = PREP_CHECK;
                 uint8_t dac_val = (uint8_t) (0x0F); //0x0F is roughly 0.2V
                 HAL_DAC_SetValue(&internal->dac1, HEATPAD_CS_DAC_CHANNEL, DAC_ALIGN_8B_R, dac_val);
-                HAL_COMP_Stop(&internal->comp4); //also HAL_Stop_IT
-                internal->comp4.Init.Output = COMP_OUTPUT_NONE; //change to interrupt? Change Start and Stop to _IT
-                //complete interrupt setup with HAL_NVIC_SetPriority() and HAL_NVIC_EnableIRQ()
-                //comp->Init.TriggerMode = ; //use?
+                HAL_COMP_Stop(&internal->comp4);
+                internal->comp4.Init.Output = COMP_OUTPUT_NONE;
                 if (HAL_OK != HAL_COMP_Init(&internal->comp4)) {
                     init_error();
                 }
@@ -379,20 +372,14 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
                     internal->heatpad_cs_status = SHORT_CHECK_STARTED;
                 }
             } else if (internal->heatpad_cs_status == OPEN_CHECK_STARTED) {
-                if (can_heatpad_cs_open_check()) { //confirm checking window still sufficient on next period
-                    if (!HAL_COMP_GetOutputLevel(&internal->comp4)) {
-                        //create msg that disables power and throws error? Eh
-                        //Pass error back via set_pwm function? Have sending layers (policy and task) pass back and update their error state
-                        //add below
-                        heater_hardware_power_disable(HEATER_HW_HANDLE->hardware_internal);
+                if (can_heatpad_cs_open_check()) { //confirm still able to conduct check on next tick
+                    uint32_t level = HAL_COMP_GetOutputLevel(&internal->comp4);
+                    if (!level) {
+                        heater_hardware_power_disable(HEATER_HW_HANDLE);
                         internal->heatpad_cs_status = ERROR_OPEN_CIRCUIT;
-                        //return_error |= (1U<<OPEN_BIT); //implement! Initialize variable appropriately. Can just be a uint8_t. Define bits in header
                         return;
-                    } /*else {
-                        //create success msg for debug?
-                    }*/
+                    }
                 }
-                //check for multiple cycles?
                 internal->heatpad_cs_status = OPEN_CHECK_COMPLETE;
             } else if ((internal->heatpad_cs_status == OPEN_CHECK_COMPLETE) && (can_heatpad_cs_short_check())) {
                 internal->heatpad_cs_status = SHORT_CHECK_STARTED;
@@ -400,10 +387,8 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
                 internal->heatpad_cs_status = PREP_RUNNING;
                 uint8_t dac_val = (uint8_t) (0xF7); //roughly 3.2V
                 HAL_DAC_SetValue(&internal->dac1, HEATPAD_CS_DAC_CHANNEL, DAC_ALIGN_8B_R, dac_val);
-                HAL_COMP_Stop(&internal->comp4); //also HAL_Stop_IT
-                internal->comp4.Init.Output = COMP_OUTPUT_TIM1BKIN2; //change to interrupt? Change Start and Stop to _IT
-                //complete interrupt setup with HAL_NVIC_SetPriority() and HAL_NVIC_EnableIRQ()
-                //comp->Init.TriggerMode = ; //use?
+                HAL_COMP_Stop(&internal->comp4);
+                internal->comp4.Init.Output = COMP_OUTPUT_TIM1BKIN2;
                 if (HAL_OK != HAL_COMP_Init(&internal->comp4)) {
                     init_error();
                 }
@@ -419,52 +404,40 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
+    //setup tim second channel with pulse 95% of period. Don't check if PWM pulse greater than 90% period
+    //check htim channel
     if ((htim->Instance == TIM4) && (internal->heatpad_cs_status != IDLE) && (internal->heatpad_cs_status == SHORT_CHECK_STARTED)) {
-        if (can_heatpad_cs_short_check()) { //confirm checking window still sufficient on next period
-            //start debug adds
-            uint8_t dac_val = (uint8_t) (0x9A); //2V
-            HAL_DAC_SetValue(&internal->dac1, HEATPAD_CS_DAC_CHANNEL, DAC_ALIGN_8B_R, dac_val);
-            HAL_COMP_Stop(&internal->comp4);
-            if (HAL_OK != HAL_COMP_Init(&internal->comp4)) {
-                init_error();
-            }
-            HAL_COMP_Start(&internal->comp4);
-            //stop debug adds
-            if (HAL_COMP_GetOutputLevel(&internal->comp4)) {
-                heater_hardware_power_disable(HEATER_HW_HANDLE->hardware_internal);
+        if (can_heatpad_cs_short_check()) { //confirm still able to conduct check on next tick
+            uint32_t level = HAL_COMP_GetOutputLevel(&internal->comp4);
+            if (level) {
+                heater_hardware_power_disable(HEATER_HW_HANDLE);
                 internal->heatpad_cs_status = ERROR_SHORT_CIRCUIT;
-                //return_error |= (1U<<SHORT_BIT);
-                return;
-            } /*else {
-                //create success msg for debug
-            }*/
+            } else {
+                internal->heatpad_cs_status = SHORT_CHECK_COMPLETE;
+            }
         }
-        //check for multiple cycles?
-        internal->heatpad_cs_status = SHORT_CHECK_COMPLETE;
     }
 }
 
 bool peripherals_ready(void) {
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
-    //will COMP be in READY or BUSY state?
     return ((HAL_DAC_GetState(&internal->dac1) == HAL_DAC_STATE_READY) && (HAL_COMP_GetState(&internal->comp4) == HAL_COMP_STATE_BUSY));
 }
 
 bool can_heatpad_cs_open_check(void)
 {
-    return (pwm_pulse_duration > 2000);
+    return (pwm_pulse_duration > 2000); //adjust?
 }
 
 bool can_heatpad_cs_short_check(void)
 {
-    return (pwm_pulse_duration < 13000);
+    return (pwm_pulse_duration < 13000); //adjust?
 }
 
 void HAL_TIMEx_Break2Callback(TIM_HandleTypeDef *htim) {
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
     if (htim->Instance == TIM4) {
         internal->heatpad_cs_status = ERROR_OVERCURRENT;
-        //return_error |= (1U<<OVERCURRENT_BIT);
     }
 }
 
