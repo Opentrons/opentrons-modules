@@ -12,9 +12,6 @@
 
 #include "heater_hardware.h"
 
-#include "FreeRTOS.h"
-#include "task.h"
-
 static void init_error(void);
 static void adc_setup(ADC_HandleTypeDef* adc);
 static void gpio_setup(void);
