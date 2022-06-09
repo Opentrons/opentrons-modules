@@ -7,7 +7,7 @@
 #include <variant>
 
 #include "FreeRTOS.h"
-#include "firmware/ads1115.hpp"
+#include "core/ads1115.hpp"
 #include "firmware/thermal_hardware.h"
 #include "firmware/thermal_plate_policy.hpp"
 #include "thermocycler-gen2/thermal_general.hpp"

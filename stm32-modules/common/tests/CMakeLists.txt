@@ -6,9 +6,10 @@ include(AddBuildAndTestTarget)
 
 add_executable(${TARGET_MODULE_NAME}
     test_main.cpp
+    test_ack_cache.cpp
+    test_ads1115.cpp
     test_at24c0xc.cpp
     test_bit_utils.cpp
-    test_ack_cache.cpp
     test_double_buffer.cpp
     test_fixed_point.cpp
     test_gcode_parse.cpp 
