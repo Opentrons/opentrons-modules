@@ -93,7 +93,7 @@ class ThermalPlateTask {
     using Queue = QueueImpl<Message>;
     using Milliseconds = std::chrono::milliseconds;
     using Seconds = std::chrono::duration<double, std::chrono::seconds::period>;
-    static constexpr const uint32_t CONTROL_PERIOD_TICKS = 50;
+    static constexpr const uint32_t CONTROL_PERIOD_TICKS = 1;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 10.0;
     static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
     static constexpr uint8_t PLATE_THERM_COUNT = 7;
