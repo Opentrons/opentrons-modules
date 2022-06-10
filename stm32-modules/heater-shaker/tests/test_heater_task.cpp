@@ -291,7 +291,7 @@ SCENARIO("heater task message passing") {
                     auto gettemp =
                         std::get<messages::GetTemperatureResponse>(response);
                     REQUIRE(gettemp.responding_to_id == message.id);
-                    REQUIRE(gettemp.setpoint_temperature == 0);
+                    REQUIRE(gettemp.setpoint_temperature == std::nullopt);
                     REQUIRE_THAT(gettemp.current_temperature,
                                  Catch::Matchers::WithinAbs(55.0, .01));
                 }
