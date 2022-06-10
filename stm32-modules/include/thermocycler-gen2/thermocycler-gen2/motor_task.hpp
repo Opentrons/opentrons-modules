@@ -210,7 +210,7 @@ static constexpr tmc2130::TMC2130RegisterMap default_tmc_config = {
                    .run_current = SealStepperState::DEFAULT_RUN_CURRENT,
                    .hold_current_delay = 0b0111},
     .tpowerdown = {},
-    .tcoolthrs = {.threshold = SealStepperState::DEFAULT_SG_MIN_VELOCITY},
+    .tcoolthrs = {.threshold = SealStepperState::DISABLED_SG_MIN_VELOCITY},
     .thigh = {.threshold = 0xFFFFF},
     .chopconf = {.toff = 0b101, .hstrt = 0b101, .hend = 0b11, .tbl = 0b10},
     .coolconf = {.sgt = SealStepperState::DEFAULT_STALLGUARD_THRESHOLD}};
