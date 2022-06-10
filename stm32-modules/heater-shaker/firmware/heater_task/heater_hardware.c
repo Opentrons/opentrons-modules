@@ -66,6 +66,7 @@ heater_hardware *HEATER_HW_HANDLE = NULL;
 #define HEATER_PAD_ENABLE_PORT GPIOD
 #define HEATER_PAD_ENABLE_PIN (1<<14)
 #define HEATER_PAD_ENABLE_TIM_CHANNEL TIM_CHANNEL_3
+#define HEATER_PAD_SHORT_CHECK_TIM_CHANNEL TIM_CHANNEL_4
 #define HEATER_PAD_LL_SETCOMPARE LL_TIM_OC_SetCompareCH3
 #define HEATPAD_CS_DAC_CHANNEL DAC_CHANNEL_1
 #define HEATPAD_CS_PIN (1<<7)
@@ -139,10 +140,19 @@ static void tim_setup(TIM_HandleTypeDef* tim) {
         .OCPolarity = TIM_OCPOLARITY_HIGH,
         .OCIdleState = TIM_OCIDLESTATE_RESET
     };
+    TIM_OC_InitTypeDef channel_config_2 = {
+        .OCMode = TIM_OCMODE_TIMING,
+        .Pulse = HEATER_PAD_SHORT_CHECK_PULSE,
+        .OCPolarity = TIM_OCPOLARITY_HIGH,
+        .OCIdleState = TIM_OCIDLESTATE_RESET
+    };
     if (HAL_OK != HAL_TIM_PWM_Init(tim)) {
         init_error();
     }
     if (HAL_OK != HAL_TIM_PWM_ConfigChannel(tim, &channel_config, HEATER_PAD_ENABLE_TIM_CHANNEL)) {
+        init_error();
+    }
+    if (HAL_OK != HAL_TIM_PWM_ConfigChannel(tim, &channel_config_2, HEATER_PAD_SHORT_CHECK_TIM_CHANNEL)) {
         init_error();
     }
 }
@@ -403,7 +413,7 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
     //setup tim second channel with pulse 95% of period. Don't check if PWM pulse greater than 90% period
     //check htim channel
-    if ((htim->Instance == TIM4) && (internal->heatpad_cs_status != IDLE) && (internal->heatpad_cs_status == SHORT_CHECK_STARTED)) {
+    if ((htim->Instance == TIM4) && (htim->Channel == HEATER_PAD_SHORT_CHECK_TIM_CHANNEL) && (internal->heatpad_cs_status != IDLE) && (internal->heatpad_cs_status == SHORT_CHECK_STARTED)) {
         if (can_heatpad_cs_short_check()) { //confirm still able to conduct check on next tick
             uint32_t level = HAL_COMP_GetOutputLevel(&internal->comp4);
             if (level) {
