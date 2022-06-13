@@ -68,8 +68,6 @@ static constexpr std::array<ADCPinMap, thermal_general::ThermistorID::THERM_LID>
         {ADC_FRONT, 0}   // Heat sink
     }};
 
-static bool done = false;
-
 // Internal FreeRTOS data structure for the task
 static StaticTask_t
     data;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
@@ -84,11 +82,7 @@ static auto read_thermistor(const ADCPinMap &pin) -> uint16_t {
     auto result =
         _adc.at(static_cast<uint8_t>(pin.adc_index)).read(pin.adc_pin);
     if (std::holds_alternative<ADS1115::Error>(result)) {
-        done = true;
         return 0xFFFF - (uint16_t)std::get<ADS1115::Error>(result);
-    }
-    if(std::get<uint16_t>(result) == 0) {
-        done = true;
     }
     return std::get<uint16_t>(result);
 }
@@ -123,7 +117,6 @@ static void run_thermistor_task(void *param) {
             &last_wake_time,
             // NOLINTNEXTLINE(readability-static-accessed-through-instance)
             _main_task.CONTROL_PERIOD_TICKS);
-        if(!done) {
         readings.front_right = read_thermistor(
             _adc_map[thermal_general::ThermistorID::THERM_FRONT_RIGHT]);
         readings.front_left = read_thermistor(
@@ -143,7 +136,6 @@ static void run_thermistor_task(void *param) {
         auto send_ret = _main_task.get_message_queue().try_send(readings);
         static_cast<void>(
             send_ret);  // Not much we can do if messages won't send
-        }
     }
 }
 
