@@ -85,7 +85,7 @@ static auto read_thermistor(const ADCPinMap &pin) -> uint16_t {
         _adc.at(static_cast<uint8_t>(pin.adc_index)).read(pin.adc_pin);
     if (std::holds_alternative<ADS1115::Error>(result)) {
         done = true;
-        return 0xFFFF;
+        return 0xFFFF - (uint16_t)std::get<ADS1115::Error>(result);
     }
     if(std::get<uint16_t>(result) == 0) {
         done = true;
