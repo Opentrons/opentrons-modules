@@ -8,55 +8,50 @@ using namespace ADS1115;
 TEST_CASE("ADS1115 test policy functionality") {
     GIVEN("a test policy") {
         ADS1115TestPolicy policy;
-        REQUIRE(policy._backing[0].lock_count == 0);
-        REQUIRE(policy._backing[1].lock_count == 0);
-        THEN("the handles don't show as initialized") {
-            REQUIRE(!policy.ads1115_check_initialized(0));
-            REQUIRE(!policy.ads1115_check_initialized(1));
+        REQUIRE(policy._lock_count == 0);
+        THEN("the handle doesn't show as initialized") {
+            REQUIRE(!policy.ads1115_check_initialized());
         }
-        WHEN("marking the ADC's as initialized") {
-            policy.ads1115_mark_initialized(0);
-            policy.ads1115_mark_initialized(1);
+        WHEN("marking the ADC as initialized") {
+            policy.ads1115_mark_initialized();
             THEN("the handles do show as initialized") {
-                REQUIRE(policy.ads1115_check_initialized(0));
-                REQUIRE(policy.ads1115_check_initialized(1));
+                REQUIRE(policy.ads1115_check_initialized());
             }
         }
-        WHEN("unlocking a mutex") {
-            policy.ads1115_get_lock(0);
-            THEN("trying to unlock again doesn't work") {
-                REQUIRE_THROWS(policy.ads1115_get_lock(0));
+        WHEN("acquiring a mutex") {
+            policy.ads1115_get_lock();
+            THEN("trying to acquire again doesn't work") {
+                REQUIRE_THROWS(policy.ads1115_get_lock());
             }
             AND_WHEN("releasing it") {
-                policy.ads1115_release_lock(0);
+                policy.ads1115_release_lock();
                 THEN("count increases") {
-                    REQUIRE(policy._backing[0].lock_count == 1);
-                    REQUIRE(policy._backing[1].lock_count == 0);
+                    REQUIRE(policy._lock_count == 1);
                 }
             }
         }
         WHEN("arming a read") {
-            REQUIRE(policy._backing[0].read_armed == false);
-            policy.ads1115_arm_for_read(0);
+            REQUIRE(policy._read_armed == false);
+            policy.ads1115_arm_for_read();
             THEN("the struct is properly armed") {
-                REQUIRE(policy._backing[0].read_armed == true);
+                REQUIRE(policy._read_armed == true);
             }
             THEN("waiting for a pulse returns true") {
                 REQUIRE(policy.ads1115_wait_for_pulse(123));
                 AND_THEN("the struct is marked as read") {
-                    REQUIRE(policy._backing[0].read_armed == false);
+                    REQUIRE(policy._read_armed == false);
                 }
             }
         }
         THEN("waiting for a pulse returns false") {
             REQUIRE(!policy.ads1115_wait_for_pulse(123));
         }
-        WHEN("setting an i2c register to each ADC") {
-            policy.ads1115_i2c_write_16(policy.addresses[0], 0, 0x1234);
-            policy.ads1115_i2c_write_16(policy.addresses[1], 1, 0x567);
+        WHEN("writing I2C registers") {
+            policy.ads1115_i2c_write_16(0, 0x1234);
+            policy.ads1115_i2c_write_16(1, 0x567);
             THEN("the values are written") {
-                REQUIRE(policy._backing[0].written.at(0) == 0x1234);
-                REQUIRE(policy._backing[1].written.at(1) == 0x567);
+                REQUIRE(policy._written.at(0) == 0x1234);
+                REQUIRE(policy._written.at(1) == 0x567);
             }
         }
     }
@@ -64,9 +59,10 @@ TEST_CASE("ADS1115 test policy functionality") {
 
 TEST_CASE("ADS1115 driver") {
     GIVEN("two unique ADC") {
-        ADS1115TestPolicy policy;
-        auto adc1 = ADC(policy.addresses[0], 0, policy);
-        auto adc2 = ADC(policy.addresses[1], 1, policy);
+        ADS1115TestPolicy policy1;
+        ADS1115TestPolicy policy2;
+        auto adc1 = ADC(policy1);
+        auto adc2 = ADC(policy2);
         THEN("the ADC's are not initialized") {
             REQUIRE(!adc1.initialized());
             REQUIRE(!adc2.initialized());

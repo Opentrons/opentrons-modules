@@ -63,8 +63,7 @@ class ADC {
      * interrupts defined in \ref thermal_hardware.h
      */
     ADC(Policy& policy)
-        : _last_result(0),
-          _policy(policy),
+        : _policy(policy),
           _initialized(false) {}
 
     /**
@@ -139,7 +138,6 @@ class ADC {
     auto initialized() -> bool { return _initialized; }
 
   private:
-    uint16_t _last_result;
     Policy& _policy;
     bool _initialized;
 
