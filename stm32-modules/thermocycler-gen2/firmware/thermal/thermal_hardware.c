@@ -56,7 +56,7 @@
  * On the higher end (low-priority) because timing
  * is not critical compared to other interrupts.
  */
-#define ADC_READY_ITR_PRIO (10)
+#define ADC_READY_ITR_PRIO (4)
 
 /** EEPROM write protect pin */
 #define EEPROM_WRITE_PROTECT_PIN  (GPIO_PIN_10)
