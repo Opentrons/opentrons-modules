@@ -14,11 +14,10 @@ Each task on the system is either _periodic_, running at a fixed frequency; or i
 
 ### Task Architecture
 
-The tasks on the system are organized as follows. An arrow from one task to another means that the first task sends messages to the second task. Responses may also be sent back, but tasks only send unsolicited messages in one direction.
+The tasks on the system are organized in a hierarchial fashion. The class diagram below is used to show the relationships between tasks. An arrow from one task to another means that the first task sends messages to the second task. Responses may also be sent back, but tasks only send unsolicited messages in one direction.
 
-The drivers that each task contains are listed as methods.
-
-The messages that a task receives are listed as functions. Messages for which an Acknowledge is sent are prefixed with a `+`.
+- The drivers that each task contains are listed as member variables (e.g. `Peltiers`, `Fans`).
+- The messages that a task receives are listed as functions (e.g. `UpdateUI()`). Messages for which an Acknowledge is sent are prefixed with a `+`.
 
 ```mermaid
 classDiagram
