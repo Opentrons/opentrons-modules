@@ -1106,6 +1106,7 @@ struct SetPlateTemperature {
     static constexpr auto prefix = std::array{'M', '1', '0', '4', ' ', 'S'};
     static constexpr auto hold_prefix = std::array{' ', 'H'};
     static constexpr auto volume_prefix = std::array{' ', 'V'};
+    static constexpr auto ramp_prefix = std::array{' ', 'R'};
     static constexpr const char* response = "M104 OK\n";
 
     // 0 seconds means infinite hold time
@@ -1113,10 +1114,14 @@ struct SetPlateTemperature {
     // If no volume is specified, set to a negative number and let
     // the rest of the firmware decide a default value
     constexpr static double default_volume = -1.0F;
+    // If no ramp is specified, this indicates to ramp as fast as
+    // possible
+    constexpr static double default_ramp = 0.0F;
 
     double setpoint;
     double hold_time;
     double volume;
+    double ramp;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -1166,10 +1171,24 @@ struct SetPlateTemperature {
             working = vol.second;
         }
 
+        auto ramp_val = default_ramp;
+        auto working_ramp = working;
+        working = prefix_matches(working_ramp, limit, ramp_prefix);
+        if (working != working_ramp) {
+            // This command specified a ramp
+            auto ramp = parse_value<float>(working, limit);
+            if (!ramp.first.has_value()) {
+                return std::make_pair(ParseResult(), input);
+            }
+            ramp_val = ramp.first.value();
+            working = ramp.second;
+        }
+
         return std::make_pair(
             ParseResult(SetPlateTemperature{.setpoint = temperature_val,
                                             .hold_time = hold_val,
-                                            .volume = volume_val}),
+                                            .volume = volume_val,
+                                            .ramp = ramp_val}),
             working);
     }
 };

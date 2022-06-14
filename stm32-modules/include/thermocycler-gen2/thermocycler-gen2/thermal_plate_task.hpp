@@ -542,7 +542,7 @@ class ThermalPlateTask {
             policy.set_enabled(false);
         } else {
             if (_plate_control.set_new_target(msg.setpoint, volume_ul,
-                                              msg.hold_time)) {
+                                              msg.hold_time, msg.ramp)) {
                 _state.system_status = State::CONTROLLING;
             } else {
                 response.with_error = errors::ErrorCode::THERMAL_TARGET_BAD;
