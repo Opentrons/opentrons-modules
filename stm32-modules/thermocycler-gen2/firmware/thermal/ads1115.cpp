@@ -101,11 +101,12 @@ auto ADC::read(uint16_t pin) -> ADC::ReadVal {
     }
 
     static_cast<void>(release_lock());
-    if ((!i2c_ret) || (notification_val == 0)) {
-        auto err = (i2c_ret) ? Error::ADCTimeout : Error::I2CTimeout;
-        return ReadVal(err);
+    if (!i2c_ret) {
+        return ReadVal(Error::I2CTimeout);
     }
-
+    if (notification_val == 0) {
+        return ReadVal(Error::ADCTimeout);
+    }
     return ReadVal(_last_result);
 }
 

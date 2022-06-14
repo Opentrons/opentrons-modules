@@ -52,9 +52,9 @@
 #define I2C_BUF_MAX (2)
 /** Size of register address: 1 byte.*/
 #define REGISTER_ADDR_LEN (1)
-/** NVIC priority of ADC interrupts.
- * On the higher end (low-priority) because timing
- * is not critical compared to other interrupts.
+/** 
+ * NVIC priority of ADC interrupts.
+ * Matches the priority of motor interrupts.
  */
 #define ADC_READY_ITR_PRIO (4)
 
