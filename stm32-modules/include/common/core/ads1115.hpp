@@ -63,8 +63,7 @@ class ADC {
      * interrupts defined in \ref thermal_hardware.h
      */
     ADC(Policy& policy)
-        : _policy(policy),
-          _initialized(false) {}
+        : _policy(policy) {}
 
     /**
      * @brief Initialize the ADC. If run multiple times on the same ADC,
@@ -85,7 +84,6 @@ class ADC {
             _policy.ads1115_mark_initialized();
         }
         release_lock();
-        _initialized = true;
     }
     /**
      * @brief Read a value from the ADC.
@@ -135,11 +133,10 @@ class ADC {
      * @brief Check if this ADC is initialized
      * @return True if initialized, false if not.
      */
-    auto initialized() -> bool { return _initialized; }
+    auto initialized() -> bool { return _policy.ads1115_check_initialized(); }
 
   private:
     Policy& _policy;
-    bool _initialized;
 
     auto inline get_lock() -> void { _policy.ads1115_get_lock(); }
     auto inline release_lock() -> void { _policy.ads1115_release_lock(); }

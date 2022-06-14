@@ -75,6 +75,7 @@ TEST_CASE("ADS1115 driver") {
                 REQUIRE(!policy1._locked);
             }
             THEN("ADC1 was initialized") {
+                REQUIRE(adc1.initialized());
                 REQUIRE(policy1._initialized);
                 REQUIRE(policy1._written.size() == 3);
                 // Low threshold
@@ -90,6 +91,9 @@ TEST_CASE("ADS1115 driver") {
                         REQUIRE(policy1._written.size() == 0);
                     }
                 }
+            }
+            THEN("ADC2 was not initialized") {
+                REQUIRE(!adc2.initialized());
             }
             THEN("reading from invalid pin fails") {
                 mutex_count = policy1._lock_count;
@@ -148,6 +152,9 @@ TEST_CASE("ADS1115 driver") {
                     REQUIRE(policy1._initialized);
                     REQUIRE(policy1._written.size() == 0);
                 }
+            }
+            THEN("ADC2 can tell it was initialized") {
+                REQUIRE(adc2.initialized());
             }
         }
     }
