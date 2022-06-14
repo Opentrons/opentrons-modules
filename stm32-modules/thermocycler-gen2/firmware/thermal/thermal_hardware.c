@@ -65,7 +65,7 @@
 
 /** Local variables */
 
-static TaskHandle_t _i2c_task_to_notify = NULL;
+static _Atomic TaskHandle_t _i2c_task_to_notify = NULL;
 static atomic_flag _initialization_started = ATOMIC_FLAG_INIT;
 static bool _initialization_done = false;
 
@@ -187,10 +187,6 @@ bool thermal_i2c_write_16(uint16_t addr, uint8_t reg, uint16_t val) {
     }
 
     // Set up notification info
-    if(_i2c_task_to_notify != NULL) {
-        xSemaphoreGive(_i2c_semaphore);
-        return false;
-    }
     _i2c_task_to_notify = xTaskGetCurrentTaskHandle();
 
     // Prepare buffer & send it
