@@ -15,7 +15,7 @@
 
 namespace thermal_plate_control_task {
 
-static constexpr uint8_t MAX_RETRIES = 3;
+static constexpr uint8_t MAX_RETRIES = 5;
 
 enum class ADCAddress : uint8_t {
     ADC_FRONT = ((0x48) << 1),  // AKA ADC1
