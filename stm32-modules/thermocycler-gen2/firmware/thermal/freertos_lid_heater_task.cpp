@@ -7,12 +7,15 @@
 #include "FreeRTOS.h"
 #include "core/ads1115.hpp"
 #include "firmware/lid_heater_policy.hpp"
+#include "firmware/thermal_adc_policy.hpp"
 #include "firmware/thermal_hardware.h"
 #include "thermocycler-gen2/lid_heater_task.hpp"
 
 namespace lid_heater_control_task {
 
-constexpr uint8_t _adc_address = (0x49 << 1);
+using ADC_t = ADS1115::ADC<thermal_adc_policy::AdcPolicy>;
+
+static auto _adc = ADC_t(thermal_adc_policy::get_adc_2_policy());
 
 constexpr uint8_t _adc_lid_pin = 1;
 
@@ -65,8 +68,7 @@ static void run_thermistor_task(void *param) {
                   "FreeRTOS tickrate must be at 1000 Hz");
     static_cast<void>(param);
     thermal_hardware_setup();
-    ADS1115::ADC adc(_adc_address, ADC2_ITR);
-    adc.initialize();
+    _adc.initialize();
     auto last_wake_time = xTaskGetTickCount();
     messages::LidTempReadComplete readings{};
     while (true) {
@@ -74,7 +76,7 @@ static void run_thermistor_task(void *param) {
             &last_wake_time,
             // NOLINTNEXTLINE(readability-static-accessed-through-instance)
             _main_task.CONTROL_PERIOD_TICKS);
-        auto result = adc.read(_adc_lid_pin);
+        auto result = _adc.read(_adc_lid_pin);
         if (std::holds_alternative<ADS1115::Error>(result)) {
             readings.lid_temp = 0;
         } else {

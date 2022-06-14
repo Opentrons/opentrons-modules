@@ -11,10 +11,6 @@
 
 namespace thermal_adc_policy {
 
-static auto get_adc_1_policy() -> ADCPolicy&;
-
-static auto get_adc_2_policy() -> ADCPolicy&;
-
 /**
  * The policy implementation for the ADC objects uses singletons for each
  * of the ADC instances on the board.
@@ -59,5 +55,9 @@ class AdcPolicy {
     // Mutex lock for this instance
     freertos_synchronization::FreeRTOSMutex _mutex;
 };
+
+auto get_adc_1_policy() -> AdcPolicy&;
+
+auto get_adc_2_policy() -> AdcPolicy&;
 
 };  // namespace thermal_adc_policy

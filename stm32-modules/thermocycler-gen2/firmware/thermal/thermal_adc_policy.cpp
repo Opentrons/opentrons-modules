@@ -3,17 +3,20 @@
 
 using namespace thermal_adc_policy;
 
-static auto thermal_adc_policy::get_adc_1() -> ADCPolicy& {
-    static ADCPolicy adc1_instance(AdcPolicy::ADC_1_ADDRESS,
+auto thermal_adc_policy::get_adc_1_policy() -> AdcPolicy& {
+    static AdcPolicy adc1_instance(AdcPolicy::ADC_1_ADDRESS,
                                    ADC_ITR_T::ADC1_ITR);
     return adc1_instance;
 }
 
-static auto thermal_adc_policy::get_adc_2() -> ADCPolicy& {
-    static ADCPolicy adc2_instance(AdcPolicy::ADC_2_ADDRESS,
+auto thermal_adc_policy::get_adc_2_policy() -> AdcPolicy& {
+    static AdcPolicy adc2_instance(AdcPolicy::ADC_2_ADDRESS,
                                    ADC_ITR_T::ADC2_ITR);
     return adc2_instance;
 }
+
+AdcPolicy::AdcPolicy(uint8_t address, ADC_ITR_T id)
+    : _i2c_address(address), _id(id), _initialized(false), _mutex() {}
 
 auto AdcPolicy::ads1115_mark_initialized() -> void { _initialized = true; }
 
@@ -46,6 +49,3 @@ auto AdcPolicy::ads1115_wait_for_pulse(uint32_t max_wait_ms) -> bool {
 }
 
 auto AdcPolicy::task_yield() -> void { taskYIELD(); }
-
-AdcPolicy::AdcPolicy(uint8_t address, size_t id)
-    : _i2c_address(address), _id(id) _initialized(false), _mutex() {}
