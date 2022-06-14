@@ -46,8 +46,8 @@
 /** Private definitions */
 
 #define I2C_INSTANCE (I2C2)
-/* Driven by PCLK1 to 1MHz */
-#define I2C_TIMING   (0x00802172)
+/* Driven by PCLK1 to Fast Mode - just shy of 400kHz */
+#define I2C_TIMING   (0x80500D1D)
 /** Max buffer: 2 data bytes*/
 #define I2C_BUF_MAX (2)
 /** Size of register address: 1 byte.*/
