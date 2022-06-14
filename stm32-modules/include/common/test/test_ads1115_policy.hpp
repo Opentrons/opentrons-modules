@@ -13,6 +13,8 @@ struct ADS1115TestPolicy {
     // Reading a register always returns this
     static constexpr uint16_t READBACK_VALUE = 0xABCD;
 
+    ADS1115TestPolicy() : _written() {}
+
     auto ads1115_mark_initialized() -> void {
         _initialized = true;
     }

@@ -104,7 +104,7 @@ class ADC {
         }
         get_lock();
 
-        auto ret = _policy.ads1115_arm_for_read(_id);
+        auto ret = _policy.ads1115_arm_for_read();
         if (!ret) {
             release_lock();
             return ReadVal(Error::ADCTimeout);
@@ -141,8 +141,8 @@ class ADC {
     Policy& _policy;
     bool _initialized;
 
-    auto inline get_lock() -> void { _policy.ads1115_get_lock(_id); }
-    auto inline release_lock() -> void { _policy.ads1115_release_lock(_id); }
+    auto inline get_lock() -> void { _policy.ads1115_get_lock(); }
+    auto inline release_lock() -> void { _policy.ads1115_release_lock(); }
 
     auto inline reg_write(uint8_t reg, uint16_t data) -> bool {
         return _policy.ads1115_i2c_write_16(reg, data);

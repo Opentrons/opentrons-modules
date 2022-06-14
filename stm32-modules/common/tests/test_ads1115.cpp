@@ -68,85 +68,85 @@ TEST_CASE("ADS1115 driver") {
             REQUIRE(!adc2.initialized());
         }
         WHEN("initializing ADC1") {
-            auto mutex_count = policy._backing[0].lock_count;
+            auto mutex_count = policy1._lock_count;
             adc1.initialize();
             THEN("mutex lock increases") {
-                REQUIRE(policy._backing[0].lock_count == mutex_count + 1);
-                REQUIRE(!policy._backing[0].locked);
+                REQUIRE(policy1._lock_count == mutex_count + 1);
+                REQUIRE(!policy1._locked);
             }
             THEN("ADC1 was initialized") {
-                REQUIRE(policy._backing[0].initialized);
-                REQUIRE(policy._backing[0].written.size() == 3);
+                REQUIRE(policy1._initialized);
+                REQUIRE(policy1._written.size() == 3);
                 // Low threshold
-                REQUIRE(policy._backing[0].written.at(2) == 0);
+                REQUIRE(policy1._written.at(2) == 0);
                 // Hi threshold
-                REQUIRE(policy._backing[0].written.at(3) == 0x8000);
+                REQUIRE(policy1._written.at(3) == 0x8000);
                 // config address
-                REQUIRE(policy._backing[0].written.at(1) == 0x45A0);
+                REQUIRE(policy1._written.at(1) == 0x45A0);
                 AND_WHEN("initializing it again") {
-                    policy._backing[0].written.clear();
+                    policy1._written.clear();
                     adc1.initialize();
                     THEN("the registers are not re-written") {
-                        REQUIRE(policy._backing[0].written.size() == 0);
+                        REQUIRE(policy1._written.size() == 0);
                     }
                 }
             }
             THEN("reading from invalid pin fails") {
-                mutex_count = policy._backing[0].lock_count;
+                mutex_count = policy1._lock_count;
                 auto ret = adc1.read(6);
                 REQUIRE(std::holds_alternative<Error>(ret));
                 REQUIRE(std::get<Error>(ret) == Error::ADCPin);
                 AND_THEN("mutex is not incremented") {
-                    REQUIRE(policy._backing[0].lock_count == mutex_count);
+                    REQUIRE(policy1._lock_count == mutex_count);
                 }
             }
             THEN("reading from valid pin succeeds") {
-                mutex_count = policy._backing[0].lock_count;
+                mutex_count = policy1._lock_count;
                 auto ret = adc1.read(1);
                 REQUIRE(std::holds_alternative<uint16_t>(ret));
-                REQUIRE(std::get<uint16_t>(ret) == policy.READBACK_VALUE);
+                REQUIRE(std::get<uint16_t>(ret) == policy1.READBACK_VALUE);
                 AND_THEN("mutex is incremented") {
-                    REQUIRE(policy._backing[0].lock_count == mutex_count + 1);
+                    REQUIRE(policy1._lock_count == mutex_count + 1);
                 }
             }
             THEN("reading from the uninitialized ADC still fails") {
-                auto mutex_count = policy._backing[1].lock_count;
+                auto mutex_count = policy2._lock_count;
                 auto ret = adc2.read(0);
                 REQUIRE(std::holds_alternative<Error>(ret));
                 REQUIRE(std::get<Error>(ret) == Error::ADCInit);
                 AND_THEN("mutex is not incremented") {
-                    REQUIRE(policy._backing[1].lock_count == mutex_count);
+                    REQUIRE(policy2._lock_count == mutex_count);
                 }
             }
         }
         THEN("reading from uninitialized ADC fails") {
-            auto mutex_count = policy._backing[0].lock_count;
+            auto mutex_count = policy1._lock_count;
             auto ret = adc1.read(0);
             REQUIRE(std::holds_alternative<Error>(ret));
             REQUIRE(std::get<Error>(ret) == Error::ADCInit);
             AND_THEN("mutex is not incremented") {
-                REQUIRE(policy._backing[0].lock_count == mutex_count);
+                REQUIRE(policy1._lock_count == mutex_count);
             }
         }
     }
     GIVEN("two ADC pointing to same ID") {
-        ADS1115TestPolicy policy;
-        auto adc1 = ADC(policy.addresses[0], 0, policy);
-        auto adc2 = ADC(policy.addresses[0], 0, policy);
+        ADS1115TestPolicy policy1;
+        auto adc1 = ADC(policy1);
+        auto adc2 = ADC(policy1);
         WHEN("initializing ADC1") {
             adc1.initialize();
             THEN("the backing ADC is initialized") {
                 REQUIRE(adc1.initialized());
-                REQUIRE(policy._backing[0].initialized);
-                REQUIRE(policy._backing[0].written.size() == 3);
+                REQUIRE(policy1._initialized);
+                REQUIRE(policy1._written.size() == 3);
             }
             AND_WHEN("initializing ADC2") {
-                policy._backing[0].written.clear();
+                policy1._written.clear();
                 adc2.initialize();
                 THEN("the registers are not rewritten") {
                     REQUIRE(adc2.initialized());
-                    REQUIRE(policy._backing[0].initialized);
-                    REQUIRE(policy._backing[0].written.size() == 0);
+                    REQUIRE(policy1._initialized);
+                    REQUIRE(policy1._written.size() == 0);
                 }
             }
         }
