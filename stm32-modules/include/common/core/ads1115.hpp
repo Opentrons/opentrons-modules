@@ -63,7 +63,7 @@ class ADC {
      * @param[in] id The ID of the ADC, which will link to one of the
      * interrupts defined in \ref thermal_hardware.h
      */
-    ADC(Policy& policy) : _policy(policy) {}
+    explicit ADC(Policy& policy) : _policy(policy) {}
 
     /**
      * @brief Initialize the ADC. If run multiple times on the same ADC,
