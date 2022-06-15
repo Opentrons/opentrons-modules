@@ -19,22 +19,22 @@ The functionality of the Temp Deck Firmware is split into a set of FreeRTOS task
 Each task on the system is either _periodic_, running at a fixed frequency; or it is _message driven_, running every time there is a new message available and sleeping otherwise. The tasks on the system are defined as follows:
 
 - __Host Comms task__: _(message-driven)_ See `./host_comms_task/`. This task is responsible for parsing incoming USB data and parsing it into messages to dispatch to other tasks on the system, as well as receiving messages from other tasks to serialize into USB messages back to the host. Policy functionality:
-- - Read from & write to onboard USB connection. See `./host_comms_task/`
+  - Read from & write to onboard USB connection. See `./host_comms_task/`
 - __System Task__: _(message-driven)_ See `./system_task`. This task is responsible for miscellaneous system tasks with low timing requirements. These include updating the User Interface lights and managing the shutdown sequence before jumping to the bootloader. Policy functionality includes:
-- - Read from & write to internal flash for updating & reading the device serial number. 
-- - Enter the DFU bootloader
-- - Write or read an array of I2C bytes (thread-safe via semaphore) for the EEPROM driver
+  - Read from & write to internal flash for updating & reading the device serial number. 
+  - Enter the DFU bootloader
+  - Write or read an array of I2C bytes (thread-safe via semaphore) for the EEPROM driver
 - __UI Task__: _(message-driven)_ See `./ui_task/`. This task is driven by a timer (__UI Timer__) to periodically update the LED's on the system based on the current thermal system state. Other tasks send their current state to the UI Task, which decides what to display based on the combined state of the main tasks. Policy functionality:
-- - Write data to the LED's
+  - Write data to the LED's
 - __Thermistor Task__: _(periodic)_ See `./thermistor_task/`. The thermistor task manages periodic reading of the thermistors on the system. At the end of each read, the data is sent to the Thermal Task. Policy functinonality includes:
-- - Write or read a 16-byte I2C register (thread-safe via semaphore) for the ADS1115 driver
-- - Sleep the task until a specific millisecond tick value
+  - Write or read a 16-byte I2C register (thread-safe via semaphore) for the ADS1115 driver
+  - Sleep the task until a specific millisecond tick value
 - __Thermal Control Task__: _(message-driven)_ The thermal task controls the Peltiers and Fans, as well as managing the high level control logic for the thermal elements. Policy functionality:
-- - Enable or disable the peltiers
-- - Set the direction and pulse width of the peltiers
-- - Set the speed of the fans
-- - Get the latest tachometer reading from the fans
-- - Get the latest current reading from the peltiers
+  - Enable or disable the peltiers
+  - Set the direction and pulse width of the peltiers
+  - Set the speed of the fans
+  - Get the latest tachometer reading from the fans
+  - Get the latest current reading from the peltiers
 
 ### Task Architecture
 
