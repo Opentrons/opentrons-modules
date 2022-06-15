@@ -141,7 +141,7 @@ struct SealStepperState {
     constexpr static signed long FULL_RETRACT_MICROSTEPS =
         (FULL_EXTEND_MICROSTEPS * -1);
     // Distance to back off after triggering a limit switch
-    constexpr static double SWITCH_BACKOFF_MM = 0.5F;
+    constexpr static double SWITCH_BACKOFF_MM = 1.0F;
     // Distance to RETRACT to back off a limit switch
     constexpr static signed long SWITCH_BACKOFF_MICROSTEPS_RETRACT =
         motor_util::SealStepper::mm_to_steps(SWITCH_BACKOFF_MM);
@@ -210,7 +210,7 @@ static constexpr tmc2130::TMC2130RegisterMap default_tmc_config = {
                    .run_current = SealStepperState::DEFAULT_RUN_CURRENT,
                    .hold_current_delay = 0b0111},
     .tpowerdown = {},
-    .tcoolthrs = {.threshold = SealStepperState::DEFAULT_SG_MIN_VELOCITY},
+    .tcoolthrs = {.threshold = SealStepperState::DISABLED_SG_MIN_VELOCITY},
     .thigh = {.threshold = 0xFFFFF},
     .chopconf = {.toff = 0b101, .hstrt = 0b101, .hend = 0b11, .tbl = 0b10},
     .coolconf = {.sgt = SealStepperState::DEFAULT_STALLGUARD_THRESHOLD}};
