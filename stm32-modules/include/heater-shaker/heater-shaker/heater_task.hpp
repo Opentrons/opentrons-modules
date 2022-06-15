@@ -155,7 +155,7 @@ class HeaterTask {
               .error_bit = State::BOARD_SENSE_ERROR},
           state{.system_status = State::IDLE, .error_bitmap = 0},
           pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_S, 1.0, -1.0),
-          setpoint(0),
+          setpoint(std::nullopt),
           _flash(),
           _offset_constants{.b = OFFSET_DEFAULT_CONST_B,
                             .c = OFFSET_DEFAULT_CONST_C} {}

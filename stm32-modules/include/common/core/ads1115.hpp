@@ -40,14 +40,14 @@ concept ADS1115Policy = requires(Policy& p, uint8_t u8, uint16_t u16) {
     // Waits for a pulse from the ADC that was armed by this task. Maximum
     // wait time is passed as a parameter.
     { p.ads1115_wait_for_pulse(123) } -> std::same_as<bool>;
-    // Yield execution on an OS, or do nothing if irrelevant
-    { p.task_yield() } -> std::same_as<void>;
 };
 
 enum class Error {
-    ADCTimeout, /**< Timed out waiting for ADC.*/
-    ADCPin,     /**< Pin is not allowed.*/
-    ADCInit     /**< ADC is not initialized.*/
+    ADCTimeout = 1, /**< Timed out waiting for ADC.*/
+    I2CTimeout = 2, /**< Timed out waiting for I2C.*/
+    DoubleArm = 3,  /**< ADC already armed.*/
+    ADCPin = 4,     /**< Pin is not allowed.*/
+    ADCInit = 5     /**< ADC is not initialized.*/
 };
 
 template <ADS1115Policy Policy>
@@ -105,14 +105,14 @@ class ADC {
         auto ret = _policy.ads1115_arm_for_read();
         if (!ret) {
             release_lock();
-            return ReadVal(Error::ADCTimeout);
+            return ReadVal(Error::DoubleArm);
         }
         ret =
             reg_write(config_addr, config_default | (pin << config_mux_shift) |
                                        config_start_read);
         if (!ret) {
             release_lock();
-            return ReadVal(Error::ADCTimeout);
+            return ReadVal(Error::I2CTimeout);
         }
 
         ret = _policy.ads1115_wait_for_pulse(max_pulse_wait_ms);
@@ -126,7 +126,7 @@ class ADC {
         if (result.has_value()) {
             return ReadVal(result.value());
         }
-        return ReadVal(Error::ADCTimeout);
+        return ReadVal(Error::I2CTimeout);
     }
 
     /**

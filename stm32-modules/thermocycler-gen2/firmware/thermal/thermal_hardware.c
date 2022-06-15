@@ -46,17 +46,17 @@
 /** Private definitions */
 
 #define I2C_INSTANCE (I2C2)
-/* Driven by PCLK1 to 1MHz */
-#define I2C_TIMING   (0x00802172)
+/* Driven by PCLK1 to Fast Mode - just shy of 400kHz */
+#define I2C_TIMING   (0x80500D1D)
 /** Max buffer: 2 data bytes*/
 #define I2C_BUF_MAX (2)
 /** Size of register address: 1 byte.*/
 #define REGISTER_ADDR_LEN (1)
-/** NVIC priority of ADC interrupts.
- * On the higher end (low-priority) because timing
- * is not critical compared to other interrupts.
+/** 
+ * NVIC priority of ADC interrupts.
+ * Matches the priority of motor interrupts.
  */
-#define ADC_READY_ITR_PRIO (10)
+#define ADC_READY_ITR_PRIO (4)
 
 /** EEPROM write protect pin */
 #define EEPROM_WRITE_PROTECT_PIN  (GPIO_PIN_10)
@@ -65,7 +65,7 @@
 
 /** Local variables */
 
-static TaskHandle_t _i2c_task_to_notify = NULL;
+static _Atomic TaskHandle_t _i2c_task_to_notify = NULL;
 static atomic_flag _initialization_started = ATOMIC_FLAG_INIT;
 static bool _initialization_done = false;
 
@@ -187,10 +187,6 @@ bool thermal_i2c_write_16(uint16_t addr, uint8_t reg, uint16_t val) {
     }
 
     // Set up notification info
-    if(_i2c_task_to_notify != NULL) {
-        xSemaphoreGive(_i2c_semaphore);
-        return false;
-    }
     _i2c_task_to_notify = xTaskGetCurrentTaskHandle();
 
     // Prepare buffer & send it
