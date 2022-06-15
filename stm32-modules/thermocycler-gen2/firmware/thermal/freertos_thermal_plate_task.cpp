@@ -7,7 +7,8 @@
 #include <variant>
 
 #include "FreeRTOS.h"
-#include "firmware/ads1115.hpp"
+#include "core/ads1115.hpp"
+#include "firmware/thermal_adc_policy.hpp"
 #include "firmware/thermal_hardware.h"
 #include "firmware/thermal_plate_policy.hpp"
 #include "thermocycler-gen2/thermal_general.hpp"
@@ -15,12 +16,9 @@
 
 namespace thermal_plate_control_task {
 
-static constexpr uint8_t MAX_RETRIES = 5;
+using ADC_t = ADS1115::ADC<thermal_adc_policy::AdcPolicy>;
 
-enum class ADCAddress : uint8_t {
-    ADC_FRONT = ((0x48) << 1),  // AKA ADC1
-    ADC_REAR = ((0x49) << 1)    // AKA ADC2
-};
+static constexpr uint8_t MAX_RETRIES = 5;
 
 enum class Notifications : uint8_t {
     INCOMING_MESSAGE = 1,
@@ -53,9 +51,9 @@ static std::array<StackType_t, _thermistor_stack_size> _thermistor_stack;
 static StaticTask_t _thermistor_data;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static std::array<ADS1115::ADC, ADC_ITR_NUM> _adc = {
-    ADS1115::ADC(static_cast<uint8_t>(ADCAddress::ADC_FRONT), ADC1_ITR),
-    ADS1115::ADC(static_cast<uint8_t>(ADCAddress::ADC_REAR), ADC2_ITR)};
+static std::array<ADC_t, ADC_ITR_NUM> _adc = {
+    ADC_t(thermal_adc_policy::get_adc_1_policy()),
+    ADC_t(thermal_adc_policy::get_adc_2_policy())};
 
 // This array follows the definition of the ThermistorID enumeration
 static constexpr std::array<ADCPinMap, thermal_general::ThermistorID::THERM_LID>

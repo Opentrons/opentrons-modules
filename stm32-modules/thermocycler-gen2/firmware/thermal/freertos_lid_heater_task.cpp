@@ -5,16 +5,20 @@
 #include "firmware/freertos_lid_heater_task.hpp"
 
 #include "FreeRTOS.h"
-#include "firmware/ads1115.hpp"
+#include "core/ads1115.hpp"
 #include "firmware/lid_heater_policy.hpp"
+#include "firmware/thermal_adc_policy.hpp"
 #include "firmware/thermal_hardware.h"
 #include "thermocycler-gen2/lid_heater_task.hpp"
 
 namespace lid_heater_control_task {
 
-static constexpr uint8_t MAX_RETRIES = 5;
+using ADC_t = ADS1115::ADC<thermal_adc_policy::AdcPolicy>;
 
-constexpr uint8_t _adc_address = (0x49 << 1);
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static auto _adc = ADC_t(thermal_adc_policy::get_adc_2_policy());
+
+static constexpr uint8_t MAX_RETRIES = 5;
 
 constexpr uint8_t _adc_lid_pin = 1;
 
@@ -67,8 +71,7 @@ static void run_thermistor_task(void *param) {
                   "FreeRTOS tickrate must be at 1000 Hz");
     static_cast<void>(param);
     thermal_hardware_setup();
-    ADS1115::ADC adc(_adc_address, ADC2_ITR);
-    adc.initialize();
+    _adc.initialize();
     auto last_wake_time = xTaskGetTickCount();
     messages::LidTempReadComplete readings{};
     while (true) {
@@ -78,7 +81,7 @@ static void run_thermistor_task(void *param) {
             _main_task.CONTROL_PERIOD_TICKS);
         bool done = false;
         uint8_t retries = 0;
-        auto result = adc.read(_adc_lid_pin);
+        auto result = _adc.read(_adc_lid_pin);
         while (!done) {
             if (std::holds_alternative<uint16_t>(result)) {
                 done = true;
@@ -86,7 +89,7 @@ static void run_thermistor_task(void *param) {
             } else if (++retries < MAX_RETRIES) {
                 // Short delay for reliability
                 vTaskDelay(pdMS_TO_TICKS(5));
-                result = adc.read(_adc_lid_pin);
+                result = _adc.read(_adc_lid_pin);
             } else {
                 // Retries expired
                 done = true;
