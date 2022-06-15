@@ -15,6 +15,8 @@
 
 namespace thermal_plate_control_task {
 
+static constexpr uint8_t MAX_RETRIES = 5;
+
 enum class ADCAddress : uint8_t {
     ADC_FRONT = ((0x48) << 1),  // AKA ADC1
     ADC_REAR = ((0x49) << 1)    // AKA ADC2
@@ -79,11 +81,25 @@ static StaticTask_t
  * ADC cannot be read.
  */
 static auto read_thermistor(const ADCPinMap &pin) -> uint16_t {
+    uint8_t retries = 0;
+    bool done = false;
+    // Keep trying to read
     auto result =
         _adc.at(static_cast<uint8_t>(pin.adc_index)).read(pin.adc_pin);
-    if (std::holds_alternative<ADS1115::Error>(result)) {
-        return 0;
+    while (!done) {
+        if (std::holds_alternative<uint16_t>(result)) {
+            done = true;
+        } else if (++retries < MAX_RETRIES) {
+            // Short delay for reliability
+            vTaskDelay(pdMS_TO_TICKS(5));
+            result =
+                _adc.at(static_cast<uint8_t>(pin.adc_index)).read(pin.adc_pin);
+        } else {
+            // Retries expired
+            return static_cast<uint16_t>(std::get<ADS1115::Error>(result));
+        }
     }
+
     return std::get<uint16_t>(result);
 }
 
@@ -117,7 +133,6 @@ static void run_thermistor_task(void *param) {
             &last_wake_time,
             // NOLINTNEXTLINE(readability-static-accessed-through-instance)
             _main_task.CONTROL_PERIOD_TICKS);
-
         readings.front_right = read_thermistor(
             _adc_map[thermal_general::ThermistorID::THERM_FRONT_RIGHT]);
         readings.front_left = read_thermistor(

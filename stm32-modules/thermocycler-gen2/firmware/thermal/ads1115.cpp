@@ -82,7 +82,7 @@ auto ADC::read(uint16_t pin) -> ADC::ReadVal {
     i2c_ret = thermal_arm_adc_for_read(_id);
     if (!i2c_ret) {
         static_cast<void>(release_lock());
-        return ReadVal(Error::ADCTimeout);
+        return ReadVal(Error::DoubleArm);
     }
     // This kicks off the conversion on the selected pin
     i2c_ret = thermal_i2c_write_16(
@@ -101,10 +101,12 @@ auto ADC::read(uint16_t pin) -> ADC::ReadVal {
     }
 
     static_cast<void>(release_lock());
-    if ((!i2c_ret) || (notification_val == 0)) {
+    if (!i2c_ret) {
+        return ReadVal(Error::I2CTimeout);
+    }
+    if (notification_val == 0) {
         return ReadVal(Error::ADCTimeout);
     }
-
     return ReadVal(_last_result);
 }
 

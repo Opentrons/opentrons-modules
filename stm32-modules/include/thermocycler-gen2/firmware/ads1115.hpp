@@ -14,9 +14,11 @@
 namespace ADS1115 {
 
 enum class Error {
-    ADCTimeout, /**< Timed out waiting for ADC.*/
-    ADCPin,     /**< Pin is not allowed.*/
-    ADCInit     /**< ADC is not initialized.*/
+    ADCTimeout = 1, /**< Timed out waiting for ADC.*/
+    I2CTimeout = 2, /**< Timed out waiting for I2C.*/
+    DoubleArm = 3,  /**< ADC already armed.*/
+    ADCPin = 4,     /**< Pin is not allowed.*/
+    ADCInit = 5     /**< ADC is not initialized.*/
 };
 
 class ADC {
