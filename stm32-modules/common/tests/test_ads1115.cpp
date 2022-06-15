@@ -25,9 +25,7 @@ TEST_CASE("ADS1115 test policy functionality") {
             }
             AND_WHEN("releasing it") {
                 policy.ads1115_release_lock();
-                THEN("count increases") {
-                    REQUIRE(policy._lock_count == 1);
-                }
+                THEN("count increases") { REQUIRE(policy._lock_count == 1); }
             }
         }
         WHEN("arming a read") {
@@ -92,9 +90,7 @@ TEST_CASE("ADS1115 driver") {
                     }
                 }
             }
-            THEN("ADC2 was not initialized") {
-                REQUIRE(!adc2.initialized());
-            }
+            THEN("ADC2 was not initialized") { REQUIRE(!adc2.initialized()); }
             THEN("reading from invalid pin fails") {
                 mutex_count = policy1._lock_count;
                 auto ret = adc1.read(6);
@@ -155,6 +151,73 @@ TEST_CASE("ADS1115 driver") {
             }
             THEN("ADC2 can tell it was initialized") {
                 REQUIRE(adc2.initialized());
+            }
+        }
+    }
+}
+
+TEST_CASE("ads1115 error handling") {
+    GIVEN("an ADC that is uninitialized") {
+        ADS1115TestPolicy policy;
+        auto adc = ADC(policy);
+        WHEN("reading the ADC") {
+            auto ret = adc.read(0);
+            THEN("an error is returned") {
+                REQUIRE(std::holds_alternative<Error>(ret));
+                REQUIRE(std::get<Error>(ret) == Error::ADCInit);
+            }
+            THEN("the mutex was never locked/unlocked") {
+                REQUIRE(policy._lock_count == 0);
+            }
+        }
+    }
+    GIVEN("an ADC that is initialized") {
+        ADS1115TestPolicy policy;
+        auto adc = ADC(policy);
+        adc.initialize();
+        REQUIRE(policy._lock_count == 1);
+        WHEN("arming the ADC fails during a Read") {
+            policy._fail_next_arm_for_read = true;
+            auto ret = adc.read(0);
+            THEN("an error is returned") {
+                REQUIRE(std::holds_alternative<Error>(ret));
+                REQUIRE(std::get<Error>(ret) == Error::DoubleArm);
+            }
+            THEN("the mutex has been unlocked") {
+                REQUIRE(policy._lock_count == 2);
+            }
+        }
+        WHEN("writing to the ADC fails during a Read") {
+            policy._fail_next_i2c_write = true;
+            auto ret = adc.read(0);
+            THEN("an error is returned") {
+                REQUIRE(std::holds_alternative<Error>(ret));
+                REQUIRE(std::get<Error>(ret) == Error::I2CTimeout);
+            }
+            THEN("the mutex has been unlocked") {
+                REQUIRE(policy._lock_count == 2);
+            }
+        }
+        WHEN("reading from the ADC fails during a Read") {
+            policy._fail_next_i2c_read = true;
+            auto ret = adc.read(0);
+            THEN("an error is returned") {
+                REQUIRE(std::holds_alternative<Error>(ret));
+                REQUIRE(std::get<Error>(ret) == Error::I2CTimeout);
+            }
+            THEN("the mutex has been unlocked") {
+                REQUIRE(policy._lock_count == 2);
+            }
+        }
+        WHEN("waiting for an ADC pulse fails during a Read") {
+            policy._fail_next_pulse_wait = true;
+            auto ret = adc.read(0);
+            THEN("an error is returned") {
+                REQUIRE(std::holds_alternative<Error>(ret));
+                REQUIRE(std::get<Error>(ret) == Error::ADCTimeout);
+            }
+            THEN("the mutex has been unlocked") {
+                REQUIRE(policy._lock_count == 2);
             }
         }
     }

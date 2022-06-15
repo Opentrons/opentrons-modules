@@ -15,7 +15,9 @@ namespace lid_heater_control_task {
 
 using ADC_t = ADS1115::ADC<thermal_adc_policy::AdcPolicy>;
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _adc = ADC_t(thermal_adc_policy::get_adc_2_policy());
+
 static constexpr uint8_t MAX_RETRIES = 5;
 
 constexpr uint8_t _adc_lid_pin = 1;

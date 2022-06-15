@@ -16,6 +16,7 @@ auto thermal_adc_policy::get_adc_2_policy() -> AdcPolicy& {
 }
 
 AdcPolicy::AdcPolicy(uint8_t address, ADC_ITR_T id)
+    // NOLINTNEXTLINE(readability-redundant-member-init)
     : _i2c_address(address), _id(id), _initialized(false), _mutex() {}
 
 auto AdcPolicy::ads1115_mark_initialized() -> void { _initialized = true; }
@@ -30,22 +31,29 @@ auto AdcPolicy::ads1115_arm_for_read() -> bool {
     return thermal_arm_adc_for_read(_id);
 }
 
+// This function is const in the context of the Policy class, but is modifies
+// the state of the underlying hardware and thus marking it const would
+// obfuscate the implementation.
+// NOLINTNEXTLINE(readability-make-member-function-const)
 auto AdcPolicy::ads1115_i2c_write_16(uint8_t reg, uint16_t value) -> bool {
     return thermal_i2c_write_16(_i2c_address, reg, value);
 }
 
+// This function is const in the context of the Policy class, but is modifies
+// the state of the underlying hardware and thus marking it const would
+// obfuscate the implementation.
+// NOLINTNEXTLINE(readability-make-member-function-const)
 auto AdcPolicy::ads1115_i2c_read_16(uint8_t reg) -> std::optional<uint16_t> {
-    uint16_t ret;
+    uint16_t ret = 0;
     if (thermal_i2c_read_16(_i2c_address, reg, &ret)) {
         return std::optional<uint16_t>(ret);
     }
     return std::nullopt;
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto AdcPolicy::ads1115_wait_for_pulse(uint32_t max_wait_ms) -> bool {
     auto notification_val =
         ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(max_wait_ms));
     return notification_val == 1;
 }
-
-auto AdcPolicy::task_yield() -> void { taskYIELD(); }

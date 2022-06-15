@@ -15,13 +15,9 @@ struct ADS1115TestPolicy {
 
     ADS1115TestPolicy() : _written() {}
 
-    auto ads1115_mark_initialized() -> void {
-        _initialized = true;
-    }
+    auto ads1115_mark_initialized() -> void { _initialized = true; }
 
-    auto ads1115_check_initialized() -> bool {
-        return _initialized;
-    }
+    auto ads1115_check_initialized() -> bool { return _initialized; }
 
     auto ads1115_get_lock() -> void {
         if (_locked) {
@@ -38,21 +34,32 @@ struct ADS1115TestPolicy {
     }
 
     auto ads1115_arm_for_read() -> bool {
+        if (_fail_next_arm_for_read) {
+            return false;
+        }
         _read_armed = true;
         return true;
     }
 
     auto ads1115_i2c_write_16(uint8_t reg, uint16_t val) -> bool {
+        if (_fail_next_i2c_write) {
+            return false;
+        }
         _written[reg] = val;
         return true;
     }
 
-    auto ads1115_i2c_read_16(uint8_t reg)
-        -> std::optional<uint16_t> {
+    auto ads1115_i2c_read_16(uint8_t reg) -> std::optional<uint16_t> {
+        if (_fail_next_i2c_read) {
+            return std::nullopt;
+        }
         return std::optional<uint16_t>(READBACK_VALUE);
     }
 
     auto ads1115_wait_for_pulse(uint32_t timeout_ms) -> bool {
+        if (_fail_next_pulse_wait) {
+            return false;
+        }
         if (_read_armed) {
             _read_armed = false;
             return true;
@@ -60,7 +67,10 @@ struct ADS1115TestPolicy {
         return false;
     }
 
-    auto task_yield() -> void { return; }
+    bool _fail_next_i2c_read = false;
+    bool _fail_next_i2c_write = false;
+    bool _fail_next_pulse_wait = false;
+    bool _fail_next_arm_for_read = false;
 
     bool _initialized = false;
     bool _locked = false;

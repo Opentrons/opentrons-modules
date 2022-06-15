@@ -20,7 +20,8 @@ namespace ADS1115 {
  * or any other enumeration of the ADC
  */
 template <typename Policy>
-concept ADS1115Policy = requires(Policy& p, uint8_t u8, uint16_t u16) {
+concept ADS1115Policy = requires(Policy& p, uint8_t u8, uint16_t u16,
+                                 uint32_t u32) {
     // A function to mark that an ADS1115 was initialized.
     { p.ads1115_mark_initialized() } -> std::same_as<void>;
     // A function to check that an ADS1115 was initialized
@@ -39,7 +40,7 @@ concept ADS1115Policy = requires(Policy& p, uint8_t u8, uint16_t u16) {
     { p.ads1115_i2c_read_16(u8) } -> std::same_as<std::optional<uint16_t>>;
     // Waits for a pulse from the ADC that was armed by this task. Maximum
     // wait time is passed as a parameter.
-    { p.ads1115_wait_for_pulse(123) } -> std::same_as<bool>;
+    { p.ads1115_wait_for_pulse(u32) } -> std::same_as<bool>;
 };
 
 enum class Error {
@@ -62,8 +63,7 @@ class ADC {
      * @param[in] id The ID of the ADC, which will link to one of the
      * interrupts defined in \ref thermal_hardware.h
      */
-    ADC(Policy& policy)
-        : _policy(policy) {}
+    ADC(Policy& policy) : _policy(policy) {}
 
     /**
      * @brief Initialize the ADC. If run multiple times on the same ADC,

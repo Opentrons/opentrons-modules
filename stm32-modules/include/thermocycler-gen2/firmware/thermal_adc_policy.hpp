@@ -26,6 +26,9 @@ class AdcPolicy {
     AdcPolicy(uint8_t address, ADC_ITR_T id);
     AdcPolicy(AdcPolicy const&) = delete;
     void operator=(AdcPolicy const&) = delete;
+    AdcPolicy(AdcPolicy const&&) = delete;
+    void operator=(AdcPolicy const&&) = delete;
+    ~AdcPolicy() = default;
 
     auto ads1115_mark_initialized() -> void;
 
@@ -42,8 +45,6 @@ class AdcPolicy {
     auto ads1115_i2c_read_16(uint8_t reg) -> std::optional<uint16_t>;
 
     auto ads1115_wait_for_pulse(uint32_t max_wait_ms) -> bool;
-
-    auto task_yield() -> void;
 
   private:
     // I2C address for communication
