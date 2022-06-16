@@ -998,7 +998,7 @@ TEST_CASE("thermal plate drift error check") {
             static_cast<void>(plate_queue.try_send(read_message));
             tasks->run_thermal_plate_task();
             THEN("the peltiers are enabled") { REQUIRE(plate_policy._enabled); }
-            AND_WHEN("a thermistor moves out of spec") {
+            AND_WHEN("a thermistor is out of spec after the settling time") {
                 adc_value = _converter.backconvert(target_temp);
                 read_message.front_right = adc_value;
                 read_message.front_center = adc_value;
@@ -1007,7 +1007,18 @@ TEST_CASE("thermal plate drift error check") {
                 read_message.back_left = adc_value;
                 read_message.back_right =
                     _converter.backconvert(target_temp + 4.5F);
-                timestamp += TIME_DELTA;
+                timestamp +=
+                    (plate_control::PlateControl::UNIFORMITY_CHECK_DELAY +
+                     1.0F) *
+                    1000;
+                read_message.timestamp_ms = timestamp;
+                static_cast<void>(plate_queue.try_send(read_message));
+                tasks->run_thermal_plate_task();
+                timestamp +=
+                    (plate_control::PlateControl::UNIFORMITY_CHECK_DELAY +
+                     1.0F) *
+                    1000;
+                read_message.timestamp_ms = timestamp;
                 static_cast<void>(plate_queue.try_send(read_message));
                 tasks->run_thermal_plate_task();
 
@@ -1035,6 +1046,22 @@ TEST_CASE("thermal plate drift error check") {
                     THEN("control does not start") {
                         REQUIRE(!plate_policy._enabled);
                     }
+                }
+            }
+            AND_WHEN("a thermistor is out of spec before the settling time") {
+                read_message.back_right =
+                    _converter.backconvert(target_temp - 4.5F);
+                timestamp +=
+                    (plate_control::PlateControl::UNIFORMITY_CHECK_DELAY -
+                     1.0F) *
+                    1000;
+                static_cast<void>(plate_queue.try_send(read_message));
+                tasks->run_thermal_plate_task();
+                read_message.timestamp_ms = timestamp;
+                static_cast<void>(plate_queue.try_send(read_message));
+                tasks->run_thermal_plate_task();
+                THEN("the peltiers are not disabled") {
+                    REQUIRE(plate_policy._enabled);
                 }
             }
         }

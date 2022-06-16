@@ -20,7 +20,7 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
     switch (_status) {
         case PlateStatus::INITIAL_HEAT:
             // Check if we crossed the TRUE threshold temp
-            if (plate_temp() >= _setpoint) {
+            if (crossed_setpoint(true)) {
                 _status = PlateStatus::OVERSHOOT;
                 _remaining_overshoot_time = OVERSHOOT_TIME;
                 _left.temp_target = _current_setpoint;
@@ -34,7 +34,7 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
             break;
         case PlateStatus::INITIAL_COOL:
             // Check if we crossed the TRUE threshold temp
-            if (plate_temp() <= _setpoint) {
+            if (crossed_setpoint(false)) {
                 _status = PlateStatus::OVERSHOOT;
                 _remaining_overshoot_time = OVERSHOOT_TIME;
                 _left.temp_target = _current_setpoint;
@@ -54,12 +54,15 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
                 _right.temp_target = _setpoint;
                 _center.temp_target = _setpoint;
                 _status = PlateStatus::STEADY_STATE;
+                _uniformity_error_timer = UNIFORMITY_CHECK_DELAY;
             }
             break;
         case PlateStatus::STEADY_STATE:
             // Hold time is ONLY updated in steady state!
             _remaining_hold_time = std::max(_remaining_hold_time - time,
                                             static_cast<double>(0.0F));
+            _uniformity_error_timer = std::max(_uniformity_error_timer - time,
+                                               static_cast<double>(0.0F));
             break;
     }
 
@@ -256,6 +259,10 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
 }
 
 [[nodiscard]] auto PlateControl::thermistor_drift_check() const -> bool {
+    if ((_status != PlateStatus::STEADY_STATE) ||
+        (_uniformity_error_timer > 0.0F)) {
+        return true;
+    }
     auto temperatures = get_peltier_temps();
     double min = temperatures.at(0);
     double max = temperatures.at(0);
@@ -276,4 +283,19 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
         _right.thermistors.first.temp_c,
         _right.thermistors.second.temp_c,
     }};
+}
+
+[[nodiscard]] auto PlateControl::crossed_setpoint(bool heating) const -> bool {
+    if (heating) {
+        return plate_temp() >= _setpoint;
+    }
+    return plate_temp() <= _setpoint;
+}
+
+[[nodiscard]] auto PlateControl::crossed_setpoint(
+    const thermal_general::Peltier &channel, bool heating) const -> bool {
+    if (heating) {
+        return channel.current_temp() >= _setpoint;
+    }
+    return channel.current_temp() <= _setpoint;
 }
