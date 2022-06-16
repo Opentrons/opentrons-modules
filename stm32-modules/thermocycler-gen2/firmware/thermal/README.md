@@ -47,6 +47,13 @@ graph TD
     Start -->|Disable command| Off
 ```
 
+### Thermistor Drift Errors
+
+The firmware raises an error if the thermistors on the plate seem to have excessively drifted. If the following conditions are met, then the thermal plate task enters an error state until the device is reset:
+- There is an active temperature target
+- The plate control has finisehd the Overshoot Phase and 30 additional seconds have passed
+- The hottest thermistor and the coldest thermistor on the plate are more than 4ºC apart from one another
+
 ## Lid Heater
 
 The lid heater consists of a single resistive heating pad and a single thermistor for temperature feedback. The lid's primary purpose is to prevent condensation in the wells by providing a temperature above that of the peltier plate.

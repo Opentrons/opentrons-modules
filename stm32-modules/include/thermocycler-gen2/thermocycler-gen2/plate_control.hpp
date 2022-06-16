@@ -246,8 +246,8 @@ class PlateControl {
     auto reset_control(thermal_general::HeatsinkFan &fan) -> void;
 
     /**
-     * @brief Based on the current temperature readings, check if every
-     * channel on the Thermocycler has crossed the current setpoint
+     * @brief Based on the current temperature readings, check if the average
+     * temperature of the plate has crossed the setpoint
      *
      * @param heating If true, check if the channels are above the target.
      *                Otherwise checks if they are below the target.
