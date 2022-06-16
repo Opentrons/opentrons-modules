@@ -287,9 +287,9 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
 
 [[nodiscard]] auto PlateControl::crossed_setpoint(bool heating) const -> bool {
     if (heating) {
-        return plate_temp() > _setpoint;
+        return plate_temp() >= _setpoint;
     }
-    return plate_temp() < _setpoint;
+    return plate_temp() <= _setpoint;
 }
 
 [[nodiscard]] auto PlateControl::crossed_setpoint(
