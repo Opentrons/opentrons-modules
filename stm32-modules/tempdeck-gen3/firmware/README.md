@@ -81,7 +81,6 @@ classDiagram
     class HostCommsTask {
         IncomingGcode()
         +ForceUSBDisconnectMessage()
-        AckMessage()
     }
 
     class UITimer
@@ -90,6 +89,7 @@ classDiagram
         LED Driver
         UpdateUI()
         SetCurrentThermalState()
+        +Shutdown()
     }
 
     class SystemTask{
@@ -119,4 +119,7 @@ classDiagram
     ThermistorTask --|> ThermalControlTask : Temperatures
     UITimer --|> UITask : Update Messages
     ThermalControlTask --|> UITask : Errors
+    SystemTask --|> HostCommsTask : Shutdown
+    SystemTask --|> ThermalControlTask : Shutdown
+    SystemTask --|> UITask : Shutdown
 ```
