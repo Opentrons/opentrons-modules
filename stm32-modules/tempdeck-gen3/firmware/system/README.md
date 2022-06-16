@@ -9,4 +9,5 @@ When moving to the bootloader, the system task sends messages to other tasks to 
 - A messsage to Thermal Control Task to disable the thermal system
 - A message to UITask turn off the UI
 - A message to Host Comms to disable USB
+
 Once all of these have been acknowledged, the system jumps to the bootloader.

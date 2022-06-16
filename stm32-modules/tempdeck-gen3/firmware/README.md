@@ -49,6 +49,12 @@ classDiagram
     QueueAggregator ..> QueueTypes
 ```
 
+The recipient of a message may be specified in a few different ways:
+- If a message is _only_ valid for one specific task's queue, it can be automatically deduced
+- A `Tag` structure defined in each Queue type may be passed as an argument to specifiy which queue to send to
+- An enumerated index value (or _address_) exists for each task. Any task is able to check its own address, and this may be attached to a message to specify the _return address_ of the response.
+  - Example: `Task2` can receive a specific message from multiple source tasks. When `Task1` sends this message to `Task2`, it attaches its return address. When `Task2` responds, it uses that return address to specify which task to reply to.
+
 ### Task Descriptions
 Each task on the system is either _periodic_, running at a fixed frequency; or it is _message driven_, running every time there is a new message available and sleeping otherwise. The tasks on the system are defined as follows:
 
