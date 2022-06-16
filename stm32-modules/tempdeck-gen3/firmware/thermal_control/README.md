@@ -34,7 +34,7 @@ graph TD
 
 ### Fan Control
 - When control is off, the fan is controlled to make sure the block temperature is not hot enough to potentially cause burns.
-- When contrl is on, the fan is controlled to cool the block while the peltier is cooling, as well as during heating if the heatsink temperature rises to an unsafe level.
+- When control is on, the fan is controlled to cool the block while the peltier is cooling, as well as during heating if the heatsink temperature rises to an unsafe level.
 
 ## Thermal Offsets
 The thermal offset coefficients are saved on the EEPROM, which is managed by this task. The offset coefficients are __TBD!!!__

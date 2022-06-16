@@ -9,6 +9,7 @@ Hardware peripherals attached to the STM32 are classified into drivers. These dr
 - __PID Driver__ - Provides a unified interface to calculate Proportional Integral Derivative control. See `../../include/common/core/pid.hpp`
 - __ADS1115 Driver__ - Provides an interface to control the ADS1115 ADC IC on the main board. See `../../include/common/core/ads1115.hpp`
 - __Thermistor Conversion Driver__ - Provides an interface to convert an ADC reading into a temperature in ºC.
+- __GCode Parser__ - Accepts a buffer of characters and attempts to parse out any valid GCode commands.
 
 ## Hardware Policy
 Hardware Policy drivers provide low-level access to peripherals that don't require their own state tracking. Additionally, when compiling for a host-side target (tests or simulator), the policy is what changes to allow the task & hardware drivers to simulate their functionality. The Task Descriptions below all contain a list of the functionalities implemented by the task's respective policy.
@@ -18,7 +19,7 @@ The functionality of the Temp Deck Firmware is split into a set of FreeRTOS task
 
 
 ## Message Passing
-The sole intended form of interprocess communication on the firmware is via message passing. As shown in the class diagram below, a QueueAggregator class acts as a mediator between the tasks - there is no direct link between actual tasks.
+The sole intended form of interprocess communication on the firmware is via message passing. As shown in the example class diagram below, a QueueAggregator class acts as a mediator between the tasks - there is no direct link between actual tasks.
 
 A single header (`QueueTypes` in the diagram) provides the types of each queue on the system. 
 
@@ -79,6 +80,7 @@ The tasks on the system are organized in a hierarchial fashion. The class diagra
 ```mermaid
 classDiagram
     class HostCommsTask {
+        GCode Parser
         IncomingGcode()
         +ForceUSBDisconnectMessage()
     }
@@ -99,7 +101,6 @@ classDiagram
     }
     class ThermistorTask{
         ADS1115 Driver
-        Thermistor Policy
     }
     class ThermalControlTask {
         Thermistor Conversion Driver
