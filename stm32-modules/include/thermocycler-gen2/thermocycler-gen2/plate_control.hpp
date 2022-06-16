@@ -82,6 +82,9 @@ class PlateControl {
     static constexpr Seconds OVERSHOOT_TIME = 10.0F;
     /** Maximum drift between thermistors at steady state, in ºC.*/
     static constexpr double THERMISTOR_DRIFT_MAX_C = 4.0F;
+    /** Minimum time that the system must be in steady state before
+     *  checking for uniformity errors.*/
+    static constexpr Seconds UNIFORMITY_CHECK_DELAY = 30.0F;
 
     PlateControl() = delete;
     /**
@@ -242,6 +245,28 @@ class PlateControl {
      */
     auto reset_control(thermal_general::HeatsinkFan &fan) -> void;
 
+    /**
+     * @brief Based on the current temperature readings, check if every
+     * channel on the Thermocycler has crossed the current setpoint
+     *
+     * @param heating If true, check if the channels are above the target.
+     *                Otherwise checks if they are below the target.
+     * @return true if all temperatures have crossed the setpoint
+     */
+    [[nodiscard]] auto crossed_setpoint(bool heating) const -> bool;
+
+    /**
+     * @brief Checks if a single peltier channel has crossed the setpoint.
+     *
+     * @param channel The channel to check
+     * @param heating If true, check if the channel is above the target.
+     *                Otherwise checks if it is below the target.
+     * @return true
+     * @return false
+     */
+    [[nodiscard]] auto crossed_setpoint(const thermal_general::Peltier &channel,
+                                        bool heating) const -> bool;
+
     PlateStatus _status = PlateStatus::STEADY_STATE;  // State machine for plate
     thermal_general::Peltier &_left;
     thermal_general::Peltier &_right;
@@ -252,6 +277,9 @@ class PlateControl {
     double _current_setpoint = 0.0F;
     double _setpoint = 0.0F;  // User-provided setpoint
     double _ramp_rate = 0.0F;
+    // Once the plate is in the "steady state" mode, this timer tracks
+    // how long until the firmware should check for uniformity errors.
+    Seconds _uniformity_error_timer = 0.0F;
     Seconds _remaining_overshoot_time = 0.0F;
     Seconds _hold_time = 0.0F;            // Total hold time
     Seconds _remaining_hold_time = 0.0F;  // Hold time left, out of _hold_time
