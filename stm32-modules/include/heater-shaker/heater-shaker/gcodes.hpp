@@ -123,10 +123,16 @@ struct GetTemperature {
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit,
                                     double current_temperature,
-                                    double setpoint_temperature) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M105 C:%0.2f T:%0.2f OK\n",
-                            static_cast<float>(current_temperature),
-                            static_cast<float>(setpoint_temperature));
+                                    std::optional<double> setpoint_temperature)
+        -> InputIt {
+        int res = 0;
+        if (setpoint_temperature) {
+            res = snprintf(&*buf, (limit - buf), "M105 C:%0.2f T:%0.2f OK\n",
+                           current_temperature, setpoint_temperature.value());
+        } else {
+            res = snprintf(&*buf, (limit - buf), "M105 C:%0.2f T:None OK\n",
+                           current_temperature);
+        }
         if (res <= 0) {
             return buf;
         }
@@ -909,7 +915,7 @@ struct GetPlateLockState {
                                     const InLimit write_to_limit,
                                     std::array<char, 14> plate_lock_state)
         -> InputIt {
-        static constexpr const char* prefix = "M241 STATE:";
+        static constexpr const char* prefix = "M241 STATUS:";
         auto written =
             write_string_to_iterpair(write_to_buf, write_to_limit, prefix);
         if (written == write_to_limit) {
@@ -958,7 +964,7 @@ struct GetPlateLockStateDebug {
                                     std::array<char, 14> plate_lock_state,
                                     bool plate_lock_open_state,
                                     bool plate_lock_closed_state) -> InputIt {
-        static constexpr const char* prefix = "M241.D STATE:";
+        static constexpr const char* prefix = "M241.D STATUS:";
         auto written =
             write_string_to_iterpair(write_to_buf, write_to_limit, prefix);
         if (written == write_to_limit) {
@@ -1126,6 +1132,37 @@ struct GetOffsetConstants {
             return buf;
         }
         return buf + res;
+    }
+};
+
+struct DeactivateHeater {
+    /**
+     * DeactivateHeater is M106 based on existing convention
+     *
+     * Acknowledged immediately upon receipt
+     * */
+    using ParseResult = std::optional<DeactivateHeater>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '6'};
+    static constexpr const char* response = "M106 OK\n";
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt write_to_buf,
+                                    InLimit write_to_limit) {
+        return write_string_to_iterpair(write_to_buf, write_to_limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(DeactivateHeater()), working);
     }
 };
 

@@ -104,6 +104,7 @@ struct SetSerialNumberMessage {
 struct SetLEDMessage {
     uint32_t id;
     LED_MODE mode;
+    bool from_host = false;
 };
 
 struct IdentifyModuleStartLEDMessage {
@@ -197,7 +198,7 @@ struct CheckPlateLockStatusMessage {
 struct GetTemperatureResponse {
     uint32_t responding_to_id;
     double current_temperature;
-    double setpoint_temperature;
+    std::optional<double> setpoint_temperature;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
@@ -258,6 +259,10 @@ struct GetOffsetConstantsResponse {
     double const_b, const_c;
 };
 
+struct DeactivateHeaterMessage {
+    uint32_t id;
+};
+
 struct AcknowledgePrevious {
     uint32_t responding_to_id;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
@@ -273,7 +278,7 @@ using HeaterMessage =
                    TemperatureConversionComplete, GetTemperatureDebugMessage,
                    SetPIDConstantsMessage, SetPowerTestMessage,
                    HandleNTCSetupError, SetOffsetConstantsMessage,
-                   GetOffsetConstantsMessage>;
+                   GetOffsetConstantsMessage, DeactivateHeaterMessage>;
 using MotorMessage = ::std::variant<
     std::monostate, MotorSystemErrorMessage, SetRPMMessage, GetRPMMessage,
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,

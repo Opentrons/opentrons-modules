@@ -6,6 +6,7 @@ set(TARGET_MODULE_NAME "common")
 add_subdirectory(src)
 
 if (${CMAKE_CROSSCOMPILING})
+  add_subdirectory(module-startup)    
   add_subdirectory(STM32G491)
   add_subdirectory(STM32F303)
 else()

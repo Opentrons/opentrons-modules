@@ -39,10 +39,19 @@ __stack = _estack;
 _Min_Heap_Size = 0x200;      /* required amount of heap  */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
+_flash_offset = 0x800; /* first page is occupied by bootloader shim */
+_flash_start = 0x8000000;
+_app_flash_start  = _flash_start + _flash_offset;
+_flash_size = 512K;
+/* Length reduced by 4K to reserve last two pages for 
+ * serial number and thermal offsets storage */
+_serial_size = 4K; 
+_app_flash_size = _flash_size - _flash_offset - _serial_size;
+
 /* Specify the memory areas */
 MEMORY
 {
-FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 508K /* Length reduced by 4K to reserve last two pages for serial number and thermal offsets storage (flash size 512K) */
+FLASH (rx)      : ORIGIN = _app_flash_start, LENGTH = _app_flash_size 
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 64K
 CCMRAM (rw)      : ORIGIN = 0x10000000, LENGTH = 16K
 }

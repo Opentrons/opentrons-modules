@@ -14,6 +14,7 @@ add_executable(heater-shaker
   test_m104d.cpp
   test_m105.cpp
   test_m105d.cpp
+  test_m106.cpp
   test_m123.cpp
   test_m124.cpp
   test_m3.cpp

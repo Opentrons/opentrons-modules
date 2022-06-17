@@ -58,6 +58,7 @@ set(HS_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/stm32f3xx_it.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
+  ${COMMS_DIR}/uart_hardware.c
   ${MOTOR_DIR}/motor_hardware.c
   ${MOTOR_DIR}/mc_config.c
   ${MOTOR_DIR}/mc_interface.c
@@ -205,3 +206,23 @@ add_custom_target(heater-shaker-flash
   VERBATIM
   COMMENT "Flashing board"
   DEPENDS heater-shaker)
+
+# Targets to create full image hex and binary files containing both bootloader and application
+add_custom_command(
+    OUTPUT heater-shaker-image.hex
+    DEPENDS $<TARGET_FILE_DIR:heater-shaker>/heater-shaker.hex
+    DEPENDS STM32F303-startup-hex
+    DEPENDS $<TARGET_FILE_DIR:STM32F303-startup>/STM32F303-startup.hex
+    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py heater-shaker-image.hex $<TARGET_FILE_DIR:STM32F303-startup>/STM32F303-startup.hex heater-shaker.hex
+    VERBATIM
+    COMMENT "Generating full image")
+add_custom_target(heater-shaker-image-hex ALL
+    DEPENDS heater-shaker-image.hex
+    DEPENDS heater-shaker)
+
+add_custom_command(OUTPUT heater-shaker-image.bin
+  COMMAND ${CROSS_OBJCOPY} ARGS "-Iihex" "-Obinary" heater-shaker-image.hex heater-shaker-image.bin
+  DEPENDS heater-shaker-image.hex
+  VERBATIM)
+add_custom_target(heater-shaker-image-bin ALL
+  DEPENDS heater-shaker-image.bin)

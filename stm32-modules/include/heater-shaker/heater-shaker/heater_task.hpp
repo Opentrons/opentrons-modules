@@ -88,6 +88,8 @@ requires MessageQueue<QueueImpl<Message>, Message>
 class HeaterTask {
   public:
     using Queue = QueueImpl<Message>;
+    static constexpr double MAX_APPLICATION_TEMPERATURE_C = 100;
+    static constexpr double MIN_APPLICATION_TEMPERATURE_C = 0;
     static constexpr double HOT_TO_TOUCH_THRESHOLD = 48.9;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 100;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 44.2;
@@ -153,7 +155,7 @@ class HeaterTask {
               .error_bit = State::BOARD_SENSE_ERROR},
           state{.system_status = State::IDLE, .error_bitmap = 0},
           pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_S, 1.0, -1.0),
-          setpoint(0),
+          setpoint(std::nullopt),
           _flash(),
           _offset_constants{.b = OFFSET_DEFAULT_CONST_B,
                             .c = OFFSET_DEFAULT_CONST_C} {}
@@ -165,7 +167,9 @@ class HeaterTask {
     auto get_message_queue() -> Queue& { return message_queue; }
     // Please don't use this for cross-thread communication it's primarily
     // there for the simulator
-    [[nodiscard]] auto get_setpoint() const -> double { return setpoint; }
+    [[nodiscard]] auto get_setpoint() const -> double {
+        return setpoint.value_or(0.0);
+    }
 
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
         task_registry = other_tasks;
@@ -238,7 +242,7 @@ class HeaterTask {
         static_cast<void>(
             task_registry->comms->get_message_queue().try_send(error_message));
         state.system_status = State::ERROR;
-        setpoint = 0;
+        setpoint = std::nullopt;
     }
 
     template <typename Policy>
@@ -251,12 +255,18 @@ class HeaterTask {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (state.system_status == State::ERROR) {
-            setpoint = 0;
+            setpoint = std::nullopt;
             response.with_error = most_relevant_error();
         } else {
-            setpoint = msg.target_temperature;
-            pid.arm_integrator_reset(setpoint - pad_temperature());
-            state.system_status = State::CONTROLLING;
+            if (msg.target_temperature > MAX_APPLICATION_TEMPERATURE_C ||
+                msg.target_temperature < MIN_APPLICATION_TEMPERATURE_C) {
+                response.with_error =
+                    errors::ErrorCode::HEATER_ILLEGAL_TARGET_TEMPERATURE;
+            } else {
+                setpoint = msg.target_temperature;
+                pid.arm_integrator_reset(setpoint.value() - pad_temperature());
+                state.system_status = State::CONTROLLING;
+            }
         }
         if (msg.from_system) {
             static_cast<void>(
@@ -267,6 +277,23 @@ class HeaterTask {
                 task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
         }
+    }
+
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::DeactivateHeaterMessage& msg,
+                       Policy& policy) -> void {
+        policy.disable_power_output();
+        setpoint = std::nullopt;
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+        } else {
+            state.system_status = State::IDLE;
+        }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
     }
 
     template <typename Policy>
@@ -360,11 +387,11 @@ class HeaterTask {
                         task_registry->comms->get_message_queue().try_send(
                             error_message));
                     state.system_status = State::ERROR;
-                    setpoint = 0;
+                    setpoint = std::nullopt;
                 }
             } else {
                 state.system_status = State::ERROR;
-                setpoint = 0;
+                setpoint = std::nullopt;
             }
         } else if ((changes & State::POWER_GOOD_ERROR) != 0) {
             auto error_message =
@@ -374,11 +401,12 @@ class HeaterTask {
                 task_registry->comms->get_message_queue().try_send(
                     error_message));
             state.system_status = State::ERROR;
-            setpoint = 0;
+            setpoint = std::nullopt;
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (state.system_status == State::CONTROLLING) {
-            policy.set_power_output(pid.compute(setpoint - pad_temperature()));
+            policy.set_power_output(
+                pid.compute(setpoint.value() - pad_temperature()));
         } else if (state.system_status != State::POWER_TEST) {
             policy.disable_power_output();
         }
@@ -600,7 +628,7 @@ class HeaterTask {
     TemperatureSensor board;
     State state;
     PID pid;
-    double setpoint;
+    std::optional<double> setpoint;
     bool hot_LED_set = false;
     flash::Flash _flash;
     flash::OffsetConstants _offset_constants;
