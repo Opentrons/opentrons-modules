@@ -28,13 +28,13 @@ class ThermistorGenerator:
         return '\n'.join([
             f'{self._incremental_space}struct {self.name()}{{',
             f'{self._incremental_space}// NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)',
-            f'{self._incremental_space}{self._incremental_space}[[nodiscard]] auto operator()(void) -> const {self.array_type()}&;',
+            f'{self._incremental_space}{self._incremental_space}[[nodiscard]] auto operator()() -> const {self.array_type()}&;',
             f'{self._incremental_space}}};'
         ])
 
     def generate_function(self):
         return '\n'.join([
-            f'[[nodiscard]] auto lookups::{self.name()}::operator()(void) -> const {self.array_type()}& {{',
+            f'[[nodiscard]] auto lookups::{self.name()}::operator()() -> const {self.array_type()}& {{',
             f'{self._incremental_space}return {self.tablename()};',
             '}'
             ])
