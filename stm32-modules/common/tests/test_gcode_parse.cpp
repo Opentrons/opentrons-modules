@@ -339,7 +339,23 @@ TEST_CASE("parse_gcode functionality") {
             auto ret = gcode::GcodeParseSingle<ArgString>::parse_gcode(
                 input.begin(), input.end(), prefix);
             REQUIRE(ret.first.has_value());
+            REQUIRE(ret.second == input.end());
+            auto val = std::get<0>(ret.first.value());
+            REQUIRE(val.value[0] == 'A');
+            REQUIRE(expected.compare(val.value.begin()) == 0);
+        }
+    }
+    GIVEN("a gcode with a valid input with more text following") {
+        const std::string input = "M119 ABCDEFG12345 AnotherCommand\n";
+        constexpr auto prefix = std::array{'M', '1', '1', '9'};
+
+        THEN("parsing succeeds") {
+            const std::string expected = "ABCDEFG12345";
+            auto ret = gcode::GcodeParseSingle<ArgString>::parse_gcode(
+                input.begin(), input.end(), prefix);
+            REQUIRE(ret.first.has_value());
             REQUIRE(ret.second != input.begin());
+            REQUIRE(ret.second != input.end());
             auto val = std::get<0>(ret.first.value());
             REQUIRE(val.value[0] == 'A');
             REQUIRE(expected.compare(val.value.begin()) == 0);
