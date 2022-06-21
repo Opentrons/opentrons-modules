@@ -26,6 +26,7 @@ extern "C" {
 #define HEATER_PAD_PWM_GRANULARITY \
     ((HEATER_PAD_INPUT_FREQ / HEATER_PAD_TIM_PRESCALER) / HEATER_PAD_PWM_FREQ)
 #define HEATER_PAD_SHORT_CHECK_PULSE 13981uL //90% of pwm period
+#define HEATER_PAD_OPEN_CHECK_PULSE 1554uL //10% of pwm period
 
 typedef enum {
     NTC_PAD_A = 1,

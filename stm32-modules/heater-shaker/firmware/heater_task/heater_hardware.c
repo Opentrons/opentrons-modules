@@ -67,6 +67,7 @@ heater_hardware *HEATER_HW_HANDLE = NULL;
 #define HEATER_PAD_ENABLE_PIN (1<<14)
 #define HEATER_PAD_ENABLE_TIM_CHANNEL TIM_CHANNEL_3
 #define HEATER_PAD_SHORT_CHECK_TIM_CHANNEL TIM_CHANNEL_4
+#define HEATER_PAD_OPEN_CHECK_TIM_CHANNEL TIM_CHANNEL_2
 #define HEATER_PAD_LL_SETCOMPARE LL_TIM_OC_SetCompareCH3
 #define HEATPAD_CS_DAC_CHANNEL DAC_CHANNEL_1
 #define HEATPAD_CS_PIN (1<<7)
@@ -146,6 +147,12 @@ static void tim_setup(TIM_HandleTypeDef* tim) {
         .OCPolarity = TIM_OCPOLARITY_HIGH,
         .OCIdleState = TIM_OCIDLESTATE_RESET
     };
+    TIM_OC_InitTypeDef channel_config_3 = {
+        .OCMode = TIM_OCMODE_TIMING,
+        .Pulse = HEATER_PAD_OPEN_CHECK_PULSE,
+        .OCPolarity = TIM_OCPOLARITY_HIGH,
+        .OCIdleState = TIM_OCIDLESTATE_RESET
+    };
     if (HAL_OK != HAL_TIM_PWM_Init(tim)) {
         init_error();
     }
@@ -153,6 +160,9 @@ static void tim_setup(TIM_HandleTypeDef* tim) {
         init_error();
     }
     if (HAL_OK != HAL_TIM_PWM_ConfigChannel(tim, &channel_config_2, HEATER_PAD_SHORT_CHECK_TIM_CHANNEL)) {
+        init_error();
+    }
+    if (HAL_OK != HAL_TIM_PWM_ConfigChannel(tim, &channel_config_3, HEATER_PAD_OPEN_CHECK_TIM_CHANNEL)) {
         init_error();
     }
 }
@@ -258,6 +268,8 @@ void heater_hardware_power_disable(heater_hardware* hardware) {
     }
     HAL_NVIC_DisableIRQ(TIM4_IRQn);
     HAL_TIM_PWM_Stop_IT(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
+    HAL_TIM_PWM_Stop_IT(&internal->pad_tim, HEATER_PAD_SHORT_CHECK_TIM_CHANNEL);
+    HAL_TIM_PWM_Stop_IT(&internal->pad_tim, HEATER_PAD_OPEN_CHECK_TIM_CHANNEL);
     internal->heater_started = false;
     if ((internal->heatpad_cs_status != ERROR_OPEN_CIRCUIT) || (internal->heatpad_cs_status != ERROR_SHORT_CIRCUIT) || (internal->heatpad_cs_status != ERROR_OVERCURRENT)) {
         internal->heatpad_cs_status = IDLE;
@@ -283,6 +295,16 @@ bool heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
         HAL_TIM_PWM_ConfigChannel(
             &internal->pad_tim, &internal->pwm_config, HEATER_PAD_ENABLE_TIM_CHANNEL);
         HAL_TIM_PWM_Start_IT(&internal->pad_tim, HEATER_PAD_ENABLE_TIM_CHANNEL);
+        internal->pwm_config.Pulse = HEATER_PAD_SHORT_CHECK_PULSE;
+        HAL_TIM_PWM_Stop_IT(&internal->pad_tim, HEATER_PAD_SHORT_CHECK_TIM_CHANNEL);
+        HAL_TIM_PWM_ConfigChannel(
+            &internal->pad_tim, &internal->pwm_config, HEATER_PAD_SHORT_CHECK_TIM_CHANNEL);
+        HAL_TIM_PWM_Start_IT(&internal->pad_tim, HEATER_PAD_SHORT_CHECK_TIM_CHANNEL);
+        internal->pwm_config.Pulse = HEATER_PAD_OPEN_CHECK_PULSE;
+        HAL_TIM_PWM_Stop_IT(&internal->pad_tim, HEATER_PAD_OPEN_CHECK_TIM_CHANNEL);
+        HAL_TIM_PWM_ConfigChannel(
+            &internal->pad_tim, &internal->pwm_config, HEATER_PAD_OPEN_CHECK_TIM_CHANNEL);
+        HAL_TIM_PWM_Start_IT(&internal->pad_tim, HEATER_PAD_OPEN_CHECK_TIM_CHANNEL);
         HAL_NVIC_EnableIRQ(TIM4_IRQn);
         HAL_NVIC_SetPriority(TIM4_IRQn, 10, 0);
         internal->heater_started = true;
@@ -359,7 +381,7 @@ static uint16_t period_count = 0;
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 {
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
-    if (htim->Instance == TIM4) {
+    if ((htim->Instance == TIM4) && (htim->Channel != HAL_TIM_ACTIVE_CHANNEL_3)) {
         if ((internal->heatpad_cs_status != IDLE) || (internal->heatpad_cs_status != ERROR_OPEN_CIRCUIT) || (internal->heatpad_cs_status != ERROR_SHORT_CIRCUIT) || (internal->heatpad_cs_status != ERROR_OVERCURRENT)) {
             period_count++;
             if ((internal->heatpad_cs_status == RUNNING) && (period_count > 1000)) {
@@ -378,16 +400,24 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
                 } else if (can_heatpad_cs_short_check()) {
                     internal->heatpad_cs_status = SHORT_CHECK_STARTED;
                 }
-            } else if (internal->heatpad_cs_status == OPEN_CHECK_STARTED) {
+            } else if ((htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2) && (internal->heatpad_cs_status == OPEN_CHECK_STARTED)) {
                 if (can_heatpad_cs_open_check()) { //confirm still able to conduct check on next tick
-                    uint32_t level = HAL_COMP_GetOutputLevel(&internal->comp4);
-                    if (!level) {
+                    if (!HAL_COMP_GetOutputLevel(&internal->comp4)) {
                         heater_hardware_power_disable(HEATER_HW_HANDLE);
                         internal->heatpad_cs_status = ERROR_OPEN_CIRCUIT;
-                        return;
+                    } else {
+                        internal->heatpad_cs_status = OPEN_CHECK_COMPLETE;
                     }
                 }
-                internal->heatpad_cs_status = OPEN_CHECK_COMPLETE;
+            } else if ((htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4) && (internal->heatpad_cs_status == SHORT_CHECK_STARTED)) {
+                if (can_heatpad_cs_short_check()) { //confirm still able to conduct check on next tick
+                    if (HAL_COMP_GetOutputLevel(&internal->comp4)) {
+                        heater_hardware_power_disable(HEATER_HW_HANDLE);
+                        internal->heatpad_cs_status = ERROR_SHORT_CIRCUIT;
+                    } else {
+                        internal->heatpad_cs_status = SHORT_CHECK_COMPLETE;
+                    }
+                }
             } else if ((internal->heatpad_cs_status == OPEN_CHECK_COMPLETE) && (can_heatpad_cs_short_check())) {
                 internal->heatpad_cs_status = SHORT_CHECK_STARTED;
             } else if (((internal->heatpad_cs_status == OPEN_CHECK_COMPLETE) && (!can_heatpad_cs_short_check())) || (internal->heatpad_cs_status == SHORT_CHECK_COMPLETE)) {
@@ -408,24 +438,6 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
     }
 }
 
-void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
-{
-    hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
-    //setup tim second channel with pulse 95% of period. Don't check if PWM pulse greater than 90% period
-    //check htim channel
-    if ((htim->Instance == TIM4) && (htim->Channel == HEATER_PAD_SHORT_CHECK_TIM_CHANNEL) && (internal->heatpad_cs_status != IDLE) && (internal->heatpad_cs_status == SHORT_CHECK_STARTED)) {
-        if (can_heatpad_cs_short_check()) { //confirm still able to conduct check on next tick
-            uint32_t level = HAL_COMP_GetOutputLevel(&internal->comp4);
-            if (level) {
-                heater_hardware_power_disable(HEATER_HW_HANDLE);
-                internal->heatpad_cs_status = ERROR_SHORT_CIRCUIT;
-            } else {
-                internal->heatpad_cs_status = SHORT_CHECK_COMPLETE;
-            }
-        }
-    }
-}
-
 bool peripherals_ready(void) {
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
     return ((HAL_DAC_GetState(&internal->dac1) == HAL_DAC_STATE_READY) && (HAL_COMP_GetState(&internal->comp4) == HAL_COMP_STATE_BUSY));
@@ -433,12 +445,12 @@ bool peripherals_ready(void) {
 
 bool can_heatpad_cs_open_check(void)
 {
-    return (pwm_pulse_duration > 2000); //adjust?
+    return (pwm_pulse_duration > 3107); //20% of pwm period. Adjust?
 }
 
 bool can_heatpad_cs_short_check(void)
 {
-    return (pwm_pulse_duration < 13000); //adjust?
+    return (pwm_pulse_duration < 12428); //80% of pwm period. Adjust?
 }
 
 void HAL_TIMEx_Break2Callback(TIM_HandleTypeDef *htim) {
