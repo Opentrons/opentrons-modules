@@ -122,6 +122,7 @@ auto parse_value(const Input& start_from, Limit stop_at)
     return std::make_pair(std::optional<ValueType>(value), after);
 }
 
+// Gcode argument base required values
 template <typename Arg>
 concept GCodeArgument = requires(Arg& a) {
     // Needs a flag for whether it's required
@@ -130,6 +131,7 @@ concept GCodeArgument = requires(Arg& a) {
     {std::is_same_v<decltype(a.present), bool>};
 };
 
+// Gcode argument that has a prefix
 template <typename Arg>
 concept GCodeArgumentWithPrefix = requires(Arg& a) {
     // Prefix needs to be iterable
@@ -137,18 +139,21 @@ concept GCodeArgumentWithPrefix = requires(Arg& a) {
     {Arg::prefix.cend()};
 };
 
+// Gcode argument that contains a variable `value` of any type
 template <typename Arg>
 concept GCodeArgumentWithValue = requires(Arg& a) {
     // Variable within the argument - can be many types
     {a.value};
 };
 
+// Gcode argument that contains an iterable value
 template <typename Arg>
 concept GCodeArgumentWithIterableValue = requires(Arg& a) {
     {a.value.begin()};
     {a.value.end()};
 };
 
+// Checks if the prefix of an argument is present
 template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
 requires GCodeArgumentWithPrefix<Arg>
 static auto arg_prefix_present(const Input& start_from, Limit stop_at)
@@ -218,17 +223,9 @@ static auto arg_parse_value(const Input& start_from, Limit stop_at, Arg& arg)
 }
 
 /**
- * @brief This integer-templated function allows us to recurse through all
+ * @brief This integer-templated struct allows us to recurse through all
  * of the arguments present in a command, checking each individual arg
  * for validity and then passing along to the next one.
- *
- * @tparam N
- * @tparam Input
- * @tparam Limit
- * @param start_from
- * @param stop_at
- * @param args
- * @return auto
  */
 template <size_t N>
 struct GCodeParseSingleHelper {
@@ -275,6 +272,16 @@ struct GCodeParseSingleHelper<0> {
 // declaration of the template arguments...
 template <GCodeArgument... Args>
 struct GcodeParseSingle {
+    /**
+     * @brief parse_gcode provides a basic parser for parsing a command,
+     * which consists of a prefix (or code) followed by an arbitrary
+     * number of arguments. The arguments must follow strict ordering,
+     * but each argument may be specified as optional and then may be
+     * absent in a valid input.
+     *
+     * The argument values may be of any numeric type (any size int or float),
+     * as well as an iterable string (using `std::array<char>`)
+     */
     template <std::forward_iterator Input, typename Limit, typename PrefixArray>
     requires std::sized_sentinel_for<Limit, Input> &&
         std::convertible_to < std::iter_value_t<Input>,
