@@ -169,6 +169,7 @@ static auto arg_prefix_present(const Input& start_from, Limit stop_at)
 template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
 static auto arg_prefix_present(const Input& start_from, Limit stop_at)
     -> std::pair<Input, bool> {
+    static_cast<void>(stop_at);
     return std::make_pair(start_from, true);
 }
 
@@ -218,6 +219,7 @@ static auto arg_parse_value(const Input& start_from, Limit stop_at, Arg& arg)
 template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
 static auto arg_parse_value(const Input& start_from, Limit stop_at, Arg& arg)
     -> Input {
+    static_cast<void>(stop_at);
     arg.present = true;
     return start_from;
 }
@@ -262,8 +264,10 @@ struct GCodeParseSingleHelper {
 template <>
 struct GCodeParseSingleHelper<0> {
     template <std::forward_iterator Input, typename Limit, typename Args>
-    static auto parse_arg(const Input& start_from, Limit, Args)
+    static auto parse_arg(const Input& start_from, Limit stop_at, Args& args)
         -> std::pair<Input, bool> {
+        static_cast<void>(stop_at);
+        static_cast<void>(args);
         return std::make_pair(start_from, true);
     }
 };
