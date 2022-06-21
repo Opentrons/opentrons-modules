@@ -198,6 +198,12 @@ struct ArgOptional {
     int value;
 };
 
+struct ArgIntNoPrefix {
+    static constexpr bool required = true;
+    bool present;
+    int value;
+};
+
 TEST_CASE("parse_gcode functionality") {
     GIVEN("a gcode without any arguments") {
         constexpr auto prefix = std::array{'M', '1', '2', '3'};
@@ -359,6 +365,19 @@ TEST_CASE("parse_gcode functionality") {
             auto val = std::get<0>(ret.first.value());
             REQUIRE(val.value[0] == 'A');
             REQUIRE(expected.compare(val.value.begin()) == 0);
+        }
+    }
+    GIVEN("a gcode with an int arg with no prefix") {
+        const std::string input = "Command 123\n";
+        constexpr auto prefix = std::array{'C', 'o', 'm', 'm', 'a', 'n', 'd'};
+        THEN("parsing a good input succeeds") {
+            auto ret = gcode::GcodeParseSingle<ArgIntNoPrefix>::parse_gcode(
+                input.begin(), input.end(), prefix);
+            REQUIRE(ret.first.has_value());
+            REQUIRE(ret.second != input.begin());
+            REQUIRE(ret.second == input.end());
+            auto val = std::get<0>(ret.first.value());
+            REQUIRE(val.value == 123);
         }
     }
 }
