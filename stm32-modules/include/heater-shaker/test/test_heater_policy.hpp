@@ -7,7 +7,7 @@ class TestHeaterPolicy {
     explicit TestHeaterPolicy(bool pgood, bool can_reset);
     [[nodiscard]] auto power_good() const -> bool;
     [[nodiscard]] auto try_reset_power_good() -> bool;
-    auto set_power_output(double output) -> void;
+    auto set_power_output(double output) -> bool;
     auto disable_power_output() -> void;
 
     auto set_power_good(bool pgood) -> void;

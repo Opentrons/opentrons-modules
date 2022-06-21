@@ -14,8 +14,9 @@
 struct SimHeaterPolicy {
     [[nodiscard]] auto power_good() const -> bool { return true; }
     [[nodiscard]] auto try_reset_power_good() -> bool { return true; };
-    auto set_power_output(double relative_power) -> void {
+    auto set_power_output(double relative_power) -> bool {
         power = relative_power;
+        return true;
     };
     auto disable_power_output() -> void { power = 0; }
 
