@@ -155,77 +155,6 @@ concept GCodeArgumentWithIterableValue = requires(Arg& a) {
     {std::end(a.value)};
 };
 
-// Checks if the prefix of an argument is present
-template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
-requires GCodeArgumentWithPrefix<Arg>
-static auto arg_prefix_present(const Input& start_from, Limit stop_at)
-    -> std::pair<Input, bool> {
-    auto working = prefix_matches(start_from, stop_at, Arg::prefix);
-    if (working != start_from) {
-        return std::make_pair(working, true);
-    }
-    return std::make_pair(start_from, false);
-}
-
-// Version when there is no prefix for an argument
-template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
-static auto arg_prefix_present(const Input& start_from, Limit stop_at)
-    -> std::pair<Input, bool> {
-    static_cast<void>(stop_at);
-    return std::make_pair(start_from, true);
-}
-
-// Iterable string
-template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
-requires GCodeArgumentWithValue<Arg> && GCodeArgumentWithIterableValue<Arg>
-static auto arg_parse_value(const Input& start_from, Limit stop_at, Arg& arg)
-    -> Input {
-    // using ValueType = decltype(Arg::value);
-    const auto max_values = std::distance(arg.value.begin(), arg.value.end());
-    // Find the length from start_from to the first whitespace
-    auto working = start_from;
-    for (auto index = working; index != stop_at; index++) {
-        if (std::isspace(*index) || (*index == '\0')) {
-            working = index;
-            break;
-        }
-    }
-    if (working == start_from ||
-        std::distance(start_from, working) > max_values) {
-        arg.present = false;
-        return start_from;
-    }
-    std::copy(start_from, working, arg.value.begin());
-    arg.present = true;
-    return working;
-}
-
-// Numeric value - can use `parse_value`
-template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
-requires GCodeArgumentWithValue<Arg>
-static auto arg_parse_value(const Input& start_from, Limit stop_at, Arg& arg)
-    -> Input {
-    using ValueType = std::decay_t<decltype(arg.value)>;
-    auto ret = parse_value<ValueType>(start_from, stop_at);
-    if (!ret.first.has_value()) {
-        // Couldn't find the value
-        arg.present = false;
-        return start_from;
-    }
-    arg.value = ret.first.value();
-    arg.present = true;
-    return ret.second;
-}
-
-// No value at all - just mark arg as present
-template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
-static auto arg_parse_value(const Input& start_from, Limit stop_at, Arg& arg)
-    -> Input {
-    static_cast<void>(stop_at);
-    arg.present = true;
-    return start_from;
-}
-
 // Wrap gcode parser functions in this struct to separate the
 // declaration of the template arguments...
 template <GCodeArgument... Args>
@@ -321,6 +250,78 @@ struct SingleParser {
             return std::make_pair(std::make_tuple(arg),
                                   std::optional<Input>(working));
         }
+    }
+
+    // Checks if the prefix of an argument is present
+    template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
+    requires GCodeArgumentWithPrefix<Arg>
+    static auto arg_prefix_present(const Input& start_from, Limit stop_at)
+        -> std::pair<Input, bool> {
+        auto working = prefix_matches(start_from, stop_at, Arg::prefix);
+        if (working != start_from) {
+            return std::make_pair(working, true);
+        }
+        return std::make_pair(start_from, false);
+    }
+
+    // Version when there is no prefix for an argument
+    template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
+    static auto arg_prefix_present(const Input& start_from, Limit stop_at)
+        -> std::pair<Input, bool> {
+        static_cast<void>(stop_at);
+        return std::make_pair(start_from, true);
+    }
+
+    // Iterable string
+    template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
+    requires GCodeArgumentWithValue<Arg> && GCodeArgumentWithIterableValue<Arg>
+    static auto arg_parse_value(const Input& start_from, Limit stop_at,
+                                Arg& arg) -> Input {
+        // using ValueType = decltype(Arg::value);
+        const auto max_values =
+            std::distance(arg.value.begin(), arg.value.end());
+        // Find the length from start_from to the first whitespace
+        auto working = start_from;
+        for (auto index = working; index != stop_at; index++) {
+            if (std::isspace(*index) || (*index == '\0')) {
+                working = index;
+                break;
+            }
+        }
+        if (working == start_from ||
+            std::distance(start_from, working) > max_values) {
+            arg.present = false;
+            return start_from;
+        }
+        std::copy(start_from, working, arg.value.begin());
+        arg.present = true;
+        return working;
+    }
+
+    // Numeric value - can use `parse_value`
+    template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
+    requires GCodeArgumentWithValue<Arg>
+    static auto arg_parse_value(const Input& start_from, Limit stop_at,
+                                Arg& arg) -> Input {
+        using ValueType = std::decay_t<decltype(arg.value)>;
+        auto ret = parse_value<ValueType>(start_from, stop_at);
+        if (!ret.first.has_value()) {
+            // Couldn't find the value
+            arg.present = false;
+            return start_from;
+        }
+        arg.value = ret.first.value();
+        arg.present = true;
+        return ret.second;
+    }
+
+    // No value at all - just mark arg as present
+    template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
+    static auto arg_parse_value(const Input& start_from, Limit stop_at,
+                                Arg& arg) -> Input {
+        static_cast<void>(stop_at);
+        arg.present = true;
+        return start_from;
     }
 };
 
