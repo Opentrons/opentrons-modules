@@ -135,7 +135,7 @@ concept GCodeArgument = requires(Arg& a) {
 template <typename Arg>
 concept GCodeArgumentWithPrefix = requires(Arg& a) {
     // Prefix needs to be iterable
-    {Arg::prefix.cbegin()};
+    {std::is_same_v<std::remove_cvref<decltype(*Arg::prefix.cbegin())>, char>}
     {Arg::prefix.cend()};
 };
 
