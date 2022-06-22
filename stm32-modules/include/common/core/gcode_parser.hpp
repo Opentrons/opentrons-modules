@@ -135,8 +135,10 @@ concept GCodeArgument = requires(Arg& a) {
 template <typename Arg>
 concept GCodeArgumentWithPrefix = requires(Arg& a) {
     // Prefix needs to be iterable
-    {std::is_same_v<std::remove_cvref<decltype(*Arg::prefix.cbegin())>, char>}
-    {Arg::prefix.cend()};
+    {std::is_same_v<std::remove_cvref<decltype(*std::cbegin(Arg::prefix))>,
+                    char>};
+    {std::is_same_v<std::remove_cvref<decltype(*std::cend(Arg::prefix))>,
+                    char>};
 };
 
 // Gcode argument that contains a variable `value` of any type
@@ -149,8 +151,8 @@ concept GCodeArgumentWithValue = requires(Arg& a) {
 // Gcode argument that contains an iterable value
 template <typename Arg>
 concept GCodeArgumentWithIterableValue = requires(Arg& a) {
-    {a.value.begin()};
-    {a.value.end()};
+    {std::begin(a.value)};
+    {std::end(a.value)};
 };
 
 // Checks if the prefix of an argument is present
@@ -224,58 +226,10 @@ static auto arg_parse_value(const Input& start_from, Limit stop_at, Arg& arg)
     return start_from;
 }
 
-/**
- * @brief This integer-templated struct allows us to recurse through all
- * of the arguments present in a command, checking each individual arg
- * for validity and then passing along to the next one.
- */
-template <size_t N>
-struct GCodeParseSingleHelper {
-    template <std::forward_iterator Input, typename Limit,
-              GCodeArgument... Args>
-    static auto parse_arg(const Input& start_from, Limit stop_at,
-                          std::tuple<Args...>& args) -> std::pair<Input, bool> {
-        auto& arg = std::get<sizeof...(Args) - N>(args);
-        using Arg = std::decay_t<decltype(arg)>;
-        auto prefix_ret = arg_prefix_present<Arg>(start_from, stop_at);
-        if (!prefix_ret.second) {
-            if (Arg::required) {
-                return std::make_pair(start_from, false);
-            }
-            // This argument isn't defined - flag it and move on
-            arg.present = false;
-            return GCodeParseSingleHelper<N - 1>::parse_arg(start_from, stop_at,
-                                                            args);
-        }
-        // arg_parse_value is overloaded to work even if there's no value
-        // required...
-        auto working = arg_parse_value(prefix_ret.first, stop_at, arg);
-        if (!arg.present) {
-            // Argument prefix without a value - this is not allowed
-            return std::make_pair(start_from, false);
-        }
-        // Get the next argument
-        working = gobble_whitespace(working, stop_at);
-        return GCodeParseSingleHelper<N - 1>::parse_arg(working, stop_at, args);
-    }
-};
-
-// Specialization for N=0 for tail end of recursion
-template <>
-struct GCodeParseSingleHelper<0> {
-    template <std::forward_iterator Input, typename Limit, typename Args>
-    static auto parse_arg(const Input& start_from, Limit stop_at, Args& args)
-        -> std::pair<Input, bool> {
-        static_cast<void>(stop_at);
-        static_cast<void>(args);
-        return std::make_pair(start_from, true);
-    }
-};
-
 // Wrap gcode parser functions in this struct to separate the
 // declaration of the template arguments...
 template <GCodeArgument... Args>
-struct GcodeParseSingle {
+struct SingleParser {
     /**
      * @brief parse_gcode provides a basic parser for parsing a command,
      * which consists of a prefix (or code) followed by an arbitrary
@@ -306,13 +260,66 @@ struct GcodeParseSingle {
             return RT(ArgRet(), working);
         } else {
             // We need to iterate through the arguments...
-            std::tuple<Args...> args;
-            auto parse_ret = GCodeParseSingleHelper<sizeof...(Args)>::parse_arg(
-                working, stop_at, args);
-            if (!parse_ret.second) {
+            auto parse_ret = parse_arg<Input, Limit, Args...>(working, stop_at);
+            if (!parse_ret.second.has_value()) {
                 return std::make_pair(std::nullopt, start_from);
             }
-            return std::make_pair(ArgRet(args), parse_ret.first);
+            return std::make_pair(ArgRet(parse_ret.first),
+                                  parse_ret.second.value());
+        }
+    }
+
+  private:
+    /**
+     * @brief parse_arg recurses through all of the argument types specified
+     * for a command, parsing each one and only continuing through the list
+     * while the input is still possibly valid.
+     *
+     * The values of each recursive call are concatenated into a single tuple
+     * to return to the caller, along with an optional Limit iterator.
+     *
+     * @return A pair of (1) a tuple of the parsed argument structs and (2) an
+     * optional Limit iterator. If (2) has no value, the input was not valid -
+     * either a mandatory argument was missing, there was an unexpected arg,
+     * or the value of an argument didn't match what was expected.
+     */
+    template <std::forward_iterator Input, typename Limit,
+              GCodeArgument NextArg, typename... Remaining>
+    static auto parse_arg(const Input& start_from, Limit stop_at)
+        -> std::pair<std::tuple<NextArg, Remaining...>, std::optional<Input>> {
+        using TupleRet = std::tuple<NextArg, Remaining...>;
+        auto arg = NextArg();
+        auto prefix_ret = arg_prefix_present<NextArg>(start_from, stop_at);
+        Input working = start_from;
+        if (!prefix_ret.second) {
+            // This argument isn't present
+            if (NextArg::required) {
+                // Mark invalid and return up
+                return std::make_pair(TupleRet(), std::nullopt);
+            }
+            // Mark absent and continue to recurse down
+            arg.present = false;
+        } else {
+            // arg_parse_value is overloaded to work even if there's no value
+            // required...
+            working = arg_parse_value(prefix_ret.first, stop_at, arg);
+            if (!arg.present) {
+                // Argument prefix without a value - this is not allowed.
+                // Mark invalid and return up
+                return std::make_pair(TupleRet(), std::nullopt);
+            }
+        }
+
+        if constexpr (sizeof...(Remaining)) {
+            // Recurse down to the next argument
+            working = gobble_whitespace(working, stop_at);
+            auto ret = parse_arg<Input, Limit, Remaining...>(working, stop_at);
+            return std::make_pair(
+                std::tuple_cat(std::make_tuple(arg), ret.first), ret.second);
+        } else {
+            // This was the last argument - return what we have
+            return std::make_pair(std::make_tuple(arg),
+                                  std::optional<Input>(working));
         }
     }
 };
