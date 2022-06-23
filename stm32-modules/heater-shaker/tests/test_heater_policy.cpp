@@ -39,9 +39,10 @@ auto TestHeaterPolicy::reset_try_reset_call_count() -> void {
     try_reset_calls = 0;
 }
 
-auto TestHeaterPolicy::set_power_output(double output) -> void {
+auto TestHeaterPolicy::set_power_output(double output) -> bool {
     power = output;
     enabled = true;
+    return true;
 }
 
 auto TestHeaterPolicy::disable_power_output() -> void { enabled = false; }
