@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "core/thermistor_conversion.hpp"
+#include "heater-shaker/flash.hpp"
 #include "heater-shaker/heater_task.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
@@ -19,9 +20,17 @@ struct SimHeaterPolicy {
         return true;
     };
     auto disable_power_output() -> void { power = 0; }
+    auto set_thermal_offsets(flash::OffsetConstants* constants) -> bool {
+        sim_stored_offsets = *constants;
+        return true;
+    };
+    auto get_thermal_offsets() -> flash::OffsetConstants {
+        return sim_stored_offsets;
+    };
 
   private:
     double power = 0;
+    flash::OffsetConstants sim_stored_offsets = {};
 };
 
 struct heater_thread::TaskControlBlock {

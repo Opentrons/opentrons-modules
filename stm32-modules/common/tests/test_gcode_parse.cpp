@@ -161,3 +161,224 @@ SCENARIO("GroupParser handles gcodes", "[gcode]") {
         }
     }
 }
+
+// Float arg
+struct ArgFloat {
+    static constexpr auto prefix = std::array{'A'};
+    static constexpr bool required = true;
+    bool present = false;
+    float value = 0.0F;
+};
+
+// Int arg
+struct ArgInt {
+    static constexpr auto prefix = std::array{'H', 'I'};
+    static constexpr bool required = true;
+    bool present = false;
+    int value = 0;
+};
+
+// String arg with no prefix
+struct ArgString {
+    static constexpr bool required = true;
+    bool present;
+    std::array<char, 30> value;
+};
+
+struct ArgFlag {
+    static constexpr auto prefix = std::array{'H', 'E', 'Y'};
+    static constexpr bool required = true;
+    bool present;
+};
+
+struct ArgOptional {
+    static constexpr auto prefix = std::array{'N'};
+    static constexpr bool required = false;
+    bool present;
+    int value;
+};
+
+struct ArgIntNoPrefix {
+    static constexpr bool required = true;
+    bool present;
+    int value;
+};
+
+TEST_CASE("parse_gcode functionality") {
+    GIVEN("a gcode without any arguments") {
+        constexpr auto prefix = std::array{'M', '1', '2', '3'};
+        THEN("parsing a good input succeeds") {
+            const std::string input = "M123";
+            auto ret = gcode::SingleParser<>::parse_gcode(input.begin(),
+                                                          input.end(), prefix);
+            REQUIRE(ret.second == input.end());
+            // No inputs = no return on the optional value...
+            REQUIRE(!ret.first.has_value());
+        }
+    }
+    GIVEN("a gcode M123 with a flag argument (no value)") {
+        constexpr auto prefix = std::array{'M', '1', '2', '3'};
+        const std::string input = "M123 HEY";
+        THEN("parsing succeeds") {
+            auto ret = gcode::SingleParser<ArgFlag>::parse_gcode(
+                input.begin(), input.end(), prefix);
+            REQUIRE(ret.first.has_value());
+            REQUIRE(ret.second == input.end());
+            auto args = ret.first.value();
+            REQUIRE(std::get<0>(args).present);
+        }
+    }
+    GIVEN("a gcode M123 with one numeric argument") {
+        constexpr auto prefix = std::array{'M', '1', '2', '3'};
+        AND_GIVEN("a valid input") {
+            const std::string input = "M123 A4.0\n";
+            THEN("input can be parsed") {
+                auto ret = gcode::SingleParser<ArgFloat>::parse_gcode(
+                    input.begin(), input.end(), prefix);
+                REQUIRE(ret.first.has_value());
+                REQUIRE(ret.second != input.begin());
+                auto args = ret.first.value();
+                REQUIRE(std::get<0>(args).value == 4.0F);
+                REQUIRE(std::get<0>(args).present);
+            }
+        }
+    }
+    GIVEN("a gcode M123 with two numeric arguments") {
+        constexpr auto prefix = std::array{'M', '1', '2', '3'};
+        AND_GIVEN("a valid input") {
+            const std::string input = "M123 A4.0 HI-400\n";
+            THEN("input can be parsed") {
+                auto ret = gcode::SingleParser<ArgFloat, ArgInt>::parse_gcode(
+                    input.begin(), input.end(), prefix);
+                REQUIRE(ret.first.has_value());
+                REQUIRE(ret.second != input.begin());
+                auto args = ret.first.value();
+                REQUIRE(std::get<0>(args).value == 4.0);
+                REQUIRE(std::get<0>(args).present);
+                REQUIRE(std::get<1>(args).value == -400);
+                REQUIRE(std::get<1>(args).present);
+            }
+        }
+    }
+    GIVEN("a gcode M123 with an optional argument") {
+        constexpr auto prefix = std::array{'M', '1', '2', '3'};
+        GIVEN("the optional value is the only argument") {
+            THEN("legal inputs succeed") {
+                auto input =
+                    GENERATE(as<std::string>{}, "M123 \n", "M123 N5  ");
+                auto ret = gcode::SingleParser<ArgOptional>::parse_gcode(
+                    input.begin(), input.end(), prefix);
+                REQUIRE(ret.first.has_value());
+                REQUIRE(ret.second != input.begin());
+            }
+            THEN("illegal inputs don't succeed") {
+                auto input =
+                    GENERATE(as<std::string>{}, "M123 Nabcd\n", "M123 N ");
+                auto ret = gcode::SingleParser<ArgOptional>::parse_gcode(
+                    input.begin(), input.end(), prefix);
+                REQUIRE(!ret.first.has_value());
+                REQUIRE(ret.second == input.begin());
+            }
+        }
+        GIVEN("the optional value is the first argument") {
+            THEN("legal inputs succeed") {
+                auto input = GENERATE(as<std::string>{}, "M123 HI123\n",
+                                      "M123 N5  HI123\n");
+                auto ret =
+                    gcode::SingleParser<ArgOptional, ArgInt>::parse_gcode(
+                        input.begin(), input.end(), prefix);
+                REQUIRE(ret.first.has_value());
+                REQUIRE(ret.second != input.begin());
+                auto argint = std::get<1>(ret.first.value());
+                REQUIRE(argint.present);
+                REQUIRE(argint.value == 123);
+                auto argoptional = std::get<0>(ret.first.value());
+                if (argoptional.present) {
+                    REQUIRE(argoptional.value == 5);
+                }
+            }
+            THEN("illegal inputs don't succeed") {
+                auto input = GENERATE(as<std::string>{}, "M123 N5\n",
+                                      "M123 N N HI953\n", "M123 N HI543\n");
+                auto ret =
+                    gcode::SingleParser<ArgOptional, ArgInt>::parse_gcode(
+                        input.begin(), input.end(), prefix);
+                REQUIRE(!ret.first.has_value());
+                REQUIRE(ret.second == input.begin());
+            }
+        }
+        GIVEN("the optional value is the second argument") {
+            THEN("legal inputs succeed") {
+                auto input = GENERATE(as<std::string>{}, "M123 HI123\n",
+                                      "M123   HI123  N5\n");
+                auto ret =
+                    gcode::SingleParser<ArgInt, ArgOptional>::parse_gcode(
+                        input.begin(), input.end(), prefix);
+                REQUIRE(ret.first.has_value());
+                REQUIRE(ret.second != input.begin());
+                auto argint = std::get<0>(ret.first.value());
+                REQUIRE(argint.present);
+                REQUIRE(argint.value == 123);
+                auto argoptional = std::get<1>(ret.first.value());
+                if (argoptional.present) {
+                    REQUIRE(argoptional.value == 5);
+                }
+            }
+            THEN("illegal inputs don't succeed") {
+                auto input = GENERATE(as<std::string>{}, "M123 N5\n",
+                                      "M123 N N HI953\n", "M123 N HI543\n");
+                auto ret =
+                    gcode::SingleParser<ArgInt, ArgOptional>::parse_gcode(
+                        input.begin(), input.end(), prefix);
+                REQUIRE(!ret.first.has_value());
+                REQUIRE(ret.second == input.begin());
+            }
+        }
+    }
+    GIVEN("a gcode with a string argument and a valid input") {
+        const std::string input = "M119 ABCDEFG12345\n";
+        constexpr auto prefix = std::array{'M', '1', '1', '9'};
+
+        THEN("parsing succeeds") {
+            const std::string expected = "ABCDEFG12345";
+            auto ret = gcode::SingleParser<ArgString>::parse_gcode(
+                input.begin(), input.end(), prefix);
+            REQUIRE(ret.first.has_value());
+            REQUIRE(std::distance(input.begin(), ret.second) ==
+                    (int)input.size() - 1);
+            auto val = std::get<0>(ret.first.value());
+            REQUIRE(val.value[0] == 'A');
+            REQUIRE(expected.compare(val.value.begin()) == 0);
+        }
+    }
+    GIVEN("a gcode with a valid input with more text following") {
+        const std::string input = "M119 ABCDEFG12345 AnotherCommand\n";
+        constexpr auto prefix = std::array{'M', '1', '1', '9'};
+
+        THEN("parsing succeeds") {
+            const std::string expected = "ABCDEFG12345";
+            auto ret = gcode::SingleParser<ArgString>::parse_gcode(
+                input.begin(), input.end(), prefix);
+            REQUIRE(ret.first.has_value());
+            REQUIRE(ret.second != input.begin());
+            REQUIRE(ret.second != input.end());
+            auto val = std::get<0>(ret.first.value());
+            REQUIRE(val.value[0] == 'A');
+            REQUIRE(expected.compare(val.value.begin()) == 0);
+        }
+    }
+    GIVEN("a gcode with an int arg with no prefix") {
+        const std::string input = "Command 123\n";
+        constexpr auto prefix = std::array{'C', 'o', 'm', 'm', 'a', 'n', 'd'};
+        THEN("parsing a good input succeeds") {
+            auto ret = gcode::SingleParser<ArgIntNoPrefix>::parse_gcode(
+                input.begin(), input.end(), prefix);
+            REQUIRE(ret.first.has_value());
+            REQUIRE(ret.second != input.begin());
+            REQUIRE(std::distance(input.begin(), ret.second) ==
+                    (int)input.size() - 1);
+            auto val = std::get<0>(ret.first.value());
+            REQUIRE(val.value == 123);
+        }
+    }
+}

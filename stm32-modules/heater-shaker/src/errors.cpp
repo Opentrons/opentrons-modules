@@ -17,10 +17,11 @@ const char* const MOTOR_BLDC_STARTUP_FAILED =
     "ERR105:main motor:startup failed\n";
 const char* const MOTOR_BLDC_SPEEDSENSOR_FAILED =
     "ERR106:main motor:speedsensor failed\n";
-const char* const MOTOR_BLDC_OVERCURRENT = "ERR107:main motor:overcurrent\n";
+const char* const MOTOR_BLDC_DRIVER_FAULT = "ERR107:main motor:driver fault\n";
 const char* const MOTOR_BLDC_DRIVER_ERROR = "ERR108:main motor:driver error\n";
 const char* const MOTOR_SPURIOUS_ERROR = "ERR109:main motor:spurious error\n";
 const char* const MOTOR_UNKNOWN_ERROR = "ERR110:main motor:unknown error\n";
+const char* const MOTOR_UNABLE_TO_MOVE = "ERR111:main motor:unable to move\n";
 const char* const MOTOR_ILLEGAL_SPEED = "ERR120:main motor:illegal speed\n";
 const char* const MOTOR_ILLEGAL_RAMP_RATE =
     "ERR121:main motor:illegal ramp rate\n";
@@ -53,8 +54,10 @@ const char* const HEATER_HARDWARE_ERROR_LATCH =
     "ERR211:heater:heatpad thermistor overtemp or disconnected\n";
 const char* const HEATER_CONSTANT_OUT_OF_RANGE =
     "ERR212:heater:control constant out of range\n";
+const char* const HEATER_ILLEGAL_TARGET_TEMPERATURE =
+    "ERR213:heater:target temperature out of range\n";
 const char* const HEATER_HARDWARE_ERROR_CIRCUIT =
-    "ERR213:heater:heatpad overcurrent or circuit open or shorted\n";
+    "ERR214:heater:heatpad overcurrent or circuit open or shorted\n";
 const char* const SYSTEM_SERIAL_NUMBER_INVALID =
     "ERR301:system:serial number invalid format\n";
 const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
@@ -64,6 +67,7 @@ const char* const SYSTEM_LED_I2C_NOT_READY =
 const char* const SYSTEM_LED_TRANSMIT_ERROR =
     "ERR304:system:LED I2C transmission or FreeRTOS notification passing "
     "failed\n";
+const char* const SYSTEM_FLASH_ERROR = "ERR305:system:flash write failed\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -86,10 +90,11 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(MOTOR_BLDC_OVERTEMP);
         HANDLE_CASE(MOTOR_BLDC_STARTUP_FAILED);
         HANDLE_CASE(MOTOR_BLDC_SPEEDSENSOR_FAILED);
-        HANDLE_CASE(MOTOR_BLDC_OVERCURRENT);
+        HANDLE_CASE(MOTOR_BLDC_DRIVER_FAULT);
         HANDLE_CASE(MOTOR_BLDC_DRIVER_ERROR);
         HANDLE_CASE(MOTOR_SPURIOUS_ERROR);
         HANDLE_CASE(MOTOR_UNKNOWN_ERROR);
+        HANDLE_CASE(MOTOR_UNABLE_TO_MOVE);
         HANDLE_CASE(MOTOR_ILLEGAL_SPEED);
         HANDLE_CASE(MOTOR_ILLEGAL_RAMP_RATE);
         HANDLE_CASE(MOTOR_BAD_HOME);
@@ -108,11 +113,13 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(HEATER_THERMISTOR_BOARD_DISCONNECTED);
         HANDLE_CASE(HEATER_HARDWARE_ERROR_LATCH);
         HANDLE_CASE(HEATER_CONSTANT_OUT_OF_RANGE);
+        HANDLE_CASE(HEATER_ILLEGAL_TARGET_TEMPERATURE);
         HANDLE_CASE(HEATER_HARDWARE_ERROR_CIRCUIT);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_INVALID);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
         HANDLE_CASE(SYSTEM_LED_I2C_NOT_READY);
         HANDLE_CASE(SYSTEM_LED_TRANSMIT_ERROR);
+        HANDLE_CASE(SYSTEM_FLASH_ERROR);
     }
     return UNKNOWN_ERROR;
 }
@@ -136,7 +143,7 @@ auto errors::from_motor_error(uint16_t error_bitmap, MotorErrorOffset which)
         case MotorErrorOffset::SPEED_FDBK:
             return ErrorCode::MOTOR_BLDC_SPEEDSENSOR_FAILED;
         case MotorErrorOffset::OVERCURRENT:
-            return ErrorCode::MOTOR_BLDC_OVERCURRENT;
+            return ErrorCode::MOTOR_BLDC_DRIVER_FAULT;
         case MotorErrorOffset::SW_ERROR:
             return ErrorCode::MOTOR_BLDC_DRIVER_ERROR;
     }

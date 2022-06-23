@@ -374,7 +374,7 @@ static void EXTI0_Config(void)
   
   /* Configure plate lock engaged optical switch*/
   GPIO_InitStructure.Pin = PLATE_LOCK_ENGAGED_Pin;
-  GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStructure.Pull = GPIO_PULLUP;
   GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(PLATE_LOCK_Port, &GPIO_InitStructure);
@@ -398,7 +398,7 @@ static void EXTI4_Config(void)
   
   /* Configure plate lock released optical switch*/
   GPIO_InitStructure.Pin = PLATE_LOCK_RELEASED_Pin;
-  GPIO_InitStructure.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStructure.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStructure.Pull = GPIO_PULLUP;
   GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(PLATE_LOCK_Port, &GPIO_InitStructure);
@@ -484,7 +484,6 @@ static void DAC_Init(DAC_HandleTypeDef* dac) {
   HAL_DAC_Start(dac, SOLENOID_DAC_CHANNEL);
   HAL_DAC_SetValue(dac, SOLENOID_DAC_CHANNEL, DAC_ALIGN_8B_R, 0);
 }
-
 
 /**
   * Initializes the Global MSP.
@@ -690,8 +689,8 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     PA11     ------> TIM1_BKIN2
     */
     GPIO_InitStruct.Pin = M1_OCP_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF6_TIM1;
     HAL_GPIO_Init(M1_OCP_GPIO_Port, &GPIO_InitStruct);
@@ -938,7 +937,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 bool motor_hardware_plate_lock_sensor_read(uint16_t GPIO_Pin)
 {
-  if (GPIO_PIN_SET == HAL_GPIO_ReadPin(PLATE_LOCK_Port, GPIO_Pin)) {
+  if (GPIO_PIN_RESET == HAL_GPIO_ReadPin(PLATE_LOCK_Port, GPIO_Pin)) {
     return true;
   } else {
     return false;

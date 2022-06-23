@@ -14,11 +14,14 @@ add_executable(heater-shaker
   test_m104d.cpp
   test_m105.cpp
   test_m105d.cpp
+  test_m106.cpp
   test_m123.cpp
   test_m124.cpp
   test_m3.cpp
   test_m301.cpp
   test_m115.cpp
+  test_m116.cpp
+  test_m117.cpp
   test_g28d.cpp
   test_m240d.cpp
   test_m241.cpp
@@ -34,6 +37,7 @@ add_executable(heater-shaker
   test_motor_task.cpp
   test_system_task.cpp
   test_errors.cpp
+  test_flash.cpp
   test_message_passing.cpp
   test_main.cpp)
 target_include_directories(heater-shaker 

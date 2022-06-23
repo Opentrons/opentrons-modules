@@ -12,6 +12,7 @@
 #include "core/thermistor_conversion.hpp"
 #include "hal/message_queue.hpp"
 #include "heater-shaker/errors.hpp"
+#include "heater-shaker/flash.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
 #include "thermistor_lookups.hpp"
@@ -87,6 +88,8 @@ requires MessageQueue<QueueImpl<Message>, Message>
 class HeaterTask {
   public:
     using Queue = QueueImpl<Message>;
+    static constexpr double MAX_APPLICATION_TEMPERATURE_C = 100;
+    static constexpr double MIN_APPLICATION_TEMPERATURE_C = 0;
     static constexpr double HOT_TO_TOUCH_THRESHOLD = 48.9;
     static constexpr const uint32_t CONTROL_PERIOD_TICKS = 100;
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 44.2;
@@ -110,6 +113,8 @@ class HeaterTask {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     static constexpr double CONTROL_PERIOD_S =
         static_cast<uint32_t>(CONTROL_PERIOD_TICKS) * 0.001;
+    static constexpr const double OFFSET_DEFAULT_CONST_B = 0.0F;
+    static constexpr const double OFFSET_DEFAULT_CONST_C = 0.0F;
     explicit HeaterTask(Queue& q)
         : message_queue(q),
           task_registry(nullptr),
@@ -150,7 +155,10 @@ class HeaterTask {
               .error_bit = State::BOARD_SENSE_ERROR},
           state{.system_status = State::IDLE, .error_bitmap = 0},
           pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_S, 1.0, -1.0),
-          setpoint(0) {}
+          setpoint(std::nullopt),
+          _flash(),
+          _offset_constants{.b = OFFSET_DEFAULT_CONST_B,
+                            .c = OFFSET_DEFAULT_CONST_C} {}
     HeaterTask(const HeaterTask& other) = delete;
     auto operator=(const HeaterTask& other) -> HeaterTask& = delete;
     HeaterTask(HeaterTask&& other) noexcept = delete;
@@ -159,7 +167,9 @@ class HeaterTask {
     auto get_message_queue() -> Queue& { return message_queue; }
     // Please don't use this for cross-thread communication it's primarily
     // there for the simulator
-    [[nodiscard]] auto get_setpoint() const -> double { return setpoint; }
+    [[nodiscard]] auto get_setpoint() const -> double {
+        return setpoint.value_or(0.0);
+    }
 
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
         task_registry = other_tasks;
@@ -197,6 +207,12 @@ class HeaterTask {
                     LED_message));
         }
 
+        // If the FLASH data hasn't been read, read it before doing
+        // anything else.
+        if (!_flash.initialized()) {
+            _offset_constants = _flash.get_offset_constants(policy);
+        }
+
         auto message = Message(std::monostate());
         // This is the call down to the provided queue. It will block for
         // anywhere up to the provided timeout, which drives the controller
@@ -226,7 +242,7 @@ class HeaterTask {
         static_cast<void>(
             task_registry->comms->get_message_queue().try_send(error_message));
         state.system_status = State::ERROR;
-        setpoint = 0;
+        setpoint = std::nullopt;
     }
 
     template <typename Policy>
@@ -239,12 +255,18 @@ class HeaterTask {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (state.system_status == State::ERROR) {
-            setpoint = 0;
+            setpoint = std::nullopt;
             response.with_error = most_relevant_error();
         } else {
-            setpoint = msg.target_temperature;
-            pid.arm_integrator_reset(setpoint - pad_temperature());
-            state.system_status = State::CONTROLLING;
+            if (msg.target_temperature > MAX_APPLICATION_TEMPERATURE_C ||
+                msg.target_temperature < MIN_APPLICATION_TEMPERATURE_C) {
+                response.with_error =
+                    errors::ErrorCode::HEATER_ILLEGAL_TARGET_TEMPERATURE;
+            } else {
+                setpoint = msg.target_temperature;
+                pid.arm_integrator_reset(setpoint.value() - pad_temperature());
+                state.system_status = State::CONTROLLING;
+            }
         }
         if (msg.from_system) {
             static_cast<void>(
@@ -255,6 +277,23 @@ class HeaterTask {
                 task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
         }
+    }
+
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::DeactivateHeaterMessage& msg,
+                       Policy& policy) -> void {
+        policy.disable_power_output();
+        setpoint = std::nullopt;
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+        } else {
+            state.system_status = State::IDLE;
+        }
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
     }
 
     template <typename Policy>
@@ -318,9 +357,9 @@ class HeaterTask {
         if (!policy.power_good()) {
             state.error_bitmap |= State::POWER_GOOD_ERROR;
         }
-        handle_temperature_conversion(msg.pad_a, pad_a);
-        handle_temperature_conversion(msg.pad_b, pad_b);
-        handle_temperature_conversion(msg.board, board);
+        handle_temperature_conversion(msg.pad_a, pad_a, true);
+        handle_temperature_conversion(msg.pad_b, pad_b, true);
+        handle_temperature_conversion(msg.board, board, false);
         // The error handling wants to accomplish the following:
         // - Only run if there were any changes in the error state for
         //   the sensors or the heater pad power driver
@@ -348,11 +387,11 @@ class HeaterTask {
                         task_registry->comms->get_message_queue().try_send(
                             error_message));
                     state.system_status = State::ERROR;
-                    setpoint = 0;
+                    setpoint = std::nullopt;
                 }
             } else {
                 state.system_status = State::ERROR;
-                setpoint = 0;
+                setpoint = std::nullopt;
             }
         } else if ((changes & State::POWER_GOOD_ERROR) != 0) {
             auto error_message =
@@ -362,12 +401,12 @@ class HeaterTask {
                 task_registry->comms->get_message_queue().try_send(
                     error_message));
             state.system_status = State::ERROR;
-            setpoint = 0;
+            setpoint = std::nullopt;
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (state.system_status == State::CONTROLLING) {
             if (!policy.set_power_output(
-                    pid.compute(setpoint - pad_temperature()))) {
+                    pid.compute(setpoint.value() - pad_temperature()))) {
                 state.system_status = State::ERROR;
                 auto error_message =
                     messages::HostCommsMessage(messages::ErrorMessage{
@@ -407,6 +446,45 @@ class HeaterTask {
 
     template <typename Policy>
     requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::SetOffsetConstantsMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        if (msg.b_set) {
+            _offset_constants.b = msg.const_b;
+        }
+        if (msg.c_set) {
+            _offset_constants.c = msg.const_c;
+        }
+        _offset_constants.flag =
+            static_cast<uint64_t>(flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM);
+
+        if (!_flash.template set_offset_constants(_offset_constants, policy)) {
+            // Could not write to the flash.
+            response.with_error = errors::ErrorCode::SYSTEM_FLASH_ERROR;
+        }
+
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::GetOffsetConstantsMessage& msg,
+                       Policy& policy) -> void {
+        _offset_constants = _flash.get_offset_constants(policy);
+        auto response = messages::GetOffsetConstantsResponse{
+            .responding_to_id = msg.id,
+            .const_b = _offset_constants.b,
+            .const_c = _offset_constants.c};
+
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <typename Policy>
+    requires HeaterExecutionPolicy<Policy>
     auto try_latch_disarm(Policy& policy) -> void {
         if (!policy.power_good() &&
             ((state.error_bitmap & State::PAD_SENSE_ERROR) == 0)) {
@@ -421,13 +499,17 @@ class HeaterTask {
     }
 
     auto handle_temperature_conversion(uint16_t conversion_result,
-                                       TemperatureSensor& sensor) {
+                                       TemperatureSensor& sensor,
+                                       bool apply_offset) {
         auto visitor = [this, &sensor](auto val) {
             this->visit_conversion(val, sensor);
         };
         sensor.last_adc = conversion_result;
         auto old_error = sensor.error;
         std::visit(visitor, sensor.conversion.convert(conversion_result));
+        if (apply_offset && (sensor.error == errors::ErrorCode::NO_ERROR)) {
+            sensor.temp_c = calculate_thermistor_offset(sensor.temp_c);
+        }
         if (sensor.error != old_error) {
             if (sensor.error != errors::ErrorCode::NO_ERROR) {
                 state.error_bitmap |= sensor.error_bit;
@@ -531,6 +613,23 @@ class HeaterTask {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         return (pad_a.temp_c + pad_b.temp_c) / 2.0;
     }
+
+    /**
+     * @brief Apply the thermistor offset constants to calculate the expected
+     * temperature of a thermistor.
+     *
+     * @param temp The measured temperature of the thermistor with no offset
+     * applied.
+     * @return double containing the adjusted thermistor reading
+     */
+    [[nodiscard]] auto calculate_thermistor_offset(double temp) const
+        -> double {
+        if (!_flash.initialized()) {
+            return temp;
+        }
+        return ((1.0F + _offset_constants.b) * temp) + _offset_constants.c;
+    }
+
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
     TemperatureSensor pad_a;
@@ -538,8 +637,10 @@ class HeaterTask {
     TemperatureSensor board;
     State state;
     PID pid;
-    double setpoint;
+    std::optional<double> setpoint;
     bool hot_LED_set = false;
+    flash::Flash _flash;
+    flash::OffsetConstants _offset_constants;
 };
 
 };  // namespace heater_task

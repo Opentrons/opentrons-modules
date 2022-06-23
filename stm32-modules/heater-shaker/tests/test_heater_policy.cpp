@@ -50,3 +50,13 @@ auto TestHeaterPolicy::disable_power_output() -> void { enabled = false; }
 auto TestHeaterPolicy::last_power_setting() const -> double { return power; }
 
 auto TestHeaterPolicy::last_enable_setting() const -> bool { return enabled; }
+
+auto TestHeaterPolicy::set_thermal_offsets(flash::OffsetConstants* constants)
+    -> bool {
+    stored_offsets = *constants;
+    return true;
+}
+
+auto TestHeaterPolicy::get_thermal_offsets() -> flash::OffsetConstants {
+    return stored_offsets;
+}

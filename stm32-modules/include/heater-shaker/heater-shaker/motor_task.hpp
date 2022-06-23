@@ -79,8 +79,7 @@ struct PlateLockState {
         OPENING = 1,
         IDLE_OPEN = 2,
         CLOSING = 3,
-        IDLE_UNKNOWN = 4,
-        UNKNOWN = 5
+        IDLE_UNKNOWN = 4
     };
     PlateLockTaskStatus status;
 };
@@ -94,6 +93,7 @@ class MotorTask {
     static constexpr const uint16_t PLATE_LOCK_WAIT_TICKS = 100;
     static constexpr const uint16_t STARTUP_HOMING_WAIT_TICKS =
         200;  // needed to ensure motor setup complete at startup before homing
+    static constexpr const uint16_t MOTOR_START_WAIT_TICKS = 1000;
 
   public:
     static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 250;
@@ -103,7 +103,10 @@ class MotorTask {
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
     static constexpr uint16_t HOMING_CYCLES_BEFORE_TIMEOUT = 10;
     static constexpr uint16_t PLATE_LOCK_MOVE_TIME_THRESHOLD =
-        2350;  // 1250 for 380:1 motor, 2350 for 1000:1 motor
+        4950;  // 1250 for 380:1 motor, 2350 for 1000:1 motor. Updated to 4950
+               // for SZ testing, needs to be tuned down (must end in 50 to pass
+               // tests)
+    static constexpr int16_t MOTOR_START_THRESHOLD_RPM = 20;
     using Queue = QueueImpl<Message>;
     static constexpr uint8_t PLATE_LOCK_STATE_SIZE = 14;
     explicit MotorTask(Queue& q)
@@ -155,30 +158,32 @@ class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::SetRPMMessage& msg, Policy& policy)
         -> void {
+        auto error = errors::ErrorCode::NO_ERROR;
         if ((!policy.plate_lock_closed_sensor_read()) &&
             (plate_lock_state.status != PlateLockState::IDLE_CLOSED)) {
-            static_cast<void>(
-                task_registry->comms->get_message_queue().try_send(
-                    messages::AcknowledgePrevious{
-                        .responding_to_id = msg.id,
-                        .with_error =
-                            errors::ErrorCode::PLATE_LOCK_NOT_CLOSED}));
+            error = errors::ErrorCode::PLATE_LOCK_NOT_CLOSED;
         } else {
             policy.homing_solenoid_disengage();
-            auto error = policy.set_rpm(msg.target_rpm);
+            error = policy.set_rpm(msg.target_rpm);
             state.status = State::RUNNING;
-            auto response = messages::AcknowledgePrevious{
-                .responding_to_id = msg.id, .with_error = error};
-            if (msg.from_system) {
-                static_cast<void>(
-                    task_registry->system->get_message_queue().try_send(
-                        messages::SystemMessage(response)));
-
-            } else {
-                static_cast<void>(
-                    task_registry->comms->get_message_queue().try_send(
-                        messages::HostCommsMessage(response)));
+            policy.delay_ticks(MOTOR_START_WAIT_TICKS);
+            if ((msg.target_rpm != 0) &&
+                (policy.get_current_rpm() < MOTOR_START_THRESHOLD_RPM)) {
+                error = errors::ErrorCode::MOTOR_UNABLE_TO_MOVE;
+                policy.stop();
+                state.status = State::ERROR;
             }
+        }
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id = msg.id, .with_error = error};
+        if (msg.from_system) {
+            static_cast<void>(
+                task_registry->system->get_message_queue().try_send(
+                    messages::SystemMessage(response)));
+        } else {
+            static_cast<void>(
+                task_registry->comms->get_message_queue().try_send(
+                    messages::HostCommsMessage(response)));
         }
     }
 
@@ -292,22 +297,26 @@ class MotorTask {
                 policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
             }
             policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
-            static_cast<void>(get_message_queue().try_send(
-                messages::CheckHomingStatusMessage{}));
+            static_cast<void>(
+                get_message_queue().try_send(messages::CheckHomingStatusMessage{
+                    .from_startup = msg.from_startup}));
         } else if (state.status == State::HOMING_COASTING_TO_STOP) {
             homing_cycles_coasting++;
             if (homing_cycles_coasting > HOMING_CYCLES_BEFORE_TIMEOUT) {
                 policy.homing_solenoid_engage(HOMING_SOLENOID_CURRENT_HOLD);
                 policy.stop();
                 state.status = State::STOPPED_HOMED;
-                static_cast<void>(
-                    task_registry->comms->get_message_queue().try_send(
-                        messages::AcknowledgePrevious{.responding_to_id =
-                                                          cached_home_id}));
+                if (!msg.from_startup) {
+                    static_cast<void>(
+                        task_registry->comms->get_message_queue().try_send(
+                            messages::AcknowledgePrevious{.responding_to_id =
+                                                              cached_home_id}));
+                }
             } else {
                 policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
                 static_cast<void>(get_message_queue().try_send(
-                    messages::CheckHomingStatusMessage{}));
+                    messages::CheckHomingStatusMessage{.from_startup =
+                                                           msg.from_startup}));
             }
         }
     }
@@ -328,10 +337,28 @@ class MotorTask {
             policy.homing_solenoid_disengage();
             policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM +
                            HOMING_ROTATION_LOW_MARGIN);
-            policy.delay_ticks(HOMING_INTERSTATE_WAIT_TICKS);
+            policy.delay_ticks(MOTOR_START_WAIT_TICKS);
             cached_home_id = msg.id;
-            static_cast<void>(get_message_queue().try_send(
-                messages::CheckHomingStatusMessage{}));
+            if (policy.get_current_rpm() < MOTOR_START_THRESHOLD_RPM) {
+                auto error = errors::ErrorCode::MOTOR_UNABLE_TO_MOVE;
+                policy.stop();
+                state.status = State::ERROR;
+                if (msg.from_startup) {
+                    static_cast<void>(
+                        task_registry->comms->get_message_queue().try_send(
+                            messages::ErrorMessage{.code = error}));
+                } else {
+                    static_cast<void>(
+                        task_registry->comms->get_message_queue().try_send(
+                            messages::AcknowledgePrevious{
+                                .responding_to_id = cached_home_id,
+                                .with_error = error}));
+                }
+            } else {
+                static_cast<void>(get_message_queue().try_send(
+                    messages::CheckHomingStatusMessage{.from_startup =
+                                                           msg.from_startup}));
+            }
         }
     }
 
@@ -371,7 +398,7 @@ class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::OpenPlateLockMessage& msg,
                        Policy& policy) -> void {
-        static constexpr float OpenPower = -1.0F;
+        static constexpr float OpenPower = 1.0F;
         auto check_state_message =
             messages::CheckPlateLockStatusMessage{.responding_to_id = msg.id};
         if ((policy.plate_lock_open_sensor_read()) ||
@@ -393,7 +420,7 @@ class MotorTask {
     template <typename Policy>
     auto visit_message(const messages::ClosePlateLockMessage& msg,
                        Policy& policy) -> void {
-        static constexpr float ClosePower = 1.0F;
+        static constexpr float ClosePower = -1.0F;
         auto check_state_message = messages::CheckPlateLockStatusMessage{
             .responding_to_id = msg.id, .from_startup = msg.from_startup};
         if ((policy.plate_lock_closed_sensor_read()) ||
@@ -426,8 +453,9 @@ class MotorTask {
                    (plate_lock_state.status == PlateLockState::IDLE_OPEN)) {
             if (msg.from_startup) {
                 policy.delay_ticks(STARTUP_HOMING_WAIT_TICKS);
-                static_cast<void>(get_message_queue().try_send(
-                    messages::BeginHomingMessage{}));
+                static_cast<void>(
+                    get_message_queue().try_send(messages::BeginHomingMessage{
+                        .from_startup = msg.from_startup}));
             } else {
                 static_cast<void>(
                     task_registry->comms->get_message_queue().try_send(
@@ -437,11 +465,19 @@ class MotorTask {
         } else if (polling_time > PLATE_LOCK_MOVE_TIME_THRESHOLD) {
             policy.plate_lock_brake();
             plate_lock_state.status = PlateLockState::IDLE_UNKNOWN;
-            static_cast<void>(
-                task_registry->comms->get_message_queue().try_send(
-                    messages::AcknowledgePrevious{
-                        .responding_to_id = msg.responding_to_id,
-                        .with_error = errors::ErrorCode::PLATE_LOCK_TIMEOUT}));
+            if (msg.from_startup) {
+                static_cast<void>(
+                    task_registry->comms->get_message_queue().try_send(
+                        messages::ErrorMessage{
+                            .code = errors::ErrorCode::PLATE_LOCK_TIMEOUT}));
+            } else {
+                static_cast<void>(
+                    task_registry->comms->get_message_queue().try_send(
+                        messages::AcknowledgePrevious{
+                            .responding_to_id = msg.responding_to_id,
+                            .with_error =
+                                errors::ErrorCode::PLATE_LOCK_TIMEOUT}));
+            }
         } else {
             policy.delay_ticks(PLATE_LOCK_WAIT_TICKS);
             polling_time += PLATE_LOCK_WAIT_TICKS;
@@ -483,11 +519,8 @@ class MotorTask {
             case PlateLockState::IDLE_UNKNOWN:
                 plate_lock_state_array = std::array<char, 14>{"IDLE_UNKNOWN"};
                 break;
-            case PlateLockState::UNKNOWN:
-                plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
-                break;
             default:
-                plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
+                plate_lock_state_array = std::array<char, 14>{"IDLE_UNKNOWN"};
         }
         auto response = messages::GetPlateLockStateResponse{
             .responding_to_id = msg.id,
@@ -520,11 +553,8 @@ class MotorTask {
             case PlateLockState::IDLE_UNKNOWN:
                 plate_lock_state_array = std::array<char, 14>{"IDLE_UNKNOWN"};
                 break;
-            case PlateLockState::UNKNOWN:
-                plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
-                break;
             default:
-                plate_lock_state_array = std::array<char, 14>{"UNKNOWN"};
+                plate_lock_state_array = std::array<char, 14>{"IDLE_UNKNOWN"};
         }
         auto response = messages::GetPlateLockStateDebugResponse{
             .responding_to_id = msg.id,

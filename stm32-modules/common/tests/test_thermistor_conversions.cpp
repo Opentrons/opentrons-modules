@@ -106,6 +106,19 @@ SCENARIO("thermistor conversions normal operation") {
             }
         }
     }
+    GIVEN("an NXF converter") {
+        // At temp 50C, resistance is 3601.2 ohms, which converts to
+        // a ratio of 0.26477
+        auto converter =
+            Conversion<lookups::NXFT15XV103FA2B030>(10.0, 10000, false);
+        WHEN("sending a valid reading") {
+            auto converted = converter.convert(2648);
+            THEN("the result should be reasonable") {
+                REQUIRE_THAT(std::get<double>(converted),
+                             Catch::Matchers::WithinAbs(50, .1));
+            }
+        }
+    }
 }
 
 SCENARIO("thermistor backconversion") {
@@ -126,6 +139,20 @@ SCENARIO("thermistor backconversion") {
     }
     GIVEN("a KS103J2 converter and some test temps") {
         auto converter = Conversion<lookups::KS103J2G>(10.0, 0x5DC0, false);
+        auto test_vals = std::array{10.0, 25.0, 50.0, 70.0, 90.0, 100.0};
+        for (auto val : test_vals) {
+            WHEN("through-converting a temperature") {
+                auto reading = converter.backconvert(val);
+                THEN("the conversion should be similar") {
+                    REQUIRE_THAT(std::get<double>(converter.convert(reading)),
+                                 Catch::Matchers::WithinAbs(val, 0.1));
+                }
+            }
+        }
+    }
+    GIVEN("an NXF converter and some test temps") {
+        auto converter =
+            Conversion<lookups::NXFT15XV103FA2B030>(10.0, 1000, false);
         auto test_vals = std::array{10.0, 25.0, 50.0, 70.0, 90.0, 100.0};
         for (auto val : test_vals) {
             WHEN("through-converting a temperature") {

@@ -13,7 +13,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <iostream>
 #include <iterator>
 #include <optional>
 #include <utility>
@@ -124,10 +123,16 @@ struct GetTemperature {
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit,
                                     double current_temperature,
-                                    double setpoint_temperature) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M105 C:%0.2f T:%0.2f OK\n",
-                            static_cast<float>(current_temperature),
-                            static_cast<float>(setpoint_temperature));
+                                    std::optional<double> setpoint_temperature)
+        -> InputIt {
+        int res = 0;
+        if (setpoint_temperature) {
+            res = snprintf(&*buf, (limit - buf), "M105 C:%0.2f T:%0.2f OK\n",
+                           current_temperature, setpoint_temperature.value());
+        } else {
+            res = snprintf(&*buf, (limit - buf), "M105 C:%0.2f T:None OK\n",
+                           current_temperature);
+        }
         if (res <= 0) {
             return buf;
         }
@@ -910,7 +915,7 @@ struct GetPlateLockState {
                                     const InLimit write_to_limit,
                                     std::array<char, 14> plate_lock_state)
         -> InputIt {
-        static constexpr const char* prefix = "M241 STATE:";
+        static constexpr const char* prefix = "M241 STATUS:";
         auto written =
             write_string_to_iterpair(write_to_buf, write_to_limit, prefix);
         if (written == write_to_limit) {
@@ -959,7 +964,7 @@ struct GetPlateLockStateDebug {
                                     std::array<char, 14> plate_lock_state,
                                     bool plate_lock_open_state,
                                     bool plate_lock_closed_state) -> InputIt {
-        static constexpr const char* prefix = "M241.D STATE:";
+        static constexpr const char* prefix = "M241.D STATUS:";
         auto written =
             write_string_to_iterpair(write_to_buf, write_to_limit, prefix);
         if (written == write_to_limit) {
@@ -1008,6 +1013,156 @@ struct GetPlateLockStateDebug {
             return std::make_pair(ParseResult(), input);
         }
         return std::make_pair(ParseResult(GetPlateLockStateDebug()), working);
+    }
+};
+
+/**
+ * Uses M116, same as thermocyclers.
+ *
+ * Accepts two optional constants, B and C. These are
+ * used in the calculation of the plate temperature for
+ * each thermistor on the system with the following equation:
+ *
+ * > temp = (1+B)*(measured temp) + C
+ *
+ * Format: M116 B0.102 C-0.245\n
+ *
+ */
+struct SetOffsetConstants {
+    using ParseResult = std::optional<SetOffsetConstants>;
+    static constexpr auto prefix = std::array{'M', '1', '1', '6'};
+    static constexpr auto prefix_b = std::array{' ', 'B'};
+    static constexpr auto prefix_c = std::array{' ', 'C'};
+    static constexpr const char* response = "M116 OK\n";
+
+    /**
+     * Each constant is optional. In order to maintain simplicity
+     * of this structure, rather than using std::optional we define
+     * a field \c defined for each of the parameters.
+     */
+    struct OffsetConstant {
+        bool defined;
+        double value;
+    };
+
+    OffsetConstant const_b = {.defined = false, .value = 0.0F};
+    OffsetConstant const_c = {.defined = false, .value = 0.0F};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        // Prefix with no variables is technically allowed
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(std::nullopt, input);
+        }
+        auto old_working = working;
+        auto ret = SetOffsetConstants();
+        working = prefix_matches(old_working, limit, prefix_b);
+        if (working != old_working) {
+            old_working = working;
+            auto b = parse_value<float>(working, limit);
+            if (!b.first.has_value()) {
+                return std::make_pair(std::nullopt, input);
+            }
+            ret.const_b.defined = true;
+            ret.const_b.value = b.first.value();
+            working = b.second;
+        }
+        old_working = working;
+
+        working = prefix_matches(old_working, limit, prefix_c);
+        if (working != old_working) {
+            old_working = working;
+            auto c = parse_value<float>(working, limit);
+            if (!c.first.has_value()) {
+                return std::make_pair(std::nullopt, input);
+            }
+            ret.const_c.defined = true;
+            ret.const_c.value = c.first.value();
+            working = c.second;
+        }
+        return std::make_pair(ParseResult(ret), working);
+    }
+};
+
+/**
+ * Uses M117, same as thermocyclers.
+ *
+ * Returns the programmed offset constants on the device, B and C.
+ *
+ * Format: M117\n
+ *
+ * Returns: M117 B:[B value] C:[C value] OK\n
+ *
+ */
+struct GetOffsetConstants {
+    using ParseResult = std::optional<GetOffsetConstants>;
+    static constexpr auto prefix = std::array{'M', '1', '1', '7'};
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetOffsetConstants()), working);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit, double b,
+                                    double c) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf), "M117 B:%0.3f C:%0.3f OK\n",
+                            static_cast<float>(b), static_cast<float>(c));
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
+struct DeactivateHeater {
+    /**
+     * DeactivateHeater is M106 based on existing convention
+     *
+     * Acknowledged immediately upon receipt
+     * */
+    using ParseResult = std::optional<DeactivateHeater>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '6'};
+    static constexpr const char* response = "M106 OK\n";
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt write_to_buf,
+                                    InLimit write_to_limit) {
+        return write_string_to_iterpair(write_to_buf, write_to_limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(DeactivateHeater()), working);
     }
 };
 

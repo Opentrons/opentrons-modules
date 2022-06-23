@@ -7,8 +7,8 @@
 
 #include "system_serial_number.h"
 
-static uint32_t PAGE_ADDRESS = 0x0807F800; //last page in flash memory, 0x0805F800 for 384K (NFF board), 0x0807F800 for 512K (FF board) FLASH 
-static uint8_t ADDRESS_SIZE = 64;
+static const uint32_t PAGE_ADDRESS = 0x0807F800; //last page in flash memory, 0x0805F800 for 384K (NFF board), 0x0807F800 for 512K (FF board) FLASH 
+static const uint8_t ADDRESS_SIZE = 8;
 
 bool system_set_serial_number(struct writable_serial* to_write) {
     FLASH_EraseInitTypeDef pageToErase = {.TypeErase = FLASH_TYPEERASE_PAGES, .PageAddress = PAGE_ADDRESS, .NbPages = 1};

@@ -153,7 +153,8 @@ SCENARIO("system task message passing") {
         }
 
         WHEN("receiving a set-LED message as if from the host task") {
-            auto message = messages::SetLEDMessage{.id = 123};
+            auto message =
+                messages::SetLEDMessage{.id = 123, .from_host = true};
             tasks->get_system_queue().backing_deque.push_back(
                 messages::SystemMessage(message));
             tasks->get_system_task().run_once(tasks->get_system_policy());

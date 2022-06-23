@@ -27,6 +27,7 @@ SCENARIO("testing full message passing integration") {
                 auto written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE(written == response_buffer.begin());
+                tasks->get_motor_policy().test_set_current_rpm(50);
                 tasks->get_motor_task().run_once(tasks->get_motor_policy());
                 written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
@@ -85,7 +86,7 @@ SCENARIO("testing full message passing integration") {
                 written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE_THAT(response_buffer, Catch::Matchers::StartsWith(
-                                                  "M105 C:95.20 T:0.00 OK\n"));
+                                                  "M105 C:95.20 T:None OK\n"));
             }
         }
 

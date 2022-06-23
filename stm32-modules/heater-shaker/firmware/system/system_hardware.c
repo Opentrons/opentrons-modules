@@ -86,6 +86,13 @@ void system_hardware_enter_bootloader(void) {
   SysTick->LOAD = 0;
   SysTick->VAL = 0;
 
+  /* Clear Interrupt Enable Register & Interrupt Pending Register */
+  for (int i=0;i<8;i++)
+  {
+      NVIC->ICER[i]=0xFFFFFFFF;
+      NVIC->ICPR[i]=0xFFFFFFFF;
+  }
+
   // We have to make sure that the processor is mapping the system memory region to address 0,
   // which the bootloader expects
   __HAL_SYSCFG_REMAPMEMORY_SYSTEMFLASH();

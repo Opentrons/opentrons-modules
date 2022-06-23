@@ -104,6 +104,7 @@ struct SetSerialNumberMessage {
 struct SetLEDMessage {
     uint32_t id;
     LED_MODE mode;
+    bool from_host = false;
 };
 
 struct IdentifyModuleStartLEDMessage {
@@ -132,6 +133,7 @@ struct ForceUSBDisconnectMessage {
 
 struct BeginHomingMessage {
     uint32_t id;
+    bool from_startup = false;
 };
 
 // Used internally to the motor task, communicates asynchronous errors to the
@@ -141,7 +143,9 @@ struct MotorSystemErrorMessage {
 };
 
 // Used internally to the motor task to drive homing state machine changes
-struct CheckHomingStatusMessage {};
+struct CheckHomingStatusMessage {
+    bool from_startup = false;
+};
 
 struct ErrorMessage {
     errors::ErrorCode code;
@@ -159,12 +163,12 @@ struct SetPlateLockPowerMessage {
 
 struct OpenPlateLockMessage {
     uint32_t id;
-    bool from_startup;
+    bool from_startup = false;
 };
 
 struct ClosePlateLockMessage {
     uint32_t id;
-    bool from_startup;
+    bool from_startup = false;
 };
 
 struct GetPlateLockStateMessage {
@@ -177,7 +181,7 @@ struct GetPlateLockStateDebugMessage {
 
 struct CheckPlateLockStatusMessage {
     uint32_t responding_to_id;
-    bool from_startup;
+    bool from_startup = false;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
@@ -194,7 +198,7 @@ struct CheckPlateLockStatusMessage {
 struct GetTemperatureResponse {
     uint32_t responding_to_id;
     double current_temperature;
-    double setpoint_temperature;
+    std::optional<double> setpoint_temperature;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
@@ -238,6 +242,27 @@ struct GetPlateLockStateDebugResponse {
     bool plate_lock_closed_state;
 };
 
+struct SetOffsetConstantsMessage {
+    uint32_t id;
+    bool b_set;
+    double const_b;
+    bool c_set;
+    double const_c;
+};
+
+struct GetOffsetConstantsMessage {
+    uint32_t id;
+};
+
+struct GetOffsetConstantsResponse {
+    uint32_t responding_to_id;
+    double const_b, const_c;
+};
+
+struct DeactivateHeaterMessage {
+    uint32_t id;
+};
+
 struct AcknowledgePrevious {
     uint32_t responding_to_id;
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
@@ -252,7 +277,8 @@ using HeaterMessage =
     ::std::variant<std::monostate, SetTemperatureMessage, GetTemperatureMessage,
                    TemperatureConversionComplete, GetTemperatureDebugMessage,
                    SetPIDConstantsMessage, SetPowerTestMessage,
-                   HandleNTCSetupError>;
+                   HandleNTCSetupError, SetOffsetConstantsMessage,
+                   GetOffsetConstantsMessage, DeactivateHeaterMessage>;
 using MotorMessage = ::std::variant<
     std::monostate, MotorSystemErrorMessage, SetRPMMessage, GetRPMMessage,
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,
@@ -270,5 +296,5 @@ using HostCommsMessage =
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,
                    GetTemperatureDebugResponse, ForceUSBDisconnectMessage,
                    GetPlateLockStateResponse, GetPlateLockStateDebugResponse,
-                   GetSystemInfoResponse>;
+                   GetSystemInfoResponse, GetOffsetConstantsResponse>;
 };  // namespace messages
