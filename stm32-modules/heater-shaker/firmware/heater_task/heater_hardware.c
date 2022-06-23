@@ -381,15 +381,17 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     }
 }
 
-// This callback attempts to check for heatpad open and short circuit conditions via the heatpad 
-// current sensing pin once per second. If the output pwm pulse is greater than 20% of 
-// the timer period, the current sensing pin will be checked to be greater than 0.2V at 10% of the 
-// timer period to confirm there is no open circuit. If the output pwm pulse is less than 80% of the 
-// timer period, the current sensing pin will be checked to be less than 0.2V at 90% of the timer
-// period to confirm there is no shorted circuit. After these checks are completed, the comparator threshold
-// is returned to 3.2V to detect an overcurrent condition. TIM4 channels 2 and 4 are used to trigger this
-// callback at 10% and 90% of the timer period. This state machine incorporates preparation states to
-// ensure the DAC and comparator have enough time to adjust their settings before the comparator level is checked.
+// This callback attempts to check for heatpad open and short circuit conditions via 
+// the heatpad current sensing pin once per second. If the output pwm pulse is greater
+// than 20% of the timer period, the current sensing pin will be checked to be greater 
+// than 0.2V at 10% of the timer period to confirm there is no open circuit. If the 
+// output pwm pulse is less than 80% of the timer period, the current sensing pin will 
+// be checked to be less than 0.2V at 90% of the timer period to confirm there is no 
+// shorted circuit. After these checks are completed, the comparator threshold is 
+// returned to 3.2V to detect an overcurrent condition. TIM4 channels 2 and 4 are used 
+// to trigger this callback at 10% and 90% of the timer period. This state machine 
+// incorporates preparation states to ensure the DAC and comparator have enough time to 
+// adjust their settings before the comparator level is checked.
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 {
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
