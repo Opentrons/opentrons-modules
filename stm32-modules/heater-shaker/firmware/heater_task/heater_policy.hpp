@@ -13,7 +13,7 @@ class HeaterPolicy {
     explicit HeaterPolicy(heater_hardware* hardware);
     [[nodiscard]] auto power_good() const -> bool;
     [[nodiscard]] auto try_reset_power_good() -> bool;
-    auto set_power_output(double relative_power) -> void;
+    auto set_power_output(double relative_power) -> bool;
     auto disable_power_output() -> void;
     auto set_thermal_offsets(flash::OffsetConstants* constants) -> bool;
     auto get_thermal_offsets() -> flash::OffsetConstants;
