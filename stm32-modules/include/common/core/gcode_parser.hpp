@@ -10,6 +10,7 @@
 #include <iterator>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <variant>
 
@@ -120,6 +121,209 @@ auto parse_value(const Input& start_from, Limit stop_at)
     }
     return std::make_pair(std::optional<ValueType>(value), after);
 }
+
+// Gcode argument base required values
+template <typename Arg>
+concept GCodeArgument = requires(Arg& a) {
+    // Needs a flag for whether it's required
+    {std::is_same_v<decltype(Arg::required), bool>};
+    // Variable within the argument - flag for if it is present
+    {std::is_same_v<decltype(a.present), bool>};
+};
+
+// Gcode argument that has a prefix
+template <typename Arg>
+concept GCodeArgumentWithPrefix = requires(Arg& a) {
+    // Prefix needs to be iterable
+    {std::is_same_v<std::remove_cvref<decltype(*std::cbegin(Arg::prefix))>,
+                    char>};
+    {std::is_same_v<std::remove_cvref<decltype(*std::cend(Arg::prefix))>,
+                    char>};
+};
+
+// Gcode argument that contains a variable `value` of any type
+template <typename Arg>
+concept GCodeArgumentWithValue = requires(Arg& a) {
+    // Variable within the argument - can be many types
+    {a.value};
+};
+
+// Gcode argument that contains an iterable value
+template <typename Arg>
+concept GCodeArgumentWithIterableValue = requires(Arg& a) {
+    {std::begin(a.value)};
+    {std::end(a.value)};
+};
+
+// Wrap gcode parser functions in this struct to separate the
+// declaration of the template arguments...
+template <GCodeArgument... Args>
+struct SingleParser {
+    /**
+     * @brief parse_gcode provides a basic parser for parsing a command,
+     * which consists of a prefix (or code) followed by an arbitrary
+     * number of arguments. The arguments must follow strict ordering,
+     * but each argument may be specified as optional and then may be
+     * absent in a valid input.
+     *
+     * The argument values may be of any numeric type (any size int or float),
+     * as well as an iterable string (using `std::array<char>`)
+     */
+    template <std::forward_iterator Input, typename Limit, typename PrefixArray>
+    requires std::sized_sentinel_for<Limit, Input> &&
+        std::convertible_to < std::iter_value_t<Input>,
+    typename PrefixArray::value_type >
+        static auto parse_gcode(const Input& start_from, Limit stop_at,
+                                const PrefixArray& prefix)
+            -> std::pair<std::optional<std::tuple<Args...>>, Input> {
+        using ArgRet = std::optional<std::tuple<Args...>>;
+        using RT = std::pair<ArgRet, Input>;
+        // Check that prefix matches
+        auto working = prefix_matches(start_from, stop_at, prefix);
+        if (working == start_from) {
+            return RT(ArgRet(), start_from);
+        }
+        working = gobble_whitespace(working, stop_at);
+        if constexpr (sizeof...(Args) == 0) {
+            // This command JUST needs a matching prefix (aka gcode)
+            return RT(ArgRet(), working);
+        } else {
+            // We need to iterate through the arguments...
+            auto parse_ret = parse_arg<Input, Limit, Args...>(working, stop_at);
+            if (!parse_ret.second.has_value()) {
+                return std::make_pair(std::nullopt, start_from);
+            }
+            return std::make_pair(ArgRet(parse_ret.first),
+                                  parse_ret.second.value());
+        }
+    }
+
+  private:
+    /**
+     * @brief parse_arg recurses through all of the argument types specified
+     * for a command, parsing each one and only continuing through the list
+     * while the input is still possibly valid.
+     *
+     * The values of each recursive call are concatenated into a single tuple
+     * to return to the caller, along with an optional Limit iterator.
+     *
+     * @return A pair of (1) a tuple of the parsed argument structs and (2) an
+     * optional Limit iterator. If (2) has no value, the input was not valid -
+     * either a mandatory argument was missing, there was an unexpected arg,
+     * or the value of an argument didn't match what was expected.
+     */
+    template <std::forward_iterator Input, typename Limit,
+              GCodeArgument NextArg, typename... Remaining>
+    static auto parse_arg(const Input& start_from, Limit stop_at)
+        -> std::pair<std::tuple<NextArg, Remaining...>, std::optional<Input>> {
+        using TupleRet = std::tuple<NextArg, Remaining...>;
+        auto arg = NextArg();
+        auto prefix_ret = arg_prefix_present<NextArg>(start_from, stop_at);
+        Input working = start_from;
+        if (!prefix_ret.second) {
+            // This argument isn't present
+            if (NextArg::required) {
+                // Mark invalid and return up
+                return std::make_pair(TupleRet(), std::nullopt);
+            }
+            // Mark absent and continue to recurse down
+            arg.present = false;
+        } else {
+            // arg_parse_value is overloaded to work even if there's no value
+            // required...
+            working = arg_parse_value(prefix_ret.first, stop_at, arg);
+            if (!arg.present) {
+                // Argument prefix without a value - this is not allowed.
+                // Mark invalid and return up
+                return std::make_pair(TupleRet(), std::nullopt);
+            }
+        }
+
+        if constexpr (sizeof...(Remaining)) {
+            // Recurse down to the next argument
+            working = gobble_whitespace(working, stop_at);
+            auto ret = parse_arg<Input, Limit, Remaining...>(working, stop_at);
+            return std::make_pair(
+                std::tuple_cat(std::make_tuple(arg), ret.first), ret.second);
+        } else {
+            // This was the last argument - return what we have
+            return std::make_pair(std::make_tuple(arg),
+                                  std::optional<Input>(working));
+        }
+    }
+
+    // Checks if the prefix of an argument is present
+    template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
+    requires GCodeArgumentWithPrefix<Arg>
+    static auto arg_prefix_present(const Input& start_from, Limit stop_at)
+        -> std::pair<Input, bool> {
+        auto working = prefix_matches(start_from, stop_at, Arg::prefix);
+        if (working != start_from) {
+            return std::make_pair(working, true);
+        }
+        return std::make_pair(start_from, false);
+    }
+
+    // Version when there is no prefix for an argument
+    template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
+    static auto arg_prefix_present(const Input& start_from, Limit stop_at)
+        -> std::pair<Input, bool> {
+        static_cast<void>(stop_at);
+        return std::make_pair(start_from, true);
+    }
+
+    // Iterable string
+    template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
+    requires GCodeArgumentWithValue<Arg> && GCodeArgumentWithIterableValue<Arg>
+    static auto arg_parse_value(const Input& start_from, Limit stop_at,
+                                Arg& arg) -> Input {
+        // using ValueType = decltype(Arg::value);
+        const auto max_values =
+            std::distance(arg.value.begin(), arg.value.end());
+        // Find the length from start_from to the first whitespace
+        auto working = start_from;
+        for (auto index = working; index != stop_at; index++) {
+            if (std::isspace(*index) || (*index == '\0')) {
+                working = index;
+                break;
+            }
+        }
+        if (working == start_from ||
+            std::distance(start_from, working) > max_values) {
+            arg.present = false;
+            return start_from;
+        }
+        std::copy(start_from, working, arg.value.begin());
+        arg.present = true;
+        return working;
+    }
+
+    // Numeric value - can use `parse_value`
+    template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
+    requires GCodeArgumentWithValue<Arg>
+    static auto arg_parse_value(const Input& start_from, Limit stop_at,
+                                Arg& arg) -> Input {
+        using ValueType = std::decay_t<decltype(arg.value)>;
+        auto ret = parse_value<ValueType>(start_from, stop_at);
+        if (!ret.first.has_value()) {
+            // Couldn't find the value
+            arg.present = false;
+            return start_from;
+        }
+        arg.value = ret.first.value();
+        arg.present = true;
+        return ret.second;
+    }
+
+    // No value at all - just mark arg as present
+    template <GCodeArgument Arg, std::forward_iterator Input, typename Limit>
+    static auto arg_parse_value(const Input& start_from, Limit stop_at,
+                                Arg& arg) -> Input {
+        static_cast<void>(stop_at);
+        arg.present = true;
+        return start_from;
+    }
+};
 
 template <typename... GCodes>
 class GroupParser {
