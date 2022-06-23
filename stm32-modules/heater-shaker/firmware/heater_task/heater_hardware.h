@@ -58,7 +58,7 @@ typedef struct {
     uint16_t pad_b_val;
     uint16_t onboard_val;
 } conversion_results;
-  
+
 typedef enum {
     IDLE = 1,
     RUNNING = 2,
@@ -72,7 +72,7 @@ typedef enum {
     ERROR_SHORT_CIRCUIT = 10,
     ERROR_OVERCURRENT = 11,
 } heatpad_cs_state;
-  
+
 struct __attribute__((packed)) writable_offsets {
     uint64_t const_b;
     uint64_t const_c;
