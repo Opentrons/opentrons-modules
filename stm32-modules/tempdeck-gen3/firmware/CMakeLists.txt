@@ -15,6 +15,8 @@ set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp 
+  ${COMMS_DIR}/freertos_comms_task.cpp
+  ${COMMS_DIR}/usb_hardware.c
   )
 
 # Add source files that should NOT be checked by clang-tidy here
@@ -43,6 +45,7 @@ set_target_properties(${TARGET_MODULE_NAME}
 
 target_include_directories(${TARGET_MODULE_NAME}
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../cpp-utils/include/
     )
 
 target_compile_options(${TARGET_MODULE_NAME}
