@@ -5,8 +5,8 @@
  */
 #pragma once
 
-#include "tempdeck-gen3/tasks.hpp"
 #include "firmware/freertos_message_queue.hpp"
+#include "tempdeck-gen3/tasks.hpp"
 
 namespace tasks {
 

@@ -53,14 +53,14 @@ static auto _top_task = host_comms_task::HostCommsTask(
     // Must specify the aggregator type for template deduction
     (tasks::FirmwareTasks::QueueAggregator *)(nullptr));
 
-auto run(void *param) -> void {
-    static_cast<void>(param);
+auto run(tasks::FirmwareTasks::QueueAggregator *aggregator) -> void {
     auto *local_task = &_local_task;
     auto *top_task = &_top_task;
 
-    auto handle = xTaskGetCurrentTaskHandle();
+    auto *handle = xTaskGetCurrentTaskHandle();
 
     _comms_queue.provide_handle(handle);
+    top_task->provide_aggregator(aggregator);
 
     usb_hw_init(&cdc_rx_handler, &cdc_init_handler, &cdc_deinit_handler);
     usb_hw_start();

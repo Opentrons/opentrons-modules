@@ -9,7 +9,7 @@
 
 namespace tasks {
 
-template<template <class> class QueueImpl>
+template <template <class> class QueueImpl>
 struct Tasks {
     // Message queue for host comms
     using HostCommsQueue = QueueImpl<messages::HostCommsMessage>;
