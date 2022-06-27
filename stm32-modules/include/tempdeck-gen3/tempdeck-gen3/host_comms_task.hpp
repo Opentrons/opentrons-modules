@@ -17,17 +17,18 @@
 #include "tempdeck-gen3/errors.hpp"
 #include "tempdeck-gen3/gcodes.hpp"
 #include "tempdeck-gen3/messages.hpp"
+#include "tempdeck-gen3/tasks.hpp"
 
 namespace host_comms_task {
 
 using Message = messages::HostCommsMessage;
 
-template <class MyQueue, typename... OtherQueues>
-requires MessageQueue<MyQueue, Message>
+template <template <class> class QueueImpl>
+requires MessageQueue<QueueImpl<Message>, Message>
 class HostCommsTask {
   public:
-    using Queue = MyQueue;
-    using Aggregator = queue_aggregator::QueueAggregator<OtherQueues...>;
+    using Queue = QueueImpl<Message>;
+    using Aggregator = typename tasks::Tasks<QueueImpl>::QueueAggregator;
 
   private:
     using GCodeParser = gcode::GroupParser<gcode::GetSystemInfo>;

@@ -48,10 +48,7 @@ static CommsTaskFreeRTOS _local_task = {
     .rx_buf = {}, .tx_buf = {}, .committed_rx_buf_ptr = nullptr};
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static auto _top_task = host_comms_task::HostCommsTask(
-    _comms_queue,
-    // Must specify the aggregator type for template deduction
-    (tasks::FirmwareTasks::QueueAggregator *)(nullptr));
+static auto _top_task = host_comms_task::HostCommsTask(_comms_queue, nullptr);
 
 auto run(tasks::FirmwareTasks::QueueAggregator *aggregator) -> void {
     auto *local_task = &_local_task;

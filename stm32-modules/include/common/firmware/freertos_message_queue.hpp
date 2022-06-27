@@ -12,7 +12,7 @@
 
 // It's ok to use magic numbers as default arguments
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-template <typename M, size_t queue_size = 10, size_t Idx = 0>
+template <typename M, size_t Idx = 0, size_t queue_size = 10>
 class FreeRTOSMessageQueue {
   public:
     using Message = M;
