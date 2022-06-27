@@ -15,14 +15,19 @@ set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp 
+  ${SYSTEM_DIR}/freertos_system_task.cpp
+  ${SYSTEM_DIR}/system_policy.cpp 
   ${COMMS_DIR}/freertos_comms_task.cpp
   ${COMMS_DIR}/usb_hardware.c
   )
 
 # Add source files that should NOT be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
-  ${SYSTEM_DIR}/system_stm32g4xx.c
   ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
+  ${SYSTEM_DIR}/system_stm32g4xx.c
+  ${SYSTEM_DIR}/stm32g4xx_it.c
+  ${SYSTEM_DIR}/system_hardware.c
+  ${SYSTEM_DIR}/system_serial_number.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
   )
