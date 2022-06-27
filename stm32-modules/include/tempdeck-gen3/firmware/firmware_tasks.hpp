@@ -12,4 +12,7 @@ namespace tasks {
 
 using FirmwareTasks = Tasks<FreeRTOSMessageQueue>;
 
+constexpr size_t HOST_STACK_SIZE = 2048;
+constexpr uint8_t HOST_TASK_PRIORITY = 1;
+
 };  // namespace tasks

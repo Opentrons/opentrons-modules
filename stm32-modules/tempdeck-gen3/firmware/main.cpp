@@ -8,15 +8,20 @@
 
 using EntryPoint = std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto host_task_entry = EntryPoint(host_comms_control_task::run);
 
-static auto _aggregator = tasks::FirmwareTasks::QueueAggregator();
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto host_task =
-    ot_utils::freertos_task::FreeRTOSTask<2048, EntryPoint>(host_task_entry);
+    ot_utils::freertos_task::FreeRTOSTask<tasks::HOST_STACK_SIZE, EntryPoint>(
+        host_task_entry);
 
 auto main() -> int {
     HardwareInit();
-    host_task.start(1, "HostComms", &_aggregator);
+    host_task.start(tasks::HOST_TASK_PRIORITY, "HostComms", &aggregator);
 
     vTaskStartScheduler();
     return 0;

@@ -31,6 +31,7 @@ class HostCommsTask {
 
   private:
     using GCodeParser = gcode::GroupParser<gcode::GetSystemInfo>;
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     using AckOnlyCache = AckCache<10>;
     using GetSystemInfoCache = AckCache<4, gcode::GetSystemInfo>;
 

@@ -23,6 +23,9 @@
 #include "usbd_core.h"
 #include "usbd_desc.h"
 
+/** Local define */
+#define USB_BITRATE 115200
+
 /** Local typedef */
 
 struct UsbHardwareConfig {
@@ -41,12 +44,13 @@ struct UsbHardwareConfig {
 
 static int8_t CDC_Init();
 static int8_t CDC_DeInit();
-static int8_t CDC_Control(uint8_t, uint8_t *, uint16_t);
-static int8_t CDC_Receive(uint8_t *, uint32_t *);
+static int8_t CDC_Control(uint8_t cmd, uint8_t *pbuf, uint16_t length);
+static int8_t CDC_Receive(uint8_t *Buf, uint32_t *Len);
 
 /** Local variables */
 
-struct UsbHardwareConfig _local_config = {
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+struct UsbHardwareConfig local_config = {
     .cdc_class_fops =
         {
             .Init = CDC_Init,
@@ -57,7 +61,7 @@ struct UsbHardwareConfig _local_config = {
     .usb_handle = {},
 
     .linecoding =
-        {.bitrate = 115200,
+        {.bitrate = USB_BITRATE,
          .format = 0x00,
          .paritytype = 0x00,
          .datatype = 0x08},
@@ -71,18 +75,18 @@ struct UsbHardwareConfig _local_config = {
 
 /** Static function instantiation.*/
 static int8_t CDC_Init() {
-    if(_local_config.cdc_init_callback != NULL) {
-        uint8_t *new_buf = _local_config.cdc_init_callback();
+    if(local_config.cdc_init_callback != NULL) {
+        uint8_t *new_buf = local_config.cdc_init_callback();
         USBD_CDC_SetRxBuffer(
-            &_local_config.usb_handle, new_buf);
-        USBD_CDC_ReceivePacket(&_local_config.usb_handle);
+            &local_config.usb_handle, new_buf);
+        USBD_CDC_ReceivePacket(&local_config.usb_handle);
     }
     return 0;
 }
 
 static int8_t CDC_DeInit() {
-    if(_local_config.cdc_deinit_callback != NULL) {
-        _local_config.cdc_deinit_callback();
+    if(local_config.cdc_deinit_callback != NULL) {
+        local_config.cdc_deinit_callback();
     }
     return 0;
 }
@@ -107,32 +111,32 @@ static int8_t CDC_Control(uint8_t cmd, uint8_t *pbuf, uint16_t length) {
 
         case CDC_SET_LINE_CODING:
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            _local_config.linecoding.bitrate = (uint32_t)(
+            local_config.linecoding.bitrate = (uint32_t)(
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 pbuf[0] | (pbuf[1] << 8) | (pbuf[2] << 16) | (pbuf[3] << 24));
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            _local_config.linecoding.format = pbuf[4];
+            local_config.linecoding.format = pbuf[4];
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-magic-numbers)
-            _local_config.linecoding.paritytype = pbuf[5];
+            local_config.linecoding.paritytype = pbuf[5];
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-magic-numbers)
-            _local_config.linecoding.datatype = pbuf[6];
+            local_config.linecoding.datatype = pbuf[6];
             break;
 
         case CDC_GET_LINE_CODING:
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            pbuf[0] = (uint8_t)(_local_config.linecoding.bitrate);
+            pbuf[0] = (uint8_t)(local_config.linecoding.bitrate);
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            pbuf[1] = (uint8_t)(_local_config.linecoding.bitrate >> 8);
+            pbuf[1] = (uint8_t)(local_config.linecoding.bitrate >> 8);
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            pbuf[2] = (uint8_t)(_local_config.linecoding.bitrate >> 16);
+            pbuf[2] = (uint8_t)(local_config.linecoding.bitrate >> 16);
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            pbuf[3] = (uint8_t)(_local_config.linecoding.bitrate >> 24);
+            pbuf[3] = (uint8_t)(local_config.linecoding.bitrate >> 24);
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            pbuf[4] = _local_config.linecoding.format;
+            pbuf[4] = local_config.linecoding.format;
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-magic-numbers)
-            pbuf[5] = _local_config.linecoding.paritytype;
+            pbuf[5] = local_config.linecoding.paritytype;
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-avoid-magic-numbers)
-            pbuf[6] = _local_config.linecoding.datatype;
+            pbuf[6] = local_config.linecoding.datatype;
 
             break;
 
@@ -150,12 +154,12 @@ static int8_t CDC_Control(uint8_t cmd, uint8_t *pbuf, uint16_t length) {
 }
 
 static int8_t CDC_Receive(uint8_t *Buf, uint32_t *Len) {
-    if(_local_config.rx_callback != NULL) {
-        uint8_t *new_buf = _local_config.rx_callback(Buf, Len); // C++ handles most logic here
+    if(local_config.rx_callback != NULL) {
+        uint8_t *new_buf = local_config.rx_callback(Buf, Len); // C++ handles most logic here
         USBD_CDC_SetRxBuffer(
-            &_local_config.usb_handle,
+            &local_config.usb_handle,
             new_buf);
-        USBD_CDC_ReceivePacket(&_local_config.usb_handle);        
+        USBD_CDC_ReceivePacket(&local_config.usb_handle);        
     }
 
     return USBD_OK;
@@ -166,12 +170,12 @@ static int8_t CDC_Receive(uint8_t *Buf, uint32_t *Len) {
 void usb_hw_init(usb_rx_callback_t rx_cb,
                  usb_cdc_init_callback_t cdc_init_cb,
                  usb_cdc_deinit_callback_t cdc_deinit_cb) {
-    _local_config.rx_callback = rx_cb;
-    configASSERT(_local_config.rx_callback != NULL);
-    _local_config.cdc_init_callback = cdc_init_cb;
-    configASSERT(_local_config.cdc_init_callback != NULL);
-    _local_config.cdc_deinit_callback = cdc_deinit_cb;
-    configASSERT(_local_config.cdc_deinit_callback != NULL);
+    local_config.rx_callback = rx_cb;
+    configASSERT(local_config.rx_callback != NULL);
+    local_config.cdc_init_callback = cdc_init_cb;
+    configASSERT(local_config.cdc_init_callback != NULL);
+    local_config.cdc_deinit_callback = cdc_deinit_cb;
+    configASSERT(local_config.cdc_deinit_callback != NULL);
 
     // This clears the capability bit that would be other sent upstream
     // indicating we handle flow control line setting from host, which we don't,
@@ -192,28 +196,28 @@ void usb_hw_init(usb_rx_callback_t rx_cb,
         usb_fs_desc[30] = 0;
     }
 
-    USBD_Init(&_local_config.usb_handle, &CDC_Desc, 0);
-    USBD_RegisterClass(&_local_config.usb_handle, USBD_CDC_CLASS);
-    USBD_CDC_RegisterInterface(&_local_config.usb_handle,
-                               &_local_config.cdc_class_fops);
-    USBD_SetClassConfig(&_local_config.usb_handle, 0);
+    USBD_Init(&local_config.usb_handle, &CDC_Desc, 0);
+    USBD_RegisterClass(&local_config.usb_handle, USBD_CDC_CLASS);
+    USBD_CDC_RegisterInterface(&local_config.usb_handle,
+                               &local_config.cdc_class_fops);
+    USBD_SetClassConfig(&local_config.usb_handle, 0);
 
-    _local_config.initialized = true;
+    local_config.initialized = true;
 }
 
 void usb_hw_start() {
-    configASSERT(_local_config.initialized);
-    USBD_Start(&_local_config.usb_handle);
+    configASSERT(local_config.initialized);
+    USBD_Start(&local_config.usb_handle);
 }
 
 void usb_hw_stop() {
-    configASSERT(_local_config.initialized);
-    USBD_Stop(&_local_config.usb_handle);
+    configASSERT(local_config.initialized);
+    USBD_Stop(&local_config.usb_handle);
 }
 
 void usb_hw_send(uint8_t *buf, uint16_t len) {
     USBD_CDC_SetTxBuffer(
-        &_local_config.usb_handle,
+        &local_config.usb_handle,
         buf, len);
-    USBD_CDC_TransmitPacket(&_local_config.usb_handle);
+    USBD_CDC_TransmitPacket(&local_config.usb_handle);
 }

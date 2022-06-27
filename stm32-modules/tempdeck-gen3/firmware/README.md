@@ -17,6 +17,8 @@ Hardware Policy drivers provide low-level access to peripherals that don't requi
 ## Tasks
 The functionality of the Temp Deck Firmware is split into a set of FreeRTOS tasks. Each task maintains its own stack, and the relative priority between tasks can be configured to reflect the importance of timing between the different system tasks.
 
+The interface to each task is defined by the definition of its message queue. In `tempdeck-gen3/tasks.hpp`, a parameterized definition of these tasks is defined. This header is generic so that different targets (firmware vs tests vs simulator) can define the actual message queue separately. For example, `firmware/firmware_tasks.hpp` provides the specific definitions for the firmware target. This file is only needed in the main.cpp for the firmware target.
+
 
 ## Message Passing
 The sole intended form of interprocess communication on the firmware is via message passing. As shown in the example class diagram below, a QueueAggregator class acts as a mediator between the tasks - there is no direct link between actual tasks.

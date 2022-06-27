@@ -16,7 +16,7 @@
 
 namespace queue_aggregator {
 
-template <typename Q, typename Message = Q::Message, typename Tag = Q::Tag>
+template <typename Q, typename Message = typename Q::Message, typename Tag = typename Q::Tag>
 concept MsgQueue = MessageQueue<Q, Message>;
 
 // In order to provide runtime visitation on the tuple of handles,
@@ -54,9 +54,8 @@ struct SendHelper {
             }
             // Can't send to this queue type
             return false;
-        } else {
-            return SendHelper<N - 1>::send(msg, idx, handle);
         }
+            return SendHelper<N - 1>::send(msg, idx, handle);
     }
 };
 
@@ -65,7 +64,7 @@ struct SendHelper {
 template <>
 struct SendHelper<0> {
     template <typename Message, typename Aggregator>
-    static auto send(const Message&, size_t, Aggregator*) -> bool {
+    static auto send(const Message& /*unused*/, size_t /*unused*/, Aggregator* /*unused*/) -> bool {
         return false;
     }
 };
@@ -218,6 +217,9 @@ class QueueAggregator {
     template <typename Queue>
     struct QueueHandle {
         QueueHandle(Queue* ptr = nullptr) : _handle(ptr) {}
+        // Let this have public visibility because it is only used internally
+        // to the QueueAggregator
+        // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
         Queue* _handle;
     };
 
