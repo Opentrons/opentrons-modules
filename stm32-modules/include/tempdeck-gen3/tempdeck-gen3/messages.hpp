@@ -73,8 +73,21 @@ struct GetSystemInfoResponse {
     const char* hw_version;
 };
 
+struct SetSerialNumberMessage {
+    uint32_t id;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
+    std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
+};
+
+struct EnterBootloaderMessage {
+    uint32_t id;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ErrorMessage,
                    AcknowledgePrevious, GetSystemInfoResponse>;
-using SystemMessage = ::std::variant<std::monostate, GetSystemInfoMessage>;
+using SystemMessage =
+    ::std::variant<std::monostate, GetSystemInfoMessage, SetSerialNumberMessage,
+                   EnterBootloaderMessage>;
 };  // namespace messages

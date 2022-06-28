@@ -101,4 +101,68 @@ struct GetSystemInfo {
     }
 };
 
+struct SetSerialNumber {
+    using ParseResult = std::optional<SetSerialNumber>;
+    static constexpr auto prefix = std::array{'M', '9', '9', '6'};
+    static constexpr const char* response = "M996 OK\n";
+
+    struct SerialArg {
+        static constexpr bool required = true;
+        bool present = false;
+        std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> value = {' '};
+    };
+
+    std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> value;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res =
+            gcode::SingleParser<SerialArg>::parse_gcode(input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        if(!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto ret = SetSerialNumber{.value = std::get<0>(arguments).value};
+        return std::make_pair(ret, res.second);
+    }
+};
+
+struct EnterBootloader {
+    using ParseResult = std::optional<EnterBootloader>;
+    static constexpr auto prefix = std::array{'d', 'f', 'u'};
+    static constexpr const char* response = "dfu OK\n";
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(EnterBootloader()), working);
+    }
+};
+
 };  // namespace gcode

@@ -69,6 +69,22 @@ class SystemTask {
     }
 
     template <SystemExecutionPolicy Policy>
+    auto visit_message(const messages::SetSerialNumberMessage& message,
+                       Policy& policy) {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = message.id};
+        response.with_error = policy.set_serial_number(message.serial_number);
+        static_cast<void>(_task_registry->send_to_address(
+            response, tasks::Tasks<QueueImpl>::HostAddress));
+    }
+
+    template <SystemExecutionPolicy Policy>
+    auto visit_message(const messages::EnterBootloaderMessage& message,
+                       Policy& policy) {
+        policy.enter_bootloader();
+    }
+
+    template <SystemExecutionPolicy Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
         static_cast<void>(message);
         static_cast<void>(policy);
