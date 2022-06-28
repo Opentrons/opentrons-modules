@@ -6,6 +6,8 @@ include(AddBuildAndTestTarget)
 
 add_executable(${TARGET_MODULE_NAME}
     test_main.cpp
+    test_host_comms_task.cpp
+    test_m115.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 

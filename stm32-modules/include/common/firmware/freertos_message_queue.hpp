@@ -12,9 +12,11 @@
 
 // It's ok to use magic numbers as default arguments
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-template <typename Message, size_t queue_size = 10>
+template <typename M, size_t Idx = 0, size_t queue_size = 10>
 class FreeRTOSMessageQueue {
   public:
+    using Message = M;
+
     // https://bugs.llvm.org/show_bug.cgi?id=37902
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
     explicit FreeRTOSMessageQueue(uint8_t notification_bit, const char* name)
@@ -28,6 +30,10 @@ class FreeRTOSMessageQueue {
                                    &queue_control_structure)),
           receiver_handle(nullptr),
           sent_bit(notification_bit) {}
+
+    // For use with queue_aggregator
+    struct Tag {};
+
     // Since the FreeRTOS queue control structures intern data and we don't want
     // to mess with their internals, you cannot copy or move this. It should be
     // declared once, and passed around by reference thereafter.
