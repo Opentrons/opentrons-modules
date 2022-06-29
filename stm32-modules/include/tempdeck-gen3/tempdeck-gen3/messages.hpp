@@ -84,10 +84,15 @@ struct EnterBootloaderMessage {
     uint32_t id;
 };
 
+struct ForceUSBDisconnect {
+    uint32_t id;
+    size_t return_address;
+};
+
 using HostCommsMessage =
-    ::std::variant<std::monostate, IncomingMessageFromHost, ErrorMessage,
+    ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect, ErrorMessage,
                    AcknowledgePrevious, GetSystemInfoResponse>;
 using SystemMessage =
-    ::std::variant<std::monostate, GetSystemInfoMessage, SetSerialNumberMessage,
+    ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage, SetSerialNumberMessage,
                    EnterBootloaderMessage>;
 };  // namespace messages

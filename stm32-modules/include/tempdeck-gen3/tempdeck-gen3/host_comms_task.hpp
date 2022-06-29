@@ -216,6 +216,20 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::ForceUSBDisconnect& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        static_cast<void>(tx_limit);
+        auto acknowledgement =
+            messages::AcknowledgePrevious{.responding_to_id = response.id};
+        may_connect_latch = false;
+        static_cast<void>(task_registry->send_to_address(
+            acknowledgement, response.return_address));
+        return tx_into;
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetSystemInfoResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
         auto cache_entry =

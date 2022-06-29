@@ -112,4 +112,14 @@ void DebugMon_Handler(void) {}
 /******************************************************************************/
 
 
+/**
+ * TIM7 = timebase counter
+ */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if(htim->Instance == TIM7) {
+        HAL_IncTick();
+    }
+}
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

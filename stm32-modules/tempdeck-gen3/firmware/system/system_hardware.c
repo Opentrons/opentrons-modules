@@ -30,6 +30,8 @@ void system_hardware_enter_bootloader(void) {
     SysTick->LOAD = 0;
     SysTick->VAL = 0;
 
+    HAL_DeInit();
+
 
     /* Clear Interrupt Enable Register & Interrupt Pending Register */
     for (int i=0;i<8;i++)
