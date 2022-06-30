@@ -217,6 +217,7 @@ struct GetRPMResponse {
     uint32_t responding_to_id;
     int16_t current_rpm;
     int16_t setpoint_rpm;
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
 struct GetSystemInfoResponse {

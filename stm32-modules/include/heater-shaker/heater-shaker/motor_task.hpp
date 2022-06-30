@@ -174,6 +174,9 @@ class MotorTask {
                 state.status = State::ERROR;
             }
         }
+        if (current_error != errors::ErrorCode::NO_ERROR) {
+            error = current_error;
+        }
         auto response = messages::AcknowledgePrevious{
             .responding_to_id = msg.id, .with_error = error};
         if (msg.from_system) {
@@ -212,6 +215,9 @@ class MotorTask {
             messages::GetRPMResponse{.responding_to_id = msg.id,
                                      .current_rpm = policy.get_current_rpm(),
                                      .setpoint_rpm = policy.get_target_rpm()};
+        if (state.status == State::ERROR) {
+            response.with_error = current_error;
+        }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
@@ -245,6 +251,7 @@ class MotorTask {
                     msg.errors, static_cast<errors::MotorErrorOffset>(offset));
                 if (code != errors::ErrorCode::NO_ERROR) {
                     state.status = State::ERROR;
+                    current_error = code;
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(
                             messages::HostCommsMessage(
@@ -572,6 +579,7 @@ class MotorTask {
     uint32_t cached_home_id = 0;
     uint32_t homing_cycles_coasting = 0;
     uint32_t polling_time = 0;
+    errors::ErrorCode current_error = errors::ErrorCode::NO_ERROR;
 };
 
 };  // namespace motor_task
