@@ -107,6 +107,14 @@ struct SetLEDMessage {
     bool from_host = false;
 };
 
+//use one updated passing function
+struct UpdateLEDMessage {
+    uint32_t id;
+    LED_MODE mode;
+    bool from_host = false;
+    bool error = false;
+};
+
 struct IdentifyModuleStartLEDMessage {
     uint32_t id;
 };

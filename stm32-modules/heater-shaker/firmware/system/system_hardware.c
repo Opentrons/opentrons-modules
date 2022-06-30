@@ -29,13 +29,13 @@ static TaskHandle_t xTaskToNotify = NULL;
 I2C_HandleTypeDef I2cHandle;
 
 uint8_t PWMInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI};
-uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_OUT_HI, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_OUT_HI, LED_OUT_HI, LED_OUT_HI, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 uint8_t UpdateBuffer[1] = {0x00};
 uint8_t ShutdownBuffer[1] = {0x01};
-uint8_t WhiteOnBuffer[1] = {LED_OUT_HI};
-uint8_t WhiteOffBuffer[1] = {0x00};
-uint8_t RedOnBuffer[9] = {LED_OUT_HI};
-uint8_t RedOffBuffer[9] = {0x00};
+uint8_t WhiteOnBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_OUT_HI, LED_OUT_HI, LED_OUT_HI, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8_t WhiteOffBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8_t RedOnBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, LED_OUT_HI, 0x00, 0x00, LED_OUT_HI, 0x00, 0x00, LED_OUT_HI, 0x00, 0x00};
+uint8_t RedOffBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_OUT_HI, LED_OUT_HI, LED_OUT_HI, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 bool CallbackStatus = false;
 
 void system_hardware_setup(void) {
@@ -141,8 +141,8 @@ bool system_hardware_set_led(LED_MODE mode) {
   switch (mode) {
     case WHITE_ON:
       register_address = BASE_WHITE_REGISTER;
-      set_buffer = WhiteOnBuffer;
-      buffer_size = sizeof(WhiteOnBuffer);
+      set_buffer = OutputInitBuffer;
+      buffer_size = sizeof(OutputInitBuffer);
       break;
     case WHITE_OFF:
       register_address = BASE_WHITE_REGISTER;
@@ -150,12 +150,12 @@ bool system_hardware_set_led(LED_MODE mode) {
       buffer_size = sizeof(WhiteOffBuffer);
       break;
     case RED_ON:
-      register_address = BASE_RED_REGISTER;
+      register_address = BASE_WHITE_REGISTER;
       set_buffer = RedOnBuffer;
       buffer_size = sizeof(RedOnBuffer);
       break;
     case RED_OFF:
-      register_address = BASE_RED_REGISTER;
+      register_address = BASE_WHITE_REGISTER;
       set_buffer = RedOffBuffer;
       buffer_size = sizeof(RedOffBuffer);
       break;
