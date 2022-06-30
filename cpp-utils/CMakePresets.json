@@ -1,0 +1,68 @@
+{
+    "version": 2,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 20,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "host",
+            "displayName": "host compilation for tests",
+            "description": "Build module libraries and test executables for modules that use STM32",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build-host"
+        },
+        {
+            "name": "host-gcc10",
+            "inherits": "host",
+            "displayName": "host builds forcing g++",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "gcc-10",
+                "CMAKE_CXX_COMPILER": "g++-10"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "lint",
+            "displayName": "lint all",
+            "description": "Runs clang-tidy on all targets",
+            "configurePreset": "host",
+            "jobs": 4,
+            "targets": [
+                "lint"
+            ]
+        },
+        {
+            "name": "format",
+            "displayName": "format host",
+            "description": "Runs clang-format on all targets",
+            "configurePreset": "host",
+            "jobs": 4,
+            "targets": [
+                "format"
+            ]
+        },
+        {
+            "name": "format-ci",
+            "displayName": "format host",
+            "description": "Runs clang-format on all targets without modifying files",
+            "configurePreset": "host",
+            "jobs": 4,
+            "targets": [
+                "format-ci"
+            ]
+        },
+        {
+            "name": "tests",
+            "displayName": "tests",
+            "description": "Runs build-and-test target for all subprojects",
+            "configurePreset": "host",
+            "jobs": 4,
+            "targets": [
+                "build-and-test"
+            ]
+        }
+    ]
+}
