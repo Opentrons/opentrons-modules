@@ -168,11 +168,16 @@ SCENARIO("motor task core message handling", "[motor]") {
             }
         }
         WHEN("sending a get-rpm message") {
+            tasks->get_motor_policy().test_set_current_rpm(1050);
+            auto pre_message = messages::SetRPMMessage{
+                .id = 123, .target_rpm = 3500};  // needed to populate setpoint
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(pre_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            tasks->get_host_comms_queue().backing_deque.pop_front();
             auto message = messages::GetRPMMessage{.id = 123};
             tasks->get_motor_queue().backing_deque.push_back(
                 messages::MotorMessage(message));
-            tasks->get_motor_policy().test_set_current_rpm(1050);
-            tasks->get_motor_policy().set_rpm(3500);
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_motor_queue().backing_deque.empty());
