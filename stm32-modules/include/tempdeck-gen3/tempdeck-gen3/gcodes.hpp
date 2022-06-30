@@ -132,7 +132,7 @@ struct SetSerialNumber {
             return std::make_pair(ParseResult(), input);
         }
         auto arguments = res.first.value();
-        if(!std::get<0>(arguments).present) {
+        if (!std::get<0>(arguments).present) {
             return std::make_pair(ParseResult(), input);
         }
         auto ret = SetSerialNumber{.value = std::get<0>(arguments).value};

@@ -90,9 +90,9 @@ struct ForceUSBDisconnect {
 };
 
 using HostCommsMessage =
-    ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect, ErrorMessage,
-                   AcknowledgePrevious, GetSystemInfoResponse>;
+    ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
+                   ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse>;
 using SystemMessage =
-    ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage, SetSerialNumberMessage,
-                   EnterBootloaderMessage>;
+    ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
+                   SetSerialNumberMessage, EnterBootloaderMessage>;
 };  // namespace messages

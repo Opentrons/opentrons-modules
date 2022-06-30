@@ -34,8 +34,8 @@ class HostCommsTask {
     using GCodeParser =
         gcode::GroupParser<gcode::GetSystemInfo, gcode::EnterBootloader,
                            gcode::SetSerialNumber>;
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     using AckOnlyCache =
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         AckCache<10, gcode::EnterBootloader, gcode::SetSerialNumber>;
     using GetSystemInfoCache = AckCache<4, gcode::GetSystemInfo>;
 
@@ -300,7 +300,8 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message = messages::SetSerialNumberMessage{.id = id, .serial_number = gcode.value};
+        auto message = messages::SetSerialNumberMessage{
+            .id = id, .serial_number = gcode.value};
         if (!task_registry->send(message)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);

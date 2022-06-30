@@ -30,9 +30,6 @@ void system_hardware_enter_bootloader(void) {
     SysTick->LOAD = 0;
     SysTick->VAL = 0;
 
-    HAL_DeInit();
-
-
     /* Clear Interrupt Enable Register & Interrupt Pending Register */
     for (int i=0;i<8;i++)
     {
@@ -45,7 +42,6 @@ void system_hardware_enter_bootloader(void) {
     __HAL_SYSCFG_REMAPMEMORY_SYSTEMFLASH();
     // and now we're ready to set the system up to start executing system flash.
     // arm cortex initialization means that
-
     // address 0 in the bootable region is the address where the processor should start its stack
     // which we have to do as late as possible because as soon as we do this the c and c++ runtime
     // environment is no longer valid

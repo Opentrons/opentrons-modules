@@ -19,11 +19,11 @@ static tasks::FirmwareTasks::SystemQueue
 static auto _top_task = system_task::SystemTask(_queue, nullptr);
 
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
-    auto *handle = xTaskGetCurrentTaskHandle();
+    auto* handle = xTaskGetCurrentTaskHandle();
     _queue.provide_handle(handle);
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
-    
+
     auto policy = SystemPolicy();
     while (true) {
         _top_task.run_once(policy);
