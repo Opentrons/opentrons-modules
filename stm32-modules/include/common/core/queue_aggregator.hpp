@@ -4,22 +4,21 @@
  * of QueueAggregator for more detail.
  */
 
+#pragma once
+
 #include <atomic>
 #include <memory>
 #include <optional>
 #include <tuple>
 #include <variant>
 
+#include "hal/message_queue.hpp"
+
 namespace queue_aggregator {
 
-template <typename Q, typename Message = Q::Message, typename Tag = Q::Tag>
-concept MsgQueue = requires(Q queue, Message msg, Tag tag) {
-    { queue.try_send(msg) } -> std::same_as<bool>;
-    { queue.try_send_from_isr(msg) } -> std::same_as<bool>;
-    { queue.try_recv(&msg) } -> std::same_as<bool>;
-    { queue.recv(&msg) } -> std::same_as<void>;
-    { queue.has_message() } -> std::same_as<bool>;
-};
+template <typename Q, typename Message = typename Q::Message,
+          typename Tag = typename Q::Tag>
+concept MsgQueue = MessageQueue<Q, Message>;
 
 // In order to provide runtime visitation on the tuple of handles,
 // we utilize this helper struct...
@@ -45,20 +44,19 @@ struct SendHelper {
      * @return true if the messsage was succesfully sent, false otherwise
      */
     template <typename Message, typename Aggregator>
-    static auto send(const Message& msg, size_t idx, Aggregator* handle)
-        -> bool {
+    static auto send(const Message& msg, size_t idx, uint32_t timeout_ms,
+                     Aggregator* handle) -> bool {
         using VariantType =
             std::variant_alternative_t<N - 1,
                                        typename Aggregator::MessageTypes>;
         if (N - 1 == idx) {
             if constexpr (std::is_constructible_v<VariantType, Message>) {
-                return handle->template send_to<N - 1>(msg);
+                return handle->template send_to<N - 1>(msg, timeout_ms);
             }
             // Can't send to this queue type
             return false;
-        } else {
-            return SendHelper<N - 1>::send(msg, idx, handle);
         }
+        return SendHelper<N - 1>::send(msg, idx, timeout_ms, handle);
     }
 };
 
@@ -67,7 +65,8 @@ struct SendHelper {
 template <>
 struct SendHelper<0> {
     template <typename Message, typename Aggregator>
-    static auto send(const Message&, size_t, Aggregator*) -> bool {
+    static auto send(const Message& /*unused*/, size_t /*unused*/,
+                     uint32_t /*unused*/, Aggregator* /*unused*/) -> bool {
         return false;
     }
 };
@@ -171,10 +170,11 @@ class QueueAggregator {
      * @return true if the message could be sent, false otherwise
      */
     template <typename Tag, typename Message>
-    auto send(const Message& msg, const Tag& tag = (Tag())) -> bool {
+    auto send(const Message& msg, uint32_t timeout_ms = 0,
+              const Tag& tag = (Tag())) -> bool {
         static_cast<void>(tag);
         constexpr auto idx = get_tag_idx<Tag>();
-        return send_to<idx>(msg);
+        return send_to<idx>(msg, timeout_ms);
     }
 
     /**
@@ -187,9 +187,9 @@ class QueueAggregator {
      * @return true if the message could be sent, false otherwise
      */
     template <typename Message>
-    auto send(const Message& msg) -> bool {
+    auto send(const Message& msg, uint32_t timeout_ms = 0) -> bool {
         constexpr auto idx = get_message_idx<Message>();
-        return send_to<idx>(msg);
+        return send_to<idx>(msg, timeout_ms);
     }
 
     /**
@@ -203,11 +203,12 @@ class QueueAggregator {
      * @return true if the message could be sent, false otherwise
      */
     template <typename Message>
-    auto send_to_address(const Message& msg, size_t address) -> bool {
+    auto send_to_address(const Message& msg, size_t address,
+                         uint32_t timeout_ms = 0) -> bool {
         if (!(address < TaskCount)) {
             return false;
         }
-        return SendHelper<TaskCount>::send(msg, address, this);
+        return SendHelper<TaskCount>::send(msg, address, timeout_ms, this);
     }
 
   private:
@@ -220,6 +221,9 @@ class QueueAggregator {
     template <typename Queue>
     struct QueueHandle {
         QueueHandle(Queue* ptr = nullptr) : _handle(ptr) {}
+        // Let this have public visibility because it is only used internally
+        // to the QueueAggregator
+        // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
         Queue* _handle;
     };
 
@@ -233,12 +237,12 @@ class QueueAggregator {
      * @return true if the message could be sent, false otherwise
      */
     template <size_t Idx, typename Message>
-    auto send_to(const Message& msg) -> bool {
+    auto send_to(const Message& msg, uint32_t timeout_ms) -> bool {
         static_assert(Idx < TaskCount, "Invalid task index");
         if (std::get<Idx>(_handles)._handle == nullptr) {
             return false;
         }
-        return std::get<Idx>(_handles)._handle->try_send(msg);
+        return std::get<Idx>(_handles)._handle->try_send(msg, timeout_ms);
     }
 
     /**

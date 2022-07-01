@@ -21,7 +21,7 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${SYSTEM_DIR}/system_policy.cpp
   ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
   ${COMMS_DIR}/freertos_comms_task.cpp
-  ${THERMAL_DIR}/ads1115.cpp
+  ${THERMAL_DIR}/thermal_adc_policy.cpp
   ${THERMAL_DIR}/freertos_thermal_plate_task.cpp
   ${THERMAL_DIR}/thermal_plate_policy.cpp
   ${THERMAL_DIR}/freertos_lid_heater_task.cpp

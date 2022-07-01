@@ -9,7 +9,8 @@ class TestHeaterPolicy {
     explicit TestHeaterPolicy(bool pgood, bool can_reset);
     [[nodiscard]] auto power_good() const -> bool;
     [[nodiscard]] auto try_reset_power_good() -> bool;
-    auto set_power_output(double output) -> void;
+    auto set_power_output(double output) -> bool;
+    auto set_circuit_error(bool set) -> void;
     auto disable_power_output() -> void;
 
     auto set_power_good(bool pgood) -> void;
@@ -29,5 +30,6 @@ class TestHeaterPolicy {
     size_t try_reset_calls;
     double power;
     bool enabled;
+    bool circuit_error;
     flash::OffsetConstants stored_offsets = {};
 };

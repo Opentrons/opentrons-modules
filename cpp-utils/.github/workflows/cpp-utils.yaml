@@ -1,0 +1,50 @@
+name: 'C++ utilities build/test'
+on:
+  pull_request:
+    paths:
+      - 'include/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'cmake/**'
+  push:
+    paths:
+      - 'include/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'cmake/**'
+    branches:
+      - '*'
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  compile-test:
+    name: 'Compile/Test'
+    runs-on: 'ubuntu-20.04'
+    timeout-minutes: 10
+    env:
+      CC: gcc-10
+      CXX: g++-10
+    steps:
+      - run: |
+          sudo apt update
+          sudo apt install gcc-10 g++-10
+      - uses: 'actions/checkout@v2'
+        with:
+          fetch-depth: 0
+      - uses: 'actions/cache@v2'
+        with:
+          path: './stm32-tools'
+          key: build-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
+          restore-keys: build-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
+      - name: 'Configure'
+        run: cmake --preset=host .
+      - name: 'Format Check'
+        run: cmake --build --preset format-ci
+      - name: 'Lint'
+        run: cmake --build --preset lint
+      - name: 'Build and Test'
+        run: cmake --build --preset tests

@@ -38,15 +38,15 @@ HeaterPolicy::HeaterPolicy(heater_hardware* hardware)
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-make-member-function-const)
-auto HeaterPolicy::set_power_output(double relative_power) -> void {
+auto HeaterPolicy::set_power_output(double relative_power) -> bool {
     const double relative_clamped = std::clamp(relative_power, 0.0, 1.0);
-    heater_hardware_power_set(
+    return (heater_hardware_power_set(
         hardware_handle,
         // The macro HEATER_PAD_PWM_GRANULARITY purposefully uses integer
         // division since the end goal is in fact an integer
         // NOLINTNEXTLINE(bugprone-integer-division)
         static_cast<uint16_t>(static_cast<double>(HEATER_PAD_PWM_GRANULARITY) *
-                              relative_clamped));
+                              relative_clamped)));
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-make-member-function-const)

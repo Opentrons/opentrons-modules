@@ -15,12 +15,21 @@ set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp 
+  ${SYSTEM_DIR}/freertos_system_task.cpp
+  ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
+  ${SYSTEM_DIR}/system_policy.cpp 
+  ${COMMS_DIR}/freertos_comms_task.cpp
+  ${COMMS_DIR}/usb_hardware.c
   )
 
 # Add source files that should NOT be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
+  ${SYSTEM_DIR}/hal_tick.c
   ${SYSTEM_DIR}/system_stm32g4xx.c
-  ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
+  ${SYSTEM_DIR}/system_hardware.c
+  ${SYSTEM_DIR}/system_serial_number.c
+  ${SYSTEM_DIR}/stm32g4xx_it.c
+  ${SYSTEM_DIR}/stm32g4xx_hal_msp.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
   )
@@ -43,6 +52,7 @@ set_target_properties(${TARGET_MODULE_NAME}
 
 target_include_directories(${TARGET_MODULE_NAME}
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../cpp-utils/include/
     )
 
 target_compile_options(${TARGET_MODULE_NAME}
@@ -69,7 +79,8 @@ target_link_libraries(
 
 
 target_include_directories(STM32G4xx_Drivers_${TARGET_MODULE_NAME}
-  PUBLIC ${SYSTEM_DIR})
+  PUBLIC ${SYSTEM_DIR}
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}/firmware)
 target_include_directories(STM32G4xx_USB_${TARGET_MODULE_NAME}
   PUBLIC ${COMMS_DIR})
 # Add FreertosConfig to the freertos build
