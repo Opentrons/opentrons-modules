@@ -258,6 +258,57 @@ SCENARIO("motor task error handling", "[motor]") {
                 }
             }
         }
+        WHEN("sending a get-rpm message while motor is in error state") {
+            auto message = messages::MotorSystemErrorMessage{
+                .errors = static_cast<uint16_t>(
+                    1u << errors::MotorErrorOffset::SW_ERROR)};
+            tasks->get_motor_queue().backing_deque.push_back(message);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            tasks->get_host_comms_queue().backing_deque.pop_front();
+            auto message2 = messages::GetRPMMessage{.id = 222};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(message2));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("error response should be received") {
+                REQUIRE(tasks->get_motor_queue().backing_deque.empty());
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(
+                    std::holds_alternative<messages::GetRPMResponse>(response));
+                auto ack = std::get<messages::GetRPMResponse>(response);
+                REQUIRE(ack.responding_to_id == message2.id);
+                REQUIRE(ack.with_error ==
+                        errors::ErrorCode::MOTOR_BLDC_DRIVER_ERROR);
+            }
+        }
+        WHEN("sending a set-rpm message while motor is in error state") {
+            auto message = messages::MotorSystemErrorMessage{
+                .errors = static_cast<uint16_t>(
+                    1u << errors::MotorErrorOffset::SW_ERROR)};
+            tasks->get_motor_queue().backing_deque.push_back(message);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            tasks->get_host_comms_queue().backing_deque.pop_front();
+            auto message2 =
+                messages::SetRPMMessage{.id = 222, .target_rpm = 500};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(message2));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("error response should be received") {
+                REQUIRE(tasks->get_motor_queue().backing_deque.empty());
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
+                    response));
+                auto ack = std::get<messages::AcknowledgePrevious>(response);
+                REQUIRE(ack.responding_to_id == message2.id);
+                REQUIRE(ack.with_error ==
+                        errors::ErrorCode::MOTOR_BLDC_DRIVER_ERROR);
+            }
+        }
         WHEN("sending an internal error with multiple bits set") {
             auto message = messages::MotorSystemErrorMessage{
                 .errors = static_cast<uint16_t>(
