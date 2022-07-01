@@ -113,7 +113,8 @@ class MotorTask {
         : state{.status = State::STOPPED_UNKNOWN},
           plate_lock_state{.status = PlateLockState::IDLE_UNKNOWN},
           message_queue(q),
-          task_registry(nullptr) {}
+          task_registry(nullptr),
+          setpoint(0) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -165,6 +166,7 @@ class MotorTask {
         } else {
             policy.homing_solenoid_disengage();
             error = policy.set_rpm(msg.target_rpm);
+            setpoint = msg.target_rpm;
             state.status = State::RUNNING;
             policy.delay_ticks(MOTOR_START_WAIT_TICKS);
             if ((msg.target_rpm != 0) &&
@@ -172,6 +174,7 @@ class MotorTask {
                 error = errors::ErrorCode::MOTOR_UNABLE_TO_MOVE;
                 policy.stop();
                 state.status = State::ERROR;
+                setpoint = 0;
             }
         }
         auto response = messages::AcknowledgePrevious{
@@ -211,7 +214,7 @@ class MotorTask {
         auto response =
             messages::GetRPMResponse{.responding_to_id = msg.id,
                                      .current_rpm = policy.get_current_rpm(),
-                                     .setpoint_rpm = policy.get_target_rpm()};
+                                     .setpoint_rpm = setpoint};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
@@ -231,6 +234,7 @@ class MotorTask {
             policy.homing_solenoid_engage(HOMING_SOLENOID_CURRENT_HOLD);
             policy.stop();
             state.status = State::STOPPED_HOMED;
+            setpoint = 0;
             static_cast<void>(
                 task_registry->comms->get_message_queue().try_send(
                     messages::AcknowledgePrevious{.responding_to_id =
@@ -244,7 +248,9 @@ class MotorTask {
                 auto code = errors::from_motor_error(
                     msg.errors, static_cast<errors::MotorErrorOffset>(offset));
                 if (code != errors::ErrorCode::NO_ERROR) {
+                    policy.stop();
                     state.status = State::ERROR;
+                    setpoint = 0;
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(
                             messages::HostCommsMessage(
@@ -306,6 +312,7 @@ class MotorTask {
                 policy.homing_solenoid_engage(HOMING_SOLENOID_CURRENT_HOLD);
                 policy.stop();
                 state.status = State::STOPPED_HOMED;
+                setpoint = 0;
                 if (!msg.from_startup) {
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(
@@ -343,6 +350,7 @@ class MotorTask {
                 auto error = errors::ErrorCode::MOTOR_UNABLE_TO_MOVE;
                 policy.stop();
                 state.status = State::ERROR;
+                setpoint = 0;
                 if (msg.from_startup) {
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(
@@ -572,6 +580,7 @@ class MotorTask {
     uint32_t cached_home_id = 0;
     uint32_t homing_cycles_coasting = 0;
     uint32_t polling_time = 0;
+    int16_t setpoint;
 };
 
 };  // namespace motor_task
