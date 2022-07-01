@@ -1,22 +1,12 @@
-/* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file    stm32g4xx_hal_timebase_TIM.c
-  * @brief   HAL time base based on the hardware TIM.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0044, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0044
-  *
-  ******************************************************************************
-  */
-/* USER CODE END Header */
+ * @file hal_tick.c
+ * @brief Provides an alternate source for the STM32 HAL Tick timer. This is
+ * the systick timer by default, but in a FreeRTOS application it is important
+ * to provide an alternative timer to free up systick for RTOS use.
+ * 
+ * The actual tick value is incremented in the HAL_TIM_PeriodElapsedCallback.
+ * See \ref stm32g4xx_it.c for detail.
+ */
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32g4xx_hal.h"
@@ -24,13 +14,7 @@
 
 #include "firmware/system_hardware.h"
 
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-TIM_HandleTypeDef        htim7;
-/* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
+TIM_HandleTypeDef htim7;
 
 /**
   * @brief  This function configures the TIM7 as a time base source.
@@ -108,8 +92,8 @@ HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
   */
 void HAL_SuspendTick(void)
 {
-  /* Disable TIM7 update Interrupt */
-  __HAL_TIM_DISABLE_IT(&htim7, TIM_IT_UPDATE);
+    /* Disable TIM7 update Interrupt */
+    __HAL_TIM_DISABLE_IT(&htim7, TIM_IT_UPDATE);
 }
 
 /**
@@ -120,8 +104,8 @@ void HAL_SuspendTick(void)
   */
 void HAL_ResumeTick(void)
 {
-  /* Enable TIM7 Update interrupt */
-  __HAL_TIM_ENABLE_IT(&htim7, TIM_IT_UPDATE);
+    /* Enable TIM7 Update interrupt */
+    __HAL_TIM_ENABLE_IT(&htim7, TIM_IT_UPDATE);
 }
 
 /**
@@ -136,5 +120,3 @@ void TIM7_IRQHandler(void)
 {
  	HAL_TIM_IRQHandler(&htim7);
 }
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
