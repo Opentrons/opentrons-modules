@@ -7,7 +7,8 @@ TestHeaterPolicy::TestHeaterPolicy(bool pgood, bool can_reset)
       may_reset(can_reset),
       try_reset_calls(0),
       power(0),
-      enabled(false) {}
+      enabled(false),
+      circuit_error(false) {}
 
 TestHeaterPolicy::TestHeaterPolicy() : TestHeaterPolicy(true, true) {}
 
@@ -41,8 +42,21 @@ auto TestHeaterPolicy::reset_try_reset_call_count() -> void {
 
 auto TestHeaterPolicy::set_power_output(double output) -> bool {
     power = output;
-    enabled = true;
-    return true;
+    if (!circuit_error) {
+        enabled = true;
+        return true;
+    } else {
+        enabled = false;
+        return false;
+    }
+}
+
+auto TestHeaterPolicy::set_circuit_error(bool set) -> void {
+    if (set) {
+        circuit_error = true;
+    } else {
+        circuit_error = false;
+    }
 }
 
 auto TestHeaterPolicy::disable_power_output() -> void { enabled = false; }
