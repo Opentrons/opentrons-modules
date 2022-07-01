@@ -99,4 +99,5 @@ using HostCommsMessage =
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage>;
+using UIMessage = ::std::variant<std::monostate, UpdateUIMessage>;
 };  // namespace messages
