@@ -51,8 +51,9 @@ TEST_CASE("queue aggregator registration and tag dispatching") {
         Queue2 q2("2");
         Aggregator aggregator;
         THEN("sending messsages fails") {
-            REQUIRE(!aggregator.send(Message1{.payload = 5}, Queue1::Tag{}));
-            REQUIRE(!aggregator.send(Message2{.a = 5, .b = 6}, Queue2::Tag{}));
+            REQUIRE(!aggregator.send(Message1{.payload = 5}, 0, Queue1::Tag{}));
+            REQUIRE(
+                !aggregator.send(Message2{.a = 5, .b = 6}, 0, Queue2::Tag{}));
             REQUIRE(!q1.has_message());
             REQUIRE(!q2.has_message());
         }
@@ -63,9 +64,10 @@ TEST_CASE("queue aggregator registration and tag dispatching") {
                 REQUIRE(!aggregator.register_queue(q1));
             }
             THEN("sending messages with tag-dispatching succeeds") {
-                REQUIRE(aggregator.send(Message1{.payload = 5}, Queue1::Tag{}));
                 REQUIRE(
-                    aggregator.send(Message2{.a = 5, .b = 6}, Queue2::Tag{}));
+                    aggregator.send(Message1{.payload = 5}, 0, Queue1::Tag{}));
+                REQUIRE(aggregator.send(Message2{.a = 5, .b = 6}, 0,
+                                        Queue2::Tag{}));
                 REQUIRE(q1.has_message());
                 REQUIRE(q2.has_message());
             }

@@ -223,7 +223,7 @@ class HostCommsTask {
             messages::AcknowledgePrevious{.responding_to_id = response.id};
         may_connect_latch = false;
         static_cast<void>(task_registry->send_to_address(
-            acknowledgement, response.return_address));
+            acknowledgement, response.return_address, TICKS_TO_WAIT_ON_SEND));
         return tx_into;
     }
 
@@ -280,7 +280,7 @@ class HostCommsTask {
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
         auto message = messages::GetSystemInfoMessage{.id = id};
-        if (!task_registry->send(message)) {
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
             get_system_info_cache.remove_if_present(id);
@@ -302,7 +302,7 @@ class HostCommsTask {
         }
         auto message = messages::SetSerialNumberMessage{
             .id = id, .serial_number = gcode.value};
-        if (!task_registry->send(message)) {
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
             get_system_info_cache.remove_if_present(id);
@@ -323,7 +323,7 @@ class HostCommsTask {
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
         auto message = messages::EnterBootloaderMessage{.id = id};
-        if (!task_registry->send(message)) {
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
             get_system_info_cache.remove_if_present(id);
