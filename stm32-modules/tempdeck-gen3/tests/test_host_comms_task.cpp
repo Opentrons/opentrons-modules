@@ -105,4 +105,80 @@ SCENARIO("host comms commands to system task") {
             }
         }
     }
+    WHEN("sending SetSerialNumber gcode") {
+        auto message_text = std::string("M996 Serial1234\n");
+        auto message_obj =
+            messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                &*message_text.begin(), &*message_text.end()));
+        REQUIRE(tasks->_comms_queue.try_send(message_obj));
+        auto written =
+            tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+        THEN("the task does not immediately ack") {
+            REQUIRE(written == tx_buf.begin());
+        }
+        THEN("a message is sent to the system task") {
+            REQUIRE(tasks->_system_queue.has_message());
+            auto sys_msg = tasks->_system_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::SetSerialNumberMessage>(
+                sys_msg));
+            auto id = std::get<messages::SetSerialNumberMessage>(sys_msg).id;
+            auto *ser = &std::get<messages::SetSerialNumberMessage>(sys_msg)
+                             .serial_number[0];
+            REQUIRE_THAT(std::string(ser),
+                         Catch::Matchers::StartsWith("Serial1234"));
+            AND_WHEN("sending a response") {
+                auto resp =
+                    messages::AcknowledgePrevious{.responding_to_id = id};
+                REQUIRE(tasks->_comms_queue.try_send(resp));
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an ack is sent") {
+                    auto expected = "M996 OK\n";
+                    REQUIRE(written != tx_buf.begin());
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+        }
+    }
+    WHEN("sending dfu command") {
+        auto message_text = std::string("dfu\n");
+        auto message_obj =
+            messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                &*message_text.begin(), &*message_text.end()));
+        REQUIRE(tasks->_comms_queue.try_send(message_obj));
+        auto written =
+            tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+        THEN("the task does not immediately ack") {
+            REQUIRE(written == tx_buf.begin());
+        }
+        THEN("a message is sent to the system task") {
+            REQUIRE(tasks->_system_queue.has_message());
+            auto sys_msg = tasks->_system_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::EnterBootloaderMessage>(
+                sys_msg));
+        }
+    }
+}
+
+SCENARIO("host comms usb disconnect") {
+    auto *tasks = tasks::BuildTasks();
+    std::string tx_buf(128, 'c');
+    WHEN("sending a DisconnectUSB message") {
+        auto msg = messages::ForceUSBDisconnect{
+            .id = 123,
+            .return_address = tasks::TestTasks::Queues::SystemAddress};
+        tasks->_comms_queue.backing_deque.push_back(msg);
+        tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+        THEN("the host comms task disables USB") {
+            REQUIRE(!tasks->_comms_task.may_connect());
+        }
+        THEN("an ack is sent to system task") {
+            REQUIRE(tasks->_system_queue.has_message());
+            auto sys_msg = tasks->_system_queue.backing_deque.front();
+            REQUIRE(
+                std::holds_alternative<messages::AcknowledgePrevious>(sys_msg));
+            auto ack = std::get<messages::AcknowledgePrevious>(sys_msg);
+            REQUIRE(ack.responding_to_id == msg.id);
+        }
+    }
 }
