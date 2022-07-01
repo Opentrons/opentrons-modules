@@ -17,33 +17,34 @@ concept UIPolicy = requires(Policy& p) {
 // firmware is running and tasks are being called at
 // regular intervals
 class Heartbeat {
-  private:  
+  private:
+    // This gives a pleasant visual effect
+    static constexpr uint32_t default_period = 25;
     const uint32_t _period;
     uint8_t _pwm = 0;
     uint8_t _count = 0;
-    int8_t  _direction = 1;
+    int8_t _direction = 1;
 
   public:
-    
-    explicit Heartbeat(uint32_t period = 25) : _period(period) {}
+    explicit Heartbeat(uint32_t period = default_period) : _period(period) {}
 
     /**
      * @brief Increment heartbeat counter. This provides a pseudo-pwm
      * setup where a "pwm" counter runs from 0 to a configurable period
      * value, and the LED is turned on and off based on whether the repeating
      * counter is below the PWM value.
-     * 
-     * @return true if the LED should be set to on, false if it should 
+     *
+     * @return true if the LED should be set to on, false if it should
      * be set to off.
      */
     auto tick() -> bool {
         ++_count;
-        if(_count == _period) {
+        if (_count == _period) {
             _count = 0;
             _pwm += _direction;
-            if(_pwm == _period) {
+            if (_pwm == _period) {
                 _direction = -1;
-            } else if(_pwm == 0) {
+            } else if (_pwm == 0) {
                 _direction = 1;
             }
         }
@@ -65,7 +66,10 @@ class UITask {
     static constexpr uint32_t UPDATE_PERIOD_MS = 1;
 
     explicit UITask(Queue& q, Aggregator* aggregator)
-        : _message_queue(q), _task_registry(aggregator), _heartbeat() {}
+        : _message_queue(q),
+          _task_registry(aggregator),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          _heartbeat() {}
     UITask(const UITask& other) = delete;
     auto operator=(const UITask& other) -> UITask& = delete;
     UITask(UITask&& other) noexcept = delete;
@@ -93,7 +97,6 @@ class UITask {
     }
 
   private:
-
     template <UIPolicy Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
         static_cast<void>(message);
@@ -101,7 +104,8 @@ class UITask {
     }
 
     template <UIPolicy Policy>
-    auto visit_message(const messages::UpdateUIMessage& message, Policy& policy) -> void {
+    auto visit_message(const messages::UpdateUIMessage& message, Policy& policy)
+        -> void {
         static_cast<void>(message);
         policy.set_heartbeat_led(_heartbeat.tick());
     }

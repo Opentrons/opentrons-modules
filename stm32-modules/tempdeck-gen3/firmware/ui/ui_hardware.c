@@ -16,7 +16,8 @@ typedef struct {
     bool initialized;
 } UIHardware_t;
 
-static UIHardware_t _ui = {
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static UIHardware_t ui_hardware = {
     .initialized = false
 };
 
@@ -28,19 +29,21 @@ void ui_hardware_initialize() {
         .Speed = GPIO_SPEED_LOW,
         .Alternate = 0
     };
+    //NOLINTNEXTLINE(performance-no-int-to-ptr)
     __HAL_RCC_GPIOB_CLK_ENABLE();
+    //NOLINTNEXTLINE(performance-no-int-to-ptr)
     HAL_GPIO_Init(HEARTBEAT_LED_PORT, &init);
-    _ui.initialized = true;
+    ui_hardware.initialized = true;
 }
 
 /**
  * @brief Set the heartbeat LED on or off
  */
 void ui_hardware_set_heartbeat_led(bool setting) {
-    if(!_ui.initialized) {
+    if(!ui_hardware.initialized) {
         ui_hardware_initialize();
     }
-    // Active high
+    //NOLINTNEXTLINE(performance-no-int-to-ptr)
     HAL_GPIO_WritePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN,
         setting ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
