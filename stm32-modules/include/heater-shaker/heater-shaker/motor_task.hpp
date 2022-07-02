@@ -94,6 +94,9 @@ class MotorTask {
     static constexpr const uint16_t STARTUP_HOMING_WAIT_TICKS =
         200;  // needed to ensure motor setup complete at startup before homing
     static constexpr const uint16_t MOTOR_START_WAIT_TICKS = 1000;
+    static constexpr const uint16_t POST_HOMING_WAIT_TICKS =
+        500;  // needed to ensure motor control deactivated before subsequent
+              // SetRPM commands
 
   public:
     static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 250;
@@ -171,7 +174,9 @@ class MotorTask {
             policy.delay_ticks(MOTOR_START_WAIT_TICKS);
             if ((msg.target_rpm != 0) &&
                 (policy.get_current_rpm() < MOTOR_START_THRESHOLD_RPM)) {
-                error = errors::ErrorCode::MOTOR_UNABLE_TO_MOVE;
+                error = (error == errors::ErrorCode::NO_ERROR)
+                            ? errors::ErrorCode::MOTOR_UNABLE_TO_MOVE
+                            : error;
                 policy.stop();
                 state.status = State::ERROR;
                 setpoint = 0;
@@ -320,6 +325,7 @@ class MotorTask {
                 policy.stop();
                 state.status = State::STOPPED_HOMED;
                 setpoint = 0;
+                policy.delay_ticks(POST_HOMING_WAIT_TICKS);
                 if (!msg.from_startup) {
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(
