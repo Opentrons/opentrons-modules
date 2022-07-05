@@ -52,7 +52,7 @@ class Heartbeat {
     }
 
     // Get the current pwm period
-    auto pwm() -> uint8_t { return _pwm; }
+    [[nodiscard]] auto pwm() const -> uint8_t { return _pwm; }
 };
 
 using Message = messages::UIMessage;
