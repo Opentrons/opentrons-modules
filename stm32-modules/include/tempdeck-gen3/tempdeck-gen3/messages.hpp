@@ -89,6 +89,11 @@ struct ForceUSBDisconnect {
     size_t return_address;
 };
 
+struct ThermistorReadings {
+    uint32_t plate;
+    uint32_t heatsink;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse>;
