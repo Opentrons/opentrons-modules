@@ -60,6 +60,10 @@ struct IncomingMessageFromHost {
     const char* limit;
 };
 
+// This empty message is just used to signal that the UI task should update
+// its outputs
+struct UpdateUIMessage {};
+
 struct GetSystemInfoMessage {
     uint32_t id;
 };
@@ -100,4 +104,5 @@ using HostCommsMessage =
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage>;
+using UIMessage = ::std::variant<std::monostate, UpdateUIMessage>;
 };  // namespace messages
