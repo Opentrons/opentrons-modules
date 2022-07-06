@@ -28,7 +28,10 @@ class ThermalTask {
     using Queues = typename tasks::Tasks<QueueImpl>;
 
     explicit ThermalTask(Queue& q, Aggregator* aggregator)
-        : _message_queue(q), _task_registry(aggregator), _readings() {}
+        : _message_queue(q),
+          _task_registry(aggregator),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          _readings() {}
     ThermalTask(const ThermalTask& other) = delete;
     auto operator=(const ThermalTask& other) -> ThermalTask& = delete;
     ThermalTask(ThermalTask&& other) noexcept = delete;
