@@ -169,20 +169,24 @@ class MotorTask {
         } else {
             policy.homing_solenoid_disengage();
             error = policy.set_rpm(msg.target_rpm);
-            setpoint = msg.target_rpm;
-            state.status = State::RUNNING;
-            policy.delay_ticks(MOTOR_START_WAIT_TICKS);
-            if ((msg.target_rpm != 0) &&
-                (policy.get_current_rpm() < MOTOR_START_THRESHOLD_RPM)) {
-                error = (error == errors::ErrorCode::NO_ERROR)
-                            ? errors::ErrorCode::MOTOR_UNABLE_TO_MOVE
-                            : error;
-                policy.stop();
-                state.status = State::ERROR;
-                setpoint = 0;
+            if (error == errors::ErrorCode::NO_ERROR) {  // only proceed if
+                                                         // target speed legal
+                setpoint = msg.target_rpm;
+                state.status = State::RUNNING;
+                policy.delay_ticks(MOTOR_START_WAIT_TICKS);
+                if ((msg.target_rpm != 0) &&
+                    (policy.get_current_rpm() < MOTOR_START_THRESHOLD_RPM)) {
+                    error = errors::ErrorCode::MOTOR_UNABLE_TO_MOVE;
+                    policy.stop();
+                    state.status = State::ERROR;
+                    setpoint = 0;
+                }
             }
         }
-        if (current_error != errors::ErrorCode::NO_ERROR) {
+        if (current_error !=
+            errors::ErrorCode::NO_ERROR) {  // motor-control error supercedes
+                                            // illegal-speed and unable-to-move
+                                            // errors
             error = current_error;
         }
         auto response = messages::AcknowledgePrevious{
