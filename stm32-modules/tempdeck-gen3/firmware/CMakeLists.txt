@@ -8,6 +8,8 @@ add_STM32G4_usb(${TARGET_MODULE_NAME})
 
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
+set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
+set(THERMAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thermal_control")
 set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32G491")
 set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
 set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
@@ -20,7 +22,13 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${SYSTEM_DIR}/system_policy.cpp 
   ${COMMS_DIR}/freertos_comms_task.cpp
   ${COMMS_DIR}/usb_hardware.c
-  )
+  ${UI_DIR}/freertos_ui_task.cpp
+  ${UI_DIR}/ui_hardware.c
+  ${UI_DIR}/ui_policy.cpp
+  ${THERMAL_DIR}/freertos_thermal_task.cpp
+  ${THERMAL_DIR}/freertos_thermistor_task.cpp
+  ${THERMAL_DIR}/thermistor_policy.cpp
+)
 
 # Add source files that should NOT be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
