@@ -53,6 +53,10 @@ class ThermalTask {
         std::visit(visit_helper, message);
     }
 
+    [[nodiscard]] auto get_readings() const -> ThermalReadings {
+        return _readings;
+    }
+
   private:
     template <ThermalPolicy Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
