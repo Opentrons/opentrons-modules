@@ -244,7 +244,7 @@ class MotorTask {
                 auto code = errors::from_motor_error(
                     msg.errors, static_cast<errors::MotorErrorOffset>(offset));
                 if (code != errors::ErrorCode::NO_ERROR) {
-                    static_cast<void>(task_registry->system->get_message_queue().try_send(messages::SystemMessage(messages::UpdateLEDMessage{.error = true}));
+                    //static_cast<void>(task_registry->system->get_message_queue().try_send(messages::SystemMessage(messages::UpdateLEDMessage{.error = true}));
                     state.status = State::ERROR;
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(

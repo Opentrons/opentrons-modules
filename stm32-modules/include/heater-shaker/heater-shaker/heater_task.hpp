@@ -193,7 +193,7 @@ class HeaterTask {
         if ((pad_temperature() > HOT_TO_TOUCH_THRESHOLD) && (!hot_LED_set)) {
             hot_LED_set = true;
             auto LED_message =
-                messages::SetLEDMessage{.mode = LED_MODE::RED_ON};
+                messages::SetLEDMessage{.mode = LED_MODE::RED};
             static_cast<void>(
                 task_registry->system->get_message_queue().try_send(
                     LED_message));
@@ -201,7 +201,7 @@ class HeaterTask {
                    (hot_LED_set)) {
             hot_LED_set = false;
             auto LED_message =
-                messages::SetLEDMessage{.mode = LED_MODE::RED_OFF};
+                messages::SetLEDMessage{.mode = LED_MODE::WHITE};
             static_cast<void>(
                 task_registry->system->get_message_queue().try_send(
                     LED_message));

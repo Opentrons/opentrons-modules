@@ -30,7 +30,7 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {
         p.get_serial_number()
         } -> std::same_as<std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>>;
-    { p.start_set_led(LED_MODE::WHITE_ON) } -> std::same_as<errors::ErrorCode>;
+    { p.start_set_led(LED_MODE::WHITE, 255) } -> std::same_as<errors::ErrorCode>;
 };
 
 struct LEDBlinkState {
@@ -62,7 +62,8 @@ class SystemTask {
           message_queue(q),
           task_registry(nullptr),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          prep_cache() {}
+          prep_cache(),
+          led_blink_count(0) {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
     SystemTask(SystemTask&& other) noexcept = delete;
@@ -196,7 +197,7 @@ class SystemTask {
         if (!policy.check_I2C_ready()) {
             error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
         } else {
-            error = policy.start_set_led(msg.mode);
+            error = policy.start_set_led(msg.mode, 255);
         }
         if (msg.from_host) {
             auto response = messages::AcknowledgePrevious{
@@ -220,8 +221,9 @@ class SystemTask {
         if (!policy.check_I2C_ready()) {
             response.with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
         } else {
-            response.with_error = policy.start_set_led(LED_MODE::WHITE_ON);
+            response.with_error = policy.start_set_led(LED_MODE::WHITE, 255);
         }
+        led_blink_count = 0;
         led_blink_state.status = LEDBlinkState::BLINK_ON_WAITING;
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
@@ -238,8 +240,9 @@ class SystemTask {
         if (!policy.check_I2C_ready()) {
             response.with_error = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY;
         } else {
-            response.with_error = policy.start_set_led(LED_MODE::WHITE_ON);
+            response.with_error = policy.start_set_led(LED_MODE::WHITE, 255);
         }
+        led_blink_count = 0;
         led_blink_state.status = LEDBlinkState::BLINK_OFF;
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
@@ -248,6 +251,7 @@ class SystemTask {
     template <typename Policy>
     auto visit_message(const messages::CheckLEDBlinkStatusMessage& msg,
                        Policy& policy) -> void {
+        //reset timer when state changes? Eh
         bool bStatus = true;
         if ((led_blink_state.status == LEDBlinkState::BLINK_ON_WAITING) ||
             (led_blink_state.status == LEDBlinkState::BLINK_OFF_WAITING)) {
@@ -261,7 +265,7 @@ class SystemTask {
             }
             if (bStatus) {
                 if (led_blink_state.status == LEDBlinkState::BLINK_ON_WAITING) {
-                    if (policy.start_set_led(LED_MODE::WHITE_OFF) !=
+                    if (policy.start_set_led(LED_MODE::OFF, 255) !=
                         errors::ErrorCode::NO_ERROR) {
                         bStatus = false;
                         static_cast<void>(
@@ -276,7 +280,12 @@ class SystemTask {
                     }
                 } else if (led_blink_state.status ==
                            LEDBlinkState::BLINK_OFF_WAITING) {
-                    if (policy.start_set_led(LED_MODE::WHITE_ON) !=
+                    led_blink_count++;
+                    if (led_blink_count > 10) {
+                        led_blink_count = 0;
+                    }
+                    uint8_t pwm_setting = led_blink_count * 25;
+                    if (policy.start_set_led(LED_MODE::WHITE, pwm_setting) !=
                         errors::ErrorCode::NO_ERROR) {
                         bStatus = false;
                         static_cast<void>(
@@ -319,6 +328,7 @@ class SystemTask {
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;
     BootloaderPrepAckCache prep_cache;
+    uint8_t led_blink_count;
 };
 
 };  // namespace system_task
