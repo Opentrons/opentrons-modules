@@ -32,6 +32,7 @@ uint8_t ShutdownBuffer[1] = {0x01};
 uint8_t WhiteBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_OUTPUT_HI, LED_OUTPUT_HI, LED_OUTPUT_HI, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 uint8_t RedBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, LED_OUTPUT_HI, 0x00, 0x00, LED_OUTPUT_HI, 0x00, 0x00, LED_OUTPUT_HI, 0x00, 0x00};
 uint8_t AmberBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, LED_OUTPUT_HI, AMBER_GREEN_OUTPUT_LEVEL, 0x00, LED_OUTPUT_HI, AMBER_GREEN_OUTPUT_LEVEL, 0x00, LED_OUTPUT_HI, AMBER_GREEN_OUTPUT_LEVEL, 0x00};
+uint8_t BlueBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, LED_OUTPUT_HI, 0x00, 0x00, LED_OUTPUT_HI, 0x00, 0x00, LED_OUTPUT_HI};
 uint8_t OffBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 bool CallbackStatus = false;
 
@@ -129,11 +130,11 @@ bool system_hardware_setup_led(void) {
   return status;
 }
 
-bool system_hardware_set_led(LED_MODE mode, uint8_t pwm_setting) {
+bool system_hardware_set_led(LED_COLOR color, uint8_t pwm_setting) {
   uint8_t* ColorUpdateBuffer;
   bool status;
 
-  switch (mode) {
+  switch (color) {
     case WHITE:
       ColorUpdateBuffer = WhiteBuffer;
       break;
@@ -146,12 +147,14 @@ bool system_hardware_set_led(LED_MODE mode, uint8_t pwm_setting) {
     case AMBER:
       ColorUpdateBuffer = AmberBuffer;
       break;
+    case BLUE:
+      ColorUpdateBuffer = BlueBuffer;
+      break;
     default:
       ColorUpdateBuffer = WhiteBuffer;
       break;
   }
 
-  //check if color has changed
   uint8_t PWMUpdateBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting};
   
   status = system_hardware_set_led_send(BASE_PWM_REGISTER, PWMUpdateBuffer, SYSTEM_WIDE_TXBUFFERSIZE);

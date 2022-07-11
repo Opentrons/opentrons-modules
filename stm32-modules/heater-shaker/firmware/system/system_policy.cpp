@@ -57,8 +57,8 @@ auto SystemPolicy::get_serial_number(void)
     return serial_number_array;
 }
 
-auto SystemPolicy::start_set_led(LED_MODE mode, uint8_t pwm_setting) -> errors::ErrorCode {
-    if (!system_hardware_set_led(mode, pwm_setting)) {
+auto SystemPolicy::start_set_led(LED_COLOR color, uint8_t pwm_setting) -> errors::ErrorCode {
+    if (!system_hardware_set_led(color, pwm_setting)) {
         return errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR;
     }
     return errors::ErrorCode::NO_ERROR;

@@ -516,7 +516,7 @@ class HostCommsTask {
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
         auto message = messages::SetLEDMessage{
-            .id = id, .mode = gcode.mode, .from_host = true};
+            .id = id, .color = gcode.color, .from_host = true};
         if (!task_registry->system->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
