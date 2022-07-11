@@ -14,6 +14,10 @@ enum class ErrorCode {
     UNHANDLED_GCODE = 3,
     GCODE_CACHE_FULL = 4,
     BAD_MESSAGE_ACKNOWLEDGEMENT = 5,
+    // 3xx - System General
+    SYSTEM_SERIAL_NUMBER_INVALID = 301,
+    SYSTEM_SERIAL_NUMBER_HAL_ERROR = 302,
+    SYSTEM_EEPROM_ERROR = 303,
 };
 
 auto errorstring(ErrorCode code) -> const char*;

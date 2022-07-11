@@ -61,14 +61,15 @@ struct State {
         ERROR_HOT_TO_TOUCH
     };
     LEDStatus led_status;
-    uint8_t error_bitmap;
-    static constexpr uint8_t PAD_A_SENSE_ERROR = (1 << 0);
-    static constexpr uint8_t PAD_B_SENSE_ERROR = (1 << 1);
-    static constexpr uint8_t PAD_SENSE_ERROR =
+    uint16_t error_bitmap;
+    static constexpr uint16_t PAD_A_SENSE_ERROR = (1 << 0);
+    static constexpr uint16_t PAD_B_SENSE_ERROR = (1 << 1);
+    static constexpr uint16_t PAD_SENSE_ERROR =
         PAD_A_SENSE_ERROR | PAD_B_SENSE_ERROR;
-    static constexpr uint8_t BOARD_SENSE_ERROR = (1 << 2);
-    static constexpr uint8_t SENSE_ERROR = PAD_SENSE_ERROR | BOARD_SENSE_ERROR;
-    static constexpr uint8_t POWER_GOOD_ERROR = (1 << 3);
+    static constexpr uint16_t BOARD_SENSE_ERROR = (1 << 2);
+    static constexpr uint16_t SENSE_ERROR = PAD_SENSE_ERROR | BOARD_SENSE_ERROR;
+    static constexpr uint16_t POWER_GOOD_ERROR = (1 << 3);
+    static constexpr uint16_t CIRCUIT_ERROR = (1 << 4);
 };
 
 struct TemperatureSensor {
@@ -295,9 +296,10 @@ class HeaterTask {
     auto visit_message(const messages::GetTemperatureMessage& msg,
                        Policy& policy) -> void {
         static_cast<void>(policy);
-        errors::ErrorCode code = pad_a.error != errors::ErrorCode::NO_ERROR
-                                     ? pad_a.error
-                                     : pad_b.error;
+        errors::ErrorCode code = errors::ErrorCode::NO_ERROR;
+        if (state.system_status == State::ERROR) {
+            code = most_relevant_error();
+        }
         auto response = messages::GetTemperatureResponse{
             .responding_to_id = msg.id,
             .current_temperature = pad_temperature(),
@@ -402,6 +404,8 @@ class HeaterTask {
             if (!policy.set_power_output(
                     pid.compute(setpoint.value() - pad_temperature()))) {
                 state.system_status = State::ERROR;
+                setpoint = std::nullopt;
+                state.error_bitmap |= State::CIRCUIT_ERROR;
                 auto error_message =
                     messages::HostCommsMessage(messages::ErrorMessage{
                         .code =
@@ -484,7 +488,9 @@ class HeaterTask {
             ((state.error_bitmap & State::PAD_SENSE_ERROR) == 0)) {
             if (policy.try_reset_power_good()) {
                 state.error_bitmap &= ~State::POWER_GOOD_ERROR;
-                state.system_status = State::IDLE;
+                if ((state.error_bitmap & State::CIRCUIT_ERROR) == 0) {
+                    state.system_status = State::IDLE;
+                }
             } else {
                 state.error_bitmap |= State::POWER_GOOD_ERROR;
                 state.system_status = State::ERROR;
@@ -632,6 +638,9 @@ class HeaterTask {
         // separately, but we also sometimes want to respond with just one error
         // condition that sums everything up. This method is used by code that
         // wants the single most relevant code for the current error condition.
+        if ((state.error_bitmap & State::CIRCUIT_ERROR) != 0) {
+            return errors::ErrorCode::HEATER_HARDWARE_ERROR_CIRCUIT;
+        }
         if ((state.error_bitmap & State::SENSE_ERROR) != 0) {
             // Prefer sense errors since they'll be most specific
             if ((state.error_bitmap & State::PAD_SENSE_ERROR) != 0) {

@@ -44,19 +44,19 @@ struct SendHelper {
      * @return true if the messsage was succesfully sent, false otherwise
      */
     template <typename Message, typename Aggregator>
-    static auto send(const Message& msg, size_t idx, Aggregator* handle)
-        -> bool {
+    static auto send(const Message& msg, size_t idx, uint32_t timeout_ms,
+                     Aggregator* handle) -> bool {
         using VariantType =
             std::variant_alternative_t<N - 1,
                                        typename Aggregator::MessageTypes>;
         if (N - 1 == idx) {
             if constexpr (std::is_constructible_v<VariantType, Message>) {
-                return handle->template send_to<N - 1>(msg);
+                return handle->template send_to<N - 1>(msg, timeout_ms);
             }
             // Can't send to this queue type
             return false;
         }
-        return SendHelper<N - 1>::send(msg, idx, handle);
+        return SendHelper<N - 1>::send(msg, idx, timeout_ms, handle);
     }
 };
 
@@ -66,7 +66,7 @@ template <>
 struct SendHelper<0> {
     template <typename Message, typename Aggregator>
     static auto send(const Message& /*unused*/, size_t /*unused*/,
-                     Aggregator* /*unused*/) -> bool {
+                     uint32_t /*unused*/, Aggregator* /*unused*/) -> bool {
         return false;
     }
 };
@@ -170,10 +170,11 @@ class QueueAggregator {
      * @return true if the message could be sent, false otherwise
      */
     template <typename Tag, typename Message>
-    auto send(const Message& msg, const Tag& tag = (Tag())) -> bool {
+    auto send(const Message& msg, uint32_t timeout_ms = 0,
+              const Tag& tag = (Tag())) -> bool {
         static_cast<void>(tag);
         constexpr auto idx = get_tag_idx<Tag>();
-        return send_to<idx>(msg);
+        return send_to<idx>(msg, timeout_ms);
     }
 
     /**
@@ -186,9 +187,9 @@ class QueueAggregator {
      * @return true if the message could be sent, false otherwise
      */
     template <typename Message>
-    auto send(const Message& msg) -> bool {
+    auto send(const Message& msg, uint32_t timeout_ms = 0) -> bool {
         constexpr auto idx = get_message_idx<Message>();
-        return send_to<idx>(msg);
+        return send_to<idx>(msg, timeout_ms);
     }
 
     /**
@@ -202,11 +203,12 @@ class QueueAggregator {
      * @return true if the message could be sent, false otherwise
      */
     template <typename Message>
-    auto send_to_address(const Message& msg, size_t address) -> bool {
+    auto send_to_address(const Message& msg, size_t address,
+                         uint32_t timeout_ms = 0) -> bool {
         if (!(address < TaskCount)) {
             return false;
         }
-        return SendHelper<TaskCount>::send(msg, address, this);
+        return SendHelper<TaskCount>::send(msg, address, timeout_ms, this);
     }
 
   private:
@@ -235,12 +237,12 @@ class QueueAggregator {
      * @return true if the message could be sent, false otherwise
      */
     template <size_t Idx, typename Message>
-    auto send_to(const Message& msg) -> bool {
+    auto send_to(const Message& msg, uint32_t timeout_ms) -> bool {
         static_assert(Idx < TaskCount, "Invalid task index");
         if (std::get<Idx>(_handles)._handle == nullptr) {
             return false;
         }
-        return std::get<Idx>(_handles)._handle->try_send(msg);
+        return std::get<Idx>(_handles)._handle->try_send(msg, timeout_ms);
     }
 
     /**
