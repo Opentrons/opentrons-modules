@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/ads1115.hpp"
 #include "hal/message_queue.hpp"
 #include "tempdeck-gen3/messages.hpp"
 #include "tempdeck-gen3/tasks.hpp"
@@ -12,6 +13,9 @@ concept ThermistorPolicy = requires(Policy& p) {
     // time (startup, epoch, etc) so long as the return value measures
     // millisecond increments.
     { p.get_time_ms() } -> std::same_as<uint32_t>;
+    // A function to sleep the task for a configurable number of milliseconds.
+    // Used to provide a delay between thermistor read retries.
+    { p.sleep_ms(123) } -> std::same_as<void>;
 };
 
 template <template <class> class QueueImpl>
@@ -43,12 +47,42 @@ class ThermistorTask {
         if (!_task_registry) {
             return;
         }
+        auto adc = ADS1115::ADC(policy);
+
+        if (!adc.initialized()) {
+            adc.initialize();
+        }
+
         messages::ThermistorReadings msg = {
             .timestamp = policy.get_time_ms(), .plate = 0, .heatsink = 0};
+
+        msg.plate = read_pin(adc, 0, policy);
+        msg.heatsink = read_pin(adc, 1, policy);
         static_cast<void>(_task_registry->send(msg));
     }
 
   private:
+    template <ThermistorPolicy Policy>
+    auto read_pin(ADS1115::ADC<Policy>& adc, uint16_t pin, Policy& policy)
+        -> uint16_t {
+        static constexpr uint8_t MAX_TRIES = 5;
+        uint8_t tries = 0;
+        auto result = typename ADS1115::ADC<Policy>::ReadVal();
+
+        while (true) {
+            result = adc.read(pin);
+            if (std::holds_alternative<uint16_t>(result)) {
+                return std::get<uint16_t>(result);
+            } else if (++tries < MAX_TRIES) {
+                // Short delay for reliability
+                policy.sleep_ms(5);
+            } else {
+                // Retries expired
+                return static_cast<uint16_t>(std::get<ADS1115::Error>(result));
+            }
+        }
+    }
+
     Aggregator* _task_registry;
 };
 

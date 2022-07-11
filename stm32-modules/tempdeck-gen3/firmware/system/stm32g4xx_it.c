@@ -21,26 +21,9 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32g4xx_it.h"
-
 #include "stm32g4xx_hal.h"
 
-/** @addtogroup STM32G4xx_HAL_Examples
- * @{
- */
-
-/** @addtogroup Templates
- * @{
- */
-
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-
-/* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
-
-/* External variables --------------------------------------------------------*/
+#include "firmware/thermistor_hardware.h"
 
 /******************************************************************************/
 /*            Cortex-M4 Processor Exceptions Handlers                         */
@@ -111,6 +94,13 @@ void DebugMon_Handler(void) {}
 /*  file (startup_stm32g4xxxx.s).                                             */
 /******************************************************************************/
 
+/**
+ * @brief This function handles EXTI10-15 IRQ
+ */
+void EXTI15_10_IRQHandler(void)
+{
+    thermal_adc_ready_callback();
+}
 
 /**
  * TIM7 = timebase counter
