@@ -38,6 +38,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/system_serial_number.c
   ${SYSTEM_DIR}/stm32g4xx_it.c
   ${SYSTEM_DIR}/stm32g4xx_hal_msp.c
+  ${THERMAL_DIR}/thermistor_hardware.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
   )

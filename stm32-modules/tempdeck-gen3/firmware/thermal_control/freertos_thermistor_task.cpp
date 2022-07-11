@@ -1,6 +1,7 @@
 #include "firmware/freertos_thermistor_task.hpp"
 
 #include "FreeRTOS.h"
+#include "firmware/thermistor_hardware.h"
 #include "firmware/thermistor_policy.hpp"
 #include "task.h"
 #include "tempdeck-gen3/thermal_task.hpp"
@@ -20,6 +21,8 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     static_assert(configTICK_RATE_HZ == 1000,
                   "FreeRTOS tickrate must be at 1000 Hz");
+
+    thermistor_hardware_init();
 
     // Thermistor task has no queue, just need to provide aggregator handle
     _top_task.provide_aggregator(aggregator);
