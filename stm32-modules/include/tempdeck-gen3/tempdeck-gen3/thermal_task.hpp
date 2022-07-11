@@ -41,8 +41,8 @@ class ThermalTask {
     // thermistor.
     static constexpr double ADC_MAX_V = 1.5;
     // ADC results are signed 16-bit integers
-    static constexpr uint16_t ADC_BIT_MAX =
-        (ADC_MAX_V * static_cast<double>(0x7FFF)) / ADC_VREF;
+    static constexpr uint16_t ADC_BIT_MAX = static_cast<uint16_t>(
+        (ADC_MAX_V * static_cast<double>(0x7FFF)) / ADC_VREF);
 
     explicit ThermalTask(Queue& q, Aggregator* aggregator)
         : _message_queue(q),

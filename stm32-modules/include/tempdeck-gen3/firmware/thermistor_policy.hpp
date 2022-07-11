@@ -9,7 +9,10 @@
 class ThermistorPolicy {
   public:
     static constexpr uint8_t ADC_ADDRESS = (0x48) << 1;
-    explicit ThermistorPolicy() : _initialized(false), _mutex() {}
+    explicit ThermistorPolicy()
+        : _initialized(false),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          _mutex() {}
 
     [[nodiscard]] auto get_time_ms() const -> uint32_t;
     auto sleep_ms(uint32_t ms) -> void;

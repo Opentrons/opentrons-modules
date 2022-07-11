@@ -11,6 +11,7 @@
     return xTaskGetTickCount();
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermistorPolicy::sleep_ms(uint32_t ms) -> void {
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
@@ -41,7 +42,7 @@ auto ThermistorPolicy::ads1115_i2c_write_16(uint8_t reg, uint16_t data)
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermistorPolicy::ads1115_i2c_read_16(uint8_t reg)
     -> std::optional<uint16_t> {
-    uint16_t data;
+    uint16_t data = 0;
     if (thermal_i2c_read_16(ADC_ADDRESS, reg, &data)) {
         return std::optional<uint16_t>(data);
     }

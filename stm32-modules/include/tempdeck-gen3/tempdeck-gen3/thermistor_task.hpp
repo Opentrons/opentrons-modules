@@ -15,7 +15,7 @@ concept ThermistorPolicy = requires(Policy& p) {
     { p.get_time_ms() } -> std::same_as<uint32_t>;
     // A function to sleep the task for a configurable number of milliseconds.
     // Used to provide a delay between thermistor read retries.
-    { p.sleep_ms(123) } -> std::same_as<void>;
+    { p.sleep_ms(1) } -> std::same_as<void>;
 };
 
 template <template <class> class QueueImpl>
@@ -66,6 +66,7 @@ class ThermistorTask {
     auto read_pin(ADS1115::ADC<Policy>& adc, uint16_t pin, Policy& policy)
         -> uint16_t {
         static constexpr uint8_t MAX_TRIES = 5;
+        static constexpr uint32_t RETRY_DELAY = 5;
         uint8_t tries = 0;
         auto result = typename ADS1115::ADC<Policy>::ReadVal();
 
@@ -73,9 +74,10 @@ class ThermistorTask {
             result = adc.read(pin);
             if (std::holds_alternative<uint16_t>(result)) {
                 return std::get<uint16_t>(result);
-            } else if (++tries < MAX_TRIES) {
+            }
+            if (++tries < MAX_TRIES) {
                 // Short delay for reliability
-                policy.sleep_ms(5);
+                policy.sleep_ms(RETRY_DELAY);
             } else {
                 // Retries expired
                 return static_cast<uint16_t>(std::get<ADS1115::Error>(result));
