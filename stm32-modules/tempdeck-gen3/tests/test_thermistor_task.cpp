@@ -5,7 +5,7 @@
 TEST_CASE("thermistor task functionality") {
     auto *tasks = tasks::BuildTasks();
     TestThermistorPolicy policy;
-    policy.advance_time(123);
+    policy.sleep_ms(123);
     WHEN("thermistor task runs once") {
         tasks->_thermistor_task.run_once(policy);
         THEN("a Thermistor Message is sent to the thermal task") {
@@ -14,6 +14,13 @@ TEST_CASE("thermistor task functionality") {
             REQUIRE(std::holds_alternative<messages::ThermistorReadings>(msg));
             auto therms = std::get<messages::ThermistorReadings>(msg);
             REQUIRE(therms.timestamp == policy.get_time_ms());
+            REQUIRE(therms.heatsink == decltype(policy)::READBACK_VALUE);
+            REQUIRE(therms.plate == decltype(policy)::READBACK_VALUE);
+        }
+        THEN("the adc was initialized") { REQUIRE(policy._initialized); }
+        THEN("two channels of the adc were read") {
+            // Once per each channel + initialization
+            REQUIRE(policy._lock_count == 3);
         }
     }
 }

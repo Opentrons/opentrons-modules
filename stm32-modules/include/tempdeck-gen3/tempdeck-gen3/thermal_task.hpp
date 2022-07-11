@@ -35,10 +35,14 @@ class ThermalTask {
     // Bias resistance, aka the pullup resistance in the thermistor voltage
     // divider circuit.
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 45.3;
-    static constexpr double ADC_VREF = 3.3;
+    // Default VREF for the ADC driver
+    static constexpr double ADC_VREF = 2.048;
+    // The circuit is configured such that 1.5v is the max voltage from the
+    // thermistor.
     static constexpr double ADC_MAX_V = 1.5;
+    // ADC results are signed 16-bit integers
     static constexpr uint16_t ADC_BIT_MAX =
-        (ADC_MAX_V * static_cast<double>(0xFFFF)) / ADC_VREF;
+        (ADC_MAX_V * static_cast<double>(0x7FFF)) / ADC_VREF;
 
     explicit ThermalTask(Queue& q, Aggregator* aggregator)
         : _message_queue(q),
@@ -91,13 +95,13 @@ class ThermalTask {
         _readings.last_tick = message.timestamp;
 
         auto res = _converter.convert(_readings.plate_adc);
-        if(std::holds_alternative<double>(res)) {
+        if (std::holds_alternative<double>(res)) {
             _readings.plate_temp = std::get<double>(res);
         } else {
             _readings.plate_temp = 0.0F;
         }
         res = _converter.convert(_readings.heatsink_adc);
-        if(std::holds_alternative<double>(res)) {
+        if (std::holds_alternative<double>(res)) {
             _readings.heatsink_temp = std::get<double>(res);
         } else {
             _readings.heatsink_temp = 0.0F;

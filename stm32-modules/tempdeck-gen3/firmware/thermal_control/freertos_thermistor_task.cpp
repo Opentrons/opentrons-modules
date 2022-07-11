@@ -1,11 +1,11 @@
 #include "firmware/freertos_thermistor_task.hpp"
 
 #include "FreeRTOS.h"
+#include "firmware/thermistor_hardware.h"
 #include "firmware/thermistor_policy.hpp"
 #include "task.h"
 #include "tempdeck-gen3/thermal_task.hpp"
 #include "tempdeck-gen3/thermistor_task.hpp"
-#include "firmware/thermistor_hardware.h"
 
 namespace thermistor_control_task {
 
