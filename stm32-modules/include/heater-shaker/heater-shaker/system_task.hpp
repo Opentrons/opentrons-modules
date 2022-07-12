@@ -30,7 +30,9 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
     {
         p.get_serial_number()
         } -> std::same_as<std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH>>;
-    { p.start_set_led(LED_COLOR::WHITE, 255) } -> std::same_as<errors::ErrorCode>;
+    {
+        p.start_set_led(LED_COLOR::WHITE, 255)
+        } -> std::same_as<errors::ErrorCode>;
 };
 
 struct LEDState {
@@ -59,8 +61,9 @@ class SystemTask {
 
   public:
     using Queue = QueueImpl<Message>;
-    static constexpr uint32_t LED_UPDATE_PERIOD_MS = 25; //FreeRTOS timer period
-    static constexpr double LED_TICKS_PER_PULSE = 80.0; //25ms tick
+    static constexpr uint32_t LED_UPDATE_PERIOD_MS =
+        25;  // FreeRTOS timer period
+    static constexpr double LED_TICKS_PER_PULSE = 80.0;  // 25ms tick
     static constexpr double LED_FULL_SCALE = 255.0;
     static constexpr double ONE = 1.0F;
     static constexpr double TWO = 2.0F;
@@ -84,6 +87,12 @@ class SystemTask {
     auto operator=(SystemTask&& other) noexcept -> SystemTask& = delete;
     ~SystemTask() = default;
     auto get_message_queue() -> Queue& { return message_queue; }
+    [[nodiscard]] auto get_led_mode() const -> LED_MODE {
+        return _led_state.current_mode;
+    }
+    [[nodiscard]] auto get_led_color() const -> LED_COLOR {
+        return _led_state.current_color;
+    }
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
         task_registry = other_tasks;
     }
@@ -207,8 +216,8 @@ class SystemTask {
         _led_state.current_mode = LED_MODE::SOLID_HOLDING;
 
         if (msg.from_host) {
-            auto response = messages::AcknowledgePrevious{
-                .responding_to_id = msg.id};
+            auto response =
+                messages::AcknowledgePrevious{.responding_to_id = msg.id};
             static_cast<void>(
                 task_registry->comms->get_message_queue().try_send(
                     messages::HostCommsMessage(response)));
@@ -225,7 +234,8 @@ class SystemTask {
         _led_state.previous_color = _led_state.current_color;
         _led_state.previous_mode = _led_state.current_mode;
         auto message = messages::UpdateLEDStateMessage{};
-        if ((_led_state.current_color == AMBER) || (_led_state.current_color == RED_AMBER)) {
+        if ((_led_state.current_color == AMBER) ||
+            (_led_state.current_color == RED_AMBER)) {
             message.color = WHITE_AMBER;
         } else if (_led_state.current_mode == LED_MODE::SOLID_HOT) {
             message.color = RED_WHITE;
@@ -234,8 +244,7 @@ class SystemTask {
         }
         message.mode = LED_MODE::PULSE;
         static_cast<void>(
-            task_registry->system->get_message_queue().try_send(
-                message));
+            task_registry->system->get_message_queue().try_send(message));
     }
 
     template <typename Policy>
@@ -245,26 +254,31 @@ class SystemTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
-        auto message = messages::UpdateLEDStateMessage{.color = _led_state.previous_color, .mode = _led_state.previous_mode};
+        auto message =
+            messages::UpdateLEDStateMessage{.color = _led_state.previous_color,
+                                            .mode = _led_state.previous_mode};
         static_cast<void>(
-            task_registry->system->get_message_queue().try_send(
-                message));
+            task_registry->system->get_message_queue().try_send(message));
     }
 
     template <typename Policy>
-    auto visit_message(const messages::UpdateLEDStateMessage& msg, Policy& policy)
-        -> void {
-        if ((msg.color == LED_COLOR::AMBER) && (_led_state.current_mode == LED_MODE::SOLID_HOT)) {
+    auto visit_message(const messages::UpdateLEDStateMessage& msg,
+                       Policy& policy) -> void {
+        if ((msg.color == LED_COLOR::AMBER) &&
+            (_led_state.current_mode == LED_MODE::SOLID_HOT)) {
             _led_state.current_color = LED_COLOR::RED_AMBER;
             _led_state.current_mode = LED_MODE::PULSE;
-        } else if ((_led_state.current_color == LED_COLOR::AMBER) && (msg.mode == LED_MODE::SOLID_HOT)) {
+        } else if ((_led_state.current_color == LED_COLOR::AMBER) &&
+                   (msg.mode == LED_MODE::SOLID_HOT)) {
             _led_state.current_color = LED_COLOR::RED_AMBER;
             _led_state.current_mode = LED_MODE::PULSE;
         } else {
             _led_state.current_color = msg.color;
             _led_state.current_mode = msg.mode;
         }
-        if ((_led_state.current_color == LED_COLOR::RED_WHITE) || (_led_state.current_color == LED_COLOR::RED_AMBER) || (_led_state.current_color == LED_COLOR::WHITE_AMBER)) {
+        if ((_led_state.current_color == LED_COLOR::RED_WHITE) ||
+            (_led_state.current_color == LED_COLOR::RED_AMBER) ||
+            (_led_state.current_color == LED_COLOR::WHITE_AMBER)) {
             _led_state.led_alternate_colors = true;
             if (_led_state.current_color == LED_COLOR::RED_WHITE) {
                 _led_state.led_color_1 = LED_COLOR::RED;
@@ -290,11 +304,11 @@ class SystemTask {
             static_cast<void>(
                 task_registry->comms->get_message_queue().try_send(
                     messages::ErrorMessage{
-                        .code =
-                            errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY}));
+                        .code = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY}));
         }
         if (bStatus) {
-            if ((_led_state.current_mode == LED_MODE::SOLID_HOLDING) || (_led_state.current_mode == LED_MODE::SOLID_HOT)) {
+            if ((_led_state.current_mode == LED_MODE::SOLID_HOLDING) ||
+                (_led_state.current_mode == LED_MODE::SOLID_HOT)) {
                 if (policy.start_set_led(_led_state.current_color, 255) !=
                     errors::ErrorCode::NO_ERROR) {
                     bStatus = false;
@@ -311,14 +325,20 @@ class SystemTask {
                     _led_state.led_tick_count = ONE;
                     _led_state.pulse_complete = !_led_state.pulse_complete;
                 }
-                if (_led_state.led_tick_count <= (LED_TICKS_PER_PULSE/TWO)) {
-                    led_brightness_setting = static_cast<uint8_t>(_led_state.led_tick_count*(LED_FULL_SCALE/(LED_TICKS_PER_PULSE/TWO)));
-                } else if ((_led_state.led_tick_count > (LED_TICKS_PER_PULSE/TWO)) && (_led_state.led_tick_count <= LED_TICKS_PER_PULSE)) {
-                    led_brightness_setting = static_cast<uint8_t>((LED_TICKS_PER_PULSE - _led_state.led_tick_count)*(LED_FULL_SCALE/(LED_TICKS_PER_PULSE/TWO)));
+                if (_led_state.led_tick_count <= (LED_TICKS_PER_PULSE / TWO)) {
+                    led_brightness_setting = static_cast<uint8_t>(
+                        _led_state.led_tick_count *
+                        (LED_FULL_SCALE / (LED_TICKS_PER_PULSE / TWO)));
+                } else if ((_led_state.led_tick_count >
+                            (LED_TICKS_PER_PULSE / TWO)) &&
+                           (_led_state.led_tick_count <= LED_TICKS_PER_PULSE)) {
+                    led_brightness_setting = static_cast<uint8_t>(
+                        (LED_TICKS_PER_PULSE - _led_state.led_tick_count) *
+                        (LED_FULL_SCALE / (LED_TICKS_PER_PULSE / TWO)));
                 }
                 LED_COLOR color_setting;
                 if (_led_state.led_alternate_colors) {
-                    if (_led_state.pulse_complete) {
+                    if (!_led_state.pulse_complete) {
                         color_setting = _led_state.led_color_1;
                     } else {
                         color_setting = _led_state.led_color_2;
@@ -326,7 +346,8 @@ class SystemTask {
                 } else {
                     color_setting = _led_state.current_color;
                 }
-                if (policy.start_set_led(color_setting, led_brightness_setting) !=
+                if (policy.start_set_led(color_setting,
+                                         led_brightness_setting) !=
                     errors::ErrorCode::NO_ERROR) {
                     bStatus = false;
                     static_cast<void>(

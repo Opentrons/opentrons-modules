@@ -298,7 +298,8 @@ using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage, SetLEDMessage,
                    IdentifyModuleStartLEDMessage, IdentifyModuleStopLEDMessage,
-                   HandleLEDSetupError, UpdateLEDStateMessage, UpdateLEDMessage>;
+                   HandleLEDSetupError, UpdateLEDStateMessage,
+                   UpdateLEDMessage>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,

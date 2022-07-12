@@ -235,7 +235,8 @@ SCENARIO("motor task error handling", "[motor]") {
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_motor_queue().backing_deque.empty());
                 AND_THEN(
-                    "the task should send one error message to host comms") {
+                    "the task should send one error message to host comms and "
+                    "system") {
                     REQUIRE(
                         tasks->get_host_comms_queue().backing_deque.size() ==
                         1);
@@ -246,6 +247,16 @@ SCENARIO("motor task error handling", "[motor]") {
                         upstream));
                     REQUIRE(std::get<messages::ErrorMessage>(upstream).code ==
                             errors::ErrorCode::MOTOR_BLDC_DRIVER_ERROR);
+                    REQUIRE(tasks->get_system_queue().backing_deque.size() ==
+                            1);
+                    auto upstream2 =
+                        tasks->get_system_queue().backing_deque.front();
+                    tasks->get_system_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::UpdateLEDStateMessage>(
+                            upstream2));
+                    REQUIRE(std::get<messages::UpdateLEDStateMessage>(upstream2)
+                                .color == LED_COLOR::AMBER);
                 }
                 AND_THEN("the task should enter error state") {
                     REQUIRE(tasks->get_motor_task().get_state() ==

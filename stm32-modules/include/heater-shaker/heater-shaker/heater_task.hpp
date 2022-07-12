@@ -164,7 +164,9 @@ class HeaterTask {
                       THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH,
                       HEATER_PAD_NTC_DISCONNECT_THRESHOLD_ADC),
               .error_bit = State::BOARD_SENSE_ERROR},
-          state{.system_status = State::IDLE, .led_status = State::IDLE_LED, .error_bitmap = 0},
+          state{.system_status = State::IDLE,
+                .led_status = State::IDLE_LED,
+                .error_bitmap = 0},
           pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_S, 1.0, -1.0),
           setpoint(std::nullopt),
           _flash(),
@@ -584,15 +586,20 @@ class HeaterTask {
                 state.led_status = State::HOT_TO_TOUCH_OR_HOLDING;
                 message.mode = LED_MODE::SOLID_HOT;
                 message.color = LED_COLOR::RED;
-            } else if ((setpoint.value() - pad_temperature()) > HOLDING_THRESHOLD) {
+            } else if ((setpoint.value() - pad_temperature()) >
+                       HOLDING_THRESHOLD) {
                 state.led_status = State::HEATING;
                 message.mode = LED_MODE::PULSE;
                 message.color = LED_COLOR::RED;
-            } else if ((abs(setpoint.value() - pad_temperature()) < HOLDING_THRESHOLD) && (pad_temperature() < HOT_TO_TOUCH_THRESHOLD)) {
+            } else if ((abs(setpoint.value() - pad_temperature()) <
+                        HOLDING_THRESHOLD) &&
+                       (pad_temperature() < HOT_TO_TOUCH_THRESHOLD)) {
                 state.led_status = State::HOT_TO_TOUCH_OR_HOLDING;
                 message.mode = LED_MODE::SOLID_HOLDING;
                 message.color = LED_COLOR::RED;
-            } else if (((setpoint.value() - pad_temperature()) < HOLDING_THRESHOLD) && (pad_temperature() < HOT_TO_TOUCH_THRESHOLD)) {
+            } else if (((setpoint.value() - pad_temperature()) <
+                        HOLDING_THRESHOLD) &&
+                       (pad_temperature() < HOT_TO_TOUCH_THRESHOLD)) {
                 state.led_status = State::COOLING;
                 message.mode = LED_MODE::PULSE;
                 message.color = LED_COLOR::BLUE;
@@ -620,8 +627,7 @@ class HeaterTask {
         }
         if (state.led_status != old_led_status) {
             static_cast<void>(
-                task_registry->system->get_message_queue().try_send(
-                    message));
+                task_registry->system->get_message_queue().try_send(message));
         }
     }
 
