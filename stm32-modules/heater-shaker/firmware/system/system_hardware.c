@@ -155,7 +155,8 @@ bool system_hardware_set_led(LED_COLOR color, uint8_t pwm_setting) {
       break;
   }
 
-  uint8_t PWMUpdateBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting, pwm_setting};
+  uint8_t PWMUpdateBuffer[SYSTEM_WIDE_TXBUFFERSIZE];
+  memset(PWMUpdateBuffer, pwm_setting, SYSTEM_WIDE_TXBUFFERSIZE);
   
   status = system_hardware_set_led_send(BASE_PWM_REGISTER, PWMUpdateBuffer, SYSTEM_WIDE_TXBUFFERSIZE);
   if (status) {
