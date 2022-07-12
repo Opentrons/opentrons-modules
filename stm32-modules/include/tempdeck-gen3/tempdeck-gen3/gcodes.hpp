@@ -165,4 +165,34 @@ struct EnterBootloader {
     }
 };
 
+struct GetTemperatureDebug {
+    using ParseResult = std::optional<GetTemperatureDebug>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '5', '.', 'D'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    float plate_temp, float heatsink_temp,
+                                    uint16_t plate_adc, uint16_t heatsink_adc)
+        -> InputIt {
+        return buf + snprintf((char*)&*buf, std::distance(buf, limit),
+                              "M105.D PT:%4.2f HST:%4.2f PA:%u HSA:%u OK\n",
+                              plate_temp, heatsink_temp, plate_adc,
+                              heatsink_adc);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetTemperatureDebug()), working);
+    }
+};
+
 };  // namespace gcode

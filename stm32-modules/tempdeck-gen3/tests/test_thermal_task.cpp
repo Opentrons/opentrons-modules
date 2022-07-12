@@ -37,5 +37,27 @@ TEST_CASE("thermal task message handling") {
             REQUIRE_THAT(readings.heatsink_temp,
                          Catch::Matchers::WithinAbs(50.00, 0.01));
         }
+        AND_WHEN("a GetTempDebug message is received") {
+            tasks->_thermal_queue.backing_deque.push_back(
+                messages::GetTempDebugMessage{.id = 123});
+            tasks->_thermal_task.run_once(policy);
+            THEN("the message is consumed") {
+                REQUIRE(!tasks->_thermal_queue.has_message());
+            }
+            THEN("a response is sent to the comms task with the correct data") {
+                REQUIRE(tasks->_comms_queue.has_message());
+                REQUIRE(std::holds_alternative<messages::GetTempDebugResponse>(
+                    tasks->_comms_queue.backing_deque.front()));
+                auto response = std::get<messages::GetTempDebugResponse>(
+                    tasks->_comms_queue.backing_deque.front());
+                REQUIRE(response.responding_to_id == 123);
+                REQUIRE_THAT(response.plate_temp,
+                             Catch::Matchers::WithinAbs(25.00, 0.01));
+                REQUIRE_THAT(response.heatsink_temp,
+                             Catch::Matchers::WithinAbs(50.00, 0.01));
+                REQUIRE(response.plate_adc == plate_count);
+                REQUIRE(response.heatsink_adc == hs_count);
+            }
+        }
     }
 }
