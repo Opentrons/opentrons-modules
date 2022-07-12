@@ -194,7 +194,7 @@ SCENARIO("motor task core message handling", "[motor]") {
                     "comms") {
                     REQUIRE(
                         !tasks->get_host_comms_queue().backing_deque.empty());
-                    REQUIRE(tasks->get_system_queue().backing_deque.empty());
+                    REQUIRE(!tasks->get_system_queue().backing_deque.empty());
                     auto response =
                         tasks->get_host_comms_queue().backing_deque.front();
                     tasks->get_host_comms_queue().backing_deque.pop_front();
