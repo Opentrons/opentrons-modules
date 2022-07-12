@@ -99,12 +99,26 @@ struct ThermistorReadings {
     uint32_t heatsink;
 };
 
+struct GetTempDebugMessage {
+    uint32_t id;
+};
+
+struct GetTempDebugResponse {
+    uint32_t responding_to_id;
+    float plate_temp;
+    float heatsink_temp;
+    uint16_t plate_adc;
+    uint16_t heatsink_adc;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
-                   ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse>;
+                   ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
+                   GetTempDebugResponse>;
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage>;
 using UIMessage = ::std::variant<std::monostate, UpdateUIMessage>;
-using ThermalMessage = ::std::variant<std::monostate, ThermistorReadings>;
+using ThermalMessage =
+    ::std::variant<std::monostate, ThermistorReadings, GetTempDebugMessage>;
 };  // namespace messages

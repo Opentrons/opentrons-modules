@@ -108,6 +108,20 @@ class ThermalTask {
         }
     }
 
+    template <ThermalPolicy Policy>
+    auto visit_message(const messages::GetTempDebugMessage& message,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+
+        auto response = messages::GetTempDebugResponse{
+            .responding_to_id = message.id,
+            .plate_temp = static_cast<float>(_readings.plate_temp),
+            .heatsink_temp = static_cast<float>(_readings.heatsink_temp),
+            .plate_adc = static_cast<uint16_t>(_readings.plate_adc),
+            .heatsink_adc = static_cast<uint16_t>(_readings.heatsink_adc)};
+        static_cast<void>(_task_registry->send(response));
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     ThermalReadings _readings;
