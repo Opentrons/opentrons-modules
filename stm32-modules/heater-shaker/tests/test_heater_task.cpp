@@ -452,7 +452,7 @@ SCENARIO("heater task message passing") {
             tasks->get_heater_queue().backing_deque.push_back(
                 messages::HeaterMessage(message));
             tasks->run_heater_task();
-            THEN("the task should respond with an error") {
+            THEN("the task should respond appropriately") {
                 REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
                 auto response =
                     tasks->get_host_comms_queue().backing_deque.front();
@@ -461,6 +461,16 @@ SCENARIO("heater task message passing") {
                 REQUIRE(ack.responding_to_id == message.id);
                 REQUIRE(ack.with_error ==
                         errors::ErrorCode::HEATER_THERMISTOR_B_SHORT);
+                REQUIRE(!tasks->get_system_queue().backing_deque.empty());
+                auto response2 =
+                    tasks->get_system_queue().backing_deque.front();
+                REQUIRE(
+                    std::holds_alternative<messages::UpdateLEDStateMessage>(
+                        response2));
+                auto getresponse =
+                    std::get<messages::UpdateLEDStateMessage>(response2);
+                REQUIRE(getresponse.color == LED_COLOR::AMBER);
+                REQUIRE(getresponse.mode == LED_MODE::PULSE);
             }
         }
         WHEN("sending a get-temperature message") {
@@ -478,18 +488,6 @@ SCENARIO("heater task message passing") {
                 REQUIRE(ack.responding_to_id == message.id);
                 REQUIRE(ack.with_error ==
                         errors::ErrorCode::HEATER_THERMISTOR_B_SHORT);
-                AND_THEN("task should send update-led-state-message") {
-                    REQUIRE(!tasks->get_system_queue().backing_deque.empty());
-                    auto response2 =
-                        tasks->get_system_queue().backing_deque.front();
-                    REQUIRE(
-                        std::holds_alternative<messages::UpdateLEDStateMessage>(
-                            response2));
-                    auto getresponse =
-                        std::get<messages::UpdateLEDStateMessage>(response2);
-                    REQUIRE(getresponse.color == LED_COLOR::AMBER);
-                    REQUIRE(getresponse.mode == LED_MODE::PULSE);
-                }
             }
         }
     }

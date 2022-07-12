@@ -208,7 +208,6 @@ class HeaterTask {
         if (!_flash.initialized()) {
             _offset_constants = _flash.get_offset_constants(policy);
         }
-        update_state_and_leds();
 
         auto message = Message(std::monostate());
         // This is the call down to the provided queue. It will block for
@@ -220,6 +219,8 @@ class HeaterTask {
                 this->visit_message(msg, policy);
             },
             message);
+        
+        update_state_and_leds();
     }
 
     [[nodiscard]] auto get_pid() const -> const PID& { return pid; }
