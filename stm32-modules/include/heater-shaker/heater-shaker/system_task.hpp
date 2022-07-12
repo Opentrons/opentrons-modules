@@ -36,6 +36,7 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
 };
 
 struct LEDState {
+    bool led_driver_in_error = false;
     double led_tick_count = 0.0;
     LED_COLOR current_color = LED_COLOR::WHITE;
     LED_MODE current_mode = LED_MODE::SOLID_HOLDING;
@@ -72,7 +73,8 @@ class SystemTask {
           task_registry(nullptr),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           prep_cache(),
-          _led_state{.led_tick_count = 0.0,
+          _led_state{.led_driver_in_error = false,
+                     .led_tick_count = 0.0,
                      .current_color = LED_COLOR::WHITE,
                      .current_mode = LED_MODE::SOLID_HOLDING,
                      .led_alternate_colors = false,
@@ -298,20 +300,22 @@ class SystemTask {
     template <typename Policy>
     auto visit_message(const messages::UpdateLEDMessage& msg, Policy& policy)
         -> void {
-        bool bStatus = true;
-        if (!policy.check_I2C_ready()) {
-            bStatus = false;
-            static_cast<void>(
-                task_registry->comms->get_message_queue().try_send(
-                    messages::ErrorMessage{
-                        .code = errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY}));
+        if (!_led_state.led_driver_in_error) {
+            if (!policy.check_I2C_ready()) {
+                _led_state.led_driver_in_error = true;
+                static_cast<void>(
+                    task_registry->comms->get_message_queue().try_send(
+                        messages::ErrorMessage{
+                            .code =
+                                errors::ErrorCode::SYSTEM_LED_I2C_NOT_READY}));
+            }
         }
-        if (bStatus) {
+        if (!_led_state.led_driver_in_error) {
             if ((_led_state.current_mode == LED_MODE::SOLID_HOLDING) ||
                 (_led_state.current_mode == LED_MODE::SOLID_HOT)) {
                 if (policy.start_set_led(_led_state.current_color, 255) !=
                     errors::ErrorCode::NO_ERROR) {
-                    bStatus = false;
+                    _led_state.led_driver_in_error = true;
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(
                             messages::ErrorMessage{
@@ -349,7 +353,7 @@ class SystemTask {
                 if (policy.start_set_led(color_setting,
                                          led_brightness_setting) !=
                     errors::ErrorCode::NO_ERROR) {
-                    bStatus = false;
+                    _led_state.led_driver_in_error = true;
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(
                             messages::ErrorMessage{
@@ -359,7 +363,7 @@ class SystemTask {
             } else if (_led_state.current_mode == LED_MODE::MODE_OFF) {
                 if (policy.start_set_led(LED_COLOR::OFF, 255) !=
                     errors::ErrorCode::NO_ERROR) {
-                    bStatus = false;
+                    _led_state.led_driver_in_error = true;
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(
                             messages::ErrorMessage{
