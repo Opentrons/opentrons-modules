@@ -94,6 +94,9 @@ class MotorTask {
     static constexpr const uint16_t STARTUP_HOMING_WAIT_TICKS =
         200;  // needed to ensure motor setup complete at startup before homing
     static constexpr const uint16_t MOTOR_START_WAIT_TICKS = 1000;
+    static constexpr const uint16_t POST_HOMING_WAIT_TICKS =
+        500;  // needed to ensure motor control deactivated before subsequent
+              // SetRPM commands
 
   public:
     static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 250;
@@ -113,7 +116,8 @@ class MotorTask {
         : state{.status = State::STOPPED_UNKNOWN},
           plate_lock_state{.status = PlateLockState::IDLE_UNKNOWN},
           message_queue(q),
-          task_registry(nullptr) {}
+          task_registry(nullptr),
+          setpoint(0) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -165,14 +169,25 @@ class MotorTask {
         } else {
             policy.homing_solenoid_disengage();
             error = policy.set_rpm(msg.target_rpm);
-            state.status = State::RUNNING;
-            policy.delay_ticks(MOTOR_START_WAIT_TICKS);
-            if ((msg.target_rpm != 0) &&
-                (policy.get_current_rpm() < MOTOR_START_THRESHOLD_RPM)) {
-                error = errors::ErrorCode::MOTOR_UNABLE_TO_MOVE;
-                policy.stop();
-                state.status = State::ERROR;
+            if (error == errors::ErrorCode::NO_ERROR) {  // only proceed if
+                                                         // target speed legal
+                setpoint = msg.target_rpm;
+                state.status = State::RUNNING;
+                policy.delay_ticks(MOTOR_START_WAIT_TICKS);
+                if ((msg.target_rpm != 0) &&
+                    (policy.get_current_rpm() < MOTOR_START_THRESHOLD_RPM)) {
+                    error = errors::ErrorCode::MOTOR_UNABLE_TO_MOVE;
+                    policy.stop();
+                    state.status = State::ERROR;
+                    setpoint = 0;
+                }
             }
+        }
+        if (current_error !=
+            errors::ErrorCode::NO_ERROR) {  // motor-control error supercedes
+                                            // illegal-speed and unable-to-move
+                                            // errors
+            error = current_error;
         }
         auto response = messages::AcknowledgePrevious{
             .responding_to_id = msg.id, .with_error = error};
@@ -211,7 +226,10 @@ class MotorTask {
         auto response =
             messages::GetRPMResponse{.responding_to_id = msg.id,
                                      .current_rpm = policy.get_current_rpm(),
-                                     .setpoint_rpm = policy.get_target_rpm()};
+                                     .setpoint_rpm = setpoint};
+        if (state.status == State::ERROR) {
+            response.with_error = current_error;
+        }
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
@@ -231,6 +249,7 @@ class MotorTask {
             policy.homing_solenoid_engage(HOMING_SOLENOID_CURRENT_HOLD);
             policy.stop();
             state.status = State::STOPPED_HOMED;
+            setpoint = 0;
             static_cast<void>(
                 task_registry->comms->get_message_queue().try_send(
                     messages::AcknowledgePrevious{.responding_to_id =
@@ -249,7 +268,10 @@ class MotorTask {
                     static_cast<void>(
                         task_registry->system->get_message_queue().try_send(
                             message));
+                    policy.stop();
                     state.status = State::ERROR;
+                    setpoint = 0;
+                    current_error = code;
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(
                             messages::HostCommsMessage(
@@ -311,6 +333,8 @@ class MotorTask {
                 policy.homing_solenoid_engage(HOMING_SOLENOID_CURRENT_HOLD);
                 policy.stop();
                 state.status = State::STOPPED_HOMED;
+                setpoint = 0;
+                policy.delay_ticks(POST_HOMING_WAIT_TICKS);
                 if (!msg.from_startup) {
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(
@@ -348,6 +372,7 @@ class MotorTask {
                 auto error = errors::ErrorCode::MOTOR_UNABLE_TO_MOVE;
                 policy.stop();
                 state.status = State::ERROR;
+                setpoint = 0;
                 if (msg.from_startup) {
                     static_cast<void>(
                         task_registry->comms->get_message_queue().try_send(
@@ -577,6 +602,8 @@ class MotorTask {
     uint32_t cached_home_id = 0;
     uint32_t homing_cycles_coasting = 0;
     uint32_t polling_time = 0;
+    errors::ErrorCode current_error = errors::ErrorCode::NO_ERROR;
+    int16_t setpoint;
 };
 
 };  // namespace motor_task

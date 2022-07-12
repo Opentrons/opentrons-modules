@@ -8,6 +8,8 @@ add_STM32G4_usb(${TARGET_MODULE_NAME})
 
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
+set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
+set(THERMAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thermal_control")
 set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32G491")
 set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
 set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
@@ -15,14 +17,28 @@ set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp 
+  ${SYSTEM_DIR}/freertos_system_task.cpp
+  ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
+  ${SYSTEM_DIR}/system_policy.cpp 
   ${COMMS_DIR}/freertos_comms_task.cpp
   ${COMMS_DIR}/usb_hardware.c
-  )
+  ${UI_DIR}/freertos_ui_task.cpp
+  ${UI_DIR}/ui_hardware.c
+  ${UI_DIR}/ui_policy.cpp
+  ${THERMAL_DIR}/freertos_thermal_task.cpp
+  ${THERMAL_DIR}/freertos_thermistor_task.cpp
+  ${THERMAL_DIR}/thermistor_policy.cpp
+)
 
 # Add source files that should NOT be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
+  ${SYSTEM_DIR}/hal_tick.c
   ${SYSTEM_DIR}/system_stm32g4xx.c
-  ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
+  ${SYSTEM_DIR}/system_hardware.c
+  ${SYSTEM_DIR}/system_serial_number.c
+  ${SYSTEM_DIR}/stm32g4xx_it.c
+  ${SYSTEM_DIR}/stm32g4xx_hal_msp.c
+  ${THERMAL_DIR}/thermistor_hardware.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
   )
@@ -72,7 +88,8 @@ target_link_libraries(
 
 
 target_include_directories(STM32G4xx_Drivers_${TARGET_MODULE_NAME}
-  PUBLIC ${SYSTEM_DIR})
+  PUBLIC ${SYSTEM_DIR}
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}/firmware)
 target_include_directories(STM32G4xx_USB_${TARGET_MODULE_NAME}
   PUBLIC ${COMMS_DIR})
 # Add FreertosConfig to the freertos build

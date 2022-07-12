@@ -60,6 +60,10 @@ struct IncomingMessageFromHost {
     const char* limit;
 };
 
+// This empty message is just used to signal that the UI task should update
+// its outputs
+struct UpdateUIMessage {};
+
 struct GetSystemInfoMessage {
     uint32_t id;
 };
@@ -73,8 +77,34 @@ struct GetSystemInfoResponse {
     const char* hw_version;
 };
 
+struct SetSerialNumberMessage {
+    uint32_t id;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
+    std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
+};
+
+struct EnterBootloaderMessage {
+    uint32_t id;
+};
+
+struct ForceUSBDisconnect {
+    uint32_t id;
+    size_t return_address;
+};
+
+struct ThermistorReadings {
+    uint32_t timestamp;
+    uint32_t plate;
+    uint32_t heatsink;
+};
+
 using HostCommsMessage =
-    ::std::variant<std::monostate, IncomingMessageFromHost, ErrorMessage,
-                   AcknowledgePrevious, GetSystemInfoResponse>;
-using SystemMessage = ::std::variant<std::monostate, GetSystemInfoMessage>;
+    ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
+                   ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse>;
+using SystemMessage =
+    ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
+                   SetSerialNumberMessage, EnterBootloaderMessage>;
+using UIMessage = ::std::variant<std::monostate, UpdateUIMessage>;
+using ThermalMessage = ::std::variant<std::monostate, ThermistorReadings>;
 };  // namespace messages

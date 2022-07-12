@@ -58,6 +58,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator *aggregator) -> void {
 
     _comms_queue.provide_handle(handle);
     top_task->provide_aggregator(aggregator);
+    aggregator->register_queue(_comms_queue);
 
     usb_hw_init(&cdc_rx_handler, &cdc_init_handler, &cdc_deinit_handler);
     usb_hw_start();
