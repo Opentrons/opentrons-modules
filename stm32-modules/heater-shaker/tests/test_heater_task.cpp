@@ -464,9 +464,8 @@ SCENARIO("heater task message passing") {
                 REQUIRE(!tasks->get_system_queue().backing_deque.empty());
                 auto response2 =
                     tasks->get_system_queue().backing_deque.front();
-                REQUIRE(
-                    std::holds_alternative<messages::UpdateLEDStateMessage>(
-                        response2));
+                REQUIRE(std::holds_alternative<messages::UpdateLEDStateMessage>(
+                    response2));
                 auto getresponse =
                     std::get<messages::UpdateLEDStateMessage>(response2);
                 REQUIRE(getresponse.color == LED_COLOR::AMBER);

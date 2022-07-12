@@ -219,7 +219,7 @@ class HeaterTask {
                 this->visit_message(msg, policy);
             },
             message);
-        
+
         update_state_and_leds();
     }
 
