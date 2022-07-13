@@ -13,6 +13,7 @@ class TestSystemPolicy {
     std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number = {};
     errors::ErrorCode set_serial_number_return = errors::ErrorCode::NO_ERROR;
     uint16_t last_delay = 0;
+    LED_COLOR passing_color = LED_COLOR::OFF;
 
   public:
     auto enter_bootloader() -> void;
@@ -23,7 +24,9 @@ class TestSystemPolicy {
         -> errors::ErrorCode;
     auto get_serial_number(void)
         -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
-    auto start_set_led(LED_MODE mode) -> errors::ErrorCode;
+    auto set_passing_color(LED_COLOR color) -> bool;
+    auto start_set_led(LED_COLOR color, uint8_t pwm_setting)
+        -> errors::ErrorCode;
     auto check_I2C_ready(void) -> bool;
     auto delay_time_ms(uint16_t time_ms) -> void;
     [[nodiscard]] auto test_get_last_delay() const -> uint16_t;
