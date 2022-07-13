@@ -1,13 +1,10 @@
 #include "catch2/catch.hpp"
 #include "test/test_tasks.hpp"
-
-struct FakePolicy {
-    auto operator()() -> void {}
-};
+#include "test/test_thermal_policy.hpp"
 
 TEST_CASE("thermal task message handling") {
     auto *tasks = tasks::BuildTasks();
-    FakePolicy policy;
+    TestThermalPolicy policy;
     thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> converter(
         decltype(tasks->_thermal_task)::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
         decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);

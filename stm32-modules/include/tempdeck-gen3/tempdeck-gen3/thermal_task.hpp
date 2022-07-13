@@ -12,8 +12,8 @@ template <typename Policy>
 concept ThermalPolicy = requires(Policy& p) {
     {p.enable_peltier()} -> std::same_as<void>;
     {p.disable_peltier()} -> std::same_as<void>;
-    {p.set_peltier_heat_power(double power)} -> std::same_as<bool>;
-    {p.set_peltier_cool_power(double power)} -> std::same_as<bool>;
+    {p.set_peltier_heat_power(1.0)} -> std::same_as<bool>;
+    {p.set_peltier_cool_power(1.0)} -> std::same_as<bool>;
 };
 
 using Message = messages::ThermalMessage;
