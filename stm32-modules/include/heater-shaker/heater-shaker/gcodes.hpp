@@ -684,14 +684,14 @@ struct SetSerialNumber {
 struct SetLEDDebug {
     /*
     ** Set LED Debug uses a random gcode, M994.D
-    ** Format: M994.D <which_LED_mode>
-    ** Example: M994.D 0 selects WHITE_ON mode and turns the white LED on
+    ** Format: M994.D <which_LED_color>
+    ** Example: M994.D 0 selects WHITE color and turns the white LEDs on
     */
     using ParseResult = std::optional<SetLEDDebug>;
     static constexpr auto prefix =
         std::array{'M', '9', '9', '4', '.', 'D', ' '};
     static constexpr const char* response = "M994.D OK\n";
-    LED_MODE mode;
+    LED_COLOR color;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -715,8 +715,8 @@ struct SetLEDDebug {
         if (!value_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        LED_MODE tempMode = static_cast<LED_MODE>(value_res.first.value());
-        return std::make_pair(ParseResult(SetLEDDebug{.mode = tempMode}),
+        LED_COLOR tempColor = static_cast<LED_COLOR>(value_res.first.value());
+        return std::make_pair(ParseResult(SetLEDDebug{.color = tempColor}),
                               value_res.second);
     }
 };
@@ -731,7 +731,6 @@ struct IdentifyModuleStartLED {
     using ParseResult = std::optional<IdentifyModuleStartLED>;
     static constexpr auto prefix = std::array{'M', '9', '9', '4'};
     static constexpr const char* response = "M994 OK\n";
-    LED_MODE mode;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -766,7 +765,6 @@ struct IdentifyModuleStopLED {
     using ParseResult = std::optional<IdentifyModuleStopLED>;
     static constexpr auto prefix = std::array{'M', '9', '9', '5'};
     static constexpr const char* response = "M995 OK\n";
-    LED_MODE mode;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&

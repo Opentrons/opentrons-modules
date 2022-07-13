@@ -493,7 +493,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 auto set_led_message =
                     std::get<messages::SetLEDMessage>(system_message);
                 tasks->get_system_queue().backing_deque.pop_front();
-                REQUIRE(set_led_message.mode == WHITE_ON);
+                REQUIRE(set_led_message.color == WHITE);
                 REQUIRE(written_firstpass == tx_buf.begin());
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
                 AND_WHEN("sending a good response back to the comms task") {

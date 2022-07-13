@@ -51,6 +51,16 @@ struct State {
         POWER_TEST,
     };
     Status system_status;
+    enum LEDStatus {
+        IDLE_LED,
+        HEATING,
+        HOT_TO_TOUCH_OR_HOLDING,
+        COOLING,
+        IDLE_HOT_TO_TOUCH,
+        ERROR_LED,
+        ERROR_HOT_TO_TOUCH
+    };
+    LEDStatus led_status;
     uint16_t error_bitmap;
     static constexpr uint16_t PAD_A_SENSE_ERROR = (1 << 0);
     static constexpr uint16_t PAD_B_SENSE_ERROR = (1 << 1);
@@ -111,6 +121,7 @@ class HeaterTask {
     static constexpr double KI_MAX = 200;
     static constexpr double KD_MIN = -200;
     static constexpr double KD_MAX = 200;
+    static constexpr double HOLDING_THRESHOLD = 2.5F;
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     static constexpr double CONTROL_PERIOD_S =
         static_cast<uint32_t>(CONTROL_PERIOD_TICKS) * 0.001;
@@ -154,7 +165,9 @@ class HeaterTask {
                       THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_DEPTH,
                       HEATER_PAD_NTC_DISCONNECT_THRESHOLD_ADC),
               .error_bit = State::BOARD_SENSE_ERROR},
-          state{.system_status = State::IDLE, .error_bitmap = 0},
+          state{.system_status = State::IDLE,
+                .led_status = State::IDLE_LED,
+                .error_bitmap = 0},
           pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_S, 1.0, -1.0),
           setpoint(std::nullopt),
           _flash(),
@@ -190,24 +203,6 @@ class HeaterTask {
     template <typename Policy>
     requires HeaterExecutionPolicy<Policy>
     auto run_once(Policy& policy) -> void {
-        // set red LEDs on if current temp above hot-to-touch threshold
-        if ((pad_temperature() > HOT_TO_TOUCH_THRESHOLD) && (!hot_LED_set)) {
-            hot_LED_set = true;
-            auto LED_message =
-                messages::SetLEDMessage{.mode = LED_MODE::RED_ON};
-            static_cast<void>(
-                task_registry->system->get_message_queue().try_send(
-                    LED_message));
-        } else if ((pad_temperature() < HOT_TO_TOUCH_THRESHOLD) &&
-                   (hot_LED_set)) {
-            hot_LED_set = false;
-            auto LED_message =
-                messages::SetLEDMessage{.mode = LED_MODE::RED_OFF};
-            static_cast<void>(
-                task_registry->system->get_message_queue().try_send(
-                    LED_message));
-        }
-
         // If the FLASH data hasn't been read, read it before doing
         // anything else.
         if (!_flash.initialized()) {
@@ -423,6 +418,8 @@ class HeaterTask {
         } else if (state.system_status != State::POWER_TEST) {
             policy.disable_power_output();
         }
+
+        update_state_and_leds();
     }
 
     template <typename Policy>
@@ -588,6 +585,59 @@ class HeaterTask {
         return false;
     }
 
+    auto update_state_and_leds() -> void {
+        auto old_led_status = state.led_status;
+        auto message = messages::UpdateLEDStateMessage{};
+        if (state.system_status == State::CONTROLLING) {
+            if (pad_temperature() > HOT_TO_TOUCH_THRESHOLD) {
+                state.led_status = State::HOT_TO_TOUCH_OR_HOLDING;
+                message.mode = LED_MODE::SOLID_HOT;
+                message.color = LED_COLOR::RED;
+            } else if ((setpoint.value() - pad_temperature()) >
+                       HOLDING_THRESHOLD) {
+                state.led_status = State::HEATING;
+                message.mode = LED_MODE::PULSE;
+                message.color = LED_COLOR::RED;
+            } else if ((abs(setpoint.value() - pad_temperature()) <
+                        HOLDING_THRESHOLD) &&
+                       (pad_temperature() < HOT_TO_TOUCH_THRESHOLD)) {
+                state.led_status = State::HOT_TO_TOUCH_OR_HOLDING;
+                message.mode = LED_MODE::SOLID_HOLDING;
+                message.color = LED_COLOR::RED;
+            } else if (((setpoint.value() - pad_temperature()) <
+                        HOLDING_THRESHOLD) &&
+                       (pad_temperature() < HOT_TO_TOUCH_THRESHOLD)) {
+                state.led_status = State::COOLING;
+                message.mode = LED_MODE::PULSE;
+                message.color = LED_COLOR::BLUE;
+            }
+        } else if (state.system_status == State::IDLE) {
+            if (pad_temperature() > HOT_TO_TOUCH_THRESHOLD) {
+                state.led_status = State::IDLE_HOT_TO_TOUCH;
+                message.color = LED_COLOR::RED;
+                message.mode = LED_MODE::SOLID_HOT;
+            } else {
+                state.led_status = State::IDLE_LED;
+                message.color = LED_COLOR::WHITE;
+                message.mode = LED_MODE::SOLID_HOLDING;
+            }
+        } else if (state.system_status == State::ERROR) {
+            if (pad_temperature() > HOT_TO_TOUCH_THRESHOLD) {
+                state.led_status = State::ERROR_HOT_TO_TOUCH;
+                message.color = LED_COLOR::RED_AMBER;
+                message.mode = LED_MODE::PULSE;
+            } else {
+                state.led_status = State::ERROR_LED;
+                message.color = LED_COLOR::AMBER;
+                message.mode = LED_MODE::PULSE;
+            }
+        }
+        if (state.led_status != old_led_status) {
+            static_cast<void>(
+                task_registry->system->get_message_queue().try_send(message));
+        }
+    }
+
     [[nodiscard]] auto most_relevant_error() const -> errors::ErrorCode {
         // We have a lot of different errors from a lot of different sources.
         // Sometimes more than one can occur at the same time; sometimes, that
@@ -647,7 +697,6 @@ class HeaterTask {
     State state;
     PID pid;
     std::optional<double> setpoint;
-    bool hot_LED_set = false;
     flash::Flash _flash;
     flash::OffsetConstants _offset_constants;
 };
