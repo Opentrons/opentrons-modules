@@ -91,7 +91,7 @@ bool heater_hardware_sense_power_good();
 void heater_hardware_drive_pg_latch_low();
 void heater_hardware_release_pg_latch();
 void heater_hardware_power_disable(heater_hardware* hardware);
-bool heater_hardware_power_set(heater_hardware* hardware, uint16_t setting);
+uint8_t heater_hardware_power_set(heater_hardware* hardware, uint16_t setting);
 bool heater_hardware_set_offsets(struct writable_offsets* to_write);
 uint64_t heater_hardware_get_offset(size_t addr_offset);
 

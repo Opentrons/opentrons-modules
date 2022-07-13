@@ -285,13 +285,13 @@ void heater_hardware_power_disable(heater_hardware* hardware) {
     }
 }
 
-bool heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
+uint8_t heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
     hw_internal* internal = (hw_internal*)hardware->hardware_internal;
     if (!internal) {
         init_error();
     }
     if (heatpad_in_error_state()) {
-        return false;
+        return (uint8_t)internal->heatpad_cs_status;
     }
     if (internal->heatpad_cs_status == IDLE) {
         internal->heatpad_cs_status = RUNNING;
@@ -317,7 +317,7 @@ bool heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
     } else {
         HEATER_PAD_LL_SETCOMPARE(internal->pad_tim.Instance, setting);
     }
-    return true;
+    return 0;
 }
 
 

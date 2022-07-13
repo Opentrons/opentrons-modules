@@ -58,6 +58,12 @@ const char* const HEATER_ILLEGAL_TARGET_TEMPERATURE =
     "ERR213:heater:target temperature out of range\n";
 const char* const HEATER_HARDWARE_ERROR_CIRCUIT =
     "ERR214:heater:heatpad overcurrent or circuit open or shorted\n";
+const char* const HEATER_HARDWARE_SHORT_CIRCUIT =
+    "ERR215:heater:heatpad circuit shorted\n";
+const char* const HEATER_HARDWARE_OPEN_CIRCUIT =
+    "ERR216:heater:heatpad circuit open\n";
+const char* const HEATER_HARDWARE_OVERCURRENT_CIRCUIT =
+    "ERR217:heater:heatpad circuit overcurrent\n";
 const char* const SYSTEM_SERIAL_NUMBER_INVALID =
     "ERR301:system:serial number invalid format\n";
 const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
@@ -115,6 +121,9 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(HEATER_CONSTANT_OUT_OF_RANGE);
         HANDLE_CASE(HEATER_ILLEGAL_TARGET_TEMPERATURE);
         HANDLE_CASE(HEATER_HARDWARE_ERROR_CIRCUIT);
+        HANDLE_CASE(HEATER_HARDWARE_SHORT_CIRCUIT);
+        HANDLE_CASE(HEATER_HARDWARE_OPEN_CIRCUIT);
+        HANDLE_CASE(HEATER_HARDWARE_OVERCURRENT_CIRCUIT);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_INVALID);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
         HANDLE_CASE(SYSTEM_LED_I2C_NOT_READY);

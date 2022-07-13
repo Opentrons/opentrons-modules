@@ -402,15 +402,19 @@ class HeaterTask {
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (state.system_status == State::CONTROLLING) {
-            if (!policy.set_power_output(
-                    pid.compute(setpoint.value() - pad_temperature()))) {
-                state.system_status = State::ERROR;
-                setpoint = std::nullopt;
-                state.error_bitmap |= State::CIRCUIT_ERROR;
-                auto error_message =
-                    messages::HostCommsMessage(messages::ErrorMessage{
-                        .code =
-                            errors::ErrorCode::HEATER_HARDWARE_ERROR_CIRCUIT});
+            uint8_t error = policy.set_power_output(pid.compute(setpoint.value() - pad_temperature()));
+            if (error) {
+                // state.system_status = State::ERROR;
+                // setpoint = std::nullopt;
+                // state.error_bitmap |= State::CIRCUIT_ERROR;
+                auto error_message = messages::ErrorMessage{};
+                if (error == 9){
+                    error_message.code = errors::ErrorCode::HEATER_HARDWARE_OPEN_CIRCUIT;
+                } else if (error == 10) {
+                    error_message.code = errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT;
+                } else {
+                    error_message.code = errors::ErrorCode::HEATER_HARDWARE_OVERCURRENT_CIRCUIT;
+                }
                 static_cast<void>(
                     task_registry->comms->get_message_queue().try_send(
                         error_message));
