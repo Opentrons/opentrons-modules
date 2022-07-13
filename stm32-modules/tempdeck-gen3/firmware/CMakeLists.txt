@@ -27,6 +27,7 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${UI_DIR}/ui_policy.cpp
   ${THERMAL_DIR}/freertos_thermal_task.cpp
   ${THERMAL_DIR}/freertos_thermistor_task.cpp
+  ${THERMAL_DIR}/thermal_policy.cpp
   ${THERMAL_DIR}/thermistor_policy.cpp
 )
 

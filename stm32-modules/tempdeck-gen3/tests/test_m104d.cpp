@@ -49,7 +49,7 @@ SCENARIO("SetPeltierDebug (M104.D) parser works", "[gcode][parse][m104.d]") {
                 REQUIRE(val.has_value());
                 REQUIRE(parsed.second != buffer.begin());
                 REQUIRE_THAT(val.value().power,
-                 Catch::Matchers::WithinAbs(-0.5, 0.001));
+                             Catch::Matchers::WithinAbs(-0.5, 0.001));
             }
         }
     }

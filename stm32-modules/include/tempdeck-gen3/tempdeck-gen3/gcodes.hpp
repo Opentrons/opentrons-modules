@@ -200,13 +200,13 @@ struct GetTemperatureDebug {
  * peltiers on the Temp Deck. The only parameter is the power, which is
  * represented as a floating point value in the range [-1,1]. A value of
  * 0 will turn off the peltiers.
- * 
+ *
  */
 struct SetPeltierDebug {
     using ParseResult = std::optional<SetPeltierDebug>;
     static constexpr auto prefix = std::array{'M', '1', '0', '4', '.', 'D'};
     static constexpr const char* response = "M104.D OK\n";
-    
+
     struct PowerArg {
         static constexpr auto prefix = std::array{'S'};
         static constexpr bool required = true;

@@ -10,7 +10,8 @@ const char* const GCODE_CACHE_FULL = "ERR004:gcode cache full\n";
 const char* const BAD_MESSAGE_ACKNOWLEDGEMENT =
     "ERR005:bad message acknowledgement\n";
 const char* const THERMAL_PELTIER_ERROR = "ERR101:thermal:peltier driver error";
-const char* const THERMAL_PELTIER_POWER_ERROR = "ERR102:thermal:invalid power setting";
+const char* const THERMAL_PELTIER_POWER_ERROR =
+    "ERR102:thermal:invalid power setting";
 const char* const SYSTEM_SERIAL_NUMBER_INVALID =
     "ERR301:system:serial number invalid format\n";
 const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =

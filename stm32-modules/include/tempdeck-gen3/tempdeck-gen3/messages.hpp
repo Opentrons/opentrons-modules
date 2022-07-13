@@ -111,6 +111,11 @@ struct GetTempDebugResponse {
     uint16_t heatsink_adc;
 };
 
+struct SetPeltierDebugMessage {
+    uint32_t id;
+    double power;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -120,5 +125,6 @@ using SystemMessage =
                    SetSerialNumberMessage, EnterBootloaderMessage>;
 using UIMessage = ::std::variant<std::monostate, UpdateUIMessage>;
 using ThermalMessage =
-    ::std::variant<std::monostate, ThermistorReadings, GetTempDebugMessage>;
+    ::std::variant<std::monostate, ThermistorReadings, GetTempDebugMessage,
+                   SetPeltierDebugMessage>;
 };  // namespace messages

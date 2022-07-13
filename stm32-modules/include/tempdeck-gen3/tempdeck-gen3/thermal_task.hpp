@@ -10,10 +10,10 @@ namespace thermal_task {
 
 template <typename Policy>
 concept ThermalPolicy = requires(Policy& p) {
-    {p.enable_peltier()} -> std::same_as<void>;
-    {p.disable_peltier()} -> std::same_as<void>;
-    {p.set_peltier_heat_power(1.0)} -> std::same_as<bool>;
-    {p.set_peltier_cool_power(1.0)} -> std::same_as<bool>;
+    { p.enable_peltier() } -> std::same_as<void>;
+    { p.disable_peltier() } -> std::same_as<void>;
+    { p.set_peltier_heat_power(1.0) } -> std::same_as<bool>;
+    { p.set_peltier_cool_power(1.0) } -> std::same_as<bool>;
 };
 
 using Message = messages::ThermalMessage;
@@ -123,6 +123,33 @@ class ThermalTask {
             .plate_adc = static_cast<uint16_t>(_readings.plate_adc),
             .heatsink_adc = static_cast<uint16_t>(_readings.heatsink_adc)};
         static_cast<void>(_task_registry->send(response));
+    }
+
+    template <ThermalPolicy Policy>
+    auto visit_message(const messages::SetPeltierDebugMessage& message,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = message.id};
+        if (std::abs(message.power) > 1.0F) {
+            response.with_error =
+                errors::ErrorCode::THERMAL_PELTIER_POWER_ERROR;
+        } else if (message.power != 0.0F) {
+            policy.enable_peltier();
+            bool ok = false;
+            if (message.power > 0.0F) {
+                ok = policy.set_peltier_heat_power(message.power);
+            } else {
+                ok = policy.set_peltier_cool_power(message.power);
+            }
+            if (!ok) {
+                response.with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR;
+                policy.disable_peltier();
+            }
+        } else {
+            policy.disable_peltier();
+        }
+        static_cast<void>(
+            _task_registry->send_to_address(response, Queues::HostAddress));
     }
 
     Queue& _message_queue;
