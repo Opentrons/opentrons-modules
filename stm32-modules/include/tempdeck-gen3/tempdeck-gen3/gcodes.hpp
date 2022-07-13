@@ -195,4 +195,51 @@ struct GetTemperatureDebug {
     }
 };
 
+/**
+ * @brief SetPeltierDebug is a command used to set the pulse width of the
+ * peltiers on the Temp Deck. The only parameter is the power, which is
+ * represented as a floating point value in the range [-1,1]. A value of
+ * 0 will turn off the peltiers.
+ *
+ */
+struct SetPeltierDebug {
+    using ParseResult = std::optional<SetPeltierDebug>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '4', '.', 'D'};
+    static constexpr const char* response = "M104.D OK\n";
+
+    struct PowerArg {
+        static constexpr auto prefix = std::array{'S'};
+        static constexpr bool required = true;
+        bool present = false;
+        float value = 0.0F;
+    };
+
+    double power;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res =
+            gcode::SingleParser<PowerArg>::parse_gcode(input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        if (!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto ret = SetPeltierDebug{.power = std::get<0>(arguments).value};
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 };  // namespace gcode

@@ -1,5 +1,6 @@
 #include "firmware/freertos_thermal_task.hpp"
 
+#include "firmware/thermal_policy.hpp"
 #include "tempdeck-gen3/thermal_task.hpp"
 
 namespace thermal_control_task {
@@ -17,16 +18,13 @@ static tasks::FirmwareTasks::ThermalQueue
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _top_task = thermal_task::ThermalTask(_queue, nullptr);
 
-struct FakePolicy {
-    auto operator()() -> void {}
-};
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     auto* handle = xTaskGetCurrentTaskHandle();
     _queue.provide_handle(handle);
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
 
-    auto policy = FakePolicy();
+    auto policy = ThermalPolicy();
     while (true) {
         _top_task.run_once(policy);
     }

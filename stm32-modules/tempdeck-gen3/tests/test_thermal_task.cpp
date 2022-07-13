@@ -1,13 +1,10 @@
 #include "catch2/catch.hpp"
 #include "test/test_tasks.hpp"
-
-struct FakePolicy {
-    auto operator()() -> void {}
-};
+#include "test/test_thermal_policy.hpp"
 
 TEST_CASE("thermal task message handling") {
     auto *tasks = tasks::BuildTasks();
-    FakePolicy policy;
+    TestThermalPolicy policy;
     thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> converter(
         decltype(tasks->_thermal_task)::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
         decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);
@@ -58,6 +55,93 @@ TEST_CASE("thermal task message handling") {
                 REQUIRE(response.plate_adc == plate_count);
                 REQUIRE(response.heatsink_adc == hs_count);
             }
+        }
+    }
+}
+
+TEST_CASE("thermal task SetPeltierDebug functionality") {
+    auto *tasks = tasks::BuildTasks();
+    TestThermalPolicy policy;
+    REQUIRE(!policy._enabled);
+    WHEN("setting peltiers to heat") {
+        auto msg = messages::SetPeltierDebugMessage{.id = 123, .power = 0.5};
+        tasks->_thermal_queue.backing_deque.push_back(msg);
+        tasks->_thermal_task.run_once(policy);
+        THEN("the peltiers are enabled in heat mode") {
+            REQUIRE(policy._enabled);
+            REQUIRE(policy._power == msg.power);
+            REQUIRE(policy.is_heating());
+        }
+        THEN("the task sends an ack to the comms task") {
+            REQUIRE(tasks->_comms_queue.has_message());
+            auto host_msg = tasks->_comms_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
+                host_msg));
+            auto ack = std::get<messages::AcknowledgePrevious>(host_msg);
+            REQUIRE(ack.responding_to_id == msg.id);
+            REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
+        }
+    }
+    WHEN("setting peltiers to cool") {
+        auto msg = messages::SetPeltierDebugMessage{.id = 123, .power = -0.5};
+        tasks->_thermal_queue.backing_deque.push_back(msg);
+        tasks->_thermal_task.run_once(policy);
+        THEN("the peltiers are enabled in cooling mode") {
+            REQUIRE(policy._enabled);
+            REQUIRE(policy._power == msg.power);
+            REQUIRE(policy.is_cooling());
+        }
+        THEN("the task sends an ack to the comms task") {
+            REQUIRE(tasks->_comms_queue.has_message());
+            auto host_msg = tasks->_comms_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
+                host_msg));
+            auto ack = std::get<messages::AcknowledgePrevious>(host_msg);
+            REQUIRE(ack.responding_to_id == msg.id);
+            REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
+        }
+        AND_THEN("disabling the peltiers") {
+            msg.id = 456;
+            msg.power = 0;
+            tasks->_thermal_queue.backing_deque.push_back(msg);
+            tasks->_thermal_task.run_once(policy);
+            THEN("the peltiers are disabled") { REQUIRE(!policy._enabled); }
+        }
+    }
+    WHEN("setting peltiers to heat above 100%% power") {
+        auto msg = messages::SetPeltierDebugMessage{.id = 123, .power = 5};
+        tasks->_thermal_queue.backing_deque.push_back(msg);
+        tasks->_thermal_task.run_once(policy);
+        THEN("the task does not enable the peltier") {
+            REQUIRE(!policy._enabled);
+        }
+        THEN("the task sends an error to the comms task") {
+            REQUIRE(tasks->_comms_queue.has_message());
+            auto host_msg = tasks->_comms_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
+                host_msg));
+            auto ack = std::get<messages::AcknowledgePrevious>(host_msg);
+            REQUIRE(ack.responding_to_id == msg.id);
+            REQUIRE(ack.with_error ==
+                    errors::ErrorCode::THERMAL_PELTIER_POWER_ERROR);
+        }
+    }
+    WHEN("setting peltiers to cool below 100%% power") {
+        auto msg = messages::SetPeltierDebugMessage{.id = 123, .power = -5};
+        tasks->_thermal_queue.backing_deque.push_back(msg);
+        tasks->_thermal_task.run_once(policy);
+        THEN("the task does not enable the peltier") {
+            REQUIRE(!policy._enabled);
+        }
+        THEN("the task sends an error to the comms task") {
+            REQUIRE(tasks->_comms_queue.has_message());
+            auto host_msg = tasks->_comms_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
+                host_msg));
+            auto ack = std::get<messages::AcknowledgePrevious>(host_msg);
+            REQUIRE(ack.responding_to_id == msg.id);
+            REQUIRE(ack.with_error ==
+                    errors::ErrorCode::THERMAL_PELTIER_POWER_ERROR);
         }
     }
 }
