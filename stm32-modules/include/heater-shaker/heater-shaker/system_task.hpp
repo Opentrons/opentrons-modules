@@ -35,17 +35,25 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
         } -> std::same_as<errors::ErrorCode>;
 };
 
-struct LEDState {
-    bool led_driver_in_error = false;
+struct LEDPulseState {
     double led_tick_count = 0.0;
-    LED_COLOR current_color = LED_COLOR::WHITE;
-    LED_MODE current_mode = LED_MODE::SOLID_HOLDING;
     bool led_alternate_colors = false;
     LED_COLOR led_color_1 = LED_COLOR::OFF;
     LED_COLOR led_color_2 = LED_COLOR::OFF;
     bool pulse_complete = false;
+};
+
+struct LEDIdentifyState {
     LED_COLOR previous_color = LED_COLOR::OFF;
     LED_MODE previous_mode = LED_MODE::MODE_OFF;
+};
+
+struct LEDState {
+    bool led_driver_in_error = false;
+    LED_COLOR current_color = LED_COLOR::WHITE;
+    LED_MODE current_mode = LED_MODE::SOLID_HOLDING;
+    LEDPulseState _led_pulse_state;
+    LEDIdentifyState _led_identify_state;
 };
 
 using Message = messages::SystemMessage;
@@ -73,16 +81,17 @@ class SystemTask {
           task_registry(nullptr),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           prep_cache(),
-          _led_state{.led_driver_in_error = false,
-                     .led_tick_count = 0.0,
-                     .current_color = LED_COLOR::WHITE,
-                     .current_mode = LED_MODE::SOLID_HOLDING,
-                     .led_alternate_colors = false,
-                     .led_color_1 = LED_COLOR::OFF,
-                     .led_color_2 = LED_COLOR::OFF,
-                     .pulse_complete = false,
-                     .previous_color = LED_COLOR::OFF,
-                     .previous_mode = LED_MODE::MODE_OFF} {}
+          _led_state{
+              .led_driver_in_error = false,
+              .current_color = LED_COLOR::WHITE,
+              .current_mode = LED_MODE::SOLID_HOLDING,
+              ._led_pulse_state{.led_tick_count = 0.0,
+                                .led_alternate_colors = false,
+                                .led_color_1 = LED_COLOR::OFF,
+                                .led_color_2 = LED_COLOR::OFF,
+                                .pulse_complete = false},
+              ._led_identify_state{.previous_color = LED_COLOR::OFF,
+                                   .previous_mode = LED_MODE::MODE_OFF}} {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
     SystemTask(SystemTask&& other) noexcept = delete;
@@ -233,8 +242,9 @@ class SystemTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
-        _led_state.previous_color = _led_state.current_color;
-        _led_state.previous_mode = _led_state.current_mode;
+        _led_state._led_identify_state.previous_color =
+            _led_state.current_color;
+        _led_state._led_identify_state.previous_mode = _led_state.current_mode;
         auto message = messages::UpdateLEDStateMessage{};
         if ((_led_state.current_color == AMBER) ||
             (_led_state.current_color == RED_AMBER)) {
@@ -256,9 +266,9 @@ class SystemTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
-        auto message =
-            messages::UpdateLEDStateMessage{.color = _led_state.previous_color,
-                                            .mode = _led_state.previous_mode};
+        auto message = messages::UpdateLEDStateMessage{
+            .color = _led_state._led_identify_state.previous_color,
+            .mode = _led_state._led_identify_state.previous_mode};
         static_cast<void>(
             task_registry->system->get_message_queue().try_send(message));
     }
@@ -281,19 +291,19 @@ class SystemTask {
         if ((_led_state.current_color == LED_COLOR::RED_WHITE) ||
             (_led_state.current_color == LED_COLOR::RED_AMBER) ||
             (_led_state.current_color == LED_COLOR::WHITE_AMBER)) {
-            _led_state.led_alternate_colors = true;
+            _led_state._led_pulse_state.led_alternate_colors = true;
             if (_led_state.current_color == LED_COLOR::RED_WHITE) {
-                _led_state.led_color_1 = LED_COLOR::RED;
-                _led_state.led_color_2 = LED_COLOR::WHITE;
+                _led_state._led_pulse_state.led_color_1 = LED_COLOR::RED;
+                _led_state._led_pulse_state.led_color_2 = LED_COLOR::WHITE;
             } else if (_led_state.current_color == LED_COLOR::RED_AMBER) {
-                _led_state.led_color_1 = LED_COLOR::RED;
-                _led_state.led_color_2 = LED_COLOR::AMBER;
+                _led_state._led_pulse_state.led_color_1 = LED_COLOR::RED;
+                _led_state._led_pulse_state.led_color_2 = LED_COLOR::AMBER;
             } else if (_led_state.current_color == LED_COLOR::WHITE_AMBER) {
-                _led_state.led_color_1 = LED_COLOR::WHITE;
-                _led_state.led_color_2 = LED_COLOR::AMBER;
+                _led_state._led_pulse_state.led_color_1 = LED_COLOR::WHITE;
+                _led_state._led_pulse_state.led_color_2 = LED_COLOR::AMBER;
             }
         } else {
-            _led_state.led_alternate_colors = false;
+            _led_state._led_pulse_state.led_alternate_colors = false;
         }
     }
 
@@ -324,28 +334,33 @@ class SystemTask {
                 }
             } else if (_led_state.current_mode == LED_MODE::PULSE) {
                 uint8_t led_brightness_setting = 0;
-                _led_state.led_tick_count += ONE;
-                if (_led_state.led_tick_count > LED_TICKS_PER_PULSE) {
-                    _led_state.led_tick_count = ONE;
-                    _led_state.pulse_complete = !_led_state.pulse_complete;
+                _led_state._led_pulse_state.led_tick_count += ONE;
+                if (_led_state._led_pulse_state.led_tick_count >
+                    LED_TICKS_PER_PULSE) {
+                    _led_state._led_pulse_state.led_tick_count = ONE;
+                    _led_state._led_pulse_state.pulse_complete =
+                        !_led_state._led_pulse_state.pulse_complete;
                 }
-                if (_led_state.led_tick_count <= (LED_TICKS_PER_PULSE / TWO)) {
+                if (_led_state._led_pulse_state.led_tick_count <=
+                    (LED_TICKS_PER_PULSE / TWO)) {
                     led_brightness_setting = static_cast<uint8_t>(
-                        _led_state.led_tick_count *
+                        _led_state._led_pulse_state.led_tick_count *
                         (LED_FULL_SCALE / (LED_TICKS_PER_PULSE / TWO)));
-                } else if ((_led_state.led_tick_count >
+                } else if ((_led_state._led_pulse_state.led_tick_count >
                             (LED_TICKS_PER_PULSE / TWO)) &&
-                           (_led_state.led_tick_count <= LED_TICKS_PER_PULSE)) {
+                           (_led_state._led_pulse_state.led_tick_count <=
+                            LED_TICKS_PER_PULSE)) {
                     led_brightness_setting = static_cast<uint8_t>(
-                        (LED_TICKS_PER_PULSE - _led_state.led_tick_count) *
+                        (LED_TICKS_PER_PULSE -
+                         _led_state._led_pulse_state.led_tick_count) *
                         (LED_FULL_SCALE / (LED_TICKS_PER_PULSE / TWO)));
                 }
                 LED_COLOR color_setting;
-                if (_led_state.led_alternate_colors) {
-                    if (!_led_state.pulse_complete) {
-                        color_setting = _led_state.led_color_1;
+                if (_led_state._led_pulse_state.led_alternate_colors) {
+                    if (!_led_state._led_pulse_state.pulse_complete) {
+                        color_setting = _led_state._led_pulse_state.led_color_1;
                     } else {
-                        color_setting = _led_state.led_color_2;
+                        color_setting = _led_state._led_pulse_state.led_color_2;
                     }
                 } else {
                     color_setting = _led_state.current_color;

@@ -219,8 +219,6 @@ class HeaterTask {
                 this->visit_message(msg, policy);
             },
             message);
-
-        update_state_and_leds();
     }
 
     [[nodiscard]] auto get_pid() const -> const PID& { return pid; }
@@ -420,6 +418,8 @@ class HeaterTask {
         } else if (state.system_status != State::POWER_TEST) {
             policy.disable_power_output();
         }
+
+        update_state_and_leds();
     }
 
     template <typename Policy>
