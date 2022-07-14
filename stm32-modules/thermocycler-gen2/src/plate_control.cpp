@@ -80,6 +80,7 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
     }
     if (!_fan.manual_control) {
         values.fan_power = update_fan(time);
+        _last_fan_pwm = values.fan_power;
     }
 
     return UpdateRet(values);
@@ -96,6 +97,8 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
     reset_control(_right);
     reset_control(_center);
     reset_control(_fan);
+
+    _last_fan_pwm = 0.0F;
 
     // For heating vs cooling, go based off of the average plate. Might
     // have to reconsider this, see how it works for small changes.
@@ -180,8 +183,9 @@ auto PlateControl::update_fan(Seconds time) -> double {
         // Power is clamped in range [0.35,0.7]
         auto power =
             _fan.pid.compute(_fan.current_temp() - _fan.temp_target, time);
-        return std::clamp(power, FAN_POWER_LIMITS_COLD.first,
-                          FAN_POWER_LIMITS_COLD.second);
+        power = std::clamp(power, FAN_POWER_LIMITS_COLD.first,
+                           FAN_POWER_LIMITS_COLD.second);
+        return calculate_fan_smoothing(power, time);
     }
     if (_status == PlateStatus::INITIAL_COOL) {
         // Ramping down to a non-cold temp is always just 55% drive
@@ -201,11 +205,13 @@ auto PlateControl::update_fan(Seconds time) -> double {
     }
     auto power = _fan.pid.compute(_fan.current_temp() - _fan.temp_target, time);
     if (target_zone == TemperatureZone::HOT) {
-        return std::clamp(power, FAN_POWER_LIMITS_HOT.first,
-                          FAN_POWER_LIMITS_HOT.second);
+        power = std::clamp(power, FAN_POWER_LIMITS_HOT.first,
+                           FAN_POWER_LIMITS_HOT.second);
+        return calculate_fan_smoothing(power, time);
     }
-    return std::clamp(power, FAN_POWER_LIMITS_WARM.first,
-                      FAN_POWER_LIMITS_WARM.second);
+    power = std::clamp(power, FAN_POWER_LIMITS_WARM.first,
+                       FAN_POWER_LIMITS_WARM.second);
+    return calculate_fan_smoothing(power, time);
 }
 
 // This function *could* be made const, but that obfuscates the intention,
@@ -298,4 +304,16 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
         return channel.current_temp() >= _setpoint;
     }
     return channel.current_temp() <= _setpoint;
+}
+
+[[nodiscard]] auto PlateControl::calculate_fan_smoothing(double power,
+                                                         Seconds time) const
+    -> double {
+    static constexpr double alpha = 0.1;
+    if (_last_fan_pwm == 0.0F) {
+        return power;
+    }
+    // Scale the smoothing proportional to the time delta
+    auto scaled_alpha = std::min(alpha * time, static_cast<double>(1.0F));
+    return _last_fan_pwm + (scaled_alpha * (power - _last_fan_pwm));
 }

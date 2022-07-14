@@ -532,11 +532,11 @@ SCENARIO("PlateControl active fan control works") {
             }
             AND_WHEN("the target temperature is reached with heatsink at 60") {
                 set_temp(thermistors, undershot_target, 60.0F);
+                auto old_fan = ctrl.value().fan_power;
                 ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
-                THEN("the fan is driven between 0.35 and 0.55") {
-                    REQUIRE(ctrl.value().fan_power >= 0.35);
-                    REQUIRE(ctrl.value().fan_power <= 0.55);
+                THEN("the fan is driven towards [0.35,0.55]") {
+                    REQUIRE(ctrl.value().fan_power < old_fan);
                 }
             }
         }
@@ -551,16 +551,16 @@ SCENARIO("PlateControl active fan control works") {
                 "the target temperature is reached with heatsink at target + "
                 "2") {
                 set_temp(thermistors, WARM_TEMP, WARM_TEMP + 2.0F);
+                auto old_fan = ctrl.value().fan_power;
                 ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
-                THEN("the fan is driven between 0.35 and 0.55") {
+                THEN("the fan PWM moves up") {
                     REQUIRE_THAT(fan.temp_target,
                                  Catch::Matchers::WithinAbs(
                                      WARM_TEMP + plate_control::PlateControl::
                                                      FAN_SETPOINT_OFFSET,
                                      0.1));
-                    REQUIRE(ctrl.value().fan_power >= 0.35);
-                    REQUIRE(ctrl.value().fan_power <= 0.55);
+                    REQUIRE(ctrl.value().fan_power > old_fan);
                 }
             }
         }
@@ -573,13 +573,13 @@ SCENARIO("PlateControl active fan control works") {
             }
             AND_WHEN("the target temperature is reached with heatsink at 73") {
                 set_temp(thermistors, HOT_TEMP, 73);
+                auto old_fan = ctrl.value().fan_power;
                 ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
-                THEN("the fan is driven between 0.30 and 0.55") {
+                THEN("the fan pwm should increase") {
                     REQUIRE_THAT(fan.temp_target,
                                  Catch::Matchers::WithinAbs(70.0F, 0.1));
-                    REQUIRE(ctrl.value().fan_power >= 0.30);
-                    REQUIRE(ctrl.value().fan_power <= 0.55);
+                    REQUIRE(ctrl.value().fan_power > old_fan);
                 }
             }
             AND_WHEN(

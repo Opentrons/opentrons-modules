@@ -267,11 +267,17 @@ class PlateControl {
     [[nodiscard]] auto crossed_setpoint(const thermal_general::Peltier &channel,
                                         bool heating) const -> bool;
 
+    [[nodiscard]] auto calculate_fan_smoothing(double power, Seconds time) const
+        -> double;
+
     PlateStatus _status = PlateStatus::STEADY_STATE;  // State machine for plate
     thermal_general::Peltier &_left;
     thermal_general::Peltier &_right;
     thermal_general::Peltier &_center;
     thermal_general::HeatsinkFan &_fan;
+
+    // Last PWM that the fans were set to
+    double _last_fan_pwm = 0.0F;
 
     // Adjusted setpoint based on overshoot status
     double _current_setpoint = 0.0F;
