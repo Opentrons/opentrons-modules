@@ -1,19 +1,23 @@
 #include "firmware/thermal_policy.hpp"
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto ThermalPolicy::enable_peltier() -> void {}
+#include "firmware/thermal_hardware.h"
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto ThermalPolicy::disable_peltier() -> void {}
+auto ThermalPolicy::enable_peltier() -> void {
+    thermal_hardware_enable_peltiers();
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto ThermalPolicy::disable_peltier() -> void {
+    thermal_hardware_enable_peltiers();
+}
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPolicy::set_peltier_heat_power(double power) -> bool {
-    static_cast<void>(power);
-    return true;
+    return thermal_hardware_set_peltier_heat(power);
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPolicy::set_peltier_cool_power(double power) -> bool {
-    static_cast<void>(power);
-    return true;
+    return thermal_hardware_set_peltier_cool(power);
 }
