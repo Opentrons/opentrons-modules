@@ -112,6 +112,8 @@ class ThermalPlateTask {
     static constexpr double KI_MAX = 200;
     static constexpr double KD_MIN = -200;
     static constexpr double KD_MAX = 200;
+    static constexpr double WINDUP_MAX = 1;
+    static constexpr double WINDUP_MIN = -1;
     static constexpr double OVERTEMP_LIMIT_C = 115;
     // If no volume is specified, this is the default
     static constexpr double DEFAULT_VOLUME_UL = 25.0F;
@@ -182,22 +184,22 @@ class ThermalPlateTask {
                             _thermistors.at(THERM_BACK_LEFT),
                             _thermistors.at(THERM_FRONT_LEFT)),
                         .pid = PID(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD,
-                                   CONTROL_PERIOD_SECONDS, 1.0, -1.0)},
+                                   CONTROL_PERIOD_SECONDS, WINDUP_MAX, WINDUP_MIN)},
           _peltier_right{.id = PELTIER_RIGHT,
                          .thermistors = Peltier::ThermistorPair(
                              _thermistors.at(THERM_BACK_RIGHT),
                              _thermistors.at(THERM_FRONT_RIGHT)),
                          .pid = PID(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD,
-                                    CONTROL_PERIOD_SECONDS, 1.0, -1.0)},
+                                    CONTROL_PERIOD_SECONDS, WINDUP_MAX, WINDUP_MIN)},
           _peltier_center{.id = PELTIER_CENTER,
                           .thermistors = Peltier::ThermistorPair(
                               _thermistors.at(THERM_BACK_CENTER),
                               _thermistors.at(THERM_FRONT_CENTER)),
                           .pid = PID(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD,
-                                     CONTROL_PERIOD_SECONDS, 1.0, -1.0)},
+                                     CONTROL_PERIOD_SECONDS, WINDUP_MAX, WINDUP_MIN)},
           _fans{.thermistor = _thermistors.at(THERM_HEATSINK),
                 .pid = PID(DEFAULT_FAN_KP, DEFAULT_FAN_KI, DEFAULT_FAN_KD,
-                           CONTROL_PERIOD_SECONDS, 1.0, -1.0)},
+                           CONTROL_PERIOD_SECONDS, WINDUP_MAX, WINDUP_MIN)},
           _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
                      false),
           _state{.system_status = State::IDLE, .error_bitmap = 0},
@@ -615,15 +617,15 @@ class ThermalPlateTask {
 
         if (msg.selection == PidSelection::FANS) {
             _fans.pid =
-                PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
+                PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, WINDUP_MAX, WINDUP_MIN);
         } else {
             // For now, all peltiers share the same PID values...
             _peltier_right.pid =
-                PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
+                PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, WINDUP_MAX, WINDUP_MIN);
             _peltier_left.pid =
-                PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
+                PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, WINDUP_MAX, WINDUP_MIN);
             _peltier_center.pid =
-                PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
+                PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, WINDUP_MAX, WINDUP_MIN);
         }
 
         static_cast<void>(

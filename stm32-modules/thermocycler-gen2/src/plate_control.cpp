@@ -177,8 +177,7 @@ auto PlateControl::update_fan(Seconds time) -> double {
         // Holding at a cold temp is PID controlling the heatsink to 60ºC
         if (_fan.temp_target != FAN_TARGET_TEMP_COLD) {
             _fan.temp_target = FAN_TARGET_TEMP_COLD;
-            _fan.pid.arm_integrator_reset(_fan.current_temp() -
-                                          FAN_TARGET_TEMP_COLD);
+            _fan.pid.reset();
         }
         // Power is clamped in range [0.35,0.7]
         auto power =
@@ -201,7 +200,7 @@ auto PlateControl::update_fan(Seconds time) -> double {
     }
     if (_fan.temp_target != threshold) {
         _fan.temp_target = threshold;
-        _fan.pid.arm_integrator_reset(_fan.current_temp() - _fan.temp_target);
+        _fan.pid.reset();
     }
     auto power = _fan.pid.compute(_fan.current_temp() - _fan.temp_target, time);
     if (target_zone == TemperatureZone::HOT) {
@@ -223,8 +222,7 @@ auto PlateControl::reset_control(thermal_general::Peltier &peltier) -> void {
     } else {
         peltier.temp_target = plate_temp();
     }
-    peltier.pid.arm_integrator_reset(peltier.temp_target -
-                                     peltier.current_temp());
+    peltier.pid.reset();
 }
 
 // This function *could* be made const, but that obfuscates the intention,
@@ -233,7 +231,7 @@ auto PlateControl::reset_control(thermal_general::Peltier &peltier) -> void {
 auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
     // The fan always just targets the target temperature w/ an offset
     fan.temp_target = _current_setpoint + FAN_SETPOINT_OFFSET;
-    fan.pid.arm_integrator_reset(fan.current_temp() - fan.temp_target);
+    fan.pid.reset();
 }
 
 [[nodiscard]] auto PlateControl::plate_temp() const -> double {
