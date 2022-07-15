@@ -7,7 +7,7 @@
 
 // RTOS includes
 #include "FreeRTOS.h"
-
+#include "task.h"
 
 // ***************************************************************************
 // Local constants
@@ -36,6 +36,11 @@
 
 #define ENABLE_12V_PORT (GPIOA)
 #define ENABLE_12V_PIN (GPIO_PIN_3)
+
+// Peltier drive circuitry cannot support lower PWM than 0.1
+#define MIN_PELTIER_POWER (0.1)
+// Peltier drive circuitry cannot support higher PWM than 0.9
+#define MAX_PELTIER_POWER (0.9)
 
 // ***************************************************************************
 // Local typedefs
@@ -101,6 +106,11 @@ void thermal_hardware_disable_peltiers() {
     hardware.enabled = false;
     HAL_GPIO_WritePin(PELTIER_ENABLE_PORT, PELTIER_ENABLE_PIN, GPIO_PIN_RESET);
     
+    __HAL_TIM_SET_COMPARE(&hardware.timer, HEATING_CHANNEL, 0);
+    __HAL_TIM_SET_COMPARE(&hardware.timer, COOLING_CHANNEL, 0);
+
+    hardware.hot_side_power = 0.0F;
+    hardware.cool_side_power = 0.0F;
 }
 
 bool thermal_hardware_set_peltier_heat(double power) {
@@ -108,27 +118,49 @@ bool thermal_hardware_set_peltier_heat(double power) {
         return false;
     }
 
-    if(power < 0.1F && power > 0.0F) {
-        power = 0.1F;
+    if(power < MIN_PELTIER_POWER && power > 0.0F) {
+        power = MIN_PELTIER_POWER;
     }
     if(power < 0.0F) {
         power = 0.0F;
     }
-    if(power > 0.9F) {
-        power = 0.9F;
+    if(power > MAX_PELTIER_POWER) {
+        power = MAX_PELTIER_POWER;
     }
 
     uint32_t pwm = power * (double)MAX_PWM;
     __HAL_TIM_SET_COMPARE(&hardware.timer, COOLING_CHANNEL, 0);
     __HAL_TIM_SET_COMPARE(&hardware.timer, HEATING_CHANNEL, pwm);
     
+    hardware.hot_side_power = power;
+    hardware.cool_side_power = 0.0F;
+
+    return true;
 }
 
 bool thermal_hardware_set_peltier_cool(double power) {
     if((!hardware.initialized) || (!hardware.enabled)) {
         return false;
     }
+
+    if(power < MIN_PELTIER_POWER && power > 0.0F) {
+        power = MIN_PELTIER_POWER;
+    }
+    if(power < 0.0F) {
+        power = 0.0F;
+    }
+    if(power > MAX_PELTIER_POWER) {
+        power = MAX_PELTIER_POWER;
+    }
     
+    uint32_t pwm = power * (double)MAX_PWM;
+    __HAL_TIM_SET_COMPARE(&hardware.timer, HEATING_CHANNEL, 0);
+    __HAL_TIM_SET_COMPARE(&hardware.timer, COOLING_CHANNEL, pwm);
+    
+    hardware.hot_side_power = 0.0F;
+    hardware.cool_side_power = power;
+
+    return true;
 }
 
 
@@ -214,6 +246,8 @@ static void init_peltier_timer() {
     HAL_GPIO_Init(COOLING_PORT, &GPIO_InitStruct);
 
     // Activate both PWM channels with a compare val of 0
+    __HAL_TIM_SET_COMPARE(&hardware.timer, HEATING_CHANNEL, 0);
+    __HAL_TIM_SET_COMPARE(&hardware.timer, COOLING_CHANNEL, 0);
     HAL_TIM_PWM_Start(&hardware.timer, HEATING_CHANNEL);
     HAL_TIM_PWM_Start(&hardware.timer, COOLING_CHANNEL);
 }
@@ -228,10 +262,10 @@ static void init_gpio() {
     init.Pull = GPIO_NOPULL;
     init.Speed = GPIO_SPEED_LOW;
 
-    HAL_GPIO_Init(&init, ENABLE_12V_PORT);
+    HAL_GPIO_Init(ENABLE_12V_PORT, &init);
 
     init.Pin = PELTIER_ENABLE_PIN;
-    HAL_GPIO_Init(&init, PELTIER_ENABLE_PORT);
+    HAL_GPIO_Init(PELTIER_ENABLE_PORT, &init);
 
     HAL_GPIO_WritePin(ENABLE_12V_PORT, ENABLE_12V_PIN, GPIO_PIN_SET);
 }

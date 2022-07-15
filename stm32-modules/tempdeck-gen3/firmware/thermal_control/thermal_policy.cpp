@@ -9,7 +9,7 @@ auto ThermalPolicy::enable_peltier() -> void {
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPolicy::disable_peltier() -> void {
-    thermal_hardware_enable_peltiers();
+    thermal_hardware_disable_peltiers();
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

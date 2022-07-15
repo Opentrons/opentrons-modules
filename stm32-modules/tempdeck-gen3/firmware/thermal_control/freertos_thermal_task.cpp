@@ -1,8 +1,8 @@
 #include "firmware/freertos_thermal_task.hpp"
 
+#include "firmware/thermal_hardware.h"
 #include "firmware/thermal_policy.hpp"
 #include "tempdeck-gen3/thermal_task.hpp"
-#include "firmware/thermal_hardware.h"
 
 namespace thermal_control_task {
 
