@@ -14,10 +14,8 @@
 
 #define PULSE_WIDTH_FREQ (500000)
 #define TIMER_CLOCK_FREQ (170000000)
-// These two together give a 25kHz pulse width, and the ARR value
-// of 99 gives us a nice scale of 0-100 for the pulse width.
-// A finer scale is possible by reducing the prescale value and
-// adjusting the reload to match.
+
+// Given a desired frequency of 500kHz, we do not need to prescale the timer
 #define TIM1_PRESCALER (0)
 #define TIM1_RELOAD ((TIMER_CLOCK_FREQ / (PULSE_WIDTH_FREQ * (TIM1_PRESCALER + 1))) - 1)
 // PWM should be scaled from 0 to MAX_PWM, inclusive
