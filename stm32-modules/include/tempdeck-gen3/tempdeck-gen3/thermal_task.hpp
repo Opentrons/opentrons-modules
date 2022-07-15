@@ -139,7 +139,7 @@ class ThermalTask {
             if (message.power > 0.0F) {
                 ok = policy.set_peltier_heat_power(message.power);
             } else {
-                ok = policy.set_peltier_cool_power(message.power);
+                ok = policy.set_peltier_cool_power(std::abs(message.power));
             }
             if (!ok) {
                 response.with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR;

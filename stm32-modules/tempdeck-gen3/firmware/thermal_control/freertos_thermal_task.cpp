@@ -1,5 +1,6 @@
 #include "firmware/freertos_thermal_task.hpp"
 
+#include "firmware/thermal_hardware.h"
 #include "firmware/thermal_policy.hpp"
 #include "tempdeck-gen3/thermal_task.hpp"
 
@@ -23,6 +24,8 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     _queue.provide_handle(handle);
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
+
+    thermal_hardware_init();
 
     auto policy = ThermalPolicy();
     while (true) {

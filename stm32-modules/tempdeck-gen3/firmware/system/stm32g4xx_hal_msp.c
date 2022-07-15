@@ -26,7 +26,6 @@ void HAL_MspInit(void)
 
 void HAL_MspDeInit(void)
 {
-
     __HAL_RCC_SYSCFG_CLK_DISABLE();
     __HAL_RCC_PWR_CLK_DISABLE();
     
@@ -55,8 +54,22 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
     }
 }
 
-/* USER CODE BEGIN 1 */
 
-/* USER CODE END 1 */
+void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
+{
+    if(htim_pwm->Instance==TIM1)
+    {
+        /* Peripheral clock enable */
+        __HAL_RCC_TIM1_CLK_ENABLE();
+    }
+}
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* htim_pwm)
+{
+    if(htim_pwm->Instance==TIM1)
+    {
+        /* Peripheral clock disable */
+        __HAL_RCC_TIM1_CLK_DISABLE();
+    }
+
+}
