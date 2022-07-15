@@ -17,6 +17,7 @@
 
 // Given a desired frequency of 500kHz, we do not need to prescale the timer
 #define TIM1_PRESCALER (0)
+// Calculates out to 339
 #define TIM1_RELOAD ((TIMER_CLOCK_FREQ / (PULSE_WIDTH_FREQ * (TIM1_PRESCALER + 1))) - 1)
 // PWM should be scaled from 0 to MAX_PWM, inclusive
 #define MAX_PWM (TIM1_RELOAD + 1)
