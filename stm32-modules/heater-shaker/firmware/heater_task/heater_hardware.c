@@ -428,21 +428,26 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
         if ((internal->heatpad_cs_status != IDLE) && (!heatpad_in_error_state())) {
             internal->period_count++;
             if ((internal->heatpad_cs_status == RUNNING) && (internal->period_count > HEATER_PAD_CIRCUIT_CHECK_PERIOD)) {
-                internal->heatpad_cs_status = PREP_CHECK;
-                HAL_DAC_SetValue(&internal->dac1, HEATPAD_CS_DAC_CHANNEL, DAC_ALIGN_12B_R, HEATER_PAD_FAULTY_CIRCUIT_DAC_THRESHOLD);
-                HAL_COMP_Stop(&internal->comp4);
-                internal->comp4.Init.Output = COMP_OUTPUT_NONE;
-                if (HAL_OK != HAL_COMP_Init(&internal->comp4)) {
-                    init_error();
-                }
-                HAL_COMP_Start(&internal->comp4);
-            } else if ((internal->heatpad_cs_status == PREP_CHECK) && (peripherals_ready())) {
                 if (can_heatpad_cs_open_check()) {
                     internal->heatpad_cs_status = OPEN_CHECK_STARTED;
+                    HAL_DAC_SetValue(&internal->dac1, HEATPAD_CS_DAC_CHANNEL, DAC_ALIGN_12B_R, HEATER_PAD_OPEN_CIRCUIT_DAC_THRESHOLD);
+                    HAL_COMP_Stop(&internal->comp4);
+                    internal->comp4.Init.Output = COMP_OUTPUT_NONE;
+                    if (HAL_OK != HAL_COMP_Init(&internal->comp4)) {
+                        init_error();
+                    }
+                    HAL_COMP_Start(&internal->comp4);
                 } else if (can_heatpad_cs_short_check()) {
                     internal->heatpad_cs_status = SHORT_CHECK_STARTED;
+                    HAL_DAC_SetValue(&internal->dac1, HEATPAD_CS_DAC_CHANNEL, DAC_ALIGN_12B_R, HEATER_PAD_SHORT_CIRCUIT_DAC_THRESHOLD);
+                    HAL_COMP_Stop(&internal->comp4);
+                    internal->comp4.Init.Output = COMP_OUTPUT_NONE;
+                    if (HAL_OK != HAL_COMP_Init(&internal->comp4)) {
+                        init_error();
+                    }
+                    HAL_COMP_Start(&internal->comp4);
                 }
-            } else if ((htim->Channel == HEATER_PAD_OPEN_CHECK_ACTIVE_CHANNEL) && (internal->heatpad_cs_status == OPEN_CHECK_STARTED)) {
+            } else if ((htim->Channel == HEATER_PAD_OPEN_CHECK_ACTIVE_CHANNEL) && (internal->heatpad_cs_status == OPEN_CHECK_STARTED) && (peripherals_ready())) {
                 if (can_heatpad_cs_open_check()) { //confirm still able to conduct check on next tick
                     if (!HAL_COMP_GetOutputLevel(&internal->comp4)) {
                         heater_hardware_power_disable(HEATER_HW_HANDLE);
@@ -451,7 +456,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
                         internal->heatpad_cs_status = OPEN_CHECK_COMPLETE;
                     }
                 }
-            } else if ((htim->Channel == HEATER_PAD_SHORT_CHECK_ACTIVE_CHANNEL) && (internal->heatpad_cs_status == SHORT_CHECK_STARTED)) {
+            } else if ((htim->Channel == HEATER_PAD_SHORT_CHECK_ACTIVE_CHANNEL) && (internal->heatpad_cs_status == SHORT_CHECK_STARTED) && (peripherals_ready())) {
                 if (can_heatpad_cs_short_check()) { //confirm still able to conduct check on next tick
                     if (HAL_COMP_GetOutputLevel(&internal->comp4)) {
                         heater_hardware_power_disable(HEATER_HW_HANDLE);
@@ -462,6 +467,13 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
                 }
             } else if ((internal->heatpad_cs_status == OPEN_CHECK_COMPLETE) && (can_heatpad_cs_short_check())) {
                 internal->heatpad_cs_status = SHORT_CHECK_STARTED;
+                HAL_DAC_SetValue(&internal->dac1, HEATPAD_CS_DAC_CHANNEL, DAC_ALIGN_12B_R, HEATER_PAD_SHORT_CIRCUIT_DAC_THRESHOLD);
+                HAL_COMP_Stop(&internal->comp4);
+                internal->comp4.Init.Output = COMP_OUTPUT_NONE;
+                if (HAL_OK != HAL_COMP_Init(&internal->comp4)) {
+                    init_error();
+                }
+                HAL_COMP_Start(&internal->comp4);
             } else if (((internal->heatpad_cs_status == OPEN_CHECK_COMPLETE) && (!can_heatpad_cs_short_check())) || (internal->heatpad_cs_status == SHORT_CHECK_COMPLETE)) {
                 internal->heatpad_cs_status = PREP_RUNNING;
                 HAL_DAC_SetValue(&internal->dac1, HEATPAD_CS_DAC_CHANNEL, DAC_ALIGN_12B_R, HEATER_PAD_OVERCURRENT_DAC_THRESHOLD);
@@ -493,7 +505,7 @@ bool can_heatpad_cs_open_check(void)
 bool can_heatpad_cs_short_check(void)
 {
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
-    return (internal->pwm_pulse_duration < HEATER_PAD_SHORT_CHECK_THRESHOLD);
+    return (internal->pwm_pulse_duration <= HEATER_PAD_SHORT_CHECK_THRESHOLD);
 }
 
 bool heatpad_in_error_state(void)
