@@ -152,6 +152,15 @@ auto PlateControl::update_ramp(thermal_general::Peltier &peltier, Seconds time)
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto PlateControl::update_pid(thermal_general::Peltier &peltier, Seconds time)
     -> double {
+    if ((_status == PlateStatus::INITIAL_HEAT ||
+        _status == PlateStatus::INITIAL_COOL) &&
+        moving_away_from_ambient(peltier.current_temp(), peltier.temp_target)) {
+        if (std::abs(peltier.current_temp() - peltier.temp_target) >
+            proportional_band(peltier.pid)) {
+            return (peltier.temp_target > peltier.current_temp()) ? 1.0 : -1.0;
+        }
+    }
+
     return peltier.pid.compute(peltier.temp_target - peltier.current_temp(),
                                time);
 }
@@ -212,13 +221,17 @@ auto PlateControl::update_fan(Seconds time) -> double {
 // which is to reset a *member* of the class.
 // NOLINTNEXTLINE(readability-make-member-function-const)
 auto PlateControl::reset_control(thermal_general::Peltier &peltier) -> void {
+    peltier.pid.reset();
+
     if (_ramp_rate == RAMP_INFINITE) {
         peltier.temp_target = setpoint();
+        if(!moving_away_from_ambient(peltier.current_temp(), peltier.temp_target)) {
+            peltier.pid.arm_integrator_reset(peltier.temp_target - peltier.current_temp());
+        }
+        
     } else {
         peltier.temp_target = plate_temp();
     }
-    peltier.pid.arm_integrator_reset(peltier.temp_target -
-                                     peltier.current_temp());
 }
 
 // This function *could* be made const, but that obfuscates the intention,
@@ -298,4 +311,21 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
         return channel.current_temp() >= _setpoint;
     }
     return channel.current_temp() <= _setpoint;
+}
+
+[[nodiscard]] auto PlateControl::proportional_band(PID &pid) const -> double {
+    if (pid.kp() == 0.0F) {
+        return 0.0F;
+    }
+    return 1.0F / pid.kp();
+}
+
+[[nodiscard]] auto PlateControl::moving_away_from_ambient(double current, double target) const -> bool {
+    auto target_from_ambient = target - TEMPERATURE_AMBIENT;
+    auto current_from_ambient = current - TEMPERATURE_AMBIENT;
+    // If the new target crosses ambient, we are moving away
+    if((target_from_ambient * current_from_ambient) < 0) {
+        return true;
+    }
+    return std::abs(target_from_ambient) > std::abs(current_from_ambient);
 }

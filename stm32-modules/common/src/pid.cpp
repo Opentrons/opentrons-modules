@@ -59,6 +59,7 @@ auto PID::compute(double error, double sampletime) -> double {
 auto PID::reset() -> void {
     _last_error = 0;
     _last_iterm = 0;
+    _reset_trigger = NONE;
 }
 
 auto PID::arm_integrator_reset(double error) -> void {

@@ -85,6 +85,8 @@ class PlateControl {
     /** Minimum time that the system must be in steady state before
      *  checking for uniformity errors.*/
     static constexpr Seconds UNIFORMITY_CHECK_DELAY = 30.0F;
+    /** Approximation of ambient temperature */
+    static constexpr double TEMPERATURE_AMBIENT = 23.0F;
 
     PlateControl() = delete;
     /**
@@ -266,6 +268,19 @@ class PlateControl {
      */
     [[nodiscard]] auto crossed_setpoint(const thermal_general::Peltier &channel,
                                         bool heating) const -> bool;
+
+    /**
+     * @brief Returns the number of degrees difference from the target
+     * where the controller should use full PID rather than maxing out the
+     * power of the peltiers.
+     *
+     * @param pid The PID controller to calculate the band from
+     * @return The number of degrees to the target temperature where the
+     * controller should use full PID rather than just maxing out the power.
+     */
+    [[nodiscard]] auto proportional_band(PID &pid) const -> double;
+
+    [[nodiscard]] auto moving_away_from_ambient(double current, double target) const -> bool;
 
     PlateStatus _status = PlateStatus::STEADY_STATE;  // State machine for plate
     thermal_general::Peltier &_left;
