@@ -1,6 +1,10 @@
 add_executable(
   ${TARGET_MODULE_NAME}-simulator
   main.cpp
+  cli_parser.cpp
+  simulator_tasks.cpp
+  socket_sim_driver.cpp 
+  stdin_sim_driver.cpp
 )
 
 target_link_libraries(
