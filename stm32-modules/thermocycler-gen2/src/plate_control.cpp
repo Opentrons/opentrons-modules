@@ -152,16 +152,17 @@ auto PlateControl::update_ramp(thermal_general::Peltier &peltier, Seconds time)
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto PlateControl::update_pid(thermal_general::Peltier &peltier, Seconds time)
     -> double {
+    auto current_temp = peltier.current_temp();
     if ((_status == PlateStatus::INITIAL_HEAT ||
         _status == PlateStatus::INITIAL_COOL) &&
-        moving_away_from_ambient(peltier.current_temp(), peltier.temp_target)) {
-        if (std::abs(peltier.current_temp() - peltier.temp_target) >
+        moving_away_from_ambient(current_temp, peltier.temp_target)) {
+        if (std::abs(current_temp - peltier.temp_target) >
             proportional_band(peltier.pid)) {
-            return (peltier.temp_target > peltier.current_temp()) ? 1.0 : -1.0;
+            return (peltier.temp_target > current_temp) ? 1.0 : -1.0;
         }
     }
 
-    return peltier.pid.compute(peltier.temp_target - peltier.current_temp(),
+    return peltier.pid.compute(peltier.temp_target - current_temp,
                                time);
 }
 
@@ -226,7 +227,7 @@ auto PlateControl::reset_control(thermal_general::Peltier &peltier) -> void {
     if (_ramp_rate == RAMP_INFINITE) {
         peltier.temp_target = setpoint();
         if(!moving_away_from_ambient(peltier.current_temp(), peltier.temp_target)) {
-            peltier.pid.arm_integrator_reset(peltier.temp_target - peltier.current_temp());
+            peltier.pid.arm_integrator_reset(peltier.temp_target - peltier.current_temp(), 3);
         }
         
     } else {
