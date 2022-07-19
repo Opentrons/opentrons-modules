@@ -278,9 +278,23 @@ class PlateControl {
      * @return The number of degrees to the target temperature where the
      * controller should use full PID rather than just maxing out the power.
      */
-    [[nodiscard]] auto proportional_band(PID &pid) const -> double;
+    [[nodiscard]] static auto proportional_band(PID &pid) -> double {
+        if (pid.kp() == 0.0F) {
+            return 0.0F;
+        }
+        return 1.0F / pid.kp();
+    }
 
-    [[nodiscard]] auto moving_away_from_ambient(double current, double target) const -> bool;
+    [[nodiscard]] static auto moving_away_from_ambient(double current,
+                                                       double target) -> bool {
+        auto target_from_ambient = target - TEMPERATURE_AMBIENT;
+        auto current_from_ambient = current - TEMPERATURE_AMBIENT;
+        // If the new target crosses ambient, we are moving away
+        if ((target_from_ambient * current_from_ambient) < 0) {
+            return true;
+        }
+        return std::abs(target_from_ambient) > std::abs(current_from_ambient);
+    }
 
     PlateStatus _status = PlateStatus::STEADY_STATE;  // State machine for plate
     thermal_general::Peltier &_left;

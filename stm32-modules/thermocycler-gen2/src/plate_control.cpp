@@ -110,8 +110,9 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
             _current_setpoint = calculate_overshoot(_setpoint, volume_ul);
             // If we're HEATING to a temp less than the heatsink, adjust
             // the setpoint to avoid an over-overshoot
-            if(_current_setpoint < _fan.current_temp()) {
-                _current_setpoint = std::max(current_temp, _current_setpoint - 2);
+            if (_current_setpoint < _fan.current_temp()) {
+                _current_setpoint =
+                    std::max(current_temp, _current_setpoint - 2);
             }
         } else {
             _current_setpoint = calculate_undershoot(_setpoint, volume_ul);
@@ -161,7 +162,7 @@ auto PlateControl::update_pid(thermal_general::Peltier &peltier, Seconds time)
     -> double {
     auto current_temp = peltier.current_temp();
     if ((_status == PlateStatus::INITIAL_HEAT ||
-        _status == PlateStatus::INITIAL_COOL) &&
+         _status == PlateStatus::INITIAL_COOL) &&
         moving_away_from_ambient(current_temp, peltier.temp_target)) {
         if (std::abs(current_temp - peltier.temp_target) >
             proportional_band(peltier.pid)) {
@@ -169,8 +170,7 @@ auto PlateControl::update_pid(thermal_general::Peltier &peltier, Seconds time)
         }
     }
 
-    return peltier.pid.compute(peltier.temp_target - current_temp,
-                               time);
+    return peltier.pid.compute(peltier.temp_target - current_temp, time);
 }
 
 auto PlateControl::update_fan(Seconds time) -> double {
@@ -233,10 +233,12 @@ auto PlateControl::reset_control(thermal_general::Peltier &peltier) -> void {
 
     if (_ramp_rate == RAMP_INFINITE) {
         peltier.temp_target = setpoint();
-        if(!moving_away_from_ambient(peltier.current_temp(), peltier.temp_target)) {
-            peltier.pid.arm_integrator_reset(peltier.temp_target - peltier.current_temp(), 3);
+        if (!moving_away_from_ambient(peltier.current_temp(),
+                                      peltier.temp_target)) {
+            peltier.pid.arm_integrator_reset(
+                peltier.temp_target - peltier.current_temp(), 3);
         }
-        
+
     } else {
         peltier.temp_target = plate_temp();
     }
@@ -319,21 +321,4 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
         return channel.current_temp() >= _setpoint;
     }
     return channel.current_temp() <= _setpoint;
-}
-
-[[nodiscard]] auto PlateControl::proportional_band(PID &pid) const -> double {
-    if (pid.kp() == 0.0F) {
-        return 0.0F;
-    }
-    return 1.0F / pid.kp();
-}
-
-[[nodiscard]] auto PlateControl::moving_away_from_ambient(double current, double target) const -> bool {
-    auto target_from_ambient = target - TEMPERATURE_AMBIENT;
-    auto current_from_ambient = current - TEMPERATURE_AMBIENT;
-    // If the new target crosses ambient, we are moving away
-    if((target_from_ambient * current_from_ambient) < 0) {
-        return true;
-    }
-    return std::abs(target_from_ambient) > std::abs(current_from_ambient);
 }
