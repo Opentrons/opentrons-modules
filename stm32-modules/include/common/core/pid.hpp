@@ -56,7 +56,7 @@ class PID {
     [[nodiscard]] auto windup_limit_low() const -> double;
     [[nodiscard]] auto last_error() const -> double;
     [[nodiscard]] auto last_iterm() const -> double;
-    auto arm_integrator_reset(double error) -> void;
+    auto arm_integrator_reset(double error, double threshold = 0.0F) -> void;
 
   private:
     enum IntegratorResetTrigger { RISING, FALLING, NONE };
@@ -69,4 +69,6 @@ class PID {
     double _last_error;
     double _last_iterm;
     IntegratorResetTrigger _reset_trigger = NONE;
+    // Degrees away from target where reset_trigger should be triggered
+    double _reset_threshold;
 };
