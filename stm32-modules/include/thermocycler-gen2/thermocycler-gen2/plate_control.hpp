@@ -87,6 +87,8 @@ class PlateControl {
     static constexpr Seconds UNIFORMITY_CHECK_DELAY = 30.0F;
     /** Approximation of ambient temperature */
     static constexpr double TEMPERATURE_AMBIENT = 23.0F;
+    /** How far from target temp to reset Integral Windup.*/
+    static constexpr double WINDUP_RESET_THRESHOLD = 3.0F;
 
     PlateControl() = delete;
     /**

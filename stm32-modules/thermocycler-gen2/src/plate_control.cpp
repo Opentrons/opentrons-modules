@@ -236,7 +236,8 @@ auto PlateControl::reset_control(thermal_general::Peltier &peltier) -> void {
         if (!moving_away_from_ambient(peltier.current_temp(),
                                       peltier.temp_target)) {
             peltier.pid.arm_integrator_reset(
-                peltier.temp_target - peltier.current_temp(), 3);
+                peltier.temp_target - peltier.current_temp(),
+                WINDUP_RESET_THRESHOLD);
         }
 
     } else {
