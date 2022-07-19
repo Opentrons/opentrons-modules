@@ -20,7 +20,9 @@ constexpr static std::array<BoardRevSetting, BOARD_REV_INVALID> _revisions{
     {{.pins = {INPUT_FLOATING, INPUT_FLOATING, INPUT_FLOATING},
       .revision = BOARD_REV_1},
      {.pins = {INPUT_PULLDOWN, INPUT_PULLDOWN, INPUT_PULLDOWN},
-      .revision = BOARD_REV_2}}};
+      .revision = BOARD_REV_2},
+     {.pins = {INPUT_PULLUP, INPUT_PULLDOWN, INPUT_PULLDOWN},
+      .revision = BOARD_REV_3}}};
 // The actual revision
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _revision = BoardRevision::BOARD_REV_INVALID;
