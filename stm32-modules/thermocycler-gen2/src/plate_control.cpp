@@ -92,6 +92,8 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
     _remaining_hold_time = hold_time;
     _setpoint = setpoint;
 
+    auto current_temp = plate_temp();
+
     reset_control(_left);
     reset_control(_right);
     reset_control(_center);
@@ -99,13 +101,19 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
 
     // For heating vs cooling, go based off of the average plate. Might
     // have to reconsider this, see how it works for small changes.
-    _status = (setpoint > plate_temp()) ? PlateStatus::INITIAL_HEAT
+    _status = (setpoint > current_temp) ? PlateStatus::INITIAL_HEAT
                                         : PlateStatus::INITIAL_COOL;
 
-    auto distance_to_target = std::abs(setpoint - plate_temp());
+    auto distance_to_target = std::abs(setpoint - current_temp);
     if (distance_to_target > UNDERSHOOT_MIN_DIFFERENCE) {
         if (_status == PlateStatus::INITIAL_HEAT) {
             _current_setpoint = calculate_overshoot(_setpoint, volume_ul);
+            // If we're HEATING to a temp less than the heatsink, adjust
+            // the setpoint to avoid an over-overshoot
+            if (_current_setpoint < _fan.current_temp()) {
+                _current_setpoint =
+                    std::max(current_temp, _current_setpoint - 2);
+            }
         } else {
             _current_setpoint = calculate_undershoot(_setpoint, volume_ul);
         }
@@ -152,8 +160,17 @@ auto PlateControl::update_ramp(thermal_general::Peltier &peltier, Seconds time)
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto PlateControl::update_pid(thermal_general::Peltier &peltier, Seconds time)
     -> double {
-    return peltier.pid.compute(peltier.temp_target - peltier.current_temp(),
-                               time);
+    auto current_temp = peltier.current_temp();
+    if ((_status == PlateStatus::INITIAL_HEAT ||
+         _status == PlateStatus::INITIAL_COOL) &&
+        moving_away_from_ambient(current_temp, peltier.temp_target)) {
+        if (std::abs(current_temp - peltier.temp_target) >
+            proportional_band(peltier.pid)) {
+            return (peltier.temp_target > current_temp) ? 1.0 : -1.0;
+        }
+    }
+
+    return peltier.pid.compute(peltier.temp_target - current_temp, time);
 }
 
 auto PlateControl::update_fan(Seconds time) -> double {
@@ -212,13 +229,20 @@ auto PlateControl::update_fan(Seconds time) -> double {
 // which is to reset a *member* of the class.
 // NOLINTNEXTLINE(readability-make-member-function-const)
 auto PlateControl::reset_control(thermal_general::Peltier &peltier) -> void {
+    peltier.pid.reset();
+
     if (_ramp_rate == RAMP_INFINITE) {
         peltier.temp_target = setpoint();
+        if (!moving_away_from_ambient(peltier.current_temp(),
+                                      peltier.temp_target)) {
+            peltier.pid.arm_integrator_reset(
+                peltier.temp_target - peltier.current_temp(),
+                WINDUP_RESET_THRESHOLD);
+        }
+
     } else {
         peltier.temp_target = plate_temp();
     }
-    peltier.pid.arm_integrator_reset(peltier.temp_target -
-                                     peltier.current_temp());
 }
 
 // This function *could* be made const, but that obfuscates the intention,
