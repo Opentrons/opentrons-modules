@@ -79,8 +79,8 @@ heater_hardware *HEATER_HW_HANDLE = NULL;
 #define HEATER_PAD_SHORT_CHECK_ACTIVE_CHANNEL HAL_TIM_ACTIVE_CHANNEL_4
 #define HEATER_PAD_LL_SETCOMPARE LL_TIM_OC_SetCompareCH3
 #define HEATPAD_CS_DAC_CHANNEL DAC_CHANNEL_1
-#define HEATPAD_CS_PIN (1<<7)
-#define HEATPAD_CS_PORT GPIOE
+#define HEATPAD_CS_PIN GPIO_PIN_0
+#define HEATPAD_CS_PORT GPIOB
 
 static const uint32_t OFFSETS_PAGE_ADDRESS = 0x0807F000; //second last page in flash memory. Last page reserved for serial number storage
 
