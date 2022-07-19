@@ -92,6 +92,8 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
     _remaining_hold_time = hold_time;
     _setpoint = setpoint;
 
+    auto current_temp = plate_temp();
+
     reset_control(_left);
     reset_control(_right);
     reset_control(_center);
@@ -99,13 +101,18 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
 
     // For heating vs cooling, go based off of the average plate. Might
     // have to reconsider this, see how it works for small changes.
-    _status = (setpoint > plate_temp()) ? PlateStatus::INITIAL_HEAT
+    _status = (setpoint > current_temp) ? PlateStatus::INITIAL_HEAT
                                         : PlateStatus::INITIAL_COOL;
 
-    auto distance_to_target = std::abs(setpoint - plate_temp());
+    auto distance_to_target = std::abs(setpoint - current_temp);
     if (distance_to_target > UNDERSHOOT_MIN_DIFFERENCE) {
         if (_status == PlateStatus::INITIAL_HEAT) {
             _current_setpoint = calculate_overshoot(_setpoint, volume_ul);
+            // If we're HEATING to a temp less than the heatsink, adjust
+            // the setpoint to avoid an over-overshoot
+            if(_current_setpoint < _fan.current_temp()) {
+                _current_setpoint = std::max(current_temp, _current_setpoint - 2);
+            }
         } else {
             _current_setpoint = calculate_undershoot(_setpoint, volume_ul);
         }
