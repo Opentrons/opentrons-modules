@@ -190,14 +190,13 @@ bool thermal_hardware_set_fan_power(double power) {
     if(power > 1.0F) {
         return false;
     }
-    if(power == 0.0) {
-        // The fan controller will default to full power if it thinks the
-        // control line is disconnected, and unfortunately it thinks a 0% PWM
-        // is a disconnection. So the lowest allowable PWM is 0.01, which 
-        // still results in the fan staying still.
-        power = 0.01;
-    }
     uint32_t pwm = power * (double)FAN_MAX_PWM;
+    
+    // The fan controller will default to full power if it thinks the
+    // control line is disconnected, and unfortunately it thinks a 0% PWM
+    // is a disconnection. So the lowest allowable PWM is 0.01, which 
+    // still results in the fan staying still.
+    if(pwm == 0) { pwm = 1; }
     __HAL_TIM_SET_COMPARE(&hardware.fan_timer, FAN_CHANNEL, pwm);
     return true;
 }
