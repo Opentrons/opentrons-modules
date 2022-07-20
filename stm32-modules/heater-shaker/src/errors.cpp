@@ -17,11 +17,15 @@ const char* const MOTOR_BLDC_STARTUP_FAILED =
     "ERR105:main motor:startup failed OK\n";
 const char* const MOTOR_BLDC_SPEEDSENSOR_FAILED =
     "ERR106:main motor:speedsensor failed OK\n";
-const char* const MOTOR_BLDC_DRIVER_FAULT = "ERR107:main motor:driver fault OK\n";
-const char* const MOTOR_BLDC_DRIVER_ERROR = "ERR108:main motor:driver error OK\n";
-const char* const MOTOR_SPURIOUS_ERROR = "ERR109:main motor:spurious error OK\n";
+const char* const MOTOR_BLDC_DRIVER_FAULT =
+    "ERR107:main motor:driver fault OK\n";
+const char* const MOTOR_BLDC_DRIVER_ERROR =
+    "ERR108:main motor:driver error OK\n";
+const char* const MOTOR_SPURIOUS_ERROR =
+    "ERR109:main motor:spurious error OK\n";
 const char* const MOTOR_UNKNOWN_ERROR = "ERR110:main motor:unknown error OK\n";
-const char* const MOTOR_UNABLE_TO_MOVE = "ERR111:main motor:unable to move OK\n";
+const char* const MOTOR_UNABLE_TO_MOVE =
+    "ERR111:main motor:unable to move OK\n";
 const char* const MOTOR_ILLEGAL_SPEED = "ERR120:main motor:illegal speed OK\n";
 const char* const MOTOR_ILLEGAL_RAMP_RATE =
     "ERR121:main motor:illegal ramp rate OK\n";
