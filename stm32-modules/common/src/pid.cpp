@@ -16,7 +16,8 @@ PID::PID(double kp, double ki, double kd, double sampletime,
       _windup_limit_high(windup_limit_high),
       _windup_limit_low(windup_limit_low),
       _last_error(0),
-      _last_iterm(0) {}
+      _last_iterm(0),
+      _reset_threshold(0) {}
 
 auto PID::kp() const -> double { return _kp; }
 
@@ -35,8 +36,8 @@ auto PID::windup_limit_low() const -> double { return _windup_limit_low; }
 auto PID::last_error() const -> double { return _last_error; }
 
 auto PID::compute(double error) -> double {
-    if (((_reset_trigger == FALLING) && (error <= 0)) ||
-        ((_reset_trigger == RISING) && (error > 0))) {
+    if (((_reset_trigger == FALLING) && (error <= _reset_threshold)) ||
+        ((_reset_trigger == RISING) && (error > -_reset_threshold))) {
         _last_iterm = 0;
         _reset_trigger = NONE;
     }
@@ -59,12 +60,14 @@ auto PID::compute(double error, double sampletime) -> double {
 auto PID::reset() -> void {
     _last_error = 0;
     _last_iterm = 0;
+    _reset_trigger = NONE;
 }
 
-auto PID::arm_integrator_reset(double error) -> void {
+auto PID::arm_integrator_reset(double error, double threshold) -> void {
     if (error <= 0) {
         _reset_trigger = RISING;
     } else {
         _reset_trigger = FALLING;
     }
+    _reset_threshold = std::abs(threshold);
 }

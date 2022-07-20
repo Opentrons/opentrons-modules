@@ -298,6 +298,37 @@ SCENARIO("PID controller") {
 
     GIVEN(
         "a pid controller with an iterm and integrator reset armed with a "
+        "positive error value with a threshold of 2") {
+        auto p = PID(0, 1, 0, 1);
+        p.arm_integrator_reset(25, 2);
+        WHEN("repeatedly calculating controls without an error zero-cross") {
+            std::vector<float> inputs = {3, 3, 3, 3, 3, 3, 3, 3};
+            std::vector<float> results(8);
+            std::transform(
+                inputs.cbegin(), inputs.cend(), results.begin(),
+                [&p](const float& error) { return p.compute(error); });
+            THEN("the integrator term should accumulate") {
+                std::vector<float> intended = {3, 6, 9, 12, 15, 18, 21, 24};
+                REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
+            }
+        }
+        WHEN(
+            "repeatedly calculating results that include a single error "
+            "zero-cross") {
+            std::vector<float> inputs = {3, 3, 3, 3, 1, 1, 1, 1};
+            std::vector<float> results(8);
+            std::transform(
+                inputs.cbegin(), inputs.cend(), results.begin(),
+                [&p](const float& error) { return p.compute(error); });
+            THEN("the integrator should be reset when the error crosses 2") {
+                std::vector<float> intended = {3, 6, 9, 12, 1, 2, 3, 4};
+                REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
+            }
+        }
+    }
+
+    GIVEN(
+        "a pid controller with an iterm and integrator reset armed with a "
         "negative error value") {
         auto p = PID(0, 1, 0, 1);
         p.arm_integrator_reset(-25);
@@ -338,6 +369,38 @@ SCENARIO("PID controller") {
                 "the integrator should be reset only after the first zero "
                 "cross") {
                 std::vector<float> intended = {-3, -6, 3, 6, 5, 6, 4, 6};
+                REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
+            }
+        }
+    }
+
+    GIVEN(
+        "a pid controller with an iterm and integrator reset armed with a "
+        "negative error value and a threshold of 2") {
+        auto p = PID(0, 1, 0, 1);
+        p.arm_integrator_reset(-25, 2);
+        WHEN("repeatedly calculating controls without an error zero-cross") {
+            std::vector<float> inputs = {-3, -3, -3, -3, -3, -3, -3, -3};
+            std::vector<float> results(8);
+            std::transform(
+                inputs.cbegin(), inputs.cend(), results.begin(),
+                [&p](const float& error) { return p.compute(error); });
+            THEN("the integrator term should accumulate") {
+                std::vector<float> intended = {-3,  -6,  -9,  -12,
+                                               -15, -18, -21, -24};
+                REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
+            }
+        }
+        WHEN(
+            "repeatedly calculating results that include a single error "
+            "zero-cross") {
+            std::vector<float> inputs = {-3, -3, -3, -3, -1, -1, -1, -1};
+            std::vector<float> results(8);
+            std::transform(
+                inputs.cbegin(), inputs.cend(), results.begin(),
+                [&p](const float& error) { return p.compute(error); });
+            THEN("the integrator should be reset when the error crosses -2") {
+                std::vector<float> intended = {-3, -6, -9, -12, -1, -2, -3, -4};
                 REQUIRE_THAT(results, Catch::Matchers::Equals(intended));
             }
         }

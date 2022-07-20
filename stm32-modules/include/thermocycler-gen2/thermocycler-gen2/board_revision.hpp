@@ -15,6 +15,7 @@ namespace board_revision {
 enum BoardRevision {
     BOARD_REV_1 = 1,
     BOARD_REV_2 = 2,
+    BOARD_REV_3 = 3,
     BOARD_REV_INVALID = 0xFF
 };
 
