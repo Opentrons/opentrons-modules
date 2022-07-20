@@ -11,4 +11,6 @@ class ThermalPolicy {
     auto set_peltier_heat_power(double power) -> bool;
 
     auto set_peltier_cool_power(double power) -> bool;
+
+    auto set_fan_power(double power) -> bool;
 };

@@ -145,3 +145,54 @@ TEST_CASE("thermal task SetPeltierDebug functionality") {
         }
     }
 }
+
+TEST_CASE("thermal task fan command functionality") {
+    auto *tasks = tasks::BuildTasks();
+    TestThermalPolicy policy;
+    REQUIRE(!policy._enabled);
+    WHEN("setting fans to manual power") {
+        // Preload fans with power to test that they get reset
+        policy._fans = -1.0F;
+
+        auto power = GENERATE(0.0F, 0.1F, 0.5F, 1.0F);
+
+        auto msg = messages::SetFanManualMessage{.id = 123, .power = power};
+        tasks->_thermal_queue.backing_deque.push_back(msg);
+        tasks->_thermal_task.run_once(policy);
+        THEN("the task sets the fan power accordingly") {
+            REQUIRE(policy._fans == power);
+        }
+        THEN("the fans are set to manual mode") {
+            REQUIRE(!tasks->_thermal_queue.has_message());
+            REQUIRE(tasks->_thermal_task.get_fan().manual);
+        }
+        THEN("an ack is sent to host comms task") {
+            REQUIRE(tasks->_comms_queue.has_message());
+            auto host_msg = tasks->_comms_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
+                host_msg));
+            auto ack = std::get<messages::AcknowledgePrevious>(host_msg);
+            REQUIRE(ack.responding_to_id == msg.id);
+            REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
+        }
+        AND_WHEN("setting fans to automatic mode") {
+            tasks->_comms_queue.backing_deque.clear();
+            auto auto_msg = messages::SetFanAutomaticMessage{.id = 456};
+            tasks->_thermal_queue.backing_deque.push_back(auto_msg);
+            tasks->_thermal_task.run_once(policy);
+            THEN("the message is consumed and the fans are set to automatic") {
+                REQUIRE(!tasks->_thermal_queue.has_message());
+                REQUIRE(!tasks->_thermal_task.get_fan().manual);
+            }
+            THEN("an ack is sent to host comms task") {
+                REQUIRE(tasks->_comms_queue.has_message());
+                auto host_msg = tasks->_comms_queue.backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
+                    host_msg));
+                auto ack = std::get<messages::AcknowledgePrevious>(host_msg);
+                REQUIRE(ack.responding_to_id == auto_msg.id);
+                REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
+            }
+        }
+    }
+}

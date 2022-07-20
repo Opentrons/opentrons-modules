@@ -41,11 +41,25 @@
 // Peltier drive circuitry cannot support higher PWM than 0.9
 #define MAX_PELTIER_POWER (0.9)
 
+#define FAN_PWM_Pin (GPIO_PIN_6)
+#define FAN_PWM_GPIO_Port (GPIOA)
+#define FAN_PULSE_WIDTH_FREQ (1000)
+
+#define TIM16_PRESCALER (67)
+// Calculates out to 2499
+#define TIM16_RELOAD ((TIMER_CLOCK_FREQ / (FAN_PULSE_WIDTH_FREQ * (TIM16_PRESCALER + 1))) - 1)
+
+// PWM should be scaled from 0 to FAN_MAX_PWM, inclusive
+#define FAN_MAX_PWM (TIM16_RELOAD + 1)
+
+#define FAN_CHANNEL (TIM_CHANNEL_1)
+
 // ***************************************************************************
 // Local typedefs
 
 struct thermal_hardware {
-    TIM_HandleTypeDef timer;
+    TIM_HandleTypeDef peltier_timer;
+    TIM_HandleTypeDef fan_timer;
     bool initialized;
     bool enabled;
     double cool_side_power;
@@ -57,7 +71,8 @@ struct thermal_hardware {
 // Local variables
 
 static struct thermal_hardware hardware = {
-    .timer = {},
+    .peltier_timer = {},
+    .fan_timer = {},
     .initialized = false,
     .enabled = false,
     .cool_side_power = 0.0F,
@@ -72,6 +87,8 @@ static struct thermal_hardware hardware = {
  */
 static void init_peltier_timer();
 
+static void init_fan_timer();
+
 /**
  * @brief Initializes the GPIO lines for the 12v Enable and Peltier Enable,
  * and enables the 12v rail on the PCB.
@@ -85,8 +102,12 @@ void thermal_hardware_init() {
     if(!hardware.initialized) {
         init_gpio();
         init_peltier_timer();
+        init_fan_timer();
 
         hardware.initialized = true;
+
+        thermal_hardware_set_fan_power(0);
+        thermal_hardware_disable_peltiers();
     }
 }
 
@@ -105,8 +126,8 @@ void thermal_hardware_disable_peltiers() {
     hardware.enabled = false;
     HAL_GPIO_WritePin(PELTIER_ENABLE_PORT, PELTIER_ENABLE_PIN, GPIO_PIN_RESET);
     
-    __HAL_TIM_SET_COMPARE(&hardware.timer, HEATING_CHANNEL, 0);
-    __HAL_TIM_SET_COMPARE(&hardware.timer, COOLING_CHANNEL, 0);
+    __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, HEATING_CHANNEL, 0);
+    __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, COOLING_CHANNEL, 0);
 
     hardware.hot_side_power = 0.0F;
     hardware.cool_side_power = 0.0F;
@@ -128,8 +149,8 @@ bool thermal_hardware_set_peltier_heat(double power) {
     }
 
     uint32_t pwm = power * (double)MAX_PWM;
-    __HAL_TIM_SET_COMPARE(&hardware.timer, COOLING_CHANNEL, 0);
-    __HAL_TIM_SET_COMPARE(&hardware.timer, HEATING_CHANNEL, pwm);
+    __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, COOLING_CHANNEL, 0);
+    __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, HEATING_CHANNEL, pwm);
     
     hardware.hot_side_power = power;
     hardware.cool_side_power = 0.0F;
@@ -153,8 +174,8 @@ bool thermal_hardware_set_peltier_cool(double power) {
     }
     
     uint32_t pwm = power * (double)MAX_PWM;
-    __HAL_TIM_SET_COMPARE(&hardware.timer, HEATING_CHANNEL, 0);
-    __HAL_TIM_SET_COMPARE(&hardware.timer, COOLING_CHANNEL, pwm);
+    __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, HEATING_CHANNEL, 0);
+    __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, COOLING_CHANNEL, pwm);
     
     hardware.hot_side_power = 0.0F;
     hardware.cool_side_power = power;
@@ -162,6 +183,24 @@ bool thermal_hardware_set_peltier_cool(double power) {
     return true;
 }
 
+bool thermal_hardware_set_fan_power(double power) {
+    if(!hardware.initialized) {
+        return false;
+    }
+    if(power > 1.0F) {
+        return false;
+    }
+    if(power == 0.0) {
+        // The fan controller will default to full power if it thinks the
+        // control line is disconnected, and unfortunately it thinks a 0% PWM
+        // is a disconnection. So the lowest allowable PWM is 0.01, which 
+        // still results in the fan staying still.
+        power = 0.01;
+    }
+    uint32_t pwm = power * (double)FAN_MAX_PWM;
+    __HAL_TIM_SET_COMPARE(&hardware.fan_timer, FAN_CHANNEL, pwm);
+    return true;
+}
 
 // ***************************************************************************
 // Static function implementation
@@ -173,20 +212,20 @@ static void init_peltier_timer() {
     TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-    hardware.timer.Instance = TIM1;
-    hardware.timer.Init.Prescaler = TIM1_PRESCALER;
-    hardware.timer.Init.CounterMode = TIM_COUNTERMODE_UP;
-    hardware.timer.Init.Period = TIM1_RELOAD;
-    hardware.timer.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    hardware.timer.Init.RepetitionCounter = 0;
-    hardware.timer.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-    hal_ret = HAL_TIM_PWM_Init(&hardware.timer);
+    hardware.peltier_timer.Instance = TIM1;
+    hardware.peltier_timer.Init.Prescaler = TIM1_PRESCALER;
+    hardware.peltier_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
+    hardware.peltier_timer.Init.Period = TIM1_RELOAD;
+    hardware.peltier_timer.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    hardware.peltier_timer.Init.RepetitionCounter = 0;
+    hardware.peltier_timer.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    hal_ret = HAL_TIM_PWM_Init(&hardware.peltier_timer);
     configASSERT(hal_ret == HAL_OK);
 
     sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
     sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
     sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-    hal_ret = HAL_TIMEx_MasterConfigSynchronization(&hardware.timer, &sMasterConfig);
+    hal_ret = HAL_TIMEx_MasterConfigSynchronization(&hardware.peltier_timer, &sMasterConfig);
     configASSERT(hal_ret == HAL_OK);
 
     // PWM1 means the output is enabled if the current timer count is LESS THAN
@@ -201,12 +240,12 @@ static void init_peltier_timer() {
     sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
     sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
 
-    hal_ret = HAL_TIM_PWM_ConfigChannel(&hardware.timer,
+    hal_ret = HAL_TIM_PWM_ConfigChannel(&hardware.peltier_timer,
                                         &sConfigOC,
                                         HEATING_CHANNEL);
     configASSERT(hal_ret == HAL_OK);
 
-    hal_ret = HAL_TIM_PWM_ConfigChannel(&hardware.timer,
+    hal_ret = HAL_TIM_PWM_ConfigChannel(&hardware.peltier_timer,
                                         &sConfigOC,
                                         COOLING_CHANNEL);
     configASSERT(hal_ret == HAL_OK);
@@ -225,7 +264,7 @@ static void init_peltier_timer() {
     sBreakDeadTimeConfig.Break2Filter = 0;
     sBreakDeadTimeConfig.Break2AFMode = TIM_BREAK_AFMODE_INPUT;
     sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
-    hal_ret = HAL_TIMEx_ConfigBreakDeadTime(&hardware.timer, &sBreakDeadTimeConfig);
+    hal_ret = HAL_TIMEx_ConfigBreakDeadTime(&hardware.peltier_timer, &sBreakDeadTimeConfig);
     configASSERT(hal_ret == HAL_OK);
     
     // Set up the PWM GPIO pins 
@@ -245,10 +284,61 @@ static void init_peltier_timer() {
     HAL_GPIO_Init(COOLING_PORT, &GPIO_InitStruct);
 
     // Activate both PWM channels with a compare val of 0
-    __HAL_TIM_SET_COMPARE(&hardware.timer, HEATING_CHANNEL, 0);
-    __HAL_TIM_SET_COMPARE(&hardware.timer, COOLING_CHANNEL, 0);
-    HAL_TIM_PWM_Start(&hardware.timer, HEATING_CHANNEL);
-    HAL_TIM_PWM_Start(&hardware.timer, COOLING_CHANNEL);
+    __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, HEATING_CHANNEL, 0);
+    __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, COOLING_CHANNEL, 0);
+    HAL_TIM_PWM_Start(&hardware.peltier_timer, HEATING_CHANNEL);
+    HAL_TIM_PWM_Start(&hardware.peltier_timer, COOLING_CHANNEL);
+}
+
+static void init_fan_timer() {
+    HAL_StatusTypeDef hal_ret = HAL_ERROR;
+    TIM_OC_InitTypeDef sConfigOC = {0};
+    TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+
+    // Configure timer 16 for PWMN control on channel 1
+    hardware.fan_timer.Instance = TIM16;
+    hardware.fan_timer.Init.Prescaler = TIM16_PRESCALER;
+    hardware.fan_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
+    hardware.fan_timer.Init.Period = TIM16_RELOAD;
+    hardware.fan_timer.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    hardware.fan_timer.Init.RepetitionCounter = 0;
+    hardware.fan_timer.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    hal_ret = HAL_TIM_Base_Init(&hardware.fan_timer);
+    configASSERT(hal_ret == HAL_OK);
+    hal_ret = HAL_TIM_PWM_Init(&hardware.fan_timer);
+    configASSERT(hal_ret == HAL_OK);
+    sConfigOC.OCMode = TIM_OCMODE_PWM1;
+    sConfigOC.Pulse = 0;
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+    sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+    sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
+    sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+    sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+    hal_ret = HAL_TIM_PWM_ConfigChannel(&hardware.fan_timer, &sConfigOC, FAN_CHANNEL);
+    configASSERT(hal_ret == HAL_OK);
+    sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+    sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+    sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+    sBreakDeadTimeConfig.DeadTime = 0;
+    sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+    sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+    sBreakDeadTimeConfig.BreakFilter = 0;
+    sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+    hal_ret = HAL_TIMEx_ConfigBreakDeadTime(&hardware.fan_timer, &sBreakDeadTimeConfig);
+    configASSERT(hal_ret == HAL_OK);
+
+    __GPIOA_CLK_ENABLE();
+
+    GPIO_InitStruct.Pin = FAN_PWM_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF1_TIM16;
+    HAL_GPIO_Init(FAN_PWM_GPIO_Port, &GPIO_InitStruct);
+
+    (void)HAL_TIM_PWM_Start(&hardware.fan_timer, FAN_CHANNEL);
 }
 
 static void init_gpio() {

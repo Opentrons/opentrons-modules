@@ -14,6 +14,7 @@ concept ThermalPolicy = requires(Policy& p) {
     { p.disable_peltier() } -> std::same_as<void>;
     { p.set_peltier_heat_power(1.0) } -> std::same_as<bool>;
     { p.set_peltier_cool_power(1.0) } -> std::same_as<bool>;
+    { p.set_fan_power(1.0) } -> std::same_as<bool>;
 };
 
 using Message = messages::ThermalMessage;
@@ -25,6 +26,11 @@ struct ThermalReadings {
     double plate_temp = 0.0F;
 
     uint32_t last_tick = 0;
+};
+
+struct Fan {
+    bool manual = false;
+    double power = 0.0F;
 };
 
 template <template <class> class QueueImpl>
@@ -53,7 +59,8 @@ class ThermalTask {
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _readings(),
           _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
-                     false) {}
+                     false),
+          _fan() {}
     ThermalTask(const ThermalTask& other) = delete;
     auto operator=(const ThermalTask& other) -> ThermalTask& = delete;
     ThermalTask(ThermalTask&& other) noexcept = delete;
@@ -82,6 +89,8 @@ class ThermalTask {
         return _readings;
     }
 
+    [[nodiscard]] auto get_fan() const -> Fan { return _fan; }
+
   private:
     template <ThermalPolicy Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
@@ -108,6 +117,11 @@ class ThermalTask {
             _readings.heatsink_temp = std::get<double>(res);
         } else {
             _readings.heatsink_temp = 0.0F;
+        }
+
+        // Update thermal control
+        if (!_fan.manual) {
+            policy.set_fan_power(0.0F);
         }
     }
 
@@ -152,10 +166,38 @@ class ThermalTask {
             _task_registry->send_to_address(response, Queues::HostAddress));
     }
 
+    template <ThermalPolicy Policy>
+    auto visit_message(const messages::SetFanManualMessage& message,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        _fan.manual = true;
+        _fan.power = std::clamp(message.power, double(0.0F), double(1.0F));
+
+        policy.set_fan_power(_fan.power);
+
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = message.id};
+        static_cast<void>(
+            _task_registry->send_to_address(response, Queues::HostAddress));
+    }
+
+    template <ThermalPolicy Policy>
+    auto visit_message(const messages::SetFanAutomaticMessage& message,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        _fan.manual = false;
+
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = message.id};
+        static_cast<void>(
+            _task_registry->send_to_address(response, Queues::HostAddress));
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     ThermalReadings _readings;
     thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> _converter;
+    Fan _fan;
 };
 
 };  // namespace thermal_task

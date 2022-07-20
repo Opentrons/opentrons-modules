@@ -292,8 +292,8 @@ struct SetFanManual {
             return std::make_pair(ParseResult(), input);
         }
         auto ret = SetFanManual{.power = std::get<0>(arguments).value};
-        if(ret.power < min_power || ret.power > max_power) {
-            return std::make_pair(ParseResult(), input); 
+        if (ret.power < min_power || ret.power > max_power) {
+            return std::make_pair(ParseResult(), input);
         }
         return std::make_pair(ret, res.second);
     }

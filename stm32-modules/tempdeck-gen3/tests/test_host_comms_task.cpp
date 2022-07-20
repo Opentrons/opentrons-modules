@@ -275,6 +275,126 @@ SCENARIO("host comms commands to thermal task") {
             }
         }
     }
+    WHEN("sending gcode M106") {
+        auto message_text = std::string("M106 S0.1\n");
+        auto message_obj =
+            messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                &*message_text.begin(), &*message_text.end()));
+        REQUIRE(tasks->_comms_queue.try_send(message_obj));
+        auto written =
+            tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+        THEN("the task does not immediately ack") {
+            REQUIRE(written == tx_buf.begin());
+        }
+        THEN("a message is sent to the thermal task") {
+            REQUIRE(tasks->_thermal_queue.has_message());
+            auto thermal_msg = tasks->_thermal_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::SetFanManualMessage>(
+                thermal_msg));
+            auto id = std::get<messages::SetFanManualMessage>(thermal_msg).id;
+            REQUIRE_THAT(
+                std::get<messages::SetFanManualMessage>(thermal_msg).power,
+                Catch::Matchers::WithinAbs(0.1, 0.001));
+            AND_WHEN("sending response with wrong id") {
+                auto response =
+                    messages::AcknowledgePrevious{.responding_to_id = id + 1};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an error is printed") {
+                    auto expected = errorstring(
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+            AND_WHEN("sending an error response") {
+                auto response = messages::AcknowledgePrevious{
+                    .responding_to_id = id,
+                    .with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an ack is printed") {
+                    auto expected =
+                        errorstring(errors::ErrorCode::THERMAL_PELTIER_ERROR);
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+            AND_WHEN("sending a good response") {
+                auto response =
+                    messages::AcknowledgePrevious{.responding_to_id = id};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an ack is printed") {
+                    auto expected = "M106 OK\n";
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+        }
+    }
+    WHEN("sending gcode M107") {
+        auto message_text = std::string("M107\n");
+        auto message_obj =
+            messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                &*message_text.begin(), &*message_text.end()));
+        REQUIRE(tasks->_comms_queue.try_send(message_obj));
+        auto written =
+            tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+        THEN("the task does not immediately ack") {
+            REQUIRE(written == tx_buf.begin());
+        }
+        THEN("a message is sent to the thermal task") {
+            REQUIRE(tasks->_thermal_queue.has_message());
+            auto thermal_msg = tasks->_thermal_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::SetFanAutomaticMessage>(
+                thermal_msg));
+            auto id =
+                std::get<messages::SetFanAutomaticMessage>(thermal_msg).id;
+            AND_WHEN("sending response with wrong id") {
+                auto response =
+                    messages::AcknowledgePrevious{.responding_to_id = id + 1};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an error is printed") {
+                    auto expected = errorstring(
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+            AND_WHEN("sending an error response") {
+                auto response = messages::AcknowledgePrevious{
+                    .responding_to_id = id,
+                    .with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an ack is printed") {
+                    auto expected =
+                        errorstring(errors::ErrorCode::THERMAL_PELTIER_ERROR);
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+            AND_WHEN("sending a good response") {
+                auto response =
+                    messages::AcknowledgePrevious{.responding_to_id = id};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an ack is printed") {
+                    auto expected = "M107 OK\n";
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+        }
+    }
 }
 
 SCENARIO("host comms usb disconnect") {

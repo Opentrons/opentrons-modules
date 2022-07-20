@@ -38,6 +38,15 @@ void HAL_MspDeInit(void)
     HAL_NVIC_DisableIRQ(PendSV_IRQn);
 }
 
+void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
+{
+    if(htim_base->Instance==TIM16)
+    {
+        /* Peripheral clock enable */
+        __HAL_RCC_TIM16_CLK_ENABLE();
+    }
+}
+
 /**
 * @brief TIM_Base MSP De-Initialization
 * @param htim_base: TIM_Base handle pointer
@@ -51,6 +60,11 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
         __HAL_RCC_TIM7_CLK_DISABLE();
         /* TIM6 interrupt DeInit */
         HAL_NVIC_DisableIRQ(TIM7_IRQn);
+    }
+    else if(htim_base->Instance==TIM16)
+    {
+        /* Peripheral clock disable */
+        __HAL_RCC_TIM16_CLK_DISABLE();
     }
 }
 
