@@ -28,8 +28,8 @@ struct SimThermalPolicy {
         _fan = std::clamp(power, double(0.0), double(1.0));
         return true;
     }
-  private:
 
+  private:
     bool _enabled = false;
     double _power = 0.0F;  // Positive for heat, negative for cool
     double _fan = 0.0F;
