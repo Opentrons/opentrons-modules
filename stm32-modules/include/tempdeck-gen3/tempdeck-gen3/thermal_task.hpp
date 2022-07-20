@@ -60,6 +60,7 @@ class ThermalTask {
           _readings(),
           _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
                      false),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
           _fan() {}
     ThermalTask(const ThermalTask& other) = delete;
     auto operator=(const ThermalTask& other) -> ThermalTask& = delete;
