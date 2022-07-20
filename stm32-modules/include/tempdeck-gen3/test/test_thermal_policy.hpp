@@ -24,6 +24,11 @@ struct TestThermalPolicy {
         return true;
     }
 
+    auto set_fan_power(double power) -> bool {
+        _fans = std::clamp(power, (double)0.0F, (double)1.0F);
+        return true;
+    }
+
     // Test integration functions
 
     auto is_cooling() -> bool { return _enabled && (_power < 0.0); }
@@ -32,4 +37,5 @@ struct TestThermalPolicy {
 
     bool _enabled = false;
     double _power = 0.0F;  // Positive for heat, negative for cool
+    double _fans = 0.0F;
 };

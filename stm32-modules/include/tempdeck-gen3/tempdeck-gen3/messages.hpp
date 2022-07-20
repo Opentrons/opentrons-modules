@@ -116,6 +116,15 @@ struct SetPeltierDebugMessage {
     double power;
 };
 
+struct SetFanManualMessage {
+    uint32_t id;
+    double power;
+};
+
+struct SetFanAutomaticMessage {
+    uint32_t id;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -126,5 +135,6 @@ using SystemMessage =
 using UIMessage = ::std::variant<std::monostate, UpdateUIMessage>;
 using ThermalMessage =
     ::std::variant<std::monostate, ThermistorReadings, GetTempDebugMessage,
-                   SetPeltierDebugMessage>;
+                   SetPeltierDebugMessage, SetFanManualMessage,
+                   SetFanAutomaticMessage>;
 };  // namespace messages

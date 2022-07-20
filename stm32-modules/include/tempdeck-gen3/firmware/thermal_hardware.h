@@ -47,6 +47,8 @@ bool thermal_hardware_set_peltier_heat(double power);
  */
 bool thermal_hardware_set_peltier_cool(double power);
 
+bool thermal_hardware_set_fan_power(double power);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus

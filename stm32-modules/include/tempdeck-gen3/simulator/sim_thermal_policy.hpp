@@ -24,12 +24,13 @@ struct SimThermalPolicy {
         return true;
     }
 
-    // Test integration functions
+    auto set_fan_power(double power) -> bool {
+        _fan = std::clamp(power, double(0.0), double(1.0));
+        return true;
+    }
 
-    auto is_cooling() -> bool { return _enabled && (_power < 0.0); }
-
-    auto is_heating() -> bool { return _enabled && (_power > 0.0); }
-
+  private:
     bool _enabled = false;
     double _power = 0.0F;  // Positive for heat, negative for cool
+    double _fan = 0.0F;
 };

@@ -26,7 +26,7 @@ class Tempdeck():
         '''Internal utility to send a command and receive the response'''
         self._ser.write(msg.encode())
         if self._debug:
-            print(f'Sending: {msg}\n')
+            print(f'Sending: {msg}')
         ret = self._ser.readline()
         if guard_ret:
             if not ret.startswith(guard_ret.encode()):
@@ -34,7 +34,7 @@ class Tempdeck():
         if ret.startswith('ERR'.encode()):
             raise RuntimeError(ret)
         if self._debug:
-            print(f'Received: {ret.decode()}\n')
+            print(f'Received: {ret.decode()}')
         return ret.decode()
 
     _TEMP_RE = re.compile('^M105.D PT:(?P<plate>.+) HST:(?P<heatsink>.+) PA:(.+) HSA:(.+) OK\n')
@@ -57,3 +57,22 @@ class Tempdeck():
         '''
         send = f'M104.D S{power}\n'
         self._send_and_recv(send, 'M104.D OK')
+
+    def set_fan_power(self, power: float = 0):
+        '''
+        Set the fan output PWM
+        '''
+        send = f'M106 S{power}\n'
+        self._send_and_recv(send, 'M106 OK')
+    
+    def set_fan_automatic(self):
+        '''
+        Set the fan to automatic mode
+        '''
+        self._send_and_recv('M107\n', 'M107 OK')
+
+    def dfu(self):
+        '''
+        Enter the bootloader. This will cause future comms to fail.
+        '''
+        self._ser.write(b'dfu\n')
