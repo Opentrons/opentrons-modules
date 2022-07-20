@@ -3,73 +3,77 @@
 using namespace errors;
 
 const char* const NO_ERROR = "";
-const char* const USB_TX_OVERRUN = "ERR001:tx buffer overrun\n";
-const char* const INTERNAL_QUEUE_FULL = "ERR002:internal queue full\n";
-const char* const UNHANDLED_GCODE = "ERR003:unhandled gcode\n";
-const char* const GCODE_CACHE_FULL = "ERR004:gcode cache full\n";
+const char* const USB_TX_OVERRUN = "ERR001:tx buffer overrun OK\n";
+const char* const INTERNAL_QUEUE_FULL = "ERR002:internal queue full OK\n";
+const char* const UNHANDLED_GCODE = "ERR003:unhandled gcode OK\n";
+const char* const GCODE_CACHE_FULL = "ERR004:gcode cache full OK\n";
 const char* const BAD_MESSAGE_ACKNOWLEDGEMENT =
-    "ERR005:bad message acknowledgement\n";
-const char* const MOTOR_FOC_DURATION = "ERR101:main motor:FOC_DURATION\n";
-const char* const MOTOR_BLDC_OVERVOLT = "ERR102:main motor:overvolt\n";
-const char* const MOTOR_BLDC_UNDERVOLT = "ERR103:main motor:undervolt\n";
-const char* const MOTOR_BLDC_OVERTEMP = "ERR104:main motor:overtemp\n";
+    "ERR005:bad message acknowledgement OK\n";
+const char* const MOTOR_FOC_DURATION = "ERR101:main motor:FOC_DURATION OK\n";
+const char* const MOTOR_BLDC_OVERVOLT = "ERR102:main motor:overvolt OK\n";
+const char* const MOTOR_BLDC_UNDERVOLT = "ERR103:main motor:undervolt OK\n";
+const char* const MOTOR_BLDC_OVERTEMP = "ERR104:main motor:overtemp OK\n";
 const char* const MOTOR_BLDC_STARTUP_FAILED =
-    "ERR105:main motor:startup failed\n";
+    "ERR105:main motor:startup failed OK\n";
 const char* const MOTOR_BLDC_SPEEDSENSOR_FAILED =
-    "ERR106:main motor:speedsensor failed\n";
-const char* const MOTOR_BLDC_DRIVER_FAULT = "ERR107:main motor:driver fault\n";
-const char* const MOTOR_BLDC_DRIVER_ERROR = "ERR108:main motor:driver error\n";
-const char* const MOTOR_SPURIOUS_ERROR = "ERR109:main motor:spurious error\n";
-const char* const MOTOR_UNKNOWN_ERROR = "ERR110:main motor:unknown error\n";
-const char* const MOTOR_UNABLE_TO_MOVE = "ERR111:main motor:unable to move\n";
-const char* const MOTOR_ILLEGAL_SPEED = "ERR120:main motor:illegal speed\n";
+    "ERR106:main motor:speedsensor failed OK\n";
+const char* const MOTOR_BLDC_DRIVER_FAULT =
+    "ERR107:main motor:driver fault OK\n";
+const char* const MOTOR_BLDC_DRIVER_ERROR =
+    "ERR108:main motor:driver error OK\n";
+const char* const MOTOR_SPURIOUS_ERROR =
+    "ERR109:main motor:spurious error OK\n";
+const char* const MOTOR_UNKNOWN_ERROR = "ERR110:main motor:unknown error OK\n";
+const char* const MOTOR_UNABLE_TO_MOVE =
+    "ERR111:main motor:unable to move OK\n";
+const char* const MOTOR_ILLEGAL_SPEED = "ERR120:main motor:illegal speed OK\n";
 const char* const MOTOR_ILLEGAL_RAMP_RATE =
-    "ERR121:main motor:illegal ramp rate\n";
-const char* const MOTOR_BAD_HOME = "ERR122:main motor:bad home\n";
-const char* const MOTOR_NOT_HOME = "ERR123:main motor:not home (required)\n";
+    "ERR121:main motor:illegal ramp rate OK\n";
+const char* const MOTOR_BAD_HOME = "ERR122:main motor:bad home OK\n";
+const char* const MOTOR_NOT_HOME = "ERR123:main motor:not home (required) OK\n";
 const char* const MOTOR_NOT_STOPPED =
-    "ERR124:main motor:not stopped (required)\n";
-const char* const PLATE_LOCK_TIMEOUT = "ERR125:plate lock:timeout\n";
+    "ERR124:main motor:not stopped (required) OK\n";
+const char* const PLATE_LOCK_TIMEOUT = "ERR125:plate lock:timeout OK\n";
 const char* const PLATE_LOCK_NOT_CLOSED =
-    "ERR126:main motor:plate lock not closed (required)\n";
+    "ERR126:main motor:plate lock not closed (required) OK\n";
 const char* const HEATER_THERMISTOR_A_DISCONNECTED =
-    "ERR201:heater:thermistor a disconnected\n";
+    "ERR201:heater:thermistor a disconnected OK\n";
 const char* const HEATER_THERMISTOR_A_SHORT =
-    "ERR202:heater:thermistor a short\n";
+    "ERR202:heater:thermistor a short OK\n";
 const char* const HEATER_THERMISTOR_A_OVERTEMP =
-    "ERR203:heater:thermistor a overtemp\n";
+    "ERR203:heater:thermistor a overtemp OK\n";
 const char* const HEATER_THERMISTOR_B_DISCONNECTED =
-    "ERR205:heater:thermistor b disconnected\n";
+    "ERR205:heater:thermistor b disconnected OK\n";
 const char* const HEATER_THERMISTOR_B_SHORT =
-    "ERR206:heater:thermistor b short\n";
+    "ERR206:heater:thermistor b short OK\n";
 const char* const HEATER_THERMISTOR_B_OVERTEMP =
-    "ERR207:heater:thermistor b overtemp\n";
+    "ERR207:heater:thermistor b overtemp OK\n";
 const char* const HEATER_THERMISTOR_BOARD_SHORT =
-    "ERR208:heater:board thermistor short\n";
+    "ERR208:heater:board thermistor short OK\n";
 const char* const HEATER_THERMISTOR_BOARD_OVERTEMP =
-    "ERR209:heater:board thermistor overtemp\n";
+    "ERR209:heater:board thermistor overtemp OK\n";
 const char* const HEATER_THERMISTOR_BOARD_DISCONNECTED =
-    "ERR210:heater:board thermistor disconnected\n";
+    "ERR210:heater:board thermistor disconnected OK\n";
 const char* const HEATER_HARDWARE_ERROR_LATCH =
-    "ERR211:heater:heatpad thermistor overtemp or disconnected\n";
+    "ERR211:heater:heatpad thermistor overtemp or disconnected OK\n";
 const char* const HEATER_CONSTANT_OUT_OF_RANGE =
-    "ERR212:heater:control constant out of range\n";
+    "ERR212:heater:control constant out of range OK\n";
 const char* const HEATER_ILLEGAL_TARGET_TEMPERATURE =
-    "ERR213:heater:target temperature out of range\n";
+    "ERR213:heater:target temperature out of range OK\n";
 const char* const HEATER_HARDWARE_ERROR_CIRCUIT =
-    "ERR214:heater:heatpad overcurrent or circuit open or shorted\n";
+    "ERR214:heater:heatpad overcurrent or circuit open or shorted OK\n";
 const char* const SYSTEM_SERIAL_NUMBER_INVALID =
-    "ERR301:system:serial number invalid format\n";
+    "ERR301:system:serial number invalid format OK\n";
 const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
-    "ERR302:system:HAL error, busy, or timeout\n";
+    "ERR302:system:HAL error, busy, or timeout OK\n";
 const char* const SYSTEM_LED_I2C_NOT_READY =
-    "ERR303:system:LED I2C not ready\n";
+    "ERR303:system:LED I2C not ready OK\n";
 const char* const SYSTEM_LED_TRANSMIT_ERROR =
     "ERR304:system:LED I2C transmission or FreeRTOS notification passing "
-    "failed\n";
-const char* const SYSTEM_FLASH_ERROR = "ERR305:system:flash write failed\n";
+    "failed OK\n";
+const char* const SYSTEM_FLASH_ERROR = "ERR305:system:flash write failed OK\n";
 
-const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
+const char* const UNKNOWN_ERROR = "ERR-1:unknown error code OK\n";
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define HANDLE_CASE(errname) \
