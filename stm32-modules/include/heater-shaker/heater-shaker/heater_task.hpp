@@ -406,18 +406,18 @@ class HeaterTask {
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (state.system_status == State::CONTROLLING) {
-            uint8_t error = policy.set_power_output(pid.compute(setpoint.value() - pad_temperature()));
-            if (error) {
+            HEATPAD_CIRCUIT_ERROR error = policy.set_power_output(pid.compute(setpoint.value() - pad_temperature()));
+            if (error != HEATPAD_CIRCUIT_ERROR::NONE) {
                 state.system_status = State::ERROR;
                 setpoint = std::nullopt;
                 auto error_message = messages::ErrorMessage{};
-                if (error == 9){
+                if (error == HEATPAD_CIRCUIT_ERROR::OPEN){
                     error_message.code = errors::ErrorCode::HEATER_HARDWARE_OPEN_CIRCUIT;
                     state.error_bitmap |= State::OPEN_CIRCUIT_ERROR;
-                } else if (error == 10) {
+                } else if (error == HEATPAD_CIRCUIT_ERROR::SHORT) {
                     error_message.code = errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT;
                     state.error_bitmap |= State::SHORT_CIRCUIT_ERROR;
-                } else {
+                } else if (error == HEATPAD_CIRCUIT_ERROR::OVERCURRENT) {
                     error_message.code = errors::ErrorCode::HEATER_HARDWARE_OVERCURRENT_CIRCUIT;
                     state.error_bitmap |= State::OVERCURRENT_CIRCUIT_ERROR;
                 }

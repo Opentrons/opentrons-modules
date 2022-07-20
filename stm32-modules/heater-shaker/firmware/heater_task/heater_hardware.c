@@ -12,6 +12,7 @@
 #include "stm32f3xx_hal_comp.h"
 
 #include "heater_hardware.h"
+#include "systemwide.h"
 
 static void init_error(void);
 static void adc_setup(ADC_HandleTypeDef* adc);
@@ -117,6 +118,12 @@ static void gpio_setup(void) {
     gpio_init.Alternate = GPIO_AF2_TIM4;
     gpio_init.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(HEATER_PAD_ENABLE_PORT, &gpio_init);
+
+    gpio_init.Pin = GPIO_PIN_3;
+    gpio_init.Mode = GPIO_MODE_OUTPUT_PP;
+    gpio_init.Pull = GPIO_PULLDOWN;
+    gpio_init.Alternate = 0;
+    HAL_GPIO_Init(GPIOB, &gpio_init);
 }
 
 static void adc_setup(ADC_HandleTypeDef* adc) {
@@ -285,13 +292,19 @@ void heater_hardware_power_disable(heater_hardware* hardware) {
     }
 }
 
-uint8_t heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
+HEATPAD_CIRCUIT_ERROR heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
     hw_internal* internal = (hw_internal*)hardware->hardware_internal;
     if (!internal) {
         init_error();
     }
     if (heatpad_in_error_state()) {
-        return (uint8_t)internal->heatpad_cs_status;
+        if (internal->heatpad_cs_status == ERROR_SHORT_CIRCUIT) {
+            return SHORT;
+        } else if (internal->heatpad_cs_status == ERROR_OPEN_CIRCUIT) {
+            return OPEN;
+        } else if (internal->heatpad_cs_status == ERROR_OVERCURRENT) {
+            return OVERCURRENT;
+        }
     }
     if (internal->heatpad_cs_status == IDLE) {
         internal->heatpad_cs_status = RUNNING;
@@ -317,7 +330,7 @@ uint8_t heater_hardware_power_set(heater_hardware* hardware, uint16_t setting) {
     } else {
         HEATER_PAD_LL_SETCOMPARE(internal->pad_tim.Instance, setting);
     }
-    return 0;
+    return NONE;
 }
 
 
@@ -458,12 +471,14 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
                 }
             } else if ((htim->Channel == HEATER_PAD_SHORT_CHECK_ACTIVE_CHANNEL) && (internal->heatpad_cs_status == SHORT_CHECK_STARTED) && (peripherals_ready())) {
                 if (can_heatpad_cs_short_check()) { //confirm still able to conduct check on next tick
+                    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
                     if (HAL_COMP_GetOutputLevel(&internal->comp4)) {
                         heater_hardware_power_disable(HEATER_HW_HANDLE);
                         internal->heatpad_cs_status = ERROR_SHORT_CIRCUIT;
                     } else {
                         internal->heatpad_cs_status = SHORT_CHECK_COMPLETE;
                     }
+                    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
                 }
             } else if ((internal->heatpad_cs_status == OPEN_CHECK_COMPLETE) && (can_heatpad_cs_short_check())) {
                 internal->heatpad_cs_status = SHORT_CHECK_STARTED;
@@ -505,7 +520,7 @@ bool can_heatpad_cs_open_check(void)
 bool can_heatpad_cs_short_check(void)
 {
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
-    return (internal->pwm_pulse_duration <= HEATER_PAD_SHORT_CHECK_THRESHOLD);
+    return (internal->pwm_pulse_duration < HEATER_PAD_SHORT_CHECK_THRESHOLD);
 }
 
 bool heatpad_in_error_state(void)

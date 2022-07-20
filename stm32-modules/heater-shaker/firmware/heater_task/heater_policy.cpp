@@ -38,7 +38,7 @@ HeaterPolicy::HeaterPolicy(heater_hardware* hardware)
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-make-member-function-const)
-auto HeaterPolicy::set_power_output(double relative_power) -> uint8_t {
+auto HeaterPolicy::set_power_output(double relative_power) -> HEATPAD_CIRCUIT_ERROR {
     const double relative_clamped = std::clamp(relative_power, 0.0, 1.0);
     return (heater_hardware_power_set(
         hardware_handle,
