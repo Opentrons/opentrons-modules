@@ -124,6 +124,7 @@ static void gpio_setup(void) {
     gpio_init.Pull = GPIO_PULLDOWN;
     gpio_init.Alternate = 0;
     HAL_GPIO_Init(GPIOB, &gpio_init);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
 }
 
 static void adc_setup(ADC_HandleTypeDef* adc) {
