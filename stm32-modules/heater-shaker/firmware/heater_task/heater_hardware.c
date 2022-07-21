@@ -39,6 +39,7 @@ typedef struct {
     uint16_t period_count;
     _Atomic bool update_lock;
     _Atomic uint16_t cached_pulse_setting;
+    _Atomic bool update_while_locked;
 } hw_internal;
 
 hw_internal _internals = {
@@ -61,6 +62,7 @@ hw_internal _internals = {
 .period_count = 0,
 .update_lock = false,
 .cached_pulse_setting = 0,
+.update_while_locked = false,
 };
 
 heater_hardware *HEATER_HW_HANDLE = NULL;
@@ -331,6 +333,7 @@ HEATPAD_CIRCUIT_ERROR heater_hardware_power_set(heater_hardware* hardware, uint1
             HEATER_PAD_LL_SETCOMPARE(internal->pad_tim.Instance, setting);
         }
     } else {
+        internal->update_while_locked = true;
         internal->cached_pulse_setting = setting;
     }
     return HEATPAD_CIRCUIT_NO_ERROR;
@@ -450,6 +453,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
             internal->period_count++;
             if ((internal->heatpad_cs_status == RUNNING) && (internal->period_count > HEATER_PAD_CIRCUIT_CHECK_PERIOD) && (htim->Channel == HEATER_PAD_SHORT_CHECK_ACTIVE_CHANNEL)) {
                 internal->update_lock = true;
+                internal->update_while_locked = false;
                 HAL_DAC_SetValue(&internal->dac1, HEATPAD_CS_DAC_CHANNEL, DAC_ALIGN_12B_R, HEATER_PAD_CIRCUIT_DAC_THRESHOLD);
                 HAL_COMP_Stop(&internal->comp4);
                 internal->comp4.Init.Output = COMP_OUTPUT_NONE;
@@ -492,7 +496,9 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
                 HAL_COMP_Start(&internal->comp4);
                 internal->period_count = 0;
                 internal->heatpad_cs_status = RUNNING;
-                heater_hardware_power_set(HEATER_HW_HANDLE, internal->cached_pulse_setting);
+                if (internal->update_while_locked) {
+                    heater_hardware_power_set(HEATER_HW_HANDLE, internal->cached_pulse_setting);
+                }
             }
         }
     }
