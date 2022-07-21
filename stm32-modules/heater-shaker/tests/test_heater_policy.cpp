@@ -2,8 +2,6 @@
 
 #include <cstddef>
 
-#include "systemwide.h"
-
 TestHeaterPolicy::TestHeaterPolicy(bool pgood, bool can_reset)
     : power_good_val(pgood),
       may_reset(can_reset),
