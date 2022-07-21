@@ -34,11 +34,10 @@ typedef struct {
     COMP_HandleTypeDef comp4;
     TIM_OC_InitTypeDef pwm_config;
     bool heater_started;
-    heatpad_cs_state heatpad_cs_status;
-    uint16_t pwm_pulse_duration;
+    _Atomic heatpad_cs_state heatpad_cs_status;
+    _Atomic uint16_t pwm_pulse_duration;
     uint16_t period_count;
-    atomic_bool update_lock;
-    uint16_t cached_pulse_setting;
+    _Atomic bool update_lock;
 } hw_internal;
 
 hw_internal _internals = {
@@ -60,7 +59,6 @@ hw_internal _internals = {
 .pwm_pulse_duration = 0,
 .period_count = 0,
 .update_lock = false,
-.cached_pulse_setting = 0,
 };
 
 heater_hardware *HEATER_HW_HANDLE = NULL;
@@ -330,8 +328,6 @@ HEATPAD_CIRCUIT_ERROR heater_hardware_power_set(heater_hardware* hardware, uint1
         } else {
             HEATER_PAD_LL_SETCOMPARE(internal->pad_tim.Instance, setting);
         }
-    } else {
-        internal->cached_pulse_setting = setting;
     }
     return HEATPAD_CIRCUIT_NO_ERROR;
 }
@@ -492,7 +488,6 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
                 HAL_COMP_Start(&internal->comp4);
                 internal->period_count = 0;
                 internal->heatpad_cs_status = RUNNING;
-                heater_hardware_power_set(HEATER_HW_HANDLE, internal->cached_pulse_setting);
             }
         }
     }
