@@ -328,4 +328,61 @@ struct SetFanAutomatic {
     }
 };
 
+struct SetPIDConstants {
+    /**
+     * SetPIDConstants uses M301. Sets the PWM of the fans as a percentage
+     * between 0 and 1.
+     *
+     * M301 P[p] I[i] D[d]\n
+     */
+    using ParseResult = std::optional<SetPIDConstants>;
+    static constexpr auto prefix = std::array{'M', '3', '0', '1'};
+    static constexpr const char* response = "M301 OK\n";
+
+    struct ArgP {
+        static constexpr auto prefix = std::array{'P'};
+        static constexpr bool required = true;
+        bool present = false;
+        float value = 0.0F;
+    };
+    struct ArgI {
+        static constexpr auto prefix = std::array{'I'};
+        static constexpr bool required = true;
+        bool present = false;
+        float value = 0.0F;
+    };
+    struct ArgD {
+        static constexpr auto prefix = std::array{'D'};
+        static constexpr bool required = true;
+        bool present = false;
+        float value = 0.0F;
+    };
+
+    double const_p, const_i, const_d;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<ArgP, ArgI, ArgD>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        auto ret = SetPIDConstants{.const_p = std::get<0>(arguments).value,
+                                   .const_i = std::get<1>(arguments).value,
+                                   .const_d = std::get<2>(arguments).value};
+        return std::make_pair(ret, res.second);
+    }
+};
+
 };  // namespace gcode
