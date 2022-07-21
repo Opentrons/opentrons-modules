@@ -13,7 +13,10 @@ add_executable(${TARGET_MODULE_NAME}
     test_thermistor_task.cpp
     test_thermal_task.cpp
     # gcode tests
+    test_m104d.cpp
     test_m105d.cpp
+    test_m106.cpp
+    test_m107.cpp 
     test_m115.cpp
     test_m996.cpp
     test_dfu_gcode.cpp

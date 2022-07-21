@@ -10,6 +10,7 @@ set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
 set(THERMAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thermal_control")
+set(THERMISTOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thermistor")
 set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32G491")
 set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
 set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
@@ -26,8 +27,9 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${UI_DIR}/ui_hardware.c
   ${UI_DIR}/ui_policy.cpp
   ${THERMAL_DIR}/freertos_thermal_task.cpp
-  ${THERMAL_DIR}/freertos_thermistor_task.cpp
-  ${THERMAL_DIR}/thermistor_policy.cpp
+  ${THERMAL_DIR}/thermal_policy.cpp
+  ${THERMISTOR_DIR}/freertos_thermistor_task.cpp
+  ${THERMISTOR_DIR}/thermistor_policy.cpp
 )
 
 # Add source files that should NOT be checked by clang-tidy here
@@ -38,7 +40,8 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/system_serial_number.c
   ${SYSTEM_DIR}/stm32g4xx_it.c
   ${SYSTEM_DIR}/stm32g4xx_hal_msp.c
-  ${THERMAL_DIR}/thermistor_hardware.c
+  ${THERMAL_DIR}/thermal_hardware.c
+  ${THERMISTOR_DIR}/thermistor_hardware.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
   )

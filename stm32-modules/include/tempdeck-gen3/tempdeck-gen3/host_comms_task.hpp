@@ -33,10 +33,14 @@ class HostCommsTask {
   private:
     using GCodeParser =
         gcode::GroupParser<gcode::GetSystemInfo, gcode::EnterBootloader,
-                           gcode::SetSerialNumber, gcode::GetTemperatureDebug>;
+                           gcode::SetSerialNumber, gcode::GetTemperatureDebug,
+                           gcode::SetPeltierDebug, gcode::SetFanManual,
+                           gcode::SetFanAutomatic>;
     using AckOnlyCache =
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-        AckCache<10, gcode::EnterBootloader, gcode::SetSerialNumber>;
+        AckCache<10, gcode::EnterBootloader, gcode::SetSerialNumber,
+                 gcode::SetPeltierDebug, gcode::SetFanManual,
+                 gcode::SetFanAutomatic>;
     using GetSystemInfoCache = AckCache<4, gcode::GetSystemInfo>;
     using GetTempDebugCache = AckCache<4, gcode::GetTemperatureDebug>;
 
@@ -375,6 +379,71 @@ class HostCommsTask {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
             get_temp_debug_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetPeltierDebug& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message =
+            messages::SetPeltierDebugMessage{.id = id, .power = gcode.power};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_system_info_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetFanManual& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message =
+            messages::SetFanManualMessage{.id = id, .power = gcode.power};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_system_info_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetFanAutomatic& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::SetFanAutomaticMessage{.id = id};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_system_info_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);

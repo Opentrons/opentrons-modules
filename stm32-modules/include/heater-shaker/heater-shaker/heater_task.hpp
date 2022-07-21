@@ -616,8 +616,8 @@ class HeaterTask {
                         HOLDING_THRESHOLD) &&
                        (pad_temperature() < HOT_TO_TOUCH_THRESHOLD)) {
                 state.led_status = State::COOLING;
-                message.mode = LED_MODE::PULSE;
-                message.color = LED_COLOR::BLUE;
+                message.mode = LED_MODE::SOLID_HOLDING;
+                message.color = LED_COLOR::WHITE;
             }
         } else if (state.system_status == State::IDLE) {
             if (pad_temperature() > HOT_TO_TOUCH_THRESHOLD) {
