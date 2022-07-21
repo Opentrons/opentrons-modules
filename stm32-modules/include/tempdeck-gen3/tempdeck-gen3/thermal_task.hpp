@@ -2,6 +2,7 @@
 
 #include "core/thermistor_conversion.hpp"
 #include "hal/message_queue.hpp"
+#include "ot_utils/core/pid.hpp"
 #include "tempdeck-gen3/messages.hpp"
 #include "tempdeck-gen3/tasks.hpp"
 #include "thermistor_lookups.hpp"
@@ -33,6 +34,13 @@ struct Fan {
     double power = 0.0F;
 };
 
+struct Peltier {
+    bool manual = false;
+    bool target_set = false;
+    double power = 0.0F;
+    double target = 0.0F;
+};
+
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
 class ThermalTask {
@@ -53,6 +61,14 @@ class ThermalTask {
     static constexpr uint16_t ADC_BIT_MAX = static_cast<uint16_t>(
         (ADC_MAX_V * static_cast<double>(0x7FFF)) / ADC_VREF);
 
+    static constexpr double PELTIER_KP_DEFAULT = 0.1F;
+    static constexpr double PELTIER_KI_DEFAULT = 0.05F;
+    static constexpr double PELTIER_KD_DEFAULT = 0.0F;
+
+    static constexpr double PELTIER_K_MAX = 200.0F;
+    static constexpr double PELTIER_K_MIN = -200.0F;
+    static constexpr double PELTIER_WINDUP_LIMIT = 1.0F;
+
     explicit ThermalTask(Queue& q, Aggregator* aggregator)
         : _message_queue(q),
           _task_registry(aggregator),
@@ -61,7 +77,11 @@ class ThermalTask {
           _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
                      false),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          _fan() {}
+          _fan(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          _peltier(),
+          _pid(PELTIER_KP_DEFAULT, PELTIER_KI_DEFAULT, PELTIER_KD_DEFAULT, 1.0F,
+               PELTIER_WINDUP_LIMIT, -PELTIER_WINDUP_LIMIT) {}
     ThermalTask(const ThermalTask& other) = delete;
     auto operator=(const ThermalTask& other) -> ThermalTask& = delete;
     ThermalTask(ThermalTask&& other) noexcept = delete;
@@ -127,6 +147,22 @@ class ThermalTask {
     }
 
     template <ThermalPolicy Policy>
+    auto visit_message(const messages::DeactivateAllMessage& message,
+                       Policy& policy) -> void {
+        _fan.manual = false;
+        policy.set_fan_power(0);
+
+        _peltier.manual = false;
+        _peltier.target_set = false;
+        policy.disable_peltier();
+
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = message.id};
+        static_cast<void>(
+            _task_registry->send_to_address(response, Queues::HostAddress));
+    }
+
+    template <ThermalPolicy Policy>
     auto visit_message(const messages::GetTempDebugMessage& message,
                        Policy& policy) -> void {
         static_cast<void>(policy);
@@ -138,6 +174,22 @@ class ThermalTask {
             .plate_adc = static_cast<uint16_t>(_readings.plate_adc),
             .heatsink_adc = static_cast<uint16_t>(_readings.heatsink_adc)};
         static_cast<void>(_task_registry->send(response));
+    }
+
+    template <ThermalPolicy Policy>
+    auto visit_message(const messages::SetTemperatureMessage& message,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+
+        _peltier.manual = false;
+        _peltier.target_set = true;
+        _peltier.target = message.target;
+        _pid.reset();
+
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = message.id};
+        static_cast<void>(
+            _task_registry->send_to_address(response, Queues::HostAddress));
     }
 
     template <ThermalPolicy Policy>
@@ -194,11 +246,31 @@ class ThermalTask {
             _task_registry->send_to_address(response, Queues::HostAddress));
     }
 
+    template <ThermalPolicy Policy>
+    auto visit_message(const messages::SetPIDConstantsMessage& message,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+
+        auto p = std::clamp(message.p, PELTIER_K_MIN, PELTIER_K_MAX);
+        auto i = std::clamp(message.i, PELTIER_K_MIN, PELTIER_K_MAX);
+        auto d = std::clamp(message.d, PELTIER_K_MIN, PELTIER_K_MAX);
+
+        _pid = ot_utils::pid::PID(p, i, d, 1.0, PELTIER_WINDUP_LIMIT,
+                                  -PELTIER_WINDUP_LIMIT);
+
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = message.id};
+        static_cast<void>(
+            _task_registry->send_to_address(response, Queues::HostAddress));
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     ThermalReadings _readings;
     thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> _converter;
     Fan _fan;
+    Peltier _peltier;
+    ot_utils::pid::PID _pid;
 };
 
 };  // namespace thermal_task

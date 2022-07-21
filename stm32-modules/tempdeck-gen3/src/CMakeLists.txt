@@ -6,6 +6,7 @@
 find_package(Python)
 find_package(Git QUIET)
 
+set(SHARED_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../cpp-utils/src)
 # Generate the thermistor table for this project
 set(COMMON_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src)
 
@@ -59,7 +60,8 @@ set(CORE_LINTABLE_SOURCES
     PARENT_SCOPE)
 set(CORE_NONLINTABLE_SOURCES
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
+    ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
+    ${SHARED_SRC_DIR}/pid.cpp)
 
 add_library(${TARGET_MODULE_NAME}-core STATIC
   ${CORE_LINTABLE_SOURCES}

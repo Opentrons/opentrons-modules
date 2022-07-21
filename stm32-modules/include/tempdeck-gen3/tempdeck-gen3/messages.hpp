@@ -99,6 +99,10 @@ struct ThermistorReadings {
     uint32_t heatsink;
 };
 
+struct DeactivateAllMessage {
+    uint32_t id;
+};
+
 struct GetTempDebugMessage {
     uint32_t id;
 };
@@ -125,6 +129,16 @@ struct SetFanAutomaticMessage {
     uint32_t id;
 };
 
+struct SetTemperatureMessage {
+    uint32_t id;
+    double target;
+};
+
+struct SetPIDConstantsMessage {
+    uint32_t id;
+    double p, i, d;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -136,5 +150,6 @@ using UIMessage = ::std::variant<std::monostate, UpdateUIMessage>;
 using ThermalMessage =
     ::std::variant<std::monostate, ThermistorReadings, GetTempDebugMessage,
                    SetPeltierDebugMessage, SetFanManualMessage,
-                   SetFanAutomaticMessage>;
+                   SetFanAutomaticMessage, DeactivateAllMessage,
+                   SetTemperatureMessage, SetPIDConstantsMessage>;
 };  // namespace messages
