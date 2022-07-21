@@ -196,6 +196,50 @@ struct GetTemperatureDebug {
 };
 
 /**
+ * @brief SetTemperature is a command to set a temperature target for the
+ * peltiers. There is one parameter, the target temp.
+ *
+ * M104 S[temp]\n
+ *
+ */
+struct SetTemperature {
+    using ParseResult = std::optional<SetTemperature>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '4'};
+    static constexpr const char* response = "M104 OK\n";
+
+    struct TargetArg {
+        static constexpr auto prefix = std::array{'S'};
+        static constexpr bool required = true;
+        bool present = false;
+        float value = 0.0F;
+    };
+
+    double target;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res =
+            gcode::SingleParser<TargetArg>::parse_gcode(input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        auto ret = SetTemperature{.target = std::get<0>(arguments).value};
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+/**
  * @brief SetPeltierDebug is a command used to set the pulse width of the
  * peltiers on the Temp Deck. The only parameter is the power, which is
  * represented as a floating point value in the range [-1,1]. A value of
