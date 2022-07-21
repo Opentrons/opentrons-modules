@@ -112,6 +112,10 @@ class ThermalTask {
 
     [[nodiscard]] auto get_fan() const -> Fan { return _fan; }
 
+    [[nodiscard]] auto get_peltier() const -> Peltier { return _peltier; }
+
+    [[nodiscard]] auto get_pid() const -> ot_utils::pid::PID { return _pid; }
+
   private:
     template <ThermalPolicy Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
@@ -197,24 +201,35 @@ class ThermalTask {
                        Policy& policy) -> void {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = message.id};
-        if (std::abs(message.power) > 1.0F) {
-            response.with_error =
-                errors::ErrorCode::THERMAL_PELTIER_POWER_ERROR;
-        } else if (message.power != 0.0F) {
-            policy.enable_peltier();
-            bool ok = false;
-            if (message.power > 0.0F) {
-                ok = policy.set_peltier_heat_power(message.power);
-            } else {
-                ok = policy.set_peltier_cool_power(std::abs(message.power));
-            }
-            if (!ok) {
-                response.with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR;
-                policy.disable_peltier();
-            }
+        if (_peltier.target_set) {
+            // If the thermal task is busy with a target, don't override that
+            response.with_error = errors::ErrorCode::THERMAL_PELTIER_BUSY;
         } else {
-            policy.disable_peltier();
+            if (std::abs(message.power) > 1.0F) {
+                response.with_error =
+                    errors::ErrorCode::THERMAL_PELTIER_POWER_ERROR;
+            } else if (message.power != 0.0F) {
+                policy.enable_peltier();
+                bool ok = false;
+                if (message.power > 0.0F) {
+                    ok = policy.set_peltier_heat_power(message.power);
+                } else {
+                    ok = policy.set_peltier_cool_power(std::abs(message.power));
+                }
+                if (!ok) {
+                    response.with_error =
+                        errors::ErrorCode::THERMAL_PELTIER_ERROR;
+                    policy.disable_peltier();
+                } else {
+                    _peltier.manual = true;
+                    _peltier.power = message.power;
+                }
+            } else {
+                policy.disable_peltier();
+                _peltier.manual = false;
+            }
         }
+
         static_cast<void>(
             _task_registry->send_to_address(response, Queues::HostAddress));
     }
