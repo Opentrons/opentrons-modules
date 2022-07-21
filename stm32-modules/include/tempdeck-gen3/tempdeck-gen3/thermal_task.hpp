@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "core/thermistor_conversion.hpp"
 #include "hal/message_queue.hpp"
 #include "ot_utils/core/pid.hpp"
@@ -23,8 +25,8 @@ using Message = messages::ThermalMessage;
 struct ThermalReadings {
     uint32_t plate_adc = 0;
     uint32_t heatsink_adc = 0;
-    double heatsink_temp = 0.0F;
-    double plate_temp = 0.0F;
+    std::optional<double> heatsink_temp = 0.0F;
+    std::optional<double> plate_temp = 0.0F;
 
     uint32_t last_tick = 0;
 };
@@ -68,6 +70,8 @@ class ThermalTask {
     static constexpr double PELTIER_K_MAX = 200.0F;
     static constexpr double PELTIER_K_MIN = -200.0F;
     static constexpr double PELTIER_WINDUP_LIMIT = 1.0F;
+
+    static constexpr double MILLISECONDS_TO_SECONDS = 0.001F;
 
     explicit ThermalTask(Queue& q, Aggregator* aggregator)
         : _message_queue(q),
@@ -127,6 +131,9 @@ class ThermalTask {
     auto visit_message(const messages::ThermistorReadings& message,
                        Policy& policy) -> void {
         static_cast<void>(policy);
+
+        auto tick_difference = message.timestamp - _readings.last_tick;
+
         _readings.heatsink_adc = message.heatsink;
         _readings.plate_adc = message.plate;
         _readings.last_tick = message.timestamp;
@@ -146,7 +153,8 @@ class ThermalTask {
 
         // Update thermal control
         if (!_fan.manual) {
-            policy.set_fan_power(0.0F);
+            update_thermal_control(policy,
+                                   tick_difference * MILLISECONDS_TO_SECONDS);
         }
     }
 
@@ -173,10 +181,18 @@ class ThermalTask {
 
         auto response = messages::GetTempDebugResponse{
             .responding_to_id = message.id,
-            .plate_temp = static_cast<float>(_readings.plate_temp),
-            .heatsink_temp = static_cast<float>(_readings.heatsink_temp),
+            .plate_temp = 0,
+            .heatsink_temp = 0,
             .plate_adc = static_cast<uint16_t>(_readings.plate_adc),
             .heatsink_adc = static_cast<uint16_t>(_readings.heatsink_adc)};
+        if (_readings.plate_temp.has_value()) {
+            response.plate_temp =
+                static_cast<float>(_readings.plate_temp.value());
+        }
+        if (_readings.heatsink_temp.has_value()) {
+            response.heatsink_temp =
+                static_cast<float>(_readings.heatsink_temp.value());
+        }
         static_cast<void>(_task_registry->send(response));
     }
 
@@ -277,6 +293,38 @@ class ThermalTask {
             messages::AcknowledgePrevious{.responding_to_id = message.id};
         static_cast<void>(
             _task_registry->send_to_address(response, Queues::HostAddress));
+    }
+
+    /**
+     * @brief Updates control of the peltier and fan based off of the current
+     * state of the system.
+     *
+     * @param[in] policy The hardware control policy
+     * @param[in] sampletime The number of seconds since the last temp reading
+     */
+    template <ThermalPolicy Policy>
+    auto update_thermal_control(Policy& policy, double sampletime) -> void {
+        if (_peltier.target_set) {
+            if (!_readings.plate_temp.has_value()) {
+                _peltier.target_set = false;
+                policy.disable_peltier();
+            } else {
+                auto power = _pid.compute(
+                    _peltier.target - _readings.plate_temp.value(), sampletime);
+                _peltier.power = std::clamp(power, -1.0, 1.0);
+                policy.enable_peltier();
+                bool ret = false;
+                if (_peltier.power >= 0.0F) {
+                    ret = policy.set_peltier_heat_power(power);
+                } else {
+                    ret = policy.set_peltier_cool_power(power);
+                }
+                if (!ret) {
+                    _peltier.target_set = false;
+                    policy.disable_peltier();
+                }
+            }
+        }
     }
 
     Queue& _message_queue;

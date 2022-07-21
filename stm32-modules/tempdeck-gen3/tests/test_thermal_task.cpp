@@ -29,9 +29,11 @@ TEST_CASE("thermal task message handling") {
         }
         THEN("the ADC readings are properly converted to temperatures") {
             auto readings = tasks->_thermal_task.get_readings();
-            REQUIRE_THAT(readings.plate_temp,
+            REQUIRE(readings.plate_temp.has_value());
+            REQUIRE(readings.heatsink_temp.has_value());
+            REQUIRE_THAT(readings.plate_temp.value(),
                          Catch::Matchers::WithinAbs(25.00, 0.01));
-            REQUIRE_THAT(readings.heatsink_temp,
+            REQUIRE_THAT(readings.heatsink_temp.value(),
                          Catch::Matchers::WithinAbs(50.00, 0.01));
         }
         AND_WHEN("a GetTempDebug message is received") {
@@ -288,9 +290,6 @@ TEST_CASE("deactivation command") {
 TEST_CASE("thermal task set temperature command") {
     auto *tasks = tasks::BuildTasks();
     TestThermalPolicy policy;
-    thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> converter(
-        decltype(tasks->_thermal_task)::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
-        decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);
 
     REQUIRE(!tasks->_thermal_task.get_peltier().target_set);
     WHEN("setting a target temperature") {
@@ -367,6 +366,57 @@ TEST_CASE("thermal task set temperature command") {
                 auto ack = std::get<messages::AcknowledgePrevious>(host_msg);
                 REQUIRE(ack.responding_to_id == msg.id);
                 REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
+            }
+        }
+    }
+}
+
+TEST_CASE("closed loop thermal control") {
+    auto *tasks = tasks::BuildTasks();
+    TestThermalPolicy policy;
+    thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> converter(
+        decltype(tasks->_thermal_task)::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
+        decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);
+
+    uint32_t timestamp_increment = 100;
+    auto temp_message =
+        messages::ThermistorReadings{.timestamp = timestamp_increment,
+                                     .plate = converter.backconvert(25),
+                                     .heatsink = converter.backconvert(25)};
+    tasks->_thermal_queue.backing_deque.push_back(temp_message);
+    tasks->_thermal_task.run_once(policy);
+    WHEN("setting temp target to 100ºC") {
+        auto target_msg =
+            messages::SetTemperatureMessage{.id = 123, .target = 100};
+        tasks->_thermal_queue.backing_deque.push_back(target_msg);
+        tasks->_thermal_task.run_once(policy);
+        AND_WHEN("temperature readings are updated") {
+            temp_message.timestamp += timestamp_increment;
+            tasks->_thermal_queue.backing_deque.push_back(temp_message);
+            tasks->_thermal_task.run_once(policy);
+            THEN("the peltiers update to heat") {
+                REQUIRE(policy._enabled);
+                REQUIRE(policy.is_heating());
+            }
+            THEN("the PID sampletime is correct") {
+                auto expected = 0.001 * timestamp_increment;
+                REQUIRE_THAT(tasks->_thermal_task.get_pid().sampletime(),
+                             Catch::Matchers::WithinAbs(expected, 0.0001));
+            }
+        }
+    }
+    WHEN("setting temp target to -4ºC") {
+        auto target_msg =
+            messages::SetTemperatureMessage{.id = 123, .target = -4};
+        tasks->_thermal_queue.backing_deque.push_back(target_msg);
+        tasks->_thermal_task.run_once(policy);
+        AND_WHEN("temperature readings are updated") {
+            temp_message.timestamp += timestamp_increment;
+            tasks->_thermal_queue.backing_deque.push_back(temp_message);
+            tasks->_thermal_task.run_once(policy);
+            THEN("the peltiers update to cool") {
+                REQUIRE(policy._enabled);
+                REQUIRE(policy.is_cooling());
             }
         }
     }
