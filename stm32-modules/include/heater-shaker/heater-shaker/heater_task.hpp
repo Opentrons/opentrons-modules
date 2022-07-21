@@ -69,7 +69,11 @@ struct State {
     static constexpr uint16_t BOARD_SENSE_ERROR = (1 << 2);
     static constexpr uint16_t SENSE_ERROR = PAD_SENSE_ERROR | BOARD_SENSE_ERROR;
     static constexpr uint16_t POWER_GOOD_ERROR = (1 << 3);
-    static constexpr uint16_t CIRCUIT_ERROR = (1 << 4);
+    static constexpr uint16_t SHORT_CIRCUIT_ERROR = (1 << 4);
+    static constexpr uint16_t OPEN_CIRCUIT_ERROR = (1 << 5);
+    static constexpr uint16_t OVERCURRENT_CIRCUIT_ERROR = (1 << 6);
+    static constexpr uint16_t CIRCUIT_ERROR =
+        SHORT_CIRCUIT_ERROR | OPEN_CIRCUIT_ERROR | OVERCURRENT_CIRCUIT_ERROR;
 };
 
 struct TemperatureSensor {
@@ -208,6 +212,7 @@ class HeaterTask {
         if (!_flash.initialized()) {
             _offset_constants = _flash.get_offset_constants(policy);
         }
+        update_state_and_leds();
 
         auto message = Message(std::monostate());
         // This is the call down to the provided queue. It will block for
@@ -402,15 +407,27 @@ class HeaterTask {
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (state.system_status == State::CONTROLLING) {
-            if (!policy.set_power_output(
-                    pid.compute(setpoint.value() - pad_temperature()))) {
+            HEATPAD_CIRCUIT_ERROR error = policy.set_power_output(
+                pid.compute(setpoint.value() - pad_temperature()));
+            if (error != HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_NO_ERROR) {
                 state.system_status = State::ERROR;
                 setpoint = std::nullopt;
-                state.error_bitmap |= State::CIRCUIT_ERROR;
-                auto error_message =
-                    messages::HostCommsMessage(messages::ErrorMessage{
-                        .code =
-                            errors::ErrorCode::HEATER_HARDWARE_ERROR_CIRCUIT});
+                auto error_message = messages::ErrorMessage{};
+                if (error == HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_OPEN) {
+                    error_message.code =
+                        errors::ErrorCode::HEATER_HARDWARE_OPEN_CIRCUIT;
+                    state.error_bitmap |= State::OPEN_CIRCUIT_ERROR;
+                } else if (error ==
+                           HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_SHORTED) {
+                    error_message.code =
+                        errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT;
+                    state.error_bitmap |= State::SHORT_CIRCUIT_ERROR;
+                } else if (error ==
+                           HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_OVERCURRENT) {
+                    error_message.code =
+                        errors::ErrorCode::HEATER_HARDWARE_OVERCURRENT_CIRCUIT;
+                    state.error_bitmap |= State::OVERCURRENT_CIRCUIT_ERROR;
+                }
                 static_cast<void>(
                     task_registry->comms->get_message_queue().try_send(
                         error_message));
@@ -418,8 +435,6 @@ class HeaterTask {
         } else if (state.system_status != State::POWER_TEST) {
             policy.disable_power_output();
         }
-
-        update_state_and_leds();
     }
 
     template <typename Policy>
@@ -645,8 +660,13 @@ class HeaterTask {
         // separately, but we also sometimes want to respond with just one error
         // condition that sums everything up. This method is used by code that
         // wants the single most relevant code for the current error condition.
-        if ((state.error_bitmap & State::CIRCUIT_ERROR) != 0) {
-            return errors::ErrorCode::HEATER_HARDWARE_ERROR_CIRCUIT;
+        if ((state.error_bitmap & State::OPEN_CIRCUIT_ERROR) != 0) {
+            return errors::ErrorCode::HEATER_HARDWARE_OPEN_CIRCUIT;
+        } else if ((state.error_bitmap & State::SHORT_CIRCUIT_ERROR) != 0) {
+            return errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT;
+        } else if ((state.error_bitmap & State::OVERCURRENT_CIRCUIT_ERROR) !=
+                   0) {
+            return errors::ErrorCode::HEATER_HARDWARE_OVERCURRENT_CIRCUIT;
         }
         if ((state.error_bitmap & State::SENSE_ERROR) != 0) {
             // Prefer sense errors since they'll be most specific
