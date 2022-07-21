@@ -19,9 +19,4 @@ typedef enum {
 } LED_COLOR;
 typedef enum { SOLID_HOT, SOLID_HOLDING, PULSE, MODE_OFF } LED_MODE;
 
-typedef enum {
-    NONE,
-    SHORT,
-    OPEN,
-    OVERCURRENT
-} HEATPAD_CIRCUIT_ERROR;
+typedef enum { NONE, SHORT, OPEN, OVERCURRENT } HEATPAD_CIRCUIT_ERROR;

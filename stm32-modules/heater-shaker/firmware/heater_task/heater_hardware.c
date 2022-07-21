@@ -421,17 +421,22 @@ uint64_t heater_hardware_get_offset(size_t addr_offset) {
     return *(uint64_t*)AddressToRead;
 }
 
-// This callback attempts to check for heatpad open and short circuit conditions via 
-// the heatpad current sensing pin once per second. If the output pwm pulse is greater
-// than 20% of the timer period, the current sensing pin will be checked to be greater 
-// than 0.2V at 10% of the timer period to confirm there is no open circuit. If the 
-// output pwm pulse is less than 80% of the timer period, the current sensing pin will 
-// be checked to be less than 0.2V at 90% of the timer period to confirm there is no 
-// shorted circuit. After these checks are completed, the comparator threshold is 
-// returned to 3.2V to detect an overcurrent condition. TIM4 channels 2 and 4 are used 
-// to trigger this callback at 10% and 90% of the timer period. This state machine 
-// incorporates preparation states to ensure the DAC and comparator have enough time to 
-// adjust their settings before the comparator level is checked.
+// The HAL_TIM_OC_DelayElapsedCallback attempts to check for heatpad open and short 
+// circuit conditions via the heatpad current sensing pin once per second. TIM4 
+// channels 2 and 4 are used to trigger this callback at 10% and 90% of the heatpad 
+// pwm period. After one second has elapsed, on the first 90% period callback, the 
+// DAC and comparator settings are updated and the pwm pulse is prevented from 
+// updating. This is done to ensure the peripherals have sufficient time to update. 
+// The following period, if the heatpad pwm pulse is greater than 20% of the pwm 
+// period, the current sensing pin will be checked to be greater than 0.2V during 
+// the 10% callback to confirm there is no open circuit, and if the heatpad pwm 
+// pulse is less than 80% of the pwm period, the current sensing pin will be checked 
+// to be less than 0.2V during the 90% callback to confirm there is no shorted 
+// circuit. Following the last check, the update_lock is removed and the comparator 
+// threshold is returned to 3.2V to detect an overcurrent condition during the 
+// remainder of the one second checking period. Locking the pwm pulse updating 
+// eliminated false positives. If there is an error, the specific error will be 
+// reported back by heater_hardware_power_set and an error gcode will be produced.
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 {
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;

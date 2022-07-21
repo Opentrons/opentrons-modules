@@ -72,7 +72,8 @@ struct State {
     static constexpr uint16_t SHORT_CIRCUIT_ERROR = (1 << 4);
     static constexpr uint16_t OPEN_CIRCUIT_ERROR = (1 << 5);
     static constexpr uint16_t OVERCURRENT_CIRCUIT_ERROR = (1 << 6);
-    static constexpr uint16_t CIRCUIT_ERROR = SHORT_CIRCUIT_ERROR | OPEN_CIRCUIT_ERROR | OVERCURRENT_CIRCUIT_ERROR;
+    static constexpr uint16_t CIRCUIT_ERROR =
+        SHORT_CIRCUIT_ERROR | OPEN_CIRCUIT_ERROR | OVERCURRENT_CIRCUIT_ERROR;
 };
 
 struct TemperatureSensor {
@@ -406,19 +407,23 @@ class HeaterTask {
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (state.system_status == State::CONTROLLING) {
-            HEATPAD_CIRCUIT_ERROR error = policy.set_power_output(pid.compute(setpoint.value() - pad_temperature()));
+            HEATPAD_CIRCUIT_ERROR error = policy.set_power_output(
+                pid.compute(setpoint.value() - pad_temperature()));
             if (error != HEATPAD_CIRCUIT_ERROR::NONE) {
                 state.system_status = State::ERROR;
                 setpoint = std::nullopt;
                 auto error_message = messages::ErrorMessage{};
-                if (error == HEATPAD_CIRCUIT_ERROR::OPEN){
-                    error_message.code = errors::ErrorCode::HEATER_HARDWARE_OPEN_CIRCUIT;
+                if (error == HEATPAD_CIRCUIT_ERROR::OPEN) {
+                    error_message.code =
+                        errors::ErrorCode::HEATER_HARDWARE_OPEN_CIRCUIT;
                     state.error_bitmap |= State::OPEN_CIRCUIT_ERROR;
                 } else if (error == HEATPAD_CIRCUIT_ERROR::SHORT) {
-                    error_message.code = errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT;
+                    error_message.code =
+                        errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT;
                     state.error_bitmap |= State::SHORT_CIRCUIT_ERROR;
                 } else if (error == HEATPAD_CIRCUIT_ERROR::OVERCURRENT) {
-                    error_message.code = errors::ErrorCode::HEATER_HARDWARE_OVERCURRENT_CIRCUIT;
+                    error_message.code =
+                        errors::ErrorCode::HEATER_HARDWARE_OVERCURRENT_CIRCUIT;
                     state.error_bitmap |= State::OVERCURRENT_CIRCUIT_ERROR;
                 }
                 static_cast<void>(
@@ -657,7 +662,8 @@ class HeaterTask {
             return errors::ErrorCode::HEATER_HARDWARE_OPEN_CIRCUIT;
         } else if ((state.error_bitmap & State::SHORT_CIRCUIT_ERROR) != 0) {
             return errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT;
-        } else if ((state.error_bitmap & State::OVERCURRENT_CIRCUIT_ERROR) != 0) {
+        } else if ((state.error_bitmap & State::OVERCURRENT_CIRCUIT_ERROR) !=
+                   0) {
             return errors::ErrorCode::HEATER_HARDWARE_OVERCURRENT_CIRCUIT;
         }
         if ((state.error_bitmap & State::SENSE_ERROR) != 0) {

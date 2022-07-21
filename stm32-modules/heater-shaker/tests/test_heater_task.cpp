@@ -728,7 +728,7 @@ SCENARIO("heater task error handling") {
                 CHECK(tasks->get_host_comms_queue().backing_deque.empty());
                 auto error = std::get<messages::ErrorMessage>(error_update);
                 REQUIRE(error.code ==
-                        errors::ErrorCode::HEATER_HARDWARE_ERROR_CIRCUIT);
+                        errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT);
                 auto set_temp_message = messages::SetTemperatureMessage{
                     .id = 24, .target_temperature = 29.2};
                 tasks->get_heater_queue().backing_deque.push_back(
@@ -740,7 +740,7 @@ SCENARIO("heater task error handling") {
                 tasks->get_host_comms_queue().backing_deque.pop_front();
                 REQUIRE(std::get<messages::AcknowledgePrevious>(response)
                             .with_error ==
-                        errors::ErrorCode::HEATER_HARDWARE_ERROR_CIRCUIT);
+                        errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT);
                 CHECK(tasks->get_host_comms_queue().backing_deque.empty());
             }
         }

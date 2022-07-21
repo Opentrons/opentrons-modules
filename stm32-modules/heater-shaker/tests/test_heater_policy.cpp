@@ -2,6 +2,8 @@
 
 #include <cstddef>
 
+#include "systemwide.h"
+
 TestHeaterPolicy::TestHeaterPolicy(bool pgood, bool can_reset)
     : power_good_val(pgood),
       may_reset(can_reset),
@@ -40,14 +42,15 @@ auto TestHeaterPolicy::reset_try_reset_call_count() -> void {
     try_reset_calls = 0;
 }
 
-auto TestHeaterPolicy::set_power_output(double output) -> bool {
+auto TestHeaterPolicy::set_power_output(double output)
+    -> HEATPAD_CIRCUIT_ERROR {
     power = output;
     if (!circuit_error) {
         enabled = true;
-        return true;
+        return HEATPAD_CIRCUIT_ERROR::NONE;
     } else {
         enabled = false;
-        return false;
+        return HEATPAD_CIRCUIT_ERROR::SHORT;
     }
 }
 
