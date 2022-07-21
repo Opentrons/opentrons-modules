@@ -45,10 +45,10 @@ auto TestHeaterPolicy::set_power_output(double output)
     power = output;
     if (!circuit_error) {
         enabled = true;
-        return HEATPAD_CIRCUIT_ERROR::NONE;
+        return HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_NO_ERROR;
     } else {
         enabled = false;
-        return HEATPAD_CIRCUIT_ERROR::SHORT;
+        return HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_SHORTED;
     }
 }
 

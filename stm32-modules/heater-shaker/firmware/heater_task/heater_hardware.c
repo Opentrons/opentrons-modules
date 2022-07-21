@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stddef.h>
+#include <stdatomic.h>
 
 #include "stm32f3xx_hal.h"
 #include "stm32f3xx_hal_adc.h"
@@ -36,7 +37,8 @@ typedef struct {
     heatpad_cs_state heatpad_cs_status;
     uint16_t pwm_pulse_duration;
     uint16_t period_count;
-    bool update_lock;
+    atomic_bool update_lock;
+    uint16_t cached_pulse_setting;
 } hw_internal;
 
 hw_internal _internals = {
@@ -58,6 +60,7 @@ hw_internal _internals = {
 .pwm_pulse_duration = 0,
 .period_count = 0,
 .update_lock = false,
+.cached_pulse_setting = 0,
 };
 
 heater_hardware *HEATER_HW_HANDLE = NULL;
@@ -295,11 +298,11 @@ HEATPAD_CIRCUIT_ERROR heater_hardware_power_set(heater_hardware* hardware, uint1
     }
     if (heatpad_in_error_state()) {
         if (internal->heatpad_cs_status == ERROR_SHORT_CIRCUIT) {
-            return SHORT;
+            return HEATPAD_CIRCUIT_SHORTED;
         } else if (internal->heatpad_cs_status == ERROR_OPEN_CIRCUIT) {
-            return OPEN;
+            return HEATPAD_CIRCUIT_OPEN;
         } else if (internal->heatpad_cs_status == ERROR_OVERCURRENT) {
-            return OVERCURRENT;
+            return HEATPAD_CIRCUIT_OVERCURRENT;
         }
     }
     if (internal->heatpad_cs_status == IDLE) {
@@ -327,8 +330,10 @@ HEATPAD_CIRCUIT_ERROR heater_hardware_power_set(heater_hardware* hardware, uint1
         } else {
             HEATER_PAD_LL_SETCOMPARE(internal->pad_tim.Instance, setting);
         }
+    } else {
+        internal->cached_pulse_setting = setting;
     }
-    return NONE;
+    return HEATPAD_CIRCUIT_NO_ERROR;
 }
 
 
@@ -487,6 +492,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
                 HAL_COMP_Start(&internal->comp4);
                 internal->period_count = 0;
                 internal->heatpad_cs_status = RUNNING;
+                heater_hardware_power_set(HEATER_HW_HANDLE, internal->cached_pulse_setting);
             }
         }
     }

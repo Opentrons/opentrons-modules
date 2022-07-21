@@ -18,7 +18,7 @@ struct SimHeaterPolicy {
     [[nodiscard]] auto try_reset_power_good() -> bool { return true; };
     auto set_power_output(double relative_power) -> HEATPAD_CIRCUIT_ERROR {
         power = relative_power;
-        return HEATPAD_CIRCUIT_ERROR::NONE;
+        return HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_NO_ERROR;
     };
     auto disable_power_output() -> void { power = 0; }
     auto set_thermal_offsets(flash::OffsetConstants* constants) -> bool {

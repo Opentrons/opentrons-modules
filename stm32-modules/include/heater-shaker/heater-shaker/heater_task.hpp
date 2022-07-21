@@ -409,19 +409,21 @@ class HeaterTask {
         if (state.system_status == State::CONTROLLING) {
             HEATPAD_CIRCUIT_ERROR error = policy.set_power_output(
                 pid.compute(setpoint.value() - pad_temperature()));
-            if (error != HEATPAD_CIRCUIT_ERROR::NONE) {
+            if (error != HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_NO_ERROR) {
                 state.system_status = State::ERROR;
                 setpoint = std::nullopt;
                 auto error_message = messages::ErrorMessage{};
-                if (error == HEATPAD_CIRCUIT_ERROR::OPEN) {
+                if (error == HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_OPEN) {
                     error_message.code =
                         errors::ErrorCode::HEATER_HARDWARE_OPEN_CIRCUIT;
                     state.error_bitmap |= State::OPEN_CIRCUIT_ERROR;
-                } else if (error == HEATPAD_CIRCUIT_ERROR::SHORT) {
+                } else if (error ==
+                           HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_SHORTED) {
                     error_message.code =
                         errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT;
                     state.error_bitmap |= State::SHORT_CIRCUIT_ERROR;
-                } else if (error == HEATPAD_CIRCUIT_ERROR::OVERCURRENT) {
+                } else if (error ==
+                           HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_OVERCURRENT) {
                     error_message.code =
                         errors::ErrorCode::HEATER_HARDWARE_OVERCURRENT_CIRCUIT;
                     state.error_bitmap |= State::OVERCURRENT_CIRCUIT_ERROR;
