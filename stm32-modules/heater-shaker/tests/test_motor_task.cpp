@@ -167,6 +167,54 @@ SCENARIO("motor task core message handling", "[motor]") {
                 }
             }
         }
+        WHEN(
+            "sending a set-rpm message as if from the host comms and motor "
+            "fails to start but the motor controller is already in error "
+            "state") {
+            auto message = messages::MotorSystemErrorMessage{
+                .errors = static_cast<uint16_t>(
+                    1u << errors::MotorErrorOffset::SW_ERROR)};
+            tasks->get_motor_queue().backing_deque.push_back(message);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            tasks->get_host_comms_queue().backing_deque.pop_front();
+            auto message2 =
+                messages::SetRPMMessage{.id = 222, .target_rpm = 1254};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(message2));
+            tasks->get_motor_policy().test_set_current_rpm(0);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the task should get the message") {
+                REQUIRE(tasks->get_motor_queue().backing_deque.empty());
+                AND_THEN("the task should disengage solenoid and stop motor") {
+                    REQUIRE(!tasks->get_motor_policy().test_solenoid_engaged());
+                    REQUIRE(tasks->get_motor_policy().get_target_rpm() == 0);
+                }
+                AND_THEN(
+                    "the task should respond to the message to the host "
+                    "comms") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(!tasks->get_system_queue()
+                                 .backing_deque
+                                 .empty());  // for UpdateLEDStateMessage
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto ack =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(ack.responding_to_id == message2.id);
+                    REQUIRE(ack.with_error ==
+                            errors::ErrorCode::MOTOR_BLDC_DRIVER_ERROR);
+                }
+                AND_THEN("the task state should be error") {
+                    REQUIRE(tasks->get_motor_task().get_state() ==
+                            motor_task::State::ERROR);
+                }
+            }
+        }
         WHEN("sending a get-rpm message") {
             tasks->get_motor_policy().test_set_current_rpm(1050);
             auto pre_message = messages::SetRPMMessage{
@@ -240,7 +288,8 @@ SCENARIO("motor task error handling", "[motor]") {
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_motor_queue().backing_deque.empty());
                 AND_THEN(
-                    "the task should send one error message to host comms") {
+                    "the task should send one error message to host comms and "
+                    "system") {
                     REQUIRE(
                         tasks->get_host_comms_queue().backing_deque.size() ==
                         1);
@@ -251,6 +300,16 @@ SCENARIO("motor task error handling", "[motor]") {
                         upstream));
                     REQUIRE(std::get<messages::ErrorMessage>(upstream).code ==
                             errors::ErrorCode::MOTOR_BLDC_DRIVER_ERROR);
+                    REQUIRE(tasks->get_system_queue().backing_deque.size() ==
+                            1);
+                    auto upstream2 =
+                        tasks->get_system_queue().backing_deque.front();
+                    tasks->get_system_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::UpdateLEDStateMessage>(
+                            upstream2));
+                    REQUIRE(std::get<messages::UpdateLEDStateMessage>(upstream2)
+                                .color == LED_COLOR::AMBER);
                 }
                 AND_THEN("the task should enter error state") {
                     REQUIRE(tasks->get_motor_task().get_state() ==
@@ -424,6 +483,33 @@ SCENARIO("motor task input error handling", "[motor]") {
                 auto ack = std::get<messages::AcknowledgePrevious>(response);
                 REQUIRE(ack.with_error ==
                         errors::ErrorCode::MOTOR_ILLEGAL_RAMP_RATE);
+            }
+        }
+        WHEN(
+            "a command requests an invalid speed but the motor controller is "
+            "already in error state") {
+            auto message = messages::MotorSystemErrorMessage{
+                .errors = static_cast<uint16_t>(
+                    1u << errors::MotorErrorOffset::SW_ERROR)};
+            tasks->get_motor_queue().backing_deque.push_back(message);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            tasks->get_host_comms_queue().backing_deque.pop_front();
+            tasks->get_motor_policy().test_set_rpm_return_code(
+                errors::ErrorCode::MOTOR_ILLEGAL_SPEED);
+            auto message2 =
+                messages::SetRPMMessage{.id = 123, .target_rpm = 9999};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(message2));
+            tasks->get_motor_policy().test_set_current_rpm(50);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN(
+                "the motor task should respond with the a priori motor "
+                "controller error") {
+                auto response =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                auto ack = std::get<messages::AcknowledgePrevious>(response);
+                REQUIRE(ack.with_error ==
+                        errors::ErrorCode::MOTOR_BLDC_DRIVER_ERROR);
             }
         }
     }

@@ -60,6 +60,10 @@ struct IncomingMessageFromHost {
     const char* limit;
 };
 
+// This empty message is just used to signal that the UI task should update
+// its outputs
+struct UpdateUIMessage {};
+
 struct GetSystemInfoMessage {
     uint32_t id;
 };
@@ -89,10 +93,48 @@ struct ForceUSBDisconnect {
     size_t return_address;
 };
 
+struct ThermistorReadings {
+    uint32_t timestamp;
+    uint32_t plate;
+    uint32_t heatsink;
+};
+
+struct GetTempDebugMessage {
+    uint32_t id;
+};
+
+struct GetTempDebugResponse {
+    uint32_t responding_to_id;
+    float plate_temp;
+    float heatsink_temp;
+    uint16_t plate_adc;
+    uint16_t heatsink_adc;
+};
+
+struct SetPeltierDebugMessage {
+    uint32_t id;
+    double power;
+};
+
+struct SetFanManualMessage {
+    uint32_t id;
+    double power;
+};
+
+struct SetFanAutomaticMessage {
+    uint32_t id;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
-                   ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse>;
+                   ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
+                   GetTempDebugResponse>;
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage>;
+using UIMessage = ::std::variant<std::monostate, UpdateUIMessage>;
+using ThermalMessage =
+    ::std::variant<std::monostate, ThermistorReadings, GetTempDebugMessage,
+                   SetPeltierDebugMessage, SetFanManualMessage,
+                   SetFanAutomaticMessage>;
 };  // namespace messages

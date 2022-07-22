@@ -85,6 +85,10 @@ class PlateControl {
     /** Minimum time that the system must be in steady state before
      *  checking for uniformity errors.*/
     static constexpr Seconds UNIFORMITY_CHECK_DELAY = 30.0F;
+    /** Approximation of ambient temperature */
+    static constexpr double TEMPERATURE_AMBIENT = 23.0F;
+    /** How far from target temp to reset Integral Windup.*/
+    static constexpr double WINDUP_RESET_THRESHOLD = 3.0F;
 
     PlateControl() = delete;
     /**
@@ -266,6 +270,33 @@ class PlateControl {
      */
     [[nodiscard]] auto crossed_setpoint(const thermal_general::Peltier &channel,
                                         bool heating) const -> bool;
+
+    /**
+     * @brief Returns the number of degrees difference from the target
+     * where the controller should use full PID rather than maxing out the
+     * power of the peltiers.
+     *
+     * @param pid The PID controller to calculate the band from
+     * @return The number of degrees to the target temperature where the
+     * controller should use full PID rather than just maxing out the power.
+     */
+    [[nodiscard]] static auto proportional_band(PID &pid) -> double {
+        if (pid.kp() == 0.0F) {
+            return 0.0F;
+        }
+        return 1.0F / pid.kp();
+    }
+
+    [[nodiscard]] static auto moving_away_from_ambient(double current,
+                                                       double target) -> bool {
+        auto target_from_ambient = target - TEMPERATURE_AMBIENT;
+        auto current_from_ambient = current - TEMPERATURE_AMBIENT;
+        // If the new target crosses ambient, we are moving away
+        if ((target_from_ambient * current_from_ambient) < 0) {
+            return true;
+        }
+        return std::abs(target_from_ambient) > std::abs(current_from_ambient);
+    }
 
     PlateStatus _status = PlateStatus::STEADY_STATE;  // State machine for plate
     thermal_general::Peltier &_left;

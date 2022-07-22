@@ -104,13 +104,7 @@ SCENARIO("heater task message passing") {
             tasks->run_heater_task();
             THEN("the task should get the message") {
                 REQUIRE(tasks->get_heater_queue().backing_deque.empty());
-                AND_THEN(
-                    "the task should set red LED and respond to host comms") {
-                    auto system_response =
-                        tasks->get_system_queue().backing_deque.front();
-                    tasks->get_system_queue().backing_deque.pop_front();
-                    REQUIRE(std::holds_alternative<messages::SetLEDMessage>(
-                        system_response));
+                AND_THEN("the task should respond to host comms") {
                     REQUIRE(
                         !tasks->get_host_comms_queue().backing_deque.empty());
                     auto response =
@@ -252,23 +246,29 @@ SCENARIO("heater task message passing") {
             tasks->get_heater_queue().backing_deque.push_back(
                 messages::HeaterMessage(message));
             tasks->run_heater_task();
-            THEN("the task should get the message") {
-                REQUIRE(tasks->get_heater_queue().backing_deque.empty());
-                AND_THEN("the task should set red LED and respond to system") {
-                    auto system_response =
-                        tasks->get_system_queue().backing_deque.front();
-                    tasks->get_system_queue().backing_deque.pop_front();
-                    REQUIRE(std::holds_alternative<messages::SetLEDMessage>(
-                        system_response));
+            THEN("update-led-state-message should be produced") {
+                REQUIRE(!tasks->get_system_queue().backing_deque.empty());
+                auto response1 =
+                    tasks->get_system_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::UpdateLEDStateMessage>(
+                    response1));
+                auto getresponse =
+                    std::get<messages::UpdateLEDStateMessage>(response1);
+                REQUIRE(getresponse.color == LED_COLOR::RED);
+                REQUIRE(getresponse.mode == LED_MODE::SOLID_HOT);
+                tasks->run_system_task();  // process UpdateLEDStateMessage
+                AND_THEN(
+                    "the task should get the message and respond to system") {
+                    REQUIRE(tasks->get_heater_queue().backing_deque.empty());
                     REQUIRE(!tasks->get_system_queue().backing_deque.empty());
-                    auto response =
+                    auto response2 =
                         tasks->get_system_queue().backing_deque.front();
                     tasks->get_system_queue().backing_deque.pop_front();
                     REQUIRE(
                         std::holds_alternative<messages::AcknowledgePrevious>(
-                            response));
+                            response2));
                     auto ack =
-                        std::get<messages::AcknowledgePrevious>(response);
+                        std::get<messages::AcknowledgePrevious>(response2);
                     REQUIRE(ack.responding_to_id == message.id);
                 }
             }
@@ -452,7 +452,7 @@ SCENARIO("heater task message passing") {
             tasks->get_heater_queue().backing_deque.push_back(
                 messages::HeaterMessage(message));
             tasks->run_heater_task();
-            THEN("the task should respond with an error") {
+            THEN("the task should respond appropriately") {
                 REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
                 auto response =
                     tasks->get_host_comms_queue().backing_deque.front();
@@ -461,6 +461,15 @@ SCENARIO("heater task message passing") {
                 REQUIRE(ack.responding_to_id == message.id);
                 REQUIRE(ack.with_error ==
                         errors::ErrorCode::HEATER_THERMISTOR_B_SHORT);
+                REQUIRE(!tasks->get_system_queue().backing_deque.empty());
+                auto response2 =
+                    tasks->get_system_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::UpdateLEDStateMessage>(
+                    response2));
+                auto getresponse =
+                    std::get<messages::UpdateLEDStateMessage>(response2);
+                REQUIRE(getresponse.color == LED_COLOR::AMBER);
+                REQUIRE(getresponse.mode == LED_MODE::PULSE);
             }
         }
         WHEN("sending a get-temperature message") {
@@ -470,10 +479,11 @@ SCENARIO("heater task message passing") {
             tasks->run_heater_task();
             THEN("the task should respond with an error") {
                 REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
-                auto response =
+                auto response1 =
                     tasks->get_host_comms_queue().backing_deque.front();
                 tasks->get_host_comms_queue().backing_deque.pop_front();
-                auto ack = std::get<messages::GetTemperatureResponse>(response);
+                auto ack =
+                    std::get<messages::GetTemperatureResponse>(response1);
                 REQUIRE(ack.responding_to_id == message.id);
                 REQUIRE(ack.with_error ==
                         errors::ErrorCode::HEATER_THERMISTOR_B_SHORT);
@@ -718,7 +728,7 @@ SCENARIO("heater task error handling") {
                 CHECK(tasks->get_host_comms_queue().backing_deque.empty());
                 auto error = std::get<messages::ErrorMessage>(error_update);
                 REQUIRE(error.code ==
-                        errors::ErrorCode::HEATER_HARDWARE_ERROR_CIRCUIT);
+                        errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT);
                 auto set_temp_message = messages::SetTemperatureMessage{
                     .id = 24, .target_temperature = 29.2};
                 tasks->get_heater_queue().backing_deque.push_back(
@@ -730,7 +740,7 @@ SCENARIO("heater task error handling") {
                 tasks->get_host_comms_queue().backing_deque.pop_front();
                 REQUIRE(std::get<messages::AcknowledgePrevious>(response)
                             .with_error ==
-                        errors::ErrorCode::HEATER_HARDWARE_ERROR_CIRCUIT);
+                        errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT);
                 CHECK(tasks->get_host_comms_queue().backing_deque.empty());
             }
         }
