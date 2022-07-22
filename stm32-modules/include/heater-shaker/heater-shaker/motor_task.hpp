@@ -166,7 +166,8 @@ class MotorTask {
         if ((!policy.plate_lock_closed_sensor_read()) &&
             (plate_lock_state.status != PlateLockState::IDLE_CLOSED)) {
             error = errors::ErrorCode::PLATE_LOCK_NOT_CLOSED;
-        } else if ((state.status == State::HOMING_MOVING_TO_HOME_SPEED) || (state.status == State::HOMING_COASTING_TO_STOP)) {
+        } else if ((state.status == State::HOMING_MOVING_TO_HOME_SPEED) ||
+                   (state.status == State::HOMING_COASTING_TO_STOP)) {
             error = errors::ErrorCode::MOTOR_HOMING;
         } else {
             policy.homing_solenoid_disengage();
