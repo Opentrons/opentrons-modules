@@ -51,6 +51,8 @@ class ThermalTask {
     using Aggregator = typename tasks::Tasks<QueueImpl>::QueueAggregator;
     using Queues = typename tasks::Tasks<QueueImpl>;
 
+    using Celsius = double;
+
     // Bias resistance, aka the pullup resistance in the thermistor voltage
     // divider circuit.
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 45.3;
@@ -62,6 +64,19 @@ class ThermalTask {
     // ADC results are signed 16-bit integers
     static constexpr uint16_t ADC_BIT_MAX = static_cast<uint16_t>(
         (ADC_MAX_V * static_cast<double>(0x7FFF)) / ADC_VREF);
+
+    // The threshold at which the fan is turned on to cool the heatsink
+    // during idle periods.
+    static constexpr Celsius HEATSINK_IDLE_THRESHOLD = 30.0F;
+
+    static constexpr Celsius COOL_THRESHOLD = 20.0;
+    static constexpr Celsius HOT_THRESHOLD = 30.0;
+
+    static constexpr Celsius STABILIZING_THRESHOLD = 0.5;
+
+    static constexpr double FAN_POWER_LOW = 0.2;
+    static constexpr double FAN_POWER_MEDIUM = 0.75;
+    static constexpr double FAN_POWER_MAX = 1.0;
 
     static constexpr double PELTIER_KP_DEFAULT = 0.1F;
     static constexpr double PELTIER_KI_DEFAULT = 0.05F;
@@ -138,6 +153,8 @@ class ThermalTask {
         _readings.plate_adc = message.plate;
         _readings.last_tick = message.timestamp;
 
+        // Reading conversion
+
         auto res = _converter.convert(_readings.plate_adc);
         if (std::holds_alternative<double>(res)) {
             _readings.plate_temp = std::get<double>(res);
@@ -152,10 +169,9 @@ class ThermalTask {
         }
 
         // Update thermal control
-        if (!_fan.manual) {
-            update_thermal_control(policy,
-                                   tick_difference * MILLISECONDS_TO_SECONDS);
-        }
+
+        update_thermal_control(policy,
+                               tick_difference * MILLISECONDS_TO_SECONDS);
     }
 
     template <ThermalPolicy Policy>
@@ -322,6 +338,25 @@ class ThermalTask {
                 if (!ret) {
                     _peltier.target_set = false;
                     policy.disable_peltier();
+                }
+            }
+        }
+        if (!_fan.manual) {
+            if (_peltier.target_set) {
+                // We know for a fact that the plate_temp exists because
+                // target_set hasn't been cleared
+                if (_readings.plate_temp.value() >
+                    _peltier.target + STABILIZING_THRESHOLD) {
+                    policy.set_fan_power(FAN_POWER_MAX);
+                } else {
+                    policy.set_fan_power(FAN_POWER_MEDIUM);
+                }
+            } else /* !_peltier.target_set */ {
+                if (_readings.heatsink_temp.has_value() &&
+                    _readings.heatsink_temp.value() < HEATSINK_IDLE_THRESHOLD) {
+                    policy.set_fan_power(0);
+                } else {
+                    policy.set_fan_power(FAN_POWER_LOW);
                 }
             }
         }

@@ -385,6 +385,23 @@ TEST_CASE("closed loop thermal control") {
                                      .heatsink = converter.backconvert(25)};
     tasks->_thermal_queue.backing_deque.push_back(temp_message);
     tasks->_thermal_task.run_once(policy);
+    GIVEN("ambient temperature") {
+        THEN("the fan is set to OFF") {
+            REQUIRE_THAT(policy._fans, Catch::Matchers::WithinAbs(0, 0.001));
+        }
+    }
+    GIVEN("high temperature when at rest") {
+        temp_message.heatsink = converter.backconvert(60);
+        temp_message.timestamp += timestamp_increment;
+        tasks->_thermal_queue.backing_deque.push_back(temp_message);
+        tasks->_thermal_task.run_once(policy);
+
+        THEN("the fan is set on") {
+            REQUIRE_THAT(policy._fans,
+                         Catch::Matchers::WithinAbs(
+                             tasks->_thermal_task.FAN_POWER_LOW, 0.001));
+        }
+    }
     WHEN("setting temp target to 100ºC") {
         auto target_msg =
             messages::SetTemperatureMessage{.id = 123, .target = 100};
@@ -397,6 +414,11 @@ TEST_CASE("closed loop thermal control") {
             THEN("the peltiers update to heat") {
                 REQUIRE(policy._enabled);
                 REQUIRE(policy.is_heating());
+            }
+            THEN("the fan is set to MEDIUM") {
+                REQUIRE_THAT(policy._fans,
+                             Catch::Matchers::WithinAbs(
+                                 tasks->_thermal_task.FAN_POWER_MEDIUM, 0.001));
             }
             THEN("the PID sampletime is correct") {
                 auto expected = 0.001 * timestamp_increment;
@@ -417,6 +439,11 @@ TEST_CASE("closed loop thermal control") {
             THEN("the peltiers update to cool") {
                 REQUIRE(policy._enabled);
                 REQUIRE(policy.is_cooling());
+            }
+            THEN("the fan is set to HIGH") {
+                REQUIRE_THAT(policy._fans,
+                             Catch::Matchers::WithinAbs(
+                                 tasks->_thermal_task.FAN_POWER_MAX, 0.001));
             }
         }
     }
