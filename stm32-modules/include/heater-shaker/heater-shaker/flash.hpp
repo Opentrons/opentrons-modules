@@ -60,6 +60,12 @@ class Flash {
             static_cast<uint64_t>(FLASHFlag::WRITTEN_NO_CHECKSUM)) {
             ret.b = receive.b;
             ret.c = receive.c;
+        } else {
+            OffsetConstants constants = {.b = OFFSET_B_DEFAULT_CONST, .c = OFFSET_C_DEFAULT_CONST, .flag = static_cast<uint64_t>(flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM)};
+            if (set_offset_constants(constants, policy)) {
+                ret.b = OFFSET_B_DEFAULT_CONST;
+                ret.c = OFFSET_C_DEFAULT_CONST;
+            }
         }
         _initialized = true;
         return ret;
@@ -99,6 +105,8 @@ class Flash {
   private:
     /** Default value for all constants.*/
     static constexpr double OFFSET_DEFAULT_CONST = 0.0F;
+    static constexpr double OFFSET_B_DEFAULT_CONST = -0.0233F;
+    static constexpr double OFFSET_C_DEFAULT_CONST = 0.1565F;
 
     // Whether the constants have been read from the FLASH since startup.
     // Even if the FLASH is empty, this flag is set after attempting
