@@ -65,7 +65,9 @@ class Flash {
             if (set_offset_constants(constants, policy)) {
                 ret.b = OFFSET_B_DEFAULT_CONST;
                 ret.c = OFFSET_C_DEFAULT_CONST;
-            }
+            } /*else {
+                _initialized = false; //?
+            }*/
         }
         _initialized = true;
         return ret;
