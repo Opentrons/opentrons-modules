@@ -93,6 +93,44 @@ SCENARIO("motor task core message handling", "[motor]") {
                 }
             }
         }
+        WHEN(
+            "sending a set-rpm message as if from the host comms and motor "
+            "hasn't completed homing") {
+            auto message1 = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(message1));
+            auto message2 =
+                messages::SetRPMMessage{.id = 222, .target_rpm = 1254};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(message2));
+            tasks->get_motor_policy().test_set_current_rpm(
+                50);  // to prevent motor_unable_to_move error
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the task should get the message") {
+                AND_THEN(
+                    "the task should respond to the message to the host "
+                    "comms") {
+                    REQUIRE(
+                        !tasks->get_host_comms_queue().backing_deque.empty());
+                    REQUIRE(tasks->get_system_queue().backing_deque.empty());
+                    auto response =
+                        tasks->get_host_comms_queue().backing_deque.front();
+                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            response));
+                    auto ack =
+                        std::get<messages::AcknowledgePrevious>(response);
+                    REQUIRE(ack.responding_to_id == message2.id);
+                    REQUIRE(ack.with_error == errors::ErrorCode::MOTOR_HOMING);
+                }
+                AND_THEN("the task state should still be idle_unknown") {
+                    REQUIRE(tasks->get_motor_task().get_state() ==
+                            motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
+                }
+            }
+        }
         WHEN("sending a set-rpm message as if from the system") {
             auto message = messages::SetRPMMessage{
                 .id = 222, .target_rpm = 1254, .from_system = true};
