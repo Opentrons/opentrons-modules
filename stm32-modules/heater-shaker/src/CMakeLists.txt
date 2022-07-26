@@ -36,6 +36,8 @@ if (NOT VERSION)
   set(VERSION "(dev)")
 endif()
 
+set(heater-shaker_VERSION "${VERSION}")
+
 configure_file(./version.cpp.in ./version.cpp)
 
 set(CORE_LINTABLE_SOURCES
