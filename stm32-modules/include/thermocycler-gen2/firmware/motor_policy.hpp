@@ -37,10 +37,11 @@ class MotorPolicy {
      */
     MotorPolicy(bool shared_seal_switch_lines);
 
-    MotorPolicy(MotorPolicy&& other);
-    MotorPolicy(const MotorPolicy& other);
-    MotorPolicy& operator=(MotorPolicy&& other);
-    MotorPolicy& operator=(const MotorPolicy& other);
+    MotorPolicy(MotorPolicy&& other) noexcept;
+    MotorPolicy(const MotorPolicy& other) = default;
+    auto operator=(MotorPolicy&& other) noexcept -> MotorPolicy&;
+    auto operator=(const MotorPolicy& other) -> MotorPolicy& = default;
+    ~MotorPolicy() = default;
 
     /**
      * @brief Set the value of the DAC as a register value. The DAC is used
@@ -159,14 +160,14 @@ class MotorPolicy {
      *
      * @return true if the switch is triggered, false otherwise
      */
-    auto seal_read_extension_switch() -> bool;
+    [[nodiscard]] auto seal_read_extension_switch() const -> bool;
 
     /**
      * @brief Read the seal's retraction limit switch
      *
      * @return true if the switch is triggered, false otherwise
      */
-    auto seal_read_retraction_switch() -> bool;
+    [[nodiscard]] auto seal_read_retraction_switch() const -> bool;
 
     /**
      * @brief Call the seal callback function

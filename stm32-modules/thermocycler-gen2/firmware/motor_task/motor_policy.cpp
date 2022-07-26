@@ -15,22 +15,13 @@ using namespace errors;
 MotorPolicy::MotorPolicy(bool shared_seal_switch_lines)
     : _seal_callback(),  // NOLINT(readability-redundant-member-init)
       _shared_seal_switch_lines(shared_seal_switch_lines) {}
-MotorPolicy::MotorPolicy(MotorPolicy&& other)
-    : _seal_callback(std::move(other._seal_callback)),
-      _shared_seal_switch_lines(std::move(other._shared_seal_switch_lines)) {}
 
-MotorPolicy::MotorPolicy(const MotorPolicy& other)
-    : _seal_callback(other._seal_callback),
+MotorPolicy::MotorPolicy(MotorPolicy&& other) noexcept
+    : _seal_callback(std::move(other._seal_callback)),
       _shared_seal_switch_lines(other._shared_seal_switch_lines) {}
 
-MotorPolicy& MotorPolicy::operator=(MotorPolicy&& other) {
+auto MotorPolicy::operator=(MotorPolicy&& other) noexcept -> MotorPolicy& {
     _seal_callback = std::move(other._seal_callback);
-    _shared_seal_switch_lines = std::move(other._shared_seal_switch_lines);
-    return *this;
-}
-
-MotorPolicy& MotorPolicy::operator=(const MotorPolicy& other) {
-    _seal_callback = other._seal_callback;
     _shared_seal_switch_lines = other._shared_seal_switch_lines;
     return *this;
 }
@@ -114,12 +105,16 @@ auto MotorPolicy::tmc2130_step_pulse() -> bool {
     return true;
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+// We use a blanket lint disabler because clang suggests two changes
+// and they cannot fit on a single line in the formatter
+// NOLINTNEXTLINE: Clang suggests static *and* const
 auto MotorPolicy::seal_switch_set_extension_armed() -> void {
     motor_hardware_seal_switch_set_extension_armed();
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+// We use a blanket lint disabler because clang suggests two changes
+// and they cannot fit on a single line in the formatter
+// NOLINTNEXTLINE: Clang suggests static *and* const
 auto MotorPolicy::seal_switch_set_retraction_armed() -> void {
     if (_shared_seal_switch_lines) {
         motor_hardware_seal_switch_set_extension_armed();
@@ -128,21 +123,22 @@ auto MotorPolicy::seal_switch_set_retraction_armed() -> void {
     }
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+// We use a blanket lint disabler because clang suggests two changes
+// and they cannot fit on a single line in the formatter
+// NOLINTNEXTLINE: Clang suggests static *and* const
 auto MotorPolicy::seal_switch_set_disarmed() -> void {
     motor_hardware_seal_switch_set_disarmed();
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::seal_read_extension_switch() -> bool {
+[[nodiscard]] auto MotorPolicy::seal_read_extension_switch() const -> bool {
     return motor_hardware_seal_extension_switch_triggered();
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::seal_read_retraction_switch() -> bool {
+[[nodiscard]] auto MotorPolicy::seal_read_retraction_switch() const -> bool {
     if (_shared_seal_switch_lines) {
         return motor_hardware_seal_extension_switch_triggered();
-    } else {
-        return motor_hardware_seal_retraction_switch_triggered();
     }
+    return motor_hardware_seal_retraction_switch_triggered();
 }
