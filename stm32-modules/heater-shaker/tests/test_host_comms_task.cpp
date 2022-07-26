@@ -1368,7 +1368,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
-                        auto response = "M117 B:10.000 C:15.000 OK\n";
+                        auto response = "M117 B:10.0000 C:15.0000 OK\n";
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith(response));
                         REQUIRE(written_secondpass ==
