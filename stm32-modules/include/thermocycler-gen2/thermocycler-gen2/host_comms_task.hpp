@@ -637,7 +637,8 @@ class HostCommsTask {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.close_switch_pressed,
                         response.open_switch_pressed,
-                        response.seal_switch_pressed);
+                        response.seal_extension_pressed,
+                        response.seal_retraction_pressed);
                 }
             },
             cache_entry);

@@ -144,6 +144,7 @@ void EXTI15_10_IRQHandler(void)
 {
     thermal_adc_ready_callback(ADC2_ITR);
     system_front_button_callback();
+    motor_hardware_seal_switch_interrupt();
 }
 
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) 
