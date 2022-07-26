@@ -471,7 +471,8 @@ SCENARIO("motor task message passing") {
         GIVEN("lid closed sensor triggered") {
             motor_policy.set_lid_closed_switch(true);
             motor_policy.set_lid_open_switch(false);
-            motor_policy.set_seal_switch_triggered(false);
+            motor_policy.set_extension_switch_triggered(false);
+            motor_policy.set_retraction_switch_triggered(false);
             WHEN("sending a Front Button message") {
                 tasks->get_motor_queue().backing_deque.push_back(
                     messages::FrontButtonPressMessage());
@@ -498,14 +499,16 @@ SCENARIO("motor task message passing") {
                     REQUIRE(response.responding_to_id == message.id);
                     REQUIRE(response.close_switch_pressed);
                     REQUIRE(!response.open_switch_pressed);
-                    REQUIRE(!response.seal_switch_pressed);
+                    REQUIRE(!response.seal_extension_pressed);
+                    REQUIRE(!response.seal_retraction_pressed);
                 }
             }
         }
-        GIVEN("lid open sensor triggered") {
+        GIVEN("lid open sensor and seal extension sensor triggered") {
             motor_policy.set_lid_open_switch(true);
             motor_policy.set_lid_closed_switch(false);
-            motor_policy.set_seal_switch_triggered(false);
+            motor_policy.set_extension_switch_triggered(true);
+            motor_policy.set_retraction_switch_triggered(false);
             WHEN("sending a Front Button message") {
                 tasks->get_motor_queue().backing_deque.push_back(
                     messages::FrontButtonPressMessage());
@@ -532,11 +535,13 @@ SCENARIO("motor task message passing") {
                     REQUIRE(response.responding_to_id == message.id);
                     REQUIRE(!response.close_switch_pressed);
                     REQUIRE(response.open_switch_pressed);
-                    REQUIRE(!response.seal_switch_pressed);
+                    REQUIRE(response.seal_extension_pressed);
+                    REQUIRE(!response.seal_retraction_pressed);
                 }
             }
-            GIVEN("seal sensor triggered") {
-                motor_policy.set_seal_switch_triggered(true);
+            GIVEN("seal retraction sensor triggered") {
+                motor_policy.set_extension_switch_triggered(false);
+                motor_policy.set_retraction_switch_triggered(true);
                 WHEN("sending a GetLidSwitches message") {
                     auto message = messages::GetLidSwitchesMessage{.id = 123};
                     tasks->get_motor_queue().backing_deque.push_back(message);
@@ -556,7 +561,8 @@ SCENARIO("motor task message passing") {
                         REQUIRE(response.responding_to_id == message.id);
                         REQUIRE(!response.close_switch_pressed);
                         REQUIRE(response.open_switch_pressed);
-                        REQUIRE(response.seal_switch_pressed);
+                        REQUIRE(!response.seal_extension_pressed);
+                        REQUIRE(response.seal_retraction_pressed);
                     }
                 }
             }
@@ -707,8 +713,8 @@ SCENARIO("motor task lid state machine") {
                      .with_error = errors::ErrorCode::LID_CLOSED}}};
             test_motor_state_machine(tasks, steps);
         }
-        GIVEN("seal limit switch is triggered") {
-            motor_policy.set_seal_switch_triggered(true);
+        GIVEN("seal retraction switch is triggered") {
+            motor_policy.set_retraction_switch_triggered(true);
             WHEN("sending open lid command") {
                 std::vector<MotorStep> steps = {
                     {.msg = messages::OpenLidMessage{.id = 123},

@@ -8,6 +8,7 @@ add_executable(
         stdin_sim_driver.cpp
         system_thread.cpp
         main.cpp
+        putchar.c
 )
 
 target_link_libraries(

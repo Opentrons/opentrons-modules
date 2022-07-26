@@ -6,12 +6,13 @@
 
 #pragma once
 
+#include <printf.h>  // Non-malloc printf
+
 #include <algorithm>
 #include <array>
 #include <charconv>
 #include <concepts>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <iterator>
 #include <optional>

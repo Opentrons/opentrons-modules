@@ -41,7 +41,7 @@ StaticTask_t main_data;
 static TaskHandle_t _local_task;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static MotorPolicy _policy;
+static MotorPolicy _policy(false);
 
 /**
  * @brief This function is called after the lid stepper has stepped the
@@ -95,6 +95,12 @@ static void handle_seal_limit_switch() {
 // Actual function that runs inside the task
 void run(void *param) {
     static_cast<void>(param);
+
+    // Share the seal switch line if the board rev is 1 or 2
+    auto shared_seal_switches = board_revision::BoardRevisionIface::get() <
+                                board_revision::BoardRevision::BOARD_REV_3;
+
+    _policy = MotorPolicy(shared_seal_switches);
 
     motor_hardware_callbacks callbacks = {
         .lid_stepper_complete = handle_lid_stepper,
