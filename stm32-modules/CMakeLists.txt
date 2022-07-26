@@ -9,6 +9,7 @@ else()
 endif()
 
 find_package(Clang)
+find_package(MpalandPrintf)
 
 add_subdirectory(common)
 add_subdirectory(heater-shaker)

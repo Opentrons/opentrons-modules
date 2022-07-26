@@ -101,11 +101,19 @@ class SimMotorPolicy : public SimTMC2130Policy {
 
     auto seal_stepper_stop() -> void { _seal_active = false; }
 
-    auto seal_switch_set_armed() -> void { _seal_switch_armed = true; }
+    auto seal_switch_set_extension_armed() -> void {
+        _seal_switch_armed = true;
+    }
+
+    auto seal_switch_set_retraction_armed() -> void {
+        _seal_switch_armed = true;
+    }
 
     auto seal_switch_set_disarmed() -> void { _seal_switch_armed = false; }
 
-    auto seal_read_limit_switch() -> bool { return false; }
+    auto seal_read_extension_switch() -> bool { return false; }
+
+    auto seal_read_retraction_switch() -> bool { return false; }
 
   private:
     // Lowest position the lid can move before stalling

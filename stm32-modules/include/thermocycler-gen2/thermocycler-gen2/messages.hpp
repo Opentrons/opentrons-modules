@@ -385,7 +385,8 @@ struct GetLidSwitchesResponse {
     uint32_t responding_to_id;
     bool close_switch_pressed;
     bool open_switch_pressed;
-    bool seal_switch_pressed;
+    bool seal_extension_pressed;
+    bool seal_retraction_pressed;
 };
 
 struct GetFrontButtonMessage {
