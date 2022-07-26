@@ -53,16 +53,21 @@ class Flash {
      */
     template <typename Policy>
     [[nodiscard]] auto get_offset_constants(Policy& policy) -> OffsetConstants {
-        OffsetConstants ret = {.b = OFFSET_DEFAULT_CONST,
-                               .c = OFFSET_DEFAULT_CONST};
+        OffsetConstants constants = {
+            .b = OFFSET_B_DEFAULT_CONST,
+            .c = OFFSET_C_DEFAULT_CONST,
+            .flag = static_cast<uint64_t>(
+                flash::Flash::FLASHFlag::WRITTEN_NO_CHECKSUM)};
         OffsetConstants receive = policy.get_thermal_offsets();
         if (receive.flag ==
             static_cast<uint64_t>(FLASHFlag::WRITTEN_NO_CHECKSUM)) {
-            ret.b = receive.b;
-            ret.c = receive.c;
+            constants.b = receive.b;
+            constants.c = receive.c;
+        } else {
+            set_offset_constants(constants, policy);
         }
         _initialized = true;
-        return ret;
+        return constants;
     }
 
     /**
@@ -97,8 +102,9 @@ class Flash {
     enum class FLASHFlag : uint64_t { WRITTEN_NO_CHECKSUM = 1, INVALID = 0xFF };
 
   private:
-    /** Default value for all constants.*/
-    static constexpr double OFFSET_DEFAULT_CONST = 0.0F;
+    /** Default values for constants.*/
+    static constexpr double OFFSET_B_DEFAULT_CONST = -0.0210F;
+    static constexpr double OFFSET_C_DEFAULT_CONST = 0.4970F;
 
     // Whether the constants have been read from the FLASH since startup.
     // Even if the FLASH is empty, this flag is set after attempting
