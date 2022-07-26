@@ -579,7 +579,10 @@ struct GetSystemInfo {
         if (written == write_to_limit) {
             return written;
         }
-        written = write_string_to_iterpair(written, write_to_limit, fw_version);
+        auto fw_version_len = strlen(fw_version);
+        static constexpr const char* sha_char = "-";
+        auto sha_index = std::find(fw_version, fw_version + fw_version_len, sha_char);
+        written = copy_min_range(written, write_to_limit, fw_version, sha_index);
         if (written == write_to_limit) {
             return written;
         }
