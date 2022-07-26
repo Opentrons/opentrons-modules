@@ -50,20 +50,20 @@ TEST_CASE("FrontButtonBlink class functionality") {
     auto subject = system_task::FrontButtonBlink();
     WHEN("ticking through the entire sequence") {
         auto intended = std::vector<bool>();
-        for(int i = 0; i < 200; ++i) {
+        for (int i = 0; i < 200; ++i) {
             intended.push_back(false);
         }
-        for(int i = 0; i < 199; ++i) {
+        for (int i = 0; i < 199; ++i) {
             intended.push_back(true);
         }
-        for(int i = 0; i < 201; ++i) {
+        for (int i = 0; i < 201; ++i) {
             intended.push_back(false);
         }
-        for(int i = 0; i < 1000; ++i) {
+        for (int i = 0; i < 1000; ++i) {
             intended.push_back(true);
         }
         auto results = std::vector<bool>();
-        while(results.size() < intended.size()) {
+        while (results.size() < intended.size()) {
             results.push_back(subject.tick());
         }
         THEN("the results match") {
