@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <printf.h> // Non-malloc printf
+#include <printf.h>  // Non-malloc printf
 
 #include <algorithm>
 #include <array>

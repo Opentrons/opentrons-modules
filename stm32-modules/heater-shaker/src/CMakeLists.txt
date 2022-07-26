@@ -4,7 +4,6 @@
 
 find_package(Python)
 find_package(Git QUIET)
-find_package(MpalandPrintf)
 
 # Generate the thermistor table for this project
 set(COMMON_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src)
