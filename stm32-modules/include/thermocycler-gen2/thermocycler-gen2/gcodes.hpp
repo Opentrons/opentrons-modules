@@ -1653,10 +1653,11 @@ struct GetLidSwitches {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit, int closed,
-                                    int open, int seal) -> InputIt {
+                                    int open, int extension, int retraction)
+        -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M901.D C:%i O:%i S:%i OK\n",
-                       closed, open, seal);
+        res = snprintf(&*buf, (limit - buf), "M901.D C:%i O:%i E:%i R:%i OK\n",
+                       closed, open, extension, retraction);
         if (res <= 0) {
             return buf;
         }
