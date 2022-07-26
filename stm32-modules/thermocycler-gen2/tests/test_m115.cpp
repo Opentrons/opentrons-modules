@@ -25,7 +25,7 @@ SCENARIO("GetSystemInfo (M115) response works", "[gcode][parse][m115]") {
         }
         WHEN("filling response with an unset serial number (all 0xFF)") {
             std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> TEST_SN;
-            memset(TEST_SN._M_elems, 0xFF, TEST_SN.size());
+            TEST_SN.fill(0xFF);
             auto written = gcode::GetSystemInfo::write_response_into(
                 buffer.begin(), buffer.end(), TEST_SN, "hello", "world");
             THEN(
