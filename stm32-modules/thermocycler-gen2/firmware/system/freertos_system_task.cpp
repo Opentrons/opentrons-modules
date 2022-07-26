@@ -50,8 +50,8 @@ static timer::GenericTimer<freertos_timer::FreeRTOSTimer> _led_timer(
     [ObjectPtr = &_task] { ObjectPtr->led_timer_callback(); });
 
 // Periodic timer for Front Button LED Updates
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static timer::GenericTimer<freertos_timer::FreeRTOSTimer>
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
     _front_button_led_timer("button led",
                             decltype(_task)::FRONT_BUTTON_PERIOD_MS, true,
                             [ObjectPtr = &_task] {

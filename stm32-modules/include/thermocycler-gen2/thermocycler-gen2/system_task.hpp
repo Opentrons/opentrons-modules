@@ -84,11 +84,9 @@ class FrontButtonBlink {
     static constexpr uint32_t ticks_per_rep = off_time + on_time;
     static constexpr uint32_t total_ticks = ticks_per_rep * repetitions;
 
-    uint32_t _count;
+    uint32_t _count = 0;
 
   public:
-    FrontButtonBlink() : _count(0) {}
-
     auto reset() -> void { _count = 0; }
 
     [[nodiscard]] auto tick() -> bool {
