@@ -49,6 +49,7 @@ set(CORE_LINTABLE_SOURCES
   )
 
 set(CORE_NONLINTABLE_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/putchar.c
   ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 
@@ -59,9 +60,13 @@ add_library(heater-shaker-core STATIC
 
 set_target_properties(heater-shaker-core
   PROPERTIES CXX_STANDARD 20
-             CXX_STANDARD_REQUIRED TRUE)
+             CXX_STANDARD_REQUIRED TRUE
+             C_STANDARD 11
+             C_STANDARD_REQUIRED TRUE)
 
-target_link_libraries(heater-shaker-core common-core)
+target_link_libraries(heater-shaker-core PUBLIC common-core)
+
+target_link_libraries(heater-shaker-core PUBLIC Mpaland_Printf_Library)
 
 target_include_directories(heater-shaker-core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/heater-shaker
@@ -72,10 +77,10 @@ target_compile_options(heater-shaker-core
   PRIVATE
   -Wall
   -Werror
-  -Weffc++
-  -Wreorder
-  -Wsign-promo
-  -Wextra-semi
-  -Wctor-dtor-privacy
-  -fno-rtti
+  $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wctor-dtor-privacy>
+  $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
   )
