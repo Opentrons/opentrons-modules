@@ -46,12 +46,15 @@ extern "C" {
 /** Pin for the lid open optical switch.*/
 #define LID_OPEN_SWITCH_PIN (GPIO_PIN_7)
 
-/** Port for Seal Limit Switch input.*/
-#define SEAL_SWITCH_PORT (GPIOD)
-/** Pin for Seal Limit Switch input.*/
-#define SEAL_SWITCH_PIN  (GPIO_PIN_6)
-/** IRQ for the seal limit switch.*/
-#define SEAL_STEPPER_DIAG1_IRQ (EXTI4_IRQn)
+/** Port for Seal Extension Limit Switch input.*/
+#define SEAL_EXTENSION_SWITCH_PORT (GPIOD)
+/** Pin for Seal Extension Limit Switch input.*/
+#define SEAL_EXTENSION_SWITCH_PIN  (GPIO_PIN_6)
+
+/** Port for Seal Retraction Limit Switch input.*/
+#define SEAL_RETRACTION_SWITCH_PORT (GPIOC)
+/** Pin for Seal Retraction Limit Switch input.*/
+#define SEAL_RETRACTION_SWITCH_PIN  (GPIO_PIN_12)
 
 /** Port for the Photointerrupt Enable line.*/
 #define PHOTOINTERRUPT_ENABLE_PORT (GPIOE)
@@ -128,7 +131,10 @@ typedef struct seal_hardware_struct {
     bool direction;
     // Bool check for whether the next switch interrupt
     // should trigger a callback
-    atomic_bool limit_switch_armed;
+    atomic_bool extension_switch_armed;
+    // Bool check for whether the next switch interrupt
+    // should trigger a callback
+    atomic_bool retraction_switch_armed;
     // Timer handle for the seal stepper
     TIM_HandleTypeDef timer;
 } seal_hardware_t;
@@ -167,7 +173,8 @@ static motor_hardware_t _motor_hardware = {
         .enabled = false,
         .moving = false,
         .direction = false,
-        .limit_switch_armed = ATOMIC_VAR_INIT(false),
+        .extension_switch_armed = false,
+        .retraction_switch_armed = false,
         .timer = {0}
     }
 };
@@ -325,37 +332,54 @@ void motor_hardware_seal_step_pulse(void) {
 void motor_hardware_solenoid_engage() { //engage to clear/unlock sliding locking plate
     //check to confirm lid closed before engaging solenoid
     HAL_GPIO_WritePin(SOLENOID_Port, SOLENOID_Pin, GPIO_PIN_SET);
-    //delay to ensure engaged
 }
 
 void motor_hardware_solenoid_release() {
     HAL_GPIO_WritePin(SOLENOID_Port, SOLENOID_Pin, GPIO_PIN_RESET);
-    //delay to ensure disengaged
 }
 
-bool motor_hardware_seal_switch_triggered() {
+bool motor_hardware_seal_extension_switch_triggered() {
     // Active low - the switches pull to ground when triggered
-    return (HAL_GPIO_ReadPin(SEAL_SWITCH_PORT, SEAL_SWITCH_PIN) == GPIO_PIN_RESET) ? true : false; 
+    return (HAL_GPIO_ReadPin(SEAL_EXTENSION_SWITCH_PORT, SEAL_EXTENSION_SWITCH_PIN)
+             == GPIO_PIN_RESET) ? true : false; 
+}
+
+bool motor_hardware_seal_retraction_switch_triggered() {
+    // Active low - the switches pull to ground when triggered
+    return (HAL_GPIO_ReadPin(SEAL_RETRACTION_SWITCH_PORT, SEAL_RETRACTION_SWITCH_PIN)
+             == GPIO_PIN_RESET) ? true : false; 
 }
 
 void motor_hardware_seal_switch_interrupt() {
-    if(__HAL_GPIO_EXTI_GET_IT(SEAL_SWITCH_PIN) != 0x00u) {
-        __HAL_GPIO_EXTI_CLEAR_IT(SEAL_SWITCH_PIN);
-        if(_motor_hardware.seal.limit_switch_armed) {
+    if(__HAL_GPIO_EXTI_GET_IT(SEAL_EXTENSION_SWITCH_PIN) != 0x00u) {
+        __HAL_GPIO_EXTI_CLEAR_IT(SEAL_EXTENSION_SWITCH_PIN);
+        if(atomic_exchange(&_motor_hardware.seal.extension_switch_armed, 0)) {
             if(_motor_hardware.callbacks.seal_stepper_limit_switch != NULL) {
                 _motor_hardware.callbacks.seal_stepper_limit_switch();
             }
-            _motor_hardware.seal.limit_switch_armed = false;
+        }
+    }
+    if(__HAL_GPIO_EXTI_GET_IT(SEAL_RETRACTION_SWITCH_PIN) != 0x00u) {
+        __HAL_GPIO_EXTI_CLEAR_IT(SEAL_RETRACTION_SWITCH_PIN);
+        if(atomic_exchange(&_motor_hardware.seal.retraction_switch_armed, 0)) {
+            if(_motor_hardware.callbacks.seal_stepper_limit_switch != NULL) {
+                _motor_hardware.callbacks.seal_stepper_limit_switch();
+            }
         }
     }
 }
 
-void motor_hardware_seal_switch_set_armed() {
-    _motor_hardware.seal.limit_switch_armed = true;
+void motor_hardware_seal_switch_set_extension_armed() {
+    _motor_hardware.seal.extension_switch_armed = true;
+}
+
+void motor_hardware_seal_switch_set_retraction_armed() {
+    _motor_hardware.seal.retraction_switch_armed = true;
 }
 
 void motor_hardware_seal_switch_set_disarmed() {
-    _motor_hardware.seal.limit_switch_armed = false;
+    _motor_hardware.seal.extension_switch_armed = false;
+    _motor_hardware.seal.retraction_switch_armed = false;
 }
 
 // ----------------------------------------------------------------------------
@@ -373,6 +397,7 @@ static void init_motor_gpio(void)
     /* Enable GPIOx clocks */
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOE_CLK_ENABLE();
 
@@ -467,11 +492,16 @@ static void init_motor_gpio(void)
 
     // The IRQ for this line (EXTI 5 through 9) is enabled by 
     // the thermal subsystem.
-    GPIO_InitStruct.Pin = SEAL_SWITCH_PIN;
+    GPIO_InitStruct.Pin = SEAL_EXTENSION_SWITCH_PIN;
     GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-    HAL_GPIO_Init(SEAL_SWITCH_PORT, &GPIO_InitStruct);
+    HAL_GPIO_Init(SEAL_EXTENSION_SWITCH_PORT, &GPIO_InitStruct);
+
+    // The IRQ for this line (EXTI 10 through 15) is enabled by
+    // the thermal subsystem.
+    GPIO_InitStruct.Pin = SEAL_RETRACTION_SWITCH_PIN;
+    HAL_GPIO_Init(SEAL_RETRACTION_SWITCH_PORT, &GPIO_InitStruct);
 
     HAL_NVIC_SetPriority(SEAL_STEPPER_DIAG0_IRQ, 4, 0);
     HAL_NVIC_EnableIRQ(SEAL_STEPPER_DIAG0_IRQ);

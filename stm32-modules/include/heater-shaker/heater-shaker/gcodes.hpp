@@ -6,12 +6,13 @@
 
 #pragma once
 
+#include <printf.h>  // Non-malloc printf
+
 #include <algorithm>
 #include <array>
 #include <charconv>
 #include <concepts>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <iterator>
 #include <optional>
@@ -563,6 +564,8 @@ struct GetSystemInfo {
     static constexpr auto prefix = std::array{'M', '1', '1', '5'};
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
         SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
+    // If no SN is provided, this is the default rather than an empty string
+    static constexpr const char* DEFAULT_SN = "EMPTYSN";
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -595,8 +598,29 @@ struct GetSystemInfo {
         if (written == write_to_limit) {
             return written;
         }
-        written = write_string_to_iterpair(written, write_to_limit,
-                                           serial_number.begin());
+        // If the serial number is unwritten, it will contain 0xFF which is
+        // an illegal character that will confuse the host side. Replace the
+        // first instance of it with a null terminator for safety.
+        constexpr uint8_t invalid_ascii_mask = 0x80;
+        auto serial_len = strnlen(serial_number.begin(), serial_number.size());
+        auto invalid_char = std::find_if(
+            serial_number.begin(), serial_number.end(), [](auto c) {
+                return static_cast<uint8_t>(c) & invalid_ascii_mask;
+            });
+        if (invalid_char != serial_number.end()) {
+            serial_len = std::min(serial_len,
+                                  static_cast<size_t>(std::abs(std::distance(
+                                      serial_number.begin(), invalid_char))));
+        }
+        if (serial_len > 0) {
+            written =
+                copy_min_range(written, write_to_limit, serial_number.begin(),
+                               std::next(serial_number.begin(),
+                                         static_cast<signed int>(serial_len)));
+        } else {
+            written =
+                write_string_to_iterpair(written, write_to_limit, DEFAULT_SN);
+        }
         if (written == write_to_limit) {
             return written;
         }
@@ -684,14 +708,14 @@ struct SetSerialNumber {
 struct SetLEDDebug {
     /*
     ** Set LED Debug uses a random gcode, M994.D
-    ** Format: M994.D <which_LED_mode>
-    ** Example: M994.D 0 selects WHITE_ON mode and turns the white LED on
+    ** Format: M994.D <which_LED_color>
+    ** Example: M994.D 0 selects WHITE color and turns the white LEDs on
     */
     using ParseResult = std::optional<SetLEDDebug>;
     static constexpr auto prefix =
         std::array{'M', '9', '9', '4', '.', 'D', ' '};
     static constexpr const char* response = "M994.D OK\n";
-    LED_MODE mode;
+    LED_COLOR color;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -715,8 +739,8 @@ struct SetLEDDebug {
         if (!value_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        LED_MODE tempMode = static_cast<LED_MODE>(value_res.first.value());
-        return std::make_pair(ParseResult(SetLEDDebug{.mode = tempMode}),
+        LED_COLOR tempColor = static_cast<LED_COLOR>(value_res.first.value());
+        return std::make_pair(ParseResult(SetLEDDebug{.color = tempColor}),
                               value_res.second);
     }
 };
@@ -731,7 +755,6 @@ struct IdentifyModuleStartLED {
     using ParseResult = std::optional<IdentifyModuleStartLED>;
     static constexpr auto prefix = std::array{'M', '9', '9', '4'};
     static constexpr const char* response = "M994 OK\n";
-    LED_MODE mode;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -766,7 +789,6 @@ struct IdentifyModuleStopLED {
     using ParseResult = std::optional<IdentifyModuleStopLED>;
     static constexpr auto prefix = std::array{'M', '9', '9', '5'};
     static constexpr const char* response = "M995 OK\n";
-    LED_MODE mode;
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -1126,7 +1148,7 @@ struct GetOffsetConstants {
         std::sized_sentinel_for<InputLimit, InputIt>
     static auto write_response_into(InputIt buf, InputLimit limit, double b,
                                     double c) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M117 B:%0.3f C:%0.3f OK\n",
+        auto res = snprintf(&*buf, (limit - buf), "M117 B:%0.4f C:%0.4f OK\n",
                             static_cast<float>(b), static_cast<float>(c));
         if (res <= 0) {
             return buf;

@@ -7,9 +7,24 @@
 #include "firmware/motor_hardware.h"
 #include "firmware/motor_spi_hardware.h"
 #include "task.h"
+#include "thermocycler-gen2/board_revision.hpp"
 #include "thermocycler-gen2/errors.hpp"
 
 using namespace errors;
+
+MotorPolicy::MotorPolicy(bool shared_seal_switch_lines)
+    : _seal_callback(),  // NOLINT(readability-redundant-member-init)
+      _shared_seal_switch_lines(shared_seal_switch_lines) {}
+
+MotorPolicy::MotorPolicy(MotorPolicy&& other) noexcept
+    : _seal_callback(std::move(other._seal_callback)),
+      _shared_seal_switch_lines(other._shared_seal_switch_lines) {}
+
+auto MotorPolicy::operator=(MotorPolicy&& other) noexcept -> MotorPolicy& {
+    _seal_callback = std::move(other._seal_callback);
+    _shared_seal_switch_lines = other._shared_seal_switch_lines;
+    return *this;
+}
 
 // bool return for error checking?
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
@@ -90,17 +105,40 @@ auto MotorPolicy::tmc2130_step_pulse() -> bool {
     return true;
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::seal_switch_set_armed() -> void {
-    motor_hardware_seal_switch_set_armed();
+// We use a blanket lint disabler because clang suggests two changes
+// and they cannot fit on a single line in the formatter
+// NOLINTNEXTLINE: Clang suggests static *and* const
+auto MotorPolicy::seal_switch_set_extension_armed() -> void {
+    motor_hardware_seal_switch_set_extension_armed();
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+// We use a blanket lint disabler because clang suggests two changes
+// and they cannot fit on a single line in the formatter
+// NOLINTNEXTLINE: Clang suggests static *and* const
+auto MotorPolicy::seal_switch_set_retraction_armed() -> void {
+    if (_shared_seal_switch_lines) {
+        motor_hardware_seal_switch_set_extension_armed();
+    } else {
+        motor_hardware_seal_switch_set_retraction_armed();
+    }
+}
+
+// We use a blanket lint disabler because clang suggests two changes
+// and they cannot fit on a single line in the formatter
+// NOLINTNEXTLINE: Clang suggests static *and* const
 auto MotorPolicy::seal_switch_set_disarmed() -> void {
     motor_hardware_seal_switch_set_disarmed();
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::seal_read_limit_switch() -> bool {
-    return motor_hardware_seal_switch_triggered();
+[[nodiscard]] auto MotorPolicy::seal_read_extension_switch() const -> bool {
+    return motor_hardware_seal_extension_switch_triggered();
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+[[nodiscard]] auto MotorPolicy::seal_read_retraction_switch() const -> bool {
+    if (_shared_seal_switch_lines) {
+        return motor_hardware_seal_extension_switch_triggered();
+    }
+    return motor_hardware_seal_retraction_switch_triggered();
 }

@@ -7,7 +7,8 @@ TestHeaterPolicy::TestHeaterPolicy(bool pgood, bool can_reset)
       may_reset(can_reset),
       try_reset_calls(0),
       power(0),
-      enabled(false) {}
+      enabled(false),
+      circuit_error(false) {}
 
 TestHeaterPolicy::TestHeaterPolicy() : TestHeaterPolicy(true, true) {}
 
@@ -39,10 +40,24 @@ auto TestHeaterPolicy::reset_try_reset_call_count() -> void {
     try_reset_calls = 0;
 }
 
-auto TestHeaterPolicy::set_power_output(double output) -> bool {
+auto TestHeaterPolicy::set_power_output(double output)
+    -> HEATPAD_CIRCUIT_ERROR {
     power = output;
-    enabled = true;
-    return true;
+    if (!circuit_error) {
+        enabled = true;
+        return HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_NO_ERROR;
+    } else {
+        enabled = false;
+        return HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_SHORTED;
+    }
+}
+
+auto TestHeaterPolicy::set_circuit_error(bool set) -> void {
+    if (set) {
+        circuit_error = true;
+    } else {
+        circuit_error = false;
+    }
 }
 
 auto TestHeaterPolicy::disable_power_output() -> void { enabled = false; }

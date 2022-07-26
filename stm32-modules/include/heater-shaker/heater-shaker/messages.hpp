@@ -103,8 +103,18 @@ struct SetSerialNumberMessage {
 
 struct SetLEDMessage {
     uint32_t id;
-    LED_MODE mode;
+    LED_COLOR color;
     bool from_host = false;
+};
+
+struct UpdateLEDStateMessage {
+    uint32_t id;
+    LED_COLOR color;
+    LED_MODE mode;
+};
+
+struct UpdateLEDMessage {
+    uint32_t id;
 };
 
 struct IdentifyModuleStartLEDMessage {
@@ -114,8 +124,6 @@ struct IdentifyModuleStartLEDMessage {
 struct IdentifyModuleStopLEDMessage {
     uint32_t id;
 };
-
-struct CheckLEDBlinkStatusMessage {};
 
 struct HandleLEDSetupError {
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
@@ -217,6 +225,7 @@ struct GetRPMResponse {
     uint32_t responding_to_id;
     int16_t current_rpm;
     int16_t setpoint_rpm;
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
 struct GetSystemInfoResponse {
@@ -290,7 +299,8 @@ using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage, SetLEDMessage,
                    IdentifyModuleStartLEDMessage, IdentifyModuleStopLEDMessage,
-                   CheckLEDBlinkStatusMessage, HandleLEDSetupError>;
+                   HandleLEDSetupError, UpdateLEDStateMessage,
+                   UpdateLEDMessage>;
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, AcknowledgePrevious,
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,

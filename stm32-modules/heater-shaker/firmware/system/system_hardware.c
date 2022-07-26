@@ -10,15 +10,13 @@
 
 #define BASE_PWM_REGISTER               0x04
 #define UPDATE_REGISTER                 0x13
-#define BASE_WHITE_REGISTER             0x17 //left white LED is on driver channel 4
-#define BASE_RED_REGISTER               0x1A //right red LED is on driver channel 7
+#define BASE_COLOR_REGISTER             0x17 //LEDs start on driver channel 4
 #define SHUTDOWN_REGISTER               0x00
 #define REGISTER_SIZE                   0x01
 
-#define LED_OUT_HI                      0x30 //full current output
-#define LED_PWM_OUT_HI                  0xFF //full pwm output
-#define LED_OUT_MID                     0x13 //low current output
-#define LED_PWM_OUT_MID                 0x4B //low pwm output
+#define LED_OUTPUT_HI                   0x30 //full current output
+#define LED_PWM_HI                      0xFF //100% pwm duty cycle
+#define AMBER_GREEN_OUTPUT_LEVEL        0x3A //75% pwm duty cycle
 
 #define I2C_ADDRESS        0x6C
 /* I2C TIMING Register is defined when I2C clock source is SYSCLK (true) */
@@ -28,14 +26,14 @@
 static TaskHandle_t xTaskToNotify = NULL;
 I2C_HandleTypeDef I2cHandle;
 
-uint8_t PWMInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI, LED_PWM_OUT_HI};
-uint8_t OutputInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_OUT_HI, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8_t PWMInitBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_PWM_HI, LED_PWM_HI, LED_PWM_HI, LED_PWM_HI, LED_PWM_HI, LED_PWM_HI, LED_PWM_HI, LED_PWM_HI, LED_PWM_HI, LED_PWM_HI, LED_PWM_HI, LED_PWM_HI};
 uint8_t UpdateBuffer[1] = {0x00};
 uint8_t ShutdownBuffer[1] = {0x01};
-uint8_t WhiteOnBuffer[1] = {LED_OUT_HI};
-uint8_t WhiteOffBuffer[1] = {0x00};
-uint8_t RedOnBuffer[9] = {LED_OUT_HI};
-uint8_t RedOffBuffer[9] = {0x00};
+uint8_t WhiteBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {LED_OUTPUT_HI, LED_OUTPUT_HI, LED_OUTPUT_HI, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8_t RedBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, LED_OUTPUT_HI, 0x00, 0x00, LED_OUTPUT_HI, 0x00, 0x00, LED_OUTPUT_HI, 0x00, 0x00};
+uint8_t AmberBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, LED_OUTPUT_HI, AMBER_GREEN_OUTPUT_LEVEL, 0x00, LED_OUTPUT_HI, AMBER_GREEN_OUTPUT_LEVEL, 0x00, LED_OUTPUT_HI, AMBER_GREEN_OUTPUT_LEVEL, 0x00};
+uint8_t BlueBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, LED_OUTPUT_HI, 0x00, 0x00, LED_OUTPUT_HI, 0x00, 0x00, LED_OUTPUT_HI};
+uint8_t OffBuffer[SYSTEM_WIDE_TXBUFFERSIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 bool CallbackStatus = false;
 
 void system_hardware_setup(void) {
@@ -123,7 +121,7 @@ bool system_hardware_setup_led(void) {
   if (status) {
     status = system_hardware_set_led_send(BASE_PWM_REGISTER, PWMInitBuffer, SYSTEM_WIDE_TXBUFFERSIZE);
     if (status) {
-      status = system_hardware_set_led_send(BASE_WHITE_REGISTER, OutputInitBuffer, SYSTEM_WIDE_TXBUFFERSIZE);
+      status = system_hardware_set_led_send(BASE_COLOR_REGISTER, WhiteBuffer, SYSTEM_WIDE_TXBUFFERSIZE);
       if (status) {
         status = system_hardware_set_led_send(UPDATE_REGISTER, UpdateBuffer, sizeof(UpdateBuffer));
       }
@@ -132,43 +130,40 @@ bool system_hardware_setup_led(void) {
   return status;
 }
 
-bool system_hardware_set_led(LED_MODE mode) {
-  uint16_t register_address;
-  uint8_t* set_buffer;
-  uint16_t buffer_size;
+bool system_hardware_set_led(LED_COLOR color, uint8_t pwm_setting) {
+  uint8_t* ColorUpdateBuffer;
   bool status;
 
-  switch (mode) {
-    case WHITE_ON:
-      register_address = BASE_WHITE_REGISTER;
-      set_buffer = WhiteOnBuffer;
-      buffer_size = sizeof(WhiteOnBuffer);
+  switch (color) {
+    case WHITE:
+      ColorUpdateBuffer = WhiteBuffer;
       break;
-    case WHITE_OFF:
-      register_address = BASE_WHITE_REGISTER;
-      set_buffer = WhiteOffBuffer;
-      buffer_size = sizeof(WhiteOffBuffer);
+    case OFF:
+      ColorUpdateBuffer = OffBuffer;
       break;
-    case RED_ON:
-      register_address = BASE_RED_REGISTER;
-      set_buffer = RedOnBuffer;
-      buffer_size = sizeof(RedOnBuffer);
+    case RED:
+      ColorUpdateBuffer = RedBuffer;
       break;
-    case RED_OFF:
-      register_address = BASE_RED_REGISTER;
-      set_buffer = RedOffBuffer;
-      buffer_size = sizeof(RedOffBuffer);
+    case AMBER:
+      ColorUpdateBuffer = AmberBuffer;
+      break;
+    case BLUE:
+      ColorUpdateBuffer = BlueBuffer;
       break;
     default:
-      register_address = BASE_WHITE_REGISTER;
-      set_buffer = OutputInitBuffer;
-      buffer_size = sizeof(OutputInitBuffer);
+      ColorUpdateBuffer = WhiteBuffer;
       break;
   }
 
-  status = system_hardware_set_led_send(register_address, set_buffer, buffer_size);
+  uint8_t PWMUpdateBuffer[SYSTEM_WIDE_TXBUFFERSIZE];
+  memset(PWMUpdateBuffer, pwm_setting, SYSTEM_WIDE_TXBUFFERSIZE);
+  
+  status = system_hardware_set_led_send(BASE_PWM_REGISTER, PWMUpdateBuffer, SYSTEM_WIDE_TXBUFFERSIZE);
   if (status) {
-    status = system_hardware_set_led_send(UPDATE_REGISTER, UpdateBuffer, sizeof(UpdateBuffer));
+    status = system_hardware_set_led_send(BASE_COLOR_REGISTER, ColorUpdateBuffer, SYSTEM_WIDE_TXBUFFERSIZE);
+    if (status) {
+      status = system_hardware_set_led_send(UPDATE_REGISTER, UpdateBuffer, sizeof(UpdateBuffer));
+    }
   }
   return status;
 }

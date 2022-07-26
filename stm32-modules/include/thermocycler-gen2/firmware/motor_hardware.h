@@ -140,27 +140,42 @@ void motor_hardware_solenoid_engage();
 void motor_hardware_solenoid_release();
 
 /**
- * @brief Check if the seal switch is currently triggered
+ * @brief Check if the extension switch is currently triggered
  *
  * @return True if the switch is pressed, false otherwise
  */
-bool motor_hardware_seal_switch_triggered();
+bool motor_hardware_seal_extension_switch_triggered();
 
 /**
- * @brief Arm the seal switch interrupt for triggering. The switch must
+ * @brief Check if the retraction switch is currently triggered
+ *
+ * @return True if the switch is pressed, false otherwise
+ */
+bool motor_hardware_seal_retraction_switch_triggered();
+
+/**
+ * @brief Arm the extension switch interrupt for triggering. The switch must
  * be armed before it will invoke its callback, and it will only invoke
  * the callback one time per arming.
  */
-void motor_hardware_seal_switch_set_armed();
+void motor_hardware_seal_switch_set_extension_armed();
 
 /**
- * @brief Disarm the seal switch if it is armed.
- * @see #motor_hardware_seal_switch_arm
+ * @brief Arm the retraction switch interrupt for triggering. The switch must
+ * be armed before it will invoke its callback, and it will only invoke
+ * the callback one time per arming.
+ */
+void motor_hardware_seal_switch_set_retraction_armed();
+
+/**
+ * @brief Disarm the seal switches if they armed.
+ * @see #motor_hardware_seal_switch_set_extension_armed
+ * @see #motor_hardware_seal_switch_set_retraction_armed
  */
 void motor_hardware_seal_switch_set_disarmed();
 
 /**
- * @brief Should be invoked whenever the Seal Limit Switch line
+ * @brief Should be invoked whenever a Seal Limit Switch line
  * triggers an interrupt
  *
  */

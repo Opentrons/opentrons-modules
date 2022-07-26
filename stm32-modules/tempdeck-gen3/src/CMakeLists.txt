@@ -58,6 +58,7 @@ set(CORE_LINTABLE_SOURCES
     ${CORE_LINTABLE_SOURCES}
     PARENT_SCOPE)
 set(CORE_NONLINTABLE_SOURCES
+    ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 
 add_library(${TARGET_MODULE_NAME}-core STATIC
@@ -76,6 +77,7 @@ target_link_libraries(${TARGET_MODULE_NAME}-core PUBLIC common-core)
 target_include_directories(${TARGET_MODULE_NAME}-core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
   PUBLIC ${CMAKE_CURRENT_BINARY_DIR}  # need to add this to get the generated conversion header
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../cpp-utils/include/
   )
 
 target_compile_options(${TARGET_MODULE_NAME}-core

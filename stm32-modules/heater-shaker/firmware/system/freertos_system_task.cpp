@@ -6,7 +6,9 @@
 #include <array>
 
 #include "FreeRTOS.h"
+#include "core/timer.hpp"
 #include "firmware/freertos_message_queue.hpp"
+#include "firmware/freertos_timer.hpp"
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/system_task.hpp"
 #include "heater-shaker/tasks.hpp"
@@ -41,6 +43,12 @@ static std::array<StackType_t, stack_size> stack;
 static StaticTask_t
     data;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
+// Periodic timer for LED updates
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static timer::GenericTimer<freertos_timer::FreeRTOSTimer> _led_timer(
+    "led timer", decltype(_task)::LED_UPDATE_PERIOD_MS, true,
+    [ObjectPtr = &_task] { ObjectPtr->led_timer_callback(); });
+
 // Actual function that runs inside the task, unused param because we don't get
 // to pick the function type
 static void run(void *param) {
@@ -52,13 +60,12 @@ static void run(void *param) {
             .with_error = errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR};
         static_cast<void>(queue.try_send(LED_setup_error_message, 10));
     }
-    static constexpr uint32_t delay_ticks = 100;
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto *task = reinterpret_cast<decltype(_task) *>(param);
     auto policy = SystemPolicy();
+    _led_timer.start();
     while (true) {
         task->run_once(policy);
-        vTaskDelay(delay_ticks);
     }
 }
 

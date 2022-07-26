@@ -47,11 +47,21 @@ graph TD
     Start -->|Disable command| Off
 ```
 
+### Integral Windup Compensation
+
+A byproduct of PID control is integral windup, wherein the integral term grows so much while moving to a target that it causes a significant overshoot after reaching the target. The firmware deals with this in two ways:
+- When moving to a temperature that is _away_ from ambient temperature (relative to starting temperature), the firmware utilizes Conditional Integration. The peltiers are controlled open-loop until getting within the "proportional band" from the target, at which point the PID control begins.
+- When moving to a temperature that is _towards_ ambient temperature (relative to starting temperature), the firmware uses PID control for the entire ramp. However, the PID controller is armed to reset the integral term once the error from the target temperature is less than 3ºC. This prevents excessive overshoot that conditional integration would cause in this scenario.
+
+### Heating to cold temperatures
+
+When __heating__ to a temperature that is less than the current heatsink temperature, special compensation must be made to reduce unwanted overshoot. The firmware sets the effective Overshoot Target to __2ºC__ less than the "actual" target; the peltiers will overshoot this target and end up very close to the original overshoot target.
+
 ### Thermistor Drift Errors
 
 The firmware raises an error if the thermistors on the plate seem to have excessively drifted. If the following conditions are met, then the thermal plate task enters an error state until the device is reset:
 - There is an active temperature target
-- The plate control has finisehd the Overshoot Phase and 30 additional seconds have passed
+- The plate control has finished the Overshoot Phase and 30 additional seconds have passed
 - The hottest thermistor and the coldest thermistor on the plate are more than 4ºC apart from one another
 
 ## Lid Heater

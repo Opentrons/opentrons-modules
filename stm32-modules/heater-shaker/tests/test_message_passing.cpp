@@ -36,6 +36,13 @@ SCENARIO("testing full message passing integration") {
             }
         }
         WHEN("sending a get-rpm message by string to the host comms task") {
+            tasks->get_motor_policy().test_set_current_rpm(1050);
+            auto pre_message = messages::SetRPMMessage{
+                .id = 123, .target_rpm = 3500};  // needed to populate setpoint
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(pre_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            tasks->get_host_comms_queue().backing_deque.pop_front();
             std::string message_str = "M123\n";
             tasks->get_host_comms_queue().backing_deque.push_back(
                 messages::HostCommsMessage(messages::IncomingMessageFromHost(
@@ -45,8 +52,6 @@ SCENARIO("testing full message passing integration") {
                 auto written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE(written == response_buffer.begin());
-                tasks->get_motor_policy().test_set_current_rpm(1050);
-                tasks->get_motor_policy().set_rpm(3500);
                 tasks->get_motor_task().run_once(tasks->get_motor_policy());
                 written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
@@ -86,7 +91,7 @@ SCENARIO("testing full message passing integration") {
                 written = tasks->get_host_comms_task().run_once(
                     response_buffer.begin(), response_buffer.end());
                 REQUIRE_THAT(response_buffer, Catch::Matchers::StartsWith(
-                                                  "M105 C:95.20 T:None OK\n"));
+                                                  "M105 C:93.70 T:None OK\n"));
             }
         }
 
