@@ -6,8 +6,22 @@
 #include "thermocycler-gen2/errors.hpp"
 #include "thermocycler-gen2/tmc2130.hpp"
 
+/**
+ * @brief Policy implementation for motor hardware.
+ *
+ * This policy is compatible with two schemes for the seal limit switches, set
+ * by _shared_seal_switch_lines.
+ *
+ * If the lines are shared, then only the line for the extension switch is
+ * actually used. This applies to board revisions below REV3.
+ *
+ * If the lines are NOT shared, then two different GPIO lines are used. This
+ * applies to all boards at REV3 and above.
+ *
+ */
 class MotorPolicy {
     std::function<void()> _seal_callback;
+    bool _shared_seal_switch_lines;
 
   public:
     using RxTxReturn = std::optional<tmc2130::MessageT>;
@@ -15,12 +29,18 @@ class MotorPolicy {
     /** Frequency of the seal motor interrupt in hertz.*/
     static constexpr const uint32_t MotorTickFrequency = MOTOR_INTERRUPT_FREQ;
 
+    explicit MotorPolicy() = delete;
+
     /**
      * @brief Construct a new Motor Policy object
      *
      */
-    MotorPolicy()
-        : _seal_callback() {}  // NOLINT(readability-redundant-member-init)
+    MotorPolicy(bool shared_seal_switch_lines);
+
+    MotorPolicy(MotorPolicy&& other);
+    MotorPolicy(const MotorPolicy& other);
+    MotorPolicy& operator=(MotorPolicy&& other);
+    MotorPolicy& operator=(const MotorPolicy& other);
 
     /**
      * @brief Set the value of the DAC as a register value. The DAC is used
@@ -119,23 +139,34 @@ class MotorPolicy {
     auto tmc2130_step_pulse() -> bool;
 
     /**
-     * @brief Arm the limit switch for the seal motor.
-     *
+     * @brief Arm the extension limit switch for the seal motor.
      */
-    auto seal_switch_set_armed() -> void;
+    auto seal_switch_set_extension_armed() -> void;
 
     /**
-     * @brief Disarm the limit switch for the seal motor.
+     * @brief Arm the retraction limit switch for the seal motor.
+     */
+    auto seal_switch_set_retraction_armed() -> void;
+
+    /**
+     * @brief Disarm the limit switches for the seal motor.
      *
      */
     auto seal_switch_set_disarmed() -> void;
 
     /**
-     * @brief Read the seal limit switch
+     * @brief Read the seal's extension limit switch
      *
      * @return true if the switch is triggered, false otherwise
      */
-    auto seal_read_limit_switch() -> bool;
+    auto seal_read_extension_switch() -> bool;
+
+    /**
+     * @brief Read the seal's retraction limit switch
+     *
+     * @return true if the switch is triggered, false otherwise
+     */
+    auto seal_read_retraction_switch() -> bool;
 
     /**
      * @brief Call the seal callback function
