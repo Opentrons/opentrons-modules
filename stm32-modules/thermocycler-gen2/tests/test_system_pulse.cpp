@@ -71,3 +71,61 @@ TEST_CASE("FrontButtonBlink class functionality") {
         }
     }
 }
+
+TEST_CASE("ButtonPress class functionality") {
+    GIVEN("a button press instance with a threshold of 5ms") {
+        std::optional<bool> pressed = std::nullopt;
+        auto subject =
+            system_task::ButtonPress([&](bool set) { pressed = set; }, 5);
+        WHEN("pressing for 3 ms and then releasing after 1ms") {
+            subject.reset();
+            subject.update_held(3);
+            subject.released(1);
+            THEN("a short press is sent") {
+                REQUIRE(pressed.has_value());
+                REQUIRE(pressed.value() == false);
+            }
+            AND_WHEN("calling release again without resetting") {
+                pressed = std::nullopt;
+                subject.released(1);
+                THEN("the callback is not called") {
+                    REQUIRE(!pressed.has_value());
+                }
+            }
+            AND_WHEN("resetting and then releasing after 2ms") {
+                pressed = std::nullopt;
+                subject.reset();
+                subject.released(2);
+                THEN("a short press is sent") {
+                    REQUIRE(pressed.has_value());
+                    REQUIRE(pressed.value() == false);
+                }
+            }
+        }
+        WHEN("pressing for 7 milliseconds") {
+            subject.reset();
+            subject.update_held(7);
+            THEN("a long press is sent") {
+                REQUIRE(pressed.has_value());
+                REQUIRE(pressed.value() == true);
+            }
+            AND_WHEN("releasing the button") {
+                pressed = std::nullopt;
+                subject.released(2);
+                THEN("the callback is not invoked") {
+                    REQUIRE(!pressed.has_value());
+                }
+            }
+        }
+        WHEN("pressing for 1 millisecond, 6 times") {
+            subject.reset();
+            for (auto i = 0; i < 6; ++i) {
+                subject.update_held(1);
+            }
+            THEN("a long press is sent") {
+                REQUIRE(pressed.has_value());
+                REQUIRE(pressed.value() == true);
+            }
+        }
+    }
+}
