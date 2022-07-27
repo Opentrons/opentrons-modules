@@ -5,20 +5,17 @@
 
 find_package(Python)
 find_package(Git QUIET)
-find_package(MpalandPrintf)
 
 # Generate the thermistor table for this project
 set(COMMON_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src)
 
 add_custom_command(
   COMMAND Python::Interpreter ${COMMON_SRC_DIR}/generate_thermistor_table.py
-    ${COMMON_SRC_DIR}/ntcg104ed104dtdsx.csv
-    ${COMMON_SRC_DIR}/ks103j2.csv
-    "KS"
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
+    --ksfile
+    ${COMMON_SRC_DIR}/ks103j2.csv
   DEPENDS ${COMMON_SRC_DIR}/generate_thermistor_table.py
-          ${COMMON_SRC_DIR}/ntcg104ed104dtdsx.csv
           ${COMMON_SRC_DIR}/ks103j2.csv
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
          ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp

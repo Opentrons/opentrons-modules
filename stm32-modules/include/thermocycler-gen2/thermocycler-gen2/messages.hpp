@@ -223,7 +223,7 @@ struct GetThermalPowerMessage {
 struct GetPlatePowerResponse {
     uint32_t responding_to_id;
 
-    double left, center, right, fans;
+    double left, center, right, fans, tach1, tach2;
 };
 
 // Lid Task response to GetThermalPowerMessage
@@ -250,6 +250,7 @@ struct SetLidTemperatureMessage {
 
 struct DeactivateLidHeatingMessage {
     uint32_t id;
+    bool from_system = false;
 };
 
 struct SetPlateTemperatureMessage {
@@ -265,6 +266,7 @@ struct SetFanAutomaticMessage {
 
 struct DeactivatePlateMessage {
     uint32_t id;
+    bool from_system = false;
 };
 
 struct SetPIDConstantsMessage {
@@ -277,6 +279,7 @@ struct SetPIDConstantsMessage {
 
 struct SetOffsetConstantsMessage {
     uint32_t id;
+    PeltierSelection channel;
     bool a_set;
     double const_a;
     bool b_set;
@@ -291,7 +294,7 @@ struct GetOffsetConstantsMessage {
 
 struct GetOffsetConstantsResponse {
     uint32_t responding_to_id;
-    double const_a, const_b, const_c;
+    double a, bl, cl, bc, cc, br, cr;
 };
 
 struct UpdateUIMessage {
@@ -373,7 +376,8 @@ struct GetLidSwitchesResponse {
     uint32_t responding_to_id;
     bool close_switch_pressed;
     bool open_switch_pressed;
-    bool seal_switch_pressed;
+    bool seal_extension_pressed;
+    bool seal_retraction_pressed;
 };
 
 struct GetFrontButtonMessage {

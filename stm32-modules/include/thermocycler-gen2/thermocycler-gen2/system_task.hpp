@@ -57,7 +57,9 @@ template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
 class SystemTask {
     using BootloaderPrepAckCache =
-        AckCache<3, messages::ForceUSBDisconnectMessage>;
+        AckCache<3, messages::ForceUSBDisconnectMessage,
+                 messages::DeactivateLidHeatingMessage,
+                 messages::DeactivatePlateMessage>;
 
   public:
     using Queue = QueueImpl<Message>;
@@ -116,11 +118,26 @@ class SystemTask {
         // this happens, so let's try and turn off the rest of the hardware
         // nicely just in case.
         auto disconnect_message = messages::ForceUSBDisconnectMessage{.id = 0};
-        auto disconnect_id = _prep_cache.add(disconnect_message);
-        disconnect_message.id = disconnect_id;
+        disconnect_message.id = _prep_cache.add(disconnect_message);
         if (!_task_registry->comms->get_message_queue().try_send(
                 disconnect_message, 1)) {
-            _prep_cache.remove_if_present(disconnect_id);
+            _prep_cache.remove_if_present(disconnect_message.id);
+        }
+
+        auto plate_message =
+            messages::DeactivatePlateMessage{.id = 0, .from_system = true};
+        plate_message.id = _prep_cache.add(plate_message);
+        if (!_task_registry->thermal_plate->get_message_queue().try_send(
+                plate_message, 1)) {
+            _prep_cache.remove_if_present(plate_message.id);
+        }
+
+        auto lid_message =
+            messages::DeactivateLidHeatingMessage{.id = 0, .from_system = true};
+        lid_message.id = _prep_cache.add(lid_message);
+        if (!_task_registry->lid_heater->get_message_queue().try_send(
+                lid_message, 1)) {
+            _prep_cache.remove_if_present(lid_message.id);
         }
 
         auto ack_message =
@@ -131,6 +148,8 @@ class SystemTask {
         // Somehow we couldn't send any of the messages, maybe system deadlock?
         // Enter bootloader regardless
         if (_prep_cache.empty()) {
+            _leds.set_all(xt1511::XT1511());
+            static_cast<void>(_leds.write(policy));
             policy.enter_bootloader();
         }
     }
@@ -160,6 +179,8 @@ class SystemTask {
         }
         // No remaining setup tasks, enter bootloader
         if (_prep_cache.empty()) {
+            _leds.set_all(xt1511::XT1511());
+            static_cast<void>(_leds.write(policy));
             policy.enter_bootloader();
         }
     }

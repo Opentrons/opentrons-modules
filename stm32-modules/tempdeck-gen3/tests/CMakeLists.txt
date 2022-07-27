@@ -6,6 +6,20 @@ include(AddBuildAndTestTarget)
 
 add_executable(${TARGET_MODULE_NAME}
     test_main.cpp
+    test_heartbeat.cpp
+    test_host_comms_task.cpp
+    test_system_task.cpp
+    test_ui_task.cpp
+    test_thermistor_task.cpp
+    test_thermal_task.cpp
+    # gcode tests
+    test_m104d.cpp
+    test_m105d.cpp
+    test_m106.cpp
+    test_m107.cpp 
+    test_m115.cpp
+    test_m996.cpp
+    test_dfu_gcode.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 

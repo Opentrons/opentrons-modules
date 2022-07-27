@@ -54,11 +54,26 @@ class TestMotorPolicy : public TestTMC2130Policy {
 
     auto seal_stepper_stop() -> void { _seal_moving = false; }
 
-    auto seal_switch_set_armed() -> void { _seal_switch_armed = true; }
+    auto seal_switch_set_extension_armed() -> void {
+        _extension_switch_armed = true;
+    }
 
-    auto seal_switch_set_disarmed() -> void { _seal_switch_armed = false; }
+    auto seal_switch_set_retraction_armed() -> void {
+        _retraction_switch_armed = true;
+    }
 
-    auto seal_read_limit_switch() -> bool { return _seal_switch_triggered; }
+    auto seal_switch_set_disarmed() -> void {
+        _extension_switch_armed = false;
+        _retraction_switch_armed = false;
+    }
+
+    auto seal_read_extension_switch() -> bool {
+        return _extension_switch_triggered;
+    }
+
+    auto seal_read_retraction_switch() -> bool {
+        return _retraction_switch_triggered;
+    }
 
     // Test-specific functions
 
@@ -80,10 +95,18 @@ class TestMotorPolicy : public TestTMC2130Policy {
 
     auto get_lid_overdrive() -> bool { return _lid_overdrive; }
 
-    auto seal_switch_is_armed() -> bool { return _seal_switch_armed; }
+    auto extension_switch_is_armed() -> bool { return _extension_switch_armed; }
 
-    auto set_seal_switch_triggered(bool val) -> void {
-        _seal_switch_triggered = val;
+    auto retraction_switch_is_armed() -> bool {
+        return _retraction_switch_armed;
+    }
+
+    auto set_extension_switch_triggered(bool val) -> void {
+        _extension_switch_triggered = val;
+    }
+
+    auto set_retraction_switch_triggered(bool val) -> void {
+        _retraction_switch_triggered = val;
     }
 
   private:
@@ -97,7 +120,9 @@ class TestMotorPolicy : public TestTMC2130Policy {
     bool _lid_open_switch = false;
     bool _lid_closed_switch = false;
     bool _lid_overdrive = false;
-    bool _seal_switch_triggered = false;
-    bool _seal_switch_armed = false;
+    bool _extension_switch_triggered = false;
+    bool _retraction_switch_triggered = false;
+    bool _extension_switch_armed = false;
+    bool _retraction_switch_armed = false;
     Callback _callback;
 };

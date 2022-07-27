@@ -32,8 +32,18 @@ auto TestSystemPolicy::get_serial_number(void)
     }
 }
 
-auto TestSystemPolicy::start_set_led(LED_MODE mode) -> errors::ErrorCode {
-    return errors::ErrorCode::NO_ERROR;
+auto TestSystemPolicy::set_passing_color(LED_COLOR color) -> bool {
+    passing_color = color;
+    return true;
+}
+
+auto TestSystemPolicy::start_set_led(LED_COLOR color, uint8_t pwm_setting)
+    -> errors::ErrorCode {
+    if (color == passing_color) {
+        return errors::ErrorCode::NO_ERROR;
+    } else {
+        return errors::ErrorCode::SYSTEM_LED_TRANSMIT_ERROR;
+    }
 }
 
 auto TestSystemPolicy::check_I2C_ready(void) -> bool { return true; }

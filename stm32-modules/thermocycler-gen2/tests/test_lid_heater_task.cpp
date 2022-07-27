@@ -252,6 +252,21 @@ SCENARIO("lid heater task message passing") {
                     }
                 }
             }
+            AND_WHEN(
+                "sending a DeactivateLidHeating command from system task") {
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                auto tempMessage = messages::DeactivateLidHeatingMessage{
+                    .id = 321, .from_system = true};
+                tasks->get_lid_heater_queue().backing_deque.push_back(
+                    messages::LidHeaterMessage(tempMessage));
+                tasks->run_lid_heater_task();
+                THEN("the task should respond to the message") {
+                    REQUIRE(!tasks->get_system_queue().backing_deque.empty());
+                    REQUIRE(std::get<messages::AcknowledgePrevious>(
+                                tasks->get_system_queue().backing_deque.front())
+                                .responding_to_id == 321);
+                }
+            }
             AND_WHEN("sending a DeactivateAll command") {
                 tasks->get_host_comms_queue().backing_deque.pop_front();
                 auto tempMessage = messages::DeactivateAllMessage{.id = 321};

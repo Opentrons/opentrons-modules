@@ -38,17 +38,29 @@ SCENARIO("board revision checking works") {
             }
         }
     }
+    GIVEN("all pins pulled down") {
+        inputs.at(0) = INPUT_PULLUP;
+        inputs.at(1) = INPUT_PULLDOWN;
+        inputs.at(2) = INPUT_PULLDOWN;
+        board_revision::set_pin_values(inputs);
+        WHEN("getting board revision without rereading") {
+            auto revision = board_revision::BoardRevisionIface::get();
+            THEN("the revision is still rev2") {
+                REQUIRE(revision == board_revision::BoardRevision::BOARD_REV_2);
+            }
+        }
+        WHEN("reading board revision") {
+            auto revision = board_revision::BoardRevisionIface::read();
+            THEN("the revision is rev3") {
+                REQUIRE(revision == board_revision::BoardRevision::BOARD_REV_3);
+            }
+        }
+    }
     GIVEN("one pin pulled down and two pulled up") {
         inputs.at(0) = INPUT_PULLDOWN;
         inputs.at(1) = INPUT_PULLUP;
         inputs.at(2) = INPUT_PULLUP;
         board_revision::set_pin_values(inputs);
-        WHEN("getting board revision without rereading") {
-            auto revision = board_revision::BoardRevisionIface::get();
-            THEN("the revision is rev1") {
-                REQUIRE(revision == board_revision::BoardRevision::BOARD_REV_2);
-            }
-        }
         WHEN("reading board revision") {
             auto revision = board_revision::BoardRevisionIface::read();
             THEN("the revision is invalid") {
