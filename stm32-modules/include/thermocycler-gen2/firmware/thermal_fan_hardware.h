@@ -28,6 +28,15 @@ bool thermal_fan_set_power(double power);
  */
 double thermal_fan_get_power(void);
 
+double thermal_fan_get_tach_1_rpm(void);
+
+double thermal_fan_get_tach_2_rpm(void);
+
+/**
+ * @brief Callback for MSP init of TIM4
+ */
+void thermal_fan_tim4_msp_init(void);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus

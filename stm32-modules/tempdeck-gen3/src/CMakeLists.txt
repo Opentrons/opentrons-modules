@@ -11,14 +11,12 @@ set(COMMON_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../common/src)
 
 add_custom_command(
   COMMAND Python::Interpreter ${COMMON_SRC_DIR}/generate_thermistor_table.py
-    ${COMMON_SRC_DIR}/ntcg104ed104dtdsx.csv
-    ${COMMON_SRC_DIR}/ks103j2.csv
-    "KS"
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
+    --nxffile
+    ${COMMON_SRC_DIR}/nxft15xv103fa2b030.csv
   DEPENDS ${COMMON_SRC_DIR}/generate_thermistor_table.py
-          ${COMMON_SRC_DIR}/ntcg104ed104dtdsx.csv
-          ${COMMON_SRC_DIR}/ks103j2.csv
+          ${COMMON_SRC_DIR}/nxft15xv103fa2b030.csv
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
          ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -60,6 +58,7 @@ set(CORE_LINTABLE_SOURCES
     ${CORE_LINTABLE_SOURCES}
     PARENT_SCOPE)
 set(CORE_NONLINTABLE_SOURCES
+    ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 
 add_library(${TARGET_MODULE_NAME}-core STATIC
@@ -78,6 +77,7 @@ target_link_libraries(${TARGET_MODULE_NAME}-core PUBLIC common-core)
 target_include_directories(${TARGET_MODULE_NAME}-core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
   PUBLIC ${CMAKE_CURRENT_BINARY_DIR}  # need to add this to get the generated conversion header
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../cpp-utils/include/
   )
 
 target_compile_options(${TARGET_MODULE_NAME}-core

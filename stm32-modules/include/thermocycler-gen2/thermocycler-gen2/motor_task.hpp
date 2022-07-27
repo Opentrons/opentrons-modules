@@ -71,12 +71,16 @@ concept MotorExecutionPolicy = requires(Policy& p,
     { p.seal_stepper_start(callback) } -> std::same_as<bool>;
     // A function to stop a seal stepper movement
     {p.seal_stepper_stop()};
-    // A function to arm the seal stepper limit switch
-    {p.seal_switch_set_armed()};
+    // A function to arm the seal stepper extension limit switch
+    {p.seal_switch_set_extension_armed()};
+    // A function to arm the seal stepper retraction limit switch
+    {p.seal_switch_set_retraction_armed()};
     // A function to disarm the seal stepper limit switch
     {p.seal_switch_set_disarmed()};
-    // A function to read the seal limit switches
-    { p.seal_read_limit_switch() } -> std::same_as<bool>;
+    // A function to read the seal extension limit switch
+    { p.seal_read_extension_switch() } -> std::same_as<bool>;
+    // A function to read the seal retraction limit switch
+    { p.seal_read_retraction_switch() } -> std::same_as<bool>;
     // Policy defines a number that provides the number of seal motor ticks
     // in a second
     {std::is_integral_v<decltype(Policy::MotorTickFrequency)>};
@@ -141,7 +145,7 @@ struct SealStepperState {
     constexpr static signed long FULL_RETRACT_MICROSTEPS =
         (FULL_EXTEND_MICROSTEPS * -1);
     // Distance to back off after triggering a limit switch
-    constexpr static double SWITCH_BACKOFF_MM = 0.5F;
+    constexpr static double SWITCH_BACKOFF_MM = 1.0F;
     // Distance to RETRACT to back off a limit switch
     constexpr static signed long SWITCH_BACKOFF_MICROSTEPS_RETRACT =
         motor_util::SealStepper::mm_to_steps(SWITCH_BACKOFF_MM);
@@ -210,7 +214,7 @@ static constexpr tmc2130::TMC2130RegisterMap default_tmc_config = {
                    .run_current = SealStepperState::DEFAULT_RUN_CURRENT,
                    .hold_current_delay = 0b0111},
     .tpowerdown = {},
-    .tcoolthrs = {.threshold = SealStepperState::DEFAULT_SG_MIN_VELOCITY},
+    .tcoolthrs = {.threshold = SealStepperState::DISABLED_SG_MIN_VELOCITY},
     .thigh = {.threshold = 0xFFFFF},
     .chopconf = {.toff = 0b101, .hstrt = 0b101, .hend = 0b11, .tbl = 0b10},
     .coolconf = {.sgt = SealStepperState::DEFAULT_STALLGUARD_THRESHOLD}};
@@ -619,7 +623,8 @@ class MotorTask {
             .responding_to_id = msg.id,
             .close_switch_pressed = policy.lid_read_closed_switch(),
             .open_switch_pressed = policy.lid_read_open_switch(),
-            .seal_switch_pressed = policy.seal_read_limit_switch()};
+            .seal_extension_pressed = policy.seal_read_extension_switch(),
+            .seal_retraction_pressed = policy.seal_read_retraction_switch()};
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));
@@ -663,15 +668,30 @@ class MotorTask {
 
         _seal_stepper_state.direction = steps > 0;
 
+        // This disarms both switches, and is performed before EACH movement
+        // to prevent two consecutive movements from enabling both switches
+        policy.seal_switch_set_disarmed();
+
         if (arm_limit_switch) {
-            // If we are moving until a seal limit switch event, it is
-            // important that the switch is NOT already triggered.
-            if (policy.seal_read_limit_switch()) {
-                return errors::ErrorCode::SEAL_MOTOR_SWITCH;
+            if (_seal_stepper_state.direction) {
+                // Positive numbers are for retraction
+
+                // If we are moving until a seal limit switch event, it is
+                // important that the switch is NOT already triggered.
+                if (policy.seal_read_retraction_switch()) {
+                    return errors::ErrorCode::SEAL_MOTOR_SWITCH;
+                }
+                policy.seal_switch_set_retraction_armed();
+            } else {
+                // Negative numbers are for extension
+
+                // If we are moving until a seal limit switch event, it is
+                // important that the switch is NOT already triggered.
+                if (policy.seal_read_extension_switch()) {
+                    return errors::ErrorCode::SEAL_MOTOR_SWITCH;
+                }
+                policy.seal_switch_set_extension_armed();
             }
-            policy.seal_switch_set_armed();
-        } else {
-            policy.seal_switch_set_disarmed();
         }
 
         // Steps is signed, so set direction accordingly

@@ -10,6 +10,7 @@ on:
       - 'CMakePresets.json'
       - '.clang-format'
       - '.clang-tidy'
+      - 'cpp-utils/**/*'
     paths_ignore:
       - 'cmake/Arduino*'
   push:

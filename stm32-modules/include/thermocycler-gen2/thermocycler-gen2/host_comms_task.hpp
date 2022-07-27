@@ -476,8 +476,8 @@ class HostCommsTask {
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
                 } else {
                     return cache_element.write_response_into(
-                        tx_into, tx_limit, response.const_a, response.const_b,
-                        response.const_c);
+                        tx_into, tx_limit, response.a, response.bl, response.cl,
+                        response.bc, response.cc, response.br, response.cr);
                 }
             },
             cache_entry);
@@ -540,7 +540,8 @@ class HostCommsTask {
                     return gcode::GetThermalPowerDebug::write_response_into(
                         tx_into, tx_limit, cache_element.left,
                         cache_element.center, cache_element.right,
-                        response.heater, cache_element.fans);
+                        response.heater, cache_element.fans,
+                        cache_element.tach1, cache_element.tach2);
                 }
             },
             cache_entry);
@@ -636,7 +637,8 @@ class HostCommsTask {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.close_switch_pressed,
                         response.open_switch_pressed,
-                        response.seal_switch_pressed);
+                        response.seal_extension_pressed,
+                        response.seal_retraction_pressed);
                 }
             },
             cache_entry);
@@ -1264,6 +1266,7 @@ class HostCommsTask {
         }
         auto message =
             messages::SetOffsetConstantsMessage{.id = id,
+                                                .channel = gcode.channel,
                                                 .a_set = gcode.const_a.defined,
                                                 .const_a = gcode.const_a.value,
                                                 .b_set = gcode.const_b.defined,

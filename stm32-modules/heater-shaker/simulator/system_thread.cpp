@@ -50,7 +50,8 @@ struct SimSystemPolicy {
             return empty_serial_number;
         }
     }
-    auto start_set_led(LED_MODE mode) -> errors::ErrorCode {
+    auto start_set_led(LED_COLOR color, uint8_t pwm_setting)
+        -> errors::ErrorCode {
         return errors::ErrorCode::NO_ERROR;
     }
 

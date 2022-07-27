@@ -62,7 +62,7 @@ That means you can do stuff like
 When compiling the firmware using your local compiler (using the `stm32-host` cmake preset, running `cmake --build ./build-stm32-host`), you can
 - Build tests: `cmake --build ./build-stm32-host --target thermocycler-gen2-tests`
 - Run tests: `cmake --build ./build-stm32-host --target test`
-- Format tests: `cmake --build ./build-stm32-test --target thermocycler-gen2-format`
+- Format tests: `cmake --build ./build-stm32-host --target thermocycler-gen2-format`
 - Build simulator: `cmake --build ./build-stm32-host --target thermocycler-gen2-simulator` 
 - Build and Test: `cmake --build ./build-stm32-host --target thermocycler-gen2-build-and-test` 
 

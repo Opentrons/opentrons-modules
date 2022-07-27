@@ -41,7 +41,7 @@ extern "C" {
 void system_hardware_setup(void);
 void system_hardware_enter_bootloader(void);
 bool system_hardware_setup_led(void);
-bool system_hardware_set_led(LED_MODE mode);
+bool system_hardware_set_led(LED_COLOR color, uint8_t pwm_setting);
 bool system_hardware_set_led_send(uint16_t register_address,
                                   uint8_t* set_buffer, uint16_t buffer_size);
 void system_hardware_handle_i2c_callback(void);

@@ -669,6 +669,7 @@ struct GetPlateTemperatureDebug {
  *
  * Format: M103.D\n
  * Return: M103.D L:<left peltier> C:<center> R:<right> H:<heater> F:<fans>
+ * T1:<tach1> T2:<tach2>
  *
  */
 struct GetThermalPowerDebug {
@@ -693,13 +694,16 @@ struct GetThermalPowerDebug {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     double left_power, double center_power,
                                     double right_power, double heater_power,
-                                    double fan_power) -> InputIt {
+                                    double fan_power, double tach1,
+                                    double tach2) -> InputIt {
         auto res = snprintf(
             &*buf, (limit - buf),
-            "M103.D L:%0.2f C:%0.2f R:%0.2f H:%0.2f F:%0.2f OK\n",
+            "M103.D L:%0.2f C:%0.2f R:%0.2f H:%0.2f F:%0.2f T1:%3.2f T2:%3.2f "
+            "OK\n",
             static_cast<float>(left_power), static_cast<float>(center_power),
             static_cast<float>(right_power), static_cast<float>(heater_power),
-            static_cast<float>(fan_power));
+            static_cast<float>(fan_power), static_cast<float>(tach1),
+            static_cast<float>(tach2));
         if (res <= 0) {
             return buf;
         }
@@ -1323,6 +1327,11 @@ struct SetPIDConstants {
  *
  * Format: M116 B0.102 C-0.245\n
  *
+ * Can also accept an optional channel specification right after
+ * the identifying gcode. The channels are L, C, and R. If no channel
+ * is provided, the command implicitly configures all three channels.
+ *
+ * Example to set Left Channel B to 4: M116.L B4\n
  */
 struct SetOffsetConstants {
     using ParseResult = std::optional<SetOffsetConstants>;
@@ -1330,6 +1339,7 @@ struct SetOffsetConstants {
     static constexpr auto prefix_a = std::array{' ', 'A'};
     static constexpr auto prefix_b = std::array{' ', 'B'};
     static constexpr auto prefix_c = std::array{' ', 'C'};
+    static constexpr auto prefix_channel = std::array{'.'};
     static constexpr const char* response = "M116 OK\n";
 
     /**
@@ -1341,10 +1351,12 @@ struct SetOffsetConstants {
         bool defined;
         double value;
     };
+    enum class Channel { ALL, LEFT, CENTER, RIGHT };
 
     OffsetConstant const_a = {.defined = false, .value = 0.0F};
     OffsetConstant const_b = {.defined = false, .value = 0.0F};
     OffsetConstant const_c = {.defined = false, .value = 0.0F};
+    PeltierSelection channel = PeltierSelection::ALL;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -1365,6 +1377,29 @@ struct SetOffsetConstants {
         }
         auto old_working = working;
         auto ret = SetOffsetConstants();
+        working = prefix_matches(old_working, limit, prefix_channel);
+        if (working != old_working) {
+            if (working == limit) {
+                return std::make_pair(std::nullopt, input);
+            }
+            // Next character must be the channel selection
+            switch (static_cast<char>(*working)) {
+                case 'L':
+                    ret.channel = PeltierSelection::LEFT;
+                    break;
+                case 'C':
+                    ret.channel = PeltierSelection::CENTER;
+                    break;
+                case 'R':
+                    ret.channel = PeltierSelection::RIGHT;
+                    break;
+                default:
+                    // Invalid selection
+                    return std::make_pair(std::nullopt, input);
+            }
+            std::advance(working, 1);
+            old_working = working;
+        }
         working = prefix_matches(old_working, limit, prefix_a);
         if (working != old_working) {
             old_working = working;
@@ -1436,11 +1471,15 @@ struct GetOffsetConstants {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
     static auto write_response_into(InputIt buf, InputLimit limit, double a,
-                                    double b, double c) -> InputIt {
-        auto res =
-            snprintf(&*buf, (limit - buf), "M117 A:%0.3f B:%0.3f C:%0.3f OK\n",
-                     static_cast<float>(a), static_cast<float>(b),
-                     static_cast<float>(c));
+                                    double bl, double cl, double bc, double cc,
+                                    double br, double cr) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf),
+                            "M117 A:%0.3f BL:%0.3f CL:%0.3f BC:%0.3f CC:%0.3f "
+                            "BR:%0.3f CR:%0.3f OK\n",
+                            static_cast<float>(a), static_cast<float>(bl),
+                            static_cast<float>(cl), static_cast<float>(bc),
+                            static_cast<float>(cc), static_cast<float>(br),
+                            static_cast<float>(cr));
         if (res <= 0) {
             return buf;
         }
@@ -1614,10 +1653,11 @@ struct GetLidSwitches {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit, int closed,
-                                    int open, int seal) -> InputIt {
+                                    int open, int extension, int retraction)
+        -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M901.D C:%i O:%i S:%i OK\n",
-                       closed, open, seal);
+        res = snprintf(&*buf, (limit - buf), "M901.D C:%i O:%i E:%i R:%i OK\n",
+                       closed, open, extension, retraction);
         if (res <= 0) {
             return buf;
         }

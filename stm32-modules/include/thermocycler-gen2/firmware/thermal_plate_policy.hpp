@@ -5,6 +5,8 @@
  */
 #pragma once
 
+#include <utility>  // std::pair
+
 #include "firmware/thermal_hardware.h"
 #include "thermocycler-gen2/thermal_general.hpp"
 
@@ -30,6 +32,8 @@ class ThermalPlatePolicy {
     auto set_fan(double power) -> bool;
 
     auto get_fan() -> double;
+
+    auto get_fan_rpm() -> std::pair<double, double>;
 
     auto set_write_protect(bool write_protect) -> void;
 

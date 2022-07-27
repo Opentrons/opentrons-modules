@@ -34,14 +34,14 @@ SCENARIO("SetLEDDebug (M994.D) parser works", "[gcode][parse][m994.d]") {
     }
 
     GIVEN("a string with good data") {
-        std::string to_parse = "M994.D 2\r\n";
+        std::string to_parse = "M994.D 1\r\n";
         WHEN("calling parse") {
             auto result =
                 gcode::SetLEDDebug::parse(to_parse.cbegin(), to_parse.cend());
 
             THEN("the data should be parsed") {
                 REQUIRE(result.first.has_value());
-                REQUIRE(result.first.value().mode == RED_ON);
+                REQUIRE(result.first.value().color == RED);
                 REQUIRE(result.second == to_parse.cend() - 2);
             }
         }

@@ -1834,7 +1834,9 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                             .left = 0.0,
                             .center = 0.1,
                             .right = 0.2,
-                            .fans = 0.5});
+                            .fans = 0.5,
+                            .tach1 = 123,
+                            .tach2 = 345});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -1867,7 +1869,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                             THEN("the task should ack the previous message") {
                                 const char response_msg[] =
                                     "M103.D L:0.00 C:0.10 R:0.20 H:0.30 F:0.50 "
-                                    "OK\n";
+                                    "T1:123.00 T2:345.00 OK\n";
                                 REQUIRE_THAT(
                                     tx_buf,
                                     Catch::Matchers::StartsWith(response_msg));
@@ -1944,6 +1946,7 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 REQUIRE(!message.a_set);
                 REQUIRE(!message.b_set);
                 REQUIRE(!message.c_set);
+                REQUIRE(message.channel == PeltierSelection::ALL);
                 AND_WHEN("sending good response back") {
                     auto response = messages::HostCommsMessage(
                         messages::AcknowledgePrevious{.responding_to_id =
@@ -2007,16 +2010,22 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::GetOffsetConstantsResponse{
                             .responding_to_id = message.id,
-                            .const_a = 2.0,
-                            .const_b = 10.0,
-                            .const_c = 15.0});
+                            .a = 2.0,
+                            .bl = 10.0,
+                            .cl = 15.0,
+                            .bc = 10.0,
+                            .cc = 15.0,
+                            .br = 10.0,
+                            .cr = 15.0});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
-                        auto response = "M117 A:2.000 B:10.000 C:15.000 OK\n";
+                        auto response =
+                            "M117 A:2.000 BL:10.000 CL:15.000 BC:10.000 "
+                            "CC:15.000 BR:10.000 CR:15.000 OK\n";
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith(response));
                         REQUIRE(written_secondpass ==
@@ -2029,9 +2038,13 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     auto response = messages::HostCommsMessage(
                         messages::GetOffsetConstantsResponse{
                             .responding_to_id = message.id + 1,
-                            .const_a = 2.0,
-                            .const_b = 10.0,
-                            .const_c = 15.0});
+                            .a = 2.0,
+                            .bl = 10.0,
+                            .cl = 15.0,
+                            .bc = 10.0,
+                            .cc = 15.0,
+                            .br = 10.0,
+                            .cr = 15.0});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
@@ -2343,15 +2356,17 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                             .responding_to_id = switch_status_messsage.id,
                             .close_switch_pressed = false,
                             .open_switch_pressed = true,
-                            .seal_switch_pressed = false});
+                            .seal_extension_pressed = false,
+                            .seal_retraction_pressed = true});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should ack the previous message") {
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "M901.D C:0 O:1 S:0 OK\n"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith(
+                                         "M901.D C:0 O:1 E:0 R:1 OK\n"));
                         REQUIRE(written_secondpass != tx_buf.begin());
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
@@ -2362,7 +2377,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                         messages::GetLidSwitchesResponse{
                             .responding_to_id = switch_status_messsage.id + 1,
                             .close_switch_pressed = false,
-                            .open_switch_pressed = true});
+                            .seal_extension_pressed = false,
+                            .seal_retraction_pressed = true});
                     tasks->get_host_comms_queue().backing_deque.push_back(
                         response);
                     auto written_secondpass =

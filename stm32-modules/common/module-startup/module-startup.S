@@ -88,6 +88,17 @@ Fault_Handler:
     ldr     r0, =Post_Fault_Handler
     str     r0, [sp,#0x18]
 
+    /* LR should hold an EXC_RETURN code, but there is a chance that it is
+     * either an invalid value, or simply marks exception behavior that we
+     * don't want. We always want to return to Handler mode so the Fault
+     * Handler can safely jump to the bootloader, so we ovewrite the LR
+     * register before returning from this exception. 
+     *
+     * The danger of *not* overwriting LR is that, if its value is invalid,
+     * the processor will end up getting stuck in a loop of excepting into
+     * this fault handler forever. */
+    ldr     lr,=0xFFFFFFF1
+
     /* In order to clear the hard fault flag, we overwrite LR and return
      * to the Post_Fault_Handler function */
     bx      lr
