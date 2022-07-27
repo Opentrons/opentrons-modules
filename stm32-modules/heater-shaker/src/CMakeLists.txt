@@ -35,12 +35,8 @@ string(SUBSTRING "${PREPENDED_VERSION}" 1 -1 VERSION)
 if (NOT VERSION)
   set(VERSION "(dev)")
 endif()
-execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-  OUTPUT_VARIABLE HASH
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-set(heater-shaker_VERSION "${VERSION}-${HASH}")
+set(heater-shaker_VERSION "${VERSION}")
 
 configure_file(./version.cpp.in ./version.cpp)
 
