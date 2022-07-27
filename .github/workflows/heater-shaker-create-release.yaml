@@ -46,10 +46,12 @@ jobs:
             - change list
           draft: false
           prerelease: true
-      - name: "✏️ Generate release changelog"
-        uses: heinrichreimer/github-changelog-generator-action@v2.3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }} 
+      - name: Create Release Notes
+        uses: docker://decathlon/release-notes-generator-action:2.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTPUT_FOLDER: temp_release_notes
+          USE_MILESTONE_TITLE: "true"
       - name: 'Upload Release Binary'
         id: upload_release_binary
         uses: actions/upload-release-asset@v1
