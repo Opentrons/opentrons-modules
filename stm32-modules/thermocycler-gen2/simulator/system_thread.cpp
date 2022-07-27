@@ -61,6 +61,9 @@ struct SimSystemPolicy {
         // Just always simulate a non-pressed button
         return false;
     }
+
+    auto set_front_button_led(bool set) { static_cast<void>(set); }
+
     // Functions for XT1511 setting
     auto start_send(LedBuffer& buffer) -> bool {
         if (_led_active) {

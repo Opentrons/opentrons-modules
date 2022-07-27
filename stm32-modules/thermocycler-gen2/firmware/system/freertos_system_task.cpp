@@ -31,6 +31,9 @@ static FreeRTOSMessageQueue<system_task::Message>
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _task = system_task::SystemTask(_system_queue);
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static auto policy = SystemPolicy();
+
 static constexpr uint32_t stack_size = 500;
 // Stack as a std::array because why not. Quiet lint because, well, we have to
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -45,6 +48,15 @@ static StaticTask_t
 static timer::GenericTimer<freertos_timer::FreeRTOSTimer> _led_timer(
     "led timer", decltype(_task)::LED_UPDATE_PERIOD_MS, true,
     [ObjectPtr = &_task] { ObjectPtr->led_timer_callback(); });
+
+// Periodic timer for Front Button LED Updates
+static timer::GenericTimer<freertos_timer::FreeRTOSTimer>
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+    _front_button_led_timer("button led",
+                            decltype(_task)::FRONT_BUTTON_PERIOD_MS, true,
+                            [ObjectPtr = &_task] {
+                                ObjectPtr->front_button_led_callback(policy);
+                            });
 
 // One shot timer for front button events.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -72,8 +84,9 @@ static void run(void *param) {
     system_led_initialize();
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto *task = reinterpret_cast<decltype(_task) *>(param);
-    auto policy = SystemPolicy();
+
     _led_timer.start();
+    _front_button_led_timer.start();
     while (true) {
         task->run_once(policy);
     }

@@ -26,6 +26,8 @@ class SystemPolicy {
         -> errors::ErrorCode;
     auto get_serial_number() -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
     [[nodiscard]] auto get_front_button_status() -> bool;
+    auto set_front_button_led(bool set) -> void;
+
     // Functions for XT1511 setting
     auto start_send(LedBuffer& buffer) -> bool;
     auto end_send() -> void;
