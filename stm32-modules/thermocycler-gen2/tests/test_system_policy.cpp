@@ -39,3 +39,9 @@ auto TestSystemPolicy::get_front_button_status() -> bool {
 auto TestSystemPolicy::set_front_button_status(bool set) -> void {
     front_button = set;
 }
+
+auto TestSystemPolicy::set_front_button_led(bool set) -> void {
+    front_led = set;
+}
+
+auto TestSystemPolicy::get_front_led() -> bool { return front_led; }
