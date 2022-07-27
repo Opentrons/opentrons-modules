@@ -119,7 +119,8 @@ class ButtonPress {
 
   public:
     explicit ButtonPress(Callback cb, size_t long_press_threshold)
-        : _send_press(std::move(cb)), _long_press_threshold(long_press_threshold) {}
+        : _send_press(std::move(cb)),
+          _long_press_threshold(long_press_threshold) {}
 
     /**
      * @brief Resets the state of the button press. This should be called
@@ -217,7 +218,7 @@ class SystemTask {
     static constexpr uint8_t LED_MAX_BRIGHTNESS = 0x20;
     // Number of milliseconds to consider a button press "long" is 3 seconds
     static constexpr uint32_t LONG_PRESS_TIME_MS = 3000;
-    
+
     explicit SystemTask(Queue& q)
         : _message_queue(q),
           _task_registry(nullptr),
