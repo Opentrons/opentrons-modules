@@ -983,65 +983,91 @@ class MotorTask {
     auto handle_lid_state_enter(LidState::Status state, Policy& policy)
         -> errors::ErrorCode {
         auto error = errors::ErrorCode::NO_ERROR;
+        auto state_for_system_task =
+            messages::UpdateMotorState::MotorState::IDLE;
         switch (state) {
             case LidState::Status::IDLE:
                 lid_response_send_and_clear();
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::IDLE;
                 break;
             case LidState::Status::OPENING_RETRACT_SEAL:
                 // The seal stepper is retracted to the limit switch
                 error = start_seal_movement(
                     SealStepperState::FULL_RETRACT_MICROSTEPS, true, policy);
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::OPENING_RETRACT_SEAL_BACKOFF:
                 // The seal stepper is extended to back off the limit switch
                 error = start_seal_movement(
                     SealStepperState::SWITCH_BACKOFF_MICROSTEPS_EXTEND, false,
                     policy);
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::OPENING_OPEN_HINGE:
                 if (!start_lid_hinge_open(INVALID_ID, policy)) {
                     error = errors::ErrorCode::LID_MOTOR_BUSY;
                 }
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::CLOSING_RETRACT_SEAL:
                 // The seal stepper is retracted to a stall
                 error = start_seal_movement(
                     SealStepperState::FULL_RETRACT_MICROSTEPS, true, policy);
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::CLOSING_RETRACT_SEAL_BACKOFF:
                 // The seal stepper is extended to back off the limit switch
                 error = start_seal_movement(
                     SealStepperState::SWITCH_BACKOFF_MICROSTEPS_EXTEND, false,
                     policy);
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::CLOSING_CLOSE_HINGE:
                 if (!start_lid_hinge_close(INVALID_ID, policy)) {
                     error = errors::ErrorCode::LID_MOTOR_BUSY;
                 }
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::CLOSING_EXTEND_SEAL:
                 // The seal stepper is extended to engage with the plate
                 error = start_seal_movement(
                     SealStepperState::FULL_EXTEND_MICROSTEPS, true, policy);
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::CLOSING_EXTEND_SEAL_BACKOFF:
                 // The seal stepper is extended to back off the limit switch
                 error = start_seal_movement(
                     SealStepperState::SWITCH_BACKOFF_MICROSTEPS_RETRACT, false,
                     policy);
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::PLATE_LIFTING:
                 // The lid state machine handles everything
                 if (!start_lid_hinge_plate_lift(INVALID_ID, policy)) {
                     error = errors::ErrorCode::LID_MOTOR_FAULT;
                 }
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::PLATE_LIFT;
                 break;
         }
         if (error == errors::ErrorCode::NO_ERROR) {
             _state.status = state;
         } else {
             _state.status = LidState::Status::IDLE;
+            state_for_system_task =
+                messages::UpdateMotorState::MotorState::IDLE;
         }
+        static_cast<void>(_task_registry->system->get_message_queue().try_send(
+            messages::UpdateMotorState{.state = state_for_system_task}));
         return error;
     }
 

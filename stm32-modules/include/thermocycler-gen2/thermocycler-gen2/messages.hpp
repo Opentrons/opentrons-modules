@@ -334,6 +334,15 @@ struct UpdatePlateState {
     PlateState state;
 };
 
+// This message is sent to the System Task by just the Motor Task
+// to update what the current state of the motor subsystem is. This
+// dictates how the Front Button LED is controlled.
+struct UpdateMotorState {
+    enum class MotorState : uint8_t { IDLE, OPENING_OR_CLOSING, PLATE_LIFT };
+
+    MotorState state;
+};
+
 struct GetLidStatusMessage {
     uint32_t id;
 };
@@ -393,7 +402,7 @@ using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage,
                    UpdateUIMessage, SetLedMode, UpdateTaskErrorState,
-                   UpdatePlateState, GetFrontButtonMessage>;
+                   UpdatePlateState, GetFrontButtonMessage, UpdateMotorState>;
 using HostCommsMessage = ::std::variant<
     std::monostate, IncomingMessageFromHost, AcknowledgePrevious, ErrorMessage,
     ForceUSBDisconnectMessage, GetSystemInfoResponse,

@@ -65,6 +65,11 @@ auto SystemPolicy::get_serial_number()
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto SystemPolicy::set_front_button_led(bool set) -> void {
+    return system_front_button_led_set(set);
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto SystemPolicy::start_send(LedBuffer &buffer) -> bool {
     return system_led_start_send(buffer.data(), buffer.size());
 }
