@@ -226,3 +226,31 @@ add_custom_command(OUTPUT heater-shaker-image.bin
   VERBATIM)
 add_custom_target(heater-shaker-image-bin ALL
   DEPENDS heater-shaker-image.bin)
+
+add_custom_command(
+  OUTPUT "${CMAKE_BINARY_DIR}/heater-shaker@${thermocycler_VERSION}.zip"
+  DEPENDS heater-shaker
+  DEPENDS heater-shaker-image-hex
+  DEPENDS heater-shaker-image-bin
+  COMMAND ${CMAKE_COMMAND} -E tar c
+          "${CMAKE_BINARY_DIR}/thermocycler-${thermocycler_VERSION}.zip"
+          --format=zip
+          --
+          "${CMAKE_CURRENT_BINARY_DIR}/thermo-cycler-arduino.ino.bin"
+          "${CMAKE_CURRENT_BINARY_DIR}/eepromWriter.ino.bin"
+          "${CMAKE_CURRENT_BINARY_DIR}/firmware_uploader.py"
+          "${CMAKE_CURRENT_BINARY_DIR}/serial_and_firmware_uploader.py"
+  VERBATIM
+  )
+
+add_custom_target(thermocycler-zip
+  DEPENDS "${CMAKE_BINARY_DIR}/thermocycler-${thermocycler_VERSION}.zip")
+
+install(FILES
+  "${CMAKE_BINARY_DIR}/thermocycler-${thermocycler_VERSION}.zip"
+  "${CMAKE_CURRENT_BINARY_DIR}/thermo-cycler-arduino.ino.bin"
+  "${CMAKE_CURRENT_BINARY_DIR}/eepromWriter.ino.bin"
+  "${CMAKE_CURRENT_BINARY_DIR}/firmware_uploader.py"
+  "${CMAKE_CURRENT_BINARY_DIR}/serial_and_firmware_uploader.py"
+  DESTINATION "thermocycler"
+)
