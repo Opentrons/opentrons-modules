@@ -33,46 +33,59 @@ jobs:
         run: cmake --build ./build-stm32-cross --target heater-shaker-image-hex
       - name: 'Build Combo Image Binary'
         run: cmake --build ./build-stm32-cross --target heater-shaker-image-bin
-      - name: 'Create Release'
-        id: create_release
-        uses: actions/create-release@v1
+      - name: 'Build Combo Image Zip'
+        run: cmake --build ./build-stm32-cross --target heater-shaker-zip
+      - name: 'Prep for install'
+        run: cmake --install ./build-stm32-cross
+      - if: github.event_name != 'pull_request'
+        name: 'Deploy'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
-          body: |
-            Changes in this Release
-            - change list
-          draft: false
-          prerelease: true
-      - name: 'Upload Release Binary'
-        id: upload_release_binary
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build-stm32-cross
-          asset_name: heater-shaker-image.bin
-          asset_content_type: application/octet-stream
-      - name: 'Upload Release Hex'
-        id: upload_release_hex
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build-stm32-cross
-          asset_name: heater-shaker-image.hex
-          asset_content_type: application/octet-stream
-      - name: 'Upload Release Executable'
-        id: upload_release_executable
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build-stm32-cross
-          asset_name: heater-shaker
-          asset_content_type: application/octet-stream
+          AWS_ACCESS_KEY_ID: ${{ secrets.S3_MODULES_DEPLOY_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_MODULES_DEPLOY_SECRET }}
+          AWS_DEFAULT_REGION: us-east-2
+        run: |
+          . ./scripts/set_build_vars.sh
+          aws s3 sync --acl=public-read ${RELEASE_LOCAL_DIR} s3://opentrons-modules-builds/${RELEASE_UPLOAD_DIR}
+      # - name: 'Create Release'
+      #   id: create_release
+      #   uses: actions/create-release@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     tag_name: ${{ github.ref_name }}
+      #     release_name: ${{ github.ref_name }}
+      #     body: |
+      #       Changes in this Release
+      #       - change list
+      #     draft: false
+      #     prerelease: true
+      # - name: 'Upload Release Binary'
+      #   id: upload_release_binary
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+      #     asset_path: ./build-stm32-cross
+      #     asset_name: heater-shaker-image.bin
+      #     asset_content_type: application/octet-stream
+      # - name: 'Upload Release Hex'
+      #   id: upload_release_hex
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+      #     asset_path: ./build-stm32-cross
+      #     asset_name: heater-shaker-image.hex
+      #     asset_content_type: application/octet-stream
+      # - name: 'Upload Release Executable'
+      #   id: upload_release_executable
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+      #     asset_path: ./build-stm32-cross
+      #     asset_name: heater-shaker
+      #     asset_content_type: application/octet-stream
