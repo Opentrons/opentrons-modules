@@ -43,7 +43,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.S3_MODULES_DEPLOY_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_MODULES_DEPLOY_SECRET }}
           AWS_DEFAULT_REGION: us-east-2
-          TRAVIS_TAG: ${{ .github.ref_name }}
+          TRAVIS_TAG: ${{ github.ref_name }}
         run: |
           . ./scripts/set_build_vars.sh
           aws s3 sync --acl=public-read ${RELEASE_LOCAL_DIR} s3://opentrons-modules-builds/${RELEASE_UPLOAD_DIR}
