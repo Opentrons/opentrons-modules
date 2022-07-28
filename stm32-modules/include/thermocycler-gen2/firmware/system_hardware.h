@@ -8,6 +8,8 @@ extern "C" {
 
 // Front button can only be pressed at 200ms increments
 #define FRONT_BUTTON_DEBOUNCE_MS (200)
+// Front button should be queried at this frequency after debouncing
+#define FRONT_BUTTON_QUERY_RATE_MS (50)
 
 // Type for callback when the button has been pressed
 typedef void (*front_button_callback_t)(void);

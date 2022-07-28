@@ -365,7 +365,9 @@ struct PlateLiftMessage {
     uint32_t id;
 };
 
-struct FrontButtonPressMessage {};
+struct FrontButtonPressMessage {
+    bool long_press;
+};
 
 // This is a two-stage message that is first sent to the Plate task,
 // and then the Lid task.
