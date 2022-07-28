@@ -22,6 +22,11 @@ case $TRAVIS_TAG in
     export RELEASE_UPLOAD_DIR="thermocycler/${RELEASE_VERSION}"
     ;;
 
+  heater-shaker@v*)
+    export RELEASE_LOCAL_DIR="${DIST_DIR}/heater-shaker"
+    export RELEASE_UPLOAD_DIR="heater-shaker/${RELEASE_VERSION}"
+    ;;
+
   *)
     export RELEASE_LOCAL_DIR=$DIST_DIR
     export RELEASE_UPLOAD_DIR="modules-${THIS_BUILD_TAG}-${TRAVIS_BRANCH}"

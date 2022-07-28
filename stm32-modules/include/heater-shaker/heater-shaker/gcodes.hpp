@@ -6,12 +6,13 @@
 
 #pragma once
 
+#include <printf.h>  // Non-malloc printf
+
 #include <algorithm>
 #include <array>
 #include <charconv>
 #include <concepts>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <iterator>
 #include <optional>
@@ -563,6 +564,8 @@ struct GetSystemInfo {
     static constexpr auto prefix = std::array{'M', '1', '1', '5'};
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
         SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
+    // If no SN is provided, this is the default rather than an empty string
+    static constexpr const char* DEFAULT_SN = "EMPTYSN";
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -595,8 +598,29 @@ struct GetSystemInfo {
         if (written == write_to_limit) {
             return written;
         }
-        written = write_string_to_iterpair(written, write_to_limit,
-                                           serial_number.begin());
+        // If the serial number is unwritten, it will contain 0xFF which is
+        // an illegal character that will confuse the host side. Replace the
+        // first instance of it with a null terminator for safety.
+        constexpr uint8_t invalid_ascii_mask = 0x80;
+        auto serial_len = strnlen(serial_number.begin(), serial_number.size());
+        auto invalid_char = std::find_if(
+            serial_number.begin(), serial_number.end(), [](auto c) {
+                return static_cast<uint8_t>(c) & invalid_ascii_mask;
+            });
+        if (invalid_char != serial_number.end()) {
+            serial_len = std::min(serial_len,
+                                  static_cast<size_t>(std::abs(std::distance(
+                                      serial_number.begin(), invalid_char))));
+        }
+        if (serial_len > 0) {
+            written =
+                copy_min_range(written, write_to_limit, serial_number.begin(),
+                               std::next(serial_number.begin(),
+                                         static_cast<signed int>(serial_len)));
+        } else {
+            written =
+                write_string_to_iterpair(written, write_to_limit, DEFAULT_SN);
+        }
         if (written == write_to_limit) {
             return written;
         }
@@ -1124,7 +1148,7 @@ struct GetOffsetConstants {
         std::sized_sentinel_for<InputLimit, InputIt>
     static auto write_response_into(InputIt buf, InputLimit limit, double b,
                                     double c) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M117 B:%0.3f C:%0.3f OK\n",
+        auto res = snprintf(&*buf, (limit - buf), "M117 B:%0.4f C:%0.4f OK\n",
                             static_cast<float>(b), static_cast<float>(c));
         if (res <= 0) {
             return buf;

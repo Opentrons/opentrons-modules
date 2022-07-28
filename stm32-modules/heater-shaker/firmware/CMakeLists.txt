@@ -209,20 +209,43 @@ add_custom_target(heater-shaker-flash
 
 # Targets to create full image hex and binary files containing both bootloader and application
 add_custom_command(
-    OUTPUT heater-shaker-image.hex
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
     DEPENDS $<TARGET_FILE_DIR:heater-shaker>/heater-shaker.hex
     DEPENDS STM32F303-startup-hex
     DEPENDS $<TARGET_FILE_DIR:STM32F303-startup>/STM32F303-startup.hex
-    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py heater-shaker-image.hex $<TARGET_FILE_DIR:STM32F303-startup>/STM32F303-startup.hex heater-shaker.hex
+    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex" $<TARGET_FILE_DIR:STM32F303-startup>/STM32F303-startup.hex heater-shaker.hex
     VERBATIM
     COMMENT "Generating full image")
 add_custom_target(heater-shaker-image-hex ALL
-    DEPENDS heater-shaker-image.hex
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
     DEPENDS heater-shaker)
 
-add_custom_command(OUTPUT heater-shaker-image.bin
-  COMMAND ${CROSS_OBJCOPY} ARGS "-Iihex" "-Obinary" heater-shaker-image.hex heater-shaker-image.bin
-  DEPENDS heater-shaker-image.hex
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin"
+  COMMAND ${CROSS_OBJCOPY} ARGS "-Iihex" "-Obinary" "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex" "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin"
+  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
   VERBATIM)
 add_custom_target(heater-shaker-image-bin ALL
-  DEPENDS heater-shaker-image.bin)
+  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin")
+
+add_custom_command(
+  OUTPUT "${CMAKE_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.zip"
+  DEPENDS heater-shaker-image-hex
+  DEPENDS heater-shaker-image-bin
+  COMMAND ${CMAKE_COMMAND} -E tar c
+          "${CMAKE_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.zip"
+          --format=zip
+          --
+          "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin"
+          "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
+  VERBATIM
+  )
+
+add_custom_target(heater-shaker-zip
+  DEPENDS "${CMAKE_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.zip")
+
+install(FILES
+  "${CMAKE_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.zip"
+  "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin"
+  "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
+  DESTINATION "heater-shaker"
+)

@@ -40,14 +40,15 @@ auto TestHeaterPolicy::reset_try_reset_call_count() -> void {
     try_reset_calls = 0;
 }
 
-auto TestHeaterPolicy::set_power_output(double output) -> bool {
+auto TestHeaterPolicy::set_power_output(double output)
+    -> HEATPAD_CIRCUIT_ERROR {
     power = output;
     if (!circuit_error) {
         enabled = true;
-        return true;
+        return HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_NO_ERROR;
     } else {
         enabled = false;
-        return false;
+        return HEATPAD_CIRCUIT_ERROR::HEATPAD_CIRCUIT_SHORTED;
     }
 }
 

@@ -92,12 +92,16 @@ SCENARIO("system task message passing") {
         }
 
         WHEN("calling button press callback") {
-            tasks->get_system_task().front_button_callback();
+            auto long_press = GENERATE(false, true);
+            tasks->get_system_task().front_button_callback(long_press);
             THEN("a Front Button message is sent to motor task") {
                 REQUIRE(tasks->get_motor_queue().has_message());
                 REQUIRE(
                     std::holds_alternative<messages::FrontButtonPressMessage>(
                         tasks->get_motor_queue().backing_deque.front()));
+                auto button_msg = std::get<messages::FrontButtonPressMessage>(
+                    tasks->get_motor_queue().backing_deque.front());
+                REQUIRE(button_msg.long_press == long_press);
             }
         }
 
@@ -371,6 +375,81 @@ SCENARIO("system task message passing") {
                     REQUIRE(response.responding_to_id == message.id);
                     REQUIRE(!response.button_pressed);
                 }
+            }
+        }
+    }
+}
+
+TEST_CASE("system task front button led behavior") {
+    auto tasks = TaskBuilder::build();
+
+    WHEN("the motor mode is set to idle from another state") {
+        tasks->get_system_policy().set_front_button_led(false);
+        auto msg = messages::UpdateMotorState{
+            .state =
+                messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING};
+        tasks->get_system_queue().backing_deque.push_back(msg);
+        tasks->run_system_task();
+        msg.state = messages::UpdateMotorState::MotorState::IDLE;
+        tasks->get_system_queue().backing_deque.push_back(msg);
+        tasks->run_system_task();
+        THEN("the front LED is turned on") {
+            REQUIRE(tasks->get_system_policy().get_front_led());
+            AND_WHEN("the led callback is invoked") {
+                auto led_status = GENERATE(false, true);
+                tasks->get_system_policy().set_front_button_led(led_status);
+                tasks->get_system_task().front_button_led_callback(
+                    tasks->get_system_policy());
+                THEN("the front LED is not refreshed") {
+                    REQUIRE(tasks->get_system_policy().get_front_led() ==
+                            led_status);
+                }
+            }
+        }
+    }
+
+    WHEN("the motor mode is set to open or close") {
+        auto msg = messages::UpdateMotorState{
+            .state =
+                messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING};
+        tasks->get_system_queue().backing_deque.push_back(msg);
+        tasks->run_system_task();
+        THEN("calling the front button led callback") {
+            auto pulse = system_task::Pulse(
+                tasks->get_system_task().FRONT_BUTTON_MAX_PULSE);
+            auto expected = std::vector<bool>();
+            auto result = std::vector<bool>();
+            for (int i = 0; i < 1000; ++i) {
+                expected.push_back(pulse.tick());
+
+                tasks->get_system_task().front_button_led_callback(
+                    tasks->get_system_policy());
+                result.push_back(tasks->get_system_policy().get_front_led());
+            }
+            THEN("the front led status matches the expected pulse") {
+                REQUIRE_THAT(result, Catch::Matchers::Equals(expected));
+            }
+        }
+    }
+
+    WHEN("the motor mode is set to plate lift") {
+        auto msg = messages::UpdateMotorState{
+            .state = messages::UpdateMotorState::MotorState::PLATE_LIFT};
+        tasks->get_system_queue().backing_deque.push_back(msg);
+        tasks->run_system_task();
+        THEN("calling the front button led callback") {
+            auto blink = system_task::FrontButtonBlink();
+            auto expected = std::vector<bool>();
+            auto result = std::vector<bool>();
+            for (int i = 0; i < 1000; ++i) {
+                expected.push_back(blink.tick());
+
+                tasks->get_system_task().front_button_led_callback(
+                    tasks->get_system_policy());
+                result.push_back(tasks->get_system_policy().get_front_led());
+            }
+            THEN("the front led status matches the expected pulse") {
+                REQUIRE_THAT(result, Catch::Matchers::Equals(expected));
             }
         }
     }

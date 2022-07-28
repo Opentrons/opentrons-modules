@@ -1,0 +1,49 @@
+name: 'Heater-shaker create release from tag'
+on:
+  push:
+    tags:
+      - 'heater-shaker@*'
+  workflow_dispatch:
+
+
+defaults:
+  run:
+    shell: bash
+
+
+jobs:
+  cross-compile-check-and-release:
+    name: 'Cross-Compile/Check and Create Release'
+    runs-on: 'ubuntu-20.04'
+    timeout-minutes: 10
+    steps:
+      - uses: 'actions/checkout@v2'
+        with:
+          fetch-depth: 0
+      - uses: 'actions/cache@v2'
+        with:
+          key: stm32-cross-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
+          restore-keys: stm32-cross-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
+          path: './stm32-tools'
+      - name: 'Configure'
+        run: cmake --preset=stm32-cross .
+      - name: 'Build'
+        run: cmake --build ./build-stm32-cross --target heater-shaker-hex
+      - name: 'Build Combo Image Hex'
+        run: cmake --build ./build-stm32-cross --target heater-shaker-image-hex
+      - name: 'Build Combo Image Binary'
+        run: cmake --build ./build-stm32-cross --target heater-shaker-image-bin
+      - name: 'Build Combo Image Zip'
+        run: cmake --build ./build-stm32-cross --target heater-shaker-zip
+      - name: 'Prep for install'
+        run: cmake --install ./build-stm32-cross
+      - if: github.event_name != 'pull_request'
+        name: 'Deploy'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.S3_MODULES_DEPLOY_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_MODULES_DEPLOY_SECRET }}
+          AWS_DEFAULT_REGION: us-east-2
+          TRAVIS_TAG: ${{ github.ref_name }}
+        run: |
+          . ./scripts/set_build_vars.sh
+          aws s3 sync --acl=public-read ${RELEASE_LOCAL_DIR} s3://opentrons-modules-builds/${RELEASE_UPLOAD_DIR}

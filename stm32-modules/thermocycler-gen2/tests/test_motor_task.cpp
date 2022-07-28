@@ -461,24 +461,45 @@ SCENARIO("motor task message passing") {
         }
         WHEN("sending a Front Button message with lid in unknown position") {
             tasks->get_motor_queue().backing_deque.push_back(
-                messages::FrontButtonPressMessage());
+                messages::FrontButtonPressMessage{.long_press = false});
             tasks->run_motor_task();
             THEN("the lid starts to open") {
                 REQUIRE(motor_task.get_lid_state() ==
                         motor_task::LidState::Status::OPENING_RETRACT_SEAL);
             }
         }
+        WHEN(
+            "sending a Long Front Button message with lid in unknown "
+            "position") {
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::FrontButtonPressMessage{.long_press = true});
+            tasks->run_motor_task();
+            THEN("nothing happens") {
+                REQUIRE(motor_task.get_lid_state() ==
+                        motor_task::LidState::Status::IDLE);
+            }
+        }
         GIVEN("lid closed sensor triggered") {
             motor_policy.set_lid_closed_switch(true);
             motor_policy.set_lid_open_switch(false);
-            motor_policy.set_seal_switch_triggered(false);
+            motor_policy.set_extension_switch_triggered(false);
+            motor_policy.set_retraction_switch_triggered(false);
             WHEN("sending a Front Button message") {
                 tasks->get_motor_queue().backing_deque.push_back(
-                    messages::FrontButtonPressMessage());
+                    messages::FrontButtonPressMessage{.long_press = false});
                 tasks->run_motor_task();
                 THEN("the lid starts to open") {
                     REQUIRE(motor_task.get_lid_state() ==
                             motor_task::LidState::Status::OPENING_RETRACT_SEAL);
+                }
+            }
+            WHEN("sending a Long Front Button message") {
+                tasks->get_motor_queue().backing_deque.push_back(
+                    messages::FrontButtonPressMessage{.long_press = true});
+                tasks->run_motor_task();
+                THEN("the lid does nothing") {
+                    REQUIRE(motor_task.get_lid_state() ==
+                            motor_task::LidState::Status::IDLE);
                 }
             }
             WHEN("sending a GetLidSwitches message") {
@@ -498,21 +519,32 @@ SCENARIO("motor task message passing") {
                     REQUIRE(response.responding_to_id == message.id);
                     REQUIRE(response.close_switch_pressed);
                     REQUIRE(!response.open_switch_pressed);
-                    REQUIRE(!response.seal_switch_pressed);
+                    REQUIRE(!response.seal_extension_pressed);
+                    REQUIRE(!response.seal_retraction_pressed);
                 }
             }
         }
-        GIVEN("lid open sensor triggered") {
+        GIVEN("lid open sensor and seal extension sensor triggered") {
             motor_policy.set_lid_open_switch(true);
             motor_policy.set_lid_closed_switch(false);
-            motor_policy.set_seal_switch_triggered(false);
+            motor_policy.set_extension_switch_triggered(true);
+            motor_policy.set_retraction_switch_triggered(false);
             WHEN("sending a Front Button message") {
                 tasks->get_motor_queue().backing_deque.push_back(
-                    messages::FrontButtonPressMessage());
+                    messages::FrontButtonPressMessage{.long_press = false});
                 tasks->run_motor_task();
                 THEN("the lid starts to close") {
                     REQUIRE(motor_task.get_lid_state() ==
                             motor_task::LidState::Status::CLOSING_RETRACT_SEAL);
+                }
+            }
+            WHEN("sending a Long Front Button message") {
+                tasks->get_motor_queue().backing_deque.push_back(
+                    messages::FrontButtonPressMessage{.long_press = true});
+                tasks->run_motor_task();
+                THEN("the lid starts to lift the plate") {
+                    REQUIRE(motor_task.get_lid_state() ==
+                            motor_task::LidState::Status::PLATE_LIFTING);
                 }
             }
             WHEN("sending a GetLidSwitches message") {
@@ -532,11 +564,13 @@ SCENARIO("motor task message passing") {
                     REQUIRE(response.responding_to_id == message.id);
                     REQUIRE(!response.close_switch_pressed);
                     REQUIRE(response.open_switch_pressed);
-                    REQUIRE(!response.seal_switch_pressed);
+                    REQUIRE(response.seal_extension_pressed);
+                    REQUIRE(!response.seal_retraction_pressed);
                 }
             }
-            GIVEN("seal sensor triggered") {
-                motor_policy.set_seal_switch_triggered(true);
+            GIVEN("seal retraction sensor triggered") {
+                motor_policy.set_extension_switch_triggered(false);
+                motor_policy.set_retraction_switch_triggered(true);
                 WHEN("sending a GetLidSwitches message") {
                     auto message = messages::GetLidSwitchesMessage{.id = 123};
                     tasks->get_motor_queue().backing_deque.push_back(message);
@@ -556,7 +590,8 @@ SCENARIO("motor task message passing") {
                         REQUIRE(response.responding_to_id == message.id);
                         REQUIRE(!response.close_switch_pressed);
                         REQUIRE(response.open_switch_pressed);
-                        REQUIRE(response.seal_switch_pressed);
+                        REQUIRE(!response.seal_extension_pressed);
+                        REQUIRE(response.seal_retraction_pressed);
                     }
                 }
             }
@@ -581,6 +616,11 @@ struct MotorStep {
     // If true, seal switch should be armed. If nullopt, doesn't matter.
     std::optional<bool> seal_switch_armed = std::nullopt;
 
+    using MotorState = messages::UpdateMotorState::MotorState;
+    // If this isn't nullopt, check that the system task got a message
+    // with this MotorState value
+    std::optional<MotorState> motor_state = std::nullopt;
+
     using SealPos = motor_util::SealStepper::Status;
     // If this variable is set, expect seal in a specific position
     std::optional<SealPos> seal_pos = std::nullopt;
@@ -603,6 +643,7 @@ void test_motor_state_machine(std::shared_ptr<TaskBuilder> tasks,
 
         auto lid_angle_before = motor_policy.get_angle();
         motor_queue.backing_deque.push_back(step.msg);
+        tasks->get_system_queue().backing_deque.clear();
         tasks->run_motor_task();
 
         DYNAMIC_SECTION("Step " << i) {
@@ -644,6 +685,18 @@ void test_motor_state_machine(std::shared_ptr<TaskBuilder> tasks,
                     REQUIRE(response.with_error == ack.with_error);
                 }
             }
+            if (step.motor_state.has_value()) {
+                THEN("the motor state is updated correctly") {
+                    REQUIRE(tasks->get_system_queue().has_message());
+                    auto state_msg =
+                        tasks->get_system_queue().backing_deque.front();
+                    REQUIRE(std::holds_alternative<messages::UpdateMotorState>(
+                        state_msg));
+                    auto state =
+                        std::get<messages::UpdateMotorState>(state_msg);
+                    REQUIRE(state.state == step.motor_state);
+                }
+            }
         }
     }
 }
@@ -660,7 +713,8 @@ SCENARIO("motor task lid state machine") {
                 {.msg = messages::OpenLidMessage{.id = 123},
                  .seal_on = true,
                  .seal_direction = true,
-                 .seal_switch_armed = true},
+                 .seal_switch_armed = true,
+                 .motor_state = MotorStep::MotorState::OPENING_OR_CLOSING},
                 // Second step extends seal switch
                 {.msg =
                      messages::SealStepperComplete{
@@ -682,6 +736,7 @@ SCENARIO("motor task lid state machine") {
                  .lid_overdrive = true},
                 // Should send ACK now
                 {.msg = messages::LidStepperComplete(),
+                 .motor_state = MotorStep::MotorState::IDLE,
                  .ack =
                      messages::AcknowledgePrevious{
                          .responding_to_id = 123,
@@ -707,8 +762,8 @@ SCENARIO("motor task lid state machine") {
                      .with_error = errors::ErrorCode::LID_CLOSED}}};
             test_motor_state_machine(tasks, steps);
         }
-        GIVEN("seal limit switch is triggered") {
-            motor_policy.set_seal_switch_triggered(true);
+        GIVEN("seal retraction switch is triggered") {
+            motor_policy.set_retraction_switch_triggered(true);
             WHEN("sending open lid command") {
                 std::vector<MotorStep> steps = {
                     {.msg = messages::OpenLidMessage{.id = 123},
@@ -739,7 +794,8 @@ SCENARIO("motor task lid state machine") {
                 {.msg = messages::CloseLidMessage{.id = 123},
                  .seal_on = true,
                  .seal_direction = true,
-                 .seal_switch_armed = true},
+                 .seal_switch_armed = true,
+                 .motor_state = MotorStep::MotorState::OPENING_OR_CLOSING},
                 // Second step extends seal from switch
                 {.msg =
                      messages::SealStepperComplete{
@@ -777,6 +833,7 @@ SCENARIO("motor task lid state machine") {
                      messages::SealStepperComplete{
                          .reason = messages::SealStepperComplete::
                              CompletionReason::DONE},
+                 .motor_state = MotorStep::MotorState::IDLE,
                  .ack =
                      messages::AcknowledgePrevious{
                          .responding_to_id = 123,
@@ -789,7 +846,8 @@ SCENARIO("motor task lid state machine") {
                 // First open past the switch
                 {.msg = messages::PlateLiftMessage{.id = 123},
                  .lid_angle_increased = true,
-                 .lid_overdrive = true},
+                 .lid_overdrive = true,
+                 .motor_state = MotorStep::MotorState::PLATE_LIFT},
                 // Now close back below the switch
                 {.msg = messages::LidStepperComplete(),
                  .lid_angle_decreased = true,
@@ -804,6 +862,7 @@ SCENARIO("motor task lid state machine") {
                  .lid_overdrive = true},
                 // Should send ACK now
                 {.msg = messages::LidStepperComplete(),
+                 .motor_state = MotorStep::MotorState::IDLE,
                  .ack =
                      messages::AcknowledgePrevious{
                          .responding_to_id = 123,

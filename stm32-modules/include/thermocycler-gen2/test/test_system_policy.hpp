@@ -14,6 +14,7 @@ class TestSystemPolicy : public TestXT1511Policy<16> {
     std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number = {};
     errors::ErrorCode set_serial_number_return = errors::ErrorCode::NO_ERROR;
     bool front_button = false;
+    bool front_led = false;
 
   public:
     TestSystemPolicy() : TestXT1511Policy<16>(213) {}
@@ -27,6 +28,9 @@ class TestSystemPolicy : public TestXT1511Policy<16> {
         -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
     auto get_front_button_status() -> bool;
 
+    auto set_front_button_led(bool set) -> void;
+
     // For test integration
     auto set_front_button_status(bool set) -> void;
+    auto get_front_led() -> bool;
 };

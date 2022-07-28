@@ -36,6 +36,8 @@ const char* const MOTOR_NOT_STOPPED =
 const char* const PLATE_LOCK_TIMEOUT = "ERR125:plate lock:timeout OK\n";
 const char* const PLATE_LOCK_NOT_CLOSED =
     "ERR126:main motor:plate lock not closed (required) OK\n";
+const char* const MOTOR_HOMING =
+    "ERR127:main motor:currently homing (cannot interrupt) OK\n";
 const char* const HEATER_THERMISTOR_A_DISCONNECTED =
     "ERR201:heater:thermistor a disconnected OK\n";
 const char* const HEATER_THERMISTOR_A_SHORT =
@@ -60,8 +62,12 @@ const char* const HEATER_CONSTANT_OUT_OF_RANGE =
     "ERR212:heater:control constant out of range OK\n";
 const char* const HEATER_ILLEGAL_TARGET_TEMPERATURE =
     "ERR213:heater:target temperature out of range OK\n";
-const char* const HEATER_HARDWARE_ERROR_CIRCUIT =
-    "ERR214:heater:heatpad overcurrent or circuit open or shorted OK\n";
+const char* const HEATER_HARDWARE_SHORT_CIRCUIT =
+    "ERR214:heater:heatpad circuit shorted OK\n";
+const char* const HEATER_HARDWARE_OPEN_CIRCUIT =
+    "ERR215:heater:heatpad circuit open OK\n";
+const char* const HEATER_HARDWARE_OVERCURRENT_CIRCUIT =
+    "ERR216:heater:heatpad circuit overcurrent OK\n";
 const char* const SYSTEM_SERIAL_NUMBER_INVALID =
     "ERR301:system:serial number invalid format OK\n";
 const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
@@ -106,6 +112,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(MOTOR_NOT_STOPPED);
         HANDLE_CASE(PLATE_LOCK_TIMEOUT);
         HANDLE_CASE(PLATE_LOCK_NOT_CLOSED);
+        HANDLE_CASE(MOTOR_HOMING);
         HANDLE_CASE(HEATER_THERMISTOR_A_DISCONNECTED);
         HANDLE_CASE(HEATER_THERMISTOR_A_SHORT);
         HANDLE_CASE(HEATER_THERMISTOR_A_OVERTEMP);
@@ -118,7 +125,9 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(HEATER_HARDWARE_ERROR_LATCH);
         HANDLE_CASE(HEATER_CONSTANT_OUT_OF_RANGE);
         HANDLE_CASE(HEATER_ILLEGAL_TARGET_TEMPERATURE);
-        HANDLE_CASE(HEATER_HARDWARE_ERROR_CIRCUIT);
+        HANDLE_CASE(HEATER_HARDWARE_SHORT_CIRCUIT);
+        HANDLE_CASE(HEATER_HARDWARE_OPEN_CIRCUIT);
+        HANDLE_CASE(HEATER_HARDWARE_OVERCURRENT_CIRCUIT);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_INVALID);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
         HANDLE_CASE(SYSTEM_LED_I2C_NOT_READY);

@@ -71,12 +71,16 @@ concept MotorExecutionPolicy = requires(Policy& p,
     { p.seal_stepper_start(callback) } -> std::same_as<bool>;
     // A function to stop a seal stepper movement
     {p.seal_stepper_stop()};
-    // A function to arm the seal stepper limit switch
-    {p.seal_switch_set_armed()};
+    // A function to arm the seal stepper extension limit switch
+    {p.seal_switch_set_extension_armed()};
+    // A function to arm the seal stepper retraction limit switch
+    {p.seal_switch_set_retraction_armed()};
     // A function to disarm the seal stepper limit switch
     {p.seal_switch_set_disarmed()};
-    // A function to read the seal limit switches
-    { p.seal_read_limit_switch() } -> std::same_as<bool>;
+    // A function to read the seal extension limit switch
+    { p.seal_read_extension_switch() } -> std::same_as<bool>;
+    // A function to read the seal retraction limit switch
+    { p.seal_read_retraction_switch() } -> std::same_as<bool>;
     // Policy defines a number that provides the number of seal motor ticks
     // in a second
     {std::is_integral_v<decltype(Policy::MotorTickFrequency)>};
@@ -604,11 +608,20 @@ class MotorTask {
         if (lid_position == motor_util::LidStepper::Position::UNKNOWN) {
             return;
         }
-        if (lid_position == motor_util::LidStepper::Position::OPEN) {
-            static_cast<void>(start_lid_close(INVALID_ID, policy));
+        if (msg.long_press) {
+            // Long presses are for plate lift
+            if (lid_position == motor_util::LidStepper::Position::OPEN) {
+                static_cast<void>(start_plate_lift(INVALID_ID, policy));
+            }
         } else {
-            // Default to opening the lid if the status is in-between switches
-            static_cast<void>(start_lid_open(INVALID_ID, policy));
+            // Short presses are for opening/closing the lid
+            if (lid_position == motor_util::LidStepper::Position::OPEN) {
+                static_cast<void>(start_lid_close(INVALID_ID, policy));
+            } else {
+                // Default to opening the lid if the status is in-between
+                // switches
+                static_cast<void>(start_lid_open(INVALID_ID, policy));
+            }
         }
     }
 
@@ -619,7 +632,8 @@ class MotorTask {
             .responding_to_id = msg.id,
             .close_switch_pressed = policy.lid_read_closed_switch(),
             .open_switch_pressed = policy.lid_read_open_switch(),
-            .seal_switch_pressed = policy.seal_read_limit_switch()};
+            .seal_extension_pressed = policy.seal_read_extension_switch(),
+            .seal_retraction_pressed = policy.seal_read_retraction_switch()};
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));
@@ -663,15 +677,30 @@ class MotorTask {
 
         _seal_stepper_state.direction = steps > 0;
 
+        // This disarms both switches, and is performed before EACH movement
+        // to prevent two consecutive movements from enabling both switches
+        policy.seal_switch_set_disarmed();
+
         if (arm_limit_switch) {
-            // If we are moving until a seal limit switch event, it is
-            // important that the switch is NOT already triggered.
-            if (policy.seal_read_limit_switch()) {
-                return errors::ErrorCode::SEAL_MOTOR_SWITCH;
+            if (_seal_stepper_state.direction) {
+                // Positive numbers are for retraction
+
+                // If we are moving until a seal limit switch event, it is
+                // important that the switch is NOT already triggered.
+                if (policy.seal_read_retraction_switch()) {
+                    return errors::ErrorCode::SEAL_MOTOR_SWITCH;
+                }
+                policy.seal_switch_set_retraction_armed();
+            } else {
+                // Negative numbers are for extension
+
+                // If we are moving until a seal limit switch event, it is
+                // important that the switch is NOT already triggered.
+                if (policy.seal_read_extension_switch()) {
+                    return errors::ErrorCode::SEAL_MOTOR_SWITCH;
+                }
+                policy.seal_switch_set_extension_armed();
             }
-            policy.seal_switch_set_armed();
-        } else {
-            policy.seal_switch_set_disarmed();
         }
 
         // Steps is signed, so set direction accordingly
@@ -963,65 +992,91 @@ class MotorTask {
     auto handle_lid_state_enter(LidState::Status state, Policy& policy)
         -> errors::ErrorCode {
         auto error = errors::ErrorCode::NO_ERROR;
+        auto state_for_system_task =
+            messages::UpdateMotorState::MotorState::IDLE;
         switch (state) {
             case LidState::Status::IDLE:
                 lid_response_send_and_clear();
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::IDLE;
                 break;
             case LidState::Status::OPENING_RETRACT_SEAL:
                 // The seal stepper is retracted to the limit switch
                 error = start_seal_movement(
                     SealStepperState::FULL_RETRACT_MICROSTEPS, true, policy);
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::OPENING_RETRACT_SEAL_BACKOFF:
                 // The seal stepper is extended to back off the limit switch
                 error = start_seal_movement(
                     SealStepperState::SWITCH_BACKOFF_MICROSTEPS_EXTEND, false,
                     policy);
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::OPENING_OPEN_HINGE:
                 if (!start_lid_hinge_open(INVALID_ID, policy)) {
                     error = errors::ErrorCode::LID_MOTOR_BUSY;
                 }
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::CLOSING_RETRACT_SEAL:
                 // The seal stepper is retracted to a stall
                 error = start_seal_movement(
                     SealStepperState::FULL_RETRACT_MICROSTEPS, true, policy);
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::CLOSING_RETRACT_SEAL_BACKOFF:
                 // The seal stepper is extended to back off the limit switch
                 error = start_seal_movement(
                     SealStepperState::SWITCH_BACKOFF_MICROSTEPS_EXTEND, false,
                     policy);
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::CLOSING_CLOSE_HINGE:
                 if (!start_lid_hinge_close(INVALID_ID, policy)) {
                     error = errors::ErrorCode::LID_MOTOR_BUSY;
                 }
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::CLOSING_EXTEND_SEAL:
                 // The seal stepper is extended to engage with the plate
                 error = start_seal_movement(
                     SealStepperState::FULL_EXTEND_MICROSTEPS, true, policy);
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::CLOSING_EXTEND_SEAL_BACKOFF:
                 // The seal stepper is extended to back off the limit switch
                 error = start_seal_movement(
                     SealStepperState::SWITCH_BACKOFF_MICROSTEPS_RETRACT, false,
                     policy);
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
             case LidState::Status::PLATE_LIFTING:
                 // The lid state machine handles everything
                 if (!start_lid_hinge_plate_lift(INVALID_ID, policy)) {
                     error = errors::ErrorCode::LID_MOTOR_FAULT;
                 }
+                state_for_system_task =
+                    messages::UpdateMotorState::MotorState::PLATE_LIFT;
                 break;
         }
         if (error == errors::ErrorCode::NO_ERROR) {
             _state.status = state;
         } else {
             _state.status = LidState::Status::IDLE;
+            state_for_system_task =
+                messages::UpdateMotorState::MotorState::IDLE;
         }
+        static_cast<void>(_task_registry->system->get_message_queue().try_send(
+            messages::UpdateMotorState{.state = state_for_system_task}));
         return error;
     }
 

@@ -35,12 +35,8 @@ string(SUBSTRING "${PREPENDED_VERSION}" 1 -1 VERSION)
 if (NOT VERSION)
   set(VERSION "(dev)")
 endif()
-execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-  OUTPUT_VARIABLE HASH
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-set(heater-shaker_VERSION "${VERSION}-${HASH}")
+set(heater-shaker_VERSION "${VERSION}" CACHE STRING "h-s fw version" FORCE)
 
 configure_file(./version.cpp.in ./version.cpp)
 
@@ -49,6 +45,7 @@ set(CORE_LINTABLE_SOURCES
   )
 
 set(CORE_NONLINTABLE_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/putchar.c
   ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 
@@ -59,9 +56,13 @@ add_library(heater-shaker-core STATIC
 
 set_target_properties(heater-shaker-core
   PROPERTIES CXX_STANDARD 20
-             CXX_STANDARD_REQUIRED TRUE)
+             CXX_STANDARD_REQUIRED TRUE
+             C_STANDARD 11
+             C_STANDARD_REQUIRED TRUE)
 
-target_link_libraries(heater-shaker-core common-core)
+target_link_libraries(heater-shaker-core PUBLIC common-core)
+
+target_link_libraries(heater-shaker-core PUBLIC Mpaland_Printf_Library)
 
 target_include_directories(heater-shaker-core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/heater-shaker
@@ -72,10 +73,10 @@ target_compile_options(heater-shaker-core
   PRIVATE
   -Wall
   -Werror
-  -Weffc++
-  -Wreorder
-  -Wsign-promo
-  -Wextra-semi
-  -Wctor-dtor-privacy
-  -fno-rtti
+  $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wctor-dtor-privacy>
+  $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
   )
