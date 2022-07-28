@@ -608,7 +608,7 @@ class MotorTask {
         if (lid_position == motor_util::LidStepper::Position::UNKNOWN) {
             return;
         }
-        if(msg.long_press) {
+        if (msg.long_press) {
             // Long presses are for plate lift
             if (lid_position == motor_util::LidStepper::Position::OPEN) {
                 static_cast<void>(start_plate_lift(INVALID_ID, policy));
@@ -618,7 +618,8 @@ class MotorTask {
             if (lid_position == motor_util::LidStepper::Position::OPEN) {
                 static_cast<void>(start_lid_close(INVALID_ID, policy));
             } else {
-                // Default to opening the lid if the status is in-between switches
+                // Default to opening the lid if the status is in-between
+                // switches
                 static_cast<void>(start_lid_open(INVALID_ID, policy));
             }
         }
