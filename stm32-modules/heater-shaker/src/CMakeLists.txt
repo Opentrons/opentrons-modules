@@ -36,7 +36,7 @@ if (NOT VERSION)
   set(VERSION "(dev)")
 endif()
 
-set(heater-shaker_VERSION "${VERSION}")
+set(heater-shaker_VERSION "${VERSION}" CACHE STRING "h-s fw version" FORCE)
 
 configure_file(./version.cpp.in ./version.cpp)
 
