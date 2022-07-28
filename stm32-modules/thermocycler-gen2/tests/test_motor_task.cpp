@@ -461,11 +461,22 @@ SCENARIO("motor task message passing") {
         }
         WHEN("sending a Front Button message with lid in unknown position") {
             tasks->get_motor_queue().backing_deque.push_back(
-                messages::FrontButtonPressMessage());
+                messages::FrontButtonPressMessage{.long_press = false});
             tasks->run_motor_task();
             THEN("the lid starts to open") {
                 REQUIRE(motor_task.get_lid_state() ==
                         motor_task::LidState::Status::OPENING_RETRACT_SEAL);
+            }
+        }
+        WHEN(
+            "sending a Long Front Button message with lid in unknown "
+            "position") {
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::FrontButtonPressMessage{.long_press = true});
+            tasks->run_motor_task();
+            THEN("nothing happens") {
+                REQUIRE(motor_task.get_lid_state() ==
+                        motor_task::LidState::Status::IDLE);
             }
         }
         GIVEN("lid closed sensor triggered") {
@@ -475,11 +486,20 @@ SCENARIO("motor task message passing") {
             motor_policy.set_retraction_switch_triggered(false);
             WHEN("sending a Front Button message") {
                 tasks->get_motor_queue().backing_deque.push_back(
-                    messages::FrontButtonPressMessage());
+                    messages::FrontButtonPressMessage{.long_press = false});
                 tasks->run_motor_task();
                 THEN("the lid starts to open") {
                     REQUIRE(motor_task.get_lid_state() ==
                             motor_task::LidState::Status::OPENING_RETRACT_SEAL);
+                }
+            }
+            WHEN("sending a Long Front Button message") {
+                tasks->get_motor_queue().backing_deque.push_back(
+                    messages::FrontButtonPressMessage{.long_press = true});
+                tasks->run_motor_task();
+                THEN("the lid does nothing") {
+                    REQUIRE(motor_task.get_lid_state() ==
+                            motor_task::LidState::Status::IDLE);
                 }
             }
             WHEN("sending a GetLidSwitches message") {
@@ -511,11 +531,20 @@ SCENARIO("motor task message passing") {
             motor_policy.set_retraction_switch_triggered(false);
             WHEN("sending a Front Button message") {
                 tasks->get_motor_queue().backing_deque.push_back(
-                    messages::FrontButtonPressMessage());
+                    messages::FrontButtonPressMessage{.long_press = false});
                 tasks->run_motor_task();
                 THEN("the lid starts to close") {
                     REQUIRE(motor_task.get_lid_state() ==
                             motor_task::LidState::Status::CLOSING_RETRACT_SEAL);
+                }
+            }
+            WHEN("sending a Long Front Button message") {
+                tasks->get_motor_queue().backing_deque.push_back(
+                    messages::FrontButtonPressMessage{.long_press = true});
+                tasks->run_motor_task();
+                THEN("the lid starts to lift the plate") {
+                    REQUIRE(motor_task.get_lid_state() ==
+                            motor_task::LidState::Status::PLATE_LIFTING);
                 }
             }
             WHEN("sending a GetLidSwitches message") {

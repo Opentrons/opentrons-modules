@@ -98,6 +98,69 @@ class FrontButtonBlink {
     }
 };
 
+// Class to hold runtime info for pressing the front button. The button
+// has a
+class ButtonPress {
+  public:
+    // The completion callback accepts one parameter, a bool for whether this
+    // was a LONG (true) or SHORT (false) button press.
+    using Callback = std::function<void(bool)>;
+
+  private:
+    // The callback for when the press is completed
+    Callback _send_press;
+    // The number of milliseconds the button must be held to count as
+    // a "long press"
+    const uint32_t _long_press_threshold;
+    // Number of milliseconds the button has been held for
+    uint32_t _ms_count = 0;
+    // Whether a message has been sent since the last reset
+    bool _press_sent = false;
+
+  public:
+    explicit ButtonPress(Callback cb, size_t long_press_threshold)
+        : _send_press(std::move(cb)),
+          _long_press_threshold(long_press_threshold) {}
+
+    /**
+     * @brief Resets the state of the button press. This should be called
+     * when the button is initially pressed (e.g. when the IRQ for the button
+     * is triggered).
+     */
+    auto reset() -> void {
+        _ms_count = 0;
+        _press_sent = false;
+    }
+
+    /**
+     * @brief Update the button state while it is being held. If the amount
+     * of time it has been held exceeds the threshold for being a long press,
+     * this function will call the callback and mark that a message was sent.
+     *
+     * @param delta_ms The number of milliseconds that has passed since the
+     * last time this or `reset()` was invoked.
+     */
+    auto update_held(uint32_t delta_ms) -> void {
+        if (!_press_sent) {
+            _ms_count += delta_ms;
+            if (_ms_count >= _long_press_threshold) {
+                // Did  cross the long threshold, so signal a short press.
+                _send_press(true);
+                _press_sent = true;
+            }
+        }
+    }
+
+    auto released(uint32_t delta_ms) -> void {
+        update_held(delta_ms);
+        if (!_press_sent) {
+            // Did not cross the long threshold, so signal a short press.
+            _send_press(false);
+            _press_sent = true;
+        }
+    }
+};
+
 using PWM_T = uint16_t;
 
 template <typename Policy>
@@ -153,6 +216,9 @@ class SystemTask {
     static constexpr uint32_t LED_PULSE_PERIOD_MS = 1000;
     // Max brightness to set for automatic LED actions
     static constexpr uint8_t LED_MAX_BRIGHTNESS = 0x20;
+    // Number of milliseconds to consider a button press "long" is 3 seconds
+    static constexpr uint32_t LONG_PRESS_TIME_MS = 3000;
+
     explicit SystemTask(Queue& q)
         : _message_queue(q),
           _task_registry(nullptr),
@@ -442,9 +508,9 @@ class SystemTask {
     // Should be provided to the front button timer to send Front Button
     // messages. Ensure the timer implementation does NOT execute in an
     // interrupt context.
-    auto front_button_callback() -> void {
+    auto front_button_callback(bool long_press) -> void {
         static_cast<void>(_task_registry->motor->get_message_queue().try_send(
-            messages::FrontButtonPressMessage()));
+            messages::FrontButtonPressMessage{.long_press = long_press}));
     }
 
     template <SystemExecutionPolicy Policy>
