@@ -78,8 +78,8 @@ class ThermalTask {
     static constexpr double FAN_POWER_MEDIUM = 0.75;
     static constexpr double FAN_POWER_MAX = 1.0;
 
-    static constexpr double PELTIER_KP_DEFAULT = 0.1F;
-    static constexpr double PELTIER_KI_DEFAULT = 0.05F;
+    static constexpr double PELTIER_KP_DEFAULT = 0.38;
+    static constexpr double PELTIER_KI_DEFAULT = 0.0275;
     static constexpr double PELTIER_KD_DEFAULT = 0.0F;
 
     static constexpr double PELTIER_K_MAX = 200.0F;
@@ -333,7 +333,7 @@ class ThermalTask {
                 if (_peltier.power >= 0.0F) {
                     ret = policy.set_peltier_heat_power(power);
                 } else {
-                    ret = policy.set_peltier_cool_power(power);
+                    ret = policy.set_peltier_cool_power(std::abs(power));
                 }
                 if (!ret) {
                     _peltier.target_set = false;
