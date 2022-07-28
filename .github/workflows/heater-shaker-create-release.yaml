@@ -1,5 +1,8 @@
 name: 'Heater-shaker create release from tag'
 on:
+  create:
+    tags:
+      - 'heater-shaker@*'
   push:
     tags:
       - 'heater-shaker@*'
