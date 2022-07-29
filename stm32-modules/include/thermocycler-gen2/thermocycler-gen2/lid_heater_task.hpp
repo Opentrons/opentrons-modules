@@ -68,9 +68,9 @@ class LidHeaterTask {
     static constexpr double THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM = 10.0;
     static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
     // TODO most of these defaults will have to change
-    static constexpr double DEFAULT_KI = 0.001552;
-    static constexpr double DEFAULT_KP = 0.0922;
-    static constexpr double DEFAULT_KD = 0.10358;
+    static constexpr double DEFAULT_KI = 0.01;
+    static constexpr double DEFAULT_KP = 0.2;
+    static constexpr double DEFAULT_KD = 0.0;
     static constexpr double KP_MIN = -200;
     static constexpr double KP_MAX = 200;
     static constexpr double KI_MIN = -200;
@@ -167,10 +167,10 @@ class LidHeaterTask {
 
         // If we're in a controlling state, we now update the heater output
         if (_state.system_status == State::CONTROLLING) {
-            auto ret = policy.set_heater_power(_pid.compute(
-                _setpoint_c - _thermistor.temp_c,
+            auto power = update_control(
                 std::chrono::duration_cast<Seconds>(current_time - _last_update)
-                    .count()));
+                    .count());
+            auto ret = policy.set_heater_power(power);
             if (!ret) {
                 policy.set_heater_power(0.0F);
                 _state.system_status = State::ERROR;
@@ -277,7 +277,7 @@ class LidHeaterTask {
         } else {
             _setpoint_c = msg.setpoint;
             _state.system_status = State::CONTROLLING;
-            _pid.arm_integrator_reset(_setpoint_c - _thermistor.temp_c);
+            _pid.reset();
         }
 
         static_cast<void>(
@@ -430,6 +430,22 @@ class LidHeaterTask {
         }
 
         return errors::ErrorCode::NO_ERROR;
+    }
+
+    [[nodiscard]] auto update_control(double time_delta) -> double {
+        auto proportional_band = 1.0;
+        if (_pid.kp() != 0.0) {
+            proportional_band = 1.0 / _pid.kp();
+        }
+
+        if (_setpoint_c > _thermistor.temp_c &&
+            _setpoint_c - _thermistor.temp_c > proportional_band) {
+            // If we're below the proportional band, set the max power
+            return 1.0F;
+        }
+
+        // Start integration once we're within the proportional band
+        return _pid.compute(_setpoint_c - _thermistor.temp_c, time_delta);
     }
 
     Queue& _message_queue;
