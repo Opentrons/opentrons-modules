@@ -239,7 +239,7 @@ struct SingleParser {
             }
         }
 
-        if constexpr (sizeof...(Remaining)) {
+        if constexpr (sizeof...(Remaining) > 0) {
             // Recurse down to the next argument
             working = gobble_whitespace(working, stop_at);
             auto ret = parse_arg<Input, Limit, Remaining...>(working, stop_at);

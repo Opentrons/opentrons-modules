@@ -163,6 +163,65 @@ SCENARIO("host comms commands to system task") {
 SCENARIO("host comms commands to thermal task") {
     auto *tasks = tasks::BuildTasks();
     std::string tx_buf(128, 'c');
+
+    WHEN("sending gcode M18") {
+        auto message_text = std::string("M18\n");
+        auto message_obj =
+            messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                &*message_text.begin(), &*message_text.end()));
+        REQUIRE(tasks->_comms_queue.try_send(message_obj));
+        auto written =
+            tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+        THEN("the task does not immediately ack") {
+            REQUIRE(written == tx_buf.begin());
+        }
+        THEN("a message is sent to the thermal task") {
+            REQUIRE(tasks->_thermal_queue.has_message());
+            auto thermal_msg = tasks->_thermal_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::DeactivateAllMessage>(
+                thermal_msg));
+            auto id = std::get<messages::DeactivateAllMessage>(thermal_msg).id;
+            AND_WHEN("sending response with wrong id") {
+                auto response =
+                    messages::AcknowledgePrevious{.responding_to_id = id + 1};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an error is printed") {
+                    auto expected = errorstring(
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+            AND_WHEN("sending an error response") {
+                auto response = messages::AcknowledgePrevious{
+                    .responding_to_id = id,
+                    .with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an ack is printed") {
+                    auto expected =
+                        errorstring(errors::ErrorCode::THERMAL_PELTIER_ERROR);
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+            AND_WHEN("sending a good response") {
+                auto response =
+                    messages::AcknowledgePrevious{.responding_to_id = id};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an ack is printed") {
+                    auto expected = "M18 OK\n";
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+        }
+    }
     WHEN("sending gcode M105.D") {
         auto message_text = std::string("M105.D\n");
         auto message_obj =
@@ -269,6 +328,64 @@ SCENARIO("host comms commands to thermal task") {
                     tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
                 THEN("an ack is printed") {
                     auto expected = "M104.D OK\n";
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+        }
+    }
+    WHEN("sending gcode M104") {
+        auto message_text = std::string("M104 S100\n");
+        auto message_obj =
+            messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                &*message_text.begin(), &*message_text.end()));
+        REQUIRE(tasks->_comms_queue.try_send(message_obj));
+        auto written =
+            tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+        THEN("the task does not immediately ack") {
+            REQUIRE(written == tx_buf.begin());
+        }
+        THEN("a message is sent to the thermal task") {
+            REQUIRE(tasks->_thermal_queue.has_message());
+            auto thermal_msg = tasks->_thermal_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::SetTemperatureMessage>(
+                thermal_msg));
+            auto id = std::get<messages::SetTemperatureMessage>(thermal_msg).id;
+            AND_WHEN("sending response with wrong id") {
+                auto response =
+                    messages::AcknowledgePrevious{.responding_to_id = id + 1};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an error is printed") {
+                    auto expected = errorstring(
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+            AND_WHEN("sending an error response") {
+                auto response = messages::AcknowledgePrevious{
+                    .responding_to_id = id,
+                    .with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an ack is printed") {
+                    auto expected =
+                        errorstring(errors::ErrorCode::THERMAL_PELTIER_ERROR);
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+            AND_WHEN("sending a good response") {
+                auto response =
+                    messages::AcknowledgePrevious{.responding_to_id = id};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an ack is printed") {
+                    auto expected = "M104 OK\n";
                     REQUIRE(written == (tx_buf.begin() + strlen(expected)));
                     REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
                 }
@@ -389,6 +506,70 @@ SCENARIO("host comms commands to thermal task") {
                     tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
                 THEN("an ack is printed") {
                     auto expected = "M107 OK\n";
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+        }
+    }
+
+    WHEN("sending gcode M301") {
+        auto message_text = std::string("M301 P1 I2 D3\n");
+        auto message_obj =
+            messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                &*message_text.begin(), &*message_text.end()));
+        REQUIRE(tasks->_comms_queue.try_send(message_obj));
+        auto written =
+            tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+        THEN("the task does not immediately ack") {
+            REQUIRE(written == tx_buf.begin());
+        }
+        THEN("a message is sent to the thermal task") {
+            REQUIRE(tasks->_thermal_queue.has_message());
+            auto thermal_msg = tasks->_thermal_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::SetPIDConstantsMessage>(
+                thermal_msg));
+            auto pid_msg =
+                std::get<messages::SetPIDConstantsMessage>(thermal_msg);
+            auto id = pid_msg.id;
+            REQUIRE(pid_msg.p == 1.0F);
+            REQUIRE(pid_msg.i == 2.0F);
+            REQUIRE(pid_msg.d == 3.0F);
+            AND_WHEN("sending response with wrong id") {
+                auto response =
+                    messages::AcknowledgePrevious{.responding_to_id = id + 1};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an error is printed") {
+                    auto expected = errorstring(
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+            AND_WHEN("sending an error response") {
+                auto response = messages::AcknowledgePrevious{
+                    .responding_to_id = id,
+                    .with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an ack is printed") {
+                    auto expected =
+                        errorstring(errors::ErrorCode::THERMAL_PELTIER_ERROR);
+                    REQUIRE(written == (tx_buf.begin() + strlen(expected)));
+                    REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
+                }
+            }
+            AND_WHEN("sending a good response") {
+                auto response =
+                    messages::AcknowledgePrevious{.responding_to_id = id};
+                tasks->_comms_queue.backing_deque.push_back(response);
+                written =
+                    tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+                THEN("an ack is printed") {
+                    auto expected = "M301 OK\n";
                     REQUIRE(written == (tx_buf.begin() + strlen(expected)));
                     REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
                 }
