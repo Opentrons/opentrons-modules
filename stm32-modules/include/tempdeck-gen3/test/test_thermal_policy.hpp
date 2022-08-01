@@ -6,7 +6,10 @@
 struct TestThermalPolicy {
     auto enable_peltier() -> void { _enabled = true; }
 
-    auto disable_peltier() -> void { _enabled = false; }
+    auto disable_peltier() -> void {
+        _enabled = false;
+        _power = 0.0F;
+    }
 
     auto set_peltier_heat_power(double power) -> bool {
         if (!_enabled) {

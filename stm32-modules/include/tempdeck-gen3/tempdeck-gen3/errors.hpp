@@ -17,6 +17,7 @@ enum class ErrorCode {
     // 1xx - Thermal General
     THERMAL_PELTIER_ERROR = 101,
     THERMAL_PELTIER_POWER_ERROR = 102,
+    THERMAL_PELTIER_BUSY = 103,
     // 3xx - System General
     SYSTEM_SERIAL_NUMBER_INVALID = 301,
     SYSTEM_SERIAL_NUMBER_HAL_ERROR = 302,

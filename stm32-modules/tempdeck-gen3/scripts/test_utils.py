@@ -49,6 +49,13 @@ class Tempdeck():
         plate = float(match.group('plate'))
         heatsink = float(match.group('heatsink'))
         return plate, heatsink
+    
+    def deactivate(self):
+        self._send_and_recv('M18\n', 'M18 OK')
+    
+    def set_temperature(self, temp: float):
+        msg = f'M104 S{temp}\n'
+        self._send_and_recv(msg, 'M104 OK')
 
     def set_peltier_power(self, power: float = 0):
         '''

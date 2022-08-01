@@ -38,8 +38,8 @@
 
 // Peltier drive circuitry cannot support lower PWM than 0.1
 #define MIN_PELTIER_POWER (0.1)
-// Peltier drive circuitry cannot support higher PWM than 0.9
-#define MAX_PELTIER_POWER (0.9)
+// PWM values over this limit result in overheating of the low-side FET
+#define MAX_PELTIER_POWER (0.85)
 
 #define FAN_PWM_Pin (GPIO_PIN_6)
 #define FAN_PWM_GPIO_Port (GPIOA)

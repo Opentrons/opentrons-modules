@@ -34,13 +34,15 @@ class HostCommsTask {
     using GCodeParser =
         gcode::GroupParser<gcode::GetSystemInfo, gcode::EnterBootloader,
                            gcode::SetSerialNumber, gcode::GetTemperatureDebug,
+                           gcode::SetTemperature, gcode::DeactivateAll,
                            gcode::SetPeltierDebug, gcode::SetFanManual,
-                           gcode::SetFanAutomatic>;
+                           gcode::SetFanAutomatic, gcode::SetPIDConstants>;
     using AckOnlyCache =
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         AckCache<10, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::SetPeltierDebug, gcode::SetFanManual,
-                 gcode::SetFanAutomatic>;
+                 gcode::SetTemperature, gcode::DeactivateAll,
+                 gcode::SetFanAutomatic, gcode::SetPIDConstants>;
     using GetSystemInfoCache = AckCache<4, gcode::GetSystemInfo>;
     using GetTempDebugCache = AckCache<4, gcode::GetTemperatureDebug>;
 
@@ -366,6 +368,27 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::DeactivateAll& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::DeactivateAllMessage{.id = id};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::GetTemperatureDebug& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = get_temp_debug_cache.add(gcode);
@@ -379,6 +402,28 @@ class HostCommsTask {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
             get_temp_debug_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetTemperature& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message =
+            messages::SetTemperatureMessage{.id = id, .target = gcode.target};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
@@ -444,6 +489,30 @@ class HostCommsTask {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
             get_system_info_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetPIDConstants& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::SetPIDConstantsMessage{.id = id,
+                                                        .p = gcode.const_p,
+                                                        .i = gcode.const_i,
+                                                        .d = gcode.const_d};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
