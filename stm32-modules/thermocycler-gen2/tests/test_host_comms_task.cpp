@@ -2453,6 +2453,60 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                 }
             }
         }
+        WHEN("sending a SetLidFans message") {
+            auto message_text = std::string("M903.D S1\n");
+            auto message_obj =
+                messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                    &*message_text.begin(), &*message_text.end()));
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            auto written_firstpass = tasks->get_host_comms_task().run_once(
+                tx_buf.begin(), tx_buf.end());
+            THEN(
+                "the task should pass the message on to the lid task "
+                "and not immediately ack") {
+                REQUIRE(tasks->get_lid_heater_queue().has_message());
+                auto lid_message =
+                    tasks->get_lid_heater_queue().backing_deque.front();
+                auto fan_message =
+                    std::get<messages::SetLidFansMessage>(lid_message);
+                tasks->get_lid_heater_queue().backing_deque.pop_front();
+                REQUIRE(written_firstpass == tx_buf.begin());
+                REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+                AND_WHEN("sending a good response back to the comms task") {
+                    auto response = messages::AcknowledgePrevious{
+                        .responding_to_id = fan_message.id};
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN("the task should ack the previous message") {
+                        REQUIRE_THAT(
+                            tx_buf, Catch::Matchers::StartsWith("M903.D OK\n"));
+                        REQUIRE(written_secondpass != tx_buf.begin());
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN("sending a bad response back to the comms task") {
+                    auto response = messages::AcknowledgePrevious{
+                        .responding_to_id = fan_message.id + 1};
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response);
+                    auto written_secondpass =
+                        tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                              tx_buf.end());
+                    THEN(
+                        "the task should pull the message and print an error") {
+                        REQUIRE(written_secondpass > tx_buf.begin());
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+            }
+        }
     }
 }
 

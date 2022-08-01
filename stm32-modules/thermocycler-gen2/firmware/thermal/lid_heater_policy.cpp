@@ -15,3 +15,8 @@ auto LidHeaterPolicy::set_heater_power(double power) -> bool {
 [[nodiscard]] auto LidHeaterPolicy::get_heater_power() const -> double {
     return thermal_heater_get_power();
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto LidHeaterPolicy::set_lid_fans(bool enable) -> void {
+    return thermal_heater_set_lid_fans(enable);
+}

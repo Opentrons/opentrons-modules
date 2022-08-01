@@ -10,6 +10,11 @@ class TestLidHeaterPolicy {
     }
     auto get_heater_power() const -> double { return _power; }
 
+    auto set_lid_fans(bool enable) -> void { _lid_fans = enable; }
+
+    auto lid_fans_enabled() const -> bool { return _lid_fans; }
+
   private:
     double _power = 0.0F;
+    bool _lid_fans = false;
 };

@@ -38,6 +38,8 @@ concept LidHeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // A get_heater_power function to get the power of the heater as
     // a percentage from 0 to 1.0.
     { p.get_heater_power() } -> std::same_as<double>;
+    // A function to enable or disable the lid fans
+    { p.set_lid_fans(true) } -> std::same_as<void>;
 };
 
 struct State {
@@ -360,6 +362,18 @@ class LidHeaterTask {
                        Policy& policy) -> void {
         auto response = messages::GetLidPowerResponse{
             .responding_to_id = msg.id, .heater = policy.get_heater_power()};
+
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::SetLidFansMessage& msg, Policy& policy)
+        -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        policy.set_lid_fans(msg.enable);
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));

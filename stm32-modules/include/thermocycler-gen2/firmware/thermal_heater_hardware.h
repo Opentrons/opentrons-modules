@@ -30,6 +30,11 @@ bool thermal_heater_set_power(double power);
  */
 double thermal_heater_get_power(void);
 
+/**
+ * @brief Set the lid fans enabled or disabled
+ */
+void thermal_heater_set_lid_fans(bool enable);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus

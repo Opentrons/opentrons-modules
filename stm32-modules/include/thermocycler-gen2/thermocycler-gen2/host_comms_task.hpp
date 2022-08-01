@@ -51,7 +51,7 @@ class HostCommsTask {
         gcode::GetThermalPowerDebug, gcode::SetOffsetConstants,
         gcode::GetOffsetConstants, gcode::OpenLid, gcode::CloseLid,
         gcode::LiftPlate, gcode::DeactivateAll, gcode::GetBoardRevision,
-        gcode::GetLidSwitches, gcode::GetFrontButton>;
+        gcode::GetLidSwitches, gcode::GetFrontButton, gcode::SetLidFans>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
@@ -61,7 +61,7 @@ class HostCommsTask {
                  gcode::SetPlateTemperature, gcode::DeactivatePlate,
                  gcode::SetFanAutomatic, gcode::SetSealParameter,
                  gcode::SetOffsetConstants, gcode::OpenLid, gcode::CloseLid,
-                 gcode::LiftPlate>;
+                 gcode::LiftPlate, gcode::SetLidFans>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetLidTempDebugCache = AckCache<8, gcode::GetLidTemperatureDebug>;
     using GetPlateTempDebugCache = AckCache<8, gcode::GetPlateTemperatureDebug>;
@@ -1446,6 +1446,29 @@ class HostCommsTask {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
             get_switch_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetLidFans& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message =
+            messages::SetLidFansMessage{.id = id, .enable = gcode.enable};
+        if (!task_registry->lid_heater->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
