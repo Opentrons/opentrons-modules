@@ -515,4 +515,44 @@ SCENARIO("lid heater task message passing") {
             }
         }
     }
+    WHEN("sending SetLidFans message") {
+        auto tasks = TaskBuilder::build();
+        REQUIRE(!tasks->get_lid_heater_policy().lid_fans_enabled());
+        auto fan_msg = messages::SetLidFansMessage{.id = 123, .enable = true};
+        tasks->get_lid_heater_queue().backing_deque.push_back(fan_msg);
+        tasks->run_lid_heater_task();
+        THEN("the lid fan is enabled") {
+            REQUIRE(tasks->get_lid_heater_policy().lid_fans_enabled());
+        }
+        THEN("the message is acked") {
+            REQUIRE(tasks->get_host_comms_queue().has_message());
+            auto reply = tasks->get_host_comms_queue().backing_deque.front();
+            REQUIRE(
+                std::holds_alternative<messages::AcknowledgePrevious>(reply));
+            auto ack = std::get<messages::AcknowledgePrevious>(reply);
+            REQUIRE(ack.responding_to_id == fan_msg.id);
+            REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
+        }
+        AND_WHEN("sending another message to disable the fans") {
+            fan_msg.id = 456;
+            fan_msg.enable = false;
+            tasks->get_host_comms_queue().backing_deque.clear();
+
+            tasks->get_lid_heater_queue().backing_deque.push_back(fan_msg);
+            tasks->run_lid_heater_task();
+            THEN("the lid fan is disabled") {
+                REQUIRE(!tasks->get_lid_heater_policy().lid_fans_enabled());
+            }
+            THEN("the message is acked") {
+                REQUIRE(tasks->get_host_comms_queue().has_message());
+                auto reply =
+                    tasks->get_host_comms_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
+                    reply));
+                auto ack = std::get<messages::AcknowledgePrevious>(reply);
+                REQUIRE(ack.responding_to_id == fan_msg.id);
+                REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
+            }
+        }
+    }
 }

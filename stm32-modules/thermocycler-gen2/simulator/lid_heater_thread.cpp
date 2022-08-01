@@ -12,6 +12,7 @@ using namespace lid_heater_thread;
 class SimLidHeaterPolicy {
   private:
     double _power = 0.0F;
+    bool _lid_fans = false;
     std::shared_ptr<periodic_data_thread::PeriodicDataThread> _periodic_data;
 
   public:
@@ -27,6 +28,8 @@ class SimLidHeaterPolicy {
     }
 
     auto get_heater_power() const -> double { return _power; }
+
+    auto set_lid_fans(bool enable) -> void { _lid_fans = enable; }
 };
 
 struct lid_heater_thread::TaskControlBlock {

@@ -12,4 +12,6 @@ class LidHeaterPolicy {
     auto set_heater_power(double power) -> bool;
 
     [[nodiscard]] auto get_heater_power() const -> double;
+
+    auto set_lid_fans(bool enable) -> void;
 };

@@ -400,6 +400,11 @@ struct GetFrontButtonResponse {
     bool button_pressed;
 };
 
+struct SetLidFansMessage {
+    uint32_t id;
+    bool enable;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage,
@@ -421,12 +426,11 @@ using ThermalPlateMessage =
                    SetPIDConstantsMessage, SetFanAutomaticMessage,
                    GetThermalPowerMessage, SetOffsetConstantsMessage,
                    GetOffsetConstantsMessage, DeactivateAllMessage>;
-using LidHeaterMessage =
-    ::std::variant<std::monostate, LidTempReadComplete,
-                   GetLidTemperatureDebugMessage, SetHeaterDebugMessage,
-                   GetLidTempMessage, SetLidTemperatureMessage,
-                   DeactivateLidHeatingMessage, SetPIDConstantsMessage,
-                   GetThermalPowerMessage, DeactivateAllMessage>;
+using LidHeaterMessage = ::std::variant<
+    std::monostate, LidTempReadComplete, GetLidTemperatureDebugMessage,
+    SetHeaterDebugMessage, GetLidTempMessage, SetLidTemperatureMessage,
+    DeactivateLidHeatingMessage, SetPIDConstantsMessage, GetThermalPowerMessage,
+    DeactivateAllMessage, SetLidFansMessage>;
 using MotorMessage = ::std::variant<
     std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
     LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,

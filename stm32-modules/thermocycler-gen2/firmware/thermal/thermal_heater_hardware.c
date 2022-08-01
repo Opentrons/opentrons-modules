@@ -24,6 +24,9 @@
 // PWM should be scaled from 0 to MAX_PWM, inclusive
 #define MAX_PWM (TIM15_RELOAD + 1)
 
+#define LID_FAN_ENABLE_PORT (GPIOF)
+#define LID_FAN_ENABLE_PIN (GPIO_PIN_9)
+
 // Private typedefs
 
 struct Heater {
@@ -69,6 +72,7 @@ void thermal_heater_initialize(void) {
 
     __GPIOA_CLK_ENABLE();
     __GPIOD_CLK_ENABLE();
+    __GPIOF_CLK_ENABLE();
 
     // Disable the enable pin first
     GPIO_InitStruct.Pin = _heater.enable_pin;
@@ -128,7 +132,14 @@ void thermal_heater_initialize(void) {
     GPIO_InitStruct.Alternate = GPIO_AF9_TIM15;
     HAL_GPIO_Init(HEATER_PWM_GPIO_Port, &GPIO_InitStruct);
 
+    // Initialize the GPIO for the lid fans
+    GPIO_InitStruct.Pin = LID_FAN_ENABLE_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    HAL_GPIO_Init(LID_FAN_ENABLE_PORT, &GPIO_InitStruct);
+
     _heater.initialized = true;
+
+    thermal_heater_set_lid_fans(false);
 }
 
 
@@ -165,6 +176,12 @@ bool thermal_heater_set_power(double power) {
 double thermal_heater_get_power(void) {
     return _heater.power;
 }
+
+void thermal_heater_set_lid_fans(bool enable) {
+    HAL_GPIO_WritePin(LID_FAN_ENABLE_PORT, LID_FAN_ENABLE_PIN,
+        enable ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
 
 // Local function implementations
 
