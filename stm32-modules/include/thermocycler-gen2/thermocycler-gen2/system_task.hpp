@@ -495,6 +495,7 @@ class SystemTask {
     template <SystemExecutionPolicy Policy>
     auto visit_message(const messages::SetLightsDebugMessage& message,
                        Policy& policy) {
+        std::ignore = policy;
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = message.id};
         _light_debug_mode = message.enable;
