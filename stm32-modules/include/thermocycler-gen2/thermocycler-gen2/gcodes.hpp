@@ -1740,4 +1740,52 @@ struct SetLidFans {
     }
 };
 
+/**
+ * @brief SetLightsDebug sets the output of the lights to a fully bright
+ * white setting. This is used for checking that the light strip is pulling
+ * the correct amount of current.
+ *
+ * The only parameter is whether to set the light debug mode on or off
+ * (1 or 0)
+ *
+ * M904.D S[value]\n
+ *
+ */
+struct SetLightsDebug {
+    using ParseResult = std::optional<SetLightsDebug>;
+    static constexpr auto prefix = std::array{'M', '9', '0', '4', '.', 'D'};
+    static constexpr const char* response = "M904.D OK\n";
+
+    struct SetArg {
+        static constexpr auto prefix = std::array{'S'};
+        static constexpr bool required = true;
+        bool present = false;
+        int value = 0;
+    };
+
+    bool enable;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res =
+            gcode::SingleParser<SetArg>::parse_gcode(input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        auto ret = SetLightsDebug{.enable = std::get<0>(arguments).value > 0};
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 }  // namespace gcode

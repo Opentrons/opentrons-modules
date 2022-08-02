@@ -237,7 +237,8 @@ class SystemTask {
           _motor_state(MotorState::IDLE),
           _front_button_pulse(FRONT_BUTTON_MAX_PULSE),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          _front_button_blink() {}
+          _front_button_blink(),
+          _light_debug_mode(false) {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
     SystemTask(SystemTask&& other) noexcept = delete;
@@ -491,6 +492,17 @@ class SystemTask {
             _task_registry->comms->get_message_queue().try_send(response));
     }
 
+    template <SystemExecutionPolicy Policy>
+    auto visit_message(const messages::SetLightsDebugMessage& message,
+                       Policy& policy) {
+        std::ignore = policy;
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = message.id};
+        _light_debug_mode = message.enable;
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
     template <typename Policy>
     requires SystemExecutionPolicy<Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
@@ -534,6 +546,13 @@ class SystemTask {
     // Update current state of the UI based on task errors and plate action
     auto update_led_mode_from_system() -> void {
         using namespace colors;
+
+        if (_light_debug_mode) {
+            _led_state.color = get_color(Colors::WHITE);
+            _led_state.mode = Mode::SOLID;
+            return;
+        }
+
         if (_plate_error != errors::ErrorCode::NO_ERROR ||
             _lid_error != errors::ErrorCode::NO_ERROR ||
             _motor_error != errors::ErrorCode::NO_ERROR) {
@@ -580,6 +599,8 @@ class SystemTask {
     std::atomic<MotorState> _motor_state;
     Pulse _front_button_pulse;
     FrontButtonBlink _front_button_blink;
+    // If this is true, set the LED's to all-white no matter what.
+    bool _light_debug_mode;
 };
 
 };  // namespace system_task

@@ -297,6 +297,34 @@ SCENARIO("system task message passing") {
                     REQUIRE(led.color ==
                             colors::get_color(colors::Colors::RED));
                 }
+                AND_WHEN("setting debug mode") {
+                    auto dbg_msg = messages::SetLightsDebugMessage{
+                        .id = 123, .enable = true};
+                    tasks->get_system_queue().backing_deque.push_back(dbg_msg);
+                    tasks->get_system_task().run_once(
+                        tasks->get_system_policy());
+                    tasks->get_system_queue().backing_deque.push_back(
+                        messages::SystemMessage(messages::UpdateUIMessage()));
+                    tasks->get_system_task().run_once(
+                        tasks->get_system_policy());
+                    THEN("the task should set the LED outputs to solid white") {
+                        auto &led = tasks->get_system_task().get_led_state();
+                        REQUIRE(led.mode == colors::Mode::SOLID);
+                        REQUIRE(led.color ==
+                                colors::get_color(colors::Colors::WHITE));
+                    }
+                    THEN("the system task should ack the message") {
+                        REQUIRE(tasks->get_host_comms_queue().has_message());
+                        auto host_msg =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        REQUIRE(std::holds_alternative<
+                                messages::AcknowledgePrevious>(host_msg));
+                        auto ack =
+                            std::get<messages::AcknowledgePrevious>(host_msg);
+                        REQUIRE(ack.responding_to_id == dbg_msg.id);
+                        REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
+                    }
+                }
             }
         }
         WHEN("sending a UpdatePlateStatus message with a cooling plate") {
@@ -316,6 +344,34 @@ SCENARIO("system task message passing") {
                     REQUIRE(led.color ==
                             colors::get_color(colors::Colors::BLUE));
                 }
+                AND_WHEN("setting debug mode") {
+                    auto dbg_msg = messages::SetLightsDebugMessage{
+                        .id = 123, .enable = true};
+                    tasks->get_system_queue().backing_deque.push_back(dbg_msg);
+                    tasks->get_system_task().run_once(
+                        tasks->get_system_policy());
+                    tasks->get_system_queue().backing_deque.push_back(
+                        messages::SystemMessage(messages::UpdateUIMessage()));
+                    tasks->get_system_task().run_once(
+                        tasks->get_system_policy());
+                    THEN("the task should set the LED outputs to solid white") {
+                        auto &led = tasks->get_system_task().get_led_state();
+                        REQUIRE(led.mode == colors::Mode::SOLID);
+                        REQUIRE(led.color ==
+                                colors::get_color(colors::Colors::WHITE));
+                    }
+                    THEN("the system task should ack the message") {
+                        REQUIRE(tasks->get_host_comms_queue().has_message());
+                        auto host_msg =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        REQUIRE(std::holds_alternative<
+                                messages::AcknowledgePrevious>(host_msg));
+                        auto ack =
+                            std::get<messages::AcknowledgePrevious>(host_msg);
+                        REQUIRE(ack.responding_to_id == dbg_msg.id);
+                        REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
+                    }
+                }
             }
         }
         WHEN("sending a UpdatePlateStatus message with plate at cool temp") {
@@ -334,6 +390,34 @@ SCENARIO("system task message passing") {
                     REQUIRE(led.mode == colors::Mode::SOLID);
                     REQUIRE(led.color ==
                             colors::get_color(colors::Colors::BLUE));
+                }
+                AND_WHEN("setting debug mode") {
+                    auto dbg_msg = messages::SetLightsDebugMessage{
+                        .id = 123, .enable = true};
+                    tasks->get_system_queue().backing_deque.push_back(dbg_msg);
+                    tasks->get_system_task().run_once(
+                        tasks->get_system_policy());
+                    tasks->get_system_queue().backing_deque.push_back(
+                        messages::SystemMessage(messages::UpdateUIMessage()));
+                    tasks->get_system_task().run_once(
+                        tasks->get_system_policy());
+                    THEN("the task should set the LED outputs to solid white") {
+                        auto &led = tasks->get_system_task().get_led_state();
+                        REQUIRE(led.mode == colors::Mode::SOLID);
+                        REQUIRE(led.color ==
+                                colors::get_color(colors::Colors::WHITE));
+                    }
+                    THEN("the system task should ack the message") {
+                        REQUIRE(tasks->get_host_comms_queue().has_message());
+                        auto host_msg =
+                            tasks->get_host_comms_queue().backing_deque.front();
+                        REQUIRE(std::holds_alternative<
+                                messages::AcknowledgePrevious>(host_msg));
+                        auto ack =
+                            std::get<messages::AcknowledgePrevious>(host_msg);
+                        REQUIRE(ack.responding_to_id == dbg_msg.id);
+                        REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
+                    }
                 }
             }
         }
