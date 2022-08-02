@@ -29,7 +29,7 @@ execute_process(COMMAND ${GIT_EXECUTABLE} describe --tags --match "${TARGET_MODU
   OUTPUT_VARIABLE TAGNAME
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 if (NOT TAGNAME)
-  set(TAGNAME "@(dev)-")
+  set(TAGNAME "@(dev)")
 endif()
 
 string(REGEX MATCH "@.*$" PREPENDED_VERSION ${TAGNAME})
@@ -37,12 +37,8 @@ string(SUBSTRING "${PREPENDED_VERSION}" 1 -1 VERSION)
 if (NOT VERSION)
   set(VERSION "(dev)")
 endif()
-execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-  OUTPUT_VARIABLE HASH
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-set(${TARGET_MODULE_NAME}_VERSION "${VERSION}-${HASH}")
+set(${TARGET_MODULE_NAME}_VERSION "${VERSION}")
 
 configure_file(./version.cpp.in ./version.cpp)
 
