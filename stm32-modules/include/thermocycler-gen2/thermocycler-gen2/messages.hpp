@@ -405,11 +405,17 @@ struct SetLidFansMessage {
     bool enable;
 };
 
+struct SetLightsDebugMessage {
+    uint32_t id;
+    bool enable;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage,
                    UpdateUIMessage, SetLedMode, UpdateTaskErrorState,
-                   UpdatePlateState, GetFrontButtonMessage, UpdateMotorState>;
+                   UpdatePlateState, GetFrontButtonMessage, UpdateMotorState,
+                   SetLightsDebugMessage>;
 using HostCommsMessage = ::std::variant<
     std::monostate, IncomingMessageFromHost, AcknowledgePrevious, ErrorMessage,
     ForceUSBDisconnectMessage, GetSystemInfoResponse,
