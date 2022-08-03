@@ -162,11 +162,11 @@ header file. */
         for (;;)                  \
             ;                     \
     }
-#else 
+#else
 
 #define configASSERT(x) (void)(x)
 
-#endif 
+#endif
 
 /* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS
    standard names. */
