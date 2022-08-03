@@ -103,8 +103,8 @@ class Flash {
 
   private:
     /** Default values for constants.*/
-    static constexpr double OFFSET_B_DEFAULT_CONST = -0.0210F;
-    static constexpr double OFFSET_C_DEFAULT_CONST = 0.4970F;
+    static constexpr double OFFSET_B_DEFAULT_CONST = -0.0259F;
+    static constexpr double OFFSET_C_DEFAULT_CONST = 0.6755F;
 
     // Whether the constants have been read from the FLASH since startup.
     // Even if the FLASH is empty, this flag is set after attempting

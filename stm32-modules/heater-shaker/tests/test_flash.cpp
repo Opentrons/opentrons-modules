@@ -29,9 +29,9 @@ TEST_CASE("blank flash reading") {
                 flash.get_offset_constants(tasks->get_heater_policy());
             THEN("the resulting constants are defaults") {
                 REQUIRE_THAT(readback.b,
-                             Catch::Matchers::WithinAbs(-0.021, 0.01));
+                             Catch::Matchers::WithinAbs(-0.0259, 0.01));
                 REQUIRE_THAT(readback.c,
-                             Catch::Matchers::WithinAbs(0.497, 0.01));
+                             Catch::Matchers::WithinAbs(0.6755, 0.01));
             }
         }
     }
