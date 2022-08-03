@@ -22,6 +22,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32g4xx_it.h"
 
+#include "FreeRTOSConfig.h"
+
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_tim.h"
 #include "stm32g4xx_hal_pcd.h"
@@ -67,9 +69,10 @@ void NMI_Handler(void) {}
  * @retval None
  */
 void HardFault_Handler(void) {
-    /* Go to infinite loop when Hard Fault exception occurs */
-    while (1) {
-    }
+    // If assertions are enabled, lock up here
+    configASSERT(false);
+    /* Go to bootloader when Hard Fault exception occurs */
+    system_hardware_jump_from_exception();
 }
 
 /**
@@ -78,9 +81,10 @@ void HardFault_Handler(void) {
  * @retval None
  */
 void MemManage_Handler(void) {
-    /* Go to infinite loop when Memory Manage exception occurs */
-    while (1) {
-    }
+    // If assertions are enabled, lock up here
+    configASSERT(false);
+    /* Go to bootloader when Memory Manage exception occurs */
+    system_hardware_jump_from_exception();
 }
 
 /**
@@ -89,9 +93,10 @@ void MemManage_Handler(void) {
  * @retval None
  */
 void BusFault_Handler(void) {
-    /* Go to infinite loop when Bus Fault exception occurs */
-    while (1) {
-    }
+    // If assertions are enabled, lock up here
+    configASSERT(false);
+    /* Go to bootloader when Bus Fault exception occurs */
+    system_hardware_jump_from_exception();
 }
 
 /**
@@ -100,9 +105,10 @@ void BusFault_Handler(void) {
  * @retval None
  */
 void UsageFault_Handler(void) {
-    /* Go to infinite loop when Usage Fault exception occurs */
-    while (1) {
-    }
+    // If assertions are enabled, lock up here
+    configASSERT(false);
+    /* Go to bootloader when Usage Fault exception occurs */
+    system_hardware_jump_from_exception();
 }
 
 /**
