@@ -5,8 +5,10 @@
 #include "test/task_builder.hpp"
 
 constexpr double _valid_temp = 55.0;
+constexpr double _thermal_offset_B = -0.0259;
+constexpr double _thermal_offset_C = 0.6755;
 constexpr double _valid_temp_offset =
-    54.342;  // with offsets of (B=-0.021, C=0.497)
+    (1 + _thermal_offset_B) * _valid_temp + _thermal_offset_C;
 
 static auto _converter =
     thermistor_conversion::Conversion<lookups::NTCG104ED104DTDSX>(
