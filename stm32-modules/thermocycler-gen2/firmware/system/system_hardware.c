@@ -176,7 +176,7 @@ void system_hardware_jump_from_exception(void) {
     //      assembly code is allowed.
     //   3. Update the execution mode of the PSR in the exception stack frame.
     //      If this is an invalid value, the processor will be locked forever,
-    //      so we force it to 0x8 for User Mode.
+    //      so we force it to 0x10 for User Mode.
     //   3. Ovewrite the link register with a known exception pattern, and
     //      then return to our overwritten PC value by bx'ing to it
     asm volatile (
@@ -194,8 +194,8 @@ void system_hardware_jump_from_exception(void) {
         "str r0, [sp,#0x18]\n"
         /* In case the PSR is in invalid state, force to user mode*/
         "ldr r1, [sp,#0x1C]\n"
-        "and r1, r1, #0xFFFFFFF8\n"
-        "orr r1, r1, #0x8\n"
+        "and r1, r1, #0xFFFFFFF0\n"
+        "orr r1, r1, #0x10\n"
         "str r1, [sp,#0x1C]\n"
         /* Leave the exception handler */
         "ldr lr,=0xFFFFFFF1\n"

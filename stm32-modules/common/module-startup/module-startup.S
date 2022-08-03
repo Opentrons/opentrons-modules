@@ -90,8 +90,8 @@ Fault_Handler:
 
     /* In case the PSR is in invalid state, force it to user mode*/
     ldr r1, [sp,#0x1C]
-    and r1, r1, #0xFFFFFFF8
-    orr r1, r1, #0x8
+    and r1, r1, #0xFFFFFFF0
+    orr r1, r1, #0x10
     str r1, [sp,#0x1C]
 
     /* LR should hold an EXC_RETURN code, but there is a chance that it is
