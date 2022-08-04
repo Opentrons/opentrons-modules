@@ -88,6 +88,12 @@ Fault_Handler:
     ldr     r0, =Post_Fault_Handler
     str     r0, [sp,#0x18]
 
+    /* In case the PSR is in invalid state, force it to user mode*/
+    ldr r1, [sp,#0x1C]
+    and r1, r1, #0xFFFFFFF0
+    orr r1, r1, #0x10
+    str r1, [sp,#0x1C]
+
     /* LR should hold an EXC_RETURN code, but there is a chance that it is
      * either an invalid value, or simply marks exception behavior that we
      * don't want. We always want to return to Handler mode so the Fault

@@ -59,6 +59,8 @@ void system_front_button_led_set(bool set);
  */
 void system_front_button_callback(void);
 
+void system_hardware_jump_from_exception(void) __attribute__((naked));
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus

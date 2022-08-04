@@ -32,10 +32,10 @@ extern "C" {
 /* Exported functions ------------------------------------------------------- */
 
 void NMI_Handler(void);
-void HardFault_Handler(void);
-void MemManage_Handler(void);
-void BusFault_Handler(void);
-void UsageFault_Handler(void);
+void HardFault_Handler(void) __attribute__((naked));
+void MemManage_Handler(void) __attribute__((naked));
+void BusFault_Handler(void) __attribute__((naked));
+void UsageFault_Handler(void) __attribute__((naked));
 void DebugMon_Handler(void);
 void USB_LP_IRQHandler(void);
 void TIM7_IRQHandler(void);
