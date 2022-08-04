@@ -93,6 +93,9 @@ void system_debug_led(int set)
     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, state);
 }
 
+// WARNING: it is VITAL that this function never returns! It has the chance to
+// be invoked via PC overwrite in an exception handler, and if the function
+// ever returns then catastrophic errors will ensue.
 void system_hardware_enter_bootloader(void) {
 
     // We have to uninitialize as many of the peripherals as possible, because the bootloader
