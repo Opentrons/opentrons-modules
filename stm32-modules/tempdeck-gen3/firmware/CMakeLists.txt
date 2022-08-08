@@ -186,15 +186,50 @@ add_custom_target(${TARGET_MODULE_NAME}-flash
   COMMENT "Flashing board"
   DEPENDS ${TARGET_MODULE_NAME})
 
+set(HEX_IMG_NAME "${TARGET_MODULE_NAME}-image@${${TARGET_MODULE_NAME}_VERSION}.hex")
+
+set(BIN_IMG_NAME "${TARGET_MODULE_NAME}-image@${${TARGET_MODULE_NAME}_VERSION}.bin")
+  
 # Targets to create full image hex file containing both bootloader and application
 add_custom_command(
-    OUTPUT ${TARGET_MODULE_NAME}-image.hex
+    OUTPUT ${HEX_IMG_NAME}
     DEPENDS $<TARGET_FILE_DIR:${TARGET_MODULE_NAME}>/${TARGET_MODULE_NAME}.hex
     DEPENDS STM32G491-startup-hex
     DEPENDS $<TARGET_FILE_DIR:STM32G491-startup>/STM32G491-startup.hex
-    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py ${TARGET_MODULE_NAME}-image.hex $<TARGET_FILE_DIR:STM32G491-startup>/STM32G491-startup.hex ${TARGET_MODULE_NAME}.hex
+    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py ${HEX_IMG_NAME} $<TARGET_FILE_DIR:STM32G491-startup>/STM32G491-startup.hex ${TARGET_MODULE_NAME}.hex
     VERBATIM
     COMMENT "Generating full image")
 add_custom_target(${TARGET_MODULE_NAME}-image-hex ALL
-    DEPENDS ${TARGET_MODULE_NAME}-image.hex
+    DEPENDS STM32G491-startup-hex
     DEPENDS ${TARGET_MODULE_NAME})
+
+add_custom_command(OUTPUT "${BIN_IMG_NAME}"
+    COMMAND ${CROSS_OBJCOPY} ARGS "-Iihex" "-Obinary" "${HEX_IMG_NAME}" "${BIN_IMG_NAME}"
+    DEPENDS "${HEX_IMG_NAME}"
+    VERBATIM)
+add_custom_target(${TARGET_MODULE_NAME}-image-bin ALL
+    DEPENDS "${BIN_IMG_NAME}")
+
+set(ZIP_NAME "${CMAKE_BINARY_DIR}/${TARGET_MODULE_NAME}@${${TARGET_MODULE_NAME}_VERSION}.zip")
+
+add_custom_command(
+    OUTPUT ${ZIP_NAME}
+    DEPENDS ${TARGET_MODULE_NAME}-image-hex
+    DEPENDS ${TARGET_MODULE_NAME}-image-bin
+    COMMAND ${CMAKE_COMMAND} -E tar c
+            "${ZIP_NAME}"
+            --format=zip
+            --
+            "${BIN_IMG_NAME}"
+            "${HEX_IMG_NAME}"
+    VERBATIM )
+    
+add_custom_target(${TARGET_MODULE_NAME}-zip
+    DEPENDS "${ZIP_NAME}" )
+    
+install(FILES
+    "${ZIP_NAME}"
+    "${BIN_IMG_NAME}"
+    "${HEX_IMG_NAME}"
+    DESTINATION "${TARGET_MODULE_NAME}" )
+      

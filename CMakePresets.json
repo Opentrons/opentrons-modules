@@ -70,6 +70,30 @@
     ],
     "buildPresets": [
         {
+            "name": "cross",
+            "displayName": "cross",
+            "description": "Base preset for cross-compilation",
+            "configurePreset": "stm32-cross",
+            "jobs": 8,
+            "targets": [
+                "thermocycler-gen2",
+                "heater-shaker",
+                "tempdeck-gen3"
+            ]
+        },
+        {
+            "name": "host",
+            "displayName": "host",
+            "description": "Base preset for host-compilation",
+            "configurePreset": "stm32-host",
+            "jobs": 8,
+            "targets": [
+                "thermocycler-gen2-build-and-test",
+                "heater-shaker-build-and-test",
+                "tempdeck-gen3-build-and-test"
+            ]
+        },
+        {
             "name": "thermocycler-gen2-binary",
             "displayName": "thermocycler gen2 binary",
             "description": "Build the thermocycler-gen2 cross binary",

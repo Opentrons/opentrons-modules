@@ -59,15 +59,15 @@ jobs:
       - name: 'Configure'
         run: cmake --preset=stm32-cross .
       - name: 'Format'
-        run: cmake --build ./build-stm32-cross --target heater-shaker-format-ci
+        run: cmake --build --preset cross --target heater-shaker-format-ci
       - name: 'Lint'
-        run: cmake --build ./build-stm32-cross --target heater-shaker-lint
+        run: cmake --build --preset cross --target heater-shaker-lint
       - name: 'Build'
-        run: cmake --build ./build-stm32-cross --target heater-shaker-hex
+        run: cmake --build --preset cross --target heater-shaker-hex
       - name: 'Build Combo Image Hex'
-        run: cmake --build ./build-stm32-cross --target heater-shaker-image-hex
+        run: cmake --build --preset cross --target heater-shaker-image-hex
       - name: 'Build Combo Image Binary'
-        run: cmake --build ./build-stm32-cross --target heater-shaker-image-bin
+        run: cmake --build --preset cross --target heater-shaker-image-bin
   host-compile-test:
     name: 'Host-Compile/Test'
     runs-on: 'ubuntu-20.04'
@@ -90,6 +90,6 @@ jobs:
       - name: 'Configure'
         run: cmake --preset=stm32-host .
       - name: 'Build Simulator'
-        run: cmake --build ./build-stm32-host --target heater-shaker-simulator
+        run: cmake --build --preset host --target heater-shaker-simulator
       - name: 'Build and Test'
-        run: cmake --build ./build-stm32-host --target heater-shaker-build-and-test
+        run: cmake --build --preset host --target heater-shaker-build-and-test
