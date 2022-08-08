@@ -66,6 +66,8 @@ jobs:
         run: cmake --build --preset cross --target tempdeck-gen3-hex
       - name: 'Build full image'
         run: cmake --build --preset cross --target tempdeck-gen3-image-hex
+      - name: 'Build full image binary'
+        run: cmake --build --preset cross --target tempdeck-gen3-image-bin
   host-compile-test:
     name: 'Host-Compile/Test'
     runs-on: 'ubuntu-20.04'
