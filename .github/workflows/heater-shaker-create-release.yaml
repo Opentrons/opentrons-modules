@@ -28,13 +28,13 @@ jobs:
       - name: 'Configure'
         run: cmake --preset=stm32-cross .
       - name: 'Build'
-        run: cmake --build ./build-stm32-cross --target heater-shaker-hex
+        run: cmake --build --preset cross --target heater-shaker-hex
       - name: 'Build Combo Image Hex'
-        run: cmake --build ./build-stm32-cross --target heater-shaker-image-hex
+        run: cmake --build --preset cross --target heater-shaker-image-hex
       - name: 'Build Combo Image Binary'
-        run: cmake --build ./build-stm32-cross --target heater-shaker-image-bin
+        run: cmake --build --preset cross --target heater-shaker-image-bin
       - name: 'Build Combo Image Zip'
-        run: cmake --build ./build-stm32-cross --target heater-shaker-zip
+        run: cmake --build --preset cross --target heater-shaker-zip
       - name: 'Prep for install'
         run: cmake --install ./build-stm32-cross
       - if: github.event_name != 'pull_request'

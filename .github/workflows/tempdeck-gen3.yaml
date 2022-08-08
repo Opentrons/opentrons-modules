@@ -59,13 +59,13 @@ jobs:
       - name: 'Configure'
         run: cmake --preset=stm32-cross .
       - name: 'Format'
-        run: cmake --build ./build-stm32-cross --target tempdeck-gen3-format-ci
+        run: cmake --build --preset cross --target tempdeck-gen3-format-ci
       - name: 'Lint'
-        run: cmake --build ./build-stm32-cross --target tempdeck-gen3-lint
+        run: cmake --build --preset cross --target tempdeck-gen3-lint
       - name: 'Build'
-        run: cmake --build ./build-stm32-cross --target tempdeck-gen3-hex
+        run: cmake --build --preset cross --target tempdeck-gen3-hex
       - name: 'Build full image'
-        run: cmake --build ./build-stm32-cross --target tempdeck-gen3-image-hex
+        run: cmake --build --preset cross --target tempdeck-gen3-image-hex
   host-compile-test:
     name: 'Host-Compile/Test'
     runs-on: 'ubuntu-20.04'
@@ -88,6 +88,6 @@ jobs:
       - name: 'Configure'
         run: cmake --preset=stm32-host .
       - name: 'Build Simulator'
-        run: cmake --build ./build-stm32-host --target tempdeck-gen3-simulator
+        run: cmake --build --preset host --target tempdeck-gen3-simulator
       - name: 'Build and Test'
         run: cmake --build --preset tempdeck-gen3-tests
