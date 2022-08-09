@@ -58,6 +58,9 @@ concept MotorExecutionPolicy = requires(Policy& p,
     { p.lid_stepper_check_fault() } -> std::same_as<bool>;
     // A function to reset the stepper driver
     {p.lid_stepper_reset()};
+    // A function to set the RPM of the lid stepper driver
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    { p.lid_stepper_set_rpm(123.0) } -> std::same_as<bool>;
     // A function to disengage the solenoid
     {p.lid_solenoid_disengage()};
     // A function to engage the solenoid
@@ -110,6 +113,11 @@ struct LidStepperState {
         motor_util::LidStepper::angle_to_microsteps(20);
     constexpr static double PLATE_LIFT_LOWER_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(-30);
+    // Velocity for plate lift actions. This provides a smoother lifting
+    // action than the default open/close velocity.
+    constexpr static double PLATE_LIFT_VELOCITY_RPM = 80.0F;
+    // Velocity for all lid movements other than plate lift
+    constexpr static double LID_DEFAULT_VELOCITY_RPM = 125.0F;
     // States for lid stepper
     enum Status {
         IDLE,            /**< Not moving.*/
@@ -919,6 +927,9 @@ class MotorTask {
         }
         // First release the latch
         policy.lid_solenoid_engage();
+        // Update velocity for this movement
+        std::ignore = policy.lid_stepper_set_rpm(
+            LidStepperState::LID_DEFAULT_VELOCITY_RPM);
         // Now start a lid motor movement to the endstop
         policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
         policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES, false);
@@ -936,6 +947,9 @@ class MotorTask {
         }
         // First release the latch
         policy.lid_solenoid_engage();
+        // Update velocity for this movement
+        std::ignore = policy.lid_stepper_set_rpm(
+            LidStepperState::LID_DEFAULT_VELOCITY_RPM);
         // Now start a lid motor movement to closed position
         policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
         policy.lid_stepper_start(LidStepperState::FULL_CLOSE_DEGREES, false);
@@ -952,6 +966,9 @@ class MotorTask {
         if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
             return false;
         }
+        // Update velocity for this movement
+        std::ignore = policy.lid_stepper_set_rpm(
+            LidStepperState::PLATE_LIFT_VELOCITY_RPM);
         // Now start a lid motor movement to closed position
         policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
         policy.lid_stepper_start(LidStepperState::PLATE_LIFT_RAISE_DEGREES,
