@@ -58,7 +58,7 @@ _estack = ORIGIN(RAM) + LENGTH(RAM);	/* end of "RAM" Ram type memory */
 _Min_Heap_Size = 0x800;	/* required amount of heap  */
 _Min_Stack_Size = 0x600;	/* required amount of stack */
 
-_flash_offset = 0x800; /* first page is occupied by bootloader shim */
+_flash_offset = 32K; /* first 32K is occupied by bootloader shim */
 _flash_start = 0x8000000;
 _app_flash_start  = _flash_start + _flash_offset;
 _flash_size = 512K;
