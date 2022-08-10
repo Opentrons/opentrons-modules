@@ -115,7 +115,7 @@ class HexInfo:
             # Second pass, read the contents of the file into our array
             for line in hex_file.readlines():
                 self._read_single_hex_record(line)
-            self._crc = zlib.crc32(self._data, INITIAL_CRC)
+            self._crc = zlib.crc32(self._data, INITIAL_CRC) & 0xffffffff
 
     def _read_record_for_address(self, line: str) -> int:
         """
