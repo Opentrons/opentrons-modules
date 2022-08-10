@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Script to combine multiple hex files into one."""
+"""
+Script to generate firmware integrity information for the STM32 module
+startup application.
+
+The script takes an Intel Hex file as an input, and parses it to generate
+integrity information that can then be loaded into a binary using objcopy.
+
+"""
 import argparse
 from dataclasses import dataclass
 import re
@@ -12,6 +19,7 @@ from pathlib import Path
 INITIAL_CRC = 0xFFFFFFFF
 
 class HexRecord:
+    """Represents a single record in a hex file."""
     PATTERN = re.compile(r"^:([A-F0-9]{2})([A-F0-9]{4})(\d{2})([A-F0-9]*)([A-F0-9]{2})$")
 
     _SEGMENT_ADDR_TYPE = 2
@@ -56,7 +64,7 @@ class HexRecord:
 
     def get_record_address(self) -> int:
         """
-        All records have this field, but it is only usefulf or data records
+        All records have this field, but it is only useful for data records
         """
         return self._address
     
@@ -65,9 +73,21 @@ class HexRecord:
         
 
 class HexInfo:
-    """Gathers the integrity info for a hex file"""
+    """
+    Gathers the integrity info for a hex file.
 
-    def __init__(self, file: str, start_addr: int):
+    Upon initialization, this class:
+      - Takes a first pass through the hex file to see the total length
+        of the data, and allocates a byte array of that length filled 
+        with 0xFF. The length does not include anything below the
+        specified start_address.
+      - Reads the file again, this time populating the internal byte array
+        with the information held in the hex file.
+      - Calculates a CRC32 using the standard Ethernet polynomial and a
+        starting value of 0xFFFFFFFF, the same as the STM32 CRC peripheral.
+    """
+
+    def __init__(self, file: str, start_address: int):
         """
         Parse a hex file and calculate a CRC to be stored within it
         
@@ -76,15 +96,44 @@ class HexInfo:
             start_addr: the lowest address in the hex file that should be included
                         with the CRC calculation
         """
-        self._crc = INITIAL_CRC
-        self._len = 0
         self._current_extended_offset = 0
         self._current_linear_offset = 0
-        self._start_address = start_addr
+        self._start_address = start_address
         with Path(file).open("r") as hex_file:
-            # Each line of a hex file is known as a "record"
+            # First pass, get the total length of the file
+            self._max_address = 0
+            for line in hex_file.readlines():
+                address = self._read_record_for_address(line)
+                if address > self._max_address:
+                    self._max_address = address
+        size = self._max_address - self._start_address
+        # Create a bytearray filled with 0xFF as large as our hex
+        self._data = bytearray([0xFF] * size)
+        self._current_extended_offset = 0
+        self._current_linear_offset = 0
+        with Path(file).open("r") as hex_file:
+            # Second pass, read the contents of the file into our array
             for line in hex_file.readlines():
                 self._read_single_hex_record(line)
+            self._crc = zlib.crc32(self._data, INITIAL_CRC)
+
+    def _read_record_for_address(self, line: str) -> int:
+        """
+        Read a single record (line) from a hex file and
+        return the max address of the record (aka the starting
+        address + the number of bytes) 
+        """
+        record = HexRecord(line)
+        if record.is_data():
+            return ( record.get_record_address() + 
+                     self._current_extended_offset + 
+                     self._current_linear_offset +
+                     len(record.get_data()))
+        elif record.is_linear_address():
+            self._current_linear_offset = record.get_linear_address_data()
+        elif record.is_segment_address():
+            self._current_linear_offset = record.get_segment_address_data()
+        return 0
 
     def _read_single_hex_record(self, line: str) -> None:
         """Read a single record (line) from a hex file"""
@@ -97,21 +146,47 @@ class HexInfo:
                         self._current_linear_offset)
             if address < self._start_address:
                 return
+            address -= self._start_address
             data = record.get_data()
-            self._crc = zlib.crc32(data, self._crc)
-            self._len += len(data)
-            if len(data) != 0x10:
-                print(f'Weird length {hex(len(data))} at {hex(address)}')
+            # Copy the record data
+            for i in range(len(data)):
+                self._data[i+address] = data[i]
         elif record.is_linear_address():
             self._current_linear_offset = record.get_linear_address_data()
         elif record.is_segment_address():
             self._current_linear_offset = record.get_segment_address_data()
+    
+    def _int32_to_bytes(number: int) -> bytearray:
+        """Write a big-endian int32 into a bytearray"""
+        ret = bytearray(4)
+        ret[0] = (number >> 24) & 0xFF
+        ret[1] = (number >> 16) & 0xFF
+        ret[2] = (number >> 8) & 0xFF
+        ret[3] = (number >> 0) & 0xFF
+        return ret
 
+    def crc(self) -> int:
+        return self._crc
+    
+    def size(self) -> int:
+        return len(self._data)
 
-
-def hex_file_calc_crc(file: str, start_addr: int) -> HexInfo:
-    info = HexInfo(crc=123456, len=0)
-
+    def serialize(self, name: str) -> bytearray:
+        """
+        Outputs a byte-serialized representation of the class.
+        
+        Order:
+            32 bit CRC
+            32 bit Byte Count
+            32 bit Start Address
+            Null-terminated string containing the name of the device
+        """
+        ret = HexInfo._int32_to_bytes(self._crc)
+        ret += HexInfo._int32_to_bytes(len(self._data))
+        ret += HexInfo._int32_to_bytes(self._start_address)
+        ret += name.encode()
+        ret += '\0'.encode()
+        return ret
 
 def main() -> None:
     """Entry point."""
@@ -120,28 +195,42 @@ def main() -> None:
         "input",
         metavar="INPUT",
         type=str,
-        required=True,
         help="path of hex file to read",
+    )
+    parser.add_argument(
+        "name",
+        metavar="NAME",
+        type=str,
+        help="The name of the module, which may be checked by the startup app"
     )
     parser.add_argument(
         "start",
         metavar="START",
-        type=int,
-        required=False,
-        default=0x8008400,
+        type=str,
         help="the starting address to calculate the crc from"
     )
     parser.add_argument(
         "output",
         metavar="OUTPUT",
         type=str,
-        help=""
+        help="The file to write the data to"
     )
 
     args = parser.parse_args()
 
-    info = HexInfo(args.input, args.start)
+    start = int(args.start, 0)
 
+    print(f'Reading from {args.input} starting at {hex(start)}')
+
+    info = HexInfo(args.input, start)
+
+    print(f'  Program is {info.size()} bytes from start address')
+    print(f'  crc32 is {hex(info.crc())}')
+
+    with Path(args.output).open("w+b") as output_file:
+        output_file.write(info.serialize(args.name))
+    
+    print(f'Wrote to {args.output} succesfully')
 
 if __name__ == "__main__":
     main()
