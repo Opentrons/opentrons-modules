@@ -54,7 +54,7 @@ _Min_Stack_Size = 0;	/* required amount of stack */
 /* Starting address of flash region.*/
 _flash_start = 0x8000000;
 /* User application start.*/
-_user_app_offset = 0x800;
+_user_app_offset = 32K;
 _user_app_start = _flash_start + _user_app_offset + 0x4;
 /* Bootloader memory address.*/
 _sysmem_start = 0x1FFF0000;
@@ -67,7 +67,7 @@ MEMORY
      * than enough for this application.
      */
     RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 32K 
-    /* Only the first page is populated.*/
+    /* First 32K of flash.*/
     FLASH (rx)     : ORIGIN = _flash_start,  LENGTH = _user_app_offset
 }
 
