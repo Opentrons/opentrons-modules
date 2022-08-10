@@ -157,12 +157,12 @@ class HexInfo:
             self._current_linear_offset = record.get_segment_address_data()
     
     def _int32_to_bytes(number: int) -> bytearray:
-        """Write a big-endian int32 into a bytearray"""
+        """Write a little-endian int32 into a bytearray"""
         ret = bytearray(4)
-        ret[0] = (number >> 24) & 0xFF
-        ret[1] = (number >> 16) & 0xFF
-        ret[2] = (number >> 8) & 0xFF
-        ret[3] = (number >> 0) & 0xFF
+        ret[3] = (number >> 24) & 0xFF
+        ret[2] = (number >> 16) & 0xFF
+        ret[1] = (number >> 8) & 0xFF
+        ret[0] = (number >> 0) & 0xFF
         return ret
 
     def crc(self) -> int:

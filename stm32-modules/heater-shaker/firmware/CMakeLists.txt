@@ -152,15 +152,23 @@ find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
   NO_DEFAULT_PATH
   REQUIRED)
 add_custom_command(OUTPUT heater-shaker.hex
+  COMMAND ${CROSS_OBJCOPY} ARGS heater-shaker "-Oihex" heater-shaker-scratch.hex
+  COMMAND ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py ARGS 
+    ${CMAKE_CURRENT_BINARY_DIR}/heater-shaker-scratch.hex
+    "heater-shaker"
+    "0x08008400"
+    ${CMAKE_CURRENT_BINARY_DIR}/heater-shaker-integrity-info
   COMMAND ${CROSS_OBJCOPY} ARGS heater-shaker "-Oihex" heater-shaker.hex
+    "--update-section" ".integrity_info=${CMAKE_CURRENT_BINARY_DIR}/heater-shaker-integrity-info"
   DEPENDS heater-shaker
+  DEPENDS ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py
   VERBATIM)
 add_custom_target(heater-shaker-hex ALL
   DEPENDS heater-shaker.hex)
 
 add_custom_command(OUTPUT heater-shaker.bin
-  COMMAND ${CROSS_OBJCOPY} ARGS heater-shaker "-Obinary" heater-shaker.bin
-  DEPENDS heater-shaker
+  COMMAND ${CROSS_OBJCOPY} ARGS heater-shaker.hex "-Iihex" "-Obinary" heater-shaker.bin
+  DEPENDS heater-shaker-hex
   VERBATIM)
 add_custom_target(heater-shaker-bin ALL
   DEPENDS heater-shaker.bin)

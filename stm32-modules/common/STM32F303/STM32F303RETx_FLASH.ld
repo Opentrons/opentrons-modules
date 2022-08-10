@@ -67,8 +67,18 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
+  /* Contains firmware authentication information */
+  .integrity_info BLOCK(0x200) :
+  {
+    . = ALIGN(4);
+    /* placeholder for CRC */
+    LONG(0);
+    /* placeholder for firmware length */
+    LONG(0);
+  } >FLASH
+
   /* The program code and other data goes into FLASH */
-  .text :
+  .text BLOCK(0x200) :
   {
     . = ALIGN(4);
     *(.text)           /* .text sections (code) */
