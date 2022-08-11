@@ -36,9 +36,14 @@ set_source_files_properties(./startup_stm32f303xe.s
   PROPERTIES
   OBJECT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/STM32F303RETx_FLASH.ld)
 
+find_package(STM32F303BSP)
+add_STM32F303_driver(startup)
+
 add_executable(STM32F303-startup)
 target_compile_definitions(STM32F303-startup PUBLIC
     SYSMEM_ADDRESS=0x1FFFD800
     BOOTLOADER_START_ADDRESS=0x1FFFD804)
 target_module_startup(STM32F303-startup)
-  
+
+target_sources(STM32F303-startup PUBLIC 
+    startup_stm32f303xe.s)

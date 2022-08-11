@@ -16,7 +16,12 @@ find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
 function(target_module_startup TARGET)
 
     target_sources(${TARGET} PUBLIC
-        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/module-startup.S)
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_main.c
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_it.c
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_jumps.c)
+    
+    target_include_directories(${TARGET} 
+        PUBLIC ${CMAKE_CURRENT_FUNCTION_LIST_DIR})
 
     target_compile_options(${TARGET} PUBLIC
         -Wall
@@ -27,6 +32,10 @@ function(target_module_startup TARGET)
         "LINKER:--print-memory-usage"
         "LINKER:--error-unresolved-symbols"
         "LINKER:--gc-sections")
+
+    set_target_properties(${TARGET}
+        PROPERTIES  C_STANDARD 11
+                    C_STANDARD_REQUIRED TRUE)
 
     add_custom_command(OUTPUT ${TARGET}.hex
         COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET} "-Oihex" ${TARGET}.hex
