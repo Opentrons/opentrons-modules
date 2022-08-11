@@ -1,8 +1,10 @@
 # This CMakeLists.txt handles everything that is compiled only when
 # cross-compiling, like the board support packages and special options.
 
-find_package(STM32F303BSP
-  COMPONENTS Drivers FreeRTOS USB)
+find_package(STM32F303BSP)
+add_STM32F303_driver(heater-shaker)
+add_STM32F303_freertos(heater-shaker)
+add_STM32F303_usb(heater-shaker)
 
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(HEATER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/heater_task")
@@ -36,7 +38,7 @@ target_include_directories(mc
   PUBLIC "${MCSDK_LOCATION}/MCSDK/MCLib/Any/Inc"
          "${MCSDK_LOCATION}/MCSDK/MCLib/F3xx/Inc"
   PRIVATE "${CMAKE_CURRENT_LIST_DIR}/motor_task")
-target_link_libraries(mc PUBLIC _mc_static STM32F303BSP_Drivers)
+target_link_libraries(mc PUBLIC _mc_static STM32F303BSP_Drivers_heater-shaker)
 target_link_libraries(_mc_static INTERFACE mc)
 
 
@@ -107,31 +109,31 @@ target_compile_options(heater-shaker
 
 target_link_libraries(
   heater-shaker PUBLIC
-  STM32F303BSP_Drivers 
-  STM32F303BSP_USB 
-  STM32F303BSP_FreeRTOS 
+  STM32F303BSP_Drivers_heater-shaker
+  STM32F303BSP_USB_heater-shaker
+  STM32F303BSP_FreeRTOS_heater-shaker
   mc 
   common-STM32F303
   heater-shaker-core
   )
 
 
-target_include_directories(STM32F303BSP_Drivers
+target_include_directories(STM32F303BSP_Drivers_heater-shaker
   PUBLIC ${SYSTEM_DIR})
-target_include_directories(STM32F303BSP_USB
+target_include_directories(STM32F303BSP_USB_heater-shaker
   PUBLIC ${COMMS_DIR})
-target_include_directories(STM32F303BSP_FreeRTOS
+target_include_directories(STM32F303BSP_FreeRTOS_heater-shaker
   PUBLIC ${SYSTEM_DIR})
 
-target_compile_definitions(STM32F303BSP_Drivers
+target_compile_definitions(STM32F303BSP_Drivers_heater-shaker
   PUBLIC STM32F303xE)
-target_compile_definitions(STM32F303BSP_USB
+target_compile_definitions(STM32F303BSP_USB_heater-shaker
   PUBLIC STM32F303xE)
-target_compile_definitions(STM32F303BSP_FreeRTOS
+target_compile_definitions(STM32F303BSP_FreeRTOS_heater-shaker
   PUBLIC STM32F303xE)
 
 set_target_properties(
-  STM32F303BSP_FreeRTOS
+  STM32F303BSP_FreeRTOS_heater-shaker
   PROPERTIES FREERTOS_HEAP_IMPLEMENTATION "heap_5")
 
 find_program(ARM_GDB
