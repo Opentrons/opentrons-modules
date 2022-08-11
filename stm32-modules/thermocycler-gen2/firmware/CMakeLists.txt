@@ -130,16 +130,30 @@ find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
   PATHS "${CrossGCC_BINDIR}"
   NO_DEFAULT_PATH
   REQUIRED)
+
+# The .hex target invokes the calculate_checksum.py script in order to generate
+# the integrity information expected by the startup app. Therefore, all other
+# flashable targets should derive from the initial hex.
 add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.hex
+  COMMAND ${CROSS_OBJCOPY} ARGS 
+    ${TARGET_MODULE_NAME} "-Obinary" ${TARGET_MODULE_NAME}-scratch.bin
+    "--gap-fill=0xFF"
+  COMMAND ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py ARGS 
+    ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_MODULE_NAME}-scratch.bin
+    ${TARGET_MODULE_NAME}
+    "0x08008400"
+    ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_MODULE_NAME}-integrity-info
   COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET_MODULE_NAME} "-Oihex" ${TARGET_MODULE_NAME}.hex
+    "--update-section" ".integrity_info=${CMAKE_CURRENT_BINARY_DIR}/${TARGET_MODULE_NAME}-integrity-info"
   DEPENDS ${TARGET_MODULE_NAME}
+  DEPENDS ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py
   VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-hex ALL
   DEPENDS ${TARGET_MODULE_NAME}.hex)
 
 add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.bin
-  COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET_MODULE_NAME} "-Obinary" ${TARGET_MODULE_NAME}.bin
-  DEPENDS ${TARGET_MODULE_NAME}
+  COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET_MODULE_NAME}.hex "-Iihex" "-Obinary" ${TARGET_MODULE_NAME}.bin
+  DEPENDS ${TARGET_MODULE_NAME}.hex
   VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-bin ALL
   DEPENDS ${TARGET_MODULE_NAME}.bin)
