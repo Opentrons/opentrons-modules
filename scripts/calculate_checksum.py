@@ -3,18 +3,15 @@
 Script to generate firmware integrity information for the STM32 module
 startup application.
 
-The script takes an Intel Hex file as an input, and parses it to generate
-integrity information that can then be loaded into a binary using objcopy.
-
+The script takes an Intel Hex file or a raw binary file as an input, and 
+parses it to generate integrity information that can then be loaded into 
+a binary using objcopy.
 """
 import argparse
-from dataclasses import dataclass
 import re
 import zlib # for crc calc
+import sys
 from pathlib import Path
-
-# REGEX to split a line in hex file.
-
 
 INITIAL_CRC = 0xFFFFFFFF
 
@@ -155,15 +152,6 @@ class HexInfo:
             self._current_linear_offset = record.get_linear_address_data()
         elif record.is_segment_address():
             self._current_linear_offset = record.get_segment_address_data()
-    
-    def _int32_to_bytes(number: int) -> bytearray:
-        """Write a little-endian int32 into a bytearray"""
-        ret = bytearray(4)
-        ret[3] = (number >> 24) & 0xFF
-        ret[2] = (number >> 16) & 0xFF
-        ret[1] = (number >> 8) & 0xFF
-        ret[0] = (number >> 0) & 0xFF
-        return ret
 
     def crc(self) -> int:
         return self._crc
@@ -171,22 +159,74 @@ class HexInfo:
     def size(self) -> int:
         return len(self._data)
 
-    def serialize(self, name: str) -> bytearray:
+    def start_address(self) -> int:
+        return self._start_address
+
+
+class BinInfo:
+    """
+    Gathers the integrity info for a raw binary file.
+
+    Upon initialization, this class:
+      - Reads the length of the bin file, subtracting the start_offset value
+      - Discards the first start_offset bytes
+      - Reads the rest of the file and calculates a CRC32 using the standard 
+        Ethernet polynomial and a starting value of 0xFFFFFFFF, the same as 
+        the STM32 CRC peripheral.
+    """
+
+    def __init__(self, file: str, start_address: int, file_start: int = 0x08008000):
         """
-        Outputs a byte-serialized representation of the class.
+        Parse a bin file and calculate a CRC to be stored within it
         
-        Order:
-            32 bit CRC
-            32 bit Byte Count
-            32 bit Start Address
-            Null-terminated string containing the name of the device
+        Args:
+            file: the path to the input file to read
+            start_address: the lowest address in the bin file that should be included
+                        with the CRC calculation
+            file_start: the memory address of the first byte in the file
         """
-        ret = HexInfo._int32_to_bytes(self._crc)
-        ret += HexInfo._int32_to_bytes(len(self._data))
-        ret += HexInfo._int32_to_bytes(self._start_address)
-        ret += name.encode()
-        ret += '\0'.encode()
-        return ret
+        self._start_offset = start_address - file_start
+        self._file_start = file_start
+        with Path(file).open("rb") as bin_file:
+            bin_file.seek(self._start_offset)
+            data = bin_file.read()
+            self._size = len(data)
+            self._crc = zlib.crc32(data, INITIAL_CRC) & 0xffffffff
+            
+    def crc(self) -> int:
+        return self._crc
+    
+    def size(self) -> int:
+        return self._size
+
+    def start_address(self) -> int:
+        return self._file_start + self._start_offset
+
+def int32_to_bytes(number: int) -> bytearray:
+    """Write a little-endian int32 into a bytearray"""
+    ret = bytearray(4)
+    ret[3] = (number >> 24) & 0xFF
+    ret[2] = (number >> 16) & 0xFF
+    ret[1] = (number >> 8) & 0xFF
+    ret[0] = (number >> 0) & 0xFF
+    return ret
+    
+def serialize(info, name: str) -> bytearray:
+    """
+    Outputs a byte-serialized representation of the class.
+    
+    Order:
+        32 bit CRC
+        32 bit Byte Count
+        32 bit Start Address
+        Null-terminated string containing the name of the device
+    """
+    ret = int32_to_bytes(info.crc())
+    ret += int32_to_bytes(info.size())
+    ret += int32_to_bytes(info.start_address())
+    ret += name.encode()
+    ret += '\0'.encode()
+    return ret
 
 def main() -> None:
     """Entry point."""
@@ -195,7 +235,7 @@ def main() -> None:
         "input",
         metavar="INPUT",
         type=str,
-        help="path of hex file to read",
+        help="path of hex or bin file to read",
     )
     parser.add_argument(
         "name",
@@ -219,18 +259,26 @@ def main() -> None:
     args = parser.parse_args()
 
     start = int(args.start, 0)
+    filename = str(args.input)
 
-    print(f'Reading from {args.input} starting at {hex(start)}')
 
-    info = HexInfo(args.input, start)
+    if filename.count('.bin') > 0:
+        info = BinInfo(filename, start)
+    elif filename.count('.hex') > 0:
+        info = HexInfo(filename, start)
+    else:
+        print(f'ERR: file {filename} must be a .bin or .hex file', file=sys.stderr)
+        exit(-1)
 
+    print(f'Reading from {filename} starting at {hex(start)}')
     print(f'  Program is {info.size()} bytes from start address')
     print(f'  crc32 is {hex(info.crc())}')
 
     with Path(args.output).open("w+b") as output_file:
-        output_file.write(info.serialize(args.name))
+        output_file.write(serialize(info, args.name))
     
     print(f'Wrote to {args.output} succesfully')
+    exit(0)
 
 if __name__ == "__main__":
     main()
