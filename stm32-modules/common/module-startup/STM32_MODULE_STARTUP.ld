@@ -49,8 +49,8 @@ ENTRY(Reset_Handler)
 _estack = ORIGIN(RAM) + LENGTH(RAM);	/* end of "RAM" Ram type memory */
 __stack = _estack;
 /* Generate a link error if heap and stack don't fit into RAM */
-_Min_Heap_Size = 0;	/* required amount of heap  */
-_Min_Stack_Size = 0;	/* required amount of stack */
+_Min_Heap_Size = 0x400;	/* required amount of heap  */
+_Min_Stack_Size = 0x4000;	/* required amount of stack */
 /* Starting address of flash region.*/
 _flash_start = 0x8000000;
 /* User application start.*/
@@ -158,7 +158,7 @@ SECTIONS
 
   /* Create dummy ccmram definitions so startup files expecting ccmram
      will skip ccmram copy */
-  _siccmram = LOADADDR(._sccmram);
+  _siccmram = .;
   _sccmram = .;       /* create a global symbol at ccmram start */
   _eccmram = .;       /* create a global symbol at ccmram end */
 
@@ -173,8 +173,6 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
   } >RAM AT> FLASH
-
-  _siccmram = LOADADDR(.ccmram);
 
   /* Uninitialized data section */
   . = ALIGN(4);

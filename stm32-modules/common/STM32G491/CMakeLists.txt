@@ -37,8 +37,23 @@ set_source_files_properties(./startup_stm32g491vetx.s
   PROPERTIES
   OBJECT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/STM32G491VETx_FLASH.ld)
 
+# ----- STARTUP APP SECTION ----
+
+# Set up BSP for the startup app
+find_package(STM32G4xx)
+add_STM32G4_driver(startup)
+
+target_compile_definitions(STM32G4xx_Drivers_startup
+    PUBLIC STM32G491xx)
+# Include this directory to get the hal_conf file
+target_include_directories(STM32G4xx_Drivers_startup
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_executable(STM32G491-startup)
-target_compile_definitions(STM32G491-startup PUBLIC
-    SYSMEM_ADDRESS=0x1FFF0000
-    BOOTLOADER_START_ADDRESS=0x1FFF0004)
 target_module_startup(STM32G491-startup)
+
+target_sources(STM32G491-startup PUBLIC 
+    startup_stm32g491vetx.s)
+# Link to the F303
+target_link_libraries(STM32G491-startup PUBLIC
+    STM32G4xx_Drivers_startup)

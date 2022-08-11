@@ -217,7 +217,7 @@ add_custom_command(
     COMMENT "Generating full image")
 add_custom_target(${TARGET_MODULE_NAME}-image-hex ALL
     DEPENDS STM32G491-startup-hex
-    DEPENDS ${TARGET_MODULE_NAME})
+    DEPENDS ${HEX_IMG_NAME})
 
 add_custom_command(OUTPUT "${BIN_IMG_NAME}"
     COMMAND ${CROSS_OBJCOPY} ARGS "-Iihex" "-Obinary" "${HEX_IMG_NAME}" "${BIN_IMG_NAME}"
