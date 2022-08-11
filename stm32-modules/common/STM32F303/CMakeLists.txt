@@ -47,3 +47,5 @@ target_module_startup(STM32F303-startup)
 
 target_sources(STM32F303-startup PUBLIC 
     startup_stm32f303xe.s)
+target_link_libraries(STM32F303-startup PUBLIC
+    STM32F303BSP_DRIVERS_startup)
