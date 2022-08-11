@@ -138,49 +138,52 @@ file(GLOB_RECURSE hal_driver_sources ${bsp_source}/Drivers/STM32F3xx_HAL_Driver/
 # the weak one. By reversing the order, we make subsystem_ex come befeore subsystem,
 # and the correct function gets picked.
 list(REVERSE hal_driver_sources)
-add_library(
-  STM32F303BSP_Drivers STATIC
-  ${hal_driver_sources})
 
-target_include_directories(
-  STM32F303BSP_Drivers
-  PUBLIC ${bsp_source}/Drivers/STM32F3xx_HAL_Driver/Inc
-         ${bsp_source}/Drivers/STM32F3xx_HAL_Driver/Inc/Legacy
-         ${bsp_source}/Drivers/CMSIS/Device/ST/STM32F3xx/Include
-         ${bsp_source}/Drivers/CMSIS/Core/Include)
+macro(add_STM32F303_driver suffix)
+    add_library(
+        STM32F303BSP_Drivers_${suffix} STATIC
+        ${hal_driver_sources})
 
-set_target_properties(
-  STM32F303BSP_Drivers
-  PROPERTIES C_STANDARD 11
-             C_STANDARD_REQUIRED TRUE)
+    target_include_directories(
+        STM32F303BSP_Drivers_${suffix}
+        PUBLIC ${bsp_source}/Drivers/STM32F3xx_HAL_Driver/Inc
+                ${bsp_source}/Drivers/STM32F3xx_HAL_Driver/Inc/Legacy
+                ${bsp_source}/Drivers/CMSIS/Device/ST/STM32F3xx/Include
+                ${bsp_source}/Drivers/CMSIS/Core/Include)
+
+    set_target_properties(
+        STM32F303BSP_Drivers_${suffix}
+        PROPERTIES C_STANDARD 11
+                    C_STANDARD_REQUIRED TRUE)
+endmacro()
+
 set(STM32F303BSP_Drivers_FOUND ${bsp_populated} PARENT_SCOPE)
 
+set(freertos_source ${bsp_source}/Middlewares/Third_Party/FreeRTOS/Source)
+set(freertos_port_source ${freertos_source}/portable/GCC/ARM_CM4F)
 
-if ("FreeRTOS" IN_LIST STM32F303BSP_FIND_COMPONENTS)
-  set(freertos_source ${bsp_source}/Middlewares/Third_Party/FreeRTOS/Source)
-  set(freertos_port_source ${freertos_source}/portable/GCC/ARM_CM4F)
+macro(add_STM32F303_freertos suffix)
   file(GLOB freertos_common_sources ${freertos_source}/*.c)
 
   add_library(
-    STM32F303BSP_FreeRTOS STATIC
+    STM32F303BSP_FreeRTOS_${suffix}  STATIC
     ${freertos_common_sources}
     ${freertos_port_source}/port.c
     $<IF:$<BOOL:$<TARGET_PROPERTY:FREERTOS_HEAP_IMPLEMENTATION>>,${freertos_source}/portable/MemMang/$<TARGET_PROPERTY:FREERTOS_HEAP_IMPLEMENTATION>.c,"">)
 
   target_include_directories(
-    STM32F303BSP_FreeRTOS
+    STM32F303BSP_FreeRTOS_${suffix} 
     PUBLIC ${freertos_source}/include
            ${freertos_port_source})
 
-  set(STM32F303BSP_FreeRTOS_FOUND ${bsp_populated} PARENT_SCOPE)
   set_target_properties(
-    STM32F303BSP_FreeRTOS
+    STM32F303BSP_FreeRTOS_${suffix} 
     PROPERTIES C_STANDARD 11
                C_STANDARD_REQUIRED TRUE)
+endmacro()
+set(STM32F303BSP_FreeRTOS_FOUND ${bsp_populated} PARENT_SCOPE)
 
-endif()
-
-if ("USB" IN_LIST STM32F303BSP_FIND_COMPONENTS)
+macro(add_STM32F303_usb suffix)
   set(usb_root ${bsp_source}/Middlewares/ST/STM32_USB_Device_Library/)
   set(usb_core_root ${usb_root}/Core)
   set(usb_cdc_root ${usb_root}/Class/CDC)
@@ -193,22 +196,22 @@ if ("USB" IN_LIST STM32F303BSP_FIND_COMPONENTS)
 
 
   add_library(
-    STM32F303BSP_USB STATIC
+    STM32F303BSP_USB_${suffix} STATIC
     ${usb_core_sources}
     ${usb_class_sources})
 
-  get_target_property(_hal_include_dirs STM32F303BSP_Drivers INCLUDE_DIRECTORIES)
+  get_target_property(_hal_include_dirs STM32F303BSP_Drivers_${suffix} INCLUDE_DIRECTORIES)
 
   target_include_directories(
-    STM32F303BSP_USB
+    STM32F303BSP_USB_${suffix}
     PUBLIC ${usb_core_root}/Inc
            ${usb_cdc_root}/Inc
            ${_hal_include_dirs})
 
-  set(STM32F303BSP_USB_FOUND ${bsp_populated} PARENT_SCOPE)
   set_target_properties(
-    STM32F303BSP_USB
+    STM32F303BSP_USB_${suffix}
     PROPERTIES C_STANDARD 11
     C_STANDARD_REQUIRED TRUE)
 
-endif()
+endmacro()
+set(STM32F303BSP_USB_FOUND ${bsp_populated} PARENT_SCOPE)
