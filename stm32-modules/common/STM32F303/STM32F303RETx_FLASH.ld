@@ -72,8 +72,16 @@ SECTIONS
   {
     . = ALIGN(4);
     /* placeholder for CRC */
+    ._integrity_crc = .;
     LONG(0);
     /* placeholder for firmware length */
+    ._integrity_length = .;
+    LONG(0);
+    /* placeholder for firmware crc start address */
+    ._integrity_start = .;
+    LONG(0);
+    /* placeholder for start of firmware name */
+    ._integrity_name = .;
     LONG(0);
   } >FLASH
 
