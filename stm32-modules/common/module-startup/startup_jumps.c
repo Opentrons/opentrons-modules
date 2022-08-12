@@ -9,22 +9,13 @@
 #error BOOTLOADER_START_ADDRESS must be defined
 #endif
 
-// address 4 in the bootable region is the address of the first instruction that
-// should run, aka the data that should be loaded into $pc.
-const uint32_t *const sysmem_boot_loc = (uint32_t*)BOOTLOADER_START_ADDRESS;
-
-// address 4 in the bootable region is the address of the first instruction that
-// should run, aka the data that should be loaded into $pc.
-const uint32_t *const application_boot_loc = (uint32_t*)APPLICATION_START_ADDRESS;
-
-void jump_to_bootloader(void) {
-
-    // We have to uninitialize as many of the peripherals as possible, because the bootloader
-    // expects to start as the system comes up
-
+// Static function to disable everything before jumping somewhere else
+static void __inline disable_all(void) {
     // The HAL has ways to turn off all the core clocking and the clock security system
     DISABLE_CSS_FUNC();
     HAL_RCC_DeInit();
+
+    __HAL_RCC_CRC_CLK_DISABLE();
 
     // systick should be off at boot
     SysTick->CTRL = 0;
@@ -37,6 +28,22 @@ void jump_to_bootloader(void) {
         NVIC->ICER[i]=0xFFFFFFFF;
         NVIC->ICPR[i]=0xFFFFFFFF;
     }
+}
+
+// address 4 in the bootable region is the address of the first instruction that
+// should run, aka the data that should be loaded into $pc.
+const uint32_t *const sysmem_boot_loc = (uint32_t*)BOOTLOADER_START_ADDRESS;
+
+// address 4 in the bootable region is the address of the first instruction that
+// should run, aka the data that should be loaded into $pc.
+const uint32_t *const application_boot_loc = (uint32_t*)APPLICATION_START_ADDRESS;
+
+void jump_to_bootloader(void) {
+
+    // We have to uninitialize as many of the peripherals as possible, because the bootloader
+    // expects to start as the system comes up
+    disable_all();
+
 
     // We have to make sure that the processor is mapping the system memory region to address 0,
     // which the bootloader expects
@@ -60,7 +67,9 @@ void jump_to_bootloader(void) {
         : "memory"  );
 }
 
-void jump_to_application(void) {
+void jump_to_application(void) {    
+    disable_all();
+
     asm volatile (
         "bx %0"
         : // no outputs

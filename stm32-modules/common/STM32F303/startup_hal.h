@@ -6,8 +6,11 @@
 #ifndef STARTUP_HAL_H_
 #define STARTUP_HAL_H_
 
+#include "startup_system_stm32f3xx.h"
 #include "stm32f3xx_hal.h"
+#include "stm32f3xx_hal_conf.h"
 #include "stm32f3xx_hal_cortex.h"
+#include "stm32f3xx_hal_crc.h"
 #include "stm32f3xx_hal_rcc.h"
 
 #define SYSMEM_ADDRESS (0x1FFFD800)

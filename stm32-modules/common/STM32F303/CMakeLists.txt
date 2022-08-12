@@ -53,7 +53,8 @@ add_executable(STM32F303-startup)
 target_module_startup(STM32F303-startup)
 
 target_sources(STM32F303-startup PUBLIC 
-    startup_stm32f303xe.s)
+    startup_stm32f303xe.s
+    startup_system_stm32f3xx.c)
 # Link to the F303
 target_link_libraries(STM32F303-startup PUBLIC
     STM32F303BSP_Drivers_startup)
