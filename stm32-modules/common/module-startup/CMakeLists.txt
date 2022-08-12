@@ -9,14 +9,18 @@ find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
     REQUIRED)
 
 # Function to configure a target to compile the module startup for a specific
-# microcontroller. The target passed in should include a definition of the
-# constants:
-#  - SYSMEM_ADDRESS for the address where the System Memory region begins
-#  - BOOTLOADER_START_ADDRESS for the address to jump to start the bootloader
+# microcontroller. The target passed in should add an include directory with a
+# file `startup_hal.h` containing target-specific definitions
 function(target_module_startup TARGET)
 
     target_sources(${TARGET} PUBLIC
-        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/module-startup.S)
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_main.c
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_checks.c
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_it.c
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_jumps.c)
+    
+    target_include_directories(${TARGET} 
+        PUBLIC ${CMAKE_CURRENT_FUNCTION_LIST_DIR})
 
     target_compile_options(${TARGET} PUBLIC
         -Wall
@@ -27,6 +31,10 @@ function(target_module_startup TARGET)
         "LINKER:--print-memory-usage"
         "LINKER:--error-unresolved-symbols"
         "LINKER:--gc-sections")
+
+    set_target_properties(${TARGET}
+        PROPERTIES  C_STANDARD 11
+                    C_STANDARD_REQUIRED TRUE)
 
     add_custom_command(OUTPUT ${TARGET}.hex
         COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET} "-Oihex" ${TARGET}.hex
@@ -42,7 +50,10 @@ function(target_module_startup TARGET)
         VERBATIM)
     add_custom_target(${TARGET}-bin ALL
         DEPENDS ${TARGET}.bin)
-
+    
+    set_source_files_properties(${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_main.c
+        PROPERTIES
+        OBJECT_DEPENDS ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/STM32_MODULE_STARTUP.ld)
 endfunction()
 
 # Incurs at least a relink when you change the linker file (and a recompile of main
