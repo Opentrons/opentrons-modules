@@ -151,8 +151,11 @@ add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.hex
 add_custom_target(${TARGET_MODULE_NAME}-hex ALL
   DEPENDS ${TARGET_MODULE_NAME}.hex)
 
-add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.bin
-  COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET_MODULE_NAME}.hex "-Iihex" "-Obinary" ${TARGET_MODULE_NAME}.bin
+  add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.bin
+  COMMAND ${CROSS_OBJCOPY} ARGS 
+    ${TARGET_MODULE_NAME}.hex 
+    "-Iihex" "-Obinary" "--gap-fill=0xFF"
+    ${TARGET_MODULE_NAME}.bin
   DEPENDS ${TARGET_MODULE_NAME}.hex
   VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-bin ALL
@@ -220,7 +223,9 @@ add_custom_target(${TARGET_MODULE_NAME}-image-hex ALL
     DEPENDS ${HEX_IMG_NAME})
 
 add_custom_command(OUTPUT "${BIN_IMG_NAME}"
-    COMMAND ${CROSS_OBJCOPY} ARGS "-Iihex" "-Obinary" "${HEX_IMG_NAME}" "${BIN_IMG_NAME}"
+    COMMAND ${CROSS_OBJCOPY} ARGS 
+        "-Iihex" "-Obinary" "--gap-fill=0xFF"
+        "${HEX_IMG_NAME}" "${BIN_IMG_NAME}"
     DEPENDS "${HEX_IMG_NAME}"
     VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-image-bin ALL

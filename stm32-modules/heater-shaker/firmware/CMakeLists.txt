@@ -175,7 +175,10 @@ add_custom_target(heater-shaker-hex ALL
   DEPENDS heater-shaker.hex)
 
 add_custom_command(OUTPUT heater-shaker.bin
-  COMMAND ${CROSS_OBJCOPY} ARGS heater-shaker.hex "-Iihex" "-Obinary" heater-shaker.bin
+  COMMAND ${CROSS_OBJCOPY} ARGS 
+    heater-shaker.hex 
+    "-Iihex" "-Obinary" "--gap-fill=0xFF"
+    heater-shaker.bin
   DEPENDS heater-shaker-hex
   VERBATIM)
 add_custom_target(heater-shaker-bin ALL
@@ -237,7 +240,10 @@ add_custom_target(heater-shaker-image-hex ALL
     DEPENDS heater-shaker)
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin"
-  COMMAND ${CROSS_OBJCOPY} ARGS "-Iihex" "-Obinary" "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex" "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin"
+  COMMAND ${CROSS_OBJCOPY} ARGS 
+    "-Iihex" "-Obinary"  "--gap-fill=0xFF"
+    "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex" 
+    "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin"
   DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
   VERBATIM)
 add_custom_target(heater-shaker-image-bin ALL
