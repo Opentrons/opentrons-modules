@@ -4,6 +4,7 @@ find_package(GDBSVDTools)
 
 # Fills in the template with values specified by the find_package(OpenOCD) call above
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/gdbinit.template ./gdbinit)
+set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/gdbinit")
 
 set(STM_HAL_PREFIX "stm32f3xx")
 configure_file(
@@ -56,3 +57,28 @@ target_sources(STM32F303-startup PUBLIC
 # Link to the F303
 target_link_libraries(STM32F303-startup PUBLIC
     STM32F303BSP_Drivers_startup)
+
+# Startup Debug target
+find_program(ARM_GDB
+    arm-none-eabi-gdb-py
+    PATHS "${CrossGCC_BINDIR}"
+    NO_DEFAULT_PATH
+    REQUIRED)
+message(STATUS "Found svd exe at ${GDBSVDTools_gdbsvd_EXECUTABLE}")
+# Configure gdb (full path to cross-gdb set in the toolchain) to use the gdbinit in
+# this dir
+set_target_properties(STM32F303-startup
+    PROPERTIES
+    CROSSCOMPILING_EMULATOR
+    "${ARM_GDB};--command=${GDBINIT_PATH}")
+# Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an
+# arguable misuse of the concept) to the appropriate cross-gdb with
+# remote-target. You should make sure st-util is running; that's not
+# done here because it won't be multi-os compatible, and also it
+# should be running the entire time and that's tough to accomplish
+# in a custom command
+add_custom_target(STM32F303-startup-debug
+    COMMENT "Starting gdb and openocd"
+    COMMAND STM32F303-startup
+    USES_TERMINAL
+    )
