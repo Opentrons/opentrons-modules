@@ -17,6 +17,9 @@
 #define BOOTLOADER_START_ADDRESS (0x1FFFD804)
 #define APPLICATION_START_ADDRESS (0x08008004)
 
+// 238K for application
+#define APPLICATION_MAX_SIZE (0x400 * 238)
+
 #define DISABLE_CSS_FUNC() HAL_RCC_DisableCSS()
 
 #endif /* STARTUP_HAL_H_ */

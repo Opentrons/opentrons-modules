@@ -8,6 +8,10 @@
 #error APPLICATION_START_ADDRESS must be defined
 #endif
 
+#ifndef APPLICATION_MAX_SIZE
+#error APPLICATION_MAX_SIZE must be defined
+#endif
+
 #define INVALID_ADDR_MASK (0xFFFFFFF0)
 
 // Take the start address and filter out to just the page
