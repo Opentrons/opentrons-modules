@@ -226,13 +226,16 @@ add_custom_target(heater-shaker-flash
   COMMENT "Flashing board"
   DEPENDS heater-shaker)
 
+# Create a Startup App target for this module
+stm32f303_startup(heater-shaker-startup heater-shaker)
+
 # Targets to create full image hex and binary files containing both bootloader and application
 add_custom_command(
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
     DEPENDS $<TARGET_FILE_DIR:heater-shaker>/heater-shaker.hex
-    DEPENDS STM32F303-startup-hex
-    DEPENDS $<TARGET_FILE_DIR:STM32F303-startup>/STM32F303-startup.hex
-    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex" $<TARGET_FILE_DIR:STM32F303-startup>/STM32F303-startup.hex heater-shaker.hex
+    DEPENDS heater-shaker-startup-hex
+    DEPENDS $<TARGET_FILE_DIR:heater-shaker-startup>/heater-shaker-startup.hex
+    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex" $<TARGET_FILE_DIR:heater-shaker-startup>/heater-shaker-startup.hex heater-shaker.hex
     VERBATIM
     COMMENT "Generating full image")
 add_custom_target(heater-shaker-image-hex ALL

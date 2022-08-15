@@ -11,7 +11,7 @@ find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
 # Function to configure a target to compile the module startup for a specific
 # microcontroller. The target passed in should add an include directory with a
 # file `startup_hal.h` containing target-specific definitions
-function(target_module_startup TARGET)
+function(target_module_startup TARGET FW_NAME)
 
     target_sources(${TARGET} PUBLIC
         ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_main.c
@@ -25,6 +25,10 @@ function(target_module_startup TARGET)
     target_compile_options(${TARGET} PUBLIC
         -Wall
         -Werror)
+
+    # Pass along the name of the main application
+    target_compile_definitions(${TARGET} PUBLIC 
+        FIRMWARE_NAME=${FW_NAME})
 
     target_link_options(${TARGET} PUBLIC
         "LINKER:-T,${CMAKE_CURRENT_FUNCTION_LIST_DIR}/STM32_MODULE_STARTUP.ld"

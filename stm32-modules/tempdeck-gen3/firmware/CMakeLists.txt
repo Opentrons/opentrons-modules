@@ -207,17 +207,21 @@ set(HEX_IMG_NAME "${TARGET_MODULE_NAME}-image@${${TARGET_MODULE_NAME}_VERSION}.h
 
 set(BIN_IMG_NAME "${TARGET_MODULE_NAME}-image@${${TARGET_MODULE_NAME}_VERSION}.bin")
   
+set(STARTUP_NAME ${TARGET_MODULE_NAME}-startup)
+
+stm32g491_startup(${STARTUP_NAME} ${TARGET_MODULE_NAME})
+
 # Targets to create full image hex file containing both bootloader and application
 add_custom_command(
     OUTPUT ${HEX_IMG_NAME}
     DEPENDS $<TARGET_FILE_DIR:${TARGET_MODULE_NAME}>/${TARGET_MODULE_NAME}.hex
-    DEPENDS STM32G491-startup-hex
-    DEPENDS $<TARGET_FILE_DIR:STM32G491-startup>/STM32G491-startup.hex
-    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py ${HEX_IMG_NAME} $<TARGET_FILE_DIR:STM32G491-startup>/STM32G491-startup.hex ${TARGET_MODULE_NAME}.hex
+    DEPENDS ${STARTUP_NAME}-hex
+    DEPENDS $<TARGET_FILE_DIR:${STARTUP_NAME}>/${STARTUP_NAME}.hex
+    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py ${HEX_IMG_NAME} $<TARGET_FILE_DIR:${STARTUP_NAME}>/${STARTUP_NAME}.hex ${TARGET_MODULE_NAME}.hex
     VERBATIM
     COMMENT "Generating full image")
 add_custom_target(${TARGET_MODULE_NAME}-image-hex ALL
-    DEPENDS STM32G491-startup-hex
+    DEPENDS ${STARTUP_NAME}-hex
     DEPENDS ${HEX_IMG_NAME})
 
 add_custom_command(OUTPUT "${BIN_IMG_NAME}"

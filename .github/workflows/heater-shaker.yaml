@@ -62,6 +62,8 @@ jobs:
         run: cmake --build --preset cross --target heater-shaker-format-ci
       - name: 'Lint'
         run: cmake --build --preset cross --target heater-shaker-lint
+      - name: 'Build startup app'
+        run: cmake --build --preset cross --target heater-shaker-startup
       - name: 'Build'
         run: cmake --build --preset cross --target heater-shaker-hex
       - name: 'Build Combo Image Hex'

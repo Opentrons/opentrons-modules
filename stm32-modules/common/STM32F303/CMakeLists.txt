@@ -49,16 +49,6 @@ target_compile_definitions(STM32F303BSP_Drivers_startup
 target_include_directories(STM32F303BSP_Drivers_startup
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(STM32F303-startup)
-target_module_startup(STM32F303-startup)
-
-target_sources(STM32F303-startup PUBLIC 
-    startup_stm32f303xe.s
-    startup_system_stm32f3xx.c)
-# Link to the F303
-target_link_libraries(STM32F303-startup PUBLIC
-    STM32F303BSP_Drivers_startup)
-
 # Startup Debug target
 find_program(ARM_GDB
     arm-none-eabi-gdb-py
@@ -66,20 +56,36 @@ find_program(ARM_GDB
     NO_DEFAULT_PATH
     REQUIRED)
 message(STATUS "Found svd exe at ${GDBSVDTools_gdbsvd_EXECUTABLE}")
-# Configure gdb (full path to cross-gdb set in the toolchain) to use the gdbinit in
-# this dir
-set_target_properties(STM32F303-startup
-    PROPERTIES
-    CROSSCOMPILING_EMULATOR
-    "${ARM_GDB};--command=${GDBINIT_PATH}")
-# Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an
-# arguable misuse of the concept) to the appropriate cross-gdb with
-# remote-target. You should make sure st-util is running; that's not
-# done here because it won't be multi-os compatible, and also it
-# should be running the entire time and that's tough to accomplish
-# in a custom command
-add_custom_target(STM32F303-startup-debug
-    COMMENT "Starting gdb and openocd"
-    COMMAND STM32F303-startup
-    USES_TERMINAL
-    )
+
+function(stm32f303_startup TARGET FW_NAME)
+    add_executable(${TARGET})
+
+    target_module_startup(${TARGET} ${FW_NAME})
+
+    target_sources(${TARGET} PUBLIC 
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_stm32f303xe.s
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_system_stm32f3xx.c)
+
+    # Link to the F303
+    target_link_libraries(${TARGET} PUBLIC
+        STM32F303BSP_Drivers_startup)
+
+    # Configure gdb (full path to cross-gdb set in the toolchain) to use the gdbinit in
+    # this dir
+    set_target_properties(${TARGET}
+        PROPERTIES
+        CROSSCOMPILING_EMULATOR
+        "${ARM_GDB};--command=${GDBINIT_PATH}")
+    # Runs cross-gdb (since CMAKE_CROSSCOMPILING_EMULATOR is set in an
+    # arguable misuse of the concept) to the appropriate cross-gdb with
+    # remote-target. You should make sure st-util is running; that's not
+    # done here because it won't be multi-os compatible, and also it
+    # should be running the entire time and that's tough to accomplish
+    # in a custom command
+    add_custom_target(${TARGET}-debug
+        COMMENT "Starting gdb and openocd"
+        COMMAND ${TARGET}
+        USES_TERMINAL
+        )
+endfunction()
+
