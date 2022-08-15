@@ -67,9 +67,9 @@ function(stm32g491_startup TARGET FW_NAME)
         ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_stm32g491vetx.s
         ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_system_stm32g4xx.c)
 
-    # Link to the F303
+    # Link to the G491 drivers
     target_link_libraries(${TARGET} PUBLIC
-        STM32F303BSP_Drivers_startup)
+        STM32G4xx_Drivers_startup)
 
     # Configure gdb (full path to cross-gdb set in the toolchain) to use the gdbinit in
     # this dir
