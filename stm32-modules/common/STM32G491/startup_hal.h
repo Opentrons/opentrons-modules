@@ -6,7 +6,9 @@
 #ifndef STARTUP_HAL_H_
 #define STARTUP_HAL_H_
 
+#include "startup_system_stm32g4xx.h"
 #include "stm32g4xx_hal.h"
+#include "stm32g4xx_hal_conf.h"
 #include "stm32g4xx_hal_cortex.h"
 #include "stm32g4xx_hal_rcc.h"
 #include "stm32g4xx_hal_tim.h"

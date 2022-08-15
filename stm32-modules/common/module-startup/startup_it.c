@@ -5,6 +5,7 @@
  * 
  */
 
+#include "startup_hal.h"
 #include "startup_jumps.h"
 
 void HardFault_Handler(void) __attribute__((naked));
@@ -65,3 +66,11 @@ void UsageFault_Handler(void) {
  * @retval None
  */
 void DebugMon_Handler(void) {}
+
+// Interrupts that are normally handled by FreeRTOS 
+
+void SVC_Handler(void) {}
+void PendSV_Handler(void) {}
+void SysTick_Handler(void) {
+    HAL_IncTick();
+}
