@@ -28,7 +28,7 @@ function(target_module_startup TARGET FW_NAME)
 
     # Pass along the name of the main application
     target_compile_definitions(${TARGET} PUBLIC 
-        FIRMWARE_NAME=${FW_NAME})
+        APPLICATION_FIRMWARE_NAME=\"${FW_NAME}\")
 
     target_link_options(${TARGET} PUBLIC
         "LINKER:-T,${CMAKE_CURRENT_FUNCTION_LIST_DIR}/STM32_MODULE_STARTUP.ld"

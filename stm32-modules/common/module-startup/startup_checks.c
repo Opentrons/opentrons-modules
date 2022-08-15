@@ -1,5 +1,7 @@
 #include "startup_checks.h"
 
+#include <string.h>
+
 #include "startup_hal.h"
 
 #ifndef APPLICATION_START_ADDRESS
@@ -13,6 +15,10 @@
 // Application integrity region starts 0x200 from 
 #define APPLICATION_INTEGRITY_REGION (APPLICATION_VTABLE_START + 0x200)
 #define APPLICATION_CRC_CALC_START_ADDRESS (APPLICATION_VTABLE_START + 0x400)
+
+#ifndef APPLICATION_FIRMWARE_NAME
+#error APPLICATION_FIRMWARE_NAME must be defined
+#endif
 
 /** STATIC DATA */
 
@@ -34,6 +40,9 @@ static CheckHardware_t check_hardware = {
 };
 
 static const IntegrityRegion_t  *const integrity_region = (IntegrityRegion_t *)APPLICATION_INTEGRITY_REGION;
+
+static const char application_firmware_name[] __attribute__((used))  
+    = APPLICATION_FIRMWARE_NAME;
 
 /** STATIC FUNCTION DECLARATIONS */
 
@@ -79,6 +88,15 @@ bool check_crc() {
     }
     
     return true;
+}
+
+bool check_name() {
+    const int namelen = strlen(application_firmware_name);
+
+    return memcmp(
+        application_firmware_name, 
+        &integrity_region->name, 
+        namelen) == 0;
 }
 
 /** STATIC FUNCTION IMPLEMENTATIONS */

@@ -13,6 +13,9 @@ int main() {
     if(!check_crc()) {
         jump_to_bootloader();
     }
+    if(!check_name()) {
+        jump_to_bootloader();
+    }
     
     jump_to_application();
 
