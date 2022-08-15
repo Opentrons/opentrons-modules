@@ -23,6 +23,8 @@
 #include "system_hardware.h"
 #include "stm32f3xx_it.h"
 
+#include "FreeRTOSConfig.h"
+
 /** @addtogroup STM32F3xx_HAL_Examples
   * @{
   */
@@ -58,10 +60,10 @@ void NMI_Handler(void)
   */
 void HardFault_Handler(void)
 {
-  /* Go to infinite loop when Hard Fault exception occurs */
-  while (1)
-  {
-  }
+    // If assertions are enabled, lock up here
+    configASSERT(false);
+    /* Go to bootloader when Hard Fault exception occurs */
+    system_hardware_jump_from_exception();
 }
 
 /**
@@ -71,10 +73,10 @@ void HardFault_Handler(void)
   */
 void MemManage_Handler(void)
 {
-  /* Go to infinite loop when Memory Manage exception occurs */
-  while (1)
-  {
-  }
+    // If assertions are enabled, lock up here
+    configASSERT(false);
+    /* Go to bootloader when Hard Fault exception occurs */
+    system_hardware_jump_from_exception();
 }
 
 /**
@@ -84,10 +86,10 @@ void MemManage_Handler(void)
   */
 void BusFault_Handler(void)
 {
-  /* Go to infinite loop when Bus Fault exception occurs */
-  while (1)
-  {
-  }
+    // If assertions are enabled, lock up here
+    configASSERT(false);
+    /* Go to bootloader when Hard Fault exception occurs */
+    system_hardware_jump_from_exception();
 }
 
 /**
@@ -97,10 +99,10 @@ void BusFault_Handler(void)
   */
 void UsageFault_Handler(void)
 {
-  /* Go to infinite loop when Usage Fault exception occurs */
-  while (1)
-  {
-  }
+    // If assertions are enabled, lock up here
+    configASSERT(false);
+    /* Go to bootloader when Hard Fault exception occurs */
+    system_hardware_jump_from_exception();
 }
 
 /**
