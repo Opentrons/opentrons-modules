@@ -46,6 +46,7 @@ bool system_hardware_set_led_send(uint16_t register_address,
                                   uint8_t* set_buffer, uint16_t buffer_size);
 void system_hardware_handle_i2c_callback(void);
 bool system_hardware_I2C_ready(void);
+void system_hardware_jump_from_exception(void) __attribute__((naked));
 
 #ifdef __cplusplus
 }  // extern "C"
