@@ -62,6 +62,8 @@ jobs:
         run: cmake --build --preset cross --target thermocycler-gen2-format-ci
       - name: 'Lint'
         run: cmake --build --preset cross --target thermocycler-gen2-lint
+      - name: 'Build startup app'
+        run: cmake --build --preset cross --target thermocycler-gen2-startup
       - name: 'Build'
         run: cmake --build --preset cross --target thermocycler-gen2-hex
       - name: 'Build full image'

@@ -17,4 +17,11 @@ bool check_app_exists();
  */
 bool check_crc();
 
+/**
+ * Checks that:
+ *   - The device name exists
+ *   - The device name is correct for this module
+ */
+bool check_name();
+
 #endif /* STARTUP_CHECKS_H_ */
