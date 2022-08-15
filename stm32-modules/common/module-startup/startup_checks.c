@@ -108,6 +108,8 @@ static uint32_t calculate_crc(uint32_t start, uint32_t count) {
     init_hardware();
 
     __HAL_CRC_DR_RESET(&check_hardware.crc);
+    // We return the INVERTED calculated checksum in order to match
+    // standard crc32 calculations
     return ~HAL_CRC_Calculate(
         &check_hardware.crc, 
         (uint32_t *)start,
