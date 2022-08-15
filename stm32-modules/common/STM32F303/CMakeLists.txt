@@ -64,7 +64,8 @@ function(stm32f303_startup TARGET FW_NAME)
 
     target_sources(${TARGET} PUBLIC 
         ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_stm32f303xe.s
-        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_system_stm32f3xx.c)
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_system_stm32f3xx.c
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_hal.c)
 
     # Link to the F303
     target_link_libraries(${TARGET} PUBLIC

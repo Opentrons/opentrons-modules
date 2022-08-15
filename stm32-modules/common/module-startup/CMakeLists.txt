@@ -17,7 +17,8 @@ function(target_module_startup TARGET FW_NAME)
         ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_main.c
         ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_checks.c
         ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_it.c
-        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_jumps.c)
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_jumps.c
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_memory.c)
     
     target_include_directories(${TARGET} 
         PUBLIC ${CMAKE_CURRENT_FUNCTION_LIST_DIR})

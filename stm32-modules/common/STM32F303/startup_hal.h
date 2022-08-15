@@ -6,6 +6,8 @@
 #ifndef STARTUP_HAL_H_
 #define STARTUP_HAL_H_
 
+#include <stdbool.h>
+
 #include "startup_system_stm32f3xx.h"
 #include "stm32f3xx_hal.h"
 #include "stm32f3xx_hal_conf.h"
@@ -21,5 +23,11 @@
 #define APPLICATION_MAX_SIZE (0x400 * 238)
 
 #define DISABLE_CSS_FUNC() HAL_RCC_DisableCSS()
+
+// No flash init needed on F303
+#define startup_flash_init() (void)(0)
+
+// Each target has a different method to set the page for erasing
+bool startup_erase_flash_pages(uint32_t start_page, uint32_t page_count);
 
 #endif /* STARTUP_HAL_H_ */
