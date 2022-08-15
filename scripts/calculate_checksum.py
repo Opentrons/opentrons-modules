@@ -13,8 +13,6 @@ import zlib # for crc calc
 import sys
 from pathlib import Path
 
-INITIAL_CRC = 0xFFFFFFFF
-
 class HexRecord:
     """Represents a single record in a hex file."""
     PATTERN = re.compile(r"^:([A-F0-9]{2})([A-F0-9]{4})(\d{2})([A-F0-9]*)([A-F0-9]{2})$")
@@ -191,7 +189,7 @@ class BinInfo:
             bin_file.seek(self._start_offset)
             data = bin_file.read()
             self._size = len(data)
-            self._crc = zlib.crc32(data, INITIAL_CRC) & 0xffffffff
+            self._crc = zlib.crc32(data) & 0xffffffff
             
     def crc(self) -> int:
         return self._crc

@@ -2,14 +2,15 @@
 
 #include "startup_jumps.h"
 #include "startup_checks.h"
-
-uint32_t SystemCoreClock = 8000000;
-
-// SystemInit will be fine without any action
-void SystemInit(void) {}
+#include "startup_hal.h"
 
 int main() {
+    HardwareInit();
+    
     if(!check_app_exists()) {
+        jump_to_bootloader();
+    }
+    if(!check_crc()) {
         jump_to_bootloader();
     }
     
