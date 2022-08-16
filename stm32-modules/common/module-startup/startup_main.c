@@ -8,6 +8,7 @@
 int main() {
     HardwareInit();
 
+
     bool main_app_exists = check_slot(APP_SLOT_MAIN);
     bool backup_app_exists = check_slot(APP_SLOT_BACKUP);
     
@@ -31,6 +32,11 @@ int main() {
         }
     }
     
+    // Perform this lock at the last minute, after running all of the 
+    // other checks. This means that, when debugging & trying to unlock
+    // the flash with a debugger, the host has a chance to restart the
+    // device and reprogram it without it jumping right into the firmware.
+    (void)memory_lock_startup_region();
     jump_to_application();
 
     while(1) {}

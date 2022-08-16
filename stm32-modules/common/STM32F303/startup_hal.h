@@ -30,4 +30,7 @@
 // Each target has a different method to set the page for erasing
 bool startup_erase_flash_pages(uint32_t start_page, uint32_t page_count);
 
+// Each target has a different method to lock pages
+bool startup_lock_pages(uint32_t start_page, uint32_t page_count);
+
 #endif /* STARTUP_HAL_H_ */
