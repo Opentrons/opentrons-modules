@@ -52,6 +52,8 @@
 /* Entry Point */
 ENTRY(Reset_Handler)
 
+/* Total size of the flash memory is 512K, split into pages of 2K (0x800) */
+
 /* Highest address of the user mode stack */
 _estack = ORIGIN(RAM) + LENGTH(RAM);	/* end of "RAM" Ram type memory */
 /* Generate a link error if heap and stack don't fit into RAM */
@@ -62,8 +64,12 @@ _flash_offset = 32K; /* first 32K is occupied by bootloader shim */
 _flash_start = 0x8000000;
 _app_flash_start  = _flash_start + _flash_offset;
 _flash_size = 512K;
-_serial_size = 0x800;
-_app_flash_size = _flash_size - _flash_offset - _serial_size;
+/* Length reduced by 4K to reserve last two pages for 
+ * serial number and general information storage */
+_serial_size = 4K; 
+/* Remaining space is 512K - 32K - 4K =  476. This is divided in half to
+ * leave room for a backup image, giving 238K for the image.*/
+_app_flash_size = 238K;
 
 /* Specify the memory areas */
 MEMORY

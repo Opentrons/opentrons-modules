@@ -32,6 +32,8 @@
 /* Entry Point */
 ENTRY(Reset_Handler)
 
+/* Total size of the flash memory is 512K, split into pages of 2K (0x800) */
+
 /* Highest address of the user mode stack */
 _estack = 0x20010000;    /* end of RAM */
 __stack = _estack;
@@ -46,7 +48,9 @@ _flash_size = 512K;
 /* Length reduced by 4K to reserve last two pages for 
  * serial number and thermal offsets storage */
 _serial_size = 4K; 
-_app_flash_size = _flash_size - _flash_offset - _serial_size;
+/* Remaining space is 512K - 32K - 4K =  476. This is divided in half to
+ * leave room for a backup image, giving 238K for the image.*/
+_app_flash_size = 238K;
 
 /* Specify the memory areas */
 MEMORY

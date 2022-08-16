@@ -65,7 +65,8 @@ function(stm32g491_startup TARGET FW_NAME)
 
     target_sources(${TARGET} PUBLIC 
         ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_stm32g491vetx.s
-        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_system_stm32g4xx.c)
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_system_stm32g4xx.c
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/startup_hal.c)
 
     # Link to the G491 drivers
     target_link_libraries(${TARGET} PUBLIC
