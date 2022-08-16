@@ -50,12 +50,12 @@ bool startup_lock_pages(uint32_t start_page, uint32_t page_count) {
     HAL_FLASH_Unlock();
     HAL_FLASH_OB_Unlock();
     bool ret = HAL_FLASHEx_OBProgram(&init) == HAL_OK;
-    HAL_FLASH_OB_Lock();
-    HAL_FLASH_Lock();
     // This restarts the device
     if(ret) {
         HAL_FLASH_OB_Launch();
     }
+    HAL_FLASH_OB_Lock();
+    HAL_FLASH_Lock();
     // If we were succesful, we shouldn't return at all
     return false;
 }
