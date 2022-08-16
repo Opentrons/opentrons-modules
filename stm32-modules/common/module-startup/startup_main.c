@@ -8,6 +8,16 @@
 int main() {
     HardwareInit();
 
+    // Because this lock is performed almost immediately on reset, it becomes
+    // impossible in practice to unlock the flash region, even with a
+    // debugger attached - the reset will simply occur too quickly and the
+    // option bits will get rewritten.
+    // 
+    // In order to update the startup region, the best option is to set
+    // the Read Protection Mode to Level 1, and then back to Level 0. This
+    // will clear the entire main flash region, including this startup app,
+    // allowing a debugger to clear out the Write Protection bits.
+    (void)memory_lock_startup_region();
 
     bool main_app_exists = check_slot(APP_SLOT_MAIN);
     bool backup_app_exists = check_slot(APP_SLOT_BACKUP);
@@ -32,11 +42,6 @@ int main() {
         }
     }
     
-    // Perform this lock at the last minute, after running all of the 
-    // other checks. This means that, when debugging & trying to unlock
-    // the flash with a debugger, the host has a chance to restart the
-    // device and reprogram it without it jumping right into the firmware.
-    (void)memory_lock_startup_region();
     jump_to_application();
 
     while(1) {}
