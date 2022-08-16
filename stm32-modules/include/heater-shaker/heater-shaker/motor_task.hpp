@@ -96,7 +96,7 @@ class MotorTask {
     static constexpr const uint16_t MOTOR_START_WAIT_TICKS = 1000;
     static constexpr const uint16_t POST_HOMING_WAIT_TICKS =
         1000;  // needed to ensure motor control deactivated before subsequent
-              // SetRPM commands
+               // SetRPM commands
 
   public:
     static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 250;
