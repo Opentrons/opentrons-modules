@@ -93,6 +93,11 @@ endfunction()
 
 # Adds a target to clear an STM32F303-based module
 function(stm32g491_clear_target TARGET)
+    # Each step in this target is forced to succed (|| true) because, when
+    # the target reboots to load the option bytes, OpenOCD exits with a
+    # failure code because it was not expecting the reboot. For that same
+    # reason, each of these steps is its own script because they will not
+    # be able to run in a single session sequentially.
     add_custom_target(${TARGET}
         COMMAND ${OpenOCD_EXECUTABLE}
             -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/stm32g4discovery.cfg
