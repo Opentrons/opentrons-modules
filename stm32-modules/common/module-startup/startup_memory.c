@@ -5,6 +5,10 @@
 #include "startup_hal.h"
 
 /** STATIC FUNCTION DECLARATIONS */
+
+/**
+ * @brief Erase one of the applications, either the main or backup slot.
+ */
 static bool erase_app(APP_SLOT_ENUM slot);
 
 /** 
@@ -14,7 +18,19 @@ static bool erase_app(APP_SLOT_ENUM slot);
  */
 static bool memory_copy_image(uint32_t src, uint32_t dst, uint32_t bytes);
 
+/** STATIC VARIABLES */
+
+// _user_app_offset should be declared in the linker script
+extern uint8_t _user_app_offset;
+
+static uint32_t user_app_len = (uint32_t)&_user_app_offset;
+
 /** Public function implementation */
+
+bool memory_lock_startup_region() {
+    uint32_t page_count = user_app_len / FLASH_PAGE_SIZE;
+    return startup_lock_pages(0, page_count);
+}
 
 bool memory_copy_backup_to_main() {
     startup_flash_init();
