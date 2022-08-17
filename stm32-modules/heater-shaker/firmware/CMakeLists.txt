@@ -227,6 +227,8 @@ add_custom_target(heater-shaker-debug
   USES_TERMINAL
   )
 
+stm32f303_clear_target(heater-shaker-clear)
+
 # Create a Startup App target for this module
 stm32f303_startup(heater-shaker-startup heater-shaker)
 

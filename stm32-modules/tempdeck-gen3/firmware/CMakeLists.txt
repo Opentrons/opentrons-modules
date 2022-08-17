@@ -210,6 +210,8 @@ set(BIN_IMG_NAME "${TARGET_MODULE_NAME}@${${TARGET_MODULE_NAME}_VERSION}.bin")
   
 set(STARTUP_NAME ${TARGET_MODULE_NAME}-startup)
 
+stm32g491_clear_target(${TARGET_MODULE_NAME}-clear)
+
 stm32g491_startup(${STARTUP_NAME} ${TARGET_MODULE_NAME})
 
 # Targets to create full image hex file containing both bootloader and application
