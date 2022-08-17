@@ -128,16 +128,40 @@ find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
   PATHS "${CrossGCC_BINDIR}"
   NO_DEFAULT_PATH
   REQUIRED)
+
+# Calculate and package the integrity info for this module
+add_custom_target(${TARGET_MODULE_NAME}-integrity ALL 
+  COMMAND ${CROSS_OBJCOPY} ${TARGET_MODULE_NAME} -Obinary 
+      ${TARGET_MODULE_NAME}-scratch.bin --gap-fill=0xFF
+  COMMAND ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py 
+      ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_MODULE_NAME}-scratch.bin
+      ${TARGET_MODULE_NAME}
+      "0x08008400"
+      ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_MODULE_NAME}-integrity-info
+  COMMAND ${CROSS_OBJCOPY} ${TARGET_MODULE_NAME}
+      --update-section
+      .integrity_info=${CMAKE_CURRENT_BINARY_DIR}/${TARGET_MODULE_NAME}-integrity-info
+  DEPENDS ${TARGET_MODULE_NAME}
+  DEPENDS ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py
+)
+
+# The .hex target depends on the module's integrity-target in order to generate
+# the integrity information expected by the startup app. Therefore, all other
+# flashable targets should derive from the initial hex.
 add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.hex
   COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET_MODULE_NAME} "-Oihex" ${TARGET_MODULE_NAME}.hex
-  DEPENDS ${TARGET_MODULE_NAME}
+  DEPENDS ${TARGET_MODULE_NAME}-integrity
+  DEPENDS ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py
   VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-hex ALL
   DEPENDS ${TARGET_MODULE_NAME}.hex)
 
 add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.bin
-  COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET_MODULE_NAME} "-Obinary" ${TARGET_MODULE_NAME}.bin
-  DEPENDS ${TARGET_MODULE_NAME}
+  COMMAND ${CROSS_OBJCOPY} ARGS 
+    ${TARGET_MODULE_NAME}.hex 
+    "-Iihex" "-Obinary" "--gap-fill=0xFF"
+    ${TARGET_MODULE_NAME}.bin
+  DEPENDS ${TARGET_MODULE_NAME}.hex
   VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-bin ALL
   DEPENDS ${TARGET_MODULE_NAME}.bin)
@@ -176,41 +200,60 @@ add_custom_target(${TARGET_MODULE_NAME}-lint
 add_custom_target(${TARGET_MODULE_NAME}-debug
   COMMENT "Starting gdb and openocd"
   COMMAND ${TARGET_MODULE_NAME}
+  DEPENDS ${TARGET_MODULE_NAME}-integrity
   USES_TERMINAL
   )
 
-# Runs openocd to flash the board (without using a debugger)
-add_custom_target(${TARGET_MODULE_NAME}-flash
-  COMMAND "${OpenOCD_EXECUTABLE}" "-f" "${COMMON_MCU_DIR}/stm32g4discovery.cfg" "-c" "program $<TARGET_FILE:${TARGET_MODULE_NAME}>;exit"
-  VERBATIM
-  COMMENT "Flashing board"
-  DEPENDS ${TARGET_MODULE_NAME})
+set(HEX_IMG_NAME "${TARGET_MODULE_NAME}@${${TARGET_MODULE_NAME}_VERSION}.hex")
 
-set(HEX_IMG_NAME "${TARGET_MODULE_NAME}-image@${${TARGET_MODULE_NAME}_VERSION}.hex")
-
-set(BIN_IMG_NAME "${TARGET_MODULE_NAME}-image@${${TARGET_MODULE_NAME}_VERSION}.bin")
+set(BIN_IMG_NAME "${TARGET_MODULE_NAME}@${${TARGET_MODULE_NAME}_VERSION}.bin")
   
+set(STARTUP_NAME ${TARGET_MODULE_NAME}-startup)
+
+stm32g491_clear_target(${TARGET_MODULE_NAME}-clear)
+
+stm32g491_startup(${STARTUP_NAME} ${TARGET_MODULE_NAME})
+
 # Targets to create full image hex file containing both bootloader and application
 add_custom_command(
     OUTPUT ${HEX_IMG_NAME}
     DEPENDS $<TARGET_FILE_DIR:${TARGET_MODULE_NAME}>/${TARGET_MODULE_NAME}.hex
-    DEPENDS STM32G491-startup-hex
-    DEPENDS $<TARGET_FILE_DIR:STM32G491-startup>/STM32G491-startup.hex
-    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py ${HEX_IMG_NAME} $<TARGET_FILE_DIR:STM32G491-startup>/STM32G491-startup.hex ${TARGET_MODULE_NAME}.hex
+    DEPENDS ${STARTUP_NAME}-hex
+    DEPENDS $<TARGET_FILE_DIR:${STARTUP_NAME}>/${STARTUP_NAME}.hex
+    COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py ${HEX_IMG_NAME} $<TARGET_FILE_DIR:${STARTUP_NAME}>/${STARTUP_NAME}.hex ${TARGET_MODULE_NAME}.hex
     VERBATIM
     COMMENT "Generating full image")
 add_custom_target(${TARGET_MODULE_NAME}-image-hex ALL
-    DEPENDS STM32G491-startup-hex
-    DEPENDS ${TARGET_MODULE_NAME})
+    DEPENDS ${STARTUP_NAME}-hex
+    DEPENDS ${HEX_IMG_NAME})
 
 add_custom_command(OUTPUT "${BIN_IMG_NAME}"
-    COMMAND ${CROSS_OBJCOPY} ARGS "-Iihex" "-Obinary" "${HEX_IMG_NAME}" "${BIN_IMG_NAME}"
+    COMMAND ${CROSS_OBJCOPY} ARGS 
+        "-Iihex" "-Obinary" "--gap-fill=0xFF"
+        "${HEX_IMG_NAME}" "${BIN_IMG_NAME}"
     DEPENDS "${HEX_IMG_NAME}"
     VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-image-bin ALL
     DEPENDS "${BIN_IMG_NAME}")
 
 set(ZIP_NAME "${CMAKE_BINARY_DIR}/${TARGET_MODULE_NAME}@${${TARGET_MODULE_NAME}_VERSION}.zip")
+
+# Runs openocd to flash the board (without using a debugger)
+add_custom_target(${TARGET_MODULE_NAME}-flash
+    COMMAND "${OpenOCD_EXECUTABLE}" 
+        "-f" "${COMMON_MCU_DIR}/stm32g4discovery.cfg" 
+        "-c" "program ${TARGET_MODULE_NAME}.hex reset;exit"
+    VERBATIM
+    COMMENT "Flashing board"
+    DEPENDS ${TARGET_MODULE_NAME}-hex)
+# Runs openocd to flash the board with the full image (startup included)
+add_custom_target(${TARGET_MODULE_NAME}-image-flash
+    COMMAND "${OpenOCD_EXECUTABLE}" 
+        "-f" "${COMMON_MCU_DIR}/stm32g4discovery.cfg" 
+        "-c" "program ${HEX_IMG_NAME} reset;exit"
+    VERBATIM
+    COMMENT "Flashing board"
+    DEPENDS ${TARGET_MODULE_NAME}-image-hex)
 
 add_custom_command(
     OUTPUT ${ZIP_NAME}

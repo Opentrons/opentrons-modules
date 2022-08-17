@@ -52,18 +52,24 @@
 /* Entry Point */
 ENTRY(Reset_Handler)
 
+/* Total size of the flash memory is 512K, split into pages of 2K (0x800) */
+
 /* Highest address of the user mode stack */
 _estack = ORIGIN(RAM) + LENGTH(RAM);	/* end of "RAM" Ram type memory */
 /* Generate a link error if heap and stack don't fit into RAM */
 _Min_Heap_Size = 0x800;	/* required amount of heap  */
 _Min_Stack_Size = 0x600;	/* required amount of stack */
 
-_flash_offset = 0x800; /* first page is occupied by bootloader shim */
+_flash_offset = 32K; /* first 32K is occupied by bootloader shim */
 _flash_start = 0x8000000;
 _app_flash_start  = _flash_start + _flash_offset;
 _flash_size = 512K;
-_serial_size = 0x800;
-_app_flash_size = _flash_size - _flash_offset - _serial_size;
+/* Length reduced by 4K to reserve last two pages for 
+ * serial number and general information storage */
+_serial_size = 4K; 
+/* Remaining space is 512K - 32K - 4K =  476. This is divided in half to
+ * leave room for a backup image, giving 238K for the image.*/
+_app_flash_size = 238K;
 
 /* Specify the memory areas */
 MEMORY
@@ -84,8 +90,26 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
+  /* Contains firmware authentication information */
+  .integrity_info BLOCK(0x200) :
+  {
+    . = ALIGN(4);
+    /* placeholder for CRC */
+    ._integrity_crc = .;
+    LONG(0);
+    /* placeholder for firmware length */
+    ._integrity_length = .;
+    LONG(0);
+    /* placeholder for firmware crc start address */
+    ._integrity_start = .;
+    LONG(0);
+    /* placeholder for start of firmware name */
+    ._integrity_name = .;
+    LONG(0);
+  } >FLASH
+
   /* The program code and other data goes into FLASH */
-  .text :
+  .text BLOCK(0x200) :
   {
     . = ALIGN(4);
     *(.text)           /* .text sections (code) */
