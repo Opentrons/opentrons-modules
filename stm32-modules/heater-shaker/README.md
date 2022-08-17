@@ -11,6 +11,7 @@ When cross-compiling the firmware (using the `stm32-cross` cmake preset, running
 - Lint the firmware: `cmake --build ./build-stm32-cross --target heater-shaker-lint`
 - Format the firmware: `cmake --build ./build-stm32-cross --target heater-shaker-format`
 - Flash the firmware to a board: `cmake --build ./build-stm32-cross --target heater-shaker-flash`
+- Flash the firmware __and__ the startup application to a board: `cmake --build ./build-stm32-cross --target heater-shaker-image-flash`
 - Builds heater-shaker-image.hex, suitable for use with stm's programmer: `cmake --build ./build-stm32-cross --target heater-shaker-image-hex`
 - Builds heater-shaker-image.bin, suitable for some other programmers: `cmake --build ./build-stm32-cross --target heater-shaker-image-bin`
 

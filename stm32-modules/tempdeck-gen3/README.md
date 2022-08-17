@@ -44,6 +44,7 @@ When cross-compiling the firmware (using the `stm32-cross` cmake preset, running
 - Lint the firmware: `cmake --build ./build-stm32-cross --target tempdeck-gen3-lint`
 - Format the firmware: `cmake --build ./build-stm32-cross --target tempdeck-gen3-format`
 - Flash the firmware to a board: `cmake --build ./build-stm32-cross --target tempdeck-gen3-flash`
+- Flash the firmware __and__ the startup application to a board: `cmake --build ./build-stm32-cross --target tempdeck-gen3-image-flash`
 - Build a .hex file suitable for use with stm's programmer: `cmake --build ./build-stm32-cross --target tempdeck-gen3-hex`
 - Build a .bin file suitable for some other programmers: `cmake --build ./build-stm32-cross --target tempdeck-gen3-bin`
 
