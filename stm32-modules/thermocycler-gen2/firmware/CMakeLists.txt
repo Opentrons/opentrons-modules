@@ -131,21 +131,28 @@ find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
   NO_DEFAULT_PATH
   REQUIRED)
 
-# The .hex target invokes the calculate_checksum.py script in order to generate
+# Calculate and package the integrity info for this module
+add_custom_target(${TARGET_MODULE_NAME}-integrity ALL 
+  COMMAND ${CROSS_OBJCOPY} ${TARGET_MODULE_NAME} -Obinary 
+      ${TARGET_MODULE_NAME}-scratch.bin --gap-fill=0xFF
+  COMMAND ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py 
+      ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_MODULE_NAME}-scratch.bin
+      ${TARGET_MODULE_NAME}
+      "0x08008400"
+      ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_MODULE_NAME}-integrity-info
+  COMMAND ${CROSS_OBJCOPY} ${TARGET_MODULE_NAME}
+      --update-section
+      .integrity_info=${CMAKE_CURRENT_BINARY_DIR}/${TARGET_MODULE_NAME}-integrity-info
+  DEPENDS ${TARGET_MODULE_NAME}
+  DEPENDS ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py
+)
+
+# The .hex target depends on the module's integrity-target in order to generate
 # the integrity information expected by the startup app. Therefore, all other
 # flashable targets should derive from the initial hex.
 add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.hex
-  COMMAND ${CROSS_OBJCOPY} ARGS 
-    ${TARGET_MODULE_NAME} "-Obinary" ${TARGET_MODULE_NAME}-scratch.bin
-    "--gap-fill=0xFF"
-  COMMAND ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py ARGS 
-    ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_MODULE_NAME}-scratch.bin
-    ${TARGET_MODULE_NAME}
-    "0x08008400"
-    ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_MODULE_NAME}-integrity-info
   COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET_MODULE_NAME} "-Oihex" ${TARGET_MODULE_NAME}.hex
-    "--update-section" ".integrity_info=${CMAKE_CURRENT_BINARY_DIR}/${TARGET_MODULE_NAME}-integrity-info"
-  DEPENDS ${TARGET_MODULE_NAME}
+  DEPENDS ${TARGET_MODULE_NAME}-integrity
   DEPENDS ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py
   VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-hex ALL
@@ -195,6 +202,7 @@ add_custom_target(${TARGET_MODULE_NAME}-lint
 add_custom_target(${TARGET_MODULE_NAME}-debug
   COMMENT "Starting gdb and openocd"
   COMMAND ${TARGET_MODULE_NAME}
+  DEPENDS ${TARGET_MODULE_NAME}-integrity
   USES_TERMINAL
   )
 
