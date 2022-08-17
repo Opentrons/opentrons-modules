@@ -90,3 +90,27 @@ function(stm32g491_startup TARGET FW_NAME)
         USES_TERMINAL
         )
 endfunction()
+
+# Adds a target to clear an STM32F303-based module
+function(stm32g491_clear_target TARGET)
+    add_custom_target(${TARGET}
+        COMMAND ${OpenOCD_EXECUTABLE}
+            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/stm32g4discovery.cfg
+            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/lock_stm32g491.cfg
+            || true
+        COMMAND ${OpenOCD_EXECUTABLE}
+            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/stm32g4discovery.cfg
+            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/unlock_stm32g491.cfg
+            || true
+        COMMAND ${OpenOCD_EXECUTABLE}
+            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/stm32g4discovery.cfg
+            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/clear_wp_stm32g491.cfg
+            || true
+        COMMAND ${OpenOCD_EXECUTABLE}
+            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/stm32g4discovery.cfg
+            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/unlock_stm32g491.cfg
+            || true
+        VERBATIM
+        COMMENT "Clearing flash"
+    )
+endfunction()
