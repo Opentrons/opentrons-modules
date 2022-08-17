@@ -42,6 +42,7 @@ When cross-compiling the firmware (using the `stm32-cross` cmake preset, running
 - Lint the firmware: `cmake --build ./build-stm32-cross --target thermocycler-gen2-lint`
 - Format the firmware: `cmake --build ./build-stm32-cross --target thermocycler-gen2-format`
 - Flash the firmware to a board: `cmake --build ./build-stm32-cross --target thermocycler-gen2-flash`
+- Flash the firmware __and__ the startup application to a board: `cmake --build ./build-stm32-cross --target thermocycler-gen2-image-flash`
 - Build a .hex file suitable for use with stm's programmer: `cmake --build ./build-stm32-cross --target thermocycler-gen2-hex`
 - Build a .bin file suitable for some other programmers: `cmake --build ./build-stm32-cross --target thermocycler-gen2-bin`
 - Build the startup app, which is also packaged into the image files: `cmake --build ./build-stm32-cross --target thermocycler-gen2-startup`

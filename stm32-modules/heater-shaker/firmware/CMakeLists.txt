@@ -154,21 +154,28 @@ find_program(CROSS_OBJCOPY "${CrossGCC_TRIPLE}-objcopy"
   NO_DEFAULT_PATH
   REQUIRED)
 
-# The .hex target invokes the calculate_checksum.py script in order to generate
+# Calculate and package the integrity info for this module
+add_custom_target(heater-shaker-integrity ALL 
+    COMMAND ${CROSS_OBJCOPY} heater-shaker -Obinary 
+        heater-shaker-scratch.bin --gap-fill=0xFF
+    COMMAND ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py 
+        ${CMAKE_CURRENT_BINARY_DIR}/heater-shaker-scratch.bin
+        "heater-shaker"
+        "0x08008400"
+        ${CMAKE_CURRENT_BINARY_DIR}/heater-shaker-integrity-info
+    COMMAND ${CROSS_OBJCOPY} heater-shaker
+        --update-section
+        .integrity_info=${CMAKE_CURRENT_BINARY_DIR}/heater-shaker-integrity-info
+    DEPENDS heater-shaker
+    DEPENDS ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py
+)
+
+# The .hex target depends on heater-shaker-integrity in order to generate
 # the integrity information expected by the startup app. Therefore, all other
 # flashable targets should derive from the initial hex.
 add_custom_command(OUTPUT heater-shaker.hex
-  COMMAND ${CROSS_OBJCOPY} ARGS 
-    heater-shaker "-Obinary" heater-shaker-scratch.bin
-    "--gap-fill=0xFF"
-  COMMAND ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py ARGS 
-    ${CMAKE_CURRENT_BINARY_DIR}/heater-shaker-scratch.bin
-    "heater-shaker"
-    "0x08008400"
-    ${CMAKE_CURRENT_BINARY_DIR}/heater-shaker-integrity-info
   COMMAND ${CROSS_OBJCOPY} ARGS heater-shaker "-Oihex" heater-shaker.hex
-    "--update-section" ".integrity_info=${CMAKE_CURRENT_BINARY_DIR}/heater-shaker-integrity-info"
-  DEPENDS heater-shaker
+  DEPENDS heater-shaker-integrity
   DEPENDS ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py
   VERBATIM)
 add_custom_target(heater-shaker-hex ALL
@@ -216,17 +223,11 @@ add_custom_target(heater-shaker-lint
 add_custom_target(heater-shaker-debug
   COMMENT "Starting gdb and openocd"
   COMMAND heater-shaker
+  DEPENDS heater-shaker-integrity
   USES_TERMINAL
   )
 
 stm32f303_clear_target(heater-shaker-clear)
-
-# Runs openocd to flash the board (without using a debugger)
-add_custom_target(heater-shaker-flash
-  COMMAND "${OpenOCD_EXECUTABLE}" "-f" "${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg" "-c" "program $<TARGET_FILE:heater-shaker>;exit"
-  VERBATIM
-  COMMENT "Flashing board"
-  DEPENDS heater-shaker)
 
 # Create a Startup App target for this module
 stm32f303_startup(heater-shaker-startup heater-shaker)
@@ -266,6 +267,23 @@ add_custom_command(
           "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
   VERBATIM
   )
+
+# Runs openocd to flash the board (without using a debugger)
+add_custom_target(heater-shaker-flash
+    COMMAND "${OpenOCD_EXECUTABLE}" 
+        "-f" "${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg" 
+        "-c" "program heater-shaker.hex reset;exit"
+    VERBATIM
+    COMMENT "Flashing board"
+    DEPENDS heater-shaker-hex)
+# Runs openocd to flash the board with the full image (startup included)
+add_custom_target(heater-shaker-image-flash
+    COMMAND "${OpenOCD_EXECUTABLE}" 
+        "-f" "${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg" 
+        "-c" "program ${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex reset;exit"
+    VERBATIM
+    COMMENT "Flashing board"
+    DEPENDS heater-shaker-image-hex)
 
 add_custom_target(heater-shaker-zip
   DEPENDS "${CMAKE_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.zip")
