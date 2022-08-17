@@ -111,10 +111,6 @@ function(stm32g491_clear_target TARGET)
             -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/stm32g4discovery.cfg
             -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/clear_wp_stm32g491.cfg
             || true
-        COMMAND ${OpenOCD_EXECUTABLE}
-            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/stm32g4discovery.cfg
-            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/unlock_stm32g491.cfg
-            || true
         VERBATIM
         COMMENT "Clearing flash"
     )
