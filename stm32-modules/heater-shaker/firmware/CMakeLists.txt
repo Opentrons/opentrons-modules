@@ -219,6 +219,8 @@ add_custom_target(heater-shaker-debug
   USES_TERMINAL
   )
 
+stm32f303_clear_target(heater-shaker-clear)
+
 # Runs openocd to flash the board (without using a debugger)
 add_custom_target(heater-shaker-flash
   COMMAND "${OpenOCD_EXECUTABLE}" "-f" "${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg" "-c" "program $<TARGET_FILE:heater-shaker>;exit"

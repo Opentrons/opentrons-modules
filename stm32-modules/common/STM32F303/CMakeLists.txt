@@ -90,3 +90,26 @@ function(stm32f303_startup TARGET FW_NAME)
         )
 endfunction()
 
+# Adds a target to clear an STM32F303-based module
+function(stm32f303_clear_target TARGET)
+    add_custom_target(${TARGET}
+        COMMAND ${OpenOCD_EXECUTABLE}
+            -f ${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg
+            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/lock_stm32f303.cfg
+            || true
+        COMMAND ${OpenOCD_EXECUTABLE}
+            -f ${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg
+            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/unlock_stm32f303.cfg
+            || true
+        COMMAND ${OpenOCD_EXECUTABLE}
+            -f ${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg
+            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/clear_wp_stm32f303.cfg
+            || true
+        COMMAND ${OpenOCD_EXECUTABLE}
+            -f ${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg
+            -f ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/unlock_stm32f303.cfg
+            || true
+        VERBATIM
+        COMMENT "Clearing flash"
+    )
+endfunction()
