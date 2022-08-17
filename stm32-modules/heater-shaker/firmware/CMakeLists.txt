@@ -227,13 +227,6 @@ add_custom_target(heater-shaker-debug
   USES_TERMINAL
   )
 
-# Runs openocd to flash the board (without using a debugger)
-add_custom_target(heater-shaker-flash
-  COMMAND "${OpenOCD_EXECUTABLE}" "-f" "${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg" "-c" "program $<TARGET_FILE:heater-shaker>;exit"
-  VERBATIM
-  COMMENT "Flashing board"
-  DEPENDS heater-shaker)
-
 # Create a Startup App target for this module
 stm32f303_startup(heater-shaker-startup heater-shaker)
 
@@ -272,6 +265,23 @@ add_custom_command(
           "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
   VERBATIM
   )
+
+# Runs openocd to flash the board (without using a debugger)
+add_custom_target(heater-shaker-flash
+    COMMAND "${OpenOCD_EXECUTABLE}" 
+        "-f" "${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg" 
+        "-c" "program heater-shaker.hex reset;exit"
+    VERBATIM
+    COMMENT "Flashing board"
+    DEPENDS heater-shaker-hex)
+# Runs openocd to flash the board with the full image (startup included)
+add_custom_target(heater-shaker-image-flash
+    COMMAND "${OpenOCD_EXECUTABLE}" 
+        "-f" "${OpenOCD_SCRIPTROOT}/board/st_nucleo_f3.cfg" 
+        "-c" "program ${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex reset;exit"
+    VERBATIM
+    COMMENT "Flashing board"
+    DEPENDS heater-shaker-image-hex)
 
 add_custom_target(heater-shaker-zip
   DEPENDS "${CMAKE_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.zip")

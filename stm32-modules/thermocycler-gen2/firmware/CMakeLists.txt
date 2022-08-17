@@ -158,7 +158,7 @@ add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.hex
 add_custom_target(${TARGET_MODULE_NAME}-hex ALL
   DEPENDS ${TARGET_MODULE_NAME}.hex)
 
-  add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.bin
+add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.bin
   COMMAND ${CROSS_OBJCOPY} ARGS 
     ${TARGET_MODULE_NAME}.hex 
     "-Iihex" "-Obinary" "--gap-fill=0xFF"
@@ -206,13 +206,6 @@ add_custom_target(${TARGET_MODULE_NAME}-debug
   USES_TERMINAL
   )
 
-# Runs openocd to flash the board (without using a debugger)
-add_custom_target(${TARGET_MODULE_NAME}-flash
-  COMMAND "${OpenOCD_EXECUTABLE}" "-f" "${COMMON_MCU_DIR}/stm32g4discovery.cfg" "-c" "program $<TARGET_FILE:${TARGET_MODULE_NAME}>;exit"
-  VERBATIM
-  COMMENT "Flashing board"
-  DEPENDS ${TARGET_MODULE_NAME})
-
 set(HEX_IMG_NAME "${TARGET_MODULE_NAME}-image@${${TARGET_MODULE_NAME}_VERSION}.hex")
 
 set(BIN_IMG_NAME "${TARGET_MODULE_NAME}-image@${${TARGET_MODULE_NAME}_VERSION}.bin")
@@ -244,6 +237,23 @@ add_custom_target(${TARGET_MODULE_NAME}-image-bin ALL
     DEPENDS "${BIN_IMG_NAME}")
 
 set(ZIP_NAME "${CMAKE_BINARY_DIR}/${TARGET_MODULE_NAME}@${${TARGET_MODULE_NAME}_VERSION}.zip")
+
+# Runs openocd to flash the board (without using a debugger)
+add_custom_target(${TARGET_MODULE_NAME}-flash
+    COMMAND "${OpenOCD_EXECUTABLE}" 
+        "-f" "${COMMON_MCU_DIR}/stm32g4discovery.cfg" 
+        "-c" "program ${TARGET_MODULE_NAME}.hex reset;exit"
+    VERBATIM
+    COMMENT "Flashing board"
+    DEPENDS ${TARGET_MODULE_NAME}-hex)
+# Runs openocd to flash the board with the full image (startup included)
+add_custom_target(${TARGET_MODULE_NAME}-image-flash
+    COMMAND "${OpenOCD_EXECUTABLE}" 
+        "-f" "${COMMON_MCU_DIR}/stm32g4discovery.cfg" 
+        "-c" "program ${HEX_IMG_NAME} reset;exit"
+    VERBATIM
+    COMMENT "Flashing board"
+    DEPENDS ${TARGET_MODULE_NAME}-image-hex)
 
 add_custom_command(
     OUTPUT ${ZIP_NAME}
