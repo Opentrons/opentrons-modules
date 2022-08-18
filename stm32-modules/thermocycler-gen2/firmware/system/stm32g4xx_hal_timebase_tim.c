@@ -29,6 +29,8 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef        htim7;
+
+static systick_callback_t systick_callback = NULL;
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
@@ -153,6 +155,13 @@ void hal_timebase_tick(void)
         if(heartbeat_pwm == heartbeat_period) { heartbeat_direction = -1; }
         else if(heartbeat_pwm == 0) { heartbeat_direction = 1; }
     }
+    if(systick_callback) {
+        systick_callback();
+    }
+}
+
+void system_set_systick_callback(systick_callback_t cb) {
+    systick_callback = cb;
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

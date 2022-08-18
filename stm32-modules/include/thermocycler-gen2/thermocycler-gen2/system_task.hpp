@@ -239,6 +239,7 @@ class SystemTask {
           _front_button_pulse(FRONT_BUTTON_MAX_PULSE),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _front_button_blink(),
+          _front_button_last_state(false),
           _light_debug_mode(false) {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
@@ -534,15 +535,21 @@ class SystemTask {
 
     template <SystemExecutionPolicy Policy>
     auto front_button_led_callback(Policy& policy) -> void {
+        bool led_state = false;
         switch (_motor_state) {
             case MotorState::IDLE:
+                led_state = true;
                 break;
             case MotorState::OPENING_OR_CLOSING:
-                policy.set_front_button_led(_front_button_pulse.tick());
+                led_state = _front_button_pulse.tick();
                 break;
             case MotorState::PLATE_LIFT:
-                policy.set_front_button_led(_front_button_blink.tick());
+                led_state = _front_button_blink.tick();
                 break;
+        }
+        if(led_state != _front_button_last_state) {
+            _front_button_last_state = led_state;
+            policy.set_front_button_led(led_state);
         }
     }
 
@@ -607,6 +614,7 @@ class SystemTask {
     std::atomic<MotorState> _motor_state;
     Pulse _front_button_pulse;
     FrontButtonBlink _front_button_blink;
+    std::atomic<bool> _front_button_last_state;
     // If this is true, set the LED's to all-white no matter what.
     bool _light_debug_mode;
 };

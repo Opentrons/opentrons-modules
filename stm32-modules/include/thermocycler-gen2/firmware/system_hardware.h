@@ -14,6 +14,8 @@ extern "C" {
 // Type for callback when the button has been pressed
 typedef void (*front_button_callback_t)(void);
 
+typedef void (*systick_callback_t)(void);
+
 /**
  * @brief Initialize the system hardware
  * @param[in] rev_1_board Set to true if this is a rev 1 board, false if it
@@ -60,6 +62,8 @@ void system_front_button_led_set(bool set);
 void system_front_button_callback(void);
 
 void system_hardware_jump_from_exception(void) __attribute__((naked));
+
+void system_set_systick_callback(systick_callback_t cb);
 
 #ifdef __cplusplus
 }  // extern "C"
