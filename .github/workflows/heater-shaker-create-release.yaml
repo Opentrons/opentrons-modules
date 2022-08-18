@@ -36,7 +36,7 @@ jobs:
       - name: 'Build Combo Image Zip'
         run: cmake --build --preset cross --target heater-shaker-zip
       - name: 'Prep for install'
-        run: cmake --install ./build-stm32-cross
+        run: cmake --install ./build-stm32-cross --component heater-shaker
       - if: github.event_name != 'pull_request'
         name: 'Deploy'
         env:
