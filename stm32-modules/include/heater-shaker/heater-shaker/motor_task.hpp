@@ -99,8 +99,8 @@ class MotorTask {
               // SetRPM commands
 
   public:
-    static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 250;
-    static constexpr int16_t HOMING_ROTATION_LIMIT_LOW_RPM = 200;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 325;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_LOW_RPM = 275;
     static constexpr int16_t HOMING_ROTATION_LOW_MARGIN = 25;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_INITIAL = 200;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
@@ -171,6 +171,10 @@ class MotorTask {
             error = errors::ErrorCode::MOTOR_HOMING;
         } else {
             policy.homing_solenoid_disengage();
+            if (msg.target_rpm < 300) { //make define
+                policy.set_rpm(300);
+                policy.delay_ticks(1000); //test. Make define
+            }
             error = policy.set_rpm(msg.target_rpm);
             if (error == errors::ErrorCode::NO_ERROR) {  // only proceed if
                                                          // target speed legal
