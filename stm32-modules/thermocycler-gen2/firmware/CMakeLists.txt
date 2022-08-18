@@ -152,6 +152,7 @@ add_custom_target(${TARGET_MODULE_NAME}-integrity ALL
 # flashable targets should derive from the initial hex.
 add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.hex
   COMMAND ${CROSS_OBJCOPY} ARGS ${TARGET_MODULE_NAME} "-Oihex" ${TARGET_MODULE_NAME}.hex
+  DEPENDS ${TARGET_MODULE_NAME}
   DEPENDS ${TARGET_MODULE_NAME}-integrity
   DEPENDS ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py
   VERBATIM)
@@ -167,6 +168,7 @@ add_custom_command(OUTPUT ${TARGET_MODULE_NAME}.bin
   VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-bin ALL
   DEPENDS ${TARGET_MODULE_NAME}.bin)
+add_dependencies(${TARGET_MODULE_NAME}-bin ${TARGET_MODULE_NAME}-hex)
 
 # runs clang-tidy https://releases.llvm.org/11.0.1/tools/clang/tools/extra/docs/clang-tidy/index.html
 # which is a catch-all static analyzer/linter
@@ -219,24 +221,27 @@ stm32g491_startup(${STARTUP_NAME} ${TARGET_MODULE_NAME})
 # Targets to create full image hex file containing both bootloader and application
 add_custom_command(
     OUTPUT ${HEX_IMG_NAME}
-    DEPENDS $<TARGET_FILE_DIR:${TARGET_MODULE_NAME}>/${TARGET_MODULE_NAME}.hex
+    DEPENDS ${TARGET_MODULE_NAME}-hex
     DEPENDS ${STARTUP_NAME}-hex
-    DEPENDS $<TARGET_FILE_DIR:${STARTUP_NAME}>/${STARTUP_NAME}.hex
+    DEPENDS ${TARGET_MODULE_NAME}.hex
     COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py ${HEX_IMG_NAME} $<TARGET_FILE_DIR:${STARTUP_NAME}>/${STARTUP_NAME}.hex ${TARGET_MODULE_NAME}.hex
-    VERBATIM
-    COMMENT "Generating full image")
+    VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-image-hex ALL
-    DEPENDS ${STARTUP_NAME}-hex
     DEPENDS ${HEX_IMG_NAME})
+add_dependencies(${TARGET_MODULE_NAME}-image-hex
+    ${TARGET_MODULE_NAME}-hex)
 
 add_custom_command(OUTPUT "${BIN_IMG_NAME}"
     COMMAND ${CROSS_OBJCOPY} ARGS 
         "-Iihex" "-Obinary" "--gap-fill=0xFF"
         "${HEX_IMG_NAME}" "${BIN_IMG_NAME}"
     DEPENDS "${HEX_IMG_NAME}"
+    DEPENDS ${TARGET_MODULE_NAME}-image-hex
     VERBATIM)
 add_custom_target(${TARGET_MODULE_NAME}-image-bin ALL
-    DEPENDS "${BIN_IMG_NAME}")
+    DEPENDS ${BIN_IMG_NAME})
+add_dependencies(${TARGET_MODULE_NAME}-image-bin
+    ${TARGET_MODULE_NAME}-image-hex)
 
 set(ZIP_NAME "${CMAKE_BINARY_DIR}/${TARGET_MODULE_NAME}@${${TARGET_MODULE_NAME}_VERSION}.zip")
 
@@ -247,7 +252,7 @@ add_custom_target(${TARGET_MODULE_NAME}-flash
         "-c" "program ${TARGET_MODULE_NAME}.hex reset;exit"
     VERBATIM
     COMMENT "Flashing board"
-    DEPENDS ${TARGET_MODULE_NAME}-hex)
+    DEPENDS ${TARGET_MODULE_NAME}.hex)
 # Runs openocd to flash the board with the full image (startup included)
 add_custom_target(${TARGET_MODULE_NAME}-image-flash
     COMMAND "${OpenOCD_EXECUTABLE}" 
@@ -255,7 +260,7 @@ add_custom_target(${TARGET_MODULE_NAME}-image-flash
         "-c" "program ${HEX_IMG_NAME} reset;exit"
     VERBATIM
     COMMENT "Flashing board"
-    DEPENDS ${TARGET_MODULE_NAME}-image-hex)
+    DEPENDS ${HEX_IMG_NAME})
 
 add_custom_command(
     OUTPUT ${ZIP_NAME}
