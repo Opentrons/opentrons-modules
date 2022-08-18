@@ -230,6 +230,7 @@ class SystemTask {
                      .mode = colors::Mode::SOLID,
                      .counter = 0,
                      .period = LED_PULSE_PERIOD_MS},
+          _led_update_pending(false),
           _plate_error(errors::ErrorCode::NO_ERROR),
           _lid_error(errors::ErrorCode::NO_ERROR),
           _motor_error(errors::ErrorCode::NO_ERROR),
@@ -374,6 +375,8 @@ class SystemTask {
             _led_state.counter = 0;
         }
 
+        _led_update_pending = false;
+
         // The LED mode is automatic based on the plate status and error status
         update_led_mode_from_system();
 
@@ -513,8 +516,12 @@ class SystemTask {
     // Should be provided to LED Timer to send LED Update messages. Ensure that
     // the timer implementation does NOT execute in an interrupt context.
     auto led_timer_callback() -> void {
-        static_cast<void>(
-            get_message_queue().try_send(messages::UpdateUIMessage()));
+        if(!_led_update_pending) {
+            auto ret = _message_queue.try_send(messages::UpdateUIMessage());
+            if(ret) {
+                _led_update_pending = true;
+            }
+        }
     }
 
     // Should be provided to the front button timer to send Front Button
@@ -589,6 +596,7 @@ class SystemTask {
     BootloaderPrepAckCache _prep_cache;
     xt1511::XT1511String<PWM_T, SYSTEM_LED_COUNT> _leds;
     LedState _led_state;
+    std::atomic<bool> _led_update_pending;
     // Tracks error state of different tasks
     errors::ErrorCode _plate_error;
     errors::ErrorCode _lid_error;
