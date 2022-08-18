@@ -1076,7 +1076,7 @@ class MotorTask {
                 messages::UpdateMotorState::MotorState::IDLE;
         }
         static_cast<void>(_task_registry->system->get_message_queue().try_send(
-            messages::UpdateMotorState{.state = state_for_system_task}));
+            messages::UpdateMotorState{.state = state_for_system_task}, 100));
         return error;
     }
 
