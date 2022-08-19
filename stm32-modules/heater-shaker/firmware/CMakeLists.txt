@@ -175,6 +175,7 @@ add_custom_target(heater-shaker-integrity ALL
 # flashable targets should derive from the initial hex.
 add_custom_command(OUTPUT heater-shaker.hex
   COMMAND ${CROSS_OBJCOPY} ARGS heater-shaker "-Oihex" heater-shaker.hex
+  DEPENDS heater-shaker
   DEPENDS heater-shaker-integrity
   DEPENDS ${CMAKE_SOURCE_DIR}/scripts/calculate_checksum.py
   VERBATIM)
@@ -190,6 +191,7 @@ add_custom_command(OUTPUT heater-shaker.bin
   VERBATIM)
 add_custom_target(heater-shaker-bin ALL
   DEPENDS heater-shaker.bin)
+add_dependencies(heater-shaker-bin heater-shaker-hex)
 
 # runs clang-tidy https://releases.llvm.org/11.0.1/tools/clang/tools/extra/docs/clang-tidy/index.html
 # which is a catch-all static analyzer/linter
@@ -235,15 +237,15 @@ stm32f303_startup(heater-shaker-startup heater-shaker)
 # Targets to create full image hex and binary files containing both bootloader and application
 add_custom_command(
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
-    DEPENDS $<TARGET_FILE_DIR:heater-shaker>/heater-shaker.hex
+    DEPENDS heater-shaker-hex
     DEPENDS heater-shaker-startup-hex
     DEPENDS $<TARGET_FILE_DIR:heater-shaker-startup>/heater-shaker-startup.hex
     COMMAND ${CMAKE_SOURCE_DIR}/scripts/hex_combine.py "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex" $<TARGET_FILE_DIR:heater-shaker-startup>/heater-shaker-startup.hex heater-shaker.hex
-    VERBATIM
-    COMMENT "Generating full image")
+    VERBATIM)
 add_custom_target(heater-shaker-image-hex ALL
-    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
-    DEPENDS heater-shaker)
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex")
+add_dependencies(heater-shaker-image-hex
+    heater-shaker-hex)
 
 add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin"
   COMMAND ${CROSS_OBJCOPY} ARGS 
@@ -251,9 +253,12 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-sh
     "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex" 
     "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin"
   DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
+  DEPENDS heater-shaker-image-hex
   VERBATIM)
 add_custom_target(heater-shaker-image-bin ALL
   DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin")
+add_dependencies(heater-shaker-image-bin
+    heater-shaker-image-hex)
 
 add_custom_command(
   OUTPUT "${CMAKE_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.zip"
@@ -275,7 +280,7 @@ add_custom_target(heater-shaker-flash
         "-c" "program heater-shaker.hex reset;exit"
     VERBATIM
     COMMENT "Flashing board"
-    DEPENDS heater-shaker-hex)
+    DEPENDS heater-shaker.hex)
 # Runs openocd to flash the board with the full image (startup included)
 add_custom_target(heater-shaker-image-flash
     COMMAND "${OpenOCD_EXECUTABLE}" 
@@ -283,7 +288,7 @@ add_custom_target(heater-shaker-image-flash
         "-c" "program ${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex reset;exit"
     VERBATIM
     COMMENT "Flashing board"
-    DEPENDS heater-shaker-image-hex)
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex")
 
 add_custom_target(heater-shaker-zip
   DEPENDS "${CMAKE_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.zip")
@@ -293,4 +298,5 @@ install(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin"
   "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
   DESTINATION "heater-shaker"
+  COMPONENT heater-shaker
 )

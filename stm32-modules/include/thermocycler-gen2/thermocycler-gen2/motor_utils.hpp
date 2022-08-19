@@ -248,7 +248,7 @@ class MovementProfile {
      *
      * @return TickReturn with information for how hardware driver should act
      */
-    auto tick() -> TickReturn;
+    auto tick() -> TickReturn __attribute__((optimize(3)));
 
     /** Returns the current motor velocity in steps_per_tick.*/
     [[nodiscard]] auto current_velocity() const -> steps_per_tick;

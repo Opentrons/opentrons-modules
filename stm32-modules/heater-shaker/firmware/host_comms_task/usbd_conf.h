@@ -31,6 +31,20 @@ extern "C" {
 #include "stm32f3xx.h"
 #include "stm32f3xx_hal_pcd.h"
 
+/**
+ * @brief This function is intended to be called BEFORE the USB
+ * peripheral is initialized. It will set USB D+ to 0v to try to signal
+ * that no device is connected.
+ *
+ * This is required due to the hard-wired pullup on the D+ line. When
+ * the Heater Shaker powers on, a USB Host will expect a valid device
+ * even though the USB isn't initialized. This function should signal
+ * to the host that the device is restarted and prompt re-enumeration.
+ *
+ * @param delay_ms Milliseconds to delay before returning
+ */
+void usb_device_reset(uint32_t delay_ms);
+
 extern void *cdc_classhandle_malloc(size_t size);
 // extern void free_noop(void* _ignored) {(void)_ignored;}
 
