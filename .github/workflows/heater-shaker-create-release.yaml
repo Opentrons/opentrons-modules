@@ -37,6 +37,10 @@ jobs:
         run: cmake --build --preset cross --target heater-shaker-zip
       - name: 'Prep for install'
         run: cmake --install ./build-stm32-cross --component heater-shaker
+      - name: 'Save firmware artifacts'
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist/heater-shaker/*.zip
       - if: github.event_name != 'pull_request'
         name: 'Deploy'
         env:
