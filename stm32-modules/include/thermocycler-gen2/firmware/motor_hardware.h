@@ -10,8 +10,9 @@ extern "C" {
 // ----------------------------------------------------------------------------
 // Public definitions
 
-// Frequency of the motor interrupt callbacks is 500kHz
-#define MOTOR_INTERRUPT_FREQ (500000)
+// Frequency of the motor interrupt callbacks is 300kHz, providing some extra
+// overhead over the velocities used by this application.
+#define MOTOR_INTERRUPT_FREQ (300000)
 
 // Enumeration of motor error types
 typedef enum MotorError {

@@ -230,6 +230,7 @@ class SystemTask {
                      .mode = colors::Mode::SOLID,
                      .counter = 0,
                      .period = LED_PULSE_PERIOD_MS},
+          _led_update_pending(false),
           _plate_error(errors::ErrorCode::NO_ERROR),
           _lid_error(errors::ErrorCode::NO_ERROR),
           _motor_error(errors::ErrorCode::NO_ERROR),
@@ -238,6 +239,7 @@ class SystemTask {
           _front_button_pulse(FRONT_BUTTON_MAX_PULSE),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _front_button_blink(),
+          _front_button_last_state(false),
           _light_debug_mode(false) {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
@@ -373,6 +375,8 @@ class SystemTask {
         if (_led_state.counter > _led_state.period) {
             _led_state.counter = 0;
         }
+
+        _led_update_pending = false;
 
         // The LED mode is automatic based on the plate status and error status
         update_led_mode_from_system();
@@ -513,8 +517,12 @@ class SystemTask {
     // Should be provided to LED Timer to send LED Update messages. Ensure that
     // the timer implementation does NOT execute in an interrupt context.
     auto led_timer_callback() -> void {
-        static_cast<void>(
-            get_message_queue().try_send(messages::UpdateUIMessage()));
+        if (!_led_update_pending) {
+            auto ret = _message_queue.try_send(messages::UpdateUIMessage());
+            if (ret) {
+                _led_update_pending = true;
+            }
+        }
     }
 
     // Should be provided to the front button timer to send Front Button
@@ -527,15 +535,21 @@ class SystemTask {
 
     template <SystemExecutionPolicy Policy>
     auto front_button_led_callback(Policy& policy) -> void {
+        bool led_state = false;
         switch (_motor_state) {
             case MotorState::IDLE:
+                led_state = true;
                 break;
             case MotorState::OPENING_OR_CLOSING:
-                policy.set_front_button_led(_front_button_pulse.tick());
+                led_state = _front_button_pulse.tick();
                 break;
             case MotorState::PLATE_LIFT:
-                policy.set_front_button_led(_front_button_blink.tick());
+                led_state = _front_button_blink.tick();
                 break;
+        }
+        if (led_state != _front_button_last_state) {
+            _front_button_last_state = led_state;
+            policy.set_front_button_led(led_state);
         }
     }
 
@@ -589,6 +603,7 @@ class SystemTask {
     BootloaderPrepAckCache _prep_cache;
     xt1511::XT1511String<PWM_T, SYSTEM_LED_COUNT> _leds;
     LedState _led_state;
+    std::atomic<bool> _led_update_pending;
     // Tracks error state of different tasks
     errors::ErrorCode _plate_error;
     errors::ErrorCode _lid_error;
@@ -599,6 +614,7 @@ class SystemTask {
     std::atomic<MotorState> _motor_state;
     Pulse _front_button_pulse;
     FrontButtonBlink _front_button_blink;
+    std::atomic<bool> _front_button_last_state;
     // If this is true, set the LED's to all-white no matter what.
     bool _light_debug_mode;
 };
