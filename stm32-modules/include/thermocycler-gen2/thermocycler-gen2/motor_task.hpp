@@ -991,6 +991,7 @@ class MotorTask {
     template <MotorExecutionPolicy Policy>
     auto handle_lid_state_enter(LidState::Status state, Policy& policy)
         -> errors::ErrorCode {
+        constexpr uint32_t system_msg_timeout_ticks = 100;
         auto error = errors::ErrorCode::NO_ERROR;
         auto state_for_system_task =
             messages::UpdateMotorState::MotorState::IDLE;
@@ -1076,7 +1077,8 @@ class MotorTask {
                 messages::UpdateMotorState::MotorState::IDLE;
         }
         static_cast<void>(_task_registry->system->get_message_queue().try_send(
-            messages::UpdateMotorState{.state = state_for_system_task}, 100));
+            messages::UpdateMotorState{.state = state_for_system_task},
+            system_msg_timeout_ticks));
         return error;
     }
 

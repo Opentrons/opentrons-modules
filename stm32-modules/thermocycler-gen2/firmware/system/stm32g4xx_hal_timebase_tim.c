@@ -32,6 +32,7 @@ TIM_HandleTypeDef        htim7;
 
 static systick_callback_t systick_callback = NULL;
 /* Private function prototypes -----------------------------------------------*/
+void hal_timebase_tick(void) __attribute__ ((optimize(3)));
 /* Private functions ---------------------------------------------------------*/
 
 /**
