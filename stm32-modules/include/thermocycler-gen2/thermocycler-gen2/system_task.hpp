@@ -517,9 +517,9 @@ class SystemTask {
     // Should be provided to LED Timer to send LED Update messages. Ensure that
     // the timer implementation does NOT execute in an interrupt context.
     auto led_timer_callback() -> void {
-        if(!_led_update_pending) {
+        if (!_led_update_pending) {
             auto ret = _message_queue.try_send(messages::UpdateUIMessage());
-            if(ret) {
+            if (ret) {
                 _led_update_pending = true;
             }
         }
@@ -547,7 +547,7 @@ class SystemTask {
                 led_state = _front_button_blink.tick();
                 break;
         }
-        if(led_state != _front_button_last_state) {
+        if (led_state != _front_button_last_state) {
             _front_button_last_state = led_state;
             policy.set_front_button_led(led_state);
         }
