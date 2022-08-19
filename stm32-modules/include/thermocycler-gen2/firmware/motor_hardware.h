@@ -81,6 +81,8 @@ bool motor_hardware_lid_stepper_check_fault(void);
  */
 bool motor_hardware_lid_stepper_reset(void);
 
+bool motor_hardware_lid_stepper_set_rpm(double rpm);
+
 /**
  * @brief Read the Lid Closed switch
  *
