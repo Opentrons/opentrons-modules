@@ -298,4 +298,5 @@ install(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.bin"
   "${CMAKE_CURRENT_BINARY_DIR}/heater-shaker@${heater-shaker_VERSION}.hex"
   DESTINATION "heater-shaker"
+  COMPONENT heater-shaker
 )
