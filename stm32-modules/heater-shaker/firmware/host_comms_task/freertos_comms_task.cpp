@@ -104,6 +104,9 @@ extern __ALIGN_BEGIN uint8_t
 
 static std::atomic_bool UartReady = true;
 
+// Wait a whole second to ensure host detects the change
+static constexpr uint32_t _usb_reset_time_ms = 1000;
+
 // Actual function that runs in the task
 void run(void *param) {  // NOLINT(misc-unused-parameters)
     auto *task_pair = static_cast<decltype(_tasks) *>(param);
@@ -118,6 +121,7 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
     USBD_CDC_CfgHSDesc[30] = 0;
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     USBD_CDC_CfgFSDesc[30] = 0;
+    usb_device_reset(_usb_reset_time_ms);
     USBD_Init(&local_task->usb_handle, &CDC_Desc, 0);
     USBD_RegisterClass(&local_task->usb_handle, USBD_CDC_CLASS);
     USBD_CDC_RegisterInterface(&local_task->usb_handle,
