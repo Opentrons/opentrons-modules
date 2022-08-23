@@ -204,7 +204,7 @@ class PlateControl {
             setpoint <= OVERSHOOT_MIN_TEMP) {
             return setpoint;
         }
-        return setpoint + (OVERSHOOT_DEGREES_PER_MICROLITER * volume_ul);
+        return setpoint + (OVERSHOOT_DEGREES_PER_MICROLITER * volume_ul) + 2.0;
     }
 
     /**
@@ -222,7 +222,7 @@ class PlateControl {
             setpoint <= OVERSHOOT_MIN_TEMP) {
             return setpoint;
         }
-        return setpoint + (UNDERSHOOT_DEGREES_PER_MICROLITER * volume_ul);
+        return setpoint + (UNDERSHOOT_DEGREES_PER_MICROLITER * volume_ul) - 2.0;
     }
 
   private:
@@ -296,7 +296,7 @@ class PlateControl {
         if (pid.kp() == 0.0F) {
             return 0.0F;
         }
-        return 1.0F / pid.kp();
+        return 2.0F / pid.kp();
     }
 
     [[nodiscard]] static auto moving_away_from_ambient(double current,

@@ -100,7 +100,7 @@ class ThermalPlateTask {
     // Peltier KI
     static constexpr double DEFAULT_KI = 0.02;
     // Peltier KP
-    static constexpr double DEFAULT_KP = 0.17609173039298845;
+    static constexpr double DEFAULT_KP = 0.3;
     // Peltier KD
     static constexpr double DEFAULT_KD = 0.3;
     static constexpr double DEFAULT_FAN_KI = 0.01;
