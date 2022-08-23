@@ -50,15 +50,6 @@ static timer::GenericTimer<freertos_timer::FreeRTOSTimer> _led_timer(
     "led timer", decltype(_task)::LED_UPDATE_PERIOD_MS, true,
     [ObjectPtr = &_task] { ObjectPtr->led_timer_callback(); });
 
-// Periodic timer for Front Button LED Updates
-static timer::GenericTimer<freertos_timer::FreeRTOSTimer>
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-    _front_button_led_timer("button led",
-                            decltype(_task)::FRONT_BUTTON_PERIOD_MS, true,
-                            [ObjectPtr = &_task] {
-                                ObjectPtr->front_button_led_callback(policy);
-                            });
-
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::atomic<TaskHandle_t> _button_task_handle = nullptr;
 
@@ -82,6 +73,10 @@ static auto front_button_callback() -> void {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast)
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
+}
+
+static auto systick_callback() -> void {
+    _task.front_button_led_callback(policy);
 }
 
 static void run_button_task(void *param) {
@@ -134,7 +129,7 @@ static void run(void *param) {
     auto *task = reinterpret_cast<decltype(_task) *>(param);
 
     _led_timer.start();
-    _front_button_led_timer.start();
+    system_set_systick_callback(systick_callback);
     while (true) {
         task->run_once(policy);
     }

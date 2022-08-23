@@ -53,6 +53,11 @@ auto MotorPolicy::lid_stepper_reset() -> bool {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::lid_stepper_set_rpm(double rpm) -> bool {
+    return motor_hardware_lid_stepper_set_rpm(rpm);
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::lid_solenoid_disengage() -> void {
     motor_hardware_solenoid_release();
 }

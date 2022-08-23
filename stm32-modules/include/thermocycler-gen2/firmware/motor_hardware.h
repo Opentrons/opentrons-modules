@@ -10,8 +10,9 @@ extern "C" {
 // ----------------------------------------------------------------------------
 // Public definitions
 
-// Frequency of the motor interrupt callbacks is 500kHz
-#define MOTOR_INTERRUPT_FREQ (500000)
+// Frequency of the motor interrupt callbacks is 300kHz, providing some extra
+// overhead over the velocities used by this application.
+#define MOTOR_INTERRUPT_FREQ (300000)
 
 // Enumeration of motor error types
 typedef enum MotorError {
@@ -79,6 +80,8 @@ bool motor_hardware_lid_stepper_check_fault(void);
  * @return True if a fault is detected \e after reset, false otherwise
  */
 bool motor_hardware_lid_stepper_reset(void);
+
+bool motor_hardware_lid_stepper_set_rpm(double rpm);
 
 /**
  * @brief Read the Lid Closed switch

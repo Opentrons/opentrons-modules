@@ -101,6 +101,11 @@ extern "C" {
  */
 #define LID_RPM_TO_FREQ(rpm) ((rpm * 1280) / 3)
 
+/** Above this speed, will get skipping */
+#define LID_RPM_MAX (125)
+/** Below this speed reduces torque */
+#define LID_RPM_MIN (75)
+
 // ----------------------------------------------------------------------------
 // Local typedefs
 
@@ -187,6 +192,7 @@ void HAL_TIM_OC_MspInit(TIM_HandleTypeDef* htim);
 static void init_dac1(DAC_HandleTypeDef* hdac);
 static void init_tim2(TIM_HandleTypeDef* htim);
 static void init_tim6(TIM_HandleTypeDef* htim);
+static bool lid_active();
 
 // ----------------------------------------------------------------------------
 // Public function implementation
@@ -286,6 +292,25 @@ bool motor_hardware_lid_stepper_reset(void) {
     }
     //return false if fault persists
     return (motor_hardware_lid_stepper_check_fault() == true) ? false : true;
+}
+
+bool motor_hardware_lid_stepper_set_rpm(double rpm) {
+    if(lid_active()) {
+        return false;
+    }
+    if(rpm < LID_RPM_MIN || rpm > LID_RPM_MAX) {
+        return false;
+    }
+
+    /* Compute TIM2 clock */
+    uint32_t uwTimClock = HAL_RCC_GetPCLK1Freq();
+    uint32_t uwPeriodValue = __HAL_TIM_CALC_PERIOD(
+                uwTimClock, 
+                _motor_hardware.lid_stepper.timer.Init.Prescaler, 
+                LID_RPM_TO_FREQ(rpm));
+    __HAL_TIM_SET_AUTORELOAD(&_motor_hardware.lid_stepper.timer, uwPeriodValue);
+    
+    return true;
 }
 
 bool motor_hardware_lid_read_closed(void) {
@@ -587,6 +612,12 @@ static void init_tim6(TIM_HandleTypeDef* htim) {
     config.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
     hal_ret = HAL_TIMEx_MasterConfigSynchronization(htim, &config);
     configASSERT(hal_ret == HAL_OK);
+}
+
+static bool lid_active() {
+    return TIM_CHANNEL_STATE_GET
+        (&(_motor_hardware.lid_stepper.timer), LID_STEPPER_STEP_Channel) 
+        != HAL_TIM_CHANNEL_STATE_READY;
 }
 
 // ----------------------------------------------------------------------------
