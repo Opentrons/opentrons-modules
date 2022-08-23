@@ -438,9 +438,8 @@ class MotorTask {
             policy.plate_lock_closed_sensor_read()) {
             check_state_message.with_error =
                 errors::ErrorCode::FAULTY_LATCH_SENSORS;
-        }
-        if ((policy.plate_lock_open_sensor_read()) ||
-            (plate_lock_state.status == PlateLockState::IDLE_OPEN)) {
+        } else if ((policy.plate_lock_open_sensor_read()) ||
+                   (plate_lock_state.status == PlateLockState::IDLE_OPEN)) {
             plate_lock_state.status = PlateLockState::IDLE_OPEN;
         } else {
             if (state.status != State::STOPPED_HOMED) {
@@ -465,9 +464,8 @@ class MotorTask {
             policy.plate_lock_closed_sensor_read()) {
             check_state_message.with_error =
                 errors::ErrorCode::FAULTY_LATCH_SENSORS;
-        }
-        if ((policy.plate_lock_closed_sensor_read()) ||
-            (plate_lock_state.status == PlateLockState::IDLE_CLOSED)) {
+        } else if ((policy.plate_lock_closed_sensor_read()) ||
+                   (plate_lock_state.status == PlateLockState::IDLE_CLOSED)) {
             plate_lock_state.status = PlateLockState::IDLE_CLOSED;
         } else {
             if ((state.status != State::STOPPED_HOMED) &&
