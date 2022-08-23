@@ -3,6 +3,9 @@ on:
   push:
     tags:
       - 'heater-shaker@*'
+  pull_request:
+    paths:
+      - '.github/workflows/heater-shaker-create-release.yaml'
   workflow_dispatch:
 
 

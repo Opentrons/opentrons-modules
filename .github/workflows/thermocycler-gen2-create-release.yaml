@@ -3,6 +3,9 @@ on:
   push:
     tags:
       - 'thermocycler-gen2@*'
+  pull_request:
+    paths:
+      - '.github/workflows/thermocycler-gen2-create-release.yaml'
   workflow_dispatch:
 
 
