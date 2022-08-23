@@ -38,6 +38,8 @@ const char* const PLATE_LOCK_NOT_CLOSED =
     "ERR126:main motor:plate lock not closed (required) OK\n";
 const char* const MOTOR_HOMING =
     "ERR127:main motor:currently homing (cannot interrupt) OK\n";
+const char* const FAULTY_LATCH_SENSORS =
+    "ERR128:plate lock:issue with end stop sensors (both reading high) OK\n";
 const char* const HEATER_THERMISTOR_A_DISCONNECTED =
     "ERR201:heater:thermistor a disconnected OK\n";
 const char* const HEATER_THERMISTOR_A_SHORT =
@@ -113,6 +115,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(PLATE_LOCK_TIMEOUT);
         HANDLE_CASE(PLATE_LOCK_NOT_CLOSED);
         HANDLE_CASE(MOTOR_HOMING);
+        HANDLE_CASE(FAULTY_LATCH_SENSORS);
         HANDLE_CASE(HEATER_THERMISTOR_A_DISCONNECTED);
         HANDLE_CASE(HEATER_THERMISTOR_A_SHORT);
         HANDLE_CASE(HEATER_THERMISTOR_A_OVERTEMP);
