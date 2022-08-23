@@ -35,7 +35,7 @@ class PlateControl {
     /** Number of thermistors per peltier.*/
     static constexpr size_t THERM_PER_PELTIER = 2;
     /** Max ∆T to be considered "at" the setpoint.*/
-    static constexpr double SETPOINT_THRESHOLD = 1.5F;
+    static constexpr double SETPOINT_THRESHOLD = 2.0F;
 
     /** Degrees C *under* the threshold to set the fan.*/
     static constexpr double FAN_SETPOINT_OFFSET = (-2.0F);
@@ -80,10 +80,9 @@ class PlateControl {
         OVERSHOOT_MIN_VOLUME_MICROLITERS;
     /** Minimum temperature difference to trigger overshoot, in ºC.*/
     static constexpr double UNDERSHOOT_MIN_DIFFERENCE = 5.0F;
-    /** Below this threshold, do not perform undershoot/overshoot */
-    static constexpr double OVERSHOOT_MIN_TEMP = 24.0F;
-    /** Amount of time to stay in overshoot, in seconds.*/
-    static constexpr Seconds OVERSHOOT_TIME = 10.0F;
+    /** Margin where controller switches targets from overshoot/undershoot
+     * to actual target */
+    static constexpr double OVERSHOOT_TARGET_SWITCH_DIFFERENCE = 2.0F;
     /** Maximum drift between thermistors at steady state, in ºC.*/
     static constexpr double THERMISTOR_DRIFT_MAX_C = 4.0F;
     /** Minimum time that the system must be in steady state before
@@ -93,6 +92,14 @@ class PlateControl {
     static constexpr double TEMPERATURE_AMBIENT = 23.0F;
     /** How far from target temp to reset Integral Windup.*/
     static constexpr double WINDUP_RESET_THRESHOLD = 3.0F;
+    /** Maximum time in seconds for overshoot to apply.*/
+    static constexpr double MAX_HOLD_TIME_FOR_OVERSHOOT = 120.0F;
+    /** When HEATING to a target below ambient temperature, adjust
+     *  the initial overshoot/undershoot target by this amount to
+     *  reduce the effects of over-overshooting.*/
+    static constexpr double TARGET_ADJUST_FOR_COLD_TARGET = -5.0F;
+    /** Extra factor to multiply the proportioal band by */
+    static constexpr double PROPORTIONAL_BAND_EXTRA_FACTOR = 2.0F;
 
     PlateControl() = delete;
     /**
@@ -201,10 +208,11 @@ class PlateControl {
     [[nodiscard]] static auto calculate_overshoot(double setpoint,
                                                   double volume_ul) -> double {
         if (volume_ul <= OVERSHOOT_MIN_VOLUME_MICROLITERS ||
-            setpoint <= OVERSHOOT_MIN_TEMP) {
+            setpoint <= TEMPERATURE_AMBIENT) {
             return setpoint;
         }
-        return setpoint + (OVERSHOOT_DEGREES_PER_MICROLITER * volume_ul) + 2.0;
+        return setpoint + (OVERSHOOT_DEGREES_PER_MICROLITER * volume_ul) +
+               OVERSHOOT_TARGET_SWITCH_DIFFERENCE;
     }
 
     /**
@@ -219,10 +227,11 @@ class PlateControl {
     [[nodiscard]] static auto calculate_undershoot(double setpoint,
                                                    double volume_ul) -> double {
         if (volume_ul <= UNDERSHOOT_MIN_VOLUME_MICROLITERS ||
-            setpoint <= OVERSHOOT_MIN_TEMP) {
+            setpoint <= TEMPERATURE_AMBIENT) {
             return setpoint;
         }
-        return setpoint + (UNDERSHOOT_DEGREES_PER_MICROLITER * volume_ul) - 2.0;
+        return setpoint + (UNDERSHOOT_DEGREES_PER_MICROLITER * volume_ul) -
+               OVERSHOOT_TARGET_SWITCH_DIFFERENCE;
     }
 
   private:
@@ -296,7 +305,7 @@ class PlateControl {
         if (pid.kp() == 0.0F) {
             return 0.0F;
         }
-        return 2.0F / pid.kp();
+        return PROPORTIONAL_BAND_EXTRA_FACTOR / pid.kp();
     }
 
     [[nodiscard]] static auto moving_away_from_ambient(double current,
@@ -323,7 +332,6 @@ class PlateControl {
     // Once the plate is in the "steady state" mode, this timer tracks
     // how long until the firmware should check for uniformity errors.
     Seconds _uniformity_error_timer = 0.0F;
-    Seconds _remaining_overshoot_time = 0.0F;
     Seconds _hold_time = 0.0F;            // Total hold time
     Seconds _remaining_hold_time = 0.0F;  // Hold time left, out of _hold_time
 };

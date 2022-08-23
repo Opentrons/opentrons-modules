@@ -21,10 +21,10 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
         case PlateStatus::INITIAL_HEAT:
         case PlateStatus::INITIAL_COOL: {
             auto distance = std::abs(_current_setpoint - plate_temp());
-            // Check if we crossed the TRUE threshold temp
-            if (distance < 2.0F) {
+            // Check if we are close enough to the overshoot/undershoot
+            // target to switch to the actual target
+            if (distance < OVERSHOOT_TARGET_SWITCH_DIFFERENCE) {
                 _status = PlateStatus::OVERSHOOT;
-                _remaining_overshoot_time = 0;
                 _left.temp_target = _current_setpoint;
                 _right.temp_target = _current_setpoint;
                 _center.temp_target = _current_setpoint;
@@ -36,19 +36,15 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
             break;
         }
         case PlateStatus::OVERSHOOT:
-            _remaining_overshoot_time -= time;
-            if (_remaining_overshoot_time <= 0.0F) {
-                _current_setpoint = _setpoint;
-                _left.temp_target = _setpoint;
-                _right.temp_target = _setpoint;
-                _center.temp_target = _setpoint;
-                _status = PlateStatus::STEADY_STATE;
-                _uniformity_error_timer = UNIFORMITY_CHECK_DELAY;
-            }
+            _current_setpoint = _setpoint;
+            _left.temp_target = _setpoint;
+            _right.temp_target = _setpoint;
+            _center.temp_target = _setpoint;
+            _status = PlateStatus::STEADY_STATE;
+            _uniformity_error_timer = UNIFORMITY_CHECK_DELAY;
             break;
         case PlateStatus::STEADY_STATE:
-            auto distance = std::abs(_setpoint - plate_temp());
-            if (distance < 2.0F) {
+            if (temp_within_setpoint()) {
                 // Hold time is ONLY updated in steady state!
                 _remaining_hold_time = std::max(_remaining_hold_time - time,
                                                 static_cast<double>(0.0F));
@@ -97,14 +93,16 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
                                         : PlateStatus::INITIAL_COOL;
 
     auto distance_to_target = std::abs(setpoint - current_temp);
-    if (distance_to_target > UNDERSHOOT_MIN_DIFFERENCE && hold_time < 120.0F) {
+    if (distance_to_target > UNDERSHOOT_MIN_DIFFERENCE &&
+        hold_time < MAX_HOLD_TIME_FOR_OVERSHOOT) {
         if (_status == PlateStatus::INITIAL_HEAT) {
             _current_setpoint = calculate_overshoot(_setpoint, volume_ul);
             // If we're HEATING to a temp less than the heatsink, adjust
             // the setpoint to avoid an over-overshoot
             if (_current_setpoint < _fan.current_temp()) {
                 _current_setpoint =
-                    std::max(current_temp, _current_setpoint - 5);
+                    std::max(current_temp,
+                             _current_setpoint + TARGET_ADJUST_FOR_COLD_TARGET);
             }
         } else {
             _current_setpoint = calculate_undershoot(_setpoint, volume_ul);

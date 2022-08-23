@@ -15,9 +15,11 @@ def cycle(ser : serial.Serial, volume: float):
         (5.0, 50.0),
         (20.0, 20.0) ]
     targets = [
-        (4.0, 35.0),
-        (15.0, 35.0),
-        (45.0, 35.0),
+        (4.0, 10.0),
+        (15.0, 40.0),
+        (94.0, 10.0),
+        (70.0, 35.0),
+        (72.0, 35.0),
         (90.0, 35.0),
         (95.0, 35.0),]
     target_idx = 0
@@ -37,8 +39,8 @@ def cycle(ser : serial.Serial, volume: float):
                     hold_timer = time.time()
                     print('Reached target. Holding')
             else:
-                to_hold = targets[target_idx][1]
-                if time.time() - hold_timer >= to_hold:
+                to_hold = test_utils.get_remaining_hold(ser)
+                if to_hold < 0.1:
                     hold_timer = 0.0
                     target_idx = target_idx + 1
                     if target_idx == len(targets):
@@ -77,6 +79,6 @@ if __name__ == '__main__':
         test_utils.set_peltier_pid(args.constants[0], args.constants[1], args.constants[2], ser)
 
     test_utils.set_lid_temperature(105, ser)
-    cycle(ser, 0.0)
+    cycle(ser, 40.0)
     test_utils.deactivate_lid(ser)
     test_utils.deactivate_plate(ser)

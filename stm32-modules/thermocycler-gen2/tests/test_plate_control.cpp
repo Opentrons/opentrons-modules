@@ -11,7 +11,7 @@ static constexpr double ROOM_TEMP = 23.0F;
 static constexpr double HOT_TEMP = 90.0F;
 static constexpr double COLD_TEMP = 4.0F;
 static constexpr double WARM_TEMP = 28.0F;
-static constexpr double THRESHOLD = 0.5F;
+static constexpr double THRESHOLD = 2.0F;
 
 // Useful test functions
 
@@ -31,11 +31,19 @@ static void set_temp(std::vector<Thermistor> &thermistors,
 TEST_CASE("PlateControl overshoot and undershoot calculation") {
     using namespace plate_control;
     const double input_volume = GENERATE(0.0F, 10.0F, 25.0F, 100.0F);
-    const double input_temp = GENERATE(0.0F, 10.0F, 25.0F, 90.0F);
+    const double input_temp = GENERATE(0.0F, 10.0F, 30.0F, 90.0F);
+
+    double output_temp_diff;
+    if (input_volume < PlateControl::OVERSHOOT_MIN_VOLUME_MICROLITERS) {
+        output_temp_diff = 0;
+    } else if (input_temp < PlateControl::TEMPERATURE_AMBIENT) {
+        output_temp_diff = 0;
+    } else {
+        output_temp_diff =
+            (input_volume * PlateControl::OVERSHOOT_DEGREES_PER_MICROLITER) +
+            PlateControl::OVERSHOOT_TARGET_SWITCH_DIFFERENCE;
+    }
     WHEN("calculating overshoot") {
-        const double output_temp_diff =
-            (input_volume * PlateControl::OVERSHOOT_M_CONST) +
-            PlateControl::OVERSHOOT_B_CONST;
         auto output =
             PlateControl::calculate_overshoot(input_temp, input_volume);
         THEN("overshoot is correct") {
@@ -44,14 +52,11 @@ TEST_CASE("PlateControl overshoot and undershoot calculation") {
         }
     }
     WHEN("calculating undershoot") {
-        const double output_temp_diff =
-            (input_volume * PlateControl::UNDERSHOOT_M_CONST) +
-            PlateControl::UNDERSHOOT_B_CONST;
         auto output =
             PlateControl::calculate_undershoot(input_temp, input_volume);
-        THEN("overshoot is correct") {
+        THEN("undershoot is correct") {
             REQUIRE_THAT(output, Catch::Matchers::WithinAbs(
-                                     input_temp + output_temp_diff, 0.001));
+                                     input_temp - output_temp_diff, 0.001));
         }
     }
 }
@@ -201,7 +206,7 @@ TEST_CASE("PlateControl drift error check") {
 
 SCENARIO("PlateControl peltier control works") {
     GIVEN("a PlateControl object with room temperature thermistors") {
-        constexpr double input_volume = 25.0F;
+        constexpr double input_volume = 5.0F;
         std::vector<Thermistor> thermistors;
         for (int i = 0; i < (PeltierID::PELTIER_NUMBER * 2) + 1; ++i) {
             thermistors.push_back(Thermistor{
@@ -295,9 +300,8 @@ SCENARIO("PlateControl peltier control works") {
                         REQUIRE(!plateControl.temp_within_setpoint());
                     }
                 }
-                AND_WHEN("holding at temperature for >10 seconds") {
-                    static_cast<void>(plateControl.update_control(
-                        plateControl.OVERSHOOT_TIME));
+                AND_WHEN("holding at temperature for a second") {
+                    static_cast<void>(plateControl.update_control(1));
                     THEN("the plate should move to Holding mode") {
                         REQUIRE(plateControl.status() ==
                                 plate_control::PlateStatus::STEADY_STATE);
@@ -366,9 +370,8 @@ SCENARIO("PlateControl peltier control works") {
                             plate_control::PlateStatus::OVERSHOOT);
                     REQUIRE(!plateControl.temp_within_setpoint());
                 }
-                AND_WHEN("holding at temperature for >10 seconds") {
-                    static_cast<void>(plateControl.update_control(
-                        plateControl.OVERSHOOT_TIME));
+                AND_WHEN("holding at temperature for a second") {
+                    static_cast<void>(plateControl.update_control(1));
                     THEN("the plate should move to Holding mode") {
                         REQUIRE(plateControl.status() ==
                                 plate_control::PlateStatus::STEADY_STATE);
