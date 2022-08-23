@@ -68,16 +68,20 @@ class PlateControl {
                                                                      0.55};
     /** Min & max power settings when holding at a hot temp.*/
     static constexpr std::pair<double, double> FAN_POWER_LIMITS_HOT{0.30, 0.55};
-    /** Overshoot M constant */
-    static constexpr double OVERSHOOT_M_CONST = 0.0105;
-    /** Overshoot B constant in ºC*/
-    static constexpr double OVERSHOOT_B_CONST = 1.0869;
-    /** Undershoot M constant */
-    static constexpr double UNDERSHOOT_M_CONST = -0.0133;
-    /** Undershoot B constant in ºC*/
-    static constexpr double UNDERSHOOT_B_CONST = -0.4302;
+    /** Slope for overshoot & undershoot, in C/µL */
+    static constexpr double OVERSHOOT_DEGREES_PER_MICROLITER = (2.0F / 50.0F);
+    /** Minimum volume to trigger overshoot/undershoot */
+    static constexpr double OVERSHOOT_MIN_VOLUME_MICROLITERS = 20.0F;
+    /** Slope for overshoot & undershoot, in C/µL */
+    static constexpr double UNDERSHOOT_DEGREES_PER_MICROLITER =
+        -OVERSHOOT_DEGREES_PER_MICROLITER;
+    /** Minimum volume to trigger overshoot/undershoot */
+    static constexpr double UNDERSHOOT_MIN_VOLUME_MICROLITERS =
+        OVERSHOOT_MIN_VOLUME_MICROLITERS;
     /** Minimum temperature difference to trigger overshoot, in ºC.*/
-    static constexpr double UNDERSHOOT_MIN_DIFFERENCE = 0.5;
+    static constexpr double UNDERSHOOT_MIN_DIFFERENCE = 5.0F;
+    /** Below this threshold, do not perform undershoot/overshoot */
+    static constexpr double OVERSHOOT_MIN_TEMP = 24.0F;
     /** Amount of time to stay in overshoot, in seconds.*/
     static constexpr Seconds OVERSHOOT_TIME = 10.0F;
     /** Maximum drift between thermistors at steady state, in ºC.*/
@@ -196,7 +200,11 @@ class PlateControl {
      */
     [[nodiscard]] static auto calculate_overshoot(double setpoint,
                                                   double volume_ul) -> double {
-        return setpoint + (OVERSHOOT_M_CONST * volume_ul) + OVERSHOOT_B_CONST;
+        if (volume_ul <= OVERSHOOT_MIN_VOLUME_MICROLITERS ||
+            setpoint <= OVERSHOOT_MIN_TEMP) {
+            return setpoint;
+        }
+        return setpoint + (OVERSHOOT_DEGREES_PER_MICROLITER * volume_ul);
     }
 
     /**
@@ -210,7 +218,11 @@ class PlateControl {
      */
     [[nodiscard]] static auto calculate_undershoot(double setpoint,
                                                    double volume_ul) -> double {
-        return setpoint + (UNDERSHOOT_M_CONST * volume_ul) + UNDERSHOOT_B_CONST;
+        if (volume_ul <= UNDERSHOOT_MIN_VOLUME_MICROLITERS ||
+            setpoint <= OVERSHOOT_MIN_TEMP) {
+            return setpoint;
+        }
+        return setpoint + (UNDERSHOOT_DEGREES_PER_MICROLITER * volume_ul);
     }
 
   private:
