@@ -75,6 +75,13 @@ class MotorPolicy {
      */
     auto lid_stepper_reset() -> bool;
     /**
+     * @brief Set the velocity of the lid stepper in RPM. If the lid stepper
+     * is in motion, this will fail.
+     *
+     * @return true if the rpm could be updated
+     */
+    auto lid_stepper_set_rpm(double rpm) -> bool;
+    /**
      * @brief Disengage the lid solenoid
      */
     auto lid_solenoid_disengage() -> void;

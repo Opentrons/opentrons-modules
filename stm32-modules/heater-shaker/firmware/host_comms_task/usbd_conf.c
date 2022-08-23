@@ -32,6 +32,27 @@
 static uint8_t cdc_classhandle_backing_store[sizeof(USBD_CDC_HandleTypeDef)];
 static PCD_HandleTypeDef pcd_handle;
 
+void usb_device_reset(uint32_t delay_ms) {
+    GPIO_InitTypeDef init;
+
+    /* Enable the GPIOA clock for USB DataLines */
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    /* Configure USB DP pin */
+    init.Pin = (GPIO_PIN_12);
+    init.Mode = GPIO_MODE_OUTPUT_PP;
+    init.Pull = GPIO_NOPULL;
+    init.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOA, &init);
+
+    // Write 0 for a single ended 0
+    HAL_GPIO_WritePin(GPIOA, init.Pin, GPIO_PIN_RESET);
+    
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));
+
+    // Deinit the GPIO to make sure USB initialization works
+    HAL_GPIO_DeInit(GPIOA, init.Pin);
+}
+
 // All the HAL_PCD functions here are statically-defined callbacks from the HAL.
 // The ones that don't do anything are present only as a reminder they exist.
 //
