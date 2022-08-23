@@ -1,11 +1,11 @@
-name: 'Heater-shaker create release from tag'
+name: 'Thermocycler-gen2 create release from tag'
 on:
   push:
     tags:
-      - 'heater-shaker@*'
+      - 'thermocycler-gen2@*'
   pull_request:
     paths:
-      - '.github/workflows/heater-shaker-create-release.yaml'
+      - '.github/workflows/thermocycler-gen2-create-release.yaml'
   workflow_dispatch:
 
 
@@ -31,20 +31,20 @@ jobs:
       - name: 'Configure'
         run: cmake --preset=stm32-cross .
       - name: 'Build'
-        run: cmake --build --preset cross --target heater-shaker-hex
+        run: cmake --build --preset cross --target thermocycler-gen2-hex
       - name: 'Build Combo Image Hex'
-        run: cmake --build --preset cross --target heater-shaker-image-hex
+        run: cmake --build --preset cross --target thermocycler-gen2-image-hex
       - name: 'Build Combo Image Binary'
-        run: cmake --build --preset cross --target heater-shaker-image-bin
+        run: cmake --build --preset cross --target thermocycler-gen2-image-bin
       - name: 'Build Combo Image Zip'
-        run: cmake --build --preset cross --target heater-shaker-zip
+        run: cmake --build --preset cross --target thermocycler-gen2-zip
       - name: 'Prep for install'
-        run: cmake --install ./build-stm32-cross --component heater-shaker
+        run: cmake --install ./build-stm32-cross --component thermocycler-gen2
       - name: 'Save firmware artifacts'
         uses: actions/upload-artifact@v3
         with:
-          name: heater-shaker-build
-          path: dist/heater-shaker/*.zip
+          name: thermocycler-gen2-build
+          path: dist/thermocycler-gen2/*.zip
       - if: github.event_name != 'pull_request'
         name: 'Deploy'
         env:
