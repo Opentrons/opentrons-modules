@@ -122,6 +122,7 @@ static void thermal_gpio_init(void) {
 static void thermal_i2c_init(void) {
     HAL_StatusTypeDef hal_ret;
     // Initialize I2C 
+    _i2c_handle.State = HAL_I2C_STATE_RESET;
     _i2c_handle.Instance = I2C_INSTANCE;
     _i2c_handle.Init.Timing = I2C_TIMING;
     _i2c_handle.Init.OwnAddress1 = 0;

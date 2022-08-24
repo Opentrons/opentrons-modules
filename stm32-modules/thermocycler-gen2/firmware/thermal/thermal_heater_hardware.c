@@ -83,6 +83,7 @@ void thermal_heater_initialize(void) {
     HAL_GPIO_WritePin(_heater.enable_port, _heater.enable_pin, GPIO_PIN_RESET);
 
     // Configure timer 15 for PWMN control on channel 1
+    _heater.timer.State = HAL_TIM_STATE_RESET;
     _heater.timer.Instance = TIM15;
     _heater.timer.Init.Prescaler = TIM15_PRESCALER;
     _heater.timer.Init.CounterMode = TIM_COUNTERMODE_UP;

@@ -146,6 +146,7 @@ static void adc_setup(ADC_HandleTypeDef* adc) {
 }
 
 static void tim_setup(TIM_HandleTypeDef* tim) {
+    tim->State = HAL_TIM_STATE_RESET;
     tim->Instance = TIM4;
     tim->Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     tim->Init.CounterMode = TIM_COUNTERMODE_UP;
