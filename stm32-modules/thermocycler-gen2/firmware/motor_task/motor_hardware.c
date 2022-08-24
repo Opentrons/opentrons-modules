@@ -551,6 +551,7 @@ static void init_dac1(DAC_HandleTypeDef* hdac) {
 
     __HAL_RCC_DAC1_CLK_ENABLE();
     hdac->Instance = DAC1;
+    hdac->State = HAL_DAC_STATE_RESET;
     hal_ret = HAL_DAC_Init(hdac);
     configASSERT(hal_ret == HAL_OK);
 
@@ -583,6 +584,7 @@ static void init_tim2(TIM_HandleTypeDef* htim) {
     htim->Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     htim->Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
     htim->Channel = HAL_TIM_ACTIVE_CHANNEL_1;
+    htim->State = HAL_TIM_STATE_RESET;
     hal_ret = HAL_TIM_OC_Init(htim);
     configASSERT(hal_ret == HAL_OK);
     
@@ -605,6 +607,7 @@ static void init_tim6(TIM_HandleTypeDef* htim) {
     htim->Init.CounterMode = TIM_COUNTERMODE_UP;
     htim->Init.Period = TIM6_PERIOD;
     htim->Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    htim->State = HAL_TIM_STATE_RESET;
     hal_ret = HAL_TIM_Base_Init(htim);
     configASSERT(hal_ret == HAL_OK);
 
