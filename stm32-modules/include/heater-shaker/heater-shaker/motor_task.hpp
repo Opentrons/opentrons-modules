@@ -99,8 +99,8 @@ class MotorTask {
               // SetRPM commands
 
   public:
-    static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 250;
-    static constexpr int16_t HOMING_ROTATION_LIMIT_LOW_RPM = 200;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 325;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_LOW_RPM = 275;
     static constexpr int16_t HOMING_ROTATION_LOW_MARGIN = 25;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_INITIAL = 200;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
@@ -110,6 +110,8 @@ class MotorTask {
                // for SZ testing, needs to be tuned down (must end in 50 to pass
                // tests)
     static constexpr int16_t MOTOR_START_THRESHOLD_RPM = 20;
+    static constexpr int16_t MOTOR_KICKSTART_RPM =
+        300;  // to overcome static friction at low RPMs
     using Queue = QueueImpl<Message>;
     static constexpr uint8_t PLATE_LOCK_STATE_SIZE = 14;
     explicit MotorTask(Queue& q)
@@ -163,14 +165,25 @@ class MotorTask {
     auto visit_message(const messages::SetRPMMessage& msg, Policy& policy)
         -> void {
         auto error = errors::ErrorCode::NO_ERROR;
-        if ((!policy.plate_lock_closed_sensor_read()) &&
-            (plate_lock_state.status != PlateLockState::IDLE_CLOSED)) {
+        if (current_error !=
+            errors::ErrorCode::NO_ERROR) {  // motor-control error
+                                            // supercedes illegal-speed
+                                            // and unable-to-move errors
+            error = current_error;
+        } else if ((!policy.plate_lock_closed_sensor_read()) &&
+                   (plate_lock_state.status != PlateLockState::IDLE_CLOSED)) {
             error = errors::ErrorCode::PLATE_LOCK_NOT_CLOSED;
         } else if ((state.status == State::HOMING_MOVING_TO_HOME_SPEED) ||
                    (state.status == State::HOMING_COASTING_TO_STOP)) {
             error = errors::ErrorCode::MOTOR_HOMING;
         } else {
             policy.homing_solenoid_disengage();
+            if ((msg.target_rpm < MOTOR_KICKSTART_RPM) &&
+                (msg.target_rpm > 0) &&
+                (setpoint == 0)) {  // ensure motor not already moving
+                policy.set_rpm(MOTOR_KICKSTART_RPM);
+                policy.delay_ticks(MOTOR_START_WAIT_TICKS);
+            }
             error = policy.set_rpm(msg.target_rpm);
             if (error == errors::ErrorCode::NO_ERROR) {  // only proceed if
                                                          // target speed legal
@@ -185,12 +198,6 @@ class MotorTask {
                     setpoint = 0;
                 }
             }
-        }
-        if (current_error !=
-            errors::ErrorCode::NO_ERROR) {  // motor-control error supercedes
-                                            // illegal-speed and unable-to-move
-                                            // errors
-            error = current_error;
         }
         auto response = messages::AcknowledgePrevious{
             .responding_to_id = msg.id, .with_error = error};
