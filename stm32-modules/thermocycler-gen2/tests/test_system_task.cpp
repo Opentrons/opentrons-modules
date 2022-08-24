@@ -468,7 +468,6 @@ TEST_CASE("system task front button led behavior") {
     auto tasks = TaskBuilder::build();
 
     WHEN("the motor mode is set to idle from another state") {
-        tasks->get_system_policy().set_front_button_led(false);
         auto msg = messages::UpdateMotorState{
             .state =
                 messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING};
@@ -479,14 +478,21 @@ TEST_CASE("system task front button led behavior") {
         tasks->run_system_task();
         THEN("the front LED is turned on") {
             REQUIRE(tasks->get_system_policy().get_front_led());
-            AND_WHEN("the led callback is invoked") {
-                auto led_status = GENERATE(false, true);
-                tasks->get_system_policy().set_front_button_led(led_status);
+            AND_WHEN("the led callback is invoked once") {
                 tasks->get_system_task().front_button_led_callback(
                     tasks->get_system_policy());
-                THEN("the front LED is not refreshed") {
-                    REQUIRE(tasks->get_system_policy().get_front_led() ==
-                            led_status);
+                THEN("the front LED is set on") {
+                    REQUIRE(tasks->get_system_policy().get_front_led());
+                }
+                AND_WHEN("the led callback is invoked again") {
+                    auto led_status = GENERATE(false, true);
+                    tasks->get_system_policy().set_front_button_led(led_status);
+                    tasks->get_system_task().front_button_led_callback(
+                        tasks->get_system_policy());
+                    THEN("the front LED is not refreshed") {
+                        REQUIRE(tasks->get_system_policy().get_front_led() ==
+                                led_status);
+                    }
                 }
             }
         }

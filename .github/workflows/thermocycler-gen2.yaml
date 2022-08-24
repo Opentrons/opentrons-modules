@@ -13,6 +13,7 @@ on:
       - '.clang-format'
       - '.clang-tidy'
       - 'cpp-utils/**/*'
+      - '.github/workflows/thermocycler-gen2-create-release.yaml'
     paths_ignore:
       - 'cmake/Arduino*'
   push:
