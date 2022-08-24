@@ -161,7 +161,7 @@ SCENARIO("system task message passing") {
             THEN("the task should process the message") {
                 REQUIRE(tasks->get_system_queue().backing_deque.empty());
                 REQUIRE(tasks->get_system_task().get_led_mode() ==
-                        LED_MODE::SOLID_HOLDING);
+                        LED_MODE::PULSE);
                 REQUIRE(tasks->get_system_task().get_led_color() ==
                         LED_COLOR::AMBER);
                 AND_THEN(
