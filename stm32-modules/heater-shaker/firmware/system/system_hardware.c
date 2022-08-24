@@ -47,6 +47,7 @@ void system_hardware_setup(void) {
     HAL_GPIO_Init(SOFTPOWER_PORT, &gpio_init);
 
     /*##-1- Configure the I2C peripheral ######################################*/
+    I2cHandle.State                = HAL_I2C_STATE_RESET;
     I2cHandle.Instance             = I2Cx;
     I2cHandle.Init.Timing          = I2C_TIMING;
     I2cHandle.Init.OwnAddress1     = I2C_ADDRESS;

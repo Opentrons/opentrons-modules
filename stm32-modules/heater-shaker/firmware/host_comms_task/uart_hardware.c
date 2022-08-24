@@ -10,6 +10,8 @@ void UART_Init(UART_HandleTypeDef *huart)
   HAL_StatusTypeDef ret;
   uart_handle = huart;
 
+  // huart state does not need to be preset to RESET because the call to
+  // DeInit the peripheral handles that
   huart->Instance        = USARTx;
   huart->Init.BaudRate   = 115200;
   huart->Init.WordLength = UART_WORDLENGTH_8B;
