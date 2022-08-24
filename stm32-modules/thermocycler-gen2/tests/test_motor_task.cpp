@@ -546,6 +546,11 @@ SCENARIO("motor task message passing") {
                     REQUIRE(motor_task.get_lid_state() ==
                             motor_task::LidState::Status::PLATE_LIFTING);
                 }
+                THEN("the lid rpm is updated") {
+                    REQUIRE(
+                        tasks->get_motor_policy().get_lid_rpm() ==
+                        motor_task::LidStepperState::PLATE_LIFT_VELOCITY_RPM);
+                }
             }
             WHEN("sending a GetLidSwitches message") {
                 auto message = messages::GetLidSwitchesMessage{.id = 123};
@@ -624,6 +629,8 @@ struct MotorStep {
     using SealPos = motor_util::SealStepper::Status;
     // If this variable is set, expect seal in a specific position
     std::optional<SealPos> seal_pos = std::nullopt;
+    // If this variable is set, check the lid velocity
+    std::optional<double> lid_rpm = std::nullopt;
     // If true, expect an ack in the host comms task
     std::optional<messages::AcknowledgePrevious> ack = std::nullopt;
 };
@@ -729,7 +736,9 @@ SCENARIO("motor task lid state machine") {
                          .reason = messages::SealStepperComplete::
                              CompletionReason::DONE},
                  .lid_angle_increased = true,
-                 .lid_overdrive = false},
+                 .lid_overdrive = false,
+                 .lid_rpm =
+                     motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM},
                 // Fourth step overdrives hinge
                 {.msg = messages::LidStepperComplete(),
                  .lid_angle_decreased = true,
@@ -810,7 +819,9 @@ SCENARIO("motor task lid state machine") {
                          .reason = messages::SealStepperComplete::
                              CompletionReason::DONE},
                  .lid_angle_decreased = true,
-                 .lid_overdrive = false},
+                 .lid_overdrive = false,
+                 .lid_rpm =
+                     motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM},
                 // Fourth step overdrives hinge
                 {.msg = messages::LidStepperComplete(),
                  .lid_angle_decreased = true,
@@ -847,7 +858,9 @@ SCENARIO("motor task lid state machine") {
                 {.msg = messages::PlateLiftMessage{.id = 123},
                  .lid_angle_increased = true,
                  .lid_overdrive = true,
-                 .motor_state = MotorStep::MotorState::PLATE_LIFT},
+                 .motor_state = MotorStep::MotorState::PLATE_LIFT,
+                 .lid_rpm =
+                     motor_task::LidStepperState::PLATE_LIFT_VELOCITY_RPM},
                 // Now close back below the switch
                 {.msg = messages::LidStepperComplete(),
                  .lid_angle_decreased = true,
@@ -895,7 +908,9 @@ SCENARIO("motor task lid state machine") {
                          .reason = messages::SealStepperComplete::
                              CompletionReason::DONE},
                  .lid_angle_increased = true,
-                 .lid_overdrive = false},
+                 .lid_overdrive = false,
+                 .lid_rpm =
+                     motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM},
                 // Fourth step overdrives hinge
                 {.msg = messages::LidStepperComplete(),
                  .lid_angle_decreased = true,
@@ -930,7 +945,9 @@ SCENARIO("motor task lid state machine") {
                          .reason = messages::SealStepperComplete::
                              CompletionReason::DONE},
                  .lid_angle_decreased = true,
-                 .lid_overdrive = false},
+                 .lid_overdrive = false,
+                 .lid_rpm =
+                     motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM},
                 // Fourth step overdrives hinge
                 {.msg = messages::LidStepperComplete(),
                  .lid_angle_decreased = true,

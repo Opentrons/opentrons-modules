@@ -74,6 +74,8 @@ class SimMotorPolicy : public SimTMC2130Policy {
         return true;
     }
 
+    auto lid_stepper_set_rpm(double rpm) -> bool { return true; }
+
     auto lid_solenoid_disengage() -> void { _solenoid_engaged = false; }
     auto lid_solenoid_engage() -> void { _solenoid_engaged = true; }
 

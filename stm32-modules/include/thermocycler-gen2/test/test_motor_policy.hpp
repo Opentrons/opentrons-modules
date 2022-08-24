@@ -35,6 +35,11 @@ class TestMotorPolicy : public TestTMC2130Policy {
         return true;
     }
 
+    auto lid_stepper_set_rpm(double rpm) -> bool {
+        _lid_rpm = rpm;
+        return true;
+    }
+
     auto lid_solenoid_disengage() -> void { _solenoid_engaged = false; }
     auto lid_solenoid_engage() -> void { _solenoid_engaged = true; }
 
@@ -109,6 +114,8 @@ class TestMotorPolicy : public TestTMC2130Policy {
         _retraction_switch_triggered = val;
     }
 
+    auto get_lid_rpm() -> double { return _lid_rpm; }
+
   private:
     // Solenoid is engaged when unpowered
     bool _solenoid_engaged = true;
@@ -124,5 +131,6 @@ class TestMotorPolicy : public TestTMC2130Policy {
     bool _retraction_switch_triggered = false;
     bool _extension_switch_armed = false;
     bool _retraction_switch_armed = false;
+    double _lid_rpm = 0;
     Callback _callback;
 };
