@@ -171,9 +171,9 @@ class MotorTask {
             error = errors::ErrorCode::MOTOR_HOMING;
         } else {
             policy.homing_solenoid_disengage();
-            if (msg.target_rpm < 300) { //make define
+            if (msg.target_rpm < 300) {  // make define
                 policy.set_rpm(300);
-                policy.delay_ticks(1000); //test. Make define
+                policy.delay_ticks(1000);  // test. Make define
             }
             error = policy.set_rpm(msg.target_rpm);
             if (error == errors::ErrorCode::NO_ERROR) {  // only proceed if
