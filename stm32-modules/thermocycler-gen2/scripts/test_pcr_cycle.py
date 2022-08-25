@@ -8,13 +8,12 @@ import sys
 import argparse
 
 def cycle(ser : serial.Serial, volume: float):
-    # Cycle to 95 then 5 and finally back
     # Format is target temp, then hold time
-    targets_pcr = [
-        (95.0, 40.0),
-        (5.0, 50.0),
-        (20.0, 20.0) ]
     targets = [
+        (94.0, 10.0),
+        (70.0, 30.0),
+        (72.0, 30.0) ]
+    targets_old = [
         (4.0, 10.0),
         (15.0, 40.0),
         (94.0, 10.0),
@@ -66,6 +65,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--constants', type=float, required=False, nargs=3, 
                         metavar=('P','I','D'), 
                         help='define P, I, and D constants for control')
+    parser.add_argument('-v', '--volume', type=float, required=False, default=25, help='volume in µL')
     args = parser.parse_args()
     if args.socket:
         print(f"Opening socket at localhost:{args.socket}")
@@ -79,6 +79,6 @@ if __name__ == '__main__':
         test_utils.set_peltier_pid(args.constants[0], args.constants[1], args.constants[2], ser)
 
     test_utils.set_lid_temperature(105, ser)
-    cycle(ser, 40.0)
+    cycle(ser, args.volume)
     test_utils.deactivate_lid(ser)
     test_utils.deactivate_plate(ser)

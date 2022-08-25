@@ -98,7 +98,7 @@ class ThermalPlateTask {
     static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
     static constexpr uint8_t PLATE_THERM_COUNT = 7;
     // Peltier KI
-    static constexpr double DEFAULT_KI = 0.02;
+    static constexpr double DEFAULT_KI = 0.05;
     // Peltier KP
     static constexpr double DEFAULT_KP = 0.3;
     // Peltier KD

@@ -20,18 +20,30 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
     switch (_status) {
         case PlateStatus::INITIAL_HEAT:
         case PlateStatus::INITIAL_COOL: {
-            auto distance = std::abs(_current_setpoint - plate_temp());
+            bool heating = _status == PlateStatus::INITIAL_HEAT;
+            // We need to wait for EVERY channel to independently reach its
+            // target
+            bool at_target =
+                channel_at_target(_left, _current_setpoint,
+                                  OVERSHOOT_TARGET_SWITCH_DIFFERENCE) &&
+                channel_at_target(_right, _current_setpoint,
+                                  OVERSHOOT_TARGET_SWITCH_DIFFERENCE) &&
+                channel_at_target(
+                    _center, center_channel_target(_current_setpoint, heating),
+                    OVERSHOOT_TARGET_SWITCH_DIFFERENCE);
             // Check if we are close enough to the overshoot/undershoot
             // target to switch to the actual target
-            if (distance < OVERSHOOT_TARGET_SWITCH_DIFFERENCE) {
+            if (at_target) {
                 _status = PlateStatus::OVERSHOOT;
                 _left.temp_target = _current_setpoint;
-                _right.temp_target = _current_setpoint;
+                _right.temp_target =
+                    center_channel_target(_current_setpoint, heating);
                 _center.temp_target = _current_setpoint;
             } else {
-                update_ramp(_left, time);
-                update_ramp(_right, time);
-                update_ramp(_center, time);
+                update_ramp(_left, time, _current_setpoint);
+                update_ramp(_right, time, _current_setpoint);
+                update_ramp(_center, time,
+                            center_channel_target(_current_setpoint, heating));
             }
             break;
         }
@@ -131,17 +143,17 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
 // This function *could* be made const, but that obfuscates the intention,
 // which is to update the ramp target of a *member* of the class.
 // NOLINTNEXTLINE(readability-make-member-function-const)
-auto PlateControl::update_ramp(thermal_general::Peltier &peltier, Seconds time)
-    -> void {
+auto PlateControl::update_ramp(thermal_general::Peltier &peltier, Seconds time,
+                               double target) -> void {
     if (_ramp_rate == RAMP_INFINITE) {
-        peltier.temp_target = _current_setpoint;
+        peltier.temp_target = target;
     }
-    if (peltier.temp_target < _current_setpoint) {
-        peltier.temp_target = std::min(
-            peltier.temp_target + (_ramp_rate * time), _current_setpoint);
-    } else if (peltier.temp_target > _current_setpoint) {
-        peltier.temp_target = std::max(
-            peltier.temp_target - (_ramp_rate * time), _current_setpoint);
+    if (peltier.temp_target < target) {
+        peltier.temp_target =
+            std::min(peltier.temp_target + (_ramp_rate * time), target);
+    } else if (peltier.temp_target > target) {
+        peltier.temp_target =
+            std::max(peltier.temp_target - (_ramp_rate * time), target);
     }
 }
 
@@ -312,4 +324,11 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
         return channel.current_temp() >= _setpoint;
     }
     return channel.current_temp() <= _setpoint;
+}
+
+[[nodiscard]] auto PlateControl::channel_at_target(
+    const thermal_general::Peltier &channel, double target,
+    double threshold) const -> bool {
+    auto temp = channel.current_temp();
+    return std::abs(target - temp) < threshold;
 }

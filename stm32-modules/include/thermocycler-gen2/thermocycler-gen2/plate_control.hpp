@@ -82,7 +82,7 @@ class PlateControl {
     static constexpr double UNDERSHOOT_MIN_DIFFERENCE = 5.0F;
     /** Margin where controller switches targets from overshoot/undershoot
      * to actual target */
-    static constexpr double OVERSHOOT_TARGET_SWITCH_DIFFERENCE = 2.0F;
+    static constexpr double OVERSHOOT_TARGET_SWITCH_DIFFERENCE = 1.0F;
     /** Maximum drift between thermistors at steady state, in ºC.*/
     static constexpr double THERMISTOR_DRIFT_MAX_C = 4.0F;
     /** Minimum time that the system must be in steady state before
@@ -239,8 +239,10 @@ class PlateControl {
      * @brief Apply a ramp to the target temperature of an element.
      * @param[in] peltier The peltier to ramp target temperature of
      * @param[in] time The time that has passed since the last update
+     * @param[in] target The target temperature to ramp towards
      */
-    auto update_ramp(thermal_general::Peltier &peltier, Seconds time) -> void;
+    auto update_ramp(thermal_general::Peltier &peltier, Seconds time,
+                     double target) -> void;
     /**
      * @brief Update the PID control of a single peltier
      * @param[in] peltier The peltier to update
@@ -291,6 +293,38 @@ class PlateControl {
      */
     [[nodiscard]] auto crossed_setpoint(const thermal_general::Peltier &channel,
                                         bool heating) const -> bool;
+    /**
+     * @brief Checks if a single peltier channel has crossed the setpoint.
+     *
+     * @param channel The channel to check
+     * @param threshold The absolute value threshold that counts as an
+     *                  allowable distance from the target
+     * @return true if the channel is at its specific target
+     */
+    [[nodiscard]] auto channel_at_target(
+        const thermal_general::Peltier &channel, double target,
+        double threshold) const -> bool;
+
+    /**
+     * @brief When ramping, the center channel needs to target a further
+     * setpoint than the other channels to ensure the actual plate
+     * temperatures are uniform. This is due to the differing thermal
+     * mass of the different points in the well.
+     *
+     * @param setpoint The target setpoint
+     * @param heating True if this is a heat action, false otherwise
+     * @return double
+     */
+    [[nodiscard]] static auto center_channel_target(double setpoint,
+                                                    double heating) -> double {
+        if (setpoint < TEMPERATURE_AMBIENT) {
+            return setpoint;
+        }
+        if (heating) {
+            return setpoint + 1.5;
+        }
+        return setpoint - 3.0;
+    }
 
     /**
      * @brief Returns the number of degrees difference from the target
