@@ -78,6 +78,18 @@ auto errorstring(ErrorCode code) -> const char*;
 template <typename Input, typename Limit>
 requires std::forward_iterator<Input> && std::sized_sentinel_for<Limit, Input>
 constexpr auto write_into(Input start, Limit end, ErrorCode code) -> Input {
+    static constexpr const char* prefix = "gcode response";
+    char* char_next = &*start;
+    char* const char_limit = &*end;
+    char_next = write_string_to_iterpair(char_next, char_limit, prefix);
+
+    const char* error_str = errorstring(code);
+    return write_string_to_iterpair(char_next, char_limit, error_str);
+}
+
+template <typename Input, typename Limit>
+requires std::forward_iterator<Input> && std::sized_sentinel_for<Limit, Input>
+constexpr auto write_into_async(Input start, Limit end, ErrorCode code) -> Input {
     const char* str = errorstring(code);
     return write_string_to_iterpair(start, end, str);
 }
