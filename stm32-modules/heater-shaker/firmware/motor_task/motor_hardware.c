@@ -218,6 +218,7 @@ static void MX_TIM1_Init(TIM_HandleTypeDef* tim1)
   /* USER CODE BEGIN TIM1_Init 1 */
 
   /* USER CODE END TIM1_Init 1 */
+  tim1->State = HAL_TIM_STATE_RESET;
   tim1->Instance = TIM1;
   tim1->Init.Prescaler = ((TIM_CLOCK_DIVIDER) - 1);
   tim1->Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
@@ -312,6 +313,7 @@ static void MX_TIM2_Init(TIM_HandleTypeDef* tim2)
   /* USER CODE BEGIN TIM2_Init 1 */
 
   /* USER CODE END TIM2_Init 1 */
+  tim2->State = HAL_TIM_STATE_RESET;
   tim2->Instance = TIM2;
   tim2->Init.Prescaler = 0;
   tim2->Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -349,6 +351,7 @@ static void MX_TIM2_Init(TIM_HandleTypeDef* tim2)
 
 static void PlateLockTIM_Init(TIM_HandleTypeDef* tim3) {
   __HAL_RCC_TIM3_CLK_ENABLE();
+  tim3->State = HAL_TIM_STATE_RESET;
   tim3->Instance = PLATE_LOCK_TIM;
   tim3->Init.Prescaler = 0;
   tim3->Init.CounterMode = TIM_COUNTERMODE_UP;

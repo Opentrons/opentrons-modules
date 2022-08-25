@@ -211,6 +211,7 @@ static void init_peltier_timer() {
     TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
+    hardware.peltier_timer.State = HAL_TIM_STATE_RESET;
     hardware.peltier_timer.Instance = TIM1;
     hardware.peltier_timer.Init.Prescaler = TIM1_PRESCALER;
     hardware.peltier_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -297,6 +298,7 @@ static void init_fan_timer() {
 
 
     // Configure timer 16 for PWMN control on channel 1
+    hardware.fan_timer.State = HAL_TIM_STATE_RESET;
     hardware.fan_timer.Instance = TIM16;
     hardware.fan_timer.Init.Prescaler = TIM16_PRESCALER;
     hardware.fan_timer.Init.CounterMode = TIM_COUNTERMODE_UP;

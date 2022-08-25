@@ -224,7 +224,7 @@ class SystemTask {
     auto visit_message(const messages::SetLEDMessage& msg, Policy& policy)
         -> void {
         _led_state.current_color = msg.color;
-        _led_state.current_mode = LED_MODE::SOLID_HOLDING;
+        _led_state.current_mode = LED_MODE::PULSE;
 
         if (msg.from_host) {
             auto response =

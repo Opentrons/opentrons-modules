@@ -76,6 +76,7 @@ HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
   htim7.Init.Prescaler = uwPrescalerValue;
   htim7.Init.ClockDivision = 0;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.State = HAL_TIM_STATE_RESET;
 
   status = HAL_TIM_Base_Init(&htim7);
   if (status == HAL_OK)

@@ -83,6 +83,7 @@ void thermistor_hardware_init() {
 
     HAL_StatusTypeDef hal_ret;
     // Initialize I2C 
+    hardware.i2c_handle.State = HAL_I2C_STATE_RESET;
     hardware.i2c_handle.Instance = I2C_INSTANCE;
     hardware.i2c_handle.Init.Timing = I2C_TIMING;
     hardware.i2c_handle.Init.OwnAddress1 = 0;
