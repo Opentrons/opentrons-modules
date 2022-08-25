@@ -272,6 +272,8 @@ SCENARIO("PlateControl peltier control works") {
                 }
                 temperature = HOT_TEMP;
                 set_temp(thermistors, temperature);
+                center.thermistors.first.temp_c = HOT_TEMP + 1.5;
+                center.thermistors.second.temp_c = HOT_TEMP + 1.5;
 
                 auto ctrl = plateControl.update_control(UPDATE_RATE_SEC);
                 REQUIRE(ctrl.has_value());
@@ -282,6 +284,8 @@ SCENARIO("PlateControl peltier control works") {
                 "the thermistors hit the target temperature and control is "
                 "updated") {
                 set_temp(thermistors, HOT_TEMP);
+                center.thermistors.first.temp_c = HOT_TEMP + 1.5;
+                center.thermistors.second.temp_c = HOT_TEMP + 1.5;
                 static_cast<void>(plateControl.update_control(UPDATE_RATE_SEC));
                 THEN("plate control should be in overshoot mode") {
                     REQUIRE(plateControl.status() ==
