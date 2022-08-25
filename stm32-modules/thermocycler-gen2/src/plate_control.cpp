@@ -325,10 +325,3 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
     }
     return channel.current_temp() <= _setpoint;
 }
-
-[[nodiscard]] auto PlateControl::channel_at_target(
-    const thermal_general::Peltier &channel, double target,
-    double threshold) const -> bool {
-    auto temp = channel.current_temp();
-    return std::abs(target - temp) < threshold;
-}

@@ -301,9 +301,12 @@ class PlateControl {
      *                  allowable distance from the target
      * @return true if the channel is at its specific target
      */
-    [[nodiscard]] auto channel_at_target(
+    [[nodiscard]] static auto channel_at_target(
         const thermal_general::Peltier &channel, double target,
-        double threshold) const -> bool;
+        double threshold) -> bool {
+        auto temp = channel.current_temp();
+        return std::abs(target - temp) < threshold;
+    }
 
     /**
      * @brief When ramping, the center channel needs to target a further
@@ -316,14 +319,16 @@ class PlateControl {
      * @return double
      */
     [[nodiscard]] static auto center_channel_target(double setpoint,
-                                                    double heating) -> double {
+                                                    bool heating) -> double {
+        static constexpr double CENTER_EXTRA_HEATING = 1.5;
+        static constexpr double CENTER_EXTRA_COOLING = 3.0;
         if (setpoint < TEMPERATURE_AMBIENT) {
             return setpoint;
         }
         if (heating) {
-            return setpoint + 1.5;
+            return setpoint + CENTER_EXTRA_HEATING;
         }
-        return setpoint - 3.0;
+        return setpoint - CENTER_EXTRA_COOLING;
     }
 
     /**
