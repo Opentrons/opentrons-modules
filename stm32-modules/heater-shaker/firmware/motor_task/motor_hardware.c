@@ -904,7 +904,6 @@ void motor_hardware_add_rpm_measurement(int16_t speed) {
 }
 
 int16_t motor_hardware_get_smoothed_rpm() {
-    //return motor_speed_filtered;
     int64_t sum = 0;
     for(uint8_t itr = 0; itr < MOTOR_SPEED_BUFFER_SIZE; ++itr) {
         sum += (int64_t)motor_speed_buffer[itr];
