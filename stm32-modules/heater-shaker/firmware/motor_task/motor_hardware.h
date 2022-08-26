@@ -37,6 +37,26 @@ bool motor_hardware_plate_lock_sensor_read(uint16_t GPIO_Pin);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 
+/**
+ * @brief To be called every time the motor control library updates its speed
+ * measurement. This function adds new speed values to a circular buffer,
+ * which can then be averaged to get a smoothed RPM value.
+ *
+ * @param speed The new speed measurement to add to the buffer
+ */
+void motor_hardware_add_rpm_measurement(int16_t speed);
+
+/**
+ * @brief Gets the smoothed RPM value by averaging the circular buffer
+ * maintained by \ref motor_hardware_add_rpm_measurement
+ *
+ * @return int16_t of the averaged speed value. Must be converted to
+ * correct units by the caller.
+ */
+int16_t motor_hardware_get_smoothed_rpm();
+
+#define MOTOR_SPEED_BUFFER_SIZE (32)
+
 #define MC_HAL_IS_USED
 
 // Drive and current sense pins
