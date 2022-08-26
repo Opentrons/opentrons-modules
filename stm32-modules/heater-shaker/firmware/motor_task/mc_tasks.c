@@ -289,7 +289,8 @@ void TSK_MediumFrequencyTaskM1(void)
   // order to prevent updating the buffer with the same measurement over 
   // and over, especially when the motor is at a low speed.
   if(HALL_M1.SpeedFIFOIdx != last_SpeedFIFOIdx ||
-     wAux != last_wAux) {
+     wAux != last_wAux ||
+     wAux == 0) {
     last_wAux = wAux;
     last_SpeedFIFOIdx = HALL_M1.SpeedFIFOIdx;
     motor_hardware_add_rpm_measurement(wAux);
