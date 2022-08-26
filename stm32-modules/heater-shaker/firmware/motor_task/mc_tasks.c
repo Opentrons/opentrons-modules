@@ -281,6 +281,8 @@ void TSK_MediumFrequencyTaskM1(void)
   int16_t wAux = 0;
 
   bool IsSpeedReliable = HALL_CalcAvrgMecSpeedUnit( &HALL_M1, &wAux );
+  // Add the new speed measurement to our speed filter
+  motor_hardware_add_rpm_measurement(wAux);
   PQD_CalcElMotorPower( pMPM[M1] );
 
   StateM1 = STM_GetState( &STM[M1] );

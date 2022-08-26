@@ -37,6 +37,20 @@ bool motor_hardware_plate_lock_sensor_read(uint16_t GPIO_Pin);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 
+/**
+ * @brief To be called every time the motor control library updates its speed
+ * measurement. This function filters the new speed value through an alpha
+ * filter to reduce the noise in the data.
+ * 
+ * @param speed The new speed measurement to add to the average
+ */
+void motor_hardware_add_rpm_measurement(int16_t speed);
+
+int16_t motor_hardware_get_smoothed_rpm();
+
+// When filtering the RPM values, use this alpha constant
+#define RPM_SPEED_FILTER_ALPHA (0.8)
+
 #define MC_HAL_IS_USED
 
 // Drive and current sense pins

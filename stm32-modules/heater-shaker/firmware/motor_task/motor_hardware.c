@@ -17,6 +17,8 @@ static void Error_Handler();
 
 motor_hardware_handles *MOTOR_HW_HANDLE = NULL;
 
+static int16_t motor_speed_filtered = 0;
+
 static void MX_NVIC_Init(void)
 {
   /* TIM1_BRK_TIM15_IRQn interrupt configuration */
@@ -890,6 +892,17 @@ void motor_hardware_plate_lock_brake(TIM_HandleTypeDef* tim3) {
   HAL_TIM_GenerateEvent(tim3, TIM_EVENTSOURCE_UPDATE);
   HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_1_Chan);
   HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_2_Chan);
+}
+
+void motor_hardware_add_rpm_measurement(int16_t speed) {
+    double old_val = (double)motor_speed_filtered;
+    double new_val = ((double)(speed) * (1 - RPM_SPEED_FILTER_ALPHA) )
+                     + (old_val * RPM_SPEED_FILTER_ALPHA);
+    motor_speed_filtered = (int16_t)new_val;
+}
+
+int16_t motor_hardware_get_smoothed_rpm() {
+    return motor_speed_filtered;
 }
 
 /******************************************************************************/
