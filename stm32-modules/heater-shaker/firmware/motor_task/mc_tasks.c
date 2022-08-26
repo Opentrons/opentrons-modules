@@ -279,10 +279,22 @@ void TSK_MediumFrequencyTaskM1(void)
 {
   State_t StateM1;
   int16_t wAux = 0;
+  
+  static volatile uint8_t last_SpeedFIFOIdx = 0;
+  static volatile int16_t last_wAux = 0;
 
   bool IsSpeedReliable = HALL_CalcAvrgMecSpeedUnit( &HALL_M1, &wAux );
-  // Add the new speed measurement to our speed filter
-  motor_hardware_add_rpm_measurement(wAux);
+  // Add the new speed measurement to our speed filter. 
+  // We check that at least one of SpeedFifoIdx or wAux has changed in 
+  // order to prevent updating the buffer with the same measurement over 
+  // and over, especially when the motor is at a low speed.
+  if(HALL_M1.SpeedFIFOIdx != last_SpeedFIFOIdx ||
+     wAux != last_wAux) {
+    last_wAux = wAux;
+    last_SpeedFIFOIdx = HALL_M1.SpeedFIFOIdx;
+    motor_hardware_add_rpm_measurement(wAux);
+  }
+
   PQD_CalcElMotorPower( pMPM[M1] );
 
   StateM1 = STM_GetState( &STM[M1] );
