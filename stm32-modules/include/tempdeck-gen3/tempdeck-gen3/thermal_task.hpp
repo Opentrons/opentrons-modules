@@ -5,6 +5,7 @@
 #include "core/thermistor_conversion.hpp"
 #include "hal/message_queue.hpp"
 #include "ot_utils/core/pid.hpp"
+#include "tempdeck-gen3/eeprom.hpp"
 #include "tempdeck-gen3/messages.hpp"
 #include "tempdeck-gen3/tasks.hpp"
 #include "thermistor_lookups.hpp"
@@ -18,7 +19,8 @@ concept ThermalPolicy = requires(Policy& p) {
     { p.set_peltier_heat_power(1.0) } -> std::same_as<bool>;
     { p.set_peltier_cool_power(1.0) } -> std::same_as<bool>;
     { p.set_fan_power(1.0) } -> std::same_as<bool>;
-};
+}
+&&at24c0xc::AT24C0xC_Policy<Policy>;
 
 using Message = messages::ThermalMessage;
 
@@ -88,6 +90,13 @@ class ThermalTask {
 
     static constexpr double MILLISECONDS_TO_SECONDS = 0.001F;
 
+    static constexpr size_t EEPROM_PAGES = 32;
+    static constexpr uint8_t EEPROM_ADDRESS = 0b1010001;
+
+    static constexpr const double OFFSET_DEFAULT_CONST_A = 0.0F;
+    static constexpr const double OFFSET_DEFAULT_CONST_B = 0.0F;
+    static constexpr const double OFFSET_DEFAULT_CONST_C = 0.0F;
+
     explicit ThermalTask(Queue& q, Aggregator* aggregator)
         : _message_queue(q),
           _task_registry(aggregator),
@@ -100,7 +109,11 @@ class ThermalTask {
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _peltier(),
           _pid(PELTIER_KP_DEFAULT, PELTIER_KI_DEFAULT, PELTIER_KD_DEFAULT, 1.0F,
-               PELTIER_WINDUP_LIMIT, -PELTIER_WINDUP_LIMIT) {}
+               PELTIER_WINDUP_LIMIT, -PELTIER_WINDUP_LIMIT),
+          _eeprom(),
+          _offset_constants{.a = OFFSET_DEFAULT_CONST_A,
+                            .b = OFFSET_DEFAULT_CONST_B,
+                            .c = OFFSET_DEFAULT_CONST_C} {}
     ThermalTask(const ThermalTask& other) = delete;
     auto operator=(const ThermalTask& other) -> ThermalTask& = delete;
     ThermalTask(ThermalTask&& other) noexcept = delete;
@@ -115,6 +128,12 @@ class ThermalTask {
     auto run_once(Policy& policy) -> void {
         if (!_task_registry) {
             return;
+        }
+        // If the EEPROM data hasn't been read, read it before doing
+        // anything else.
+        if (!_eeprom.initialized()) {
+            _offset_constants =
+                _eeprom.get_offset_constants(_offset_constants, policy);
         }
 
         auto message = Message(std::monostate());
@@ -369,6 +388,8 @@ class ThermalTask {
     Fan _fan;
     Peltier _peltier;
     ot_utils::pid::PID _pid;
+    eeprom::Eeprom<EEPROM_PAGES, EEPROM_ADDRESS> _eeprom;
+    eeprom::OffsetConstants _offset_constants;
 };
 
 };  // namespace thermal_task

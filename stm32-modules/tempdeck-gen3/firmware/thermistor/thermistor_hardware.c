@@ -186,6 +186,77 @@ bool thermal_i2c_read_16(uint16_t addr, uint8_t reg, uint16_t *val) {
     return (notification_val == 1) && (hal_ret == HAL_OK);
 }
 
+bool thermal_i2c_write_data(uint16_t addr, uint8_t *data, uint16_t len) {
+    const TickType_t max_block_time = pdMS_TO_TICKS(100);
+    HAL_StatusTypeDef hal_ret;
+    uint32_t notification_val = 0;
+    BaseType_t sem_ret;
+
+    if(data == NULL) {
+        return false;
+    }
+
+    sem_ret = xSemaphoreTake(hardware.i2c_semaphore, portMAX_DELAY);
+    if(sem_ret != pdTRUE) {
+        return false;
+    }
+
+    // Set up notification info
+    if(hardware.i2c_task_to_notify != NULL) {
+        xSemaphoreGive(hardware.i2c_semaphore);
+        return false;
+    }
+    hardware.i2c_task_to_notify = xTaskGetCurrentTaskHandle();
+
+    hal_ret = HAL_I2C_Master_Transmit_IT(&hardware.i2c_handle, addr, data, len);
+
+    if(hal_ret == HAL_OK) {
+        // Block on the interrupt for transmit_complete
+        notification_val = ulTaskNotifyTake(pdTRUE, max_block_time);
+    }
+
+    // Ignore return, we would not return an error here even if it fails
+    (void)xSemaphoreGive(hardware.i2c_semaphore);
+
+    return (notification_val == 1) && (hal_ret == HAL_OK);
+}
+
+bool thermal_i2c_read_data(uint16_t addr, uint8_t *data, uint16_t len) {
+    const TickType_t max_block_time = pdMS_TO_TICKS(100);
+    HAL_StatusTypeDef hal_ret;
+    uint32_t notification_val = 0;
+    BaseType_t sem_ret;
+
+    if(data == NULL) {
+        return false;
+    }
+
+    sem_ret = xSemaphoreTake(hardware.i2c_semaphore, portMAX_DELAY);
+    if(sem_ret != pdTRUE) {
+        return false;
+    }
+
+    // Set up notification info
+    if(hardware.i2c_task_to_notify != NULL) {
+        xSemaphoreGive(hardware.i2c_semaphore);
+        return false;
+    }
+    hardware.i2c_task_to_notify = xTaskGetCurrentTaskHandle();
+
+    hal_ret = HAL_I2C_Master_Receive_IT(&hardware.i2c_handle, addr, data, len);
+
+    if(hal_ret == HAL_OK) {
+        // Block on the interrupt for transmit_complete
+        notification_val = ulTaskNotifyTake(pdTRUE, max_block_time);
+    }
+
+    // Ignore return, we would not return an error here even if it fails
+    (void)xSemaphoreGive(hardware.i2c_semaphore);
+    
+    return (notification_val == 1) && (hal_ret == HAL_OK);
+
+}
+
 bool thermal_arm_adc_for_read() {
     hardware.gpio_task_to_notify = xTaskGetCurrentTaskHandle();
     return true;

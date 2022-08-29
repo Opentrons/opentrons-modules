@@ -27,7 +27,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
 
     thermal_hardware_init();
 
-    auto policy = ThermalPolicy();
+    auto policy = thermal_policy::ThermalPolicy();
     while (true) {
         _top_task.run_once(policy);
     }
