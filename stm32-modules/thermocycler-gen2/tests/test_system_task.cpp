@@ -257,7 +257,7 @@ SCENARIO("system task message passing") {
                     auto &led = tasks->get_system_task().get_led_state();
                     REQUIRE(led.mode == colors::Mode::SOLID);
                     REQUIRE(led.color ==
-                            colors::get_color(colors::Colors::SOFT_WHITE));
+                            colors::get_color(colors::Colors::WHITE));
                 }
             }
         }
