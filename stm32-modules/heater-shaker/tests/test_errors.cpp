@@ -12,12 +12,14 @@ SCENARIO("testing error writing") {
                 errors::write_into(buffer.begin(), buffer.end(),
                                    errors::ErrorCode::USB_TX_OVERRUN);
             THEN("the error is written into the buffer") {
-                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
-                                         "ERR001:tx buffer overrun OK\n"));
+                REQUIRE_THAT(
+                    buffer,
+                    Catch::Matchers::StartsWith(
+                        "gcode response ERR001:tx buffer overrun OK\n"));
                 AND_THEN("the length was appropriately returned") {
                     REQUIRE(written ==
-                            buffer.begin() +
-                                strlen("ERR001:tx buffer overrun OK\n"));
+                            buffer.begin() + strlen("gcode response ERR001:tx "
+                                                    "buffer overrun OK\n"));
                 }
             }
         }
@@ -32,7 +34,7 @@ SCENARIO("testing error writing") {
                 "the error written into only the space available in the "
                 "buffer") {
                 REQUIRE_THAT(buffer,
-                             Catch::Matchers::Equals(std::string("ER")));
+                             Catch::Matchers::Equals(std::string("gc")));
                 AND_THEN("the amount written is 0") {
                     REQUIRE(written == buffer.begin() + 2);
                 }
