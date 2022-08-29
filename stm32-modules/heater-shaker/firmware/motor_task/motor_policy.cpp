@@ -67,7 +67,7 @@ auto MotorPolicy::stop() -> void { MCI_StopMotor(hw_handles->mci[0]); }
 
 auto MotorPolicy::get_current_rpm() const -> int16_t {
     if (IDLE != MCI_GetSTMState(hw_handles->mci[0])) {
-        return -MCI_GetAvrgMecSpeedUnit(hw_handles->mci[0]) * _RPM / _01HZ;
+        return -motor_hardware_get_smoothed_rpm() * _RPM / _01HZ;
     }
     return 0;
 }

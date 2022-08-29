@@ -127,6 +127,14 @@ def get_plate_temperature(ser: serial.Serial, debug_print = False) -> float:
         print(res)
     return float(match.group('temp'))
 
+def get_remaining_hold(ser: serial.Serial) -> float:
+    ser.write(b'M105\n')
+    res = ser.readline()
+    guard_error(res, b'M105')
+    res_s = res.decode()
+    match = re.match(_PLATE_TEMP_RE, res_s)
+    return float(match.group('hold'))
+
 # Sets peltier PWM as a percentage. Be careful!!!!!
 def set_peltier_debug(power: float, direction: str, peltiers: str, ser: serial.Serial):
     if(power < 0.0 or power > 1.0):
