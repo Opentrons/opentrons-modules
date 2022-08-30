@@ -36,9 +36,9 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
             if (at_target) {
                 _status = PlateStatus::OVERSHOOT;
                 _left.temp_target = _current_setpoint;
-                _right.temp_target =
+                _right.temp_target =_current_setpoint;
+                _center.temp_target = 
                     center_channel_target(_current_setpoint, heating);
-                _center.temp_target = _current_setpoint;
             } else {
                 update_ramp(_left, time, _current_setpoint);
                 update_ramp(_right, time, _current_setpoint);
