@@ -63,7 +63,7 @@ def guard_error(res: bytes, prefix: bytes=  None):
         raise RuntimeError(f'incorrect response: {res} (expected prefix {prefix})')
 
 
-_SPEED_RE = re.compile('^M123 C(?P<current>.+) T(?P<target>.+) OK\n')
+_SPEED_RE = re.compile('^M123 C:(?P<current>.+) T:(?P<target>.+) OK\n')
 def get_speed(ser: serial.Serial) -> Tuple[float, float]:
     ser.write(b'M123\n')
     res = ser.readline()
