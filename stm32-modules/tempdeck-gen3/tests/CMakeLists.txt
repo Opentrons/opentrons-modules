@@ -20,6 +20,8 @@ add_executable(${TARGET_MODULE_NAME}
     test_m106.cpp
     test_m107.cpp 
     test_m115.cpp
+    test_m116.cpp
+    test_m117.cpp
     test_m301.cpp
     test_m996.cpp
     test_dfu_gcode.cpp
