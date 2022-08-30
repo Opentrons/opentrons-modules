@@ -91,7 +91,7 @@ class ThermalTask {
     static constexpr double MILLISECONDS_TO_SECONDS = 0.001F;
 
     static constexpr size_t EEPROM_PAGES = 32;
-    static constexpr uint8_t EEPROM_ADDRESS = 0b1010001;
+    static constexpr uint8_t EEPROM_ADDRESS = 0b1010010;
 
     static constexpr const double OFFSET_DEFAULT_CONST_A = 0.0F;
     static constexpr const double OFFSET_DEFAULT_CONST_B = 0.0F;
@@ -326,6 +326,51 @@ class ThermalTask {
 
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = message.id};
+        static_cast<void>(
+            _task_registry->send_to_address(response, Queues::HostAddress));
+    }
+
+    template <ThermalPolicy Policy>
+    auto visit_message(const messages::SetOffsetConstantsMessage& message,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = message.id};
+
+        auto constants = _offset_constants;
+        if (message.a.has_value()) {
+            constants.a = message.a.value();
+        }
+        if (message.b.has_value()) {
+            constants.b = message.b.value();
+        }
+        if (message.c.has_value()) {
+            constants.c = message.c.value();
+        }
+
+        auto ret = _eeprom.write_offset_constants(constants, policy);
+        if (ret) {
+            // Succesful, so overwrite the task's constants
+            _offset_constants = constants;
+        } else {
+            response.with_error = errors::ErrorCode::SYSTEM_EEPROM_ERROR;
+        }
+
+        static_cast<void>(
+            _task_registry->send_to_address(response, Queues::HostAddress));
+    }
+
+    template <ThermalPolicy Policy>
+    auto visit_message(const messages::GetOffsetConstantsMessage& message,
+                       Policy& policy) -> void {
+        _offset_constants =
+            _eeprom.get_offset_constants(_offset_constants, policy);
+
+        auto response =
+            messages::GetOffsetConstantsResponse{.responding_to_id = message.id,
+                                                 .a = _offset_constants.a,
+                                                 .b = _offset_constants.b,
+                                                 .c = _offset_constants.c};
+
         static_cast<void>(
             _task_registry->send_to_address(response, Queues::HostAddress));
     }

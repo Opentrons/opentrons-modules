@@ -139,10 +139,26 @@ struct SetPIDConstantsMessage {
     double p, i, d;
 };
 
+struct GetOffsetConstantsMessage {
+    uint32_t id;
+};
+
+struct GetOffsetConstantsResponse {
+    uint32_t responding_to_id;
+    double a, b, c;
+};
+
+struct SetOffsetConstantsMessage {
+    uint32_t id = 0;
+    std::optional<double> a = std::nullopt;
+    std::optional<double> b = std::nullopt;
+    std::optional<double> c = std::nullopt;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetTempDebugResponse>;
+                   GetTempDebugResponse, GetOffsetConstantsResponse>;
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage>;
@@ -151,5 +167,6 @@ using ThermalMessage =
     ::std::variant<std::monostate, ThermistorReadings, GetTempDebugMessage,
                    SetPeltierDebugMessage, SetFanManualMessage,
                    SetFanAutomaticMessage, DeactivateAllMessage,
-                   SetTemperatureMessage, SetPIDConstantsMessage>;
+                   SetTemperatureMessage, SetPIDConstantsMessage,
+                   GetOffsetConstantsMessage, SetOffsetConstantsMessage>;
 };  // namespace messages
