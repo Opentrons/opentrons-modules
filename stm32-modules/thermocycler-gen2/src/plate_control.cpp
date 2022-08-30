@@ -36,8 +36,8 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
             if (at_target) {
                 _status = PlateStatus::OVERSHOOT;
                 _left.temp_target = _current_setpoint;
-                _right.temp_target =_current_setpoint;
-                _center.temp_target = 
+                _right.temp_target = _current_setpoint;
+                _center.temp_target =
                     center_channel_target(_current_setpoint, heating);
             } else {
                 update_ramp(_left, time, _current_setpoint);
@@ -94,11 +94,6 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
 
     auto current_temp = plate_temp();
 
-    reset_control(_left);
-    reset_control(_right);
-    reset_control(_center);
-    reset_control(_fan);
-
     // For heating vs cooling, go based off of the average plate. Might
     // have to reconsider this, see how it works for small changes.
     _status = (setpoint > current_temp) ? PlateStatus::INITIAL_HEAT
@@ -124,6 +119,15 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
         // go directly to the setpoint
         _current_setpoint = setpoint;
     }
+
+    auto center_target = center_channel_target(
+        _current_setpoint, _status == PlateStatus::INITIAL_HEAT);
+
+    reset_control(_left, _current_setpoint);
+    reset_control(_right, _current_setpoint);
+    reset_control(_center, center_target);
+    reset_control(_fan);
+
     return true;
 }
 
@@ -230,11 +234,15 @@ auto PlateControl::update_fan(Seconds time) -> double {
 // This function *could* be made const, but that obfuscates the intention,
 // which is to reset a *member* of the class.
 // NOLINTNEXTLINE(readability-make-member-function-const)
-auto PlateControl::reset_control(thermal_general::Peltier &peltier) -> void {
-    peltier.pid.reset();
+auto PlateControl::reset_control(thermal_general::Peltier &peltier,
+                                 double setpoint) -> void {
+    if (std::abs(peltier.temp_target - setpoint) >= WINDUP_RESET_THRESHOLD) {
+        // Only reset the PID if we're moving more than a few degrees away
+        peltier.pid.reset();
+    }
 
     if (_ramp_rate == RAMP_INFINITE) {
-        peltier.temp_target = setpoint();
+        peltier.temp_target = setpoint;
         if (!moving_away_from_ambient(peltier.current_temp(),
                                       peltier.temp_target)) {
             peltier.pid.arm_integrator_reset(
