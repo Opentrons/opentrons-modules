@@ -52,11 +52,9 @@ SCENARIO("usb message parsing") {
             auto written = tasks->get_host_comms_task().run_once(
                 small_buf.begin(), small_buf.end());
             REQUIRE_THAT(small_buf,
-                         Catch::Matchers::Equals(
-                             "gcode response ERR001:tx buffer overru"));
+                         Catch::Matchers::Equals("ERR001:tx buffer overru"));
             REQUIRE(written ==
-                    small_buf.begin() +
-                        strlen("gcode response ERR001:tx buffer overru"));
+                    small_buf.begin() + strlen("ERR001:tx buffer overru"));
         }
         WHEN("calling run_once() with a malformed gcode message") {
             auto message_text = std::string("aosjhdakljshd\n");
@@ -67,13 +65,10 @@ SCENARIO("usb message parsing") {
             THEN("the task writes an error to the transmit buffer") {
                 auto written = tasks->get_host_comms_task().run_once(
                     tx_buf.begin(), tx_buf.end());
-                REQUIRE_THAT(tx_buf,
-                             Catch::Matchers::StartsWith(
-                                 "gcode response ERR003:unhandled gcode OK\n"));
-                REQUIRE(
-                    written ==
-                    tx_buf.begin() +
-                        strlen("gcode response ERR003:unhandled gcode OK\n"));
+                REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
+                                         "ERR003:unhandled gcode OK\n"));
+                REQUIRE(written ==
+                        tx_buf.begin() + strlen("ERR003:unhandled gcode OK\n"));
             }
         }
     }
@@ -134,8 +129,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -153,7 +148,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should print the error rather than ack") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR110:main "
+                                                 "ERR110:main "
                                                  "motor:unknown error OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
@@ -212,8 +207,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -231,7 +226,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should print the error rather than ack") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR110:main "
+                                                 "ERR110:main "
                                                  "motor:unknown error OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
@@ -290,8 +285,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -310,7 +305,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                                                               tx_buf.end());
                     THEN("the task should print the error rather than ack") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR110:main "
+                                                 "ERR110:main "
                                                  "motor:unknown error OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
@@ -372,8 +367,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -390,11 +385,9 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should print the error rather than ack") {
-                        REQUIRE_THAT(
-                            tx_buf,
-                            Catch::Matchers::StartsWith(
-                                "gcode response ERR302:system:HAL error, "
-                                "busy, or timeout OK\n"));
+                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
+                                                 "ERR302:system:HAL error, "
+                                                 "busy, or timeout OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                         REQUIRE(written_secondpass != tx_buf.begin());
@@ -452,8 +445,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -470,10 +463,9 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should print the error rather than ack") {
-                        REQUIRE_THAT(tx_buf,
-                                     Catch::Matchers::StartsWith(
-                                         "gcode response ERR123:main motor:not "
-                                         "home (required) OK\n"));
+                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
+                                                 "ERR123:main motor:not "
+                                                 "home (required) OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                         REQUIRE(written_secondpass != tx_buf.begin());
@@ -531,8 +523,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -552,7 +544,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                         REQUIRE_THAT(
                             tx_buf,
                             Catch::Matchers::StartsWith(
-                                "gcode response ERR304:system:LED I2C "
+                                "ERR304:system:LED I2C "
                                 "transmission or "
                                 "FreeRTOS notification passing failed OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
@@ -611,8 +603,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -632,7 +624,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                         REQUIRE_THAT(
                             tx_buf,
                             Catch::Matchers::StartsWith(
-                                "gcode response ERR304:system:LED I2C "
+                                "ERR304:system:LED I2C "
                                 "transmission or "
                                 "FreeRTOS notification passing failed OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
@@ -691,8 +683,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -712,7 +704,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                         REQUIRE_THAT(
                             tx_buf,
                             Catch::Matchers::StartsWith(
-                                "gcode response ERR304:system:LED I2C "
+                                "ERR304:system:LED I2C "
                                 "transmission or "
                                 "FreeRTOS notification passing failed OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
@@ -775,8 +767,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -833,8 +825,8 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -854,7 +846,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     THEN("the task should print the error rather than ack") {
                         REQUIRE_THAT(tx_buf,
                                      Catch::Matchers::StartsWith(
-                                         "gcode response ERR211:heater:heatpad "
+                                         "ERR211:heater:heatpad "
                                          "thermistor "
                                          "overtemp or disconnected OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
@@ -926,8 +918,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -946,8 +938,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -968,11 +960,9 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN(
                         "the task should write both the error and the "
                         "response") {
-                        REQUIRE_THAT(
-                            tx_buf,
-                            Catch::Matchers::StartsWith(
-                                "gcode response ERR206:heater:thermistor b "
-                                "short OK\n"));
+                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
+                                                 "ERR206:heater:thermistor b "
+                                                 "short OK\n"));
                     }
                 }
             }
@@ -1046,8 +1036,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -1066,8 +1056,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -1129,8 +1119,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -1149,8 +1139,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -1222,8 +1212,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -1242,8 +1232,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -1316,8 +1306,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -1337,8 +1327,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -1400,8 +1390,8 @@ SCENARIO("message passing for response-carrying gcodes from usb input") {
                     THEN(
                         "the task should pull the message and print an error") {
                         REQUIRE(written_secondpass > tx_buf.begin());
-                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                                 "gcode response ERR005"));
+                        REQUIRE_THAT(tx_buf,
+                                     Catch::Matchers::StartsWith("ERR005"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                     }
@@ -1480,7 +1470,7 @@ SCENARIO("message handling for other-task-initiated communication") {
             THEN("the task should write out the error") {
                 REQUIRE_THAT(tx_buf,
                              Catch::Matchers::StartsWith(
-                                 "ERR120:main motor:illegal speed OK\n"));
+                                 "async ERR120:main motor:illegal speed OK\n"));
                 REQUIRE(*written == 'c');
             }
         }
