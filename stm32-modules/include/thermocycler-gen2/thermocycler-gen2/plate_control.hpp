@@ -263,7 +263,8 @@ class PlateControl {
      * @pre Set the new setpoint and hold time configurations
      * @param[in] peltier The peltier to reset control for.
      */
-    auto reset_control(thermal_general::Peltier &peltier) -> void;
+    auto reset_control(thermal_general::Peltier &peltier, double setpoint)
+        -> void;
     /**
      * @brief Reset a fan for a new setpoint. Adjusts the PID
      * to prepare for a new ramp.
