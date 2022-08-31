@@ -46,6 +46,7 @@ struct ThermistorHardware {
     StaticSemaphore_t i2c_semaphore_data;
     uint8_t i2c_buffer[I2C_BUF_MAX];
     _Atomic bool initialized;
+    _Atomic bool initialization_started;
 };
 
 /** Static variables */
@@ -58,6 +59,7 @@ static struct ThermistorHardware hardware = {
     .i2c_semaphore_data = {},
     .i2c_buffer = {0},
     .initialized = false,
+    .initialization_started = false,
 };
 
 /** Static function declaration */
@@ -69,44 +71,52 @@ static void handle_i2c_callback();
 void thermistor_hardware_init() {
     GPIO_InitTypeDef gpio_init = {0};
 
-    hardware.i2c_semaphore = 
-        xSemaphoreCreateMutexStatic(&hardware.i2c_semaphore_data);
+    // Enforce that only one task may initialize the I2C
+    if(atomic_exchange(&hardware.initialization_started, true)) {
+        hardware.i2c_semaphore = 
+            xSemaphoreCreateMutexStatic(&hardware.i2c_semaphore_data);
 
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
+        __HAL_RCC_GPIOB_CLK_ENABLE();
+        __HAL_RCC_GPIOA_CLK_ENABLE();
 
-    /* Configure the ADC Alert pin*/
-    gpio_init.Pin = ADC_ALERT_PIN;
-    gpio_init.Mode = GPIO_MODE_IT_FALLING;
-    gpio_init.Pull = GPIO_PULLUP;
-    HAL_GPIO_Init(ADC_ALERT_PORT, &gpio_init);
+        /* Configure the ADC Alert pin*/
+        gpio_init.Pin = ADC_ALERT_PIN;
+        gpio_init.Mode = GPIO_MODE_IT_FALLING;
+        gpio_init.Pull = GPIO_PULLUP;
+        HAL_GPIO_Init(ADC_ALERT_PORT, &gpio_init);
 
-    HAL_StatusTypeDef hal_ret;
-    // Initialize I2C 
-    hardware.i2c_handle.State = HAL_I2C_STATE_RESET;
-    hardware.i2c_handle.Instance = I2C_INSTANCE;
-    hardware.i2c_handle.Init.Timing = I2C_TIMING;
-    hardware.i2c_handle.Init.OwnAddress1 = 0;
-    hardware.i2c_handle.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-    hardware.i2c_handle.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-    hardware.i2c_handle.Init.OwnAddress2 = 0;
-    hardware.i2c_handle.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-    hardware.i2c_handle.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-    hardware.i2c_handle.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-    hal_ret = HAL_I2C_Init(&hardware.i2c_handle);
-    configASSERT(hal_ret == HAL_OK);
-    /** Configure Analogue filter */
-    hal_ret = HAL_I2CEx_ConfigAnalogFilter(&hardware.i2c_handle, I2C_ANALOGFILTER_ENABLE);
-    configASSERT(hal_ret == HAL_OK);
-    /** Configure Digital filter */
-    hal_ret = HAL_I2CEx_ConfigDigitalFilter(&hardware.i2c_handle, 0);
-    configASSERT(hal_ret == HAL_OK);
+        HAL_StatusTypeDef hal_ret;
+        // Initialize I2C 
+        hardware.i2c_handle.State = HAL_I2C_STATE_RESET;
+        hardware.i2c_handle.Instance = I2C_INSTANCE;
+        hardware.i2c_handle.Init.Timing = I2C_TIMING;
+        hardware.i2c_handle.Init.OwnAddress1 = 0;
+        hardware.i2c_handle.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+        hardware.i2c_handle.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+        hardware.i2c_handle.Init.OwnAddress2 = 0;
+        hardware.i2c_handle.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+        hardware.i2c_handle.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+        hardware.i2c_handle.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+        hal_ret = HAL_I2C_Init(&hardware.i2c_handle);
+        configASSERT(hal_ret == HAL_OK);
+        /** Configure Analogue filter */
+        hal_ret = HAL_I2CEx_ConfigAnalogFilter(&hardware.i2c_handle, I2C_ANALOGFILTER_ENABLE);
+        configASSERT(hal_ret == HAL_OK);
+        /** Configure Digital filter */
+        hal_ret = HAL_I2CEx_ConfigDigitalFilter(&hardware.i2c_handle, 0);
+        configASSERT(hal_ret == HAL_OK);
 
-    /** Configure interrupt for ADC Alert pin */
-    HAL_NVIC_SetPriority(EXTI15_10_IRQn, 4, 0);
-    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+        /** Configure interrupt for ADC Alert pin */
+        HAL_NVIC_SetPriority(EXTI15_10_IRQn, 4, 0);
+        HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
-    hardware.initialized = true;
+        hardware.initialized = true;
+    } else {
+        // Spin until the hardware is initialized
+        while(!hardware.initialized) {
+            taskYIELD();
+        }
+    }
 }
 
 bool thermal_i2c_write_16(uint16_t addr, uint8_t reg, uint16_t val) {
@@ -184,6 +194,77 @@ bool thermal_i2c_read_16(uint16_t addr, uint8_t reg, uint16_t *val) {
     (void)xSemaphoreGive(hardware.i2c_semaphore);
 
     return (notification_val == 1) && (hal_ret == HAL_OK);
+}
+
+bool thermal_i2c_write_data(uint16_t addr, uint8_t *data, uint16_t len) {
+    const TickType_t max_block_time = pdMS_TO_TICKS(100);
+    HAL_StatusTypeDef hal_ret;
+    uint32_t notification_val = 0;
+    BaseType_t sem_ret;
+
+    if(data == NULL) {
+        return false;
+    }
+
+    sem_ret = xSemaphoreTake(hardware.i2c_semaphore, portMAX_DELAY);
+    if(sem_ret != pdTRUE) {
+        return false;
+    }
+
+    // Set up notification info
+    if(hardware.i2c_task_to_notify != NULL) {
+        xSemaphoreGive(hardware.i2c_semaphore);
+        return false;
+    }
+    hardware.i2c_task_to_notify = xTaskGetCurrentTaskHandle();
+
+    hal_ret = HAL_I2C_Master_Transmit_IT(&hardware.i2c_handle, addr, data, len);
+
+    if(hal_ret == HAL_OK) {
+        // Block on the interrupt for transmit_complete
+        notification_val = ulTaskNotifyTake(pdTRUE, max_block_time);
+    }
+
+    // Ignore return, we would not return an error here even if it fails
+    (void)xSemaphoreGive(hardware.i2c_semaphore);
+
+    return (notification_val == 1) && (hal_ret == HAL_OK);
+}
+
+bool thermal_i2c_read_data(uint16_t addr, uint8_t *data, uint16_t len) {
+    const TickType_t max_block_time = pdMS_TO_TICKS(100);
+    HAL_StatusTypeDef hal_ret;
+    uint32_t notification_val = 0;
+    BaseType_t sem_ret;
+
+    if(data == NULL) {
+        return false;
+    }
+
+    sem_ret = xSemaphoreTake(hardware.i2c_semaphore, portMAX_DELAY);
+    if(sem_ret != pdTRUE) {
+        return false;
+    }
+
+    // Set up notification info
+    if(hardware.i2c_task_to_notify != NULL) {
+        xSemaphoreGive(hardware.i2c_semaphore);
+        return false;
+    }
+    hardware.i2c_task_to_notify = xTaskGetCurrentTaskHandle();
+
+    hal_ret = HAL_I2C_Master_Receive_IT(&hardware.i2c_handle, addr, data, len);
+
+    if(hal_ret == HAL_OK) {
+        // Block on the interrupt for transmit_complete
+        notification_val = ulTaskNotifyTake(pdTRUE, max_block_time);
+    }
+
+    // Ignore return, we would not return an error here even if it fails
+    (void)xSemaphoreGive(hardware.i2c_semaphore);
+    
+    return (notification_val == 1) && (hal_ret == HAL_OK);
+
 }
 
 bool thermal_arm_adc_for_read() {

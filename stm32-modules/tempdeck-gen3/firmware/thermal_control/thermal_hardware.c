@@ -54,6 +54,10 @@
 
 #define FAN_CHANNEL (TIM_CHANNEL_1)
 
+// Write Protect config
+#define EEPROM_WP_PIN (GPIO_PIN_9)
+#define EEPROM_WP_PORT (GPIOC)
+
 // ***************************************************************************
 // Local typedefs
 
@@ -108,6 +112,7 @@ void thermal_hardware_init() {
 
         thermal_hardware_set_fan_power(0);
         thermal_hardware_disable_peltiers();
+        thermal_hardware_set_eeprom_write_protect(true);
     }
 }
 
@@ -199,6 +204,11 @@ bool thermal_hardware_set_fan_power(double power) {
     if(pwm == 0) { pwm = 1; }
     __HAL_TIM_SET_COMPARE(&hardware.fan_timer, FAN_CHANNEL, pwm);
     return true;
+}
+
+void thermal_hardware_set_eeprom_write_protect(bool set) {
+    HAL_GPIO_WritePin(EEPROM_WP_PORT, EEPROM_WP_PIN,
+        set ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 // ***************************************************************************
@@ -346,6 +356,7 @@ static void init_gpio() {
     GPIO_InitTypeDef init = {0};
 
     __GPIOA_CLK_ENABLE();
+    __GPIOC_CLK_ENABLE();
 
     init.Pin = ENABLE_12V_PIN;
     init.Mode = GPIO_MODE_OUTPUT_PP;
@@ -356,6 +367,9 @@ static void init_gpio() {
 
     init.Pin = PELTIER_ENABLE_PIN;
     HAL_GPIO_Init(PELTIER_ENABLE_PORT, &init);
+
+    init.Pin = EEPROM_WP_PIN;
+    HAL_GPIO_Init(EEPROM_WP_PORT, &init);
 
     HAL_GPIO_WritePin(ENABLE_12V_PORT, ENABLE_12V_PIN, GPIO_PIN_SET);
 }
