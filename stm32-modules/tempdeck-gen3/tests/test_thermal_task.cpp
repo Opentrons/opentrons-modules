@@ -452,6 +452,9 @@ TEST_CASE("closed loop thermal control") {
 TEST_CASE("thermal task offset constants message handling") {
     auto *tasks = tasks::BuildTasks();
     TestThermalPolicy policy;
+    eeprom::Eeprom<decltype(tasks->_thermal_task)::EEPROM_PAGES,
+                   decltype(tasks->_thermal_task)::EEPROM_ADDRESS>
+        eeprom;
 
     WHEN("getting the offset constants") {
         auto get_msg = messages::GetOffsetConstantsMessage{.id = 1};
@@ -505,6 +508,34 @@ TEST_CASE("thermal task offset constants message handling") {
                         tasks->_thermal_task.OFFSET_DEFAULT_CONST_A);
                 REQUIRE(response_msg.b == set_msg.b.value());
                 REQUIRE(response_msg.c == set_msg.c.value());
+            }
+        }
+        THEN("the EEPROM memory is updated") {
+            auto constants = eeprom::OffsetConstants{.a = 0, .b = 0, .c = 0};
+            constants = eeprom.get_offset_constants(constants, policy);
+            REQUIRE(constants.a == tasks->_thermal_task.OFFSET_DEFAULT_CONST_A);
+            REQUIRE(constants.b == set_msg.b.value());
+            REQUIRE(constants.c == set_msg.c.value());
+        }
+    }
+    GIVEN("eeprom is preloaded with offsets") {
+        auto constants = eeprom::OffsetConstants{.a = -42, .b = 1.5, .c = 2};
+        REQUIRE(eeprom.write_offset_constants(constants, policy));
+        WHEN("getting the offset constants") {
+            auto get_msg = messages::GetOffsetConstantsMessage{.id = 4};
+            REQUIRE(tasks->_thermal_queue.try_send(get_msg));
+            tasks->_thermal_task.run_once(policy);
+            THEN("the thermal task responds with the default constants") {
+                REQUIRE(tasks->_comms_queue.has_message());
+                auto response = tasks->_comms_queue.backing_deque.front();
+                REQUIRE(std::holds_alternative<
+                        messages::GetOffsetConstantsResponse>(response));
+                auto response_msg =
+                    std::get<messages::GetOffsetConstantsResponse>(response);
+                REQUIRE(response_msg.responding_to_id == get_msg.id);
+                REQUIRE(response_msg.a == constants.a);
+                REQUIRE(response_msg.b == constants.b);
+                REQUIRE(response_msg.c == constants.c);
             }
         }
     }
