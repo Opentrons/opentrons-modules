@@ -110,6 +110,7 @@ class ThermalTask {
           _peltier(),
           _pid(PELTIER_KP_DEFAULT, PELTIER_KI_DEFAULT, PELTIER_KD_DEFAULT, 1.0F,
                PELTIER_WINDUP_LIMIT, -PELTIER_WINDUP_LIMIT),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
           _eeprom(),
           _offset_constants{.a = OFFSET_DEFAULT_CONST_A,
                             .b = OFFSET_DEFAULT_CONST_B,
