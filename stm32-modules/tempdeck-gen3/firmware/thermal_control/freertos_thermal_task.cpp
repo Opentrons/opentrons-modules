@@ -2,6 +2,7 @@
 
 #include "firmware/thermal_hardware.h"
 #include "firmware/thermal_policy.hpp"
+#include "firmware/thermistor_hardware.h"
 #include "tempdeck-gen3/thermal_task.hpp"
 
 namespace thermal_control_task {
@@ -26,6 +27,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     _top_task.provide_aggregator(aggregator);
 
     thermal_hardware_init();
+    thermistor_hardware_init();
 
     auto policy = thermal_policy::ThermalPolicy();
     while (true) {
