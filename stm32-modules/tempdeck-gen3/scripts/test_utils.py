@@ -78,6 +78,38 @@ class Tempdeck():
         '''
         self._send_and_recv('M107\n', 'M107 OK')
 
+    def set_offsets(self, a: float = None, b: float = None, c: float = None):
+        '''
+        Set the offset constants. If any constants are not provided (left as
+        NONE), they will not be written.
+        '''
+        msg = 'M116'
+        if a:
+            msg += f' A{a}'
+        if b:
+            msg += f' B{b}'
+        if c:
+            msg += f' C{c}'
+        msg += '\n'
+        self._send_and_recv(msg, 'M116 OK')
+    
+    _OFFSETS_RE = re.compile('^M117 A:(?P<const_a>.+) B:(?P<const_b>.+) C:(?P<const_c>.+) OK\n')
+
+    def get_offsets(self) -> Tuple[float, float, float]:
+        '''
+        Get the thermal offset constants.
+
+        Returns:
+            tuple of [a, b, c] constants
+        '''
+        res = self._send_and_recv('M117\n', 'M117 A:')
+        match = re.match(self._OFFSETS_RE, res)
+        a = float(match.group('const_a'))
+        b = float(match.group('const_b'))
+        c = float(match.group('const_c'))
+        return a, b, c
+
+
     def dfu(self):
         '''
         Enter the bootloader. This will cause future comms to fail.
