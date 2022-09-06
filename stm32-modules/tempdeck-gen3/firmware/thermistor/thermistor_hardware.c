@@ -72,7 +72,7 @@ void thermistor_hardware_init() {
     GPIO_InitTypeDef gpio_init = {0};
 
     // Enforce that only one task may initialize the I2C
-    if(atomic_exchange(&hardware.initialization_started, true)) {
+    if(atomic_exchange(&hardware.initialization_started, true) == false) {
         hardware.i2c_semaphore = 
             xSemaphoreCreateMutexStatic(&hardware.i2c_semaphore_data);
 
