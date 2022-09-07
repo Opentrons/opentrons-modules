@@ -8,8 +8,8 @@
  * The internal ADC is configured to run in a fully interrupt-based mode.
  * The ADC will read a series of samples from the feedback channel, writing
  * the values back over DMA. Once the conversions are all complete, it will
- * invoke a configurable callback to tell higher level firmware that the
- * readings array is populated and ready to use.
+ * set a flag so that internal_adc_get_average() will know that the readings
+ * are ready to be read.
  *
  */
 
