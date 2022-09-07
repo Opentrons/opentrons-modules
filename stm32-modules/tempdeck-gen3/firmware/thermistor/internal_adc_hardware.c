@@ -56,7 +56,7 @@ static const adc_channel_init_t imeas_channel_conf = {
     .port = GPIOA
 };
 
-static const uint32_t adc_ranks[INTERNAL_ADC_READING_COUNT] = {
+static const uint32_t adc_ranks[] = {
     ADC_REGULAR_RANK_1,
     ADC_REGULAR_RANK_2,
     ADC_REGULAR_RANK_3,
@@ -65,7 +65,12 @@ static const uint32_t adc_ranks[INTERNAL_ADC_READING_COUNT] = {
     ADC_REGULAR_RANK_6,
     ADC_REGULAR_RANK_7,
     ADC_REGULAR_RANK_8,
+    ADC_REGULAR_RANK_9,
+    ADC_REGULAR_RANK_10,
 };
+
+_Static_assert(sizeof(adc_ranks) / sizeof(adc_ranks[0]) == INTERNAL_ADC_READING_COUNT,
+    "ADC ranks length must match number of readings");
 
 // Local function definition
 
