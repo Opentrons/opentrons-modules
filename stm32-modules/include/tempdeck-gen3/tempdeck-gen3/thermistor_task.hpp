@@ -16,6 +16,8 @@ concept ThermistorPolicy = requires(Policy& p) {
     // A function to sleep the task for a configurable number of milliseconds.
     // Used to provide a delay between thermistor read retries.
     { p.sleep_ms(1) } -> std::same_as<void>;
+    // A function to read the last Peltier Feedback reading
+    { p.get_imeas_adc_reading() } -> std::same_as<uint32_t>;
 };
 
 template <template <class> class QueueImpl>
@@ -58,6 +60,7 @@ class ThermistorTask {
 
         msg.plate = read_pin(adc, 0, policy);
         msg.heatsink = read_pin(adc, 1, policy);
+        msg.imeas = policy.get_imeas_adc_reading();
         static_cast<void>(_task_registry->send(msg));
     }
 

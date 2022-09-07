@@ -24,6 +24,7 @@ class ThermistorPolicy {
     auto ads1115_i2c_write_16(uint8_t reg, uint16_t data) -> bool;
     auto ads1115_i2c_read_16(uint8_t reg) -> std::optional<uint16_t>;
     auto ads1115_wait_for_pulse(uint32_t max_wait) -> bool;
+    auto get_imeas_adc_reading() -> uint32_t;
 
   private:
     std::atomic_bool _initialized;

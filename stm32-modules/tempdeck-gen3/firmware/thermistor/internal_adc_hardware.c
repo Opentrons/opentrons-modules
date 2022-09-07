@@ -26,7 +26,7 @@
 typedef struct {
     ADC_HandleTypeDef adc;
     DMA_HandleTypeDef dma;
-    uint32_t readings[INTERNAL_ADC_READING_COUNT];
+    uint16_t readings[INTERNAL_ADC_READING_COUNT];
     atomic_bool initialization_started;
     atomic_bool initialized;
     atomic_bool running;
@@ -99,7 +99,8 @@ bool internal_adc_start_readings() {
         return true;
     }
     ret = HAL_ADC_Start_DMA(&adc_hardware.adc, 
-        adc_hardware.readings, 
+        // DMA configured for half-word alignment, must cast u16 ptr
+        (uint32_t*)adc_hardware.readings, 
         adc_hardware.adc.Init.NbrOfConversion);
     if(ret != HAL_OK) {
         adc_hardware.running = false;
@@ -117,7 +118,7 @@ uint32_t internal_adc_get_average() {
     uint32_t min = adc_hardware.readings[0], max = adc_hardware.readings[0];
     uint32_t total = 0;
     for(uint8_t i = 0; i < INTERNAL_ADC_READING_COUNT; ++i) {
-        uint16_t reading = adc_hardware.readings[i];
+        uint32_t reading = adc_hardware.readings[i];
         total += reading;
         min = (reading < min) ? reading : min;
         max = (reading > max) ? reading : max;

@@ -2,6 +2,7 @@
 #include "firmware/thermistor_policy.hpp"
 
 #include "FreeRTOS.h"
+#include "firmware/internal_adc_hardware.h"
 #include "firmware/thermistor_hardware.h"
 #include "semphr.h"
 #include "task.h"
@@ -53,4 +54,12 @@ auto ThermistorPolicy::ads1115_i2c_read_16(uint8_t reg)
 auto ThermistorPolicy::ads1115_wait_for_pulse(uint32_t max_wait) -> bool {
     auto notification_val = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(max_wait));
     return notification_val == 1;
+}
+
+auto ThermistorPolicy::get_imeas_adc_reading() -> uint32_t {
+    auto ret = internal_adc_get_average();
+    if (ret == GET_ADC_AVERAGE_ERR) {
+        return 0;
+    }
+    return ret;
 }

@@ -27,6 +27,7 @@ using Message = messages::ThermalMessage;
 struct ThermalReadings {
     uint32_t plate_adc = 0;
     uint32_t heatsink_adc = 0;
+    uint32_t peltier_current_adc = 0;
     std::optional<double> heatsink_temp = 0.0F;
     std::optional<double> plate_temp = 0.0F;
 
@@ -171,6 +172,7 @@ class ThermalTask {
 
         _readings.heatsink_adc = message.heatsink;
         _readings.plate_adc = message.plate;
+        _readings.peltier_current_adc = message.imeas;
         _readings.last_tick = message.timestamp;
 
         // Reading conversion

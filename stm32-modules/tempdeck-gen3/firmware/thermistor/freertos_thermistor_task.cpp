@@ -1,8 +1,8 @@
 #include "firmware/freertos_thermistor_task.hpp"
 
 #include "FreeRTOS.h"
-#include "firmware/thermistor_hardware.h"
 #include "firmware/internal_adc_hardware.h"
+#include "firmware/thermistor_hardware.h"
 #include "firmware/thermistor_policy.hpp"
 #include "task.h"
 #include "tempdeck-gen3/thermal_task.hpp"

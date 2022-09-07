@@ -59,6 +59,11 @@ struct SimThermistorPolicy {
         return Ret(0);
     }
 
+    auto get_imeas_adc_reading() -> uint32_t {
+        // TODO - add simulator current feedback
+        return 0;
+    }
+
     uint32_t _time_ms = 0;
 
   private:
