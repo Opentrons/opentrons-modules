@@ -5,8 +5,8 @@ This is the script for controlling a Thermocycler to go through a set number of
 temperatures defined in the script.
 
 To run the script:
-1. Upload firmware from `TC_lifetime_test` branch onto the thermocycler.
-2. In a terminal/ commandline window, navigate to this directory (`/opentrons-modules/modules/thermo-cycler/QC/lieftime_test`)
+1. Upload firmware onto the thermocycler.
+2. In a terminal/ commandline window, navigate to this directory (`/opentrons-modules/modules/thermo-cycler/QC/lifetime_test`)
 3. Run the script with the following command:
 `python TC_datalogger.py -P port_name -F a_filename`
 Write the actual port name and specify a file name. The script will create a new
@@ -21,3 +21,5 @@ The script will deactivate the thermocycler when all the runs are completed.
 To stop/ abort the script, enter Ctrl+C in the terminal/command line window.
 You can then use Arduino serial monitor to deactivate the thermocycler by entering
 the gcode `M18`
+
+Note: This is a pretty old script and is not used in today's production workflows. It may not work as it was once intended to.
