@@ -3,14 +3,13 @@
  * @brief This file provides an interface to the internal ADC on the 
  * Tempdeck MCU.
  * 
- * The internal ADC is used to monitor three feedback signals from the
- * peltier: a current sense feedback input, and two independent voltage
- * level monitors (one per peltier channel).
+ * The internal ADC is used to monitor a current sense feedback input.
  * 
  * The internal ADC is configured to run in a fully interrupt-based mode.
- * The ADC will read the current value of each of the feedback channels, and
- * once all of the conversions are done it will write those values back to
- * memory.
+ * The ADC will read a series of samples from the feedback channel, writing
+ * the values back over DMA. Once the conversions are all complete, it will
+ * invoke a configurable callback to tell higher level firmware that the 
+ * readings array is populated and ready to use.
  * 
  */
 
@@ -24,9 +23,31 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+#define GET_ADC_AVERAGE_ERR (0xFFFFFFFF)
+
+#define INTERNAL_ADC_READING_COUNT (8)
+
+/**
+ * @brief Initialize the internal ADC hardware. This function is
+ * thread safe and guaranteed to only initialze one time.
+ * 
+ */
 void internal_adc_init();
 
-bool internal_adc_start_reading();
+/**
+ * @brief Start a new series of readings from the ADC
+ * 
+ * @return true if the readings could be started, false otherwise
+ */
+bool internal_adc_start_readings();
+
+/**
+ * @brief Get the averaged ADC reading from the last batch of readings.
+ * 
+ * @return The average ADC value if it is available, or returns
+ * \ref GET_ADC_AVERAGE_ERR if the readings are unavailable.
+ */
+uint32_t internal_adc_get_average();
 
 #ifdef __cplusplus
 }  // extern "C"
