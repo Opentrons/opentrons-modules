@@ -30,6 +30,7 @@ struct ThermalReadings {
     uint32_t peltier_current_adc = 0;
     std::optional<double> heatsink_temp = 0.0F;
     std::optional<double> plate_temp = 0.0F;
+    double peltier_current_milliamps = 0.0F;
 
     uint32_t last_tick = 0;
 };
@@ -44,6 +45,32 @@ struct Peltier {
     bool target_set = false;
     double power = 0.0F;
     double target = 0.0F;
+};
+
+// Provides constants & conversions for the internal ADC
+struct PeltierReadback {
+    // Internal ADC max value is 12 bits = 0xFFF = 4095
+    static constexpr double MAX_ADC_COUNTS = 4095;
+    // Internal ADC is scaled to 3.3v max
+    static constexpr double MAX_ADC_VOLTAGE = 3.3;
+    // Voltage for current measurement is amplified by 50x
+    static constexpr double CURRENT_AMP_GAIN = 50;
+    // Current measurement resistor is 10 milliohms = 0.001
+    static constexpr double CURRENT_AMP_RESISTOR_OHMS = 0.01;
+    // Milliamps per ampere
+    static constexpr double MILLIAMPS_PER_AMP = 1000.0;
+    // Final conversion factor between adc and current
+    static constexpr double MILLIAMPS_PER_COUNT =
+        ((MAX_ADC_VOLTAGE * MILLIAMPS_PER_AMP) /
+         (MAX_ADC_COUNTS * CURRENT_AMP_GAIN * CURRENT_AMP_RESISTOR_OHMS));
+
+    static auto adc_to_milliamps(uint32_t adc) -> double {
+        return static_cast<double>(adc) * MILLIAMPS_PER_COUNT;
+    }
+
+    static auto milliamps_to_adc(double milliamps) -> uint32_t {
+        return static_cast<uint32_t>(milliamps / MILLIAMPS_PER_COUNT);
+    }
 };
 
 template <template <class> class QueueImpl>
@@ -174,7 +201,6 @@ class ThermalTask {
         _readings.plate_adc = message.plate;
         _readings.peltier_current_adc = message.imeas;
         _readings.last_tick = message.timestamp;
-
         // Reading conversion
 
         auto res = _converter.convert(_readings.plate_adc);
@@ -189,6 +215,9 @@ class ThermalTask {
         } else {
             _readings.heatsink_temp = 0.0F;
         }
+
+        _readings.peltier_current_milliamps =
+            PeltierReadback::adc_to_milliamps(message.imeas);
 
         // Update thermal control
 

@@ -2,6 +2,30 @@
 #include "test/test_tasks.hpp"
 #include "test/test_thermal_policy.hpp"
 
+TEST_CASE("peltier current conversions") {
+    GIVEN("some ADC readings") {
+        std::vector<uint32_t> inputs = {0, 100, 1000};
+        WHEN("converting readings") {
+            std::vector<double> outputs(3);
+            std::transform(inputs.begin(), inputs.end(), outputs.begin(),
+                           thermal_task::PeltierReadback::adc_to_milliamps);
+            THEN("the readings are converted correctly") {
+                std::vector<double> expected = {0, 161.172, 1611.722};
+                REQUIRE_THAT(outputs, Catch::Matchers::Approx(expected));
+            }
+            AND_THEN("backconverting readings") {
+                std::vector<uint32_t> backconvert(3);
+                std::transform(outputs.begin(), outputs.end(),
+                               backconvert.begin(),
+                               thermal_task::PeltierReadback::milliamps_to_adc);
+                THEN("the backconversions match the original readings") {
+                    REQUIRE_THAT(backconvert, Catch::Matchers::Equals(inputs));
+                }
+            }
+        }
+    }
+}
+
 TEST_CASE("thermal task message handling") {
     auto *tasks = tasks::BuildTasks();
     TestThermalPolicy policy;
