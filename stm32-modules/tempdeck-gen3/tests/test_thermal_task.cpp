@@ -15,6 +15,7 @@ TEST_CASE("thermal task message handling") {
             .timestamp = 1000,
             .plate = plate_count,
             .heatsink = hs_count,
+            .imeas = 555,
         };
         tasks->_thermal_queue.backing_deque.push_back(thermistors_msg);
         tasks->_thermal_task.run_once(policy);
@@ -26,6 +27,7 @@ TEST_CASE("thermal task message handling") {
             REQUIRE(readings.heatsink_adc == thermistors_msg.heatsink);
             REQUIRE(readings.plate_adc == thermistors_msg.plate);
             REQUIRE(readings.last_tick == thermistors_msg.timestamp);
+            REQUIRE(readings.peltier_current_adc == thermistors_msg.imeas);
         }
         THEN("the ADC readings are properly converted to temperatures") {
             auto readings = tasks->_thermal_task.get_readings();

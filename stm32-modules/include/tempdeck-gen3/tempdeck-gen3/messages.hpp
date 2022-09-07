@@ -97,6 +97,8 @@ struct ThermistorReadings {
     uint32_t timestamp;
     uint32_t plate;
     uint32_t heatsink;
+    // Peltier current feedback
+    uint32_t imeas;
 };
 
 struct DeactivateAllMessage {
