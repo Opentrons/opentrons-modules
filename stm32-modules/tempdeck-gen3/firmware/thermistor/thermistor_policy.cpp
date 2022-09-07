@@ -56,6 +56,7 @@ auto ThermistorPolicy::ads1115_wait_for_pulse(uint32_t max_wait) -> bool {
     return notification_val == 1;
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermistorPolicy::get_imeas_adc_reading() -> uint32_t {
     auto ret = internal_adc_get_average();
     if (ret == GET_ADC_AVERAGE_ERR) {
