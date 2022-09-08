@@ -418,7 +418,7 @@ class ThermalTask {
             .peltier_pwm = _peltier.power,
             .fan_pwm = _fan.power};
 
-        if(!_peltier.target_set && !_peltier.manual) {
+        if (!_peltier.target_set && !_peltier.manual) {
             response.peltier_pwm = 0.0F;
         }
         static_cast<void>(
