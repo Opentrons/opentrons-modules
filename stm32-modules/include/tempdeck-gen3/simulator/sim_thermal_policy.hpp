@@ -3,7 +3,9 @@
 #include <cmath>
 #include <cstdint>
 
-struct SimThermalPolicy {
+#include "simulator/sim_at24c0xc_policy.hpp"
+
+struct SimThermalPolicy : public at24c0xc_sim_policy::SimAT24C0XCPolicy<32> {
     auto enable_peltier() -> void { _enabled = true; }
 
     auto disable_peltier() -> void { _enabled = false; }

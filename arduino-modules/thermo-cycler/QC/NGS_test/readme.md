@@ -5,7 +5,7 @@ This is the script for controlling a Thermocycler to go through a set number of
 temperatures defined in the script.
 
 To run the script:
-1. Upload firmware from `TC_lifetime_test` branch onto the thermocycler.
+1. Upload firmware onto the thermocycler.
 2. In a terminal/ commandline window, navigate to this directory (`/opentrons-modules/modules/thermo-cycler/QC/NGS_test`)
 3. Run the script with the following command:
 `python NGS_test_protocol.py -P port_name -F a_filename`

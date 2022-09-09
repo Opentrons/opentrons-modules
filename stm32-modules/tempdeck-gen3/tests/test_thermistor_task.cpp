@@ -6,6 +6,7 @@ TEST_CASE("thermistor task functionality") {
     auto *tasks = tasks::BuildTasks();
     TestThermistorPolicy policy;
     policy.sleep_ms(123);
+    policy._imeas_adc_val = 123;
     WHEN("thermistor task runs once") {
         tasks->_thermistor_task.run_once(policy);
         THEN("a Thermistor Message is sent to the thermal task") {
@@ -16,6 +17,7 @@ TEST_CASE("thermistor task functionality") {
             REQUIRE(therms.timestamp == policy.get_time_ms());
             REQUIRE(therms.heatsink == decltype(policy)::READBACK_VALUE);
             REQUIRE(therms.plate == decltype(policy)::READBACK_VALUE);
+            REQUIRE(therms.imeas == policy._imeas_adc_val);
         }
         THEN("the adc was initialized") { REQUIRE(policy._initialized); }
         THEN("two channels of the adc were read") {

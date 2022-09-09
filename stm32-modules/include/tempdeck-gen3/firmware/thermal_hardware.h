@@ -49,6 +49,8 @@ bool thermal_hardware_set_peltier_cool(double power);
 
 bool thermal_hardware_set_fan_power(double power);
 
+void thermal_hardware_set_eeprom_write_protect(bool set);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus

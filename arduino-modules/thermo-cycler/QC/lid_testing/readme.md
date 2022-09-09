@@ -4,7 +4,7 @@ Lid Testing Instructions- WINDOWS OS
 1. Open Git Bash
 2. Navigate to firmware directory:
 `cd Documents\opentrons\opentrons-modules`
-3. Check you branch name (should show up in parentheses next to the current path). If you need to switch to a different branch, do `git checkout branch_name`
+3. Check your branch name (should show up in parentheses next to the current path). If you need to switch to a different branch, do `git checkout branch_name`
 4. Make sure you don't have any uncommitted changes by checking with `git status`
 5 Pull with `git pull`
 
