@@ -25,7 +25,7 @@ class ThermalPolicy {
 
     auto set_fan_power(double power) -> bool;
 
-    auto get_fan_rpm() const -> double;
+    [[nodiscard]] auto get_fan_rpm() const -> double;
 
     auto set_write_protect(bool set) -> void;
 
