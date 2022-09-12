@@ -19,6 +19,7 @@ concept ThermalPolicy = requires(Policy& p) {
     { p.set_peltier_heat_power(1.0) } -> std::same_as<bool>;
     { p.set_peltier_cool_power(1.0) } -> std::same_as<bool>;
     { p.set_fan_power(1.0) } -> std::same_as<bool>;
+    { p.get_fan_rpm() } -> std::same_as<double>;
 }
 &&at24c0xc::AT24C0xC_Policy<Policy>;
 
@@ -415,12 +416,14 @@ class ThermalTask {
         auto response = messages::GetThermalPowerDebugResponse{
             .responding_to_id = message.id,
             .peltier_current = _readings.peltier_current_milliamps,
+            .fan_rpm = 0,
             .peltier_pwm = _peltier.power,
             .fan_pwm = _fan.power};
 
         if (!_peltier.target_set && !_peltier.manual) {
             response.peltier_pwm = 0.0F;
         }
+        response.fan_rpm = policy.get_fan_rpm();
         static_cast<void>(
             _task_registry->send_to_address(response, Queues::HostAddress));
     }

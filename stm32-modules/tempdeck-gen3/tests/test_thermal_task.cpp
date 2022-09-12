@@ -579,6 +579,8 @@ TEST_CASE("thermal task power debug functionality") {
         decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);
     auto temp_adc = converter.backconvert(temp);
 
+    policy.set_fan_rpm(12345.0);
+
     GIVEN("a thermal task with valid peltier current readings") {
         auto adc_msg = messages::ThermistorReadings{
             .timestamp = 123,
@@ -613,6 +615,8 @@ TEST_CASE("thermal task power debug functionality") {
                              Catch::Matchers::WithinAbs(0, .01));
                 REQUIRE_THAT(response.fan_pwm,
                              Catch::Matchers::WithinAbs(0, .001));
+                REQUIRE_THAT(response.fan_rpm,
+                             Catch::Matchers::WithinAbs(policy._fan_rpm, .001));
             }
         }
         AND_GIVEN("manual mode for peltiers and fans") {
@@ -655,6 +659,8 @@ TEST_CASE("thermal task power debug functionality") {
                         Catch::Matchers::WithinAbs(peltier_msg.power, .001));
                     REQUIRE_THAT(response.fan_pwm, Catch::Matchers::WithinAbs(
                                                        fan_msg.power, .001));
+                    REQUIRE_THAT(response.fan_rpm, Catch::Matchers::WithinAbs(
+                                                       policy._fan_rpm, .001));
                 }
             }
         }

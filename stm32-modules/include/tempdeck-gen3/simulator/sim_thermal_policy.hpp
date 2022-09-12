@@ -31,6 +31,12 @@ struct SimThermalPolicy : public at24c0xc_sim_policy::SimAT24C0XCPolicy<32> {
         return true;
     }
 
+    auto get_fan_rpm() -> double {
+        // From the fan datasheet
+        static constexpr double MAX_RPM = 10800;
+        return _fan * MAX_RPM;
+    }
+
   private:
     bool _enabled = false;
     double _power = 0.0F;  // Positive for heat, negative for cool

@@ -230,7 +230,7 @@ struct GetTemperatureDebug {
  * @brief Uses M103.D to get the current power output for the thermal system
  *
  * Format: M103.D\n
- * Return: M103.D I:<peltier current> P:<Peltier PWM> F:<Fan PWM>
+ * Return: M103.D I:<peltier current> R:<Fan RPM> P:<Peltier PWM> F:<Fan PWM>
  *
  */
 struct GetThermalPowerDebug {
@@ -253,11 +253,12 @@ struct GetThermalPowerDebug {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit,
-                                    double peltier_current, double peltier_pwm,
-                                    double fan_pwm) -> InputIt {
+                                    double peltier_current, double fan_rpm,
+                                    double peltier_pwm, double fan_pwm)
+        -> InputIt {
         auto res = snprintf(
-            &*buf, (limit - buf), "M103.D I:%0.3f P:%0.3f F:%0.3f OK\n",
-            static_cast<float>(peltier_current),
+            &*buf, (limit - buf), "M103.D I:%0.3f R:%0.3f P:%0.3f F:%0.3f OK\n",
+            static_cast<float>(peltier_current), static_cast<float>(fan_rpm),
             static_cast<float>(peltier_pwm), static_cast<float>(fan_pwm));
         if (res <= 0) {
             return buf;

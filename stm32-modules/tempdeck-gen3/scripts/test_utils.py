@@ -109,22 +109,24 @@ class Tempdeck():
         c = float(match.group('const_c'))
         return a, b, c
 
-    _POWER_RE = re.compile('^M103.D I:(?P<current>.+) P:(?P<p_pwm>.+) F:(?P<f_pwm>.+) OK\n')
-    def get_thermal_power(self) -> Tuple[float, float, float]:
+    _POWER_RE = re.compile('^M103.D I:(?P<current>.+) R:(?P<rpm>.+) P:(?P<p_pwm>.+) F:(?P<f_pwm>.+) OK\n')
+    def get_thermal_power(self) -> Tuple[float, float, float, float]:
         """
         Get the thermal power of the system.
         
         Returns:
             peltier current in mA
+            fan RPM
             peltier PWM [-1,1]
             fan PWM [0,1]
         """
         res = self._send_and_recv('M103.D\n', 'M103.D I:')
         match = re.match(self._POWER_RE, res)
         current = float(match.group('current'))
+        rpm = float(match.group('rpm'))
         peltier_pwm = float(match.group('p_pwm'))
         fan_pwm = float(match.group('f_pwm'))
-        return current, peltier_pwm, fan_pwm
+        return current, rpm, peltier_pwm, fan_pwm
 
     def dfu(self):
         '''
