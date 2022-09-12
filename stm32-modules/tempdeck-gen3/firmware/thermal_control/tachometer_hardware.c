@@ -111,13 +111,17 @@ void tachometer_hardware_init() {
 }
 
 double tachometer_hardware_get_rpm() {
-    if(hardware.tach_period == 0) {
+    // If we directly use the atomic variable after the if(),
+    // there's a chance we can divide by zero!
+    long period = hardware.tach_period;
+    
+    if(period == 0) {
         return 0;
     }
 
     return ((double)SEC_PER_MIN * (double)(PULSES_PER_CAPTURE) * 
             (double)TACH_TIMER_PRESCALED_FREQ)
-            / ((double)hardware.tach_period * PULSES_PER_ROTATION);
+            / ((double)period * PULSES_PER_ROTATION);
 }
 
 /** Static function implementation */
