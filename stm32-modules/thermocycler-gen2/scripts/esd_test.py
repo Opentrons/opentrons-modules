@@ -104,7 +104,7 @@ class Thermocycler():
 def main():
     args = parse_args()
 
-    tc = Thermocycler(port=args.port, debug=args.debug)
+    tc = Thermocycler(port=args.port)
 
     try:
         tc.set_lid_target(105)
@@ -116,7 +116,11 @@ def main():
             lid = tc.get_lid_temperature()[0]
             plate = tc.get_plate_temperature()[0]
             print(f'Lid: {lid}\tPlate: {plate}')
+    except KeyboardInterrupt:
+        print('Ending script')
+        print('')
     finally:
+        print('Deactivating Thermocycler')
         tc.deactivate_all()
 
 if __name__ == '__main__':
