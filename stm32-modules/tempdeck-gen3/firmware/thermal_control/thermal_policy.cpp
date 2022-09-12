@@ -30,6 +30,7 @@ auto ThermalPolicy::set_fan_power(double power) -> bool {
     return thermal_hardware_set_fan_power(power);
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPolicy::get_fan_rpm() const -> double {
     return tachometer_hardware_get_rpm();
 }

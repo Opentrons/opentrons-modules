@@ -12,11 +12,12 @@ SCENARIO("GetThermalPowerDebug (M103.D) parser works",
         std::string buffer(256, 'c');
         WHEN("filling response") {
             auto written = gcode::GetThermalPowerDebug::write_response_into(
-                buffer.begin(), buffer.end(), 10.0, 10, 15);
+                buffer.begin(), buffer.end(), 10.0, 50, 10, 15);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::StartsWith(
-                                 "M103.D I:10.000 P:10.000 F:15.000 OK\n"));
+                REQUIRE_THAT(
+                    buffer,
+                    Catch::Matchers::StartsWith(
+                        "M103.D I:10.000 R:50.000 P:10.000 F:15.000 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
@@ -26,7 +27,7 @@ SCENARIO("GetThermalPowerDebug (M103.D) parser works",
         std::string buffer(16, 'c');
         WHEN("filling response") {
             auto written = gcode::GetThermalPowerDebug::write_response_into(
-                buffer.begin(), buffer.begin() + 7, 10.0, 10, 15);
+                buffer.begin(), buffer.begin() + 7, 10.0, 50, 10, 15);
             THEN("the response should write only up to the available space") {
                 std::string response = "M103.Dcccccccccc";
                 response.at(6) = '\0';

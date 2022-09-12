@@ -1,9 +1,9 @@
 #include "firmware/freertos_thermal_task.hpp"
 
+#include "firmware/tachometer_hardware.h"
 #include "firmware/thermal_hardware.h"
 #include "firmware/thermal_policy.hpp"
 #include "firmware/thermistor_hardware.h"
-#include "firmware/tachometer_hardware.h"
 #include "tempdeck-gen3/thermal_task.hpp"
 
 namespace thermal_control_task {
