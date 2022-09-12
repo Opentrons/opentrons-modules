@@ -329,7 +329,8 @@ class HostCommsTask {
                 } else {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.peltier_current,
-                        response.peltier_pwm, response.fan_pwm);
+                        response.fan_rpm, response.peltier_pwm,
+                        response.fan_pwm);
                 }
             },
             cache_entry);

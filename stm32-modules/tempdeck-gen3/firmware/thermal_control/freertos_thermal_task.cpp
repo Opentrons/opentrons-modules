@@ -1,5 +1,6 @@
 #include "firmware/freertos_thermal_task.hpp"
 
+#include "firmware/tachometer_hardware.h"
 #include "firmware/thermal_hardware.h"
 #include "firmware/thermal_policy.hpp"
 #include "firmware/thermistor_hardware.h"
@@ -28,6 +29,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
 
     thermal_hardware_init();
     thermistor_hardware_init();
+    tachometer_hardware_init();
 
     auto policy = thermal_policy::ThermalPolicy();
     while (true) {

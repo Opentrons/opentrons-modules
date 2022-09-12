@@ -163,7 +163,7 @@ struct GetThermalPowerDebugMessage {
 
 struct GetThermalPowerDebugResponse {
     uint32_t responding_to_id;
-    double peltier_current, peltier_pwm, fan_pwm;
+    double peltier_current, fan_rpm, peltier_pwm, fan_pwm;
 };
 
 using HostCommsMessage =

@@ -712,6 +712,7 @@ SCENARIO("host comms commands to thermal task") {
                 auto response = messages::GetThermalPowerDebugResponse{
                     .responding_to_id = id + 1,
                     .peltier_current = 10,
+                    .fan_rpm = 10000,
                     .peltier_pwm = -1,
                     .fan_pwm = 1};
                 tasks->_comms_queue.backing_deque.push_back(response);
@@ -728,13 +729,15 @@ SCENARIO("host comms commands to thermal task") {
                 auto response = messages::GetThermalPowerDebugResponse{
                     .responding_to_id = id,
                     .peltier_current = 10,
+                    .fan_rpm = 10000,
                     .peltier_pwm = -1,
                     .fan_pwm = 1};
                 tasks->_comms_queue.backing_deque.push_back(response);
                 written =
                     tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
                 THEN("a response is printed") {
-                    auto expected = "M103.D I:10.000 P:-1.000 F:1.000 OK\n";
+                    auto expected =
+                        "M103.D I:10.000 R:10000.000 P:-1.000 F:1.000 OK\n";
                     REQUIRE(written == (tx_buf.begin() + strlen(expected)));
                     REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
                 }
