@@ -16,6 +16,7 @@ add_executable(${TARGET_MODULE_NAME}
     # gcode tests
     test_m18.cpp
     test_m104.cpp
+    test_m103d.cpp
     test_m104d.cpp
     test_m105d.cpp
     test_m106.cpp

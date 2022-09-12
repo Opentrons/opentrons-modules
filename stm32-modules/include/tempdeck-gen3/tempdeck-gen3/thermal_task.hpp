@@ -30,6 +30,7 @@ struct ThermalReadings {
     uint32_t peltier_current_adc = 0;
     std::optional<double> heatsink_temp = 0.0F;
     std::optional<double> plate_temp = 0.0F;
+    double peltier_current_milliamps = 0.0F;
 
     uint32_t last_tick = 0;
 };
@@ -44,6 +45,32 @@ struct Peltier {
     bool target_set = false;
     double power = 0.0F;
     double target = 0.0F;
+};
+
+// Provides constants & conversions for the internal ADC
+struct PeltierReadback {
+    // Internal ADC max value is 12 bits = 0xFFF = 4095
+    static constexpr double MAX_ADC_COUNTS = 4095;
+    // Internal ADC is scaled to 3.3v max
+    static constexpr double MAX_ADC_VOLTAGE = 3.3;
+    // Voltage for current measurement is amplified by 50x
+    static constexpr double CURRENT_AMP_GAIN = 50;
+    // Current measurement resistor is 10 milliohms = 0.001
+    static constexpr double CURRENT_AMP_RESISTOR_OHMS = 0.01;
+    // Milliamps per ampere
+    static constexpr double MILLIAMPS_PER_AMP = 1000.0;
+    // Final conversion factor between adc and current
+    static constexpr double MILLIAMPS_PER_COUNT =
+        ((MAX_ADC_VOLTAGE * MILLIAMPS_PER_AMP) /
+         (MAX_ADC_COUNTS * CURRENT_AMP_GAIN * CURRENT_AMP_RESISTOR_OHMS));
+
+    static auto adc_to_milliamps(uint32_t adc) -> double {
+        return static_cast<double>(adc) * MILLIAMPS_PER_COUNT;
+    }
+
+    static auto milliamps_to_adc(double milliamps) -> uint32_t {
+        return static_cast<uint32_t>(milliamps / MILLIAMPS_PER_COUNT);
+    }
 };
 
 template <template <class> class QueueImpl>
@@ -174,7 +201,6 @@ class ThermalTask {
         _readings.plate_adc = message.plate;
         _readings.peltier_current_adc = message.imeas;
         _readings.last_tick = message.timestamp;
-
         // Reading conversion
 
         auto res = _converter.convert(_readings.plate_adc);
@@ -189,6 +215,9 @@ class ThermalTask {
         } else {
             _readings.heatsink_temp = 0.0F;
         }
+
+        _readings.peltier_current_milliamps =
+            PeltierReadback::adc_to_milliamps(message.imeas);
 
         // Update thermal control
 
@@ -274,6 +303,7 @@ class ThermalTask {
                     response.with_error =
                         errors::ErrorCode::THERMAL_PELTIER_ERROR;
                     policy.disable_peltier();
+                    _peltier.power = 0.0F;
                 } else {
                     _peltier.manual = true;
                     _peltier.power = message.power;
@@ -378,6 +408,23 @@ class ThermalTask {
             _task_registry->send_to_address(response, Queues::HostAddress));
     }
 
+    template <ThermalPolicy Policy>
+    auto visit_message(const messages::GetThermalPowerDebugMessage& message,
+                       Policy& policy) -> void {
+        std::ignore = policy;
+        auto response = messages::GetThermalPowerDebugResponse{
+            .responding_to_id = message.id,
+            .peltier_current = _readings.peltier_current_milliamps,
+            .peltier_pwm = _peltier.power,
+            .fan_pwm = _fan.power};
+
+        if (!_peltier.target_set && !_peltier.manual) {
+            response.peltier_pwm = 0.0F;
+        }
+        static_cast<void>(
+            _task_registry->send_to_address(response, Queues::HostAddress));
+    }
+
     /**
      * @brief Updates control of the peltier and fan based off of the current
      * state of the system.
@@ -398,9 +445,10 @@ class ThermalTask {
                 policy.enable_peltier();
                 bool ret = false;
                 if (_peltier.power >= 0.0F) {
-                    ret = policy.set_peltier_heat_power(power);
+                    ret = policy.set_peltier_heat_power(_peltier.power);
                 } else {
-                    ret = policy.set_peltier_cool_power(std::abs(power));
+                    ret =
+                        policy.set_peltier_cool_power(std::abs(_peltier.power));
                 }
                 if (!ret) {
                     _peltier.target_set = false;
@@ -414,18 +462,19 @@ class ThermalTask {
                 // target_set hasn't been cleared
                 if (_readings.plate_temp.value() >
                     _peltier.target + STABILIZING_THRESHOLD) {
-                    policy.set_fan_power(FAN_POWER_MAX);
+                    _fan.power = FAN_POWER_MAX;
                 } else {
-                    policy.set_fan_power(FAN_POWER_MEDIUM);
+                    _fan.power = FAN_POWER_MEDIUM;
                 }
             } else /* !_peltier.target_set */ {
                 if (_readings.heatsink_temp.has_value() &&
                     _readings.heatsink_temp.value() < HEATSINK_IDLE_THRESHOLD) {
-                    policy.set_fan_power(0);
+                    _fan.power = 0;
                 } else {
-                    policy.set_fan_power(FAN_POWER_LOW);
+                    _fan.power = FAN_POWER_LOW;
                 }
             }
+            policy.set_fan_power(_fan.power);
         }
     }
 

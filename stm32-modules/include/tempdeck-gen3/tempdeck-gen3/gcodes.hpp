@@ -227,6 +227,46 @@ struct GetTemperatureDebug {
 };
 
 /**
+ * @brief Uses M103.D to get the current power output for the thermal system
+ *
+ * Format: M103.D\n
+ * Return: M103.D I:<peltier current> P:<Peltier PWM> F:<Fan PWM>
+ *
+ */
+struct GetThermalPowerDebug {
+    using ParseResult = std::optional<GetThermalPowerDebug>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '3', '.', 'D'};
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetThermalPowerDebug()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double peltier_current, double peltier_pwm,
+                                    double fan_pwm) -> InputIt {
+        auto res = snprintf(
+            &*buf, (limit - buf), "M103.D I:%0.3f P:%0.3f F:%0.3f OK\n",
+            static_cast<float>(peltier_current),
+            static_cast<float>(peltier_pwm), static_cast<float>(fan_pwm));
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
+/**
  * @brief SetTemperature is a command to set a temperature target for the
  * peltiers. There is one parameter, the target temp.
  *

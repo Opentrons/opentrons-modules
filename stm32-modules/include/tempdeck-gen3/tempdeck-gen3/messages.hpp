@@ -157,10 +157,20 @@ struct SetOffsetConstantsMessage {
     std::optional<double> c = std::nullopt;
 };
 
+struct GetThermalPowerDebugMessage {
+    uint32_t id;
+};
+
+struct GetThermalPowerDebugResponse {
+    uint32_t responding_to_id;
+    double peltier_current, peltier_pwm, fan_pwm;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetTempDebugResponse, GetOffsetConstantsResponse>;
+                   GetTempDebugResponse, GetOffsetConstantsResponse,
+                   GetThermalPowerDebugResponse>;
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage>;
@@ -170,5 +180,6 @@ using ThermalMessage =
                    SetPeltierDebugMessage, SetFanManualMessage,
                    SetFanAutomaticMessage, DeactivateAllMessage,
                    SetTemperatureMessage, SetPIDConstantsMessage,
-                   GetOffsetConstantsMessage, SetOffsetConstantsMessage>;
+                   GetOffsetConstantsMessage, SetOffsetConstantsMessage,
+                   GetThermalPowerDebugMessage>;
 };  // namespace messages
