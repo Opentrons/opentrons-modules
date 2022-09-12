@@ -111,11 +111,13 @@ def main():
         print('Set lid to 105C')
         tc.set_plate_target(70)
         print('Set plate to 70C')
+        start = time.time()
         while True:
             time.sleep(3)
             lid = tc.get_lid_temperature()[0]
             plate = tc.get_plate_temperature()[0]
-            print(f'Lid: {lid}\tPlate: {plate}')
+            now = time.time()
+            print(f'{now - start}\tLid: {lid}\tPlate: {plate}')
     except KeyboardInterrupt:
         print('Ending script')
         print('')
