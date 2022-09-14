@@ -324,7 +324,8 @@ static void handle_i2c_callback(I2C_HandleTypeDef *handle) {
     // Need to look up our struct based on the hardware handle...
     I2C_Instance *instance = 
         i2c_get_struct_from_hal_instance(handle->Instance);
-    if( instance->task_to_notify == NULL ) {
+    if( (instance == NULL) ||
+        instance->task_to_notify == NULL ) {
         return;
     }
     vTaskNotifyGiveFromISR(instance->task_to_notify, 
@@ -337,6 +338,10 @@ static void handle_i2c_callback(I2C_HandleTypeDef *handle) {
 // own structs with higher level data
 static inline I2C_Instance*
         i2c_get_struct_from_hal_instance(I2C_TypeDef *instance) {
+    if(instance == NULL) {
+        return NULL;
+    }
+    
     for(uint8_t i = 0; i < I2C_BUS_COUNT; ++i) {
         if(i2c_hardware.i2c[i].instance == instance) {
             return &i2c_hardware.i2c[i];

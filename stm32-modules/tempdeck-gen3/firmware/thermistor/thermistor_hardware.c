@@ -20,17 +20,6 @@
 #define ADC_ALERT_PIN  (GPIO_PIN_11)
 #define ADC_ALERT_PORT (GPIOB)
 
-#define I2C_INSTANCE (I2C2)
-/* Driven by PCLK1 to Fast Mode - just shy of 400kHz */
-#define I2C_TIMING   (0x80500D1D)
-/** Size of register address: 1 byte.*/
-#define REGISTER_ADDR_LEN (1)
-
-#define SDA_PIN (GPIO_PIN_8)
-#define SDA_PORT (GPIOA)
-#define SCL_PIN (GPIO_PIN_9)
-#define SCL_PORT (GPIOA)
-
 /** Private typedef */
 
 struct ThermistorHardware {
