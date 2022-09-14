@@ -4,8 +4,8 @@ This section provides a general overview of the firmware architecture for the Te
 ## Drivers
 Hardware peripherals attached to the STM32 are classified into drivers. These drivers are not given their own tasks, but are rather utilized _by_ the software tasks. Lower level hardware control, such as simple access to internal peripherals, is covered by 'Hardware Policy' code. Drivers are distinct in that they maintain their own state.
 
-- __EEPROM Driver__ - Provides functionality to read and write the EEPROM on teh system. See `../../include/common/core/at24c0xc.hpp`
-- __LED Driver__ - Provides functionality to write to the LED's on the system. See `../../include/common/core/xt1511.hpp`
+- __EEPROM Driver__ - Provides functionality to read and write the EEPROM on the system over I2C. See `../../include/common/core/at24c0xc.hpp`
+- __LED Driver__ - Provides functionality to write to the LED's on the system. Uses I2C.
 - __PID Driver__ - Provides a unified interface to calculate Proportional Integral Derivative control. See `../../include/common/core/pid.hpp`
 - __ADS1115 Driver__ - Provides an interface to control the ADS1115 ADC IC on the main board. See `../../include/common/core/ads1115.hpp`
 - __Thermistor Conversion Driver__ - Provides an interface to convert an ADC reading into a temperature in ºC.
@@ -67,7 +67,7 @@ Each task on the system is either _periodic_, running at a fixed frequency; or i
   - Enter the DFU bootloader
   - Write or read an array of I2C bytes (thread-safe via semaphore) for the EEPROM driver
 - __UI Task__: _(message-driven)_ See `./ui/`. This task is driven by a timer (__UI Timer__) to periodically update the LED's on the system based on the current thermal system state. Other tasks send their current state to the UI Task, which decides what to display based on the combined state of the main tasks. Policy functionality:
-  - Write data to the LED's
+  - Write data to the LED's over I2C
 - __Thermistor Task__: _(periodic)_ See `./thermistor/`. The thermistor task manages periodic reading of the thermistors on the system. At the end of each read, the data is sent to the Thermal Task. Policy functinonality includes:
   - Write or read a 16-byte I2C register (thread-safe via semaphore) for the ADS1115 driver
   - Sleep the task until a specific millisecond tick value

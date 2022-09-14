@@ -35,6 +35,7 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
 # Add source files that should NOT be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/hal_tick.c
+  ${SYSTEM_DIR}/i2c_hardware.c
   ${SYSTEM_DIR}/system_stm32g4xx.c
   ${SYSTEM_DIR}/system_hardware.c
   ${SYSTEM_DIR}/system_serial_number.c

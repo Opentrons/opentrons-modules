@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <iterator>
 
-#include "firmware/thermistor_hardware.h"
+#include "firmware/i2c_hardware.h"
 
 namespace thermal_policy {
 
@@ -33,12 +33,12 @@ class ThermalPolicy {
 
     template <ByteIterator Input>
     auto i2c_write(uint8_t addr, Input data, size_t length) -> bool {
-        return thermal_i2c_write_data(addr, &(*data), length);
+        return i2c_hardware_write_data(I2C_BUS_THERMAL, addr, &(*data), length);
     }
 
     template <ByteIterator Output>
     auto i2c_read(uint8_t addr, Output data, size_t length) -> bool {
-        return thermal_i2c_read_data(addr, &(*data), length);
+        return i2c_hardware_read_data(I2C_BUS_THERMAL, addr, &(*data), length);
     }
 };
 
