@@ -746,25 +746,41 @@ SCENARIO("host comms commands to thermal task") {
     }
 }
 
-SCENARIO("host comms usb disconnect") {
-    auto *tasks = tasks::BuildTasks();
-    std::string tx_buf(128, 'c');
-    WHEN("sending a DisconnectUSB message") {
-        auto msg = messages::ForceUSBDisconnect{
-            .id = 123,
-            .return_address = tasks::TestTasks::Queues::SystemAddress};
-        tasks->_comms_queue.backing_deque.push_back(msg);
-        tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
-        THEN("the host comms task disables USB") {
-            REQUIRE(!tasks->_comms_task.may_connect());
+SCENARIO("message handling for other-task-initiated communication") {
+    GIVEN("a host_comms task") {
+        auto *tasks = tasks::BuildTasks();
+        std::string tx_buf(128, 'c');
+        WHEN("sending an error as from the thermal task") {
+            auto message_obj =
+                messages::HostCommsMessage(messages::ErrorMessage(
+                    errors::ErrorCode::THERMAL_PELTIER_ERROR));
+            tasks->_comms_queue.backing_deque.push_back(message_obj);
+            auto written =
+                tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+            THEN("the task should write out the error") {
+                REQUIRE_THAT(
+                    tx_buf, Catch::Matchers::StartsWith(
+                                "async ERR101:thermal:peltier driver error\n"));
+                REQUIRE(*written == 'c');
+            }
         }
-        THEN("an ack is sent to system task") {
-            REQUIRE(tasks->_system_queue.has_message());
-            auto sys_msg = tasks->_system_queue.backing_deque.front();
-            REQUIRE(
-                std::holds_alternative<messages::AcknowledgePrevious>(sys_msg));
-            auto ack = std::get<messages::AcknowledgePrevious>(sys_msg);
-            REQUIRE(ack.responding_to_id == msg.id);
+        WHEN("sending a DisconnectUSB message") {
+            auto msg = messages::ForceUSBDisconnect{
+                .id = 123,
+                .return_address = tasks::TestTasks::Queues::SystemAddress};
+            tasks->_comms_queue.backing_deque.push_back(msg);
+            tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
+            THEN("the host comms task disables USB") {
+                REQUIRE(!tasks->_comms_task.may_connect());
+            }
+            THEN("an ack is sent to system task") {
+                REQUIRE(tasks->_system_queue.has_message());
+                auto sys_msg = tasks->_system_queue.backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
+                    sys_msg));
+                auto ack = std::get<messages::AcknowledgePrevious>(sys_msg);
+                REQUIRE(ack.responding_to_id == msg.id);
+            }
         }
     }
 }
