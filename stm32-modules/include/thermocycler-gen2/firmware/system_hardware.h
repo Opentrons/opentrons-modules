@@ -6,7 +6,8 @@ extern "C" {
 
 #include <stdbool.h>
 
-// Front button can only be pressed at 200ms increments
+// Initial debounce time of 200ms. If the button is released by the time
+// this passes, assume it was an ESD event.
 #define FRONT_BUTTON_DEBOUNCE_MS (200)
 // Front button should be queried at this frequency after debouncing
 #define FRONT_BUTTON_QUERY_RATE_MS (50)
