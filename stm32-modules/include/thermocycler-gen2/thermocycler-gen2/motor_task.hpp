@@ -843,7 +843,7 @@ class MotorTask {
             return error;
         }
         if (extend_switch && retract_switch) {
-            // Both switches retracted means the seal subsystem is somehow
+            // Both switches triggered means the seal subsystem is somehow
             // broken.
             error = errors::ErrorCode::SEAL_MOTOR_SWITCH;
         } else if (retract_switch) {
