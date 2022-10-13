@@ -826,6 +826,8 @@ class MotorTask {
         if (is_any_motor_moving()) {
             return errors::ErrorCode::LID_MOTOR_BUSY;
         }
+        auto extend_switch = policy.seal_read_extension_switch();
+        auto retract_switch = policy.seal_read_retraction_switch();
         auto error = errors::ErrorCode::NO_ERROR;
         if (get_lid_position(policy) ==
             motor_util::LidStepper::Position::OPEN) {
@@ -837,9 +839,19 @@ class MotorTask {
                     messages::HostCommsMessage(response)));
             return error;
         }
-        // Always retract the seal before opening
-        error = handle_lid_state_enter(LidState::Status::OPENING_RETRACT_SEAL,
-                                       policy);
+        if (extend_switch && retract_switch) {
+            // Both switches retracted means the seal subsystem is somehow
+            // broken.
+            error = errors::ErrorCode::SEAL_MOTOR_SWITCH;
+        } else if (retract_switch) {
+            // Seal is already retracted, so just open the hinge
+            error = handle_lid_state_enter(LidState::Status::OPENING_OPEN_HINGE,
+                                           policy);
+        } else {
+            // Seal isn't retracted yet, so retract it
+            error = handle_lid_state_enter(
+                LidState::Status::OPENING_RETRACT_SEAL, policy);
+        }
 
         if (error == errors::ErrorCode::NO_ERROR) {
             _state.response_id = response_id;
@@ -866,6 +878,8 @@ class MotorTask {
         if (is_any_motor_moving()) {
             return errors::ErrorCode::LID_MOTOR_BUSY;
         }
+        auto extend_switch = policy.seal_read_extension_switch();
+        auto retract_switch = policy.seal_read_retraction_switch();
         auto error = errors::ErrorCode::NO_ERROR;
         if (get_lid_position(policy) ==
             motor_util::LidStepper::Position::CLOSED) {
@@ -877,10 +891,19 @@ class MotorTask {
                     messages::HostCommsMessage(response)));
             return error;
         }
-
-        // Always retract seal before closing
-        error = handle_lid_state_enter(LidState::Status::CLOSING_RETRACT_SEAL,
-                                       policy);
+        if (extend_switch && retract_switch) {
+            // Both switches retracted means the seal subsystem is somehow
+            // broken.
+            error = errors::ErrorCode::SEAL_MOTOR_SWITCH;
+        } else if (retract_switch) {
+            // Seal is already retracted, so just open the hinge
+            error = handle_lid_state_enter(
+                LidState::Status::CLOSING_CLOSE_HINGE, policy);
+        } else {
+            // Always retract seal before closing
+            error = handle_lid_state_enter(
+                LidState::Status::CLOSING_RETRACT_SEAL, policy);
+        }
 
         if (error == errors::ErrorCode::NO_ERROR) {
             _state.response_id = response_id;
