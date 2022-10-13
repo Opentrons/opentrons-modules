@@ -117,6 +117,8 @@ class SimMotorPolicy : public SimTMC2130Policy {
 
     auto seal_read_retraction_switch() -> bool { return false; }
 
+    auto seal_switches_are_shared() -> bool { return false; }
+
   private:
     // Lowest position the lid can move before stalling
     static constexpr uint32_t min_lid_steps =
