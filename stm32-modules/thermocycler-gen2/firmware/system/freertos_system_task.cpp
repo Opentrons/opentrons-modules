@@ -98,22 +98,26 @@ static void run_button_task(void *param) {
         auto button_press_start = last_wake_time;
         vTaskDelayUntil(&last_wake_time, FRONT_BUTTON_DEBOUNCE_MS);
 
-        do {
-            // Sleep 50ms and see if the button is released
-            vTaskDelayUntil(&last_wake_time, FRONT_BUTTON_QUERY_RATE_MS);
-            button.update_held(last_wake_time - button_press_start);
-            button_press_start = xTaskGetTickCount();
-        } while (system_front_button_pressed());
+        // Check button status after debouncing. If it's been released,
+        // ignore this press event (maybe an ESD event?)
+        if (system_front_button_pressed()) {
+            do {
+                // Sleep 50ms and see if the button is released
+                vTaskDelayUntil(&last_wake_time, FRONT_BUTTON_QUERY_RATE_MS);
+                button.update_held(last_wake_time - button_press_start);
+                button_press_start = xTaskGetTickCount();
+            } while (system_front_button_pressed());
 
-        button.released(0);
+            button.released(0);
 
-        // Now debounce on the button release so that we don't accidentally
-        // register it as a press!
-        vTaskDelayUntil(&last_wake_time, FRONT_BUTTON_DEBOUNCE_MS);
+            // Now debounce on the button release so that we don't accidentally
+            // register it as a press!
+            vTaskDelayUntil(&last_wake_time, FRONT_BUTTON_DEBOUNCE_MS);
 
-        // Finally, clear out the task notifications just in case the button
-        // debouncing resulted in extra notifications
-        static_cast<void>(ulTaskNotifyTake(pdTRUE, 0));
+            // Finally, clear out the task notifications just in case the button
+            // debouncing resulted in extra notifications
+            static_cast<void>(ulTaskNotifyTake(pdTRUE, 0));
+        }
     }
 }
 

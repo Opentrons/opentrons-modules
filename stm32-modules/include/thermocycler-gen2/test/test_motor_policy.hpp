@@ -80,6 +80,8 @@ class TestMotorPolicy : public TestTMC2130Policy {
         return _retraction_switch_triggered;
     }
 
+    auto seal_switches_are_shared() -> bool { return _shared_switch_lines; }
+
     // Test-specific functions
 
     auto tick() -> void {
@@ -116,6 +118,10 @@ class TestMotorPolicy : public TestTMC2130Policy {
 
     auto get_lid_rpm() -> double { return _lid_rpm; }
 
+    auto set_switch_lines_shared(bool shared) -> void {
+        _shared_switch_lines = shared;
+    }
+
   private:
     // Solenoid is engaged when unpowered
     bool _solenoid_engaged = true;
@@ -132,5 +138,7 @@ class TestMotorPolicy : public TestTMC2130Policy {
     bool _extension_switch_armed = false;
     bool _retraction_switch_armed = false;
     double _lid_rpm = 0;
+    // Default to shared switch lines (pre-DVT)
+    bool _shared_switch_lines = true;
     Callback _callback;
 };

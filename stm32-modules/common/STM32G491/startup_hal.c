@@ -7,6 +7,7 @@
 
 void startup_flash_init() {
     __HAL_RCC_FLASH_CLK_ENABLE();
+    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_SR_ERRORS);
 }
 
 // Each target has a different method to set the page for erasing

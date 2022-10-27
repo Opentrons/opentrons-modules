@@ -9,6 +9,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_heartbeat.cpp
     test_host_comms_task.cpp
     test_eeprom.cpp
+    test_errors.cpp
     test_system_task.cpp
     test_ui_task.cpp
     test_thermistor_task.cpp
