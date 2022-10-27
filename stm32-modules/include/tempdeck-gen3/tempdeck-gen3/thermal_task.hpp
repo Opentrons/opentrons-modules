@@ -109,8 +109,8 @@ class ThermalTask {
     static constexpr double FAN_POWER_MEDIUM = 0.75;
     static constexpr double FAN_POWER_MAX = 1.0;
 
-    static constexpr double PELTIER_KP_DEFAULT = 0.38;
-    static constexpr double PELTIER_KI_DEFAULT = 0.0275;
+    static constexpr double PELTIER_KP_DEFAULT = 0.141637; //TD2: 0.38
+    static constexpr double PELTIER_KI_DEFAULT = 0.005339; //TD2: 0.0275
     static constexpr double PELTIER_KD_DEFAULT = 0.0F;
 
     static constexpr double PELTIER_K_MAX = 200.0F;
@@ -204,11 +204,15 @@ class ThermalTask {
         _readings.last_tick = message.timestamp;
         // Reading conversion
 
+        //check if error in reading
+        //do conversion like TC2
         auto res = _converter.convert(_readings.plate_adc);
         if (std::holds_alternative<double>(res)) {
             _readings.plate_temp = std::get<double>(res);
         } else {
             _readings.plate_temp = 0.0F;
+            //_state.system_status = STATE::ERROR;
+            //_state.error_bitmap = 
         }
         res = _converter.convert(_readings.heatsink_adc);
         if (std::holds_alternative<double>(res)) {
