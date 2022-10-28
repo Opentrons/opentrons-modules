@@ -12,11 +12,11 @@ SCENARIO("testing error writing") {
                                          errors::ErrorCode::USB_TX_OVERRUN);
             THEN("the error is written into the buffer") {
                 REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
-                                         "async ERR001:tx buffer overrun\n"));
+                                         "async ERR001:tx buffer overrun OK\n"));
                 AND_THEN("the length was appropriately returned") {
                     REQUIRE(written ==
                             buffer.begin() + strlen("async ERR001:tx "
-                                                    "buffer overrun\n"));
+                                                    "buffer overrun OK\n"));
                 }
             }
         }

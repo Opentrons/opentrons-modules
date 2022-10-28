@@ -2574,7 +2574,7 @@ SCENARIO("message handling for other-task-initiated communication") {
                                                                  tx_buf.end());
             THEN("the task should write out the error") {
                 REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                         "async ERR502:lid:Lid motor fault\n"));
+                                         "async ERR502:lid:Lid motor fault OK\n"));
                 REQUIRE(*written == 'c');
             }
         }
