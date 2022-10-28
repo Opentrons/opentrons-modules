@@ -3,89 +3,90 @@
 using namespace errors;
 
 const char* const NO_ERROR = "";
-const char* const USB_TX_OVERRUN = "ERR001:tx buffer overrun\n";
-const char* const INTERNAL_QUEUE_FULL = "ERR002:internal queue full\n";
-const char* const UNHANDLED_GCODE = "ERR003:unhandled gcode\n";
-const char* const GCODE_CACHE_FULL = "ERR004:gcode cache full\n";
+const char* const USB_TX_OVERRUN = "ERR001:tx buffer overrun OK\n";
+const char* const INTERNAL_QUEUE_FULL = "ERR002:internal queue full OK\n";
+const char* const UNHANDLED_GCODE = "ERR003:unhandled gcode OK\n";
+const char* const GCODE_CACHE_FULL = "ERR004:gcode cache full OK\n";
 const char* const BAD_MESSAGE_ACKNOWLEDGEMENT =
-    "ERR005:bad message acknowledgement\n";
+    "ERR005:bad message acknowledgement OK\n";
 const char* const THERMISTOR_HEATSINK_DISCONNECTED =
-    "ERR201:Heatsink thermistor disconnected\n";
+    "ERR201:Heatsink thermistor disconnected OK\n";
 const char* const THERMISTOR_HEATSINK_SHORT =
-    "ERR202:Heatsink thermistor shorted\n";
+    "ERR202:Heatsink thermistor shorted OK\n";
 const char* const THERMISTOR_HEATSINK_OVERTEMP =
-    "ERR203:Heatsink thermistor overtemp\n";
+    "ERR203:Heatsink thermistor overtemp OK\n";
 const char* const THERMISTOR_FRONT_RIGHT_DISCONNECTED =
-    "ERR204:Front right thermistor disconnected\n";
+    "ERR204:Front right thermistor disconnected OK\n";
 const char* const THERMISTOR_FRONT_RIGHT_SHORT =
-    "ERR205:Front right thermistor shorted\n";
+    "ERR205:Front right thermistor shorted OK\n";
 const char* const THERMISTOR_FRONT_RIGHT_OVERTEMP =
-    "ERR206:Front right thermistor overtemp\n";
+    "ERR206:Front right thermistor overtemp OK\n";
 const char* const THERMISTOR_FRONT_LEFT_DISCONNECTED =
-    "ERR207:Front left thermistor disconnected\n";
+    "ERR207:Front left thermistor disconnected OK\n";
 const char* const THERMISTOR_FRONT_LEFT_SHORT =
-    "ERR208:Front left thermistor shorted\n";
+    "ERR208:Front left thermistor shorted OK\n";
 const char* const THERMISTOR_FRONT_LEFT_OVERTEMP =
-    "ERR209:Front left thermistor overtemp\n";
+    "ERR209:Front left thermistor overtemp OK\n";
 const char* const THERMISTOR_FRONT_CENTER_DISCONNECTED =
-    "ERR210:Front center thermistor disconnected\n";
+    "ERR210:Front center thermistor disconnected OK\n";
 const char* const THERMISTOR_FRONT_CENTER_SHORT =
-    "ERR211:Front center thermistor shorted\n";
+    "ERR211:Front center thermistor shorted OK\n";
 const char* const THERMISTOR_FRONT_CENTER_OVERTEMP =
-    "ERR212:Front center thermistor overtemp\n";
+    "ERR212:Front center thermistor overtemp OK\n";
 const char* const THERMISTOR_BACK_RIGHT_DISCONNECTED =
-    "ERR213:Back right thermistor disconnected\n";
+    "ERR213:Back right thermistor disconnected OK\n";
 const char* const THERMISTOR_BACK_RIGHT_SHORT =
-    "ERR214:Back right thermistor shorted\n";
+    "ERR214:Back right thermistor shorted OK\n";
 const char* const THERMISTOR_BACK_RIGHT_OVERTEMP =
-    "ERR215:Back right thermistor overtemp\n";
+    "ERR215:Back right thermistor overtemp OK\n";
 const char* const THERMISTOR_BACK_LEFT_DISCONNECTED =
-    "ERR216:Back left thermistor disconnected\n";
+    "ERR216:Back left thermistor disconnected OK\n";
 const char* const THERMISTOR_BACK_LEFT_SHORT =
-    "ERR217:Back left thermistor shorted\n";
+    "ERR217:Back left thermistor shorted OK\n";
 const char* const THERMISTOR_BACK_LEFT_OVERTEMP =
-    "ERR218:Back left thermistor overtemp\n";
+    "ERR218:Back left thermistor overtemp OK\n";
 const char* const THERMISTOR_BACK_CENTER_DISCONNECTED =
-    "ERR219:Back center thermistor disconnected\n";
+    "ERR219:Back center thermistor disconnected OK\n";
 const char* const THERMISTOR_BACK_CENTER_SHORT =
-    "ERR220:Back center thermistor shorted\n";
+    "ERR220:Back center thermistor shorted OK\n";
 const char* const THERMISTOR_BACK_CENTER_OVERTEMP =
-    "ERR221:Back center thermistor overtemp\n";
+    "ERR221:Back center thermistor overtemp OK\n";
 const char* const THERMISTOR_LID_DISCONNECTED =
-    "ERR222:Lid thermistor disconnected\n";
-const char* const THERMISTOR_LID_SHORT = "ERR223:Lid thermistor shorted\n";
-const char* const THERMISTOR_LID_OVERTEMP = "ERR224:Lid thermistor overtemp\n";
+    "ERR222:Lid thermistor disconnected OK\n";
+const char* const THERMISTOR_LID_SHORT = "ERR223:Lid thermistor shorted OK\n";
+const char* const THERMISTOR_LID_OVERTEMP =
+    "ERR224:Lid thermistor overtemp OK\n";
 const char* const SYSTEM_SERIAL_NUMBER_INVALID =
-    "ERR301:system:serial number invalid format\n";
+    "ERR301:system:serial number invalid format OK\n";
 const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
-    "ERR302:system:HAL error, busy, or timeout\n";
+    "ERR302:system:HAL error, busy, or timeout OK\n";
 const char* const SYSTEM_EEPROM_ERROR =
-    "ERR303:system:EEPROM communication error\n";
-const char* const THERMAL_PLATE_BUSY = "ERR401:thermal:Thermal plate busy\n";
+    "ERR303:system:EEPROM communication error OK\n";
+const char* const THERMAL_PLATE_BUSY = "ERR401:thermal:Thermal plate busy OK\n";
 const char* const THERMAL_PELTIER_ERROR =
-    "ERR402:thermal:Could not activate peltier\n";
+    "ERR402:thermal:Could not activate peltier OK\n";
 const char* const THERMAL_HEATSINK_FAN_ERROR =
-    "ERR403:thermal:Could not control heatsink fan\n";
-const char* const THERMAL_LID_BUSY = "ERR404:thermal:Lid heater is busy\n";
+    "ERR403:thermal:Could not control heatsink fan OK\n";
+const char* const THERMAL_LID_BUSY = "ERR404:thermal:Lid heater is busy OK\n";
 const char* const THERMAL_HEATER_ERROR =
-    "ERR405:thermal:Error controlling lid heater\n";
+    "ERR405:thermal:Error controlling lid heater OK\n";
 const char* const THERMAL_CONSTANT_OUT_OF_RANGE =
-    "ERR406:thermal:PID constant(s) out of range\n";
+    "ERR406:thermal:PID constant(s) out of range OK\n";
 const char* const THERMAL_TARGET_BAD =
-    "ERR407:thermal:Invalid target temperature\n";
+    "ERR407:thermal:Invalid target temperature OK\n";
 const char* const THERMAL_DRIFT =
-    "ERR408:thermal:Thermal drift of more than 4C\n";
-const char* const LID_MOTOR_BUSY = "ERR501:lid:Lid motor busy\n";
-const char* const LID_MOTOR_FAULT = "ERR502:lid:Lid motor fault\n";
-const char* const SEAL_MOTOR_SPI_ERROR = "ERR503:seal:SPI error\n";
-const char* const SEAL_MOTOR_BUSY = "ERR504:seal:Seal motor busy\n";
-const char* const SEAL_MOTOR_FAULT = "ERR505:seal:Seal motor fault\n";
-const char* const SEAL_MOTOR_STALL = "ERR5006:seal:Seal motor stall event\n";
-const char* const LID_CLOSED = "ERR507:lid:Lid must be opened\n";
+    "ERR408:thermal:Thermal drift of more than 4C OK\n";
+const char* const LID_MOTOR_BUSY = "ERR501:lid:Lid motor busy OK\n";
+const char* const LID_MOTOR_FAULT = "ERR502:lid:Lid motor fault OK\n";
+const char* const SEAL_MOTOR_SPI_ERROR = "ERR503:seal:SPI error OK\n";
+const char* const SEAL_MOTOR_BUSY = "ERR504:seal:Seal motor busy OK\n";
+const char* const SEAL_MOTOR_FAULT = "ERR505:seal:Seal motor fault OK\n";
+const char* const SEAL_MOTOR_STALL = "ERR506:seal:Seal motor stall event OK\n";
+const char* const LID_CLOSED = "ERR507:lid:Lid must be opened OK\n";
 const char* const SEAL_MOTOR_SWITCH =
-    "ERR508:seal:Seal switch should not be engaged\n";
+    "ERR508:seal:Seal switch should not be engaged OK\n";
 
-const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
+const char* const UNKNOWN_ERROR = "ERR-1:unknown error code OK\n";
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define HANDLE_CASE(errname) \
