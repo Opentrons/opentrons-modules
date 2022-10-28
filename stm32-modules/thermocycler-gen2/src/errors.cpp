@@ -79,9 +79,9 @@ const char* const THERMAL_DRIFT =
 const char* const LID_MOTOR_BUSY = "ERR501:lid:Lid motor busy OK\n";
 const char* const LID_MOTOR_FAULT = "ERR502:lid:Lid motor fault OK\n";
 const char* const SEAL_MOTOR_SPI_ERROR = "ERR503:seal:SPI error OK\n";
-const char* const SEAL_MOTOR_BUSY = "EERR504:seal:Seal motor busy OK\n";
+const char* const SEAL_MOTOR_BUSY = "ERR504:seal:Seal motor busy OK\n";
 const char* const SEAL_MOTOR_FAULT = "ERR505:seal:Seal motor fault OK\n";
-const char* const SEAL_MOTOR_STALL = "ERR5006:seal:Seal motor stall event OK\n";
+const char* const SEAL_MOTOR_STALL = "ERR506:seal:Seal motor stall event OK\n";
 const char* const LID_CLOSED = "ERR507:lid:Lid must be opened OK\n";
 const char* const SEAL_MOTOR_SWITCH =
     "ERR508:seal:Seal switch should not be engaged OK\n";
