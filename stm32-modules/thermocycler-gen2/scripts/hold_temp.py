@@ -16,6 +16,7 @@ from typing import  Dict, Tuple, List
 def parse_args():
     parser = argparse.ArgumentParser(description="Hold temperature")
     parser.add_argument('-t', '--temp', type=float, required=True, help='Target temp')
+    parser.add_argument('--hold', type=float, required=False, default=None, help='Hold time')
     parser.add_argument('-f', '--file', type=argparse.FileType('w'), required=False, default=None, help='file to log temperature to')
     return parser.parse_args()
 
@@ -141,6 +142,11 @@ def main():
         timestamp = datetime.datetime.now()
         file = open(f'./tc-hold-{timestamp}.csv', 'w', newline='\n')
     
+    if args.hold:
+        print(f'Holding for {args.hold} seconds')
+    else:
+        print('Holding indefinitely')
+
     try:
         start = time.time()
         file.write('time,HST,FRT,FLT,FCT,BRT,BLT,BCT,left,center,right,fans\n')
@@ -152,6 +158,9 @@ def main():
             msg = f'{now},{str(temps)},{str(power)}' + '\n'
             file.write(msg)
             file.flush()
+            if args.hold and now > args.hold:
+                print('Hold time reached')
+                break
             time.sleep(1)
 
     finally:
