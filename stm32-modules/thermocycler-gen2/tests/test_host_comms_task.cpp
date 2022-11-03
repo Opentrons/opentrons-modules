@@ -50,7 +50,7 @@ SCENARIO("usb message parsing") {
             auto ends_at =
                 errors::write_into(small_buf.begin(), small_buf.end(),
                                    errors::ErrorCode::USB_TX_OVERRUN);
-            small_buf.resize(ends_at - small_buf.begin() - 5);
+            small_buf.resize(ends_at - small_buf.begin() - 8);
             auto written = tasks->get_host_comms_task().run_once(
                 small_buf.begin(), small_buf.end());
             REQUIRE_THAT(small_buf,
@@ -68,9 +68,9 @@ SCENARIO("usb message parsing") {
                 auto written = tasks->get_host_comms_task().run_once(
                     tx_buf.begin(), tx_buf.end());
                 REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
-                                         "ERR003:unhandled gcode\n"));
+                                         "ERR003:unhandled gcode OK\n"));
                 REQUIRE(written ==
-                        tx_buf.begin() + strlen("ERR003:unhandled gcode\n"));
+                        tx_buf.begin() + strlen("ERR003:unhandled gcode OK\n"));
             }
         }
     }
@@ -151,10 +151,9 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should print the error rather than ack") {
-                        REQUIRE_THAT(
-                            tx_buf,
-                            Catch::Matchers::StartsWith(
-                                "ERR302:system:HAL error, busy, or timeout\n"));
+                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
+                                                 "ERR302:system:HAL error, "
+                                                 "busy, or timeout OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                         REQUIRE(written_secondpass != tx_buf.begin());
@@ -231,10 +230,9 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                         tasks->get_host_comms_task().run_once(tx_buf.begin(),
                                                               tx_buf.end());
                     THEN("the task should print the error rather than ack") {
-                        REQUIRE_THAT(
-                            tx_buf,
-                            Catch::Matchers::StartsWith(
-                                "ERR302:system:HAL error, busy, or timeout\n"));
+                        REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
+                                                 "ERR302:system:HAL error, "
+                                                 "busy, or timeout OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                         REQUIRE(written_secondpass != tx_buf.begin());
@@ -311,7 +309,7 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                     THEN("the task should print the error rather than ack") {
                         REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(
                                                  "ERR403:thermal:Could not "
-                                                 "control heatsink fan\n"));
+                                                 "control heatsink fan OK\n"));
                         REQUIRE(tasks->get_host_comms_queue()
                                     .backing_deque.empty());
                         REQUIRE(written_secondpass != tx_buf.begin());
@@ -2568,6 +2566,19 @@ SCENARIO("message handling for other-task-initiated communication") {
     GIVEN("a host_comms task") {
         auto tasks = TaskBuilder::build();
         std::string tx_buf(128, 'c');
+        WHEN("sending an error as from the motor task") {
+            auto message_obj = messages::HostCommsMessage(
+                messages::ErrorMessage(errors::ErrorCode::LID_MOTOR_FAULT));
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            auto written = tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                                 tx_buf.end());
+            THEN("the task should write out the error") {
+                REQUIRE_THAT(tx_buf,
+                             Catch::Matchers::StartsWith(
+                                 "async ERR502:lid:Lid motor fault OK\n"));
+                REQUIRE(*written == 'c');
+            }
+        }
         WHEN("sending a force-disconnect") {
             auto message_obj = messages::ForceUSBDisconnectMessage{.id = 222};
             tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
