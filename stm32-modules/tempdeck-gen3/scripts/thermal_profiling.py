@@ -11,7 +11,7 @@ import test_utils
 
 def build_parser():
     p = test_utils.build_parent_parser(desc='Run a thermal profile (step) on a temp deck gen 3')
-    p.add_argument('power', metavar='POWER', type=float, help='TEC power in [0, 1]')
+    p.add_argument('power', metavar='POWER', type=float, help='TEC power in [-1, 1]')
     p.add_argument('duration', metavar='DURATION', type=float, help='Time to sample for')
     p.add_argument('-e', '--until-exceeds', dest='until_exceeds', type=float, help='Stop sampling early if temp exceeds this valuee', default=95)
     return p
@@ -51,8 +51,8 @@ if __name__ == '__main__':
         if duration > config.duration:
             print("sampling done (time expired)")
             return True
-        if data[-1][1] > config.target:
-            print("sampling done (target reaeched)")
+        if abs(data[-1][1] - config.target) < 1:
+            print("sampling done (target reached)")
             return True
     start = datetime.datetime.now()
     prefix = []

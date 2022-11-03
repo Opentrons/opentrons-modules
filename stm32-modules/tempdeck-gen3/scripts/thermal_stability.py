@@ -66,7 +66,6 @@ class ThermalConfig(test_utils.RunConfig):
 
     def rowiterable_for_save(self) -> List[List[Any]]:
         return super().rowiterable_for_save() + [
-            ['power', self.power],
             ['fixed sample time (s)',
              (self.fixed_time_sample
               and self.fixed_time_sample.total_seconds()
@@ -74,8 +73,7 @@ class ThermalConfig(test_utils.RunConfig):
             ['stability window (s)', self.stability_window.total_seconds()],
             ['kp', self.pid_constants['kp']],
             ['ki', self.pid_constants['ki']],
-            ['kd', self.pid_constants['kd']],
-            ['duration', self.duration.total_seconds()]
+            ['kd', self.pid_constants['kd']]
         ]
 
 def sample_heater(config: ThermalConfig,
