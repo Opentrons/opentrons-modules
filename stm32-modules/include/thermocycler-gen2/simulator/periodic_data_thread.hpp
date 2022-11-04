@@ -61,8 +61,8 @@ class PeriodicDataThread {
     // reading
     auto scaled_gain_effect(double gain, double power,
                             std::chrono::milliseconds delta) -> double;
-    auto update_heat_pad() -> void;
-    auto update_peltiers() -> void;
+    auto update_heat_pad() -> bool;
+    auto update_peltiers() -> bool;
     auto run_motor() -> void;
 
     Power _heat_pad_power;
