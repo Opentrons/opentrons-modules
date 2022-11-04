@@ -114,10 +114,20 @@ auto PeriodicDataThread::run(std::stop_token& st) -> void {
         // Update the heat pad & peltiers.
 
         if (((_current_tick - _tick_heater) > LID_PERIOD)) {
-            update_heat_pad();
+            // Must set flag BEFORE sending to ensure it is cleared
+            // correctly.
+            _waiting_for_lid_thread = true;
+            if (!update_heat_pad()) {
+                _waiting_for_lid_thread = false;
+            }
         }
         if (((_current_tick - _tick_peltiers) > PELTIER_PERIOD)) {
-            update_peltiers();
+            // Must set flag BEFORE sending to ensure it is cleared
+            // correctly.
+            _waiting_for_plate_thread = true;
+            if (!update_peltiers()) {
+                _waiting_for_plate_thread = false;
+            }
         }
 
         // -------------------------------------------------------------------
@@ -127,9 +137,20 @@ auto PeriodicDataThread::run(std::stop_token& st) -> void {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         } else {
             // Yield to ensure other processes handle their messages
-            std::this_thread::yield();
+            while (_waiting_for_lid_thread.load() ||
+                   _waiting_for_plate_thread.load()) {
+                std::this_thread::yield();
+            }
         }
     }
+}
+
+auto PeriodicDataThread::signal_lid_thread_ready() -> void {
+    _waiting_for_lid_thread = false;
+}
+
+auto PeriodicDataThread::signal_plate_thread_ready() -> void {
+    _waiting_for_plate_thread = false;
 }
 
 auto PeriodicDataThread::ambient_temp_effect(Temperature temp,
@@ -150,7 +171,7 @@ auto PeriodicDataThread::scaled_gain_effect(double gain, double power,
     return seconds.count() * gain * power;
 }
 
-auto PeriodicDataThread::update_heat_pad() -> void {
+auto PeriodicDataThread::update_heat_pad() -> bool {
     auto converter = thermistor_conversion::Conversion<lookups::KS103J2G>(
         lid_heater_thread::SimLidHeaterTask::
             THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
@@ -166,12 +187,14 @@ auto PeriodicDataThread::update_heat_pad() -> void {
     _tick_heater = _current_tick;
 
     if (_task_registry) {
-        static_cast<void>(
-            _task_registry->lid_heater->get_message_queue().try_send(message));
+        if (_task_registry->lid_heater->get_message_queue().try_send(message)) {
+            return true;
+        }
     }
+    return false;
 }
 
-auto PeriodicDataThread::update_peltiers() -> void {
+auto PeriodicDataThread::update_peltiers() -> bool {
     auto converter = thermistor_conversion::Conversion<lookups::KS103J2G>(
         thermal_plate_thread::SimThermalPlateTask::
             THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
@@ -202,10 +225,12 @@ auto PeriodicDataThread::update_peltiers() -> void {
     _tick_peltiers = _current_tick;
 
     if (_task_registry) {
-        static_cast<void>(
-            _task_registry->thermal_plate->get_message_queue().try_send(
-                message));
+        if (_task_registry->thermal_plate->get_message_queue().try_send(
+                message)) {
+            return true;
+        }
     }
+    return false;
 }
 
 auto PeriodicDataThread::run_motor() -> void {
