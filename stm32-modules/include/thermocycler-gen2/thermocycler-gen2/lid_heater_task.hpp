@@ -112,6 +112,10 @@ class LidHeaterTask {
         _task_registry = other_tasks;
     }
 
+    [[nodiscard]] auto get_last_temp_update() const -> Milliseconds {
+        return _last_update;
+    }
+
     /**
      * run_once() runs one spin of the task. This means it
      * - Waits for a message, either a thermistor update or

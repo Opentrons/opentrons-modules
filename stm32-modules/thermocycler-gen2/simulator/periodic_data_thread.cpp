@@ -114,9 +114,11 @@ auto PeriodicDataThread::run(std::stop_token& st) -> void {
         // Update the heat pad & peltiers.
 
         if (((_current_tick - _tick_heater) > LID_PERIOD)) {
+            _waiting_for_lid_thread = true;
             update_heat_pad();
         }
         if (((_current_tick - _tick_peltiers) > PELTIER_PERIOD)) {
+            _waiting_for_plate_thread = true;
             update_peltiers();
         }
 
@@ -127,9 +129,20 @@ auto PeriodicDataThread::run(std::stop_token& st) -> void {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         } else {
             // Yield to ensure other processes handle their messages
-            std::this_thread::yield();
+            while (_waiting_for_lid_thread.load() ||
+                   _waiting_for_plate_thread.load()) {
+                std::this_thread::yield();
+            }
         }
     }
+}
+
+auto PeriodicDataThread::signal_lid_thread_ready() -> void {
+    _waiting_for_lid_thread = false;
+}
+
+auto PeriodicDataThread::signal_plate_thread_ready() -> void {
+    _waiting_for_plate_thread = false;
 }
 
 auto PeriodicDataThread::ambient_temp_effect(Temperature temp,
