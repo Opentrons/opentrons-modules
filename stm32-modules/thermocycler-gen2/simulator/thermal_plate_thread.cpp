@@ -129,11 +129,17 @@ auto run(
     auto policy = SimThermalPlatePolicy(periodic_data);
     tcb->queue.set_stop_token(st);
     while (!st.stop_requested()) {
+        auto last_update_before = tcb->task.get_last_temp_update();
         try {
             tcb->task.run_once(policy);
             policy.send_power();
         } catch (const SimThermalPlateTask::Queue::StopDuringMsgWait sdmw) {
             return;
+        }
+        if (last_update_before != tcb->task.get_last_temp_update()) {
+            // The temperature was updated, so let the periodic data thread
+            // know it can send another update
+            periodic_data->signal_plate_thread_ready();
         }
     }
 }
