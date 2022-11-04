@@ -109,9 +109,11 @@ class ThermalTask {
     static constexpr double FAN_POWER_MEDIUM = 0.75;
     static constexpr double FAN_POWER_MAX = 1.0;
 
-    static constexpr double PELTIER_KP_DEFAULT = 0.38;
-    static constexpr double PELTIER_KI_DEFAULT = 0.0275;
+    static constexpr double PELTIER_KP_HEATING_DEFAULT = 0.141637;
+    static constexpr double PELTIER_KI_HEATING_DEFAULT = 0.005339;
     static constexpr double PELTIER_KD_DEFAULT = 0.0F;
+    static constexpr double PELTIER_KP_COOLING_DEFAULT = 0.483411;
+    static constexpr double PELTIER_KI_COOLING_DEFAULT = 0.023914;
 
     static constexpr double PELTIER_K_MAX = 200.0F;
     static constexpr double PELTIER_K_MIN = -200.0F;
@@ -137,8 +139,9 @@ class ThermalTask {
           _fan(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _peltier(),
-          _pid(PELTIER_KP_DEFAULT, PELTIER_KI_DEFAULT, PELTIER_KD_DEFAULT, 1.0F,
-               PELTIER_WINDUP_LIMIT, -PELTIER_WINDUP_LIMIT),
+          _pid(PELTIER_KP_HEATING_DEFAULT, PELTIER_KI_HEATING_DEFAULT,
+               PELTIER_KD_DEFAULT, 1.0F, PELTIER_WINDUP_LIMIT,
+               -PELTIER_WINDUP_LIMIT),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _eeprom(),
           _offset_constants{.a = OFFSET_DEFAULT_CONST_A,
@@ -272,6 +275,17 @@ class ThermalTask {
         _peltier.manual = false;
         _peltier.target_set = true;
         _peltier.target = message.target;
+        if (_readings.plate_temp.value() < _peltier.target) {
+            _pid = ot_utils::pid::PID(
+                PELTIER_KP_HEATING_DEFAULT, PELTIER_KI_HEATING_DEFAULT,
+                PELTIER_KD_DEFAULT, 1.0, PELTIER_WINDUP_LIMIT,
+                -PELTIER_WINDUP_LIMIT);
+        } else {
+            _pid = ot_utils::pid::PID(
+                PELTIER_KP_COOLING_DEFAULT, PELTIER_KI_COOLING_DEFAULT,
+                PELTIER_KD_DEFAULT, 1.0, PELTIER_WINDUP_LIMIT,
+                -PELTIER_WINDUP_LIMIT);
+        }
         _pid.reset();
 
         auto response =
