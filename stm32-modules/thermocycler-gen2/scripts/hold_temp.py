@@ -17,6 +17,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Hold temperature")
     parser.add_argument('-t', '--temp', type=float, required=True, help='Target temp')
     parser.add_argument('--hold', type=float, required=False, default=None, help='Hold time')
+    parser.add_argument('--port', type=str, required=False, default=None, help='Port to use (comport or tty path)')
     parser.add_argument('-f', '--file', type=argparse.FileType('w'), required=False, default=None, help='file to log temperature to')
     return parser.parse_args()
 
@@ -135,7 +136,7 @@ def main():
 
     target = args.temp
     
-    tc = Thermocycler()
+    tc = Thermocycler(port=args.port)
 
     file = args.file
     if not file:
