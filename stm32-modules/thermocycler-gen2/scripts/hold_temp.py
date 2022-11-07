@@ -9,6 +9,7 @@ import argparse
 import re
 import time
 import datetime
+import os
 
 from serial.tools.list_ports import grep
 from typing import  Dict, Tuple, List
@@ -17,6 +18,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Hold temperature")
     parser.add_argument('-t', '--temp', type=float, required=True, help='Target temp')
     parser.add_argument('--hold', type=float, required=False, default=None, help='Hold time')
+    parser.add_argument('--port', type=str, required=False, default=None, help='Port to use (comport or tty path)')
     parser.add_argument('-f', '--file', type=argparse.FileType('w'), required=False, default=None, help='file to log temperature to')
     return parser.parse_args()
 
@@ -135,12 +137,13 @@ def main():
 
     target = args.temp
     
-    tc = Thermocycler()
+    tc = Thermocycler(port=args.port)
 
     file = args.file
     if not file:
         timestamp = datetime.datetime.now()
-        file = open(f'./tc-hold-{timestamp}.csv', 'w', newline='\n')
+        filepath = os.path.join(os.getcwd(), f'tc-hold-{timestamp}.csv')
+        file = open(filepath, 'w', newline='\n')
     
     if args.hold:
         print(f'Holding for {args.hold} seconds')
