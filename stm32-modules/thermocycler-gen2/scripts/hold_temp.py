@@ -9,6 +9,7 @@ import argparse
 import re
 import time
 import datetime
+import os
 
 from serial.tools.list_ports import grep
 from typing import  Dict, Tuple, List
@@ -141,7 +142,8 @@ def main():
     file = args.file
     if not file:
         timestamp = datetime.datetime.now()
-        file = open(f'./tc-hold-{timestamp}.csv', 'w', newline='\n')
+        filepath = os.path.join(os.getcwd(), f'tc-hold-{timestamp}.csv')
+        file = open(filepath, 'w', newline='\n')
     
     if args.hold:
         print(f'Holding for {args.hold} seconds')
