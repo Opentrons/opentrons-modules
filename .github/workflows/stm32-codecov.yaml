@@ -1,0 +1,45 @@
+name: 'STM32 Common Code build/test'
+on:
+  pull_request
+  workflow_dispatch
+
+
+defaults:
+  run:
+    shell: bash
+
+
+jobs:
+  generate-coverage:
+    name: 'Generate-Coverage'
+    runs-on: 'ubuntu-20.04'
+    timeout-minutes: 10
+    env:
+      CC: gcc-10
+      CXX: g++-10
+    steps:
+      - run: |
+          sudo apt update
+          sudo apt install gcc-10 g++-10 lcov
+      - uses: 'actions/checkout@v2'
+        with:
+          fetch-depth: 0
+      - uses: 'actions/cache@v2'
+        with:
+          path: './stm32-tools'
+          key: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
+          restore-keys: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
+      - name: 'Configure'
+        run: cmake --preset=stm32-host -DENABLE_COVERAGE=On -DCMAKE_BUILD_TYPE=Debug
+      - name: 'Run all stm32 tests'
+        run: |
+          cmake --build --preset host --target common-build-and-test
+          cmake --build --preset host --target thermocycler-gen2-build-and-test
+          cmake --build --preset host --target heater-shaker-build-and-test
+          cmake --build --preset host --target tempdeck-gen3-build-and-test
+      - name: 'Generate coverage'
+        run: cmake --build --preset host --target lcov-geninfo
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: build-stm32-host/lcov/data/capture/common-core.info
