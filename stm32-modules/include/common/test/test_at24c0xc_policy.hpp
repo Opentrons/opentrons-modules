@@ -19,8 +19,11 @@ class TestAT24C0XCPolicy {
     static constexpr const size_t PAGE_LENGTH = at24c0xc::PAGE_LENGTH;
     using Buffer = std::array<uint8_t, PAGES * PAGE_LENGTH>;
 
-    TestAT24C0XCPolicy()
-        : _buffer({0}), _data_pointer(0), _write_protect(true) {}
+    TestAT24C0XCPolicy() : _buffer(), _data_pointer(0), _write_protect(true) {
+        for (auto& itr : _buffer) {
+            itr = 0;
+        }
+    }
 
     // --- Policy fulfillment -----------
 
