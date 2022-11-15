@@ -20,8 +20,8 @@ class TestAT24C0XCPolicy {
     using Buffer = std::array<uint8_t, PAGES * PAGE_LENGTH>;
 
     TestAT24C0XCPolicy() : _buffer(), _data_pointer(0), _write_protect(true) {
-        for (auto& itr : _buffer) {
-            itr = 0;
+        for (size_t i = 0; i < _buffer.size(); ++i) {
+            _buffer[i] = 0;
         }
     }
 
