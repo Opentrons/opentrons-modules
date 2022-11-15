@@ -1,7 +1,5 @@
 name: 'STM32 Common Code build/test'
-on:
-  pull_request
-  workflow_dispatch
+on: [pull_request, workflow_dispatch]
 
 
 defaults:
