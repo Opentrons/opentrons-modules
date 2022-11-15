@@ -80,3 +80,5 @@ target_compile_options(heater-shaker-core
   $<$<COMPILE_LANGUAGE:CXX>:-Wctor-dtor-privacy>
   $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
   )
+
+  add_coverage(heater-shaker-core)
