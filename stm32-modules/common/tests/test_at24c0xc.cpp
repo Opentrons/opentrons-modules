@@ -18,7 +18,8 @@ TEST_CASE("TestAT24C0XCPolicy functionality") {
                 }
             }
             AND_WHEN("reading a full page") {
-                std::array<uint8_t, 8> readback = {0};
+                std::array<uint8_t, 8> readback = {0, 0, 0, 0, 0, 0, 0, 0};
+                policy.i2c_write(0, 0);
                 policy.i2c_read(0, readback.begin(), readback.size());
                 THEN("the returned buffer does not match what was written") {
                     for (int i = 0; i < 8; ++i) {
