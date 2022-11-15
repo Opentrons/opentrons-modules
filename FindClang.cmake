@@ -34,10 +34,15 @@ include(FetchContent)
 set(LOCALINSTALL_CLANG_DIR "${CMAKE_SOURCE_DIR}/stm32-tools/clang")
 message(STATUS "local install clang dir: ${LOCALINSTALL_CLANG_DIR}")
 
-set(DL_CLANG_VERSION "11.0.0")
+set(DL_CLANG_VERSION "12.0.0")
 
 if("${CMAKE_HOST_SYSTEM_NAME}" STREQUAL "Linux")
-  set(CLANG_ARCHIVE "x86_64-linux-gnu-ubuntu-20.04.tar.xz")
+  if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+    set(CLANG_ARCHIVE "x86_64-linux-gnu-ubuntu-20.04.tar.xz")
+  else()
+    set(CLANG_ARCHIVE "aarch64-linux-gnu.tar.xz")
+  endif()
+
 elseif("${CMAKE_HOST_SYSTEM_NAME}" STREQUAL "Darwin")
   set(CLANG_ARCHIVE "x86_64-apple-darwin.tar.xz")
 else()
@@ -58,13 +63,14 @@ endif()
 
 find_program(Clang_EXECUTABLE
   clang
-  PATHS "${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}"
+  PATHS ${CMAKE_SOURCE_DIR}/stm32-tools/clang/${CMAKE_HOST_SYSTEM_NAME}
   PATH_SUFFIXES bin)
 
 find_program(Clang_CLANGFORMAT_EXECUTABLE
   clang-format
-  PATHS "${LOCALINSTALL_CLANG_DIR}/${CMAKE_HOST_SYSTEM_NAME}"
-  PATH_SUFFIXES bin)
+  PATHS ${CMAKE_SOURCE_DIR}/stm32-tools/clang/${CMAKE_HOST_SYSTEM_NAME}
+  PATH_SUFFIXES bin
+  NO_DEFAULT_PATH)
 
 find_program(Clang_CLANGTIDY_EXECUTABLE
   clang-tidy
@@ -81,7 +87,7 @@ endif()
 
 if(NOT Clang_EXECUTABLE STREQUAL "Clang_EXECUTABLE-NOTFOUND")
   execute_process(
-    COMMAND clang --version
+    COMMAND ${Clang_EXECUTABLE} --version
     OUTPUT_VARIABLE INSTALLED_CLANG_VERSION_BLOB)
   string(REGEX MATCH "clang version ([0-9]+\.[0-9]+\.[0-9]+)"
     CV_REGEX_OUTPUT ${INSTALLED_CLANG_VERSION_BLOB})
