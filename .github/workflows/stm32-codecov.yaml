@@ -1,4 +1,4 @@
-name: 'STM32 Common Code build/test'
+name: 'Code Coverage'
 on: [pull_request, workflow_dispatch]
 
 
@@ -25,8 +25,8 @@ jobs:
       - uses: 'actions/cache@v2'
         with:
           path: './stm32-tools'
-          key: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
-          restore-keys: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
+          key: stm32-host-codecov-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
+          restore-keys: stm32-host-codecov-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
       - name: 'Configure'
         run: cmake --preset=stm32-host -DENABLE_COVERAGE=On -DCMAKE_BUILD_TYPE=Debug
       - name: 'Run all stm32 tests'
