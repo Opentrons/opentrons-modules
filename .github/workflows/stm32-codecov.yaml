@@ -40,4 +40,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          file: build-stm32-host/lcov/data/capture/common-core.info
+          files: build-stm32-host/lcov/data/capture/common-core.info
+          name: codecov-stm32-modules
+          fail_ci_if_error: true
+          verbose: true
