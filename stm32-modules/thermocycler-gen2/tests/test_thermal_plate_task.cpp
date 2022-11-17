@@ -1174,3 +1174,63 @@ TEST_CASE("sending individual channel offset constants") {
         }
     }
 }
+
+TEST_CASE("thermal plate error flag handling") {
+    uint32_t timestamp = TIME_DELTA;
+    GIVEN("a thermal plate task with invalid temperatures") {
+        auto tasks = TaskBuilder::build();
+        auto &plate_queue = tasks->get_thermal_plate_queue();
+        auto &host_queue = tasks->get_host_comms_queue();
+        auto invalid_adc = _converter.backconvert(130);
+        auto read_message =
+            messages::ThermalPlateTempReadComplete{.heat_sink = invalid_adc,
+                                                   .front_right = invalid_adc,
+                                                   .front_center = invalid_adc,
+                                                   .front_left = invalid_adc,
+                                                   .back_right = invalid_adc,
+                                                   .back_center = invalid_adc,
+                                                   .back_left = invalid_adc,
+                                                   .timestamp_ms = timestamp};
+        timestamp += TIME_DELTA;
+        REQUIRE(plate_queue.try_send(read_message));
+        tasks->run_thermal_plate_task();
+        WHEN("sending a SetPlateTemperature message") {
+            auto set_msg = messages::SetPlateTemperatureMessage{
+                .id = 123, .setpoint = 50, .hold_time = 0};
+            REQUIRE(plate_queue.try_send(set_msg));
+            tasks->run_thermal_plate_task();
+            THEN("the response shows an error") {
+                REQUIRE(host_queue.has_message());
+                auto rsp = host_queue.backing_deque.front();
+                REQUIRE(
+                    std::holds_alternative<messages::AcknowledgePrevious>(rsp));
+                auto response = std::get<messages::AcknowledgePrevious>(rsp);
+                REQUIRE(response.responding_to_id == 123);
+                REQUIRE(response.with_error != errors::ErrorCode::NO_ERROR);
+            }
+        }
+        WHEN("sending a DeactivateAll message") {
+            auto deactivate = messages::DeactivateAllMessage{.id = 444};
+            REQUIRE(plate_queue.try_send(deactivate));
+            tasks->run_thermal_plate_task();
+            host_queue.backing_deque.clear();
+            AND_THEN("sending a SetPlateTemperature message") {
+                auto set_msg = messages::SetPlateTemperatureMessage{
+                    .id = 123, .setpoint = 50, .hold_time = 0};
+                REQUIRE(plate_queue.try_send(set_msg));
+                tasks->run_thermal_plate_task();
+                THEN("the response shows an error") {
+                    REQUIRE(host_queue.has_message());
+                    auto rsp = host_queue.backing_deque.front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            rsp));
+                    auto response =
+                        std::get<messages::AcknowledgePrevious>(rsp);
+                    REQUIRE(response.responding_to_id == 123);
+                    REQUIRE(response.with_error != errors::ErrorCode::NO_ERROR);
+                }
+            }
+        }
+    }
+}

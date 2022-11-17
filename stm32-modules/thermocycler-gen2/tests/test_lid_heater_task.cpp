@@ -556,3 +556,54 @@ SCENARIO("lid heater task message passing") {
         }
     }
 }
+TEST_CASE("lid heater error flag handling") {
+    uint32_t timestamp = TIME_DELTA;
+    GIVEN("a lid heater task with invalid temperatures") {
+        auto tasks = TaskBuilder::build();
+        auto &lid_queue = tasks->get_lid_heater_queue();
+        auto &host_queue = tasks->get_host_comms_queue();
+        auto read_message = messages::LidTempReadComplete{
+            .lid_temp = _shorted_adc, .timestamp_ms = timestamp};
+        timestamp += TIME_DELTA;
+        REQUIRE(lid_queue.try_send(read_message));
+        tasks->run_lid_heater_task();
+        WHEN("sending a SetPlateTemperature message") {
+            auto set_msg =
+                messages::SetLidTemperatureMessage{.id = 123, .setpoint = 50};
+            REQUIRE(lid_queue.try_send(set_msg));
+            tasks->run_lid_heater_task();
+            THEN("the response shows an error") {
+                REQUIRE(host_queue.has_message());
+                auto rsp = host_queue.backing_deque.front();
+                REQUIRE(
+                    std::holds_alternative<messages::AcknowledgePrevious>(rsp));
+                auto response = std::get<messages::AcknowledgePrevious>(rsp);
+                REQUIRE(response.responding_to_id == 123);
+                REQUIRE(response.with_error != errors::ErrorCode::NO_ERROR);
+            }
+        }
+        WHEN("sending a DeactivateAll message") {
+            auto deactivate = messages::DeactivateAllMessage{.id = 444};
+            REQUIRE(lid_queue.try_send(deactivate));
+            tasks->run_lid_heater_task();
+            host_queue.backing_deque.clear();
+            AND_THEN("sending a SetPlateTemperature message") {
+                auto set_msg = messages::SetLidTemperatureMessage{
+                    .id = 123, .setpoint = 50};
+                REQUIRE(lid_queue.try_send(set_msg));
+                tasks->run_lid_heater_task();
+                THEN("the response shows an error") {
+                    REQUIRE(host_queue.has_message());
+                    auto rsp = host_queue.backing_deque.front();
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            rsp));
+                    auto response =
+                        std::get<messages::AcknowledgePrevious>(rsp);
+                    REQUIRE(response.responding_to_id == 123);
+                    REQUIRE(response.with_error != errors::ErrorCode::NO_ERROR);
+                }
+            }
+        }
+    }
+}
