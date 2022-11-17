@@ -304,7 +304,8 @@ auto PlateControl::reset_control(thermal_general::HeatsinkFan &fan) -> void {
         min = std::min(temperature, min);
         max = std::max(temperature, max);
     }
-    return std::abs(max - min) <= THERMISTOR_DRIFT_MAX_C;
+    return (std::abs(max - min) <= THERMISTOR_DRIFT_MAX_C) ||
+           (max <= DRIFT_CHECK_IGNORE_MAX_TEMP);
 }
 
 [[nodiscard]] auto PlateControl::get_peltier_temps() const
