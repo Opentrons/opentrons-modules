@@ -100,6 +100,13 @@ class PlateControl {
     static constexpr double TARGET_ADJUST_FOR_COLD_TARGET = -5.0F;
     /** Extra factor to multiply the proportioal band by */
     static constexpr double PROPORTIONAL_BAND_EXTRA_FACTOR = 2.0F;
+    /**
+     * When performing the thermistor drift check, this is the max point
+     * below which errors are ignored. This is added to prevent unnecesary
+     * error messages during long periods below 8º where temperature may
+     * drift more than our normal spec BUT will not affect the samples.
+     */
+    static constexpr double DRIFT_CHECK_IGNORE_MAX_TEMP = 7.5;
 
     PlateControl() = delete;
     /**

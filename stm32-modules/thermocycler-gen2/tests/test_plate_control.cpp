@@ -201,6 +201,28 @@ TEST_CASE("PlateControl drift error check") {
                 THEN("the result is false") { REQUIRE(result == false); }
             }
         }
+        GIVEN("uniform cold temperature across thermistors") {
+            constexpr double target = 4;
+            set_temp(thermistors, target);
+            WHEN("checking for thermistor drift") {
+                auto result = plateControl.thermistor_drift_check();
+                THEN("the result is true") { REQUIRE(result == true); }
+            }
+            AND_GIVEN("thermistors out of spec BUT under 7.5") {
+                thermistors.at(THERM_BACK_LEFT).temp_c = 0.5;
+                thermistors.at(THERM_BACK_RIGHT).temp_c = 7;
+                THEN("thermistor drift error does not occur") {
+                    REQUIRE(plateControl.thermistor_drift_check());
+                }
+            }
+            AND_GIVEN("thermistors out of spec and a resistor exceeds 7.5") {
+                thermistors.at(THERM_BACK_LEFT).temp_c = 0.5;
+                thermistors.at(THERM_BACK_RIGHT).temp_c = 8;
+                THEN("thermistor drift error occurs") {
+                    REQUIRE(!plateControl.thermistor_drift_check());
+                }
+            }
+        }
     }
 }
 
