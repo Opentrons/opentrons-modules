@@ -103,9 +103,8 @@ class PlateControl {
     /**
      * When performing the thermistor drift check, this is the max point
      * below which errors are ignored. This is added to prevent unnecesary
-     * error messages during long incubations below 8º where temperature may
-     * drift more than our normal spec BUT will not affect the samples on the
-     * Thermocycler.
+     * error messages during long periods below 8º where temperature may
+     * drift more than our normal spec BUT will not affect the samples.
      */
     static constexpr double DRIFT_CHECK_IGNORE_MAX_TEMP = 7.5;
 
