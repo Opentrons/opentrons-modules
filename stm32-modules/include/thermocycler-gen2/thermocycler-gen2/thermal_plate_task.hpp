@@ -313,7 +313,8 @@ class ThermalPlateTask {
             }
         }
 
-        if (old_error_bitmap != _state.error_bitmap) {
+        if ((old_error_bitmap != _state.error_bitmap) ||
+            (_state.error_bitmap != 0)) {
             if (_state.error_bitmap != 0) {
                 // We entered an error state. Disable power output.
                 _state.system_status = State::ERROR;
