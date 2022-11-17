@@ -330,7 +330,7 @@ class LidHeaterTask {
             messages::DeactivateAllResponse{.responding_to_id = msg.id};
 
         static_cast<void>(policy.set_heater_power(0.0F));
-        if(_state.system_status != State::ERROR) {
+        if (_state.system_status != State::ERROR) {
             _state.system_status = State::IDLE;
         }
 
