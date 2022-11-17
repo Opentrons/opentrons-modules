@@ -590,8 +590,9 @@ class ThermalPlateTask {
             messages::DeactivateAllResponse{.responding_to_id = msg.id};
 
         policy.set_enabled(false);
-        _state.system_status = State::IDLE;
-
+        if (_state.system_status != State::ERROR) {
+            _state.system_status = State::IDLE;
+        }
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));
     }
