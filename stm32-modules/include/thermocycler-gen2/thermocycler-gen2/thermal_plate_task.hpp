@@ -313,7 +313,8 @@ class ThermalPlateTask {
             }
         }
 
-        if (old_error_bitmap != _state.error_bitmap) {
+        if ((old_error_bitmap != _state.error_bitmap) ||
+            (_state.error_bitmap != 0)) {
             if (_state.error_bitmap != 0) {
                 // We entered an error state. Disable power output.
                 _state.system_status = State::ERROR;
@@ -589,8 +590,9 @@ class ThermalPlateTask {
             messages::DeactivateAllResponse{.responding_to_id = msg.id};
 
         policy.set_enabled(false);
-        _state.system_status = State::IDLE;
-
+        if (_state.system_status != State::ERROR) {
+            _state.system_status = State::IDLE;
+        }
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));
     }

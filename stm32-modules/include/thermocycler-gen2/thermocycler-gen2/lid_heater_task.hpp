@@ -160,7 +160,8 @@ class LidHeaterTask {
         auto old_error_bitmap = _state.error_bitmap;
         auto current_time = Milliseconds(msg.timestamp_ms);
         handle_temperature_conversion(msg.lid_temp, _thermistor);
-        if (old_error_bitmap != _state.error_bitmap) {
+        if ((old_error_bitmap != _state.error_bitmap) ||
+            (_state.error_bitmap != 0)) {
             if (_state.error_bitmap != 0) {
                 // We entered an error state. Disable power output.
                 _state.system_status = State::ERROR;
@@ -297,6 +298,7 @@ class LidHeaterTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
 
         if (_state.system_status == State::ERROR && !msg.from_system) {
+            std::ignore = policy.set_heater_power(0.0F);
             response.with_error = most_relevant_error();
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(response));
@@ -328,7 +330,9 @@ class LidHeaterTask {
             messages::DeactivateAllResponse{.responding_to_id = msg.id};
 
         static_cast<void>(policy.set_heater_power(0.0F));
-        _state.system_status = State::IDLE;
+        if (_state.system_status != State::ERROR) {
+            _state.system_status = State::IDLE;
+        }
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));
