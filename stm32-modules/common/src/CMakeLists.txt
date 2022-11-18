@@ -93,3 +93,5 @@ if (${CMAKE_CROSSCOMPILING})
   
   
 endif()
+
+add_coverage(${TARGET_MODULE_NAME}-core)

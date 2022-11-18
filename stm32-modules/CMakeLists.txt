@@ -13,8 +13,20 @@ if (${CMAKE_CROSSCOMPILING})
         add_definitions(-DASSERTIONS_ENABLED)
     endif()
 
+    function(add_coverage TARGET)
+    endfunction()
+
+    function(coverage_evaluate)
+    endfunction()
 else()
     find_package(Boost 1.71.0)
+    find_package(codecov)
+
+    # We can safely ignore test code and stm32-tools imports
+    list(APPEND LCOV_REMOVE_PATTERNS 
+        "'${PROJECT_SOURCE_DIR}/stm32-tools/*'"
+        "'${PROJECT_SOURCE_DIR}/**/tests/*.cpp'"
+        "'${PROJECT_SOURCE_DIR}/*/putchar.c'")
 endif()
 
 find_package(Clang)
@@ -24,3 +36,5 @@ add_subdirectory(common)
 add_subdirectory(heater-shaker)
 add_subdirectory(thermocycler-gen2)
 add_subdirectory(tempdeck-gen3)
+
+coverage_evaluate()

@@ -76,6 +76,13 @@ You can change to a different compiler, like an installed upstream clang/llvm, b
 
 This isn't the default `stm32-host` because it requires specifying the compiler by version to actually work on OSX, where `gcc` and `g++` unqualified by version are... aliased to system clang. Setting the default to `gcc-10` and `g++-10` then might have problems on other platforms if someone update their gcc and g++ or on CI.
 
+## code coverage
+
+This repository is configured to generate code coverage from the tests.
+
+To enable code coverage, configure the host toolchain for tests with the options `-DENABLE_COVERAGE=On -DCMAKE_BUILD_TYPE=Debug`. _In order for code coverage to be accurate, you must run the build-and-test target for a module_. After running every build-and-test target, the target `lcov` will generate an HTMl report of the code coverage from the tests.
+
+In general, do not enable code coverage unless you need it. Test execution will be far slower.
 
 ### Custom Configuration
 
