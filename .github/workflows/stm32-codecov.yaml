@@ -1,6 +1,10 @@
 name: 'Code Coverage'
-on: [pull_request, workflow_dispatch]
-
+on:
+  pull_request:
+  push:
+    branches:
+      - 'edge'
+  workflow_dispatch:
 
 defaults:
   run:
