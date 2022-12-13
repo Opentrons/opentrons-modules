@@ -278,6 +278,8 @@ class ThermalPlateTask {
     requires ThermalPlateExecutionPolicy<Policy>
     auto visit_message(const messages::ThermalPlateTempReadComplete& msg,
                        Policy& policy) -> void {
+        constexpr Milliseconds time_overflow_amount = Milliseconds(
+            std::numeric_limits<decltype(msg.timestamp_ms)>::max());
         auto old_error_bitmap = _state.error_bitmap;
         auto current_time = Milliseconds(msg.timestamp_ms);
 
@@ -327,8 +329,12 @@ class ThermalPlateTask {
         }
 
         if (_state.system_status == State::CONTROLLING) {
-            update_control(policy, std::chrono::duration_cast<Seconds>(
-                                       current_time - _last_update));
+            auto time_delta = current_time - _last_update;
+            if (time_delta.count() < 0) {
+                time_delta += time_overflow_amount;
+            }
+            update_control(policy,
+                           std::chrono::duration_cast<Seconds>(time_delta));
             send_current_state();
         } else if (_state.system_status == State::IDLE) {
             send_current_state();

@@ -1234,3 +1234,60 @@ TEST_CASE("thermal plate error flag handling") {
         }
     }
 }
+
+TEST_CASE("thermal plate tick overflow handling") {
+    constexpr uint32_t max_tick = std::numeric_limits<uint32_t>::max();
+    const uint32_t ms_diff = GENERATE(10, 1000, 10000);
+    constexpr float temperature = 15;
+    constexpr uint32_t total_hold = 5000;
+    GIVEN("a thermal plate task with valid temperatures holding temp") {
+        auto tasks = TaskBuilder::build();
+        auto &plate_queue = tasks->get_thermal_plate_queue();
+        auto &host_queue = tasks->get_host_comms_queue();
+        auto valid_adc = _converter.backconvert(temperature);
+        auto read_message = messages::ThermalPlateTempReadComplete{
+            .heat_sink = valid_adc,
+            .front_right = valid_adc,
+            .front_center = valid_adc,
+            .front_left = valid_adc,
+            .back_right = valid_adc,
+            .back_center = valid_adc,
+            .back_left = valid_adc,
+            .timestamp_ms = max_tick - 100};
+        std::ignore = plate_queue.try_send(read_message);
+        tasks->run_thermal_plate_task();
+        auto command = messages::SetPlateTemperatureMessage{
+            .id = 123,
+            .setpoint = temperature,
+            .hold_time = total_hold,
+            .volume = 1,
+        };
+        std::ignore = plate_queue.try_send(command);
+        tasks->run_thermal_plate_task();
+
+        read_message.timestamp_ms = max_tick - 50;
+        std::ignore = plate_queue.try_send(read_message);
+        tasks->run_thermal_plate_task();
+
+        read_message.timestamp_ms = max_tick - 25;
+        std::ignore = plate_queue.try_send(read_message);
+        tasks->run_thermal_plate_task();
+
+        WHEN("sending a thermistor update that overflows the tick count") {
+            read_message.timestamp_ms += ms_diff;
+            std::ignore = plate_queue.try_send(read_message);
+            tasks->run_thermal_plate_task();
+            THEN("the new hold time makes sense") {
+                auto expected = total_hold - (ms_diff / 1000.0);
+                host_queue.backing_deque.clear();
+                auto get_message = messages::GetPlateTempMessage{.id = 321};
+                std::ignore = plate_queue.try_send(get_message);
+                tasks->run_thermal_plate_task();
+                auto response = std::get<messages::GetPlateTempResponse>(
+                    host_queue.backing_deque.front());
+                REQUIRE_THAT(response.time_remaining,
+                             Catch::Matchers::WithinAbs(expected, 0.01));
+            }
+        }
+    }
+}

@@ -157,6 +157,8 @@ class LidHeaterTask {
     requires LidHeaterExecutionPolicy<Policy>
     auto visit_message(const messages::LidTempReadComplete& msg, Policy& policy)
         -> void {
+        constexpr Milliseconds time_overflow_amount = Milliseconds(
+            std::numeric_limits<decltype(msg.timestamp_ms)>::max());
         auto old_error_bitmap = _state.error_bitmap;
         auto current_time = Milliseconds(msg.timestamp_ms);
         handle_temperature_conversion(msg.lid_temp, _thermistor);
@@ -174,9 +176,12 @@ class LidHeaterTask {
 
         // If we're in a controlling state, we now update the heater output
         if (_state.system_status == State::CONTROLLING) {
+            auto time_delta = current_time - _last_update;
+            if (time_delta.count() < 0) {
+                time_delta += time_overflow_amount;
+            }
             auto power = update_control(
-                std::chrono::duration_cast<Seconds>(current_time - _last_update)
-                    .count());
+                std::chrono::duration_cast<Seconds>(time_delta).count());
             auto ret = policy.set_heater_power(power);
             if (!ret) {
                 policy.set_heater_power(0.0F);
