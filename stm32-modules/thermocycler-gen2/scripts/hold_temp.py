@@ -56,7 +56,7 @@ class Thermocycler():
         bl: float # back left
         
         def __str__(self):
-            return f'{self.hs},{self.fr},{self.fc},{self.fl},{self.br},{self.bc},{self.bl}'
+            return f'{self.hs},{self.fr},{self.fl},{self.fc},{self.br},{self.bl},{self.bc}'
         
     @dataclass
     class Power:
