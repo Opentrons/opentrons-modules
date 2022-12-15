@@ -99,8 +99,8 @@ class MotorTask {
               // SetRPM commands
 
   public:
-    static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 225;
-    static constexpr int16_t HOMING_ROTATION_LIMIT_LOW_RPM = 175;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 175;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_LOW_RPM = 125;
     static constexpr int16_t HOMING_ROTATION_LOW_MARGIN = 25;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_INITIAL = 200;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
