@@ -94,6 +94,7 @@ class MotorTask {
     static constexpr const uint16_t STARTUP_HOMING_WAIT_TICKS =
         200;  // needed to ensure motor setup complete at startup before homing
     static constexpr const uint16_t MOTOR_START_WAIT_TICKS = 1000;
+    static constexpr const uint16_t SOLENOID_ENGAGE_WAIT_TICKS = 2000;
     static constexpr const uint16_t POST_HOMING_WAIT_TICKS =
         500;  // needed to ensure motor control deactivated before subsequent
               // SetRPM commands
@@ -378,6 +379,7 @@ class MotorTask {
             policy.delay_ticks(MOTOR_START_WAIT_TICKS);
             policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM +
                            HOMING_ROTATION_LOW_MARGIN);
+            policy.delay_ticks(SOLENOID_ENGAGE_WAIT_TICKS);
             cached_home_id = msg.id;
             if (policy.get_current_rpm() < MOTOR_START_THRESHOLD_RPM) {
                 auto error = errors::ErrorCode::MOTOR_UNABLE_TO_MOVE;
