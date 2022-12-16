@@ -94,14 +94,14 @@ class MotorTask {
     static constexpr const uint16_t STARTUP_HOMING_WAIT_TICKS =
         200;  // needed to ensure motor setup complete at startup before homing
     static constexpr const uint16_t MOTOR_START_WAIT_TICKS = 1000;
-    static constexpr const uint16_t SOLENOID_ENGAGE_WAIT_TICKS = 2000;
+    static constexpr const uint16_t SOLENOID_ENGAGE_WAIT_TICKS = 1000;
     static constexpr const uint16_t POST_HOMING_WAIT_TICKS =
         500;  // needed to ensure motor control deactivated before subsequent
               // SetRPM commands
 
   public:
-    static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 175;
-    static constexpr int16_t HOMING_ROTATION_LIMIT_LOW_RPM = 125;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 200;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_LOW_RPM = 150;
     static constexpr int16_t HOMING_ROTATION_LOW_MARGIN = 25;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_INITIAL = 200;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
