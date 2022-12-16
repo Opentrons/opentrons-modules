@@ -2,6 +2,30 @@
 #include "test/test_tasks.hpp"
 #include "test/test_thermal_policy.hpp"
 
+TEST_CASE("peltier current conversions") {
+    GIVEN("some ADC readings") {
+        std::vector<uint32_t> inputs = {0, 100, 1000};
+        WHEN("converting readings") {
+            std::vector<double> outputs(3);
+            std::transform(inputs.begin(), inputs.end(), outputs.begin(),
+                           thermal_task::PeltierReadback::adc_to_milliamps);
+            THEN("the readings are converted correctly") {
+                std::vector<double> expected = {0, 161.172, 1611.722};
+                REQUIRE_THAT(outputs, Catch::Matchers::Approx(expected));
+            }
+            AND_THEN("backconverting readings") {
+                std::vector<uint32_t> backconvert(3);
+                std::transform(outputs.begin(), outputs.end(),
+                               backconvert.begin(),
+                               thermal_task::PeltierReadback::milliamps_to_adc);
+                THEN("the backconversions match the original readings") {
+                    REQUIRE_THAT(backconvert, Catch::Matchers::Equals(inputs));
+                }
+            }
+        }
+    }
+}
+
 TEST_CASE("thermal task message handling") {
     auto *tasks = tasks::BuildTasks();
     TestThermalPolicy policy;
@@ -15,6 +39,7 @@ TEST_CASE("thermal task message handling") {
             .timestamp = 1000,
             .plate = plate_count,
             .heatsink = hs_count,
+            .imeas = 555,
         };
         tasks->_thermal_queue.backing_deque.push_back(thermistors_msg);
         tasks->_thermal_task.run_once(policy);
@@ -26,6 +51,7 @@ TEST_CASE("thermal task message handling") {
             REQUIRE(readings.heatsink_adc == thermistors_msg.heatsink);
             REQUIRE(readings.plate_adc == thermistors_msg.plate);
             REQUIRE(readings.last_tick == thermistors_msg.timestamp);
+            REQUIRE(readings.peltier_current_adc == thermistors_msg.imeas);
         }
         THEN("the ADC readings are properly converted to temperatures") {
             auto readings = tasks->_thermal_task.get_readings();
@@ -444,6 +470,198 @@ TEST_CASE("closed loop thermal control") {
                 REQUIRE_THAT(policy._fans,
                              Catch::Matchers::WithinAbs(
                                  tasks->_thermal_task.FAN_POWER_MAX, 0.001));
+            }
+        }
+    }
+}
+
+TEST_CASE("thermal task offset constants message handling") {
+    auto *tasks = tasks::BuildTasks();
+    TestThermalPolicy policy;
+    eeprom::Eeprom<decltype(tasks->_thermal_task)::EEPROM_PAGES,
+                   decltype(tasks->_thermal_task)::EEPROM_ADDRESS>
+        eeprom;
+
+    WHEN("getting the offset constants") {
+        auto get_msg = messages::GetOffsetConstantsMessage{.id = 1};
+        REQUIRE(tasks->_thermal_queue.try_send(get_msg));
+        tasks->_thermal_task.run_once(policy);
+        THEN("the thermal task responds with the default constants") {
+            REQUIRE(tasks->_comms_queue.has_message());
+            auto response = tasks->_comms_queue.backing_deque.front();
+            REQUIRE(
+                std::holds_alternative<messages::GetOffsetConstantsResponse>(
+                    response));
+            auto response_msg =
+                std::get<messages::GetOffsetConstantsResponse>(response);
+            REQUIRE(response_msg.responding_to_id == get_msg.id);
+            REQUIRE(response_msg.a ==
+                    tasks->_thermal_task.OFFSET_DEFAULT_CONST_A);
+            REQUIRE(response_msg.b ==
+                    tasks->_thermal_task.OFFSET_DEFAULT_CONST_B);
+            REQUIRE(response_msg.c ==
+                    tasks->_thermal_task.OFFSET_DEFAULT_CONST_C);
+        }
+    }
+    WHEN("setting B and C constants") {
+        auto set_msg = messages::SetOffsetConstantsMessage{
+            .id = 456, .a = std::nullopt, .b = 1, .c = 2};
+        REQUIRE(tasks->_thermal_queue.try_send(set_msg));
+        tasks->_thermal_task.run_once(policy);
+        THEN("the thermal task responds with an ack") {
+            REQUIRE(tasks->_comms_queue.has_message());
+            auto response = tasks->_comms_queue.backing_deque.front();
+            REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
+                response));
+            auto response_msg =
+                std::get<messages::AcknowledgePrevious>(response);
+            REQUIRE(response_msg.responding_to_id == set_msg.id);
+        }
+        AND_THEN("getting the offset constants") {
+            tasks->_comms_queue.backing_deque.clear();
+            auto get_msg = messages::GetOffsetConstantsMessage{.id = 1};
+            REQUIRE(tasks->_thermal_queue.try_send(get_msg));
+            tasks->_thermal_task.run_once(policy);
+            THEN("the thermal task responds with the default constants") {
+                REQUIRE(tasks->_comms_queue.has_message());
+                auto response = tasks->_comms_queue.backing_deque.front();
+                REQUIRE(std::holds_alternative<
+                        messages::GetOffsetConstantsResponse>(response));
+                auto response_msg =
+                    std::get<messages::GetOffsetConstantsResponse>(response);
+                REQUIRE(response_msg.responding_to_id == get_msg.id);
+                REQUIRE(response_msg.a ==
+                        tasks->_thermal_task.OFFSET_DEFAULT_CONST_A);
+                REQUIRE(response_msg.b == set_msg.b.value());
+                REQUIRE(response_msg.c == set_msg.c.value());
+            }
+        }
+        THEN("the EEPROM memory is updated") {
+            auto constants = eeprom::OffsetConstants{.a = 0, .b = 0, .c = 0};
+            constants = eeprom.get_offset_constants(constants, policy);
+            REQUIRE(constants.a == tasks->_thermal_task.OFFSET_DEFAULT_CONST_A);
+            REQUIRE(constants.b == set_msg.b.value());
+            REQUIRE(constants.c == set_msg.c.value());
+        }
+    }
+    GIVEN("eeprom is preloaded with offsets") {
+        auto constants = eeprom::OffsetConstants{.a = -42, .b = 1.5, .c = 2};
+        REQUIRE(eeprom.write_offset_constants(constants, policy));
+        WHEN("getting the offset constants") {
+            auto get_msg = messages::GetOffsetConstantsMessage{.id = 4};
+            REQUIRE(tasks->_thermal_queue.try_send(get_msg));
+            tasks->_thermal_task.run_once(policy);
+            THEN("the thermal task responds with the default constants") {
+                REQUIRE(tasks->_comms_queue.has_message());
+                auto response = tasks->_comms_queue.backing_deque.front();
+                REQUIRE(std::holds_alternative<
+                        messages::GetOffsetConstantsResponse>(response));
+                auto response_msg =
+                    std::get<messages::GetOffsetConstantsResponse>(response);
+                REQUIRE(response_msg.responding_to_id == get_msg.id);
+                REQUIRE(response_msg.a == constants.a);
+                REQUIRE(response_msg.b == constants.b);
+                REQUIRE(response_msg.c == constants.c);
+            }
+        }
+    }
+}
+
+TEST_CASE("thermal task power debug functionality") {
+    auto *tasks = tasks::BuildTasks();
+    TestThermalPolicy policy;
+    const double peltier_current = GENERATE(200.0F, 2000.0F, 0.0F);
+    auto current_adc =
+        thermal_task::PeltierReadback::milliamps_to_adc(peltier_current);
+    const double temp = 25.0F;
+    thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> converter(
+        decltype(tasks->_thermal_task)::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
+        decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);
+    auto temp_adc = converter.backconvert(temp);
+
+    policy.set_fan_rpm(12345.0);
+
+    GIVEN("a thermal task with valid peltier current readings") {
+        auto adc_msg = messages::ThermistorReadings{
+            .timestamp = 123,
+            .plate = temp_adc,
+            .heatsink = temp_adc,
+            .imeas = current_adc,
+        };
+        REQUIRE(tasks->_thermal_queue.try_send(adc_msg));
+        tasks->_thermal_task.run_once(policy);
+        WHEN("sending a message to get thermal power") {
+            auto power_msg = messages::GetThermalPowerDebugMessage{.id = 555};
+            REQUIRE(tasks->_thermal_queue.try_send(power_msg));
+            tasks->_thermal_task.run_once(policy);
+            THEN("the message is consumed") {
+                REQUIRE(!tasks->_thermal_queue.has_message());
+            }
+            THEN("a response is sent to host comms with the right data") {
+                REQUIRE(tasks->_comms_queue.has_message());
+                auto response_msg = tasks->_comms_queue.backing_deque.front();
+                REQUIRE(std::holds_alternative<
+                        messages::GetThermalPowerDebugResponse>(response_msg));
+                auto response =
+                    std::get<messages::GetThermalPowerDebugResponse>(
+                        response_msg);
+                REQUIRE(response.responding_to_id == power_msg.id);
+                // There has to be a fair amount of leeway here because the
+                // accuracy of the conversions isn't the best
+                REQUIRE_THAT(response.peltier_current,
+                             Catch::Matchers::WithinAbs(peltier_current,
+                                                        peltier_current * .01));
+                REQUIRE_THAT(response.peltier_pwm,
+                             Catch::Matchers::WithinAbs(0, .01));
+                REQUIRE_THAT(response.fan_pwm,
+                             Catch::Matchers::WithinAbs(0, .001));
+                REQUIRE_THAT(response.fan_rpm,
+                             Catch::Matchers::WithinAbs(policy._fan_rpm, .001));
+            }
+        }
+        AND_GIVEN("manual mode for peltiers and fans") {
+            auto peltier_msg =
+                messages::SetPeltierDebugMessage{.id = 999, .power = 0.5};
+            auto fan_msg =
+                messages::SetFanManualMessage{.id = 523, .power = 0.6};
+            REQUIRE(tasks->_thermal_queue.try_send(peltier_msg));
+            tasks->_thermal_task.run_once(policy);
+            REQUIRE(tasks->_thermal_queue.try_send(fan_msg));
+            tasks->_thermal_task.run_once(policy);
+            tasks->_comms_queue.backing_deque.clear();
+
+            WHEN("sending a message to get thermal power") {
+                auto power_msg =
+                    messages::GetThermalPowerDebugMessage{.id = 555};
+                REQUIRE(tasks->_thermal_queue.try_send(power_msg));
+                tasks->_thermal_task.run_once(policy);
+                THEN("the message is consumed") {
+                    REQUIRE(!tasks->_thermal_queue.has_message());
+                }
+                THEN("a response is sent to host comms with the right data") {
+                    REQUIRE(tasks->_comms_queue.has_message());
+                    auto response_msg =
+                        tasks->_comms_queue.backing_deque.front();
+                    REQUIRE(std::holds_alternative<
+                            messages::GetThermalPowerDebugResponse>(
+                        response_msg));
+                    auto response =
+                        std::get<messages::GetThermalPowerDebugResponse>(
+                            response_msg);
+                    REQUIRE(response.responding_to_id == power_msg.id);
+                    // There has to be a fair amount of leeway here because the
+                    // accuracy of the conversions isn't the best
+                    REQUIRE_THAT(response.peltier_current,
+                                 Catch::Matchers::WithinAbs(
+                                     peltier_current, peltier_current * .01));
+                    REQUIRE_THAT(
+                        response.peltier_pwm,
+                        Catch::Matchers::WithinAbs(peltier_msg.power, .001));
+                    REQUIRE_THAT(response.fan_pwm, Catch::Matchers::WithinAbs(
+                                                       fan_msg.power, .001));
+                    REQUIRE_THAT(response.fan_rpm, Catch::Matchers::WithinAbs(
+                                                       policy._fan_rpm, .001));
+                }
             }
         }
     }

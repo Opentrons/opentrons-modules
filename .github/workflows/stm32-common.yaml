@@ -1,18 +1,6 @@
 name: 'STM32 Common Code build/test'
 on:
   pull_request:
-    paths:
-      - 'stm32-modules/common/**/*'
-      - 'stm32-modules/include/common/**/*'
-      - 'cmake/**/*'
-      - 'CMakeLists.txt'
-      - 'stm32-modules/CMakeLists.txt'
-      - 'CMakePresets.json'
-      - '.clang-format'
-      - '.clang-tidy'
-      - 'cpp-utils/**/*'
-    paths_ignore:
-      - 'cmake/Arduino*'
   push:
     paths:
       - 'stm32-modules/common/**/*'

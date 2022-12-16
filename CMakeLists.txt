@@ -6,7 +6,10 @@ project("OpentronsModules"
   LANGUAGES CXX C ASM
   DESCRIPTION "Firmware for Opentrons modules")
 
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH 
+      "${PROJECT_SOURCE_DIR}/cmake" 
+      "${PROJECT_SOURCE_DIR}/cmake/codecov/cmake" 
+      ${CMAKE_MODULE_PATH})
 if (NOT ${CMAKE_CROSSCOMPILING})
   enable_testing()
   add_custom_target(build-and-test)

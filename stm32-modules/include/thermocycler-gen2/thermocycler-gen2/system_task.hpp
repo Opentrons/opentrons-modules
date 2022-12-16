@@ -181,7 +181,7 @@ concept SystemExecutionPolicy = requires(Policy& p, const Policy& cp) {
 
 struct LedState {
     // Configured color of the LED, assuming
-    xt1511::XT1511 color = colors::get_color(colors::Colors::SOFT_WHITE);
+    xt1511::XT1511 color = colors::get_color(colors::Colors::WHITE);
     colors::Mode mode = colors::Mode::SOLID;
     // Utility counter for updating state in non-solid modes
     uint32_t counter = 0;
@@ -226,7 +226,7 @@ class SystemTask {
           _prep_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _leds(xt1511::Speed::HALF),
-          _led_state{.color = colors::get_color(colors::Colors::SOFT_WHITE),
+          _led_state{.color = colors::get_color(colors::Colors::WHITE),
                      .mode = colors::Mode::SOLID,
                      .counter = 0,
                      .period = LED_PULSE_PERIOD_MS},
@@ -575,7 +575,7 @@ class SystemTask {
         } else {
             switch (_plate_state) {
                 case PlateState::IDLE:
-                    _led_state.color = get_color(Colors::SOFT_WHITE);
+                    _led_state.color = get_color(Colors::WHITE);
                     _led_state.mode = Mode::SOLID;
                     break;
                 case PlateState::HEATING:

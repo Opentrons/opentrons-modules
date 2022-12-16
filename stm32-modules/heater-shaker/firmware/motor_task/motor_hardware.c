@@ -17,6 +17,9 @@ static void Error_Handler();
 
 motor_hardware_handles *MOTOR_HW_HANDLE = NULL;
 
+static _Atomic int16_t motor_speed_buffer[MOTOR_SPEED_BUFFER_SIZE];
+static _Atomic size_t motor_speed_buffer_itr = 0;
+
 static void MX_NVIC_Init(void)
 {
   /* TIM1_BRK_TIM15_IRQn interrupt configuration */
@@ -218,6 +221,7 @@ static void MX_TIM1_Init(TIM_HandleTypeDef* tim1)
   /* USER CODE BEGIN TIM1_Init 1 */
 
   /* USER CODE END TIM1_Init 1 */
+  tim1->State = HAL_TIM_STATE_RESET;
   tim1->Instance = TIM1;
   tim1->Init.Prescaler = ((TIM_CLOCK_DIVIDER) - 1);
   tim1->Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
@@ -312,6 +316,7 @@ static void MX_TIM2_Init(TIM_HandleTypeDef* tim2)
   /* USER CODE BEGIN TIM2_Init 1 */
 
   /* USER CODE END TIM2_Init 1 */
+  tim2->State = HAL_TIM_STATE_RESET;
   tim2->Instance = TIM2;
   tim2->Init.Prescaler = 0;
   tim2->Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -349,6 +354,7 @@ static void MX_TIM2_Init(TIM_HandleTypeDef* tim2)
 
 static void PlateLockTIM_Init(TIM_HandleTypeDef* tim3) {
   __HAL_RCC_TIM3_CLK_ENABLE();
+  tim3->State = HAL_TIM_STATE_RESET;
   tim3->Instance = PLATE_LOCK_TIM;
   tim3->Init.Prescaler = 0;
   tim3->Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -809,6 +815,7 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
 
 void motor_hardware_setup(motor_hardware_handles* handles) {
   MOTOR_HW_HANDLE = handles;
+  memset(motor_speed_buffer, 0, sizeof(motor_speed_buffer));
   MX_GPIO_Init();
   MX_ADC1_Init(&handles->adc1);
   MX_ADC2_Init(&handles->adc2);
@@ -887,6 +894,21 @@ void motor_hardware_plate_lock_brake(TIM_HandleTypeDef* tim3) {
   HAL_TIM_GenerateEvent(tim3, TIM_EVENTSOURCE_UPDATE);
   HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_1_Chan);
   HAL_TIM_PWM_Start(tim3, PLATE_LOCK_IN_2_Chan);
+}
+
+void motor_hardware_add_rpm_measurement(int16_t speed) {
+    motor_speed_buffer[motor_speed_buffer_itr++] = speed;
+    if(motor_speed_buffer_itr == MOTOR_SPEED_BUFFER_SIZE) {
+        motor_speed_buffer_itr = 0;
+    }
+}
+
+int16_t motor_hardware_get_smoothed_rpm() {
+    int64_t sum = 0;
+    for(uint8_t itr = 0; itr < MOTOR_SPEED_BUFFER_SIZE; ++itr) {
+        sum += (int64_t)motor_speed_buffer[itr];
+    }
+    return (int16_t)(sum / MOTOR_SPEED_BUFFER_SIZE);
 }
 
 /******************************************************************************/

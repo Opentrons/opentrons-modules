@@ -37,7 +37,12 @@ message(STATUS "local install clang dir: ${LOCALINSTALL_CLANG_DIR}")
 set(DL_CLANG_VERSION "12.0.0")
 
 if("${CMAKE_HOST_SYSTEM_NAME}" STREQUAL "Linux")
-  set(CLANG_ARCHIVE "x86_64-linux-gnu-ubuntu-20.04.tar.xz")
+  if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+    set(CLANG_ARCHIVE "x86_64-linux-gnu-ubuntu-20.04.tar.xz")
+  else()
+    set(CLANG_ARCHIVE "aarch64-linux-gnu.tar.xz")
+  endif()
+
 elseif("${CMAKE_HOST_SYSTEM_NAME}" STREQUAL "Darwin")
   set(CLANG_ARCHIVE "x86_64-apple-darwin.tar.xz")
 else()

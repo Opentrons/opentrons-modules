@@ -3,7 +3,9 @@
 #include <cmath>
 #include <cstdint>
 
-struct SimThermalPolicy {
+#include "simulator/sim_at24c0xc_policy.hpp"
+
+struct SimThermalPolicy : public at24c0xc_sim_policy::SimAT24C0XCPolicy<32> {
     auto enable_peltier() -> void { _enabled = true; }
 
     auto disable_peltier() -> void { _enabled = false; }
@@ -27,6 +29,12 @@ struct SimThermalPolicy {
     auto set_fan_power(double power) -> bool {
         _fan = std::clamp(power, double(0.0), double(1.0));
         return true;
+    }
+
+    auto get_fan_rpm() -> double {
+        // From the fan datasheet
+        static constexpr double MAX_RPM = 10800;
+        return _fan * MAX_RPM;
     }
 
   private:

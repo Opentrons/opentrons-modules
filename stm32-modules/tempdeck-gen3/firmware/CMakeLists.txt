@@ -35,13 +35,16 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
 # Add source files that should NOT be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${SYSTEM_DIR}/hal_tick.c
+  ${SYSTEM_DIR}/i2c_hardware.c
   ${SYSTEM_DIR}/system_stm32g4xx.c
   ${SYSTEM_DIR}/system_hardware.c
   ${SYSTEM_DIR}/system_serial_number.c
   ${SYSTEM_DIR}/stm32g4xx_it.c
   ${SYSTEM_DIR}/stm32g4xx_hal_msp.c
   ${THERMAL_DIR}/thermal_hardware.c
+  ${THERMAL_DIR}/tachometer_hardware.c
   ${THERMISTOR_DIR}/thermistor_hardware.c
+  ${THERMISTOR_DIR}/internal_adc_hardware.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
   )

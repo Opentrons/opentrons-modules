@@ -47,6 +47,11 @@ class PeriodicDataThread {
     // Should be initiated in its own jthread
     auto run(std::stop_token& st) -> void;
 
+    // Thread safe method to signal that lid thread processed data
+    auto signal_lid_thread_ready() -> void;
+    // Thread safe method to signal that lid thread processed data
+    auto signal_plate_thread_ready() -> void;
+
   private:
     // The further from room temperature an element is, the stronger
     // the draw back to room temp will be.
@@ -56,8 +61,8 @@ class PeriodicDataThread {
     // reading
     auto scaled_gain_effect(double gain, double power,
                             std::chrono::milliseconds delta) -> double;
-    auto update_heat_pad() -> void;
-    auto update_peltiers() -> void;
+    auto update_heat_pad() -> bool;
+    auto update_peltiers() -> bool;
     auto run_motor() -> void;
 
     Power _heat_pad_power;
@@ -72,6 +77,10 @@ class PeriodicDataThread {
     // This really wants to be an std::latch, but that isn't available
     // in gcc10. Bummer :(
     std::atomic_bool _init_latch;
+    // If one of these flags is set, wait until the respective thread signals
+    // that it read the temperature update
+    std::atomic_bool _waiting_for_lid_thread{false};
+    std::atomic_bool _waiting_for_plate_thread{false};
 };
 
 auto build(bool realtime) -> std::pair<std::unique_ptr<std::jthread>,

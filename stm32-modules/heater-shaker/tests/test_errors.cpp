@@ -16,8 +16,8 @@ SCENARIO("testing error writing") {
                                          "ERR001:tx buffer overrun OK\n"));
                 AND_THEN("the length was appropriately returned") {
                     REQUIRE(written ==
-                            buffer.begin() +
-                                strlen("ERR001:tx buffer overrun OK\n"));
+                            buffer.begin() + strlen("ERR001:tx "
+                                                    "buffer overrun OK\n"));
                 }
             }
         }

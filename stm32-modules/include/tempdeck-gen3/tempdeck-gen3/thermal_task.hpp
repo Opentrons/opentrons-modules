@@ -5,6 +5,7 @@
 #include "core/thermistor_conversion.hpp"
 #include "hal/message_queue.hpp"
 #include "ot_utils/core/pid.hpp"
+#include "tempdeck-gen3/eeprom.hpp"
 #include "tempdeck-gen3/messages.hpp"
 #include "tempdeck-gen3/tasks.hpp"
 #include "thermistor_lookups.hpp"
@@ -18,15 +19,19 @@ concept ThermalPolicy = requires(Policy& p) {
     { p.set_peltier_heat_power(1.0) } -> std::same_as<bool>;
     { p.set_peltier_cool_power(1.0) } -> std::same_as<bool>;
     { p.set_fan_power(1.0) } -> std::same_as<bool>;
-};
+    { p.get_fan_rpm() } -> std::same_as<double>;
+}
+&&at24c0xc::AT24C0xC_Policy<Policy>;
 
 using Message = messages::ThermalMessage;
 
 struct ThermalReadings {
     uint32_t plate_adc = 0;
     uint32_t heatsink_adc = 0;
+    uint32_t peltier_current_adc = 0;
     std::optional<double> heatsink_temp = 0.0F;
     std::optional<double> plate_temp = 0.0F;
+    double peltier_current_milliamps = 0.0F;
 
     uint32_t last_tick = 0;
 };
@@ -41,6 +46,32 @@ struct Peltier {
     bool target_set = false;
     double power = 0.0F;
     double target = 0.0F;
+};
+
+// Provides constants & conversions for the internal ADC
+struct PeltierReadback {
+    // Internal ADC max value is 12 bits = 0xFFF = 4095
+    static constexpr double MAX_ADC_COUNTS = 4095;
+    // Internal ADC is scaled to 3.3v max
+    static constexpr double MAX_ADC_VOLTAGE = 3.3;
+    // Voltage for current measurement is amplified by 50x
+    static constexpr double CURRENT_AMP_GAIN = 50;
+    // Current measurement resistor is 10 milliohms = 0.001
+    static constexpr double CURRENT_AMP_RESISTOR_OHMS = 0.01;
+    // Milliamps per ampere
+    static constexpr double MILLIAMPS_PER_AMP = 1000.0;
+    // Final conversion factor between adc and current
+    static constexpr double MILLIAMPS_PER_COUNT =
+        ((MAX_ADC_VOLTAGE * MILLIAMPS_PER_AMP) /
+         (MAX_ADC_COUNTS * CURRENT_AMP_GAIN * CURRENT_AMP_RESISTOR_OHMS));
+
+    static auto adc_to_milliamps(uint32_t adc) -> double {
+        return static_cast<double>(adc) * MILLIAMPS_PER_COUNT;
+    }
+
+    static auto milliamps_to_adc(double milliamps) -> uint32_t {
+        return static_cast<uint32_t>(milliamps / MILLIAMPS_PER_COUNT);
+    }
 };
 
 template <template <class> class QueueImpl>
@@ -78,15 +109,24 @@ class ThermalTask {
     static constexpr double FAN_POWER_MEDIUM = 0.75;
     static constexpr double FAN_POWER_MAX = 1.0;
 
-    static constexpr double PELTIER_KP_DEFAULT = 0.38;
-    static constexpr double PELTIER_KI_DEFAULT = 0.0275;
+    static constexpr double PELTIER_KP_HEATING_DEFAULT = 0.141637;
+    static constexpr double PELTIER_KI_HEATING_DEFAULT = 0.005339;
     static constexpr double PELTIER_KD_DEFAULT = 0.0F;
+    static constexpr double PELTIER_KP_COOLING_DEFAULT = 0.483411;
+    static constexpr double PELTIER_KI_COOLING_DEFAULT = 0.023914;
 
     static constexpr double PELTIER_K_MAX = 200.0F;
     static constexpr double PELTIER_K_MIN = -200.0F;
     static constexpr double PELTIER_WINDUP_LIMIT = 1.0F;
 
     static constexpr double MILLISECONDS_TO_SECONDS = 0.001F;
+
+    static constexpr size_t EEPROM_PAGES = 32;
+    static constexpr uint8_t EEPROM_ADDRESS = 0b1010010;
+
+    static constexpr const double OFFSET_DEFAULT_CONST_A = 0.0F;
+    static constexpr const double OFFSET_DEFAULT_CONST_B = 0.0F;
+    static constexpr const double OFFSET_DEFAULT_CONST_C = 0.0F;
 
     explicit ThermalTask(Queue& q, Aggregator* aggregator)
         : _message_queue(q),
@@ -99,8 +139,14 @@ class ThermalTask {
           _fan(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _peltier(),
-          _pid(PELTIER_KP_DEFAULT, PELTIER_KI_DEFAULT, PELTIER_KD_DEFAULT, 1.0F,
-               PELTIER_WINDUP_LIMIT, -PELTIER_WINDUP_LIMIT) {}
+          _pid(PELTIER_KP_HEATING_DEFAULT, PELTIER_KI_HEATING_DEFAULT,
+               PELTIER_KD_DEFAULT, 1.0F, PELTIER_WINDUP_LIMIT,
+               -PELTIER_WINDUP_LIMIT),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          _eeprom(),
+          _offset_constants{.a = OFFSET_DEFAULT_CONST_A,
+                            .b = OFFSET_DEFAULT_CONST_B,
+                            .c = OFFSET_DEFAULT_CONST_C} {}
     ThermalTask(const ThermalTask& other) = delete;
     auto operator=(const ThermalTask& other) -> ThermalTask& = delete;
     ThermalTask(ThermalTask&& other) noexcept = delete;
@@ -115,6 +161,12 @@ class ThermalTask {
     auto run_once(Policy& policy) -> void {
         if (!_task_registry) {
             return;
+        }
+        // If the EEPROM data hasn't been read, read it before doing
+        // anything else.
+        if (!_eeprom.initialized()) {
+            _offset_constants =
+                _eeprom.get_offset_constants(_offset_constants, policy);
         }
 
         auto message = Message(std::monostate());
@@ -151,8 +203,8 @@ class ThermalTask {
 
         _readings.heatsink_adc = message.heatsink;
         _readings.plate_adc = message.plate;
+        _readings.peltier_current_adc = message.imeas;
         _readings.last_tick = message.timestamp;
-
         // Reading conversion
 
         auto res = _converter.convert(_readings.plate_adc);
@@ -167,6 +219,9 @@ class ThermalTask {
         } else {
             _readings.heatsink_temp = 0.0F;
         }
+
+        _readings.peltier_current_milliamps =
+            PeltierReadback::adc_to_milliamps(message.imeas);
 
         // Update thermal control
 
@@ -220,6 +275,17 @@ class ThermalTask {
         _peltier.manual = false;
         _peltier.target_set = true;
         _peltier.target = message.target;
+        if (_readings.plate_temp.value() < _peltier.target) {
+            _pid = ot_utils::pid::PID(
+                PELTIER_KP_HEATING_DEFAULT, PELTIER_KI_HEATING_DEFAULT,
+                PELTIER_KD_DEFAULT, 1.0, PELTIER_WINDUP_LIMIT,
+                -PELTIER_WINDUP_LIMIT);
+        } else {
+            _pid = ot_utils::pid::PID(
+                PELTIER_KP_COOLING_DEFAULT, PELTIER_KI_COOLING_DEFAULT,
+                PELTIER_KD_DEFAULT, 1.0, PELTIER_WINDUP_LIMIT,
+                -PELTIER_WINDUP_LIMIT);
+        }
         _pid.reset();
 
         auto response =
@@ -252,6 +318,7 @@ class ThermalTask {
                     response.with_error =
                         errors::ErrorCode::THERMAL_PELTIER_ERROR;
                     policy.disable_peltier();
+                    _peltier.power = 0.0F;
                 } else {
                     _peltier.manual = true;
                     _peltier.power = message.power;
@@ -311,6 +378,70 @@ class ThermalTask {
             _task_registry->send_to_address(response, Queues::HostAddress));
     }
 
+    template <ThermalPolicy Policy>
+    auto visit_message(const messages::SetOffsetConstantsMessage& message,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = message.id};
+
+        auto constants = _offset_constants;
+        if (message.a.has_value()) {
+            constants.a = message.a.value();
+        }
+        if (message.b.has_value()) {
+            constants.b = message.b.value();
+        }
+        if (message.c.has_value()) {
+            constants.c = message.c.value();
+        }
+
+        auto ret = _eeprom.write_offset_constants(constants, policy);
+        if (ret) {
+            // Succesful, so overwrite the task's constants
+            _offset_constants = constants;
+        } else {
+            response.with_error = errors::ErrorCode::SYSTEM_EEPROM_ERROR;
+        }
+
+        static_cast<void>(
+            _task_registry->send_to_address(response, Queues::HostAddress));
+    }
+
+    template <ThermalPolicy Policy>
+    auto visit_message(const messages::GetOffsetConstantsMessage& message,
+                       Policy& policy) -> void {
+        _offset_constants =
+            _eeprom.get_offset_constants(_offset_constants, policy);
+
+        auto response =
+            messages::GetOffsetConstantsResponse{.responding_to_id = message.id,
+                                                 .a = _offset_constants.a,
+                                                 .b = _offset_constants.b,
+                                                 .c = _offset_constants.c};
+
+        static_cast<void>(
+            _task_registry->send_to_address(response, Queues::HostAddress));
+    }
+
+    template <ThermalPolicy Policy>
+    auto visit_message(const messages::GetThermalPowerDebugMessage& message,
+                       Policy& policy) -> void {
+        std::ignore = policy;
+        auto response = messages::GetThermalPowerDebugResponse{
+            .responding_to_id = message.id,
+            .peltier_current = _readings.peltier_current_milliamps,
+            .fan_rpm = 0,
+            .peltier_pwm = _peltier.power,
+            .fan_pwm = _fan.power};
+
+        if (!_peltier.target_set && !_peltier.manual) {
+            response.peltier_pwm = 0.0F;
+        }
+        response.fan_rpm = policy.get_fan_rpm();
+        static_cast<void>(
+            _task_registry->send_to_address(response, Queues::HostAddress));
+    }
+
     /**
      * @brief Updates control of the peltier and fan based off of the current
      * state of the system.
@@ -331,9 +462,10 @@ class ThermalTask {
                 policy.enable_peltier();
                 bool ret = false;
                 if (_peltier.power >= 0.0F) {
-                    ret = policy.set_peltier_heat_power(power);
+                    ret = policy.set_peltier_heat_power(_peltier.power);
                 } else {
-                    ret = policy.set_peltier_cool_power(std::abs(power));
+                    ret =
+                        policy.set_peltier_cool_power(std::abs(_peltier.power));
                 }
                 if (!ret) {
                     _peltier.target_set = false;
@@ -347,18 +479,19 @@ class ThermalTask {
                 // target_set hasn't been cleared
                 if (_readings.plate_temp.value() >
                     _peltier.target + STABILIZING_THRESHOLD) {
-                    policy.set_fan_power(FAN_POWER_MAX);
+                    _fan.power = FAN_POWER_MAX;
                 } else {
-                    policy.set_fan_power(FAN_POWER_MEDIUM);
+                    _fan.power = FAN_POWER_MEDIUM;
                 }
             } else /* !_peltier.target_set */ {
                 if (_readings.heatsink_temp.has_value() &&
                     _readings.heatsink_temp.value() < HEATSINK_IDLE_THRESHOLD) {
-                    policy.set_fan_power(0);
+                    _fan.power = 0;
                 } else {
-                    policy.set_fan_power(FAN_POWER_LOW);
+                    _fan.power = FAN_POWER_LOW;
                 }
             }
+            policy.set_fan_power(_fan.power);
         }
     }
 
@@ -369,6 +502,8 @@ class ThermalTask {
     Fan _fan;
     Peltier _peltier;
     ot_utils::pid::PID _pid;
+    eeprom::Eeprom<EEPROM_PAGES, EEPROM_ADDRESS> _eeprom;
+    eeprom::OffsetConstants _offset_constants;
 };
 
 };  // namespace thermal_task

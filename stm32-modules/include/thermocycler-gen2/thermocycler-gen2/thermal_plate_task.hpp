@@ -98,9 +98,9 @@ class ThermalPlateTask {
     static constexpr uint16_t ADC_BIT_MAX = 0x5DC0;
     static constexpr uint8_t PLATE_THERM_COUNT = 7;
     // Peltier KI
-    static constexpr double DEFAULT_KI = 0.02;
+    static constexpr double DEFAULT_KI = 0.05;
     // Peltier KP
-    static constexpr double DEFAULT_KP = 0.17609173039298845;
+    static constexpr double DEFAULT_KP = 0.3;
     // Peltier KD
     static constexpr double DEFAULT_KD = 0.3;
     static constexpr double DEFAULT_FAN_KI = 0.01;
@@ -226,6 +226,10 @@ class ThermalPlateTask {
         _task_registry = other_tasks;
     }
 
+    [[nodiscard]] auto get_last_temp_update() const -> Milliseconds {
+        return _last_update;
+    }
+
     /**
      * run_once() runs one spin of the task. This means it
      * - Waits for a message, either a thermistor update or
@@ -274,6 +278,8 @@ class ThermalPlateTask {
     requires ThermalPlateExecutionPolicy<Policy>
     auto visit_message(const messages::ThermalPlateTempReadComplete& msg,
                        Policy& policy) -> void {
+        constexpr Milliseconds time_overflow_amount = Milliseconds(
+            std::numeric_limits<decltype(msg.timestamp_ms)>::max());
         auto old_error_bitmap = _state.error_bitmap;
         auto current_time = Milliseconds(msg.timestamp_ms);
 
@@ -309,7 +315,8 @@ class ThermalPlateTask {
             }
         }
 
-        if (old_error_bitmap != _state.error_bitmap) {
+        if ((old_error_bitmap != _state.error_bitmap) ||
+            (_state.error_bitmap != 0)) {
             if (_state.error_bitmap != 0) {
                 // We entered an error state. Disable power output.
                 _state.system_status = State::ERROR;
@@ -322,8 +329,12 @@ class ThermalPlateTask {
         }
 
         if (_state.system_status == State::CONTROLLING) {
-            update_control(policy, std::chrono::duration_cast<Seconds>(
-                                       current_time - _last_update));
+            auto time_delta = current_time - _last_update;
+            if (time_delta.count() < 0) {
+                time_delta += time_overflow_amount;
+            }
+            update_control(policy,
+                           std::chrono::duration_cast<Seconds>(time_delta));
             send_current_state();
         } else if (_state.system_status == State::IDLE) {
             send_current_state();
@@ -585,8 +596,9 @@ class ThermalPlateTask {
             messages::DeactivateAllResponse{.responding_to_id = msg.id};
 
         policy.set_enabled(false);
-        _state.system_status = State::IDLE;
-
+        if (_state.system_status != State::ERROR) {
+            _state.system_status = State::IDLE;
+        }
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));
     }

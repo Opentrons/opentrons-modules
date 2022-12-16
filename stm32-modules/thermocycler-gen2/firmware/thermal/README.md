@@ -25,13 +25,13 @@ When a new target temperature is set, the `plate_control` module enters a simple
 ```mermaid
 graph TD
     Start[New command]
-    Overshoot{Target temperature > 0.5ºC away?}
+    Overshoot{Target temperature > 5ºC away?}
     OvershootYes(Set target based on overshoot calculation)
     OvershootNo(Set target to the user-specified temperature)
     HotOrCold{Target > current temperature?}
     InitialHeat(Initial Heat)
     InitialCool(Initial Cool)
-    OvershootPhase(Stay in overshoot temperature)
+    OvershootPhase(Change target temperature)
     HoldingPhase(Stay at user-specified temperature indefinitely)
     Off(Off)
 
@@ -42,7 +42,7 @@ graph TD
     HotOrCold -->|No| InitialCool
     InitialHeat -->|Target temperature reached| OvershootPhase
     InitialCool -->|Target temperature reached| OvershootPhase
-    OvershootPhase -->|10 seconds pass| HoldingPhase
+    OvershootPhase -->|Target changes to the user-specified target| HoldingPhase
 
     Start -->|Disable command| Off
 ```

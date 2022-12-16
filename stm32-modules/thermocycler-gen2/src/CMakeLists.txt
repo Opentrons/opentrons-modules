@@ -41,7 +41,7 @@ set(${TARGET_MODULE_NAME}_VERSION "${VERSION}" CACHE STRING "${TARGET_MODULE_NAM
 
 configure_file(./version.cpp.in ./version.cpp)
 
-option(ALLOW_ASYNC_ERRORS "Select whether asynchronous errors are sent by firmware")
+option(ALLOW_ASYNC_ERRORS "Select whether asynchronous errors are sent by firmware" ON)
 
 if(ALLOW_ASYNC_ERRORS) 
     add_definitions(-DSYSTEM_ALLOW_ASYNC_ERRORS)
@@ -94,3 +94,5 @@ target_compile_options(${TARGET_MODULE_NAME}-core
   $<$<COMPILE_LANGUAGE:CXX>:-Wctor-dtor-privacy>
   $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
   )
+
+add_coverage(${TARGET_MODULE_NAME}-core)

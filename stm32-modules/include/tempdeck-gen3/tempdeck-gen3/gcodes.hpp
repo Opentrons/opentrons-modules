@@ -227,6 +227,47 @@ struct GetTemperatureDebug {
 };
 
 /**
+ * @brief Uses M103.D to get the current power output for the thermal system
+ *
+ * Format: M103.D\n
+ * Return: M103.D I:<peltier current> R:<Fan RPM> P:<Peltier PWM> F:<Fan PWM>
+ *
+ */
+struct GetThermalPowerDebug {
+    using ParseResult = std::optional<GetThermalPowerDebug>;
+    static constexpr auto prefix = std::array{'M', '1', '0', '3', '.', 'D'};
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetThermalPowerDebug()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double peltier_current, double fan_rpm,
+                                    double peltier_pwm, double fan_pwm)
+        -> InputIt {
+        auto res = snprintf(
+            &*buf, (limit - buf), "M103.D I:%0.3f R:%0.3f P:%0.3f F:%0.3f OK\n",
+            static_cast<float>(peltier_current), static_cast<float>(fan_rpm),
+            static_cast<float>(peltier_pwm), static_cast<float>(fan_pwm));
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
+/**
  * @brief SetTemperature is a command to set a temperature target for the
  * peltiers. There is one parameter, the target temp.
  *
@@ -456,6 +497,98 @@ struct SetPIDConstants {
         auto ret = SetPIDConstants{.const_p = std::get<0>(arguments).value,
                                    .const_i = std::get<1>(arguments).value,
                                    .const_d = std::get<2>(arguments).value};
+        return std::make_pair(ret, res.second);
+    }
+};
+
+struct GetOffsetConstants {
+    using ParseResult = std::optional<GetOffsetConstants>;
+    static constexpr auto prefix = std::array{'M', '1', '1', '7'};
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetOffsetConstants()), working);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    static auto write_response_into(InputIt buf, InputLimit limit, double a,
+                                    double b, double c) -> InputIt {
+        auto res =
+            snprintf(&*buf, (limit - buf), "M117 A:%0.4f B:%0.4f C:%0.4f OK\n",
+                     static_cast<float>(a), static_cast<float>(b),
+                     static_cast<float>(c));
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
+struct SetOffsetConstants {
+    using ParseResult = std::optional<SetOffsetConstants>;
+    static constexpr auto prefix = std::array{'M', '1', '1', '6'};
+    static constexpr const char* response = "M116 OK\n";
+
+    std::optional<double> const_a, const_b, const_c;
+
+    struct ArgA {
+        static constexpr auto prefix = std::array{'A'};
+        static constexpr bool required = false;
+        bool present = false;
+        float value = 0.0F;
+    };
+    struct ArgB {
+        static constexpr auto prefix = std::array{'B'};
+        static constexpr bool required = false;
+        bool present = false;
+        float value = 0.0F;
+    };
+    struct ArgC {
+        static constexpr auto prefix = std::array{'C'};
+        static constexpr bool required = false;
+        bool present = false;
+        float value = 0.0F;
+    };
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::contiguous_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<ArgA, ArgB, ArgC>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        auto ret = SetOffsetConstants{.const_a = std::nullopt,
+                                      .const_b = std::nullopt,
+                                      .const_c = std::nullopt};
+        if (std::get<0>(arguments).present) {
+            ret.const_a = std::get<0>(arguments).value;
+        }
+        if (std::get<1>(arguments).present) {
+            ret.const_b = std::get<1>(arguments).value;
+        }
+        if (std::get<2>(arguments).present) {
+            ret.const_c = std::get<2>(arguments).value;
+        }
         return std::make_pair(ret, res.second);
     }
 };

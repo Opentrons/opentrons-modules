@@ -196,6 +196,7 @@ void thermal_peltier_initialize(void) {
     __GPIOB_CLK_ENABLE();
     __GPIOE_CLK_ENABLE();
 
+    _peltiers.timer.State = HAL_TIM_STATE_RESET;
     _peltiers.timer.Instance = TIM1;
     _peltiers.timer.Init.Prescaler = TIM1_PRESCALER;
     _peltiers.timer.Init.CounterMode = TIM_COUNTERMODE_UP;

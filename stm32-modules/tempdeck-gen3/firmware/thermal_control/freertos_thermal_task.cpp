@@ -1,5 +1,7 @@
 #include "firmware/freertos_thermal_task.hpp"
 
+#include "firmware/i2c_hardware.h"
+#include "firmware/tachometer_hardware.h"
 #include "firmware/thermal_hardware.h"
 #include "firmware/thermal_policy.hpp"
 #include "tempdeck-gen3/thermal_task.hpp"
@@ -26,8 +28,10 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     _top_task.provide_aggregator(aggregator);
 
     thermal_hardware_init();
+    i2c_hardware_init();
+    tachometer_hardware_init();
 
-    auto policy = ThermalPolicy();
+    auto policy = thermal_policy::ThermalPolicy();
     while (true) {
         _top_task.run_once(policy);
     }

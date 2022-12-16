@@ -35,7 +35,7 @@ class PlateControl {
     /** Number of thermistors per peltier.*/
     static constexpr size_t THERM_PER_PELTIER = 2;
     /** Max ∆T to be considered "at" the setpoint.*/
-    static constexpr double SETPOINT_THRESHOLD = 1.5F;
+    static constexpr double SETPOINT_THRESHOLD = 2.0F;
 
     /** Degrees C *under* the threshold to set the fan.*/
     static constexpr double FAN_SETPOINT_OFFSET = (-2.0F);
@@ -68,18 +68,21 @@ class PlateControl {
                                                                      0.55};
     /** Min & max power settings when holding at a hot temp.*/
     static constexpr std::pair<double, double> FAN_POWER_LIMITS_HOT{0.30, 0.55};
-    /** Overshoot M constant */
-    static constexpr double OVERSHOOT_M_CONST = 0.0105;
-    /** Overshoot B constant in ºC*/
-    static constexpr double OVERSHOOT_B_CONST = 1.0869;
-    /** Undershoot M constant */
-    static constexpr double UNDERSHOOT_M_CONST = -0.0133;
-    /** Undershoot B constant in ºC*/
-    static constexpr double UNDERSHOOT_B_CONST = -0.4302;
+    /** Slope for overshoot & undershoot, in C/µL */
+    static constexpr double OVERSHOOT_DEGREES_PER_MICROLITER = (2.0F / 50.0F);
+    /** Minimum volume to trigger overshoot/undershoot */
+    static constexpr double OVERSHOOT_MIN_VOLUME_MICROLITERS = 20.0F;
+    /** Slope for overshoot & undershoot, in C/µL */
+    static constexpr double UNDERSHOOT_DEGREES_PER_MICROLITER =
+        -OVERSHOOT_DEGREES_PER_MICROLITER;
+    /** Minimum volume to trigger overshoot/undershoot */
+    static constexpr double UNDERSHOOT_MIN_VOLUME_MICROLITERS =
+        OVERSHOOT_MIN_VOLUME_MICROLITERS;
     /** Minimum temperature difference to trigger overshoot, in ºC.*/
-    static constexpr double UNDERSHOOT_MIN_DIFFERENCE = 0.5;
-    /** Amount of time to stay in overshoot, in seconds.*/
-    static constexpr Seconds OVERSHOOT_TIME = 10.0F;
+    static constexpr double UNDERSHOOT_MIN_DIFFERENCE = 5.0F;
+    /** Margin where controller switches targets from overshoot/undershoot
+     * to actual target */
+    static constexpr double OVERSHOOT_TARGET_SWITCH_DIFFERENCE = 1.0F;
     /** Maximum drift between thermistors at steady state, in ºC.*/
     static constexpr double THERMISTOR_DRIFT_MAX_C = 4.0F;
     /** Minimum time that the system must be in steady state before
@@ -89,6 +92,21 @@ class PlateControl {
     static constexpr double TEMPERATURE_AMBIENT = 23.0F;
     /** How far from target temp to reset Integral Windup.*/
     static constexpr double WINDUP_RESET_THRESHOLD = 3.0F;
+    /** Maximum time in seconds for overshoot to apply.*/
+    static constexpr double MAX_HOLD_TIME_FOR_OVERSHOOT = 120.0F;
+    /** When HEATING to a target below ambient temperature, adjust
+     *  the initial overshoot/undershoot target by this amount to
+     *  reduce the effects of over-overshooting.*/
+    static constexpr double TARGET_ADJUST_FOR_COLD_TARGET = -5.0F;
+    /** Extra factor to multiply the proportioal band by */
+    static constexpr double PROPORTIONAL_BAND_EXTRA_FACTOR = 2.0F;
+    /**
+     * When performing the thermistor drift check, this is the max point
+     * below which errors are ignored. This is added to prevent unnecesary
+     * error messages during long periods below 8º where temperature may
+     * drift more than our normal spec BUT will not affect the samples.
+     */
+    static constexpr double DRIFT_CHECK_IGNORE_MAX_TEMP = 7.5;
 
     PlateControl() = delete;
     /**
@@ -196,7 +214,12 @@ class PlateControl {
      */
     [[nodiscard]] static auto calculate_overshoot(double setpoint,
                                                   double volume_ul) -> double {
-        return setpoint + (OVERSHOOT_M_CONST * volume_ul) + OVERSHOOT_B_CONST;
+        if (volume_ul <= OVERSHOOT_MIN_VOLUME_MICROLITERS ||
+            setpoint <= TEMPERATURE_AMBIENT) {
+            return setpoint;
+        }
+        return setpoint + (OVERSHOOT_DEGREES_PER_MICROLITER * volume_ul) +
+               OVERSHOOT_TARGET_SWITCH_DIFFERENCE;
     }
 
     /**
@@ -210,7 +233,12 @@ class PlateControl {
      */
     [[nodiscard]] static auto calculate_undershoot(double setpoint,
                                                    double volume_ul) -> double {
-        return setpoint + (UNDERSHOOT_M_CONST * volume_ul) + UNDERSHOOT_B_CONST;
+        if (volume_ul <= UNDERSHOOT_MIN_VOLUME_MICROLITERS ||
+            setpoint <= TEMPERATURE_AMBIENT) {
+            return setpoint;
+        }
+        return setpoint + (UNDERSHOOT_DEGREES_PER_MICROLITER * volume_ul) -
+               OVERSHOOT_TARGET_SWITCH_DIFFERENCE;
     }
 
   private:
@@ -218,8 +246,10 @@ class PlateControl {
      * @brief Apply a ramp to the target temperature of an element.
      * @param[in] peltier The peltier to ramp target temperature of
      * @param[in] time The time that has passed since the last update
+     * @param[in] target The target temperature to ramp towards
      */
-    auto update_ramp(thermal_general::Peltier &peltier, Seconds time) -> void;
+    auto update_ramp(thermal_general::Peltier &peltier, Seconds time,
+                     double target) -> void;
     /**
      * @brief Update the PID control of a single peltier
      * @param[in] peltier The peltier to update
@@ -240,7 +270,8 @@ class PlateControl {
      * @pre Set the new setpoint and hold time configurations
      * @param[in] peltier The peltier to reset control for.
      */
-    auto reset_control(thermal_general::Peltier &peltier) -> void;
+    auto reset_control(thermal_general::Peltier &peltier, double setpoint)
+        -> void;
     /**
      * @brief Reset a fan for a new setpoint. Adjusts the PID
      * to prepare for a new ramp.
@@ -270,6 +301,43 @@ class PlateControl {
      */
     [[nodiscard]] auto crossed_setpoint(const thermal_general::Peltier &channel,
                                         bool heating) const -> bool;
+    /**
+     * @brief Checks if a single peltier channel has crossed the setpoint.
+     *
+     * @param channel The channel to check
+     * @param threshold The absolute value threshold that counts as an
+     *                  allowable distance from the target
+     * @return true if the channel is at its specific target
+     */
+    [[nodiscard]] static auto channel_at_target(
+        const thermal_general::Peltier &channel, double target,
+        double threshold) -> bool {
+        auto temp = channel.current_temp();
+        return std::abs(target - temp) < threshold;
+    }
+
+    /**
+     * @brief When ramping, the center channel needs to target a further
+     * setpoint than the other channels to ensure the actual plate
+     * temperatures are uniform. This is due to the differing thermal
+     * mass of the different points in the well.
+     *
+     * @param setpoint The target setpoint
+     * @param heating True if this is a heat action, false otherwise
+     * @return double
+     */
+    [[nodiscard]] static auto center_channel_target(double setpoint,
+                                                    bool heating) -> double {
+        static constexpr double CENTER_EXTRA_HEATING = 1.5;
+        static constexpr double CENTER_EXTRA_COOLING = 3.0;
+        if (setpoint < TEMPERATURE_AMBIENT) {
+            return setpoint;
+        }
+        if (heating) {
+            return setpoint + CENTER_EXTRA_HEATING;
+        }
+        return setpoint - CENTER_EXTRA_COOLING;
+    }
 
     /**
      * @brief Returns the number of degrees difference from the target
@@ -284,7 +352,7 @@ class PlateControl {
         if (pid.kp() == 0.0F) {
             return 0.0F;
         }
-        return 1.0F / pid.kp();
+        return PROPORTIONAL_BAND_EXTRA_FACTOR / pid.kp();
     }
 
     [[nodiscard]] static auto moving_away_from_ambient(double current,
@@ -311,7 +379,6 @@ class PlateControl {
     // Once the plate is in the "steady state" mode, this timer tracks
     // how long until the firmware should check for uniformity errors.
     Seconds _uniformity_error_timer = 0.0F;
-    Seconds _remaining_overshoot_time = 0.0F;
     Seconds _hold_time = 0.0F;            // Total hold time
     Seconds _remaining_hold_time = 0.0F;  // Hold time left, out of _hold_time
 };

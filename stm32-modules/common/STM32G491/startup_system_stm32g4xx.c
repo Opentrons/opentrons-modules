@@ -206,6 +206,7 @@ void SystemCoreClockUpdate(void) {
 }
 
 void HardwareInit(void) {
+    HAL_DeInit();
     HAL_Init();
     SystemClock_Config();
     SystemCoreClockUpdate();

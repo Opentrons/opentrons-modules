@@ -65,3 +65,5 @@ target_link_libraries(heater-shaker
 
 catch_discover_tests(heater-shaker)
 add_build_and_test_target(heater-shaker)
+
+add_coverage(heater-shaker)

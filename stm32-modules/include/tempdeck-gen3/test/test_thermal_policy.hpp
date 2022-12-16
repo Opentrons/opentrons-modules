@@ -3,7 +3,9 @@
 #include <cmath>
 #include <cstdint>
 
-struct TestThermalPolicy {
+#include "test/test_at24c0xc_policy.hpp"
+
+struct TestThermalPolicy : public at24c0xc_test_policy::TestAT24C0XCPolicy<32> {
     auto enable_peltier() -> void { _enabled = true; }
 
     auto disable_peltier() -> void {
@@ -32,13 +34,18 @@ struct TestThermalPolicy {
         return true;
     }
 
+    auto get_fan_rpm() -> double { return _fan_rpm; }
+
     // Test integration functions
 
     auto is_cooling() -> bool { return _enabled && (_power < 0.0); }
 
     auto is_heating() -> bool { return _enabled && (_power > 0.0); }
 
+    auto set_fan_rpm(double rpm) -> void { _fan_rpm = rpm; }
+
     bool _enabled = false;
     double _power = 0.0F;  // Positive for heat, negative for cool
     double _fans = 0.0F;
+    double _fan_rpm = 0.0F;  // Should be manually set by the test code
 };

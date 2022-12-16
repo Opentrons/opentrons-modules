@@ -73,6 +73,7 @@ void system_led_initialize(void) {
     HAL_NVIC_SetPriority(DMAMUX_OVR_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(DMAMUX_OVR_IRQn);
 
+    _leds.tim.State = HAL_TIM_STATE_RESET;
     _leds.tim.Instance = TIM17;
     _leds.tim.Init.Prescaler = TIM17_PRESCALER;
     _leds.tim.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -136,6 +137,7 @@ void system_led_msp_init(void) {
 
     /* TIM17 DMA Init */
     /* TIM17_CH1 Init */
+    _leds.dma.State = HAL_DMA_STATE_RESET;
     _leds.dma.Instance = DMA1_Channel1;
     _leds.dma.Init.Request = DMA_REQUEST_TIM17_CH1;
     _leds.dma.Init.Direction = DMA_MEMORY_TO_PERIPH;

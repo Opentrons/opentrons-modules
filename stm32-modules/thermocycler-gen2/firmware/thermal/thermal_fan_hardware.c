@@ -112,6 +112,7 @@ void thermal_fan_initialize(void) {
     HAL_GPIO_WritePin(_fans.enable_port, _fans.enable_pin, GPIO_PIN_RESET);
 
     // Configure timer 16 for PWMN control on channel 1
+    _fans.timer.State = HAL_TIM_STATE_RESET;
     _fans.timer.Instance = TIM16;
     _fans.timer.Init.Prescaler = TIM16_PRESCALER;
     _fans.timer.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -277,6 +278,7 @@ static void thermal_fan_init_tach(struct Tachometer *tach) {
     TIM_MasterConfigTypeDef sMasterConfig = {0};
     TIM_IC_InitTypeDef sConfigIC = {0};
 
+    tach->timer.State = HAL_TIM_STATE_RESET;
     tach->timer.Instance = TIM4;
     tach->timer.Init.Prescaler = TACH_TIMER_PRESCALE;
     tach->timer.Init.CounterMode = TIM_COUNTERMODE_UP;

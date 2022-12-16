@@ -54,6 +54,10 @@
 
 #define FAN_CHANNEL (TIM_CHANNEL_1)
 
+// Write Protect config
+#define EEPROM_WP_PIN (GPIO_PIN_9)
+#define EEPROM_WP_PORT (GPIOC)
+
 // ***************************************************************************
 // Local typedefs
 
@@ -108,6 +112,7 @@ void thermal_hardware_init() {
 
         thermal_hardware_set_fan_power(0);
         thermal_hardware_disable_peltiers();
+        thermal_hardware_set_eeprom_write_protect(true);
     }
 }
 
@@ -201,6 +206,11 @@ bool thermal_hardware_set_fan_power(double power) {
     return true;
 }
 
+void thermal_hardware_set_eeprom_write_protect(bool set) {
+    HAL_GPIO_WritePin(EEPROM_WP_PORT, EEPROM_WP_PIN,
+        set ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
 // ***************************************************************************
 // Static function implementation
 
@@ -211,6 +221,7 @@ static void init_peltier_timer() {
     TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
+    hardware.peltier_timer.State = HAL_TIM_STATE_RESET;
     hardware.peltier_timer.Instance = TIM1;
     hardware.peltier_timer.Init.Prescaler = TIM1_PRESCALER;
     hardware.peltier_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -297,6 +308,7 @@ static void init_fan_timer() {
 
 
     // Configure timer 16 for PWMN control on channel 1
+    hardware.fan_timer.State = HAL_TIM_STATE_RESET;
     hardware.fan_timer.Instance = TIM16;
     hardware.fan_timer.Init.Prescaler = TIM16_PRESCALER;
     hardware.fan_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -344,6 +356,7 @@ static void init_gpio() {
     GPIO_InitTypeDef init = {0};
 
     __GPIOA_CLK_ENABLE();
+    __GPIOC_CLK_ENABLE();
 
     init.Pin = ENABLE_12V_PIN;
     init.Mode = GPIO_MODE_OUTPUT_PP;
@@ -354,6 +367,9 @@ static void init_gpio() {
 
     init.Pin = PELTIER_ENABLE_PIN;
     HAL_GPIO_Init(PELTIER_ENABLE_PORT, &init);
+
+    init.Pin = EEPROM_WP_PIN;
+    HAL_GPIO_Init(EEPROM_WP_PORT, &init);
 
     HAL_GPIO_WritePin(ENABLE_12V_PORT, ENABLE_12V_PIN, GPIO_PIN_SET);
 }

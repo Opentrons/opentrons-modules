@@ -22,6 +22,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_motor_task.cpp
     test_motor_utils.cpp
     test_eeprom.cpp
+    test_errors.cpp
     # GCode parse tests
     test_m14.cpp
     test_m18.cpp
@@ -83,3 +84,5 @@ target_link_libraries(${TARGET_MODULE_NAME}
 
 catch_discover_tests(${TARGET_MODULE_NAME} )
 add_build_and_test_target(${TARGET_MODULE_NAME} )
+
+add_coverage(${TARGET_MODULE_NAME})

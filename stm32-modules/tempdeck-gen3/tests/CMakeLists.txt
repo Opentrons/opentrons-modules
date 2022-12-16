@@ -8,6 +8,8 @@ add_executable(${TARGET_MODULE_NAME}
     test_main.cpp
     test_heartbeat.cpp
     test_host_comms_task.cpp
+    test_eeprom.cpp
+    test_errors.cpp
     test_system_task.cpp
     test_ui_task.cpp
     test_thermistor_task.cpp
@@ -15,11 +17,14 @@ add_executable(${TARGET_MODULE_NAME}
     # gcode tests
     test_m18.cpp
     test_m104.cpp
+    test_m103d.cpp
     test_m104d.cpp
     test_m105d.cpp
     test_m106.cpp
     test_m107.cpp 
     test_m115.cpp
+    test_m116.cpp
+    test_m117.cpp
     test_m301.cpp
     test_m996.cpp
     test_dfu_gcode.cpp
@@ -51,3 +56,5 @@ target_link_libraries(${TARGET_MODULE_NAME}
 
 catch_discover_tests(${TARGET_MODULE_NAME} )
 add_build_and_test_target(${TARGET_MODULE_NAME} )
+
+add_coverage(${TARGET_MODULE_NAME})

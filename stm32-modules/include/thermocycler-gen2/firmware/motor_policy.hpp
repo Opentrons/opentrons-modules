@@ -177,6 +177,16 @@ class MotorPolicy {
     [[nodiscard]] auto seal_read_retraction_switch() const -> bool;
 
     /**
+     * @brief Returns whether the switches for the seal motor use a
+     * shared line for retraction and extension. If they are shared,
+     * it is impossible for firmware to distinguish which switch is
+     * activated at any given time.
+     *
+     * @return true if the switch lines are shared, false otherwise.
+     */
+    [[nodiscard]] auto seal_switches_are_shared() const -> bool;
+
+    /**
      * @brief Call the seal callback function
      *
      */

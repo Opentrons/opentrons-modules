@@ -112,6 +112,10 @@ class LidHeaterTask {
         _task_registry = other_tasks;
     }
 
+    [[nodiscard]] auto get_last_temp_update() const -> Milliseconds {
+        return _last_update;
+    }
+
     /**
      * run_once() runs one spin of the task. This means it
      * - Waits for a message, either a thermistor update or
@@ -153,10 +157,13 @@ class LidHeaterTask {
     requires LidHeaterExecutionPolicy<Policy>
     auto visit_message(const messages::LidTempReadComplete& msg, Policy& policy)
         -> void {
+        constexpr Milliseconds time_overflow_amount = Milliseconds(
+            std::numeric_limits<decltype(msg.timestamp_ms)>::max());
         auto old_error_bitmap = _state.error_bitmap;
         auto current_time = Milliseconds(msg.timestamp_ms);
         handle_temperature_conversion(msg.lid_temp, _thermistor);
-        if (old_error_bitmap != _state.error_bitmap) {
+        if ((old_error_bitmap != _state.error_bitmap) ||
+            (_state.error_bitmap != 0)) {
             if (_state.error_bitmap != 0) {
                 // We entered an error state. Disable power output.
                 _state.system_status = State::ERROR;
@@ -169,9 +176,12 @@ class LidHeaterTask {
 
         // If we're in a controlling state, we now update the heater output
         if (_state.system_status == State::CONTROLLING) {
+            auto time_delta = current_time - _last_update;
+            if (time_delta.count() < 0) {
+                time_delta += time_overflow_amount;
+            }
             auto power = update_control(
-                std::chrono::duration_cast<Seconds>(current_time - _last_update)
-                    .count());
+                std::chrono::duration_cast<Seconds>(time_delta).count());
             auto ret = policy.set_heater_power(power);
             if (!ret) {
                 policy.set_heater_power(0.0F);
@@ -293,6 +303,7 @@ class LidHeaterTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
 
         if (_state.system_status == State::ERROR && !msg.from_system) {
+            std::ignore = policy.set_heater_power(0.0F);
             response.with_error = most_relevant_error();
             static_cast<void>(
                 _task_registry->comms->get_message_queue().try_send(response));
@@ -324,7 +335,9 @@ class LidHeaterTask {
             messages::DeactivateAllResponse{.responding_to_id = msg.id};
 
         static_cast<void>(policy.set_heater_power(0.0F));
-        _state.system_status = State::IDLE;
+        if (_state.system_status != State::ERROR) {
+            _state.system_status = State::IDLE;
+        }
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));

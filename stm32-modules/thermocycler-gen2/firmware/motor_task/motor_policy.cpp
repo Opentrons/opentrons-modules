@@ -147,3 +147,8 @@ auto MotorPolicy::seal_switch_set_disarmed() -> void {
     }
     return motor_hardware_seal_retraction_switch_triggered();
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+[[nodiscard]] auto MotorPolicy::seal_switches_are_shared() const -> bool {
+    return _shared_seal_switch_lines;
+}

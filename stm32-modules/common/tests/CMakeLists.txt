@@ -47,3 +47,5 @@ target_link_libraries(${TARGET_MODULE_NAME}
 
 catch_discover_tests(${TARGET_MODULE_NAME} )
 add_build_and_test_target(${TARGET_MODULE_NAME} )
+
+add_coverage(${TARGET_MODULE_NAME})

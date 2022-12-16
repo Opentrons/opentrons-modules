@@ -97,6 +97,8 @@ struct ThermistorReadings {
     uint32_t timestamp;
     uint32_t plate;
     uint32_t heatsink;
+    // Peltier current feedback
+    uint32_t imeas;
 };
 
 struct DeactivateAllMessage {
@@ -139,10 +141,36 @@ struct SetPIDConstantsMessage {
     double p, i, d;
 };
 
+struct GetOffsetConstantsMessage {
+    uint32_t id;
+};
+
+struct GetOffsetConstantsResponse {
+    uint32_t responding_to_id;
+    double a, b, c;
+};
+
+struct SetOffsetConstantsMessage {
+    uint32_t id = 0;
+    std::optional<double> a = std::nullopt;
+    std::optional<double> b = std::nullopt;
+    std::optional<double> c = std::nullopt;
+};
+
+struct GetThermalPowerDebugMessage {
+    uint32_t id;
+};
+
+struct GetThermalPowerDebugResponse {
+    uint32_t responding_to_id;
+    double peltier_current, fan_rpm, peltier_pwm, fan_pwm;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetTempDebugResponse>;
+                   GetTempDebugResponse, GetOffsetConstantsResponse,
+                   GetThermalPowerDebugResponse>;
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage>;
@@ -151,5 +179,7 @@ using ThermalMessage =
     ::std::variant<std::monostate, ThermistorReadings, GetTempDebugMessage,
                    SetPeltierDebugMessage, SetFanManualMessage,
                    SetFanAutomaticMessage, DeactivateAllMessage,
-                   SetTemperatureMessage, SetPIDConstantsMessage>;
+                   SetTemperatureMessage, SetPIDConstantsMessage,
+                   GetOffsetConstantsMessage, SetOffsetConstantsMessage,
+                   GetThermalPowerDebugMessage>;
 };  // namespace messages

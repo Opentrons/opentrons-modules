@@ -1,6 +1,8 @@
 #include "firmware/freertos_thermistor_task.hpp"
 
 #include "FreeRTOS.h"
+#include "firmware/i2c_hardware.h"
+#include "firmware/internal_adc_hardware.h"
 #include "firmware/thermistor_hardware.h"
 #include "firmware/thermistor_policy.hpp"
 #include "task.h"
@@ -23,6 +25,8 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
                   "FreeRTOS tickrate must be at 1000 Hz");
 
     thermistor_hardware_init();
+    i2c_hardware_init();
+    internal_adc_init();
 
     // Thermistor task has no queue, just need to provide aggregator handle
     _top_task.provide_aggregator(aggregator);
@@ -30,6 +34,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     auto policy = ThermistorPolicy();
     auto last_wake_time = xTaskGetTickCount();
     while (true) {
+        internal_adc_start_readings();
         vTaskDelayUntil(&last_wake_time,
                         decltype(_top_task)::THERMISTOR_READ_PERIOD_MS);
         _top_task.run_once(policy);

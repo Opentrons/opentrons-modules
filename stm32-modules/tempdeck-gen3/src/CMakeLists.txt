@@ -90,3 +90,5 @@ target_compile_options(${TARGET_MODULE_NAME}-core
   $<$<COMPILE_LANGUAGE:CXX>:-Wctor-dtor-privacy>
   $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
   )
+
+add_coverage(${TARGET_MODULE_NAME}-core)
