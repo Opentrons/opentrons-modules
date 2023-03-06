@@ -1,4 +1,6 @@
 
+#include <vector>
+
 #include "catch2/catch.hpp"
 #include "thermocycler-gen2/peltier_filter.hpp"
 
@@ -7,7 +9,7 @@ TEST_CASE("peltier filter functionality") {
     auto subject = PeltierFilter();
     REQUIRE(subject.get_last() == 0.0F);
     WHEN("setting power outside of the filter limits") {
-        const auto TIME_DELTA = GENERATE(0.01, 0.05);
+        const auto TIME_DELTA = GENERATE(0.01, 0.02);
         const auto SETTING = GENERATE(1.0, -1.0);
 
         auto result = subject.set_filtered(SETTING, TIME_DELTA);
@@ -32,6 +34,17 @@ TEST_CASE("peltier filter functionality") {
         auto result = subject.set_filtered(SETTING, TIME_DELTA);
         THEN("the result is not filtered at all") {
             REQUIRE_THAT(result, Catch::Matchers::WithinAbs(SETTING, 0.01));
+        }
+    }
+    WHEN("setting power at 10ms intervals") {
+        const auto TIME_DELTA = 0.01;
+        THEN("it increments as expected") {
+            std::vector<double> expected = {0.2, 0.4, 0.6, 0.8, 1.0, 1.0};
+            std::vector<double> result;
+            for (auto i = 0; i < 6; ++i) {
+                result.push_back(subject.set_filtered(1.0, TIME_DELTA));
+            }
+            REQUIRE_THAT(result, Catch::Matchers::Approx(expected));
         }
     }
 }

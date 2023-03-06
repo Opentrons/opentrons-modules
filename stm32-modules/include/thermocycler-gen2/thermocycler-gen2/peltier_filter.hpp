@@ -15,9 +15,9 @@ using PowerPerSec = double;
 /** Number of seconds in 100ms */
 static constexpr double ONE_HUNDRED_MS = 0.1;
 /**
- * Maximum rate of change - 0% to 100% in one hundred milliseconds.
+ * Maximum rate of change is -100% to 100% in one hundred milliseconds.
  * This effectively means that changing from max cooling to max heating
- * will take 200ms (-100% to 100%)
+ * will take 100ms.
  */
 static constexpr PowerPerSec MAX_DELTA = (2.0 / ONE_HUNDRED_MS);
 
