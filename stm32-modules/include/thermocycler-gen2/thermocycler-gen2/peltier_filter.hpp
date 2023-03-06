@@ -19,7 +19,7 @@ static constexpr double ONE_HUNDRED_MS = 0.1;
  * This effectively means that changing from max cooling to max heating
  * will take 200ms (-100% to 100%)
  */
-static constexpr PowerPerSec MAX_DELTA = (1.0 / ONE_HUNDRED_MS);
+static constexpr PowerPerSec MAX_DELTA = (2.0 / ONE_HUNDRED_MS);
 
 /**
  * Provides a simple filter on Peltier power values to ease the stress on
