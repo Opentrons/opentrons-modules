@@ -498,7 +498,7 @@ class ThermalTask {
     Queue& _message_queue;
     Aggregator* _task_registry;
     ThermalReadings _readings;
-    thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> _converter;
+    thermistor_conversion::Conversion<lookups::KS103J2G> _converter;
     Fan _fan;
     Peltier _peltier;
     ot_utils::pid::PID _pid;

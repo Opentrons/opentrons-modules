@@ -14,10 +14,10 @@ add_custom_command(
   COMMAND Python::Interpreter ${COMMON_SRC_DIR}/generate_thermistor_table.py
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
     ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
-    --nxffile
-    ${COMMON_SRC_DIR}/nxft15xv103fa2b030.csv
+    --ksfile
+    ${COMMON_SRC_DIR}/ks103j2.csv
   DEPENDS ${COMMON_SRC_DIR}/generate_thermistor_table.py
-          ${COMMON_SRC_DIR}/nxft15xv103fa2b030.csv
+          ${COMMON_SRC_DIR}/ks103j2.csv
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.hpp
          ${CMAKE_CURRENT_BINARY_DIR}/thermistor_lookups.cpp
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
