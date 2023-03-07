@@ -16,30 +16,27 @@
 #define TIMER_CLOCK_FREQ (170000000)
 
 // Given a desired frequency of 500kHz, we do not need to prescale the timer
-#define TIM1_PRESCALER (0)
+#define TIM2_PRESCALER (0)
 // Calculates out to 339
-#define TIM1_RELOAD ((TIMER_CLOCK_FREQ / (PULSE_WIDTH_FREQ * (TIM1_PRESCALER + 1))) - 1)
+#define TIM2_RELOAD ((TIMER_CLOCK_FREQ / (PULSE_WIDTH_FREQ * (TIM2_PRESCALER + 1))) - 1)
 // PWM should be scaled from 0 to MAX_PWM, inclusive
-#define MAX_PWM (TIM1_RELOAD + 1)
+#define MAX_PWM (TIM2_RELOAD + 1)
 
-#define COOLING_CHANNEL (TIM_CHANNEL_1)
-#define COOLING_PORT (GPIOC)
-#define COOLING_PIN (GPIO_PIN_0)
+#define HEATING_CHANNEL (TIM_CHANNEL_4)
+#define HEATING_PORT (GPIOB)
+#define HEATING_PIN (GPIO_PIN_11)
 
-#define HEATING_CHANNEL (TIM_CHANNEL_2)
-#define HEATING_PORT (GPIOC)
-#define HEATING_PIN (GPIO_PIN_1)
+#define COOLING_CHANNEL (TIM_CHANNEL_3)
+#define COOLING_PORT (GPIOB)
+#define COOLING_PIN (GPIO_PIN_10)
 
-#define PELTIER_ENABLE_PORT (GPIOA)
-#define PELTIER_ENABLE_PIN (GPIO_PIN_0)
-
-#define ENABLE_12V_PORT (GPIOA)
-#define ENABLE_12V_PIN (GPIO_PIN_3)
+#define PELTIER_ENABLE_PORT (GPIOB)
+#define PELTIER_ENABLE_PIN (GPIO_PIN_13)
 
 // Peltier drive circuitry cannot support lower PWM than 0.1
 #define MIN_PELTIER_POWER (0.1)
 // PWM values over this limit result in overheating of the low-side FET
-#define MAX_PELTIER_POWER (0.85)
+#define MAX_PELTIER_POWER (0.65)
 
 #define FAN_PWM_Pin (GPIO_PIN_6)
 #define FAN_PWM_GPIO_Port (GPIOA)
@@ -55,7 +52,7 @@
 #define FAN_CHANNEL (TIM_CHANNEL_1)
 
 // Write Protect config
-#define EEPROM_WP_PIN (GPIO_PIN_9)
+#define EEPROM_WP_PIN (GPIO_PIN_11)
 #define EEPROM_WP_PORT (GPIOC)
 
 // ***************************************************************************
@@ -87,7 +84,7 @@ static struct thermal_hardware hardware = {
 // Static function declaration
 
 /**
- * @brief Initializes the Peltier's timer, TIM1
+ * @brief Initializes the Peltier's timer
  */
 static void init_peltier_timer();
 
@@ -218,14 +215,13 @@ static void init_peltier_timer() {
     HAL_StatusTypeDef hal_ret = HAL_ERROR;
     TIM_MasterConfigTypeDef sMasterConfig = {0};
     TIM_OC_InitTypeDef sConfigOC = {0};
-    TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
     hardware.peltier_timer.State = HAL_TIM_STATE_RESET;
-    hardware.peltier_timer.Instance = TIM1;
-    hardware.peltier_timer.Init.Prescaler = TIM1_PRESCALER;
+    hardware.peltier_timer.Instance = TIM2;
+    hardware.peltier_timer.Init.Prescaler = TIM2_PRESCALER;
     hardware.peltier_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
-    hardware.peltier_timer.Init.Period = TIM1_RELOAD;
+    hardware.peltier_timer.Init.Period = TIM2_RELOAD;
     hardware.peltier_timer.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     hardware.peltier_timer.Init.RepetitionCounter = 0;
     hardware.peltier_timer.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -259,35 +255,18 @@ static void init_peltier_timer() {
                                         &sConfigOC,
                                         COOLING_CHANNEL);
     configASSERT(hal_ret == HAL_OK);
-
-    // Breaktime settings are all default
-    sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
-    sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
-    sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-    sBreakDeadTimeConfig.DeadTime = 0;
-    sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
-    sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
-    sBreakDeadTimeConfig.BreakFilter = 0;
-    sBreakDeadTimeConfig.BreakAFMode = TIM_BREAK_AFMODE_INPUT;
-    sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
-    sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
-    sBreakDeadTimeConfig.Break2Filter = 0;
-    sBreakDeadTimeConfig.Break2AFMode = TIM_BREAK_AFMODE_INPUT;
-    sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
-    hal_ret = HAL_TIMEx_ConfigBreakDeadTime(&hardware.peltier_timer, &sBreakDeadTimeConfig);
-    configASSERT(hal_ret == HAL_OK);
     
     // Set up the PWM GPIO pins 
 
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-    /**TIM1 GPIO Configuration
-    PC0     ------> TIM1_CH1
-    PC1     ------> TIM1_CH2
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    /**TIM2 GPIO Configuration
+    PB10    ------> TIM2_CH3
+    PB11    ------> TIM2_CH4
     */
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
-    GPIO_InitStruct.Alternate = GPIO_AF2_TIM1;
+    GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
     GPIO_InitStruct.Pin = HEATING_PIN;
     HAL_GPIO_Init(HEATING_PORT, &GPIO_InitStruct);
     GPIO_InitStruct.Pin = COOLING_PIN;
@@ -356,20 +335,16 @@ static void init_gpio() {
     GPIO_InitTypeDef init = {0};
 
     __GPIOA_CLK_ENABLE();
+    __GPIOB_CLK_ENABLE();
     __GPIOC_CLK_ENABLE();
 
-    init.Pin = ENABLE_12V_PIN;
+    init.Pin = PELTIER_ENABLE_PIN;
     init.Mode = GPIO_MODE_OUTPUT_PP;
     init.Pull = GPIO_NOPULL;
     init.Speed = GPIO_SPEED_LOW;
 
-    HAL_GPIO_Init(ENABLE_12V_PORT, &init);
-
-    init.Pin = PELTIER_ENABLE_PIN;
     HAL_GPIO_Init(PELTIER_ENABLE_PORT, &init);
 
     init.Pin = EEPROM_WP_PIN;
     HAL_GPIO_Init(EEPROM_WP_PORT, &init);
-
-    HAL_GPIO_WritePin(ENABLE_12V_PORT, ENABLE_12V_PIN, GPIO_PIN_SET);
 }
