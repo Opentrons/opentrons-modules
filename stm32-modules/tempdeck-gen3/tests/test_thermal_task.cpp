@@ -37,7 +37,8 @@ TEST_CASE("thermal task message handling") {
         auto hs_count = converter.backconvert(50.00);
         auto thermistors_msg = messages::ThermistorReadings{
             .timestamp = 1000,
-            .plate = plate_count,
+            .plate_1 = plate_count,
+            .plate_2 = plate_count,
             .heatsink = hs_count,
             .imeas = 555,
         };
@@ -49,15 +50,19 @@ TEST_CASE("thermal task message handling") {
         THEN("the readings are updated properly") {
             auto readings = tasks->_thermal_task.get_readings();
             REQUIRE(readings.heatsink_adc == thermistors_msg.heatsink);
-            REQUIRE(readings.plate_adc == thermistors_msg.plate);
+            REQUIRE(readings.plate_adc_1 == thermistors_msg.plate_1);
+            REQUIRE(readings.plate_adc_2 == thermistors_msg.plate_2);
             REQUIRE(readings.last_tick == thermistors_msg.timestamp);
             REQUIRE(readings.peltier_current_adc == thermistors_msg.imeas);
         }
         THEN("the ADC readings are properly converted to temperatures") {
             auto readings = tasks->_thermal_task.get_readings();
-            REQUIRE(readings.plate_temp.has_value());
+            REQUIRE(readings.plate_temp_1.has_value());
+            REQUIRE(readings.plate_temp_2.has_value());
             REQUIRE(readings.heatsink_temp.has_value());
-            REQUIRE_THAT(readings.plate_temp.value(),
+            REQUIRE_THAT(readings.plate_temp_1.value(),
+                         Catch::Matchers::WithinAbs(25.00, 0.02));
+            REQUIRE_THAT(readings.plate_temp_2.value(),
                          Catch::Matchers::WithinAbs(25.00, 0.02));
             REQUIRE_THAT(readings.heatsink_temp.value(),
                          Catch::Matchers::WithinAbs(50.00, 0.02));
@@ -76,11 +81,14 @@ TEST_CASE("thermal task message handling") {
                 auto response = std::get<messages::GetTempDebugResponse>(
                     tasks->_comms_queue.backing_deque.front());
                 REQUIRE(response.responding_to_id == 123);
-                REQUIRE_THAT(response.plate_temp,
+                REQUIRE_THAT(response.plate_temp_1,
+                             Catch::Matchers::WithinAbs(25.00, 0.02));
+                REQUIRE_THAT(response.plate_temp_2,
                              Catch::Matchers::WithinAbs(25.00, 0.02));
                 REQUIRE_THAT(response.heatsink_temp,
                              Catch::Matchers::WithinAbs(50.00, 0.02));
-                REQUIRE(response.plate_adc == plate_count);
+                REQUIRE(response.plate_adc_1 == plate_count);
+                REQUIRE(response.plate_adc_2 == plate_count);
                 REQUIRE(response.heatsink_adc == hs_count);
             }
         }
@@ -407,7 +415,8 @@ TEST_CASE("closed loop thermal control") {
     uint32_t timestamp_increment = 100;
     auto temp_message =
         messages::ThermistorReadings{.timestamp = timestamp_increment,
-                                     .plate = converter.backconvert(25),
+                                     .plate_1 = converter.backconvert(25),
+                                     .plate_2 = converter.backconvert(25),
                                      .heatsink = converter.backconvert(25)};
     tasks->_thermal_queue.backing_deque.push_back(temp_message);
     tasks->_thermal_task.run_once(policy);
@@ -584,7 +593,8 @@ TEST_CASE("thermal task power debug functionality") {
     GIVEN("a thermal task with valid peltier current readings") {
         auto adc_msg = messages::ThermistorReadings{
             .timestamp = 123,
-            .plate = temp_adc,
+            .plate_1 = temp_adc,
+            .plate_2 = temp_adc,
             .heatsink = temp_adc,
             .imeas = current_adc,
         };

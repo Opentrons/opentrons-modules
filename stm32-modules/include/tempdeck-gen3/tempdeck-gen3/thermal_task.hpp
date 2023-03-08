@@ -26,11 +26,13 @@ concept ThermalPolicy = requires(Policy& p) {
 using Message = messages::ThermalMessage;
 
 struct ThermalReadings {
-    uint32_t plate_adc = 0;
+    uint32_t plate_adc_1 = 0;
+    uint32_t plate_adc_2 = 0;
     uint32_t heatsink_adc = 0;
     uint32_t peltier_current_adc = 0;
     std::optional<double> heatsink_temp = 0.0F;
-    std::optional<double> plate_temp = 0.0F;
+    std::optional<double> plate_temp_1 = 0.0F;
+    std::optional<double> plate_temp_2 = 0.0F;
     double peltier_current_milliamps = 0.0F;
 
     uint32_t last_tick = 0;
@@ -133,6 +135,8 @@ class ThermalTask {
           _task_registry(aggregator),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _readings(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          _plate_avg{},
           _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
                      false),
           // NOLINTNEXTLINE(readability-redundant-member-init)
@@ -202,16 +206,23 @@ class ThermalTask {
         auto tick_difference = message.timestamp - _readings.last_tick;
 
         _readings.heatsink_adc = message.heatsink;
-        _readings.plate_adc = message.plate;
+        _readings.plate_adc_1 = message.plate_1;
+        _readings.plate_adc_2 = message.plate_2;
         _readings.peltier_current_adc = message.imeas;
         _readings.last_tick = message.timestamp;
         // Reading conversion
 
-        auto res = _converter.convert(_readings.plate_adc);
+        auto res = _converter.convert(_readings.plate_adc_1);
         if (std::holds_alternative<double>(res)) {
-            _readings.plate_temp = std::get<double>(res);
+            _readings.plate_temp_1 = std::get<double>(res);
         } else {
-            _readings.plate_temp = 0.0F;
+            _readings.plate_temp_1 = 0.0F;
+        }
+        res = _converter.convert(_readings.plate_adc_2);
+        if (std::holds_alternative<double>(res)) {
+            _readings.plate_temp_2 = std::get<double>(res);
+        } else {
+            _readings.plate_temp_2 = 0.0F;
         }
         res = _converter.convert(_readings.heatsink_adc);
         if (std::holds_alternative<double>(res)) {
@@ -223,6 +234,7 @@ class ThermalTask {
         _readings.peltier_current_milliamps =
             PeltierReadback::adc_to_milliamps(message.imeas);
 
+        set_plate_avg(_readings.plate_temp_1, _readings.plate_temp_2);
         // Update thermal control
 
         update_thermal_control(policy,
@@ -252,13 +264,19 @@ class ThermalTask {
 
         auto response = messages::GetTempDebugResponse{
             .responding_to_id = message.id,
-            .plate_temp = 0,
+            .plate_temp_1 = 0,
+            .plate_temp_2 = 0,
             .heatsink_temp = 0,
-            .plate_adc = static_cast<uint16_t>(_readings.plate_adc),
+            .plate_adc_1 = static_cast<uint16_t>(_readings.plate_adc_1),
+            .plate_adc_2 = static_cast<uint16_t>(_readings.plate_adc_2),
             .heatsink_adc = static_cast<uint16_t>(_readings.heatsink_adc)};
-        if (_readings.plate_temp.has_value()) {
-            response.plate_temp =
-                static_cast<float>(_readings.plate_temp.value());
+        if (_readings.plate_temp_1.has_value()) {
+            response.plate_temp_1 =
+                static_cast<float>(_readings.plate_temp_1.value());
+        }
+        if (_readings.plate_temp_2.has_value()) {
+            response.plate_temp_2 =
+                static_cast<float>(_readings.plate_temp_2.value());
         }
         if (_readings.heatsink_temp.has_value()) {
             response.heatsink_temp =
@@ -275,7 +293,7 @@ class ThermalTask {
         _peltier.manual = false;
         _peltier.target_set = true;
         _peltier.target = message.target;
-        if (_readings.plate_temp.value() < _peltier.target) {
+        if (_readings.plate_temp_1.value() < _peltier.target) {
             _pid = ot_utils::pid::PID(
                 PELTIER_KP_HEATING_DEFAULT, PELTIER_KI_HEATING_DEFAULT,
                 PELTIER_KD_DEFAULT, 1.0, PELTIER_WINDUP_LIMIT,
@@ -452,12 +470,12 @@ class ThermalTask {
     template <ThermalPolicy Policy>
     auto update_thermal_control(Policy& policy, double sampletime) -> void {
         if (_peltier.target_set) {
-            if (!_readings.plate_temp.has_value()) {
+            if (!_plate_avg.has_value()) {
                 _peltier.target_set = false;
                 policy.disable_peltier();
             } else {
-                auto power = _pid.compute(
-                    _peltier.target - _readings.plate_temp.value(), sampletime);
+                auto power = _pid.compute(_peltier.target - _plate_avg.value(),
+                                          sampletime);
                 _peltier.power = std::clamp(power, -1.0, 1.0);
                 policy.enable_peltier();
                 bool ret = false;
@@ -477,7 +495,7 @@ class ThermalTask {
             if (_peltier.target_set) {
                 // We know for a fact that the plate_temp exists because
                 // target_set hasn't been cleared
-                if (_readings.plate_temp.value() >
+                if (_plate_avg.value() >
                     _peltier.target + STABILIZING_THRESHOLD) {
                     _fan.power = FAN_POWER_MAX;
                 } else {
@@ -495,9 +513,29 @@ class ThermalTask {
         }
     }
 
+    auto set_plate_avg(std::optional<double> plate_1,
+                       std::optional<double> plate_2) -> void {
+        double avg = 0.0F;
+        int count = 0;
+        if (plate_1.has_value()) {
+            avg += plate_1.value();
+            ++count;
+        }
+        if (plate_2.has_value()) {
+            avg += plate_2.value();
+            ++count;
+        }
+        if (count == 0) {
+            _plate_avg = std::nullopt;
+        } else {
+            _plate_avg = avg / count;
+        }
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     ThermalReadings _readings;
+    std::optional<double> _plate_avg;
     thermistor_conversion::Conversion<lookups::KS103J2G> _converter;
     Fan _fan;
     Peltier _peltier;

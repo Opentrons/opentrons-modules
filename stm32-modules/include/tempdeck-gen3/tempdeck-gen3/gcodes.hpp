@@ -204,13 +204,15 @@ struct GetTemperatureDebug {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit,
-                                    float plate_temp, float heatsink_temp,
-                                    uint16_t plate_adc, uint16_t heatsink_adc)
+                                    float plate_temp_1, float plate_temp_2,
+                                    float heatsink_temp, uint16_t plate_adc_1,
+                                    uint16_t plate_adc_2, uint16_t heatsink_adc)
         -> InputIt {
         return buf + snprintf((char*)&*buf, std::distance(buf, limit),
-                              "M105.D PT:%4.2f HST:%4.2f PA:%u HSA:%u OK\n",
-                              plate_temp, heatsink_temp, plate_adc,
-                              heatsink_adc);
+                              "M105.D PT1:%4.2f PT2:%4.2f HST:%4.2f PA1:%u "
+                              "PA2:%u HSA:%u OK\n",
+                              plate_temp_1, plate_temp_2, heatsink_temp,
+                              plate_adc_1, plate_adc_2, heatsink_adc);
     }
 
     template <typename InputIt, typename Limit>
