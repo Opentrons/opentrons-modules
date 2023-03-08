@@ -135,6 +135,7 @@ class ThermalTask {
           _task_registry(aggregator),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _readings(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
           _plate_avg{},
           _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
                      false),
