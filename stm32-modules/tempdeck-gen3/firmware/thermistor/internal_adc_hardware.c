@@ -169,6 +169,8 @@ static void init_adc_hardware(ADC_HandleTypeDef *handle) {
         ret = HAL_ADC_ConfigChannel(handle, &channel_config);
         configASSERT(ret == HAL_OK);
     }
+
+    HAL_ADCEx_Calibration_Start(handle, ADC_SINGLE_ENDED);
 }
 
 static void init_dma_hardware(void)

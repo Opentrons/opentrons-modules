@@ -51,13 +51,13 @@ struct Peltier {
 // Provides constants & conversions for the internal ADC
 struct PeltierReadback {
     // Internal ADC max value is 12 bits = 0xFFF = 4095
-    static constexpr double MAX_ADC_COUNTS = 4095;
+    static constexpr double MAX_ADC_COUNTS = 4096;
     // Internal ADC is scaled to 3.3v max
     static constexpr double MAX_ADC_VOLTAGE = 3.3;
     // Amps per volt based on schematic
     static constexpr double AMPS_PER_VOLT = 3.773;
     // Constant offset C for a y = mx + b regression
-    static constexpr double AMP_OFFSET = -6.225;
+    static constexpr double AMP_OFFSET = -6225;
     // Milliamps per ampere
     static constexpr double MILLIAMPS_PER_AMP = 1000.0;
     // Final conversion factor between adc and current
