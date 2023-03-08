@@ -1,10 +1,9 @@
 #pragma once
-#include <cstdint>
 #include <array>
-
-#include "systemwide.h"
+#include <cstdint>
 
 #include "heater-shaker/errors.hpp"
+#include "systemwide.h"
 
 class TestMotorPolicy {
   private:
