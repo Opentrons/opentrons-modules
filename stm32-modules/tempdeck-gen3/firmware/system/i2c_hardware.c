@@ -24,9 +24,9 @@
 /** Size of register address: 1 byte.*/
 #define REGISTER_ADDR_LEN (1)
 
-#define SDA_PIN (GPIO_PIN_8)
-#define SDA_PORT (GPIOA)
-#define SCL_PIN (GPIO_PIN_9)
+#define SDA_PIN (GPIO_PIN_7)
+#define SDA_PORT (GPIOB)
+#define SCL_PIN (GPIO_PIN_15)
 #define SCL_PORT (GPIOA)
 
 /** Private typedef */
@@ -55,7 +55,7 @@ typedef struct {
 static I2C_Hardware i2c_hardware = {
     .i2c = { 
         {
-            .instance = I2C2,
+            .instance = I2C1,
             .handle = {},
             .task_to_notify = NULL,
             .semaphore = NULL,
@@ -353,51 +353,52 @@ static inline I2C_Instance*
 void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
-    if(hi2c->Instance==I2C2)
+    if(hi2c->Instance==I2C1)
     {
         __HAL_RCC_GPIOA_CLK_ENABLE();
+        __HAL_RCC_GPIOB_CLK_ENABLE();
         GPIO_InitStruct.Pin = SCL_PIN;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-        GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
+        GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
         HAL_GPIO_Init(SCL_PORT, &GPIO_InitStruct);
 
         GPIO_InitStruct.Pin = SDA_PIN;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-        GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
+        GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
         HAL_GPIO_Init(SDA_PORT, &GPIO_InitStruct);
 
         /* Peripheral clock enable */
-        __HAL_RCC_I2C2_CLK_ENABLE();
+        __HAL_RCC_I2C1_CLK_ENABLE();
         /* I2C2 interrupt Init */
-        HAL_NVIC_SetPriority(I2C2_EV_IRQn, 6, 0);
-        HAL_NVIC_EnableIRQ(I2C2_EV_IRQn);
-        HAL_NVIC_SetPriority(I2C2_ER_IRQn, 6, 0);
-        HAL_NVIC_EnableIRQ(I2C2_ER_IRQn);
+        HAL_NVIC_SetPriority(I2C1_EV_IRQn, 6, 0);
+        HAL_NVIC_EnableIRQ(I2C1_EV_IRQn);
+        HAL_NVIC_SetPriority(I2C1_ER_IRQn, 6, 0);
+        HAL_NVIC_EnableIRQ(I2C1_ER_IRQn);
     }
 }
 
 void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
 {
-    if(hi2c->Instance==I2C2)
+    if(hi2c->Instance==I2C1)
     {
         /* Peripheral clock disable */
-        __HAL_RCC_I2C2_CLK_DISABLE();
+        __HAL_RCC_I2C1_CLK_DISABLE();
 
         /**I2C2 GPIO Configuration
-        PC4     ------> I2C2_SCL
-        PA8     ------> I2C2_SDA
+        PA15    ------> I2C1_SCL
+        PB7     ------> I2C1_SDA
         */
-        HAL_GPIO_DeInit(GPIOC, GPIO_PIN_4);
+        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_15);
 
-        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_8);
+        HAL_GPIO_DeInit(GPIOB, GPIO_PIN_7);
 
         /* I2C2 interrupt DeInit */
-        HAL_NVIC_DisableIRQ(I2C2_EV_IRQn);
-        HAL_NVIC_DisableIRQ(I2C2_ER_IRQn);
+        HAL_NVIC_DisableIRQ(I2C1_EV_IRQn);
+        HAL_NVIC_DisableIRQ(I2C1_ER_IRQn);
     }
 }
 
@@ -426,12 +427,12 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *i2c_handle)
 
 /** Interrupt handlers */
 
-void I2C2_EV_IRQHandler(void)
+void I2C1_EV_IRQHandler(void)
 {
     HAL_I2C_EV_IRQHandler(&i2c_hardware.i2c[I2C_BUS_THERMAL].handle);
 }
 
-void I2C2_ER_IRQHandler(void)
+void I2C1_ER_IRQHandler(void)
 {
     HAL_I2C_ER_IRQHandler(&i2c_hardware.i2c[I2C_BUS_THERMAL].handle);
 }

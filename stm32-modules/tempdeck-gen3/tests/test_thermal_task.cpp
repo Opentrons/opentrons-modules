@@ -29,7 +29,7 @@ TEST_CASE("peltier current conversions") {
 TEST_CASE("thermal task message handling") {
     auto *tasks = tasks::BuildTasks();
     TestThermalPolicy policy;
-    thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> converter(
+    thermistor_conversion::Conversion<lookups::KS103J2G> converter(
         decltype(tasks->_thermal_task)::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
         decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);
     WHEN("new thermistor readings are received") {
@@ -58,9 +58,9 @@ TEST_CASE("thermal task message handling") {
             REQUIRE(readings.plate_temp.has_value());
             REQUIRE(readings.heatsink_temp.has_value());
             REQUIRE_THAT(readings.plate_temp.value(),
-                         Catch::Matchers::WithinAbs(25.00, 0.01));
+                         Catch::Matchers::WithinAbs(25.00, 0.02));
             REQUIRE_THAT(readings.heatsink_temp.value(),
-                         Catch::Matchers::WithinAbs(50.00, 0.01));
+                         Catch::Matchers::WithinAbs(50.00, 0.02));
         }
         AND_WHEN("a GetTempDebug message is received") {
             tasks->_thermal_queue.backing_deque.push_back(
@@ -77,9 +77,9 @@ TEST_CASE("thermal task message handling") {
                     tasks->_comms_queue.backing_deque.front());
                 REQUIRE(response.responding_to_id == 123);
                 REQUIRE_THAT(response.plate_temp,
-                             Catch::Matchers::WithinAbs(25.00, 0.01));
+                             Catch::Matchers::WithinAbs(25.00, 0.02));
                 REQUIRE_THAT(response.heatsink_temp,
-                             Catch::Matchers::WithinAbs(50.00, 0.01));
+                             Catch::Matchers::WithinAbs(50.00, 0.02));
                 REQUIRE(response.plate_adc == plate_count);
                 REQUIRE(response.heatsink_adc == hs_count);
             }
@@ -400,7 +400,7 @@ TEST_CASE("thermal task set temperature command") {
 TEST_CASE("closed loop thermal control") {
     auto *tasks = tasks::BuildTasks();
     TestThermalPolicy policy;
-    thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> converter(
+    thermistor_conversion::Conversion<lookups::KS103J2G> converter(
         decltype(tasks->_thermal_task)::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
         decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);
 
@@ -574,7 +574,7 @@ TEST_CASE("thermal task power debug functionality") {
     auto current_adc =
         thermal_task::PeltierReadback::milliamps_to_adc(peltier_current);
     const double temp = 25.0F;
-    thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> converter(
+    thermistor_conversion::Conversion<lookups::KS103J2G> converter(
         decltype(tasks->_thermal_task)::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
         decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);
     auto temp_adc = converter.backconvert(temp);
