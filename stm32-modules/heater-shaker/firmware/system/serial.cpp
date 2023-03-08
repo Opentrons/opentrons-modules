@@ -1,7 +1,7 @@
+#include "firmware/serial.hpp"
+
 #include <iterator>
 #include <ranges>
-
-#include "firmware/serial.hpp"
 
 auto Serial::set_serial_number(
     std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number)
