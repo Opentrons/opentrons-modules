@@ -26,7 +26,8 @@ SCENARIO("GetTemperatureDebug (M105.D) parser works",
         std::string buffer(16, 'c');
         WHEN("filling response") {
             auto written = gcode::GetTemperatureDebug::write_response_into(
-                buffer.begin(), buffer.begin() + 7, 10.0, 11.0, 15.0, 10, 11, 15);
+                buffer.begin(), buffer.begin() + 7, 10.0, 11.0, 15.0, 10, 11,
+                15);
             THEN("the response should write only up to the available space") {
                 std::string response = "M105.Dcccccccccc";
                 response.at(6) = '\0';
