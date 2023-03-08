@@ -4,17 +4,23 @@
 
 TEST_CASE("peltier current conversions") {
     GIVEN("some ADC readings") {
-        std::vector<uint32_t> inputs = {0, 100, 1000};
+        const auto COUNT = 4;
+        std::vector<uint32_t> inputs = {0, 1000, 4095, 2048};
+        std::vector<double> expected = {-6225, -3185.23, 6222.86, 0.45};
         WHEN("converting readings") {
-            std::vector<double> outputs(3);
+            std::vector<double> outputs(COUNT);
             std::transform(inputs.begin(), inputs.end(), outputs.begin(),
                            thermal_task::PeltierReadback::adc_to_milliamps);
             THEN("the readings are converted correctly") {
-                std::vector<double> expected = {0, 161.172, 1611.722};
-                REQUIRE_THAT(outputs, Catch::Matchers::Approx(expected));
+                for (auto i = 0; i < COUNT; ++i) {
+                    DYNAMIC_SECTION("reading " << i) {
+                        REQUIRE_THAT(outputs[i], Catch::Matchers::WithinAbs(
+                                                     expected[i], 0.1));
+                    }
+                }
             }
             AND_THEN("backconverting readings") {
-                std::vector<uint32_t> backconvert(3);
+                std::vector<uint32_t> backconvert(COUNT);
                 std::transform(outputs.begin(), outputs.end(),
                                backconvert.begin(),
                                thermal_task::PeltierReadback::milliamps_to_adc);
@@ -579,6 +585,9 @@ TEST_CASE("thermal task offset constants message handling") {
 TEST_CASE("thermal task power debug functionality") {
     auto *tasks = tasks::BuildTasks();
     TestThermalPolicy policy;
+    const double peltier_leeway =
+        std::abs(thermal_task::PeltierReadback::adc_to_milliamps(1) -
+                 thermal_task::PeltierReadback::adc_to_milliamps(3));
     const double peltier_current = GENERATE(200.0F, 2000.0F, 0.0F);
     auto current_adc =
         thermal_task::PeltierReadback::milliamps_to_adc(peltier_current);
@@ -616,11 +625,9 @@ TEST_CASE("thermal task power debug functionality") {
                     std::get<messages::GetThermalPowerDebugResponse>(
                         response_msg);
                 REQUIRE(response.responding_to_id == power_msg.id);
-                // There has to be a fair amount of leeway here because the
-                // accuracy of the conversions isn't the best
                 REQUIRE_THAT(response.peltier_current,
                              Catch::Matchers::WithinAbs(peltier_current,
-                                                        peltier_current * .01));
+                                                        peltier_leeway));
                 REQUIRE_THAT(response.peltier_pwm,
                              Catch::Matchers::WithinAbs(0, .01));
                 REQUIRE_THAT(response.fan_pwm,
@@ -659,11 +666,9 @@ TEST_CASE("thermal task power debug functionality") {
                         std::get<messages::GetThermalPowerDebugResponse>(
                             response_msg);
                     REQUIRE(response.responding_to_id == power_msg.id);
-                    // There has to be a fair amount of leeway here because the
-                    // accuracy of the conversions isn't the best
                     REQUIRE_THAT(response.peltier_current,
-                                 Catch::Matchers::WithinAbs(
-                                     peltier_current, peltier_current * .01));
+                                 Catch::Matchers::WithinAbs(peltier_current,
+                                                            peltier_leeway));
                     REQUIRE_THAT(
                         response.peltier_pwm,
                         Catch::Matchers::WithinAbs(peltier_msg.power, .001));
