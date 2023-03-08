@@ -1,9 +1,19 @@
 #pragma once
 #include <cstdint>
+#include <array>
+
+#include "systemwide.h"
 
 #include "heater-shaker/errors.hpp"
 
 class TestMotorPolicy {
+  private:
+    bool serial_number_set = false;
+    static constexpr std::size_t SYSTEM_SERIAL_NUMBER_LENGTH =
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
+    std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number = {};
+    errors::ErrorCode set_serial_number_return = errors::ErrorCode::NO_ERROR;
+
   public:
     TestMotorPolicy();
     TestMotorPolicy(int16_t initial_rpm, int16_t initial_target_rpm,
@@ -45,6 +55,9 @@ class TestMotorPolicy {
     [[nodiscard]] auto test_get_overridden_ki() const -> double;
     [[nodiscard]] auto test_get_overridden_kp() const -> double;
     [[nodiscard]] auto test_get_overridden_kd() const -> double;
+
+    auto get_serial_number(void)
+        -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
 
   private:
     int16_t target_rpm;

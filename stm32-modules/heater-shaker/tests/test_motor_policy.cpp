@@ -135,3 +135,14 @@ auto TestMotorPolicy::test_get_overridden_ki() const -> double {
 auto TestMotorPolicy::test_get_overridden_kd() const -> double {
     return overridden_kd;
 }
+
+auto TestMotorPolicy::get_serial_number(void)
+    -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> {
+    if (serial_number_set) {
+        return system_serial_number;
+    } else {
+        std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> empty_serial_number = {
+            "EMPTYSN"};
+        return empty_serial_number;
+    }
+}
