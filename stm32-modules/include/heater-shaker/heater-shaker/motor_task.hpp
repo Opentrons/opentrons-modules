@@ -10,6 +10,7 @@
 #include "hal/message_queue.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "systemwide.h"
 namespace tasks {
 template <template <class> class QueueImpl>
 struct Tasks;
@@ -99,8 +100,10 @@ class MotorTask {
               // SetRPM commands
 
   public:
-    static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_RPM = 325;
-    static constexpr int16_t HOMING_ROTATION_LIMIT_LOW_RPM = 275;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_NEW_RPM = 325;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_LOW_NEW_RPM = 275;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_OLD_RPM = 250;
+    static constexpr int16_t HOMING_ROTATION_LIMIT_LOW_OLD_RPM = 200;
     static constexpr int16_t HOMING_ROTATION_LOW_MARGIN = 25;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_INITIAL = 200;
     static constexpr uint16_t HOMING_SOLENOID_CURRENT_HOLD = 75;
@@ -119,7 +122,10 @@ class MotorTask {
           plate_lock_state{.status = PlateLockState::IDLE_UNKNOWN},
           message_queue(q),
           task_registry(nullptr),
-          setpoint(0) {}
+          setpoint(0),
+          _homing_rotation_limit_low_rpm(200),
+          _homing_rotation_limit_high_rpm(250),
+          _serial_initialized(false) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -326,8 +332,8 @@ class MotorTask {
                        Policy& policy) -> void {
         static_cast<void>(msg);
         if (state.status == State::HOMING_MOVING_TO_HOME_SPEED) {
-            if (policy.get_current_rpm() < HOMING_ROTATION_LIMIT_HIGH_RPM &&
-                policy.get_current_rpm() > HOMING_ROTATION_LIMIT_LOW_RPM) {
+            if (policy.get_current_rpm() < _homing_rotation_limit_high_rpm &&
+                policy.get_current_rpm() > _homing_rotation_limit_low_rpm) {
                 policy.homing_solenoid_engage(HOMING_SOLENOID_CURRENT_INITIAL);
                 state.status = State::HOMING_COASTING_TO_STOP;
                 homing_cycles_coasting = 0;
@@ -360,9 +366,37 @@ class MotorTask {
         }
     }
 
+    // unit test this
+    // comments
+    auto set_homing_speed(
+        std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> serial_number)
+        -> void {
+        int result{};
+        auto [ptr, ec]{std::from_chars(serial_number.begin() + 5,
+                                       serial_number.end(), result)};
+        if (ec == std::errc()) {
+            if (result > 2022113007) {  // make define. is this always true?
+                _homing_rotation_limit_low_rpm =
+                    HOMING_ROTATION_LIMIT_LOW_NEW_RPM;
+                _homing_rotation_limit_high_rpm =
+                    HOMING_ROTATION_LIMIT_HIGH_NEW_RPM;
+            }
+        } else {
+            _homing_rotation_limit_low_rpm = HOMING_ROTATION_LIMIT_LOW_OLD_RPM;
+            _homing_rotation_limit_high_rpm =
+                HOMING_ROTATION_LIMIT_HIGH_OLD_RPM;
+        }
+    }
+
     template <typename Policy>
     auto visit_message(const messages::BeginHomingMessage& msg, Policy& policy)
         -> void {
+        if (!_serial_initialized) {
+            std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> serial_number;
+            serial_number = policy.get_serial_number();
+            set_homing_speed(serial_number);
+            _serial_initialized = true;
+        }
         if ((!policy.plate_lock_closed_sensor_read()) &&
             (plate_lock_state.status != PlateLockState::IDLE_CLOSED)) {
             static_cast<void>(
@@ -374,7 +408,7 @@ class MotorTask {
         } else {
             state.status = State::HOMING_MOVING_TO_HOME_SPEED;
             policy.homing_solenoid_disengage();
-            policy.set_rpm(HOMING_ROTATION_LIMIT_LOW_RPM +
+            policy.set_rpm(_homing_rotation_limit_low_rpm +
                            HOMING_ROTATION_LOW_MARGIN);
             policy.delay_ticks(MOTOR_START_WAIT_TICKS);
             cached_home_id = msg.id;
@@ -622,6 +656,9 @@ class MotorTask {
     uint32_t polling_time = 0;
     errors::ErrorCode current_error = errors::ErrorCode::NO_ERROR;
     int16_t setpoint;
+    int16_t _homing_rotation_limit_low_rpm;
+    int16_t _homing_rotation_limit_high_rpm;
+    bool _serial_initialized;
 };
 
 };  // namespace motor_task
