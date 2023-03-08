@@ -12,11 +12,11 @@ SCENARIO("GetTemperatureDebug (M105.D) parser works",
         std::string buffer(256, 'c');
         WHEN("filling response") {
             auto written = gcode::GetTemperatureDebug::write_response_into(
-                buffer.begin(), buffer.end(), 10.0, 15.0, 10, 15);
+                buffer.begin(), buffer.end(), 10.0, 11.0, 15.0, 10, 11, 15);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(
-                    buffer, Catch::Matchers::StartsWith(
-                                "M105.D PT:10.00 HST:15.00 PA:10 HSA:15 OK\n"));
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith(
+                                         "M105.D PT1:10.00 PT2:11.00 HST:15.00 "
+                                         "PA1:10 PA2:11 HSA:15 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
@@ -26,7 +26,7 @@ SCENARIO("GetTemperatureDebug (M105.D) parser works",
         std::string buffer(16, 'c');
         WHEN("filling response") {
             auto written = gcode::GetTemperatureDebug::write_response_into(
-                buffer.begin(), buffer.begin() + 7, 10.0, 15.0, 10, 15);
+                buffer.begin(), buffer.begin() + 7, 10.0, 11.0, 15.0, 10, 11, 15);
             THEN("the response should write only up to the available space") {
                 std::string response = "M105.Dcccccccccc";
                 response.at(6) = '\0';

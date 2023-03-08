@@ -242,9 +242,11 @@ SCENARIO("host comms commands to thermal task") {
             AND_WHEN("sending response with wrong id") {
                 auto response =
                     messages::GetTempDebugResponse{.responding_to_id = id + 1,
-                                                   .plate_temp = 1.0,
+                                                   .plate_temp_1 = 1.0,
+                                                   .plate_temp_2 = 1.0,
                                                    .heatsink_temp = 2.0,
-                                                   .plate_adc = 123,
+                                                   .plate_adc_1 = 123,
+                                                   .plate_adc_2 = 123,
                                                    .heatsink_adc = 456};
                 tasks->_comms_queue.backing_deque.push_back(response);
                 written =
@@ -259,16 +261,19 @@ SCENARIO("host comms commands to thermal task") {
             AND_WHEN("sending a good response") {
                 auto response =
                     messages::GetTempDebugResponse{.responding_to_id = id,
-                                                   .plate_temp = 1.0,
+                                                   .plate_temp_1 = 1.0,
+                                                   .plate_temp_2 = 1.0,
                                                    .heatsink_temp = 2.0,
-                                                   .plate_adc = 123,
+                                                   .plate_adc_1 = 123,
+                                                   .plate_adc_2 = 123,
                                                    .heatsink_adc = 456};
                 tasks->_comms_queue.backing_deque.push_back(response);
                 written =
                     tasks->_comms_task.run_once(tx_buf.begin(), tx_buf.end());
                 THEN("the data is printed") {
                     auto expected =
-                        "M105.D PT:1.00 HST:2.00 PA:123 HSA:456 OK\n";
+                        "M105.D PT1:1.00 PT2:1.00 HST:2.00 PA1:123 PA2:123 "
+                        "HSA:456 OK\n";
                     REQUIRE(written == (tx_buf.begin() + strlen(expected)));
                     REQUIRE_THAT(tx_buf, Catch::Matchers::StartsWith(expected));
                 }
