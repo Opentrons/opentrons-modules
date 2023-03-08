@@ -56,11 +56,13 @@ class ThermistorTask {
         }
 
         messages::ThermistorReadings msg = {
-            .timestamp = policy.get_time_ms(), .plate = 0, .heatsink = 0};
+            .timestamp = policy.get_time_ms(),
+            .plate_1 = read_pin(adc, 0, policy),
+            .plate_2 = read_pin(adc, 1, policy),
+            .heatsink = read_pin(adc, 2, policy),
+            .imeas = policy.get_imeas_adc_reading(),
+        };
 
-        msg.plate = read_pin(adc, 0, policy);
-        msg.heatsink = read_pin(adc, 1, policy);
-        msg.imeas = policy.get_imeas_adc_reading();
         static_cast<void>(_task_registry->send(msg));
     }
 

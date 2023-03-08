@@ -282,8 +282,9 @@ class HostCommsTask {
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
                 } else {
                     return cache_element.write_response_into(
-                        tx_into, tx_limit, response.plate_temp,
-                        response.heatsink_temp, response.plate_adc,
+                        tx_into, tx_limit, response.plate_temp_1,
+                        response.plate_temp_2, response.heatsink_temp,
+                        response.plate_adc_1, response.plate_adc_2,
                         response.heatsink_adc);
                 }
             },

@@ -224,18 +224,19 @@ class Tempdeck():
             print(f'Received: {ret.decode()}')
         return ret.decode()
 
-    _TEMP_RE = re.compile('^M105.D PT:(?P<plate>.+) HST:(?P<heatsink>.+) PA:(.+) HSA:(.+) OK\n')
+    _TEMP_RE = re.compile('^M105.D PT1:(?P<plate1>.+) PT2:(?P<plate2>.+) HST:(?P<heatsink>.+) PA1:(.+) PA2:(.+) HSA:(.+) OK\n')
     
     def get_temperatures(self) -> Tuple[float, float]:
         '''
         Get the temperatures of the system. Returns a tuple
-        of [plate, heatsink]
+        of [plate1, plate2, heatsink]
         '''
-        res = self._send_and_recv('M105.D\n', 'M105.D PT:')
+        res = self._send_and_recv('M105.D\n', 'M105.D PT1:')
         match = re.match(self._TEMP_RE, res)
-        plate = float(match.group('plate'))
+        plate1 = float(match.group('plate1'))
+        plate2 = float(match.group('plate2'))
         heatsink = float(match.group('heatsink'))
-        return plate, heatsink
+        return plate1, plate2, heatsink
     
     def deactivate(self):
         self._send_and_recv('M18\n', 'M18 OK')
