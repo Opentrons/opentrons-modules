@@ -55,22 +55,20 @@ struct PeltierReadback {
     // Internal ADC is scaled to 3.3v max
     static constexpr double MAX_ADC_VOLTAGE = 3.3;
     // Amps per volt based on schematic
-    static constexpr double AMPS_PER_VOLT = 3.773;
+    static constexpr double MILLIAMPS_PER_VOLT = 3773;
     // Constant offset C for a y = mx + b regression
-    static constexpr double AMP_OFFSET = -6225;
-    // Milliamps per ampere
-    static constexpr double MILLIAMPS_PER_AMP = 1000.0;
+    static constexpr double MILLIAMP_OFFSET = -6225;
     // Final conversion factor between adc and current
     static constexpr double MILLIAMPS_PER_COUNT =
-        ((MAX_ADC_VOLTAGE * AMPS_PER_VOLT * MILLIAMPS_PER_AMP) /
-         MAX_ADC_COUNTS);
+        ((MAX_ADC_VOLTAGE * MILLIAMPS_PER_VOLT) / MAX_ADC_COUNTS);
 
     static auto adc_to_milliamps(uint32_t adc) -> double {
-        return (static_cast<double>(adc) * MILLIAMPS_PER_COUNT) + AMP_OFFSET;
+        return (static_cast<double>(adc) * MILLIAMPS_PER_COUNT) +
+               MILLIAMP_OFFSET;
     }
 
     static auto milliamps_to_adc(double milliamps) -> uint32_t {
-        return static_cast<uint32_t>((milliamps - AMP_OFFSET) /
+        return static_cast<uint32_t>((milliamps - MILLIAMP_OFFSET) /
                                      MILLIAMPS_PER_COUNT);
     }
 };
