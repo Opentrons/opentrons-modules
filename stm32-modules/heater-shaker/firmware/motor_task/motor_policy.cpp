@@ -126,3 +126,8 @@ auto MotorPolicy::set_pid_constants(double kp, double ki, double kd) -> void {
     PID_SetKI(hw_handles->mct[0]->pPIDSpeed,
               static_cast<int16_t>(ki / SPEED_UNIT_CONVERSION_SPC));
 }
+
+auto MotorPolicy::get_serial_number(void)
+    -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> {
+    return _serial.get_serial_number();
+}

@@ -590,6 +590,67 @@ SCENARIO("motor task homing", "[motor][homing]") {
         tasks->get_motor_queue().backing_deque.push_back(
             messages::MotorMessage(close_pl_message));
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        WHEN("starting a home sequence with default serial number") {
+            auto home_message = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(home_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN(
+                "the motor task should have default homing speed (25 rpm "
+                "low)") {
+                REQUIRE(tasks->get_motor_task().get_homing_speed() == 200);
+            }
+        }
+        WHEN("starting a home sequence with an old solenoid serial number") {
+            std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> serial_number = {
+                "HSV012022113007"};
+            tasks->get_motor_policy().set_serial_number(serial_number);
+            auto home_message = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(home_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN(
+                "the motor task should have default homing speed (25 rpm "
+                "low)") {
+                REQUIRE(tasks->get_motor_task().get_homing_speed() == 200);
+            }
+        }
+        WHEN("starting a home sequence with a new solenoid serial number") {
+            std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> serial_number = {
+                "HSV012022113008"};
+            tasks->get_motor_policy().set_serial_number(serial_number);
+            auto home_message = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(home_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN(
+                "the motor task should have default homing speed (25 rpm "
+                "low)") {
+                REQUIRE(tasks->get_motor_task().get_homing_speed() == 275);
+            }
+        }
+        WHEN("starting a home sequence with an invalid serial number") {
+            std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> serial_number = {
+                "HSV01XX"};
+            tasks->get_motor_policy().set_serial_number(serial_number);
+            auto home_message = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(home_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN(
+                "the motor task should have default homing speed (25 rpm "
+                "low)") {
+                REQUIRE(tasks->get_motor_task().get_homing_speed() == 200);
+            }
+        }
+    }
+    GIVEN("a motor task that is stopped") {
+        auto tasks = TaskBuilder::build();
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false, .closed = true};  // required before homing
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
         tasks->get_host_comms_queue()
             .backing_deque.pop_front();  // clear generated ack message
         CHECK(tasks->get_motor_task().get_state() ==
@@ -728,10 +789,10 @@ SCENARIO("motor task homing", "[motor][homing]") {
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
         CHECK(tasks->get_motor_policy().get_target_rpm() >
               std::remove_cvref_t<decltype(tasks->get_motor_task())>::
-                  HOMING_ROTATION_LIMIT_LOW_RPM);
+                  HOMING_ROTATION_LIMIT_LOW_OLD_RPM);
         CHECK(tasks->get_motor_policy().get_target_rpm() <
               std::remove_cvref_t<decltype(tasks->get_motor_task())>::
-                  HOMING_ROTATION_LIMIT_HIGH_RPM);
+                  HOMING_ROTATION_LIMIT_HIGH_OLD_RPM);
         CHECK(tasks->get_motor_task().get_state() ==
               motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
         CHECK(std::holds_alternative<messages::CheckHomingStatusMessage>(
@@ -740,9 +801,9 @@ SCENARIO("motor task homing", "[motor][homing]") {
             "checking the homing status while in the appropriate speed range") {
             tasks->get_motor_policy().test_set_current_rpm(
                 (std::remove_cvref_t<decltype(tasks->get_motor_task())>::
-                     HOMING_ROTATION_LIMIT_HIGH_RPM +
+                     HOMING_ROTATION_LIMIT_HIGH_OLD_RPM +
                  std::remove_cvref_t<decltype(tasks->get_motor_task())>::
-                     HOMING_ROTATION_LIMIT_LOW_RPM) /
+                     HOMING_ROTATION_LIMIT_LOW_OLD_RPM) /
                 2);
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task goes to coasting and engages the solenoid") {
@@ -759,7 +820,7 @@ SCENARIO("motor task homing", "[motor][homing]") {
             "range") {
             tasks->get_motor_policy().test_set_current_rpm(
                 std::remove_cvref_t<decltype(tasks->get_motor_task())>::
-                    HOMING_ROTATION_LIMIT_HIGH_RPM *
+                    HOMING_ROTATION_LIMIT_HIGH_OLD_RPM *
                 1.1);
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             THEN("the task remains in moving-to-speed and waits for the rpm") {

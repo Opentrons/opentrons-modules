@@ -52,7 +52,8 @@ set(HS_FW_LINTABLE_SRCS
   ${MOTOR_DIR}/freertos_motor_task.cpp
   ${MOTOR_DIR}/motor_policy.cpp
   ${COMMS_DIR}/freertos_comms_task.cpp
-  ${SYSTEM_DIR}/freertos_idle_timer_task.cpp)
+  ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
+  ${SYSTEM_DIR}/serial.cpp)
 
 # Add source files that should NOT be checked by clang-tidy here
 set(HS_FW_NONLINTABLE_SRCS
