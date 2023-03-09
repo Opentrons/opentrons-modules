@@ -590,6 +590,25 @@ SCENARIO("motor task homing", "[motor][homing]") {
         tasks->get_motor_queue().backing_deque.push_back(
             messages::MotorMessage(close_pl_message));
         tasks->get_motor_task().run_once(tasks->get_motor_policy());
+        WHEN("starting a home sequence with default serial number") {
+            auto home_message = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(home_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN(
+                "the motor task should have default homing speed (25 rpm "
+                "low)") {
+                REQUIRE(tasks->get_motor_task().get_homing_speed() == 200);
+            }
+        }
+    }
+    GIVEN("a motor task that is stopped") {
+        auto tasks = TaskBuilder::build();
+        auto close_pl_message = messages::PlateLockComplete{
+            .open = false, .closed = true};  // required before homing
+        tasks->get_motor_queue().backing_deque.push_back(
+            messages::MotorMessage(close_pl_message));
+        tasks->get_motor_task().run_once(tasks->get_motor_policy());
         tasks->get_host_comms_queue()
             .backing_deque.pop_front();  // clear generated ack message
         CHECK(tasks->get_motor_task().get_state() ==

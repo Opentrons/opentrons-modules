@@ -95,9 +95,14 @@ class MotorTask {
     static constexpr const uint16_t STARTUP_HOMING_WAIT_TICKS =
         200;  // needed to ensure motor setup complete at startup before homing
     static constexpr const uint16_t MOTOR_START_WAIT_TICKS = 1000;
+    static constexpr const uint16_t SOLENOID_ENGAGE_WAIT_TICKS = 1000;
     static constexpr const uint16_t POST_HOMING_WAIT_TICKS =
         500;  // needed to ensure motor control deactivated before subsequent
               // SetRPM commands
+    static constexpr const uint8_t SERIAL_NUMBER_PREFIX_OFFSET =
+        5;  // skips first 5 chars ("HSV01")
+    static constexpr const uint32_t SERIAL_NUMBER_SOLENOID_SWITCH_TIMESTAMP =
+        2022113007;  // switched from old to new solenoid on 2022-11-30 7th unit
 
   public:
     static constexpr int16_t HOMING_ROTATION_LIMIT_HIGH_NEW_RPM = 325;
@@ -138,6 +143,9 @@ class MotorTask {
     [[nodiscard]] auto get_plate_lock_state() const
         -> PlateLockState::PlateLockTaskStatus {
         return plate_lock_state.status;
+    }
+    [[nodiscard]] auto get_homing_speed() const -> uint16_t {
+        return _homing_rotation_limit_low_rpm;
     }
     void provide_tasks(tasks::Tasks<QueueImpl>* other_tasks) {
         task_registry = other_tasks;
@@ -366,21 +374,20 @@ class MotorTask {
         }
     }
 
-    // unit test this
-    // comments
+    // Reduce main motor homing speed to preserve old solenoid. Saw old solenoid
+    // lifetime failures at higher main motor homing speed.
     auto set_homing_speed(
         std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> serial_number)
         -> void {
-        int result{};
-        auto [ptr, ec]{std::from_chars(serial_number.begin() + 5,
-                                       serial_number.end(), result)};
-        if (ec == std::errc()) {
-            if (result > 2022113007) {  // make define. is this always true?
-                _homing_rotation_limit_low_rpm =
-                    HOMING_ROTATION_LIMIT_LOW_NEW_RPM;
-                _homing_rotation_limit_high_rpm =
-                    HOMING_ROTATION_LIMIT_HIGH_NEW_RPM;
-            }
+        uint32_t result{};
+        auto [ptr, ec]{
+            std::from_chars(serial_number.begin() + SERIAL_NUMBER_PREFIX_OFFSET,
+                            serial_number.end(), result)};
+        if (ec == std::errc() &&
+            result > SERIAL_NUMBER_SOLENOID_SWITCH_TIMESTAMP) {
+            _homing_rotation_limit_low_rpm = HOMING_ROTATION_LIMIT_LOW_NEW_RPM;
+            _homing_rotation_limit_high_rpm =
+                HOMING_ROTATION_LIMIT_HIGH_NEW_RPM;
         } else {
             _homing_rotation_limit_low_rpm = HOMING_ROTATION_LIMIT_LOW_OLD_RPM;
             _homing_rotation_limit_high_rpm =
@@ -408,9 +415,11 @@ class MotorTask {
         } else {
             state.status = State::HOMING_MOVING_TO_HOME_SPEED;
             policy.homing_solenoid_disengage();
+            policy.set_rpm(MOTOR_KICKSTART_RPM);
+            policy.delay_ticks(MOTOR_START_WAIT_TICKS);
             policy.set_rpm(_homing_rotation_limit_low_rpm +
                            HOMING_ROTATION_LOW_MARGIN);
-            policy.delay_ticks(MOTOR_START_WAIT_TICKS);
+            policy.delay_ticks(SOLENOID_ENGAGE_WAIT_TICKS);
             cached_home_id = msg.id;
             if (policy.get_current_rpm() < MOTOR_START_THRESHOLD_RPM) {
                 auto error = errors::ErrorCode::MOTOR_UNABLE_TO_MOVE;
