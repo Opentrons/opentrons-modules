@@ -95,7 +95,8 @@ struct ForceUSBDisconnect {
 
 struct ThermistorReadings {
     uint32_t timestamp;
-    uint32_t plate;
+    uint32_t plate_1;
+    uint32_t plate_2;
     uint32_t heatsink;
     // Peltier current feedback
     uint32_t imeas;
@@ -111,9 +112,11 @@ struct GetTempDebugMessage {
 
 struct GetTempDebugResponse {
     uint32_t responding_to_id;
-    float plate_temp;
+    float plate_temp_1;
+    float plate_temp_2;
     float heatsink_temp;
-    uint16_t plate_adc;
+    uint16_t plate_adc_1;
+    uint16_t plate_adc_2;
     uint16_t heatsink_adc;
 };
 
