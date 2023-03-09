@@ -17,8 +17,8 @@
 
 /** Private definitions */
 
-#define ADC_ALERT_PIN  (GPIO_PIN_11)
-#define ADC_ALERT_PORT (GPIOB)
+#define ADC_ALERT_PIN  (GPIO_PIN_12)
+#define ADC_ALERT_PORT (GPIOC)
 
 /** Private typedef */
 
@@ -44,7 +44,7 @@ void thermistor_hardware_init() {
 
     // Enforce that only one task may initialize the I2C
     if(atomic_exchange(&hardware.initialization_started, true) == false) {
-        __HAL_RCC_GPIOB_CLK_ENABLE();
+        __HAL_RCC_GPIOC_CLK_ENABLE();
         __HAL_RCC_GPIOA_CLK_ENABLE();
 
         /* Configure the ADC Alert pin*/

@@ -71,19 +71,19 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
 
 void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
 {
-    if(htim_pwm->Instance==TIM1)
+    if(htim_pwm->Instance==TIM2)
     {
         /* Peripheral clock enable */
-        __HAL_RCC_TIM1_CLK_ENABLE();
+        __HAL_RCC_TIM2_CLK_ENABLE();
     }
 }
 
 void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* htim_pwm)
 {
-    if(htim_pwm->Instance==TIM1)
+    if(htim_pwm->Instance==TIM2)
     {
         /* Peripheral clock disable */
-        __HAL_RCC_TIM1_CLK_DISABLE();
+        __HAL_RCC_TIM2_CLK_DISABLE();
     }
 
 }

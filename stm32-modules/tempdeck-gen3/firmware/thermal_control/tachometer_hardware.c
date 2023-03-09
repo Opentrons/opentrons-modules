@@ -44,15 +44,15 @@
 /** Private definitions */
 
 // Timer handle for tachometer
-#define TACH_TIMER (TIM15)
+#define TACH_TIMER (TIM17)
 // Input channel for tachometer
 #define TACH_CHANNEL (TIM_CHANNEL_1)
 // Port for tachometer
 #define TACH_GPIO_PORT (GPIOA)
 // Pin for tachometer
-#define TACH_GPIO_PIN  (GPIO_PIN_2)
+#define TACH_GPIO_PIN  (GPIO_PIN_7)
 // Interrupt vector for tach
-#define TACH_IRQ (TIM1_BRK_TIM15_IRQn)
+#define TACH_IRQ (TIM1_TRG_COM_TIM17_IRQn)
 
 // Tachometer timer reload frequency
 #define TIMER_CLOCK_FREQ (170000000)
@@ -162,7 +162,7 @@ static void init_tach_timer(TIM_HandleTypeDef *handle) {
 
 // This interrupt does NOT go through the HAL system because that overhead is
 // not required for this application.
-void TIM1_BRK_TIM15_IRQHandler(void) {
+void TIM1_TRG_COM_TIM17_IRQHandler(void) {
     if(__HAL_TIM_GET_FLAG(&hardware.timer, TIM_IT_CC1)) {
         // New pulse input
         __HAL_TIM_CLEAR_IT(&hardware.timer, TIM_IT_CC1);
@@ -194,7 +194,7 @@ void HAL_TIM_IC_MspInit(TIM_HandleTypeDef* htim_ic)
     if(htim_ic->Instance==TACH_TIMER)
     {
         /* Peripheral clock enable */
-        __HAL_RCC_TIM15_CLK_ENABLE();
+        __HAL_RCC_TIM17_CLK_ENABLE();
         __HAL_RCC_GPIOA_CLK_ENABLE();
 
         /* CC1 input init */
@@ -202,7 +202,7 @@ void HAL_TIM_IC_MspInit(TIM_HandleTypeDef* htim_ic)
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-        GPIO_InitStruct.Alternate = GPIO_AF9_TIM15;
+        GPIO_InitStruct.Alternate = GPIO_AF1_TIM17;
         HAL_GPIO_Init(TACH_GPIO_PORT, &GPIO_InitStruct);
 
         /* Timer interrupt Init */

@@ -19,7 +19,7 @@
 // Local defines
 
 // Which ADC Peripheral we are initializing
-#define ADC_INSTANCE (ADC2)
+#define ADC_INSTANCE (ADC1)
 
 // Local typedefs
 
@@ -51,9 +51,9 @@ static adc_hardware_t adc_hardware = {
 
 // Configuration for the Current Measurement ADC Channel
 static const adc_channel_init_t imeas_channel_conf = {
-    .channel = ADC_CHANNEL_2,
-    .pin = GPIO_PIN_1,
-    .port = GPIOA
+    .channel = ADC_CHANNEL_5,
+    .pin = GPIO_PIN_14,
+    .port = GPIOB
 };
 
 static const uint32_t adc_ranks[] = {
@@ -139,7 +139,7 @@ static void init_adc_hardware(ADC_HandleTypeDef *handle) {
     HAL_StatusTypeDef ret = HAL_ERROR;
     ADC_ChannelConfTypeDef channel_config = {0};
 
-    handle->Instance = ADC2;
+    handle->Instance = ADC_INSTANCE;
     handle->Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
     handle->Init.Resolution = ADC_RESOLUTION_12B;
     handle->Init.DataAlign = ADC_DATAALIGN_RIGHT;
@@ -169,6 +169,8 @@ static void init_adc_hardware(ADC_HandleTypeDef *handle) {
         ret = HAL_ADC_ConfigChannel(handle, &channel_config);
         configASSERT(ret == HAL_OK);
     }
+
+    HAL_ADCEx_Calibration_Start(handle, ADC_SINGLE_ENDED);
 }
 
 static void init_dma_hardware(void)
@@ -218,17 +220,17 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
         /* Peripheral clock enable */
         __HAL_RCC_ADC12_CLK_ENABLE();
 
-        __HAL_RCC_GPIOA_CLK_ENABLE();
+        __HAL_RCC_GPIOB_CLK_ENABLE();
         
         GPIO_InitStruct.Pin = imeas_channel_conf.pin;
         GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
         HAL_GPIO_Init(imeas_channel_conf.port, &GPIO_InitStruct);
 
-        /* ADC2 DMA Init */
-        /* ADC2 Init */
+        /* ADC1 DMA Init */
+        /* ADC1 Init */
         adc_hardware.dma.Instance = DMA1_Channel1;
-        adc_hardware.dma.Init.Request = DMA_REQUEST_ADC2;
+        adc_hardware.dma.Init.Request = DMA_REQUEST_ADC1;
         adc_hardware.dma.Init.Direction = DMA_PERIPH_TO_MEMORY;
         adc_hardware.dma.Init.PeriphInc = DMA_PINC_DISABLE;
         adc_hardware.dma.Init.MemInc = DMA_MINC_ENABLE;
@@ -243,7 +245,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
 
         __HAL_LINKDMA(hadc,DMA_Handle,adc_hardware.dma);
 
-        /* ADC2 interrupt Init */
+        /* ADC1 interrupt Init */
         HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
         HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
     }
@@ -262,14 +264,14 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
         /* Peripheral clock disable */
         __HAL_RCC_ADC12_CLK_DISABLE();
 
-        /**ADC2 GPIO Configuration
-        PA1     ------> ADC2_IN2
+        /**ADC1 GPIO Configuration
+        PB14     ------> ADC1_IN5
         */
-        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_1);
+        HAL_GPIO_DeInit(imeas_channel_conf.port, imeas_channel_conf.pin);
 
         HAL_DMA_DeInit(hadc->DMA_Handle);
 
-        /* ADC2 interrupt DeInit */
+        /* ADC1 interrupt DeInit */
         HAL_NVIC_DisableIRQ(ADC1_2_IRQn);
     }
 }
