@@ -136,6 +136,18 @@ auto TestMotorPolicy::test_get_overridden_kd() const -> double {
     return overridden_kd;
 }
 
+auto TestMotorPolicy::set_serial_number(
+    std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> new_system_serial_number)
+    -> errors::ErrorCode {
+    // copy to system_serial_number
+    auto copy_start = new_system_serial_number.begin();
+    auto copy_length = static_cast<int>(new_system_serial_number.size());
+    std::copy(copy_start, (copy_start + copy_length),
+              system_serial_number.begin());
+    serial_number_set = true;
+    return set_serial_number_return;
+}
+
 auto TestMotorPolicy::get_serial_number(void)
     -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> {
     if (serial_number_set) {

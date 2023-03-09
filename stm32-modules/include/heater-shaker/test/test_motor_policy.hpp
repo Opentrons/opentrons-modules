@@ -55,6 +55,9 @@ class TestMotorPolicy {
     [[nodiscard]] auto test_get_overridden_kp() const -> double;
     [[nodiscard]] auto test_get_overridden_kd() const -> double;
 
+    auto set_serial_number(
+        std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> new_system_serial_number)
+        -> errors::ErrorCode;
     auto get_serial_number(void)
         -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
 

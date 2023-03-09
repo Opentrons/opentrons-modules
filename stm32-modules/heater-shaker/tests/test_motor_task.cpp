@@ -601,6 +601,45 @@ SCENARIO("motor task homing", "[motor][homing]") {
                 REQUIRE(tasks->get_motor_task().get_homing_speed() == 200);
             }
         }
+        WHEN("starting a home sequence with an old solenoid serial number") {
+            std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> serial_number = {"HSV012022113007"};
+            tasks->get_motor_policy().set_serial_number(serial_number);
+            auto home_message = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(home_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN(
+                "the motor task should have default homing speed (25 rpm "
+                "low)") {
+                REQUIRE(tasks->get_motor_task().get_homing_speed() == 200);
+            }
+        }
+        WHEN("starting a home sequence with a new solenoid serial number") {
+            std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> serial_number = {"HSV012022113008"};
+            tasks->get_motor_policy().set_serial_number(serial_number);
+            auto home_message = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(home_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN(
+                "the motor task should have default homing speed (25 rpm "
+                "low)") {
+                REQUIRE(tasks->get_motor_task().get_homing_speed() == 275);
+            }
+        }
+        WHEN("starting a home sequence with an invalid serial number") {
+            std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> serial_number = {"HSV01XX"};
+            tasks->get_motor_policy().set_serial_number(serial_number);
+            auto home_message = messages::BeginHomingMessage{.id = 123};
+            tasks->get_motor_queue().backing_deque.push_back(
+                messages::MotorMessage(home_message));
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN(
+                "the motor task should have default homing speed (25 rpm "
+                "low)") {
+                REQUIRE(tasks->get_motor_task().get_homing_speed() == 200);
+            }
+        }
     }
     GIVEN("a motor task that is stopped") {
         auto tasks = TaskBuilder::build();
