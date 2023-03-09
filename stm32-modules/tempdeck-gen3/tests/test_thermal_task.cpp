@@ -4,17 +4,23 @@
 
 TEST_CASE("peltier current conversions") {
     GIVEN("some ADC readings") {
-        std::vector<uint32_t> inputs = {0, 100, 1000};
+        const auto COUNT = 4;
+        std::vector<uint32_t> inputs = {0, 1000, 4095, 2048};
+        std::vector<double> expected = {-6225, -3185.23, 6222.86, 0.45};
         WHEN("converting readings") {
-            std::vector<double> outputs(3);
+            std::vector<double> outputs(COUNT);
             std::transform(inputs.begin(), inputs.end(), outputs.begin(),
                            thermal_task::PeltierReadback::adc_to_milliamps);
             THEN("the readings are converted correctly") {
-                std::vector<double> expected = {0, 161.172, 1611.722};
-                REQUIRE_THAT(outputs, Catch::Matchers::Approx(expected));
+                for (auto i = 0; i < COUNT; ++i) {
+                    DYNAMIC_SECTION("reading " << i) {
+                        REQUIRE_THAT(outputs[i], Catch::Matchers::WithinAbs(
+                                                     expected[i], 0.1));
+                    }
+                }
             }
             AND_THEN("backconverting readings") {
-                std::vector<uint32_t> backconvert(3);
+                std::vector<uint32_t> backconvert(COUNT);
                 std::transform(outputs.begin(), outputs.end(),
                                backconvert.begin(),
                                thermal_task::PeltierReadback::milliamps_to_adc);
@@ -29,7 +35,7 @@ TEST_CASE("peltier current conversions") {
 TEST_CASE("thermal task message handling") {
     auto *tasks = tasks::BuildTasks();
     TestThermalPolicy policy;
-    thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> converter(
+    thermistor_conversion::Conversion<lookups::KS103J2G> converter(
         decltype(tasks->_thermal_task)::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
         decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);
     WHEN("new thermistor readings are received") {
@@ -37,7 +43,8 @@ TEST_CASE("thermal task message handling") {
         auto hs_count = converter.backconvert(50.00);
         auto thermistors_msg = messages::ThermistorReadings{
             .timestamp = 1000,
-            .plate = plate_count,
+            .plate_1 = plate_count,
+            .plate_2 = plate_count,
             .heatsink = hs_count,
             .imeas = 555,
         };
@@ -49,18 +56,22 @@ TEST_CASE("thermal task message handling") {
         THEN("the readings are updated properly") {
             auto readings = tasks->_thermal_task.get_readings();
             REQUIRE(readings.heatsink_adc == thermistors_msg.heatsink);
-            REQUIRE(readings.plate_adc == thermistors_msg.plate);
+            REQUIRE(readings.plate_adc_1 == thermistors_msg.plate_1);
+            REQUIRE(readings.plate_adc_2 == thermistors_msg.plate_2);
             REQUIRE(readings.last_tick == thermistors_msg.timestamp);
             REQUIRE(readings.peltier_current_adc == thermistors_msg.imeas);
         }
         THEN("the ADC readings are properly converted to temperatures") {
             auto readings = tasks->_thermal_task.get_readings();
-            REQUIRE(readings.plate_temp.has_value());
+            REQUIRE(readings.plate_temp_1.has_value());
+            REQUIRE(readings.plate_temp_2.has_value());
             REQUIRE(readings.heatsink_temp.has_value());
-            REQUIRE_THAT(readings.plate_temp.value(),
-                         Catch::Matchers::WithinAbs(25.00, 0.01));
+            REQUIRE_THAT(readings.plate_temp_1.value(),
+                         Catch::Matchers::WithinAbs(25.00, 0.02));
+            REQUIRE_THAT(readings.plate_temp_2.value(),
+                         Catch::Matchers::WithinAbs(25.00, 0.02));
             REQUIRE_THAT(readings.heatsink_temp.value(),
-                         Catch::Matchers::WithinAbs(50.00, 0.01));
+                         Catch::Matchers::WithinAbs(50.00, 0.02));
         }
         AND_WHEN("a GetTempDebug message is received") {
             tasks->_thermal_queue.backing_deque.push_back(
@@ -76,11 +87,14 @@ TEST_CASE("thermal task message handling") {
                 auto response = std::get<messages::GetTempDebugResponse>(
                     tasks->_comms_queue.backing_deque.front());
                 REQUIRE(response.responding_to_id == 123);
-                REQUIRE_THAT(response.plate_temp,
-                             Catch::Matchers::WithinAbs(25.00, 0.01));
+                REQUIRE_THAT(response.plate_temp_1,
+                             Catch::Matchers::WithinAbs(25.00, 0.02));
+                REQUIRE_THAT(response.plate_temp_2,
+                             Catch::Matchers::WithinAbs(25.00, 0.02));
                 REQUIRE_THAT(response.heatsink_temp,
-                             Catch::Matchers::WithinAbs(50.00, 0.01));
-                REQUIRE(response.plate_adc == plate_count);
+                             Catch::Matchers::WithinAbs(50.00, 0.02));
+                REQUIRE(response.plate_adc_1 == plate_count);
+                REQUIRE(response.plate_adc_2 == plate_count);
                 REQUIRE(response.heatsink_adc == hs_count);
             }
         }
@@ -400,14 +414,15 @@ TEST_CASE("thermal task set temperature command") {
 TEST_CASE("closed loop thermal control") {
     auto *tasks = tasks::BuildTasks();
     TestThermalPolicy policy;
-    thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> converter(
+    thermistor_conversion::Conversion<lookups::KS103J2G> converter(
         decltype(tasks->_thermal_task)::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
         decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);
 
     uint32_t timestamp_increment = 100;
     auto temp_message =
         messages::ThermistorReadings{.timestamp = timestamp_increment,
-                                     .plate = converter.backconvert(25),
+                                     .plate_1 = converter.backconvert(25),
+                                     .plate_2 = converter.backconvert(25),
                                      .heatsink = converter.backconvert(25)};
     tasks->_thermal_queue.backing_deque.push_back(temp_message);
     tasks->_thermal_task.run_once(policy);
@@ -570,11 +585,14 @@ TEST_CASE("thermal task offset constants message handling") {
 TEST_CASE("thermal task power debug functionality") {
     auto *tasks = tasks::BuildTasks();
     TestThermalPolicy policy;
+    const double peltier_leeway =
+        std::abs(thermal_task::PeltierReadback::adc_to_milliamps(1) -
+                 thermal_task::PeltierReadback::adc_to_milliamps(3));
     const double peltier_current = GENERATE(200.0F, 2000.0F, 0.0F);
     auto current_adc =
         thermal_task::PeltierReadback::milliamps_to_adc(peltier_current);
     const double temp = 25.0F;
-    thermistor_conversion::Conversion<lookups::NXFT15XV103FA2B030> converter(
+    thermistor_conversion::Conversion<lookups::KS103J2G> converter(
         decltype(tasks->_thermal_task)::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
         decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);
     auto temp_adc = converter.backconvert(temp);
@@ -584,7 +602,8 @@ TEST_CASE("thermal task power debug functionality") {
     GIVEN("a thermal task with valid peltier current readings") {
         auto adc_msg = messages::ThermistorReadings{
             .timestamp = 123,
-            .plate = temp_adc,
+            .plate_1 = temp_adc,
+            .plate_2 = temp_adc,
             .heatsink = temp_adc,
             .imeas = current_adc,
         };
@@ -606,11 +625,9 @@ TEST_CASE("thermal task power debug functionality") {
                     std::get<messages::GetThermalPowerDebugResponse>(
                         response_msg);
                 REQUIRE(response.responding_to_id == power_msg.id);
-                // There has to be a fair amount of leeway here because the
-                // accuracy of the conversions isn't the best
                 REQUIRE_THAT(response.peltier_current,
                              Catch::Matchers::WithinAbs(peltier_current,
-                                                        peltier_current * .01));
+                                                        peltier_leeway));
                 REQUIRE_THAT(response.peltier_pwm,
                              Catch::Matchers::WithinAbs(0, .01));
                 REQUIRE_THAT(response.fan_pwm,
@@ -649,11 +666,9 @@ TEST_CASE("thermal task power debug functionality") {
                         std::get<messages::GetThermalPowerDebugResponse>(
                             response_msg);
                     REQUIRE(response.responding_to_id == power_msg.id);
-                    // There has to be a fair amount of leeway here because the
-                    // accuracy of the conversions isn't the best
                     REQUIRE_THAT(response.peltier_current,
-                                 Catch::Matchers::WithinAbs(
-                                     peltier_current, peltier_current * .01));
+                                 Catch::Matchers::WithinAbs(peltier_current,
+                                                            peltier_leeway));
                     REQUIRE_THAT(
                         response.peltier_pwm,
                         Catch::Matchers::WithinAbs(peltier_msg.power, .001));

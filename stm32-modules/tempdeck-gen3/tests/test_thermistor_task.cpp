@@ -16,13 +16,14 @@ TEST_CASE("thermistor task functionality") {
             auto therms = std::get<messages::ThermistorReadings>(msg);
             REQUIRE(therms.timestamp == policy.get_time_ms());
             REQUIRE(therms.heatsink == decltype(policy)::READBACK_VALUE);
-            REQUIRE(therms.plate == decltype(policy)::READBACK_VALUE);
+            REQUIRE(therms.plate_1 == decltype(policy)::READBACK_VALUE);
+            REQUIRE(therms.plate_2 == decltype(policy)::READBACK_VALUE);
             REQUIRE(therms.imeas == policy._imeas_adc_val);
         }
         THEN("the adc was initialized") { REQUIRE(policy._initialized); }
-        THEN("two channels of the adc were read") {
+        THEN("three channels of the adc were read") {
             // Once per each channel + initialization
-            REQUIRE(policy._lock_count == 3);
+            REQUIRE(policy._lock_count == 4);
         }
     }
 }

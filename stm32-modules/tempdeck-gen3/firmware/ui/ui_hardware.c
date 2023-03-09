@@ -7,8 +7,8 @@
 
 /** Local defines */
 
-#define HEARTBEAT_LED_PORT (GPIOB)
-#define HEARTBEAT_LED_PIN  (GPIO_PIN_12)
+#define HEARTBEAT_LED_PORT (GPIOA)
+#define HEARTBEAT_LED_PIN  (GPIO_PIN_3)
 
 /** Hardware static data struct */
 
@@ -30,7 +30,7 @@ void ui_hardware_initialize() {
         .Alternate = 0
     };
     //NOLINTNEXTLINE(performance-no-int-to-ptr)
-    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
     //NOLINTNEXTLINE(performance-no-int-to-ptr)
     HAL_GPIO_Init(HEARTBEAT_LED_PORT, &init);
     ui_hardware.initialized = true;
