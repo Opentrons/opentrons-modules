@@ -8,10 +8,19 @@
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/motor_task.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "systemwide.h"
 
 using namespace motor_thread;
 
 struct SimMotorPolicy {
+  private:
+    bool serial_number_set = false;
+    static constexpr std::size_t SYSTEM_SERIAL_NUMBER_LENGTH =
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
+    std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number = {};
+    errors::ErrorCode set_serial_number_return = errors::ErrorCode::NO_ERROR;
+
+  public:
     static constexpr int32_t DEFAULT_RAMP_RATE_RPM_PER_S = 1000;
     static constexpr int32_t MAX_RAMP_RATE_RPM_PER_S = 20000;
     static constexpr int32_t MIN_RAMP_RATE_RPM_PER_S = 1;
@@ -86,6 +95,17 @@ struct SimMotorPolicy {
             return false;
         } else {
             return sim_plate_lock_power > 0.0 ? true : false;
+        }
+    }
+
+    auto get_serial_number(void)
+        -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> {
+        if (serial_number_set) {
+            return system_serial_number;
+        } else {
+            std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> empty_serial_number =
+                {"EMPTYSN"};
+            return empty_serial_number;
         }
     }
 
