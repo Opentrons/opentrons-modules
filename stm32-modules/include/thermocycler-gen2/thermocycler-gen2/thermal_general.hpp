@@ -10,6 +10,7 @@
 #include "core/thermistor_conversion.hpp"
 #include "systemwide.h"
 #include "thermocycler-gen2/errors.hpp"
+#include "thermocycler-gen2/peltier_filter.hpp"
 
 namespace thermal_general {
 
@@ -60,6 +61,8 @@ struct Peltier {
     ThermistorPair thermistors;  // Links to the front & back thermistors
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     PID pid;  // Current PID loop
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    peltier_filter::PeltierFilter filter = peltier_filter::PeltierFilter();
 
     /** Get the current temperature of this peltier.*/
     [[nodiscard]] auto current_temp() const -> double {

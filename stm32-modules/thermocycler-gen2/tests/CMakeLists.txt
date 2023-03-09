@@ -15,6 +15,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_system_pulse.cpp
     test_thermal_plate_task.cpp
     test_plate_control.cpp
+    test_peltier_filter.cpp
     test_tmc2130.cpp
     test_board_revision_hardware.cpp
     test_board_revision.cpp

@@ -321,6 +321,7 @@ class ThermalPlateTask {
                 // We entered an error state. Disable power output.
                 _state.system_status = State::ERROR;
                 policy.set_enabled(false);
+                reset_peltier_filters();
             } else {
                 // We went from an error state to no error state... so go idle
                 _state.system_status = State::IDLE;
@@ -349,6 +350,7 @@ class ThermalPlateTask {
         // Not an `else` so we can immediately resolve any issue setting outputs
         if (_state.system_status == State::ERROR) {
             policy.set_enabled(false);
+            reset_peltier_filters();
         }
 
         // Cache the timestamp from this message so the time difference for
@@ -454,6 +456,7 @@ class ThermalPlateTask {
             enabled = false;
         }
         policy.set_enabled(enabled);
+        reset_peltier_filters();
         _state.system_status = (enabled) ? State::PWM_TEST : State::IDLE;
 
         if (!ok) {
@@ -534,6 +537,7 @@ class ThermalPlateTask {
                 ret = policy.set_peltier(_peltier_center.id, 0.0F,
                                          PeltierDirection::PELTIER_HEATING);
             }
+            reset_peltier_filters();
             if (!ret) {
                 policy.set_enabled(false);
                 response.with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR;
@@ -551,6 +555,7 @@ class ThermalPlateTask {
         if (msg.setpoint <= 0.0F) {
             _state.system_status = State::IDLE;
             policy.set_enabled(false);
+            reset_peltier_filters();
         } else {
             if (_plate_control.set_new_target(msg.setpoint, volume_ul,
                                               msg.hold_time)) {
@@ -578,6 +583,7 @@ class ThermalPlateTask {
         }
 
         policy.set_enabled(false);
+        reset_peltier_filters();
         _state.system_status = State::IDLE;
 
         if (msg.from_system) {
@@ -596,6 +602,7 @@ class ThermalPlateTask {
             messages::DeactivateAllResponse{.responding_to_id = msg.id};
 
         policy.set_enabled(false);
+        reset_peltier_filters();
         if (_state.system_status != State::ERROR) {
             _state.system_status = State::IDLE;
         }
@@ -851,15 +858,16 @@ class ThermalPlateTask {
         auto ret = values.has_value();
         if (ret) {
             ret = set_peltier_power(_peltier_left, values.value().left_power,
-                                    policy);
+                                    elapsed_time, policy);
         }
         if (ret) {
             ret = set_peltier_power(_peltier_right, values.value().right_power,
-                                    policy);
+                                    elapsed_time, policy);
         }
         if (ret) {
-            ret = set_peltier_power(_peltier_center,
-                                    values.value().center_power, policy);
+            ret =
+                set_peltier_power(_peltier_center, values.value().center_power,
+                                  elapsed_time, policy);
         }
         if (!ret) {
             policy.set_enabled(false);
@@ -881,19 +889,24 @@ class ThermalPlateTask {
     }
 
     /**
-     * @brief Updates the power of a peltier. Calculates a new PID value and
-     * updates the power output. The \c temp_current field in the peltier
-     * must be updated before invoking this function.
+     * @brief Updates the power of a peltier, and intended to be called for
+     * closed-loop control. Accepts a power setting, applies a small filter,
+     * and updates the PWM to the peltier.
      *
      * @tparam Policy Provides platform-specific control mechanisms
      * @param[in] peltier The peltier to update
+     * @param[in] power The power to set this peltier to. This power will
+     * be filtered and may not reflect the actual setting sent to the PWM!
+     * @param[in] elapsed_time The time (in seconds) that has passed since
+     * the last control update
      * @param[in] policy Instance of the platform policy
      * @return True on success, false if an error occurs
      */
     template <ThermalPlateExecutionPolicy Policy>
-    auto set_peltier_power(Peltier& peltier, double power, Policy& policy)
-        -> bool {
+    auto set_peltier_power(Peltier& peltier, double power, Seconds elapsed_time,
+                           Policy& policy) -> bool {
         auto direction = PeltierDirection::PELTIER_HEATING;
+        power = peltier.filter.set_filtered(power, elapsed_time.count());
         if (power < 0.0F) {
             // The set_peltier function takes a *positive* percentage and a
             // direction
@@ -967,6 +980,12 @@ class ThermalPlateTask {
             return temp;
         }
         return (const_a * heatsink_temp) + ((1.0F + const_b) * temp) + const_c;
+    }
+
+    auto reset_peltier_filters() {
+        _peltier_left.filter.reset();
+        _peltier_right.filter.reset();
+        _peltier_center.filter.reset();
     }
 
     Queue& _message_queue;
