@@ -118,7 +118,7 @@ struct LidStepperState {
         motor_util::LidStepper::angle_to_microsteps(-30);
     // Velocity for plate lift actions. This provides a smoother lifting
     // action than the default open/close velocity.
-    constexpr static double PLATE_LIFT_VELOCITY_RPM = 80.0F;
+    constexpr static double PLATE_LIFT_VELOCITY_RPM = 10.0F;
     // Velocity for all lid movements other than plate lift
     constexpr static double LID_DEFAULT_VELOCITY_RPM = 125.0F;
     // States for lid stepper
@@ -1284,6 +1284,8 @@ class MotorTask {
             case LidStepperState::Status::LIFT_RAISE:
                 // Lower the plate lift mechanism and move the lid far enough
                 // that it will go PAST the switch.
+                std::ignore = policy.lid_stepper_set_rpm(
+                    LidStepperState::LID_DEFAULT_VELOCITY_RPM);
                 policy.lid_stepper_start(
                     LidStepperState::PLATE_LIFT_LOWER_DEGREES, true);
                 _lid_stepper_state.status = LidStepperState::Status::LIFT_LOWER;
