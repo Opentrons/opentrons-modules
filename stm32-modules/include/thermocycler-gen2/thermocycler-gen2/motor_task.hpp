@@ -118,13 +118,15 @@ struct LidStepperState {
         motor_util::LidStepper::angle_to_microsteps(15);
     constexpr static double PLATE_LIFT_NUDGE_INCREMENT =
         motor_util::LidStepper::angle_to_microsteps(0.5);
+    constexpr static double PLATE_LIFT_RETURN_DEGREES =
+        motor_util::LidStepper::angle_to_microsteps(3);
     constexpr static double PLATE_LIFT_RAISE_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(20);
     constexpr static double PLATE_LIFT_LOWER_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(-23);
     // Velocity for plate lift actions. This provides a smoother lifting
     // action than the default open/close velocity.
-    constexpr static double PLATE_LIFT_VELOCITY_RPM = 50.0F;
+    constexpr static double PLATE_LIFT_VELOCITY_RPM = 20.0F;
     // Velocity for all lid movements other than plate lift
     constexpr static double LID_DEFAULT_VELOCITY_RPM = 125.0F;
     // States for lid stepper
@@ -1291,9 +1293,9 @@ class MotorTask {
                 // all the way
                 break;
             case LidStepperState::Status::LIFT_NUDGE:
-                std::ignore = policy.lid_stepper_set_rpm(
-                    LidStepperState::LID_DEFAULT_VELOCITY_RPM);
-                policy.lid_stepper_start(-1 * _nudge_degrees, true);
+                //std::ignore = policy.lid_stepper_set_rpm(
+                //    LidStepperState::LID_DEFAULT_VELOCITY_RPM);
+                policy.lid_stepper_start(-1 * LidStepperState::PLATE_LIFT_RETURN_DEGREES, true);
                 _lid_stepper_state.status =
                     LidStepperState::Status::LIFT_NUDGE_DOWN;
                 break;
@@ -1305,12 +1307,14 @@ class MotorTask {
                     LidStepperState::PLATE_LIFT_NUDGE_FINAL_DEGREES) {
                     _nudge_degrees +=
                         LidStepperState::PLATE_LIFT_NUDGE_INCREMENT;
-                    policy.lid_stepper_start(_nudge_degrees, true);
+                    policy.lid_stepper_start(
+                        LidStepperState::PLATE_LIFT_RETURN_DEGREES + 
+                        LidStepperState::PLATE_LIFT_NUDGE_INCREMENT, true);
                     _lid_stepper_state.status =
                         LidStepperState::Status::LIFT_NUDGE;
                 } else {
                     policy.lid_stepper_start(
-                        LidStepperState::PLATE_LIFT_RAISE_DEGREES, true);
+                        LidStepperState::PLATE_LIFT_RAISE_DEGREES - _nudge_degrees, true);
                     _lid_stepper_state.status =
                         LidStepperState::Status::LIFT_RAISE;
                 }
