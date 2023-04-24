@@ -112,15 +112,19 @@ struct LidStepperState {
     // for this movement.
     constexpr static double CLOSE_OVERDRIVE_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(-5);
-    constexpr static double PLATE_LIFT_NUDGE_DEGREES = 
-        motor_util::LidStepper::angle_to_microsteps(10);
+    constexpr static double PLATE_LIFT_NUDGE_START_DEGREES =
+        motor_util::LidStepper::angle_to_microsteps(10.5);
+    constexpr static double PLATE_LIFT_NUDGE_FINAL_DEGREES =
+        motor_util::LidStepper::angle_to_microsteps(15);
+    constexpr static double PLATE_LIFT_NUDGE_INCREMENT =
+        motor_util::LidStepper::angle_to_microsteps(0.5);
     constexpr static double PLATE_LIFT_RAISE_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(20);
     constexpr static double PLATE_LIFT_LOWER_DEGREES =
         motor_util::LidStepper::angle_to_microsteps(-23);
     // Velocity for plate lift actions. This provides a smoother lifting
     // action than the default open/close velocity.
-    constexpr static double PLATE_LIFT_VELOCITY_RPM = 10.0F;
+    constexpr static double PLATE_LIFT_VELOCITY_RPM = 50.0F;
     // Velocity for all lid movements other than plate lift
     constexpr static double LID_DEFAULT_VELOCITY_RPM = 125.0F;
     // States for lid stepper
@@ -271,6 +275,7 @@ class MotorTask {
                         motor_util::MovementType::OpenLoop, 0),
           _seal_velocity(SealStepperState::DEFAULT_VELOCITY),
           _seal_acceleration(SealStepperState::DEFAULT_ACCEL),
+          _nudge_degrees(0),
           _seal_position(motor_util::SealStepper::Status::UNKNOWN) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
@@ -1000,9 +1005,9 @@ class MotorTask {
         std::ignore = policy.lid_stepper_set_rpm(
             LidStepperState::PLATE_LIFT_VELOCITY_RPM);
         // Now start a lid motor movement to closed position
+        _nudge_degrees = LidStepperState::PLATE_LIFT_NUDGE_START_DEGREES;
         policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
-        policy.lid_stepper_start(LidStepperState::PLATE_LIFT_NUDGE_DEGREES,
-                                 true);
+        policy.lid_stepper_start(_nudge_degrees, true);
         // Store the new state, as well as the response ID
         _lid_stepper_state.status = LidStepperState::Status::LIFT_NUDGE;
         _lid_stepper_state.position = motor_util::LidStepper::Position::BETWEEN;
@@ -1286,20 +1291,35 @@ class MotorTask {
                 // all the way
                 break;
             case LidStepperState::Status::LIFT_NUDGE:
-                policy.lid_stepper_start(
-                    -1 * LidStepperState::PLATE_LIFT_NUDGE_DEGREES, true);
-                _lid_stepper_state.status = LidStepperState::Status::LIFT_NUDGE_DOWN;
-                break;
-            case LidStepperState::Status::LIFT_NUDGE_DOWN:
-                policy.lid_stepper_start(
-                    LidStepperState::PLATE_LIFT_RAISE_DEGREES, true);
-                _lid_stepper_state.status = LidStepperState::Status::LIFT_RAISE;
-                break;
-            case LidStepperState::Status::LIFT_RAISE:
-                // Lower the plate lift mechanism and move the lid far enough
-                // that it will go PAST the switch.
                 std::ignore = policy.lid_stepper_set_rpm(
                     LidStepperState::LID_DEFAULT_VELOCITY_RPM);
+                policy.lid_stepper_start(-1 * _nudge_degrees, true);
+                _lid_stepper_state.status =
+                    LidStepperState::Status::LIFT_NUDGE_DOWN;
+                break;
+            case LidStepperState::Status::LIFT_NUDGE_DOWN:
+                // Slow speed for both repeat nudge and for final lift
+                std::ignore = policy.lid_stepper_set_rpm(
+                    LidStepperState::PLATE_LIFT_VELOCITY_RPM);
+                if (_nudge_degrees <
+                    LidStepperState::PLATE_LIFT_NUDGE_FINAL_DEGREES) {
+                    _nudge_degrees +=
+                        LidStepperState::PLATE_LIFT_NUDGE_INCREMENT;
+                    policy.lid_stepper_start(_nudge_degrees, true);
+                    _lid_stepper_state.status =
+                        LidStepperState::Status::LIFT_NUDGE;
+                } else {
+                    policy.lid_stepper_start(
+                        LidStepperState::PLATE_LIFT_RAISE_DEGREES, true);
+                    _lid_stepper_state.status =
+                        LidStepperState::Status::LIFT_RAISE;
+                }
+                break;
+            case LidStepperState::Status::LIFT_RAISE:
+                std::ignore = policy.lid_stepper_set_rpm(
+                    LidStepperState::LID_DEFAULT_VELOCITY_RPM);
+                // Lower the plate lift mechanism and move the lid far enough
+                // that it will go PAST the switch.
                 policy.lid_stepper_start(
                     LidStepperState::PLATE_LIFT_LOWER_DEGREES, true);
                 _lid_stepper_state.status = LidStepperState::Status::LIFT_LOWER;
@@ -1331,6 +1351,13 @@ class MotorTask {
     motor_util::MovementProfile _seal_profile;
     double _seal_velocity;
     double _seal_acceleration;
+    /**
+     * When performing a plate lift, a "nudge" is used to dislodge the plate
+     * while avoiding a sudden pop off the plate. The nudge increases in
+     * amplitude over multiple iterations; this variable tracks the current
+     * distance being set.
+     */
+    double _nudge_degrees;
     /**
      * @brief  We need to cache the position of the seal motor in addition to
      * the state in _seal_stepper_state due to the lack of limit switches.
