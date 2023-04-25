@@ -1293,9 +1293,10 @@ class MotorTask {
                 // all the way
                 break;
             case LidStepperState::Status::LIFT_NUDGE:
-                //std::ignore = policy.lid_stepper_set_rpm(
+                // std::ignore = policy.lid_stepper_set_rpm(
                 //    LidStepperState::LID_DEFAULT_VELOCITY_RPM);
-                policy.lid_stepper_start(-1 * LidStepperState::PLATE_LIFT_RETURN_DEGREES, true);
+                policy.lid_stepper_start(
+                    -1 * LidStepperState::PLATE_LIFT_RETURN_DEGREES, true);
                 _lid_stepper_state.status =
                     LidStepperState::Status::LIFT_NUDGE_DOWN;
                 break;
@@ -1308,13 +1309,17 @@ class MotorTask {
                     _nudge_degrees +=
                         LidStepperState::PLATE_LIFT_NUDGE_INCREMENT;
                     policy.lid_stepper_start(
-                        LidStepperState::PLATE_LIFT_RETURN_DEGREES + 
-                        LidStepperState::PLATE_LIFT_NUDGE_INCREMENT, true);
+                        LidStepperState::PLATE_LIFT_RETURN_DEGREES +
+                            LidStepperState::PLATE_LIFT_NUDGE_INCREMENT,
+                        true);
                     _lid_stepper_state.status =
                         LidStepperState::Status::LIFT_NUDGE;
                 } else {
                     policy.lid_stepper_start(
-                        LidStepperState::PLATE_LIFT_RAISE_DEGREES + LidStepperState::PLATE_LIFT_RETURN_DEGREES - _nudge_degrees, true);
+                        LidStepperState::PLATE_LIFT_RAISE_DEGREES +
+                            LidStepperState::PLATE_LIFT_RETURN_DEGREES -
+                            _nudge_degrees,
+                        true);
                     _lid_stepper_state.status =
                         LidStepperState::Status::LIFT_RAISE;
                 }
