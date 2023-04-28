@@ -1293,8 +1293,6 @@ class MotorTask {
                 // all the way
                 break;
             case LidStepperState::Status::LIFT_NUDGE:
-                // std::ignore = policy.lid_stepper_set_rpm(
-                //    LidStepperState::LID_DEFAULT_VELOCITY_RPM);
                 policy.lid_stepper_start(
                     -1 * LidStepperState::PLATE_LIFT_RETURN_DEGREES, true);
                 _lid_stepper_state.status =
