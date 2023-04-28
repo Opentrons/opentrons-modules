@@ -918,34 +918,68 @@ SCENARIO("motor task lid state machine") {
             test_motor_state_machine(tasks, steps);
         }
         WHEN("sending plate lift command") {
-            std::vector<MotorStep> steps = {
-                // First open past the switch
-                {.msg = messages::PlateLiftMessage{.id = 123},
-                 .lid_angle_increased = true,
-                 .lid_overdrive = true,
-                 .motor_state = MotorStep::MotorState::PLATE_LIFT,
-                 .lid_rpm =
-                     motor_task::LidStepperState::PLATE_LIFT_VELOCITY_RPM},
-                // Now close back below the switch
-                {.msg = messages::LidStepperComplete(),
-                 .lid_angle_decreased = true,
-                 .lid_overdrive = true},
-                // Now open back to the switch
-                {.msg = messages::LidStepperComplete(),
-                 .lid_angle_increased = true,
-                 .lid_overdrive = false},
-                // Now overdrive into the switch
-                {.msg = messages::LidStepperComplete(),
-                 .lid_angle_decreased = true,
-                 .lid_overdrive = true},
-                // Should send ACK now
-                {.msg = messages::LidStepperComplete(),
-                 .motor_state = MotorStep::MotorState::IDLE,
-                 .ack =
-                     messages::AcknowledgePrevious{
-                         .responding_to_id = 123,
-                         .with_error = errors::ErrorCode::NO_ERROR}},
-            };
+            std::vector<MotorStep> steps;
+            for (auto angle = motor_task::LidStepperState::
+                     PLATE_LIFT_NUDGE_START_DEGREES;
+                 angle <
+                 motor_task::LidStepperState::PLATE_LIFT_NUDGE_FINAL_DEGREES +
+                     motor_task::LidStepperState::PLATE_LIFT_NUDGE_INCREMENT;
+                 angle +=
+                 motor_task::LidStepperState::PLATE_LIFT_NUDGE_INCREMENT) {
+                // Incremental nudging
+                steps.push_back(MotorStep{
+                    .msg = messages::LidStepperComplete(),
+                    .lid_angle_increased = true,
+                    .lid_overdrive = true,
+                    .lid_rpm =
+                        motor_task::LidStepperState::PLATE_LIFT_VELOCITY_RPM,
+                });
+                steps.push_back(MotorStep{
+                    .msg = messages::LidStepperComplete(),
+                    .lid_angle_decreased = true,
+                    .lid_overdrive = true,
+                    .lid_rpm =
+                        motor_task::LidStepperState::PLATE_LIFT_VELOCITY_RPM,
+                });
+            }
+            // Final open - all the way to the limit
+            steps.push_back(MotorStep{
+                .msg = messages::LidStepperComplete(),
+                .lid_angle_increased = true,
+                .lid_overdrive = true,
+                .lid_rpm =
+                    motor_task::LidStepperState::PLATE_LIFT_VELOCITY_RPM});
+            // Return below switch
+            steps.push_back(MotorStep{
+                .msg = messages::LidStepperComplete(),
+                .lid_angle_increased = false,
+                .lid_angle_decreased = true,
+                .lid_overdrive = true,
+                .lid_rpm =
+                    motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM});
+            // Return to the switch
+            steps.push_back(MotorStep{
+                .msg = messages::LidStepperComplete(),
+                .lid_angle_increased = true,
+                .lid_overdrive = false,
+                .lid_rpm =
+                    motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM});
+            // Now BACK OUT of the switch
+            steps.push_back(MotorStep{
+                .msg = messages::LidStepperComplete(),
+                .lid_angle_increased = false,
+                .lid_angle_decreased = true,
+                .lid_overdrive = true,
+                .lid_rpm =
+                    motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM});
+            steps.push_back(
+                MotorStep{.msg = messages::LidStepperComplete(),
+                          .motor_state = MotorStep::MotorState::IDLE,
+                          .ack = messages::AcknowledgePrevious{
+                              .responding_to_id = 123,
+                              .with_error = errors::ErrorCode::NO_ERROR}});
+            steps[0].msg = messages::PlateLiftMessage{.id = 123};
+            steps[0].motor_state = MotorStep::MotorState::PLATE_LIFT;
             test_motor_state_machine(tasks, steps);
         }
         GIVEN("seal retraction switch is triggered") {

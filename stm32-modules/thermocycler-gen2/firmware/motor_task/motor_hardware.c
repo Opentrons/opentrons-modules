@@ -104,7 +104,7 @@ extern "C" {
 /** Above this speed, will get skipping */
 #define LID_RPM_MAX (125)
 /** Below this speed reduces torque */
-#define LID_RPM_MIN (75)
+#define LID_RPM_MIN (10)
 
 // ----------------------------------------------------------------------------
 // Local typedefs
