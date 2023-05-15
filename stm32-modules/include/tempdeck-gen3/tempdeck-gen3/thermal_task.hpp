@@ -400,8 +400,8 @@ class ThermalTask {
         }
 
         _offset_constants = constants;
-        //auto ret = _eeprom.write_offset_constants(constants, policy);
-        //if (ret) {
+        // auto ret = _eeprom.write_offset_constants(constants, policy);
+        // if (ret) {
         //    // Succesful, so overwrite the task's constants
         //    _offset_constants = constants;
         //} else {
