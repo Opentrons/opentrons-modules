@@ -412,13 +412,14 @@ class ThermalTask {
             constants.c = message.c.value();
         }
 
-        auto ret = _eeprom.write_offset_constants(constants, policy);
-        if (ret) {
-            // Succesful, so overwrite the task's constants
-            _offset_constants = constants;
-        } else {
-            response.with_error = errors::ErrorCode::SYSTEM_EEPROM_ERROR;
-        }
+        _offset_constants = constants;
+        //auto ret = _eeprom.write_offset_constants(constants, policy);
+        //if (ret) {
+        //    // Succesful, so overwrite the task's constants
+        //    _offset_constants = constants;
+        //} else {
+        //    response.with_error = errors::ErrorCode::SYSTEM_EEPROM_ERROR;
+        //}
 
         static_cast<void>(
             _task_registry->send_to_address(response, Queues::HostAddress));
@@ -427,8 +428,8 @@ class ThermalTask {
     template <ThermalPolicy Policy>
     auto visit_message(const messages::GetOffsetConstantsMessage& message,
                        Policy& policy) -> void {
-        _offset_constants =
-            _eeprom.get_offset_constants(_offset_constants, policy);
+        //_offset_constants =
+        //    _eeprom.get_offset_constants(_offset_constants, policy);
 
         auto response =
             messages::GetOffsetConstantsResponse{.responding_to_id = message.id,
