@@ -21,7 +21,7 @@ concept ThermalPolicy = requires(Policy& p) {
     { p.set_fan_power(1.0) } -> std::same_as<bool>;
     { p.get_fan_rpm() } -> std::same_as<double>;
 }
-&&at24c0xc::AT24C0xC_Policy<Policy>;
+&&m24128::M24128_Policy<Policy>;
 
 using Message = messages::ThermalMessage;
 
@@ -122,8 +122,7 @@ class ThermalTask {
 
     static constexpr double MILLISECONDS_TO_SECONDS = 0.001F;
 
-    static constexpr size_t EEPROM_PAGES = 32;
-    static constexpr uint8_t EEPROM_ADDRESS = 0b1010010;
+    static constexpr uint8_t EEPROM_ADDRESS = 0x50;
 
     static constexpr const double OFFSET_DEFAULT_CONST_A = 0.0F;
     static constexpr const double OFFSET_DEFAULT_CONST_B = 0.0F;
@@ -428,7 +427,7 @@ class ThermalTask {
     auto visit_message(const messages::GetOffsetConstantsMessage& message,
                        Policy& policy) -> void {
         _offset_constants =
-            _eeprom.get_offset_constants(_offset_constants, policy);
+            _eeprom.get_offset_constants(eeprom::OffsetConstants{.a=0,.b=0,.c=0}, policy);
 
         auto response =
             messages::GetOffsetConstantsResponse{.responding_to_id = message.id,
@@ -539,7 +538,7 @@ class ThermalTask {
     Fan _fan;
     Peltier _peltier;
     ot_utils::pid::PID _pid;
-    eeprom::Eeprom<EEPROM_PAGES, EEPROM_ADDRESS> _eeprom;
+    eeprom::Eeprom<EEPROM_ADDRESS> _eeprom;
     eeprom::OffsetConstants _offset_constants;
 };
 

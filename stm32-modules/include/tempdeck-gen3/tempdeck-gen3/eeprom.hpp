@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "core/at24c0xc.hpp"
+#include "core/m24128.hpp"
 
 namespace eeprom {
 
@@ -39,7 +39,7 @@ struct OffsetConstants {
  * @brief Encapsulates interactions with the EEPROM on the Thermocycler
  * mainboard. Allows reading and writing the thermal offset constants.
  */
-template <size_t PAGES, uint8_t ADDRESS>
+template <uint8_t ADDRESS>
 class Eeprom {
   public:
     Eeprom() : _eeprom() {}
@@ -54,7 +54,7 @@ class Eeprom {
      * @return OffsetConstants containing the A, B and C constants, or the
      * default values if the EEPROM doesn't have programmed values.
      */
-    template <at24c0xc::AT24C0xC_Policy Policy>
+    template <m24128::M24128_Policy Policy>
     [[nodiscard]] auto get_offset_constants(const OffsetConstants& defaults,
                                             Policy& policy) -> OffsetConstants {
         OffsetConstants ret = defaults;
@@ -79,7 +79,7 @@ class Eeprom {
      * @param policy Instance of Policy
      * @return True if the constants were written, false otherwise
      */
-    template <at24c0xc::AT24C0xC_Policy Policy>
+    template <m24128::M24128_Policy Policy>
     auto write_offset_constants(OffsetConstants constants, Policy& policy)
         -> bool {
         // Write the constants
@@ -101,7 +101,7 @@ class Eeprom {
                 static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG),
                 static_cast<uint32_t>(EEPROMFlag::CONSTANTS_WRITTEN), policy);
         }
-        if (!ret) {
+        if (!ret && false) {
             // Attempt to flag that the constants are not valid
             static_cast<void>(_eeprom.template write_value(
                 static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG),
@@ -146,7 +146,7 @@ class Eeprom {
      * @param policy Instance of Policy for reading
      * @return double containing the constant
      */
-    template <at24c0xc::AT24C0xC_Policy Policy>
+    template <m24128::M24128_Policy Policy>
     [[nodiscard]] auto read_const(EEPROMPageMap page, Policy& policy)
         -> double {
         if (page != EEPROMPageMap::CONST_FLAG) {
@@ -167,7 +167,7 @@ class Eeprom {
      * @param policy Instance of Policy for reading
      * @return EEPROMFlag containing the state of the constants in EEPROM
      */
-    template <at24c0xc::AT24C0xC_Policy Policy>
+    template <m24128::M24128_Policy Policy>
     [[nodiscard]] auto read_const_flag(Policy& policy) -> EEPROMFlag {
         auto val = _eeprom.template read_value<uint32_t>(
             static_cast<uint8_t>(EEPROMPageMap::CONST_FLAG), policy);
@@ -182,7 +182,7 @@ class Eeprom {
     }
 
     // Handle for the actual EEPROM IC
-    at24c0xc::AT24C0xC<PAGES, ADDRESS> _eeprom;
+    m24128::M24128<ADDRESS> _eeprom;
     // Whether the constants have been read from the EEPROM since startup.
     // Even if the EEPROM is empty, this flag is set after attempting
     // to read so that the firmware doesn't try to keep making redundant
