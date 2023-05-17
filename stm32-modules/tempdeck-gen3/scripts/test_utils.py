@@ -279,11 +279,11 @@ class Tempdeck():
         NONE), they will not be written.
         '''
         msg = 'M116'
-        if a:
+        if a is not None:
             msg += f' A{a}'
-        if b:
+        if b is not None:
             msg += f' B{b}'
-        if c:
+        if c is not None:
             msg += f' C{c}'
         msg += '\n'
         self._send_and_recv(msg, 'M116 OK')

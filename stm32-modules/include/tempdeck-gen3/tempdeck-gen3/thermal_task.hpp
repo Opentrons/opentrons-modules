@@ -426,9 +426,8 @@ class ThermalTask {
     template <ThermalPolicy Policy>
     auto visit_message(const messages::GetOffsetConstantsMessage& message,
                        Policy& policy) -> void {
-        _offset_constants =
-            _eeprom.get_offset_constants(eeprom::OffsetConstants{.a=0,.b=0,.c=0}, policy);
-
+        std::ignore = policy;
+        // Don't readback from EEPROM - values were updated on startup.
         auto response =
             messages::GetOffsetConstantsResponse{.responding_to_id = message.id,
                                                  .a = _offset_constants.a,

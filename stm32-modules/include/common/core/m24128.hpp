@@ -85,7 +85,7 @@ class M24128 {
         if (!policy.i2c_read(_address, _buffer.begin(), PAGE_LENGTH)) {
             return std::nullopt;
         }
-        T value;
+        T value{};
         memcpy(&value, &_buffer[0], sizeof(value));
         return RT(value);
     }
@@ -96,9 +96,13 @@ class M24128 {
             return false;
         }
         uint16_t start_addr = page * PAGE_LENGTH;
-        // MSB then LSB
+        // MSB is first, followed by LSB
+
+        //NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         _buffer.at(0) = static_cast<uint8_t>((start_addr & 0xFF00) >> 8);
+        //NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         _buffer.at(1) = static_cast<uint8_t>((start_addr)&0xFF);
+
         return true;
     }
 

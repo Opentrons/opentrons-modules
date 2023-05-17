@@ -493,8 +493,7 @@ TEST_CASE("closed loop thermal control") {
 TEST_CASE("thermal task offset constants message handling") {
     auto *tasks = tasks::BuildTasks();
     TestThermalPolicy policy;
-    eeprom::Eeprom<decltype(tasks->_thermal_task)::EEPROM_ADDRESS>
-        eeprom;
+    eeprom::Eeprom<decltype(tasks->_thermal_task)::EEPROM_ADDRESS> eeprom;
 
     WHEN("getting the offset constants") {
         auto get_msg = messages::GetOffsetConstantsMessage{.id = 1};
