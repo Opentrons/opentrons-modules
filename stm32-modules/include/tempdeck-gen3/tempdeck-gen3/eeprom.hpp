@@ -77,6 +77,8 @@ class Eeprom {
             }
         }
 
+        _initialized = true;
+
         return ret;
     }
 
