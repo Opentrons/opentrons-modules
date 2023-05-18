@@ -24,10 +24,15 @@
 /** Size of register address: 1 byte.*/
 #define REGISTER_ADDR_LEN (1)
 
-#define SDA_PIN (GPIO_PIN_7)
-#define SDA_PORT (GPIOB)
-#define SCL_PIN (GPIO_PIN_15)
-#define SCL_PORT (GPIOA)
+#define I2C1_SDA_PIN (GPIO_PIN_7)
+#define I2C1_SDA_PORT (GPIOB)
+#define I2C1_SCL_PIN (GPIO_PIN_15)
+#define I2C1_SCL_PORT (GPIOA)
+
+#define I2C3_SDA_PIN (GPIO_PIN_9)
+#define I2C3_SDA_PORT (GPIOC)
+#define I2C3_SCL_PIN (GPIO_PIN_8)
+#define I2C3_SCL_PORT (GPIOA)
 
 /** Private typedef */
 
@@ -357,27 +362,53 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
     {
         __HAL_RCC_GPIOA_CLK_ENABLE();
         __HAL_RCC_GPIOB_CLK_ENABLE();
-        GPIO_InitStruct.Pin = SCL_PIN;
+        GPIO_InitStruct.Pin = I2C1_SCL_PIN;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
         GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
-        HAL_GPIO_Init(SCL_PORT, &GPIO_InitStruct);
+        HAL_GPIO_Init(I2C1_SCL_PORT, &GPIO_InitStruct);
 
-        GPIO_InitStruct.Pin = SDA_PIN;
+        GPIO_InitStruct.Pin = I2C1_SDA_PIN;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
         GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
-        HAL_GPIO_Init(SDA_PORT, &GPIO_InitStruct);
+        HAL_GPIO_Init(I2C1_SDA_PORT, &GPIO_InitStruct);
 
         /* Peripheral clock enable */
         __HAL_RCC_I2C1_CLK_ENABLE();
-        /* I2C2 interrupt Init */
+        /* I2C1 interrupt Init */
         HAL_NVIC_SetPriority(I2C1_EV_IRQn, 6, 0);
         HAL_NVIC_EnableIRQ(I2C1_EV_IRQn);
         HAL_NVIC_SetPriority(I2C1_ER_IRQn, 6, 0);
         HAL_NVIC_EnableIRQ(I2C1_ER_IRQn);
+    }
+    if(hi2c->Instance==I2C3)
+    {
+        __HAL_RCC_GPIOA_CLK_ENABLE();
+        __HAL_RCC_GPIOC_CLK_ENABLE();
+        GPIO_InitStruct.Pin = I2C3_SCL_PIN;
+        GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+        GPIO_InitStruct.Pull = GPIO_NOPULL;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Alternate = GPIO_AF2_I2C3;
+        HAL_GPIO_Init(I2C3_SCL_PORT, &GPIO_InitStruct);
+
+        GPIO_InitStruct.Pin = I2C3_SDA_PIN;
+        GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+        GPIO_InitStruct.Pull = GPIO_NOPULL;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Alternate = GPIO_AF8_I2C3;
+        HAL_GPIO_Init(I2C3_SDA_PORT, &GPIO_InitStruct);
+
+        /* Peripheral clock enable */
+        __HAL_RCC_I2C3_CLK_ENABLE();
+        /* I2C3 interrupt Init */
+        HAL_NVIC_SetPriority(I2C3_EV_IRQn, 6, 0);
+        HAL_NVIC_EnableIRQ(I2C3_EV_IRQn);
+        HAL_NVIC_SetPriority(I2C3_ER_IRQn, 6, 0);
+        HAL_NVIC_EnableIRQ(I2C3_ER_IRQn);
     }
 }
 
@@ -435,4 +466,14 @@ void I2C1_EV_IRQHandler(void)
 void I2C1_ER_IRQHandler(void)
 {
     HAL_I2C_ER_IRQHandler(&i2c_hardware.i2c[I2C_BUS_THERMAL].handle);
+}
+
+void I2C3_EV_IRQHandler(void)
+{
+    HAL_I2C_EV_IRQHandler(&i2c_hardware.i2c[I2C_BUS_LED].handle);
+}
+
+void I2C3_ER_IRQHandler(void)
+{
+    HAL_I2C_ER_IRQHandler(&i2c_hardware.i2c[I2C_BUS_LED].handle);
 }
