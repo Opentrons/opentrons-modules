@@ -98,9 +98,9 @@ class M24128 {
         uint16_t start_addr = page * PAGE_LENGTH;
         // MSB is first, followed by LSB
 
-        //NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         _buffer.at(0) = static_cast<uint8_t>((start_addr & 0xFF00) >> 8);
-        //NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         _buffer.at(1) = static_cast<uint8_t>((start_addr)&0xFF);
 
         return true;
