@@ -34,6 +34,13 @@ concept M24128_Policy = requires(Policy &policy, uint8_t addr,
     { policy.set_write_protect(true) } -> std::same_as<void>;
 };
 
+template <typename T>
+concept M24128_Serializable =
+    // Must be serializable to a single page
+    sizeof(T) < PAGE_LENGTH &&
+    // The type must be trivially serializable so memcpy is valid
+    std::is_trivially_copyable_v<T>;
+
 template <uint8_t ADDRESS>
 class M24128 {
   private:
@@ -45,11 +52,8 @@ class M24128 {
   public:
     static const constexpr uint16_t PAGES = 128;
 
-    template <typename T, M24128_Policy Policy>
-    requires std::is_trivially_copyable_v<T>
+    template <M24128_Serializable T, M24128_Policy Policy>
     auto write_value(uint8_t page, T value, Policy &policy) -> bool {
-        // The type to be written must be serializable in a single buffer
-        static_assert(sizeof(T) <= PAGE_LENGTH, "Type T must be max 64 bytes.");
         constexpr size_t Length = sizeof(T) + ADDRESS_BYTES;
 
         if (!populate_address(page)) {
@@ -65,13 +69,10 @@ class M24128 {
         return ret;
     }
 
-    template <typename T, M24128_Policy Policy>
-    requires std::is_trivially_copyable_v<T>
+    template <M24128_Serializable T, M24128_Policy Policy>
     [[nodiscard]] auto read_value(uint8_t page, Policy &policy)
         -> std::optional<T> {
         using RT = std::optional<T>;
-
-        static_assert(sizeof(T) <= PAGE_LENGTH, "Type T must be max 64 bytes.");
 
         if (!populate_address(page)) {
             return std::nullopt;
