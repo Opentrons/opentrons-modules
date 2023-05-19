@@ -288,6 +288,46 @@ bool i2c_hardware_read_data(I2C_BUS bus, uint16_t addr, uint8_t *data, uint16_t 
 
 }
 
+
+bool i2c_hardware_mem_write(I2C_BUS bus, uint16_t addr, uint8_t reg, 
+                            uint8_t *data, uint16_t len) {
+    const TickType_t max_block_time = pdMS_TO_TICKS(100);
+    BaseType_t sem_ret;
+    uint32_t notification_val = 0;
+    HAL_StatusTypeDef hal_ret;
+
+    if(!IS_I2C_BUS(bus)) {
+        return false;
+    }
+    
+    I2C_Instance *instance = &i2c_hardware.i2c[bus];
+    
+    if(!i2c_hardware.initialized) {
+        return false;
+    }
+
+    sem_ret = xSemaphoreTake(instance->semaphore, portMAX_DELAY);
+    if(sem_ret != pdTRUE) {
+        return false;
+    }
+
+    // Set up notification info
+    instance->task_to_notify = xTaskGetCurrentTaskHandle();
+
+    hal_ret = HAL_I2C_Mem_Write_IT(&instance->handle, addr, (uint16_t)reg,
+                                   REGISTER_ADDR_LEN, data, 
+                                   len);
+    if(hal_ret == HAL_OK) {
+        // Block on the interrupt for transmit_complete
+        notification_val = ulTaskNotifyTake(pdTRUE, max_block_time);
+    }
+
+    // Ignore return, we would not return an error here even if it fails
+    (void)xSemaphoreGive(instance->semaphore);
+
+    return (notification_val == 1) && (hal_ret == HAL_OK);
+}
+
 /*
  * Static functions 
  */

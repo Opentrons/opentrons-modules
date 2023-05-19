@@ -69,6 +69,20 @@ bool i2c_hardware_write_data(I2C_BUS bus, uint16_t addr, uint8_t *data,
 bool i2c_hardware_read_data(I2C_BUS bus, uint16_t addr, uint8_t *data,
                             uint16_t len);
 
+/**
+ * @brief Writes an arbitrary array of data to a device, preceded by a
+ * register address.
+ * @note Thread safe
+ *
+ * @param addr I2C device address to write to
+ * @param[in] reg The register address to write to
+ * @param data Pointer to array of data to write
+ * @param len Number of bytes in \c data
+ * @return True if the write was succesful, false otherwise
+ */
+bool i2c_hardware_mem_write(I2C_BUS bus, uint16_t addr, uint8_t reg,
+                            uint8_t *data, uint16_t len);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
