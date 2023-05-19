@@ -67,13 +67,17 @@ TEST_CASE("IS31FL driver functionality") {
         }
         WHEN("setting a few channels to nonzero pwm/current") {
             subject.initialize(policy);
+            subject.set_pwm(0.3);
             subject.set_pwm(0, 1.0);
             subject.set_pwm(2, 0.5);
             subject.set_current(0, 1.0);
             subject.set_current(1, 0.5);
             subject.send_update(policy);
             THEN("the correct registers are updated") {
-
+                REQUIRE(policy.check_register(1) != policy.check_register(2));
+                REQUIRE(policy.check_register(1) == 0xFF);
+                REQUIRE(policy.check_register(0x14) == 0x30);
+                REQUIRE(policy.check_register(0x14) != policy.check_register(0x15));
             }
         }
     }
