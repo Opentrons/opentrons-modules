@@ -1,16 +1,16 @@
 #include "catch2/catch.hpp"
 #include "tempdeck-gen3/eeprom.hpp"
-#include "test/test_at24c0xc_policy.hpp"
+#include "test/test_m24128_policy.hpp"
 
-using namespace at24c0xc_test_policy;
+using namespace m24128_test_policy;
 using namespace eeprom;
 
 static auto _default = OffsetConstants{.a = 68, .b = 5, .c = 9};
 
 TEST_CASE("eeprom class initialization tracking") {
     GIVEN("an EEPROM") {
-        auto policy = TestAT24C0XCPolicy<32>();
-        auto eeprom = Eeprom<32, 0x10>();
+        auto policy = TestM24128Policy();
+        auto eeprom = Eeprom<0x10>();
         THEN("it starts as noninitialized") { REQUIRE(!eeprom.initialized()); }
         WHEN("reading from the EEPROM") {
             auto defaults = _default;
@@ -24,8 +24,8 @@ TEST_CASE("eeprom class initialization tracking") {
 
 TEST_CASE("blank eeprom reading") {
     GIVEN("an EEPROM") {
-        auto policy = TestAT24C0XCPolicy<32>();
-        auto eeprom = Eeprom<32, 0x10>();
+        auto policy = TestM24128Policy();
+        auto eeprom = Eeprom<0x10>();
         WHEN("reading before writing anything") {
             auto defaults = _default;
             auto readback = eeprom.get_offset_constants(defaults, policy);
@@ -43,8 +43,8 @@ TEST_CASE("blank eeprom reading") {
 
 TEST_CASE("eeprom reading and writing") {
     GIVEN("an EEPROM and constants A= -3.5, B = 10 and C = -12") {
-        auto policy = TestAT24C0XCPolicy<32>();
-        auto eeprom = Eeprom<32, 0x10>();
+        auto policy = TestM24128Policy();
+        auto eeprom = Eeprom<0x10>();
         OffsetConstants constants = {.a = 32, .b = -33, .c = -44};
         WHEN("writing the constants") {
             REQUIRE(eeprom.write_offset_constants(constants, policy));

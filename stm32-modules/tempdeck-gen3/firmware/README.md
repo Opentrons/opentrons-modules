@@ -4,7 +4,7 @@ This section provides a general overview of the firmware architecture for the Te
 ## Drivers
 Hardware peripherals attached to the STM32 are classified into drivers. These drivers are not given their own tasks, but are rather utilized _by_ the software tasks. Lower level hardware control, such as simple access to internal peripherals, is covered by 'Hardware Policy' code. Drivers are distinct in that they maintain their own state.
 
-- __EEPROM Driver__ - Provides functionality to read and write the EEPROM on the system over I2C. See `../../include/common/core/at24c0xc.hpp`
+- __EEPROM Driver__ - Provides functionality to read and write the EEPROM on the system over I2C. See `../../include/common/core/m24128.hpp`
 - __LED Driver__ - Provides functionality to write to the LED's on the system. Uses I2C.
 - __PID Driver__ - Provides a unified interface to calculate Proportional Integral Derivative control. See `../../include/common/core/pid.hpp`
 - __ADS1115 Driver__ - Provides an interface to control the ADS1115 ADC IC on the main board. See `../../include/common/core/ads1115.hpp`

@@ -3,9 +3,9 @@
 #include <cmath>
 #include <cstdint>
 
-#include "test/test_at24c0xc_policy.hpp"
+#include "test/test_m24128_policy.hpp"
 
-struct TestThermalPolicy : public at24c0xc_test_policy::TestAT24C0XCPolicy<32> {
+struct TestThermalPolicy : public m24128_test_policy::TestM24128Policy {
     auto enable_peltier() -> void { _enabled = true; }
 
     auto disable_peltier() -> void {
