@@ -14,6 +14,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_fixed_point.cpp
     test_gcode_parse.cpp 
     test_generic_timer.cpp
+    test_is31fl_driver.cpp
     test_m24128.cpp
     test_pid.cpp
     test_queue_aggregator.cpp

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <algorithm>
+#include <array>
+
+#include "core/is31fl_driver.hpp"
 #include "hal/message_queue.hpp"
 #include "tempdeck-gen3/messages.hpp"
 #include "tempdeck-gen3/tasks.hpp"
@@ -10,7 +14,8 @@ template <typename Policy>
 concept UIPolicy = requires(Policy& p) {
     // A function to set the heartbeat LED on or off
     {p.set_heartbeat_led(true)};
-};
+}
+&&is31fl::IS31FL_Policy<Policy>;
 
 // Structure to hold runtime info for the heartbeat LED.
 // The LED is run with a psuedo-pwm to confirm that the
@@ -55,6 +60,31 @@ class Heartbeat {
     [[nodiscard]] auto pwm() const -> uint8_t { return _pwm; }
 };
 
+enum Color { W, R, G, B };
+
+// There are 3 channels per color
+using ChannelMapping = std::array<size_t, 3>;
+
+static constexpr ChannelMapping white_channels{3, 4, 5};
+static constexpr ChannelMapping red_channels{6, 9, 12};
+static constexpr ChannelMapping green_channels{7, 10, 13};
+static constexpr ChannelMapping blue_channels{8, 11, 14};
+
+static auto color_to_channels(Color color) -> const ChannelMapping& {
+    switch (color) {
+        case Color::W:
+            return white_channels;
+        case Color::R:
+            return red_channels;
+        case Color::G:
+            return green_channels;
+        case Color::B:
+            return blue_channels;
+        default:
+            return white_channels;
+    }
+}
+
 using Message = messages::UIMessage;
 
 template <template <class> class QueueImpl>
@@ -68,11 +98,15 @@ class UITask {
     // The timer driving LED update frequency should run at this period
     static constexpr uint32_t UPDATE_PERIOD_MS = 1;
 
+    static constexpr uint8_t LED_DRIVER_I2C_ADDRESS = 0xD8;
+
     explicit UITask(Queue& q, Aggregator* aggregator)
         : _message_queue(q),
           _task_registry(aggregator),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          _heartbeat() {}
+          _heartbeat(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          _led_driver() {}
     UITask(const UITask& other) = delete;
     auto operator=(const UITask& other) -> UITask& = delete;
     UITask(UITask&& other) noexcept = delete;
@@ -92,6 +126,15 @@ class UITask {
     template <UIPolicy Policy>
     auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
+
+        if (!_led_driver.initialized()) {
+            _led_driver.initialize(policy);
+            // Set the status bar to all white
+            set_color_power(Color::W, 1);
+            _led_driver.set_pwm(1.0F);
+            _led_driver.send_update(policy);
+        }
+
         _message_queue.recv(&message);
         auto visit_helper = [this, &policy](auto& message) -> void {
             this->visit_message(message, policy);
@@ -113,9 +156,23 @@ class UITask {
         policy.set_heartbeat_led(_heartbeat.tick());
     }
 
+    /**
+     * @brief Set the power (separate from PWM) for a color. Each color has
+     * 3 channels, so this helper will set all of the channels.
+     */
+    auto set_color_power(Color color, float power) -> bool {
+        const auto& channels = color_to_channels(color);
+
+        return std::ranges::all_of(channels.cbegin(), channels.cend(),
+                                   [power, this](size_t c) {
+                                       return _led_driver.set_current(c, power);
+                                   });
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     Heartbeat _heartbeat;
+    is31fl::IS31FL<LED_DRIVER_I2C_ADDRESS> _led_driver;
 };
 
 };  // namespace ui_task

@@ -1,5 +1,6 @@
 #include "firmware/freertos_ui_task.hpp"
 
+#include "firmware/i2c_hardware.h"
 #include "firmware/ui_hardware.h"
 #include "firmware/ui_policy.hpp"
 #include "ot_utils/freertos/freertos_timer.hpp"
@@ -36,6 +37,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     _top_task.provide_aggregator(aggregator);
 
     ui_hardware_initialize();
+    i2c_hardware_init();
 
     auto policy = UIPolicy();
     _ui_timer.start();
