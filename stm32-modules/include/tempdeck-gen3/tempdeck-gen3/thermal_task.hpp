@@ -399,13 +399,13 @@ class ThermalTask {
         }
 
         _offset_constants = constants;
-        // auto ret = _eeprom.write_offset_constants(constants, policy);
-        // if (ret) {
-        //    // Succesful, so overwrite the task's constants
-        //    _offset_constants = constants;
-        //} else {
-        //    response.with_error = errors::ErrorCode::SYSTEM_EEPROM_ERROR;
-        //}
+        auto ret = _eeprom.write_offset_constants(constants, policy);
+        if (ret) {
+            // Succesful, so overwrite the task's constants
+            _offset_constants = constants;
+        } else {
+            response.with_error = errors::ErrorCode::SYSTEM_EEPROM_ERROR;
+        }
 
         static_cast<void>(
             _task_registry->send_to_address(response, Queues::HostAddress));
