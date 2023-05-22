@@ -580,6 +580,47 @@ TEST_CASE("thermal task offset constants message handling") {
     }
 }
 
+TEST_CASE("thermal task offset constant compensation") {
+    auto *tasks = tasks::BuildTasks();
+    TestThermalPolicy policy;
+    eeprom::Eeprom<decltype(tasks->_thermal_task)::EEPROM_ADDRESS> eeprom;
+    thermistor_conversion::Conversion<lookups::KS103J2G> converter(
+        decltype(tasks->_thermal_task)::THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM,
+        decltype(tasks->_thermal_task)::ADC_BIT_MAX, false);
+    GIVEN("a set of offset constants") {
+        double a = GENERATE(0, -0.5, 0.5);
+        double b = GENERATE(0, -0.5, 0.5);
+        double c = GENERATE(0, -0.5, 0.5);
+        auto constants = eeprom::OffsetConstants{.a = a, .b = b, .c = c};
+        REQUIRE(eeprom.write_offset_constants(constants, policy));
+        WHEN("receiving a new temperature reading") {
+            static constexpr double PLATE_TEMP = 25.0;
+            static constexpr double HEATSINK_TEMP = 50.0;
+            auto thermistors_msg = messages::ThermistorReadings{
+                .timestamp = 1000,
+                .plate_1 = converter.backconvert(PLATE_TEMP),
+                .plate_2 = converter.backconvert(PLATE_TEMP),
+                .heatsink = converter.backconvert(HEATSINK_TEMP),
+                .imeas = 555,
+            };
+            tasks->_thermal_queue.backing_deque.push_back(thermistors_msg);
+            tasks->_thermal_task.run_once(policy);
+            THEN("the readings are updated properly") {
+                // Alg is READING = (A * heatsink) + ((B+1) * plate) + C
+                double expected =
+                    (a * HEATSINK_TEMP) + ((b + 1.0) * PLATE_TEMP) + c;
+                auto readings = tasks->_thermal_task.get_readings();
+                REQUIRE_THAT(readings.heatsink_temp.value(),
+                             Catch::Matchers::WithinAbs(HEATSINK_TEMP, 0.1));
+                REQUIRE_THAT(readings.plate_temp_1.value(),
+                             Catch::Matchers::WithinAbs(expected, 0.1));
+                REQUIRE_THAT(readings.plate_temp_2.value(),
+                             Catch::Matchers::WithinAbs(expected, 0.1));
+            }
+        }
+    }
+}
+
 TEST_CASE("thermal task power debug functionality") {
     auto *tasks = tasks::BuildTasks();
     TestThermalPolicy policy;
