@@ -211,10 +211,13 @@ class ThermalTask {
         // Reading conversion
 
         _readings.heatsink_temp = convert_thermistor(message.heatsink, false);
+        auto heatsink_temp = _readings.heatsink_temp.has_value()
+                                 ? _readings.heatsink_temp.value()
+                                 : 0;
         _readings.plate_temp_1 =
-            convert_thermistor(message.plate_1, true, _readings.heatsink_temp);
+            convert_thermistor(message.plate_1, true, heatsink_temp);
         _readings.plate_temp_2 =
-            convert_thermistor(message.plate_2, true, _readings.heatsink_temp);
+            convert_thermistor(message.plate_2, true, heatsink_temp);
 
         _readings.peltier_current_milliamps =
             PeltierReadback::adc_to_milliamps(message.imeas);
@@ -518,10 +521,11 @@ class ThermalTask {
     }
 
     auto convert_thermistor(uint32_t raw_reading, bool add_offsets,
-                            double heatsink_temp = 0.0) -> double {
+                            double heatsink_temp = 0.0)
+        -> std::optional<double> {
         auto res = _converter.convert(raw_reading);
         if (!std::holds_alternative<double>(res)) {
-            return 0
+            return std::nullopt;
         }
         double reading = std::get<double>(res);
         if (add_offsets) {
