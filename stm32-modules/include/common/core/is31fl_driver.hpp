@@ -23,11 +23,9 @@ concept IS31FL_Policy = requires(Policy& policy, uint8_t address, uint8_t reg,
     { policy.i2c_write(address, reg, array) } -> std::same_as<bool>;
 };
 
-
 template <uint8_t Address>
 class IS31FL {
   public:
-
     template <IS31FL_Policy Policy>
     auto initialize(Policy& policy) -> bool {
         if (_initialized) {
@@ -110,14 +108,15 @@ class IS31FL {
     static auto current_reg_conversion(float power) -> uint8_t {
         power = std::clamp(power, 0.0F, 1.0F);
         return CURRENT_LOOKUP.at(static_cast<size_t>(
-            power * static_cast<float>(CURRENT_VALUE_COUNT-1)));
+            power * static_cast<float>(CURRENT_VALUE_COUNT - 1)));
     }
 
     /**
      * @brief Helper to convert from a % power to a current register setting
      */
     static auto pwm_reg_conversion(float power) -> uint8_t {
-        static constexpr auto max_pwm = static_cast<float>(static_cast<uint8_t>(0xFF));
+        static constexpr auto max_pwm =
+            static_cast<float>(static_cast<uint8_t>(0xFF));
         power = std::clamp(power, 0.0F, 1.0F);
         return static_cast<uint8_t>(power * max_pwm);
     }

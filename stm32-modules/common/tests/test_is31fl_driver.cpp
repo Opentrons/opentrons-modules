@@ -77,7 +77,8 @@ TEST_CASE("IS31FL driver functionality") {
                 REQUIRE(policy.check_register(1) != policy.check_register(2));
                 REQUIRE(policy.check_register(1) == 0xFF);
                 REQUIRE(policy.check_register(0x14) == 0x30);
-                REQUIRE(policy.check_register(0x14) != policy.check_register(0x15));
+                REQUIRE(policy.check_register(0x14) !=
+                        policy.check_register(0x15));
             }
         }
     }
