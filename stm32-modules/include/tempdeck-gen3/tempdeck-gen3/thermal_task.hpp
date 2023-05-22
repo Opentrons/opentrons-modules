@@ -210,24 +210,14 @@ class ThermalTask {
         _readings.last_tick = message.timestamp;
         // Reading conversion
 
-        auto res = _converter.convert(_readings.plate_adc_1);
-        if (std::holds_alternative<double>(res)) {
-            _readings.plate_temp_1 = std::get<double>(res);
-        } else {
-            _readings.plate_temp_1 = 0.0F;
-        }
-        res = _converter.convert(_readings.plate_adc_2);
-        if (std::holds_alternative<double>(res)) {
-            _readings.plate_temp_2 = std::get<double>(res);
-        } else {
-            _readings.plate_temp_2 = 0.0F;
-        }
-        res = _converter.convert(_readings.heatsink_adc);
-        if (std::holds_alternative<double>(res)) {
-            _readings.heatsink_temp = std::get<double>(res);
-        } else {
-            _readings.heatsink_temp = 0.0F;
-        }
+        _readings.heatsink_temp = convert_thermistor(message.heatsink, false);
+        auto heatsink_temp = _readings.heatsink_temp.has_value()
+                                 ? _readings.heatsink_temp.value()
+                                 : 0;
+        _readings.plate_temp_1 =
+            convert_thermistor(message.plate_1, true, heatsink_temp);
+        _readings.plate_temp_2 =
+            convert_thermistor(message.plate_2, true, heatsink_temp);
 
         _readings.peltier_current_milliamps =
             PeltierReadback::adc_to_milliamps(message.imeas);
@@ -411,6 +401,7 @@ class ThermalTask {
             constants.c = message.c.value();
         }
 
+        _offset_constants = constants;
         auto ret = _eeprom.write_offset_constants(constants, policy);
         if (ret) {
             // Succesful, so overwrite the task's constants
@@ -527,6 +518,23 @@ class ThermalTask {
         } else {
             _plate_avg = avg / count;
         }
+    }
+
+    auto convert_thermistor(uint32_t raw_reading, bool add_offsets,
+                            double heatsink_temp = 0.0)
+        -> std::optional<double> {
+        auto res = _converter.convert(raw_reading);
+        if (!std::holds_alternative<double>(res)) {
+            return std::nullopt;
+        }
+        double reading = std::get<double>(res);
+        if (add_offsets) {
+            double offset = (_offset_constants.a * heatsink_temp) +
+                            (_offset_constants.b * reading) +
+                            (_offset_constants.c);
+            reading += offset;
+        }
+        return reading;
     }
 
     Queue& _message_queue;
