@@ -44,7 +44,7 @@ class Thermocycler():
         else:
             serial = self.get_serial()
             timestamp = datetime.datetime.now()
-            filepath = os.path.join(os.getcwd(), f'{serial}-hold-temperatures-{timestamp}.csv')
+            filepath = os.path.join(f'{serial}-hold-temperatures-{timestamp}.csv')
             self.file = open(filepath, 'w', newline='\n')
         self.file.write('time,HST,FRT,FLT,FCT,BRT,BLT,BCT,left,center,right,fans\n')
         self.start = time.time()
