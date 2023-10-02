@@ -31,7 +31,7 @@
 #define COOLING_PIN (GPIO_PIN_10)
 
 #define PELTIER_ENABLE_PORT (GPIOB)
-#define PELTIER_ENABLE_PIN (GPIO_PIN_13)
+#define PELTIER_ENABLE_PIN (GPIO_PIN_9)
 
 // Peltier drive circuitry cannot support lower PWM than 0.1
 #define MIN_PELTIER_POWER (0.1)
