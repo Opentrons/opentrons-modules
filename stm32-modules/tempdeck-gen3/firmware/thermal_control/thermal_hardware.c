@@ -38,16 +38,16 @@
 // PWM values over this limit result in overheating of the low-side FET
 #define MAX_PELTIER_POWER (0.65)
 
-#define FAN_PWM_Pin (GPIO_PIN_6)
+#define FAN_PWM_Pin (GPIO_PIN_7)
 #define FAN_PWM_GPIO_Port (GPIOA)
 #define FAN_PULSE_WIDTH_FREQ (1000)
 
-#define TIM16_PRESCALER (67)
+#define TIM17_PRESCALER (67)
 // Calculates out to 2499
-#define TIM16_RELOAD ((TIMER_CLOCK_FREQ / (FAN_PULSE_WIDTH_FREQ * (TIM16_PRESCALER + 1))) - 1)
+#define TIM17_RELOAD ((TIMER_CLOCK_FREQ / (FAN_PULSE_WIDTH_FREQ * (TIM17_PRESCALER + 1))) - 1)
 
 // PWM should be scaled from 0 to FAN_MAX_PWM, inclusive
-#define FAN_MAX_PWM (TIM16_RELOAD + 1)
+#define FAN_MAX_PWM (TIM17_RELOAD + 1)
 
 #define FAN_CHANNEL (TIM_CHANNEL_1)
 
@@ -286,12 +286,12 @@ static void init_fan_timer() {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
 
-    // Configure timer 16 for PWMN control on channel 1
+    // Configure timer 17 for PWMN control on channel 1
     hardware.fan_timer.State = HAL_TIM_STATE_RESET;
-    hardware.fan_timer.Instance = TIM16;
-    hardware.fan_timer.Init.Prescaler = TIM16_PRESCALER;
+    hardware.fan_timer.Instance = TIM17;
+    hardware.fan_timer.Init.Prescaler = TIM17_PRESCALER;
     hardware.fan_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
-    hardware.fan_timer.Init.Period = TIM16_RELOAD;
+    hardware.fan_timer.Init.Period = TIM17_RELOAD;
     hardware.fan_timer.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     hardware.fan_timer.Init.RepetitionCounter = 0;
     hardware.fan_timer.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -325,7 +325,7 @@ static void init_fan_timer() {
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF1_TIM16;
+    GPIO_InitStruct.Alternate = GPIO_AF1_TIM17;
     HAL_GPIO_Init(FAN_PWM_GPIO_Port, &GPIO_InitStruct);
 
     (void)HAL_TIM_PWM_Start(&hardware.fan_timer, FAN_CHANNEL);

@@ -45,6 +45,11 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
         /* Peripheral clock enable */
         __HAL_RCC_TIM16_CLK_ENABLE();
     }
+    if(htim_base->Instance==TIM17)
+    {
+        /* Peripheral clock enable */
+        __HAL_RCC_TIM17_CLK_ENABLE();
+    }
 }
 
 /**
@@ -65,6 +70,11 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
     {
         /* Peripheral clock disable */
         __HAL_RCC_TIM16_CLK_DISABLE();
+    }
+    else if(htim_base->Instance==TIM17)
+    {
+        /* Peripheral clock disable */
+        __HAL_RCC_TIM17_CLK_DISABLE();
     }
 }
 
