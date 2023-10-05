@@ -50,7 +50,7 @@ struct Conversion {
      * tables.
      */
     Conversion(double bias_resistance_nominal_kohm, uint8_t adc_max_bits,
-               uint16_t disconnect_threshold)
+               uint32_t disconnect_threshold)
         : _adc_max(static_cast<double>((1U << adc_max_bits) - 1)),
           _adc_max_result(disconnect_threshold),
           _bias_resistance_kohm(bias_resistance_nominal_kohm) {}
@@ -62,18 +62,18 @@ struct Conversion {
      * NOTE - the param is_signed is ignored for now, but is useful to
      * force differentiation between constructors.
      */
-    Conversion(double bias_resistance_nominal_kohm, uint16_t adc_max_value,
+    Conversion(double bias_resistance_nominal_kohm, uint32_t adc_max_value,
                bool is_signed)
         : _adc_max(static_cast<double>(adc_max_value)),
           _adc_max_result(
-              static_cast<uint16_t>(static_cast<uint32_t>(adc_max_value))),
+              static_cast<uint32_t>(static_cast<uint32_t>(adc_max_value))),
           _bias_resistance_kohm(bias_resistance_nominal_kohm) {
         static_cast<void>(is_signed);
     }
 
     Conversion() = delete;
 
-    [[nodiscard]] auto convert(uint16_t adc_reading) const -> Result {
+    [[nodiscard]] auto convert(uint32_t adc_reading) const -> Result {
         auto resistance = resistance_from_adc(adc_reading);
         if (std::holds_alternative<Error>(resistance)) {
             return resistance;
@@ -81,7 +81,7 @@ struct Conversion {
         return temperature_from_resistance(std::get<double>(resistance));
     }
 
-    [[nodiscard]] auto backconvert(double temperature) const -> uint16_t {
+    [[nodiscard]] auto backconvert(double temperature) const -> uint32_t {
         auto entries = temperature_table_lookup(temperature);
         if (std::holds_alternative<TableError>(entries)) {
             if (std::get<TableError>(entries) == TableError::TABLE_END) {
@@ -99,16 +99,16 @@ struct Conversion {
             ((after_res - before_res) / (after_temp - before_temp)) *
                 (temperature - before_temp) +
             before_res;
-        return static_cast<uint16_t>(
+        return static_cast<uint32_t>(
             _adc_max / ((_bias_resistance_kohm / resistance) + 1.0));
     }
 
   private:
     const double _adc_max;
-    const uint16_t _adc_max_result;
+    const uint32_t _adc_max_result;
     const double _bias_resistance_kohm;
 
-    [[nodiscard]] auto resistance_from_adc(uint16_t adc_count) const -> Result {
+    [[nodiscard]] auto resistance_from_adc(uint32_t adc_count) const -> Result {
         if (adc_count >= _adc_max_result) {
             return Result(Error::OUT_OF_RANGE_LOW);
         }

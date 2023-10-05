@@ -18,41 +18,25 @@ auto ThermistorPolicy::sleep_ms(uint32_t ms) -> void {
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
-auto ThermistorPolicy::ads1115_mark_initialized() -> void {
+auto ThermistorPolicy::ads1219_mark_initialized() -> void {
     _initialized = true;
 }
 
-auto ThermistorPolicy::ads1115_check_initialized() -> bool {
+auto ThermistorPolicy::ads1219_check_initialized() -> bool {
     return _initialized;
 }
 
-auto ThermistorPolicy::ads1115_get_lock() -> void { _mutex.acquire(); }
+auto ThermistorPolicy::ads1219_get_lock() -> void { _mutex.acquire(); }
 
-auto ThermistorPolicy::ads1115_release_lock() -> void { _mutex.release(); }
+auto ThermistorPolicy::ads1219_release_lock() -> void { _mutex.release(); }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto ThermistorPolicy::ads1115_arm_for_read() -> bool {
+auto ThermistorPolicy::ads1219_arm_for_read() -> bool {
     return thermal_arm_adc_for_read();
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto ThermistorPolicy::ads1115_i2c_write_16(uint8_t reg, uint16_t data)
-    -> bool {
-    return i2c_hardware_write_16(I2C_BUS_THERMAL, ADC_ADDRESS, reg, data);
-}
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto ThermistorPolicy::ads1115_i2c_read_16(uint8_t reg)
-    -> std::optional<uint16_t> {
-    uint16_t data = 0;
-    if (i2c_hardware_read_16(I2C_BUS_THERMAL, ADC_ADDRESS, reg, &data)) {
-        return std::optional<uint16_t>(data);
-    }
-    return std::nullopt;
-}
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto ThermistorPolicy::ads1115_wait_for_pulse(uint32_t max_wait) -> bool {
+auto ThermistorPolicy::ads1219_wait_for_pulse(uint32_t max_wait) -> bool {
     auto notification_val = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(max_wait));
     return notification_val == 1;
 }

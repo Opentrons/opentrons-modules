@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/ads1115.hpp"
+#include "core/ads1219.hpp"
 #include "hal/message_queue.hpp"
 #include "tempdeck-gen3/messages.hpp"
 #include "tempdeck-gen3/tasks.hpp"
@@ -49,7 +49,7 @@ class ThermistorTask {
         if (!_task_registry) {
             return;
         }
-        auto adc = ADS1115::ADC(policy);
+        auto adc = ADS1219::ADC(policy);
 
         if (!adc.initialized()) {
             adc.initialize();
@@ -68,24 +68,24 @@ class ThermistorTask {
 
   private:
     template <ThermistorPolicy Policy>
-    auto read_pin(ADS1115::ADC<Policy>& adc, uint16_t pin, Policy& policy)
-        -> uint16_t {
+    auto read_pin(ADS1219::ADC<Policy>& adc, uint16_t pin, Policy& policy)
+        -> uint32_t {
         static constexpr uint8_t MAX_TRIES = 5;
         static constexpr uint32_t RETRY_DELAY = 5;
         uint8_t tries = 0;
-        auto result = typename ADS1115::ADC<Policy>::ReadVal();
+        auto result = typename ADS1219::ADC<Policy>::ReadVal();
 
         while (true) {
             result = adc.read(pin);
-            if (std::holds_alternative<uint16_t>(result)) {
-                return std::get<uint16_t>(result);
+            if (std::holds_alternative<uint32_t>(result)) {
+                return std::get<uint32_t>(result);
             }
             if (++tries < MAX_TRIES) {
                 // Short delay for reliability
                 policy.sleep_ms(RETRY_DELAY);
             } else {
                 // Retries expired
-                return static_cast<uint16_t>(std::get<ADS1115::Error>(result));
+                return static_cast<uint32_t>(std::get<ADS1219::Error>(result));
             }
         }
     }

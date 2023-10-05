@@ -93,9 +93,9 @@ class ThermalTask {
     // The circuit is configured such that 1.5v is the max voltage from the
     // thermistor.
     static constexpr double ADC_MAX_V = 1.5;
-    // ADC results are signed 16-bit integers
-    static constexpr uint16_t ADC_BIT_MAX = static_cast<uint16_t>(
-        (ADC_MAX_V * static_cast<double>(0x7FFF)) / ADC_VREF);
+    // ADC results are signed 24-bit integers
+    static constexpr uint32_t ADC_BIT_MAX = static_cast<uint32_t>(
+        (ADC_MAX_V * static_cast<double>(0x7FFFFF)) / ADC_VREF);
 
     // The threshold at which the fan is turned on to cool the heatsink
     // during idle periods.
