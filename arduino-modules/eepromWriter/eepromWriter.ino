@@ -44,7 +44,8 @@ void loop() {
         print_data();
         clear_port();
         return;
-      } else if (val == ':') {
+      }
+      else if (val == ':') {
         reading_in_serial = false;
       }
       else if (val == '\r' || val == '\n') {
