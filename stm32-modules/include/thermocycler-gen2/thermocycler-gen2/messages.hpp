@@ -361,6 +361,9 @@ struct CloseLidMessage {
     uint32_t id;
 };
 
+struct LidStepperError {
+};
+
 struct PlateLiftMessage {
     uint32_t id;
 };

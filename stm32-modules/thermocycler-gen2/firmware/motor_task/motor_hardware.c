@@ -248,6 +248,7 @@ void motor_hardware_lid_stepper_stop() {
 
 void motor_hardware_lid_increment() {
     bool done = false;
+    bool sensor_triggered = false;
     _motor_hardware.lid_stepper.step_count++;
     // Only check stop switches if this is NOT an overdrive
     if(!_motor_hardware.lid_stepper.overdrive) {
@@ -255,11 +256,13 @@ void motor_hardware_lid_increment() {
             // Check if lid is open
             if(motor_hardware_lid_read_open()) {
                 done = true;
+                sensor_triggered = true;
             }
         } else {
             // Check if lid is closed
             if(motor_hardware_lid_read_closed()) {
                 done = true;
+                sensor_triggered = true;
             }
         }
     }
@@ -269,8 +272,10 @@ void motor_hardware_lid_increment() {
         done = true;
     }
 
-    if(done) {
-        motor_hardware_lid_stepper_stop();
+    if (done) {
+        bool error = !sensor_triggered;
+        // throw an error if stepping is finished but neither sensor is triggered
+        motor_hardware_lid_stepper_stop(error);
         _motor_hardware.callbacks.lid_stepper_complete();
     }
 }
