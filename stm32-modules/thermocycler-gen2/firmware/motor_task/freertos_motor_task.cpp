@@ -47,12 +47,7 @@ static MotorPolicy _policy(false);
  * @brief This function is called after the lid stepper has stepped the
  * requested number of steps.
  */
-static void handle_lid_stepper(bool lid_stepper_error) {
-    if (error) {
-        static_cast<void>(_task.get_message_queue().try_send_from_isr(
-            messages::MotorMessage(messages::LidStepperError{})));
-    }
-
+static void handle_lid_stepper() {
     static_cast<void>(_task.get_message_queue().try_send_from_isr(
         messages::MotorMessage(messages::LidStepperComplete{})));
 }

@@ -87,6 +87,8 @@ const char* const SEAL_MOTOR_SWITCH =
     "ERR508:seal:Seal switch should not be engaged OK\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code OK\n";
+const char* const UNEXPECTED_LID_STATE =
+    "ERR509:lid:Lid status does not match expected open/closed status";
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define HANDLE_CASE(errname) \
@@ -144,6 +146,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(SEAL_MOTOR_STALL);
         HANDLE_CASE(LID_CLOSED);
         HANDLE_CASE(SEAL_MOTOR_SWITCH);
+        HANDLE_CASE(UNEXPECTED_LID_STATE);
     }
     return UNKNOWN_ERROR;
 }
