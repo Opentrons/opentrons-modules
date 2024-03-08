@@ -1029,15 +1029,15 @@ SCENARIO("motor task lid state machine") {
                      .seal_direction = true,
                      .seal_switch_armed = false},
                     // Should send ACK now
-                    IF(){.msg =
-                             messages::SealStepperComplete{
-                                 .reason = messages::SealStepperComplete::
-                                     CompletionReason::DONE},
-                         .motor_state = MotorStep::MotorState::IDLE,
-                         .ack =
-                             messages::AcknowledgePrevious{
-                                 .responding_to_id = 123,
-                                 .with_error = errors::ErrorCode::NO_ERROR}},
+                    {.msg =
+                         messages::SealStepperComplete{
+                             .reason = messages::SealStepperComplete::
+                                 CompletionReason::DONE},
+                     .motor_state = MotorStep::MotorState::IDLE,
+                     .ack =
+                         messages::AcknowledgePrevious{
+                             .responding_to_id = 123,
+                             .with_error = errors::ErrorCode::NO_ERROR}},
                 };
                 test_motor_state_machine(tasks, steps);
             }
