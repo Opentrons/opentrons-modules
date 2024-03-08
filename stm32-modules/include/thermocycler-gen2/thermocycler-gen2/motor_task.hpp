@@ -370,6 +370,12 @@ class MotorTask {
         static_cast<void>(msg);  // No contents in message
         LidStepperState::Status old_state = _lid_stepper_state.status.load();
         auto error = handle_hinge_state_end(policy);
+        if (error != errors::ErrorCode::NO_ERROR) {
+            static_cast<void>(
+                _task_registry->comms->get_message_queue().try_send(
+                    messages::ErrorMessage{
+                        .code = errors::ErrorCode::UNEXPECTED_LID_STATE}));
+        }
         if (_lid_stepper_state.status == LidStepperState::Status::IDLE &&
             old_state != _lid_stepper_state.status &&
             _lid_stepper_state.response_id != INVALID_ID) {
