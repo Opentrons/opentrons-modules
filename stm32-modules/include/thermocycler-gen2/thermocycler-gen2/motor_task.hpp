@@ -371,8 +371,9 @@ class MotorTask {
         LidStepperState::Status old_state = _lid_stepper_state.status.load();
         auto error = handle_hinge_state_end(policy);
         if ((_lid_stepper_state.status == LidStepperState::Status::IDLE &&
-            old_state != _lid_stepper_state.status &&
-            _lid_stepper_state.response_id != INVALID_ID) || error != errors::ErrorCode::NO_ERROR) {
+             old_state != _lid_stepper_state.status &&
+             _lid_stepper_state.response_id != INVALID_ID) ||
+            error != errors::ErrorCode::NO_ERROR) {
             // Send an ACK if a movement just finished
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = _lid_stepper_state.response_id,
