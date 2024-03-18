@@ -904,18 +904,34 @@ SCENARIO("motor task lid state machine") {
                  .seal_on = true,
                  .seal_direction = true,
                  .seal_switch_armed = false},
-                // Should send ACK now
-                {.msg =
-                     messages::SealStepperComplete{
-                         .reason = messages::SealStepperComplete::
-                             CompletionReason::DONE},
-                 .motor_state = MotorStep::MotorState::IDLE,
-                 .ack =
-                     messages::AcknowledgePrevious{
-                         .responding_to_id = 123,
-                         .with_error = errors::ErrorCode::NO_ERROR}},
             };
-            test_motor_state_machine(tasks, steps);
+            AND_WHEN("the closed switch is triggered") {
+                motor_policy.set_lid_closed_switch(true);
+                steps.push_back(
+                    // an ack with error code NO_ERROR should follow
+                    MotorStep{.msg = messages::SealStepperComplete{
+                             .reason = messages::SealStepperComplete::
+                                 CompletionReason::DONE},
+                     .motor_state = MotorStep::MotorState::IDLE,
+                     .ack = messages::AcknowledgePrevious{
+                          .responding_to_id = 123,
+                          .with_error = errors::ErrorCode::NO_ERROR}});
+                test_motor_state_machine(tasks, steps);
+            }
+            AND_WHEN("the closed switch is not triggered") {
+                motor_policy.set_lid_closed_switch(false);
+                steps.push_back(
+                    // an ack with error code UNEXPECTED_LID_STATE should follow
+                    MotorStep{.msg = messages::SealStepperComplete{
+                             .reason = messages::SealStepperComplete::
+                                 CompletionReason::DONE},
+                        .motor_state = MotorStep::MotorState::IDLE,
+                        .ack = messages::AcknowledgePrevious{
+                            .responding_to_id = 123,
+                            .with_error =
+                                errors::ErrorCode::UNEXPECTED_LID_STATE}});
+                    test_motor_state_machine(tasks, steps);
+            }
         }
         WHEN("sending plate lift command") {
             std::vector<MotorStep> steps;
@@ -972,34 +988,16 @@ SCENARIO("motor task lid state machine") {
                 .lid_overdrive = true,
                 .lid_rpm =
                     motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM});
-            WHEN("the closed switch is triggered") {
-                motor_policy.set_lid_closed_switch(true);
-                steps.push_back(
-                    // an ack with error code NO_ERROR should follow
-                    MotorStep{.msg = messages::LidStepperComplete(),
-                              .motor_state = MotorStep::MotorState::IDLE,
-                              .ack = messages::AcknowledgePrevious{
-                                  .responding_to_id = 123,
-                                  .with_error = errors::ErrorCode::NO_ERROR}});
-                steps[0].msg = messages::PlateLiftMessage{.id = 123};
-                steps[0].motor_state = MotorStep::MotorState::PLATE_LIFT;
-                test_motor_state_machine(tasks, steps);
-            }
-            WHEN("the closed switch is not triggered") {
-                motor_policy.set_lid_closed_switch(false);
-                steps.push_back(
-                    // an ack with error code UNEXPECTED_LID_STATE should follow
-                    MotorStep{
-                        .msg = messages::LidStepperComplete(),
-                        .motor_state = MotorStep::MotorState::IDLE,
-                        .ack = messages::AcknowledgePrevious{
-                            .responding_to_id = 123,
-                            .with_error =
-                                errors::ErrorCode::UNEXPECTED_LID_STATE}});
-                steps[0].msg = messages::PlateLiftMessage{.id = 123};
-                steps[0].motor_state = MotorStep::MotorState::PLATE_LIFT;
-                test_motor_state_machine(tasks, steps);
-            }
+            steps.push_back(
+                // an ack with error code NO_ERROR should follow
+                MotorStep{.msg = messages::LidStepperComplete(),
+                          .motor_state = MotorStep::MotorState::IDLE,
+                          .ack = messages::AcknowledgePrevious{
+                              .responding_to_id = 123,
+                              .with_error = errors::ErrorCode::NO_ERROR}});
+            steps[0].msg = messages::PlateLiftMessage{.id = 123};
+            steps[0].motor_state = MotorStep::MotorState::PLATE_LIFT;
+            test_motor_state_machine(tasks, steps);
         }
         GIVEN("seal retraction switch is triggered") {
             motor_policy.set_retraction_switch_triggered(true);
