@@ -8,6 +8,8 @@
 
 #include "core/pid.hpp"
 #include "thermocycler-gen2/thermal_general.hpp"
+#include <optional>
+#include <array>
 
 namespace plate_control {
 
