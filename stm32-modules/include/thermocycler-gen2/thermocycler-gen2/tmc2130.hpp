@@ -6,7 +6,6 @@
 
 #include <concepts>
 #include <cstdint>
-#include <cstring>
 #include <functional>
 #include <optional>
 
@@ -299,10 +298,7 @@ class TMC2130 {
         // Ignore the typical linter warning because we're only using
         // this on __packed structures that mimic hardware registers
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-        RegisterSerializedTypeA value;
-        std::memcpy(&value, &reg,
-                    std::min(sizeof(Reg), sizeof(RegisterSerializedTypeA)));
-        //*reinterpret_cast<RegisterSerializedTypeA*>(&reg);
+        auto value = *reinterpret_cast<RegisterSerializedTypeA*>(&reg);
         value &= Reg::value_mask;
         return _spi.write(Reg::address, value, policy);
     }
