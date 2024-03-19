@@ -53,7 +53,7 @@ concept XT1511Policy = requires(Policy& p, BufferT& b) {
     // Function to get the max PWM configured for the timer. Should
     // be in the same byte format as the PWM buffer type passed in.
     { p.get_max_pwm() } -> std::same_as<typename BufferT::value_type>;
-    std::unsigned_integral<typename BufferT::value_type>;
+    requires std::unsigned_integral<typename BufferT::value_type>;
 };
 
 // This class represents a single XT1511

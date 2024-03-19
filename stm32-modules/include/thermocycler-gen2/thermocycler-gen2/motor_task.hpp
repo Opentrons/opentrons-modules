@@ -26,7 +26,7 @@ namespace motor_task {
 /*
  * The MotorExecutionPolicy is how the portable task interacts
  * with the hardware. It is defined as a concept so it can be
- * passed as a reference paramter to run_once(), which means the
+ * passed as a reference parameter to run_once(), which means the
  * type of policy in actual use does not have to be part of the class's
  * type signature (which is used all over the place), just run_once's
  * type signature, which is used just by the rtos task and the test
@@ -370,9 +370,10 @@ class MotorTask {
         static_cast<void>(msg);  // No contents in message
         LidStepperState::Status old_state = _lid_stepper_state.status.load();
         auto error = handle_hinge_state_end(policy);
-        if (_lid_stepper_state.status == LidStepperState::Status::IDLE &&
-            old_state != _lid_stepper_state.status &&
-            _lid_stepper_state.response_id != INVALID_ID) {
+        if ((_lid_stepper_state.status == LidStepperState::Status::IDLE &&
+             old_state != _lid_stepper_state.status &&
+             _lid_stepper_state.response_id != INVALID_ID) ||
+            error != errors::ErrorCode::NO_ERROR) {
             // Send an ACK if a movement just finished
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = _lid_stepper_state.response_id,
@@ -1289,8 +1290,10 @@ class MotorTask {
                     motor_util::LidStepper::Position::CLOSED;
                 // The overall lid state machine can advance now
                 error = handle_lid_state_end(policy);
-                // TODO(Frank, Mar-7-2022) check if the lid didn't make it in
-                // all the way
+                // if the lid isn't actually closed, overwrite error status
+                if (!policy.lid_read_closed_switch()) {
+                    error = errors::ErrorCode::UNEXPECTED_LID_STATE;
+                }
                 break;
             case LidStepperState::Status::LIFT_NUDGE:
                 policy.lid_stepper_start(

@@ -40,7 +40,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_m116.cpp
     test_m117.cpp
     test_m119.cpp
-    test_m126.cpp 
+    test_m126.cpp
     test_m127.cpp
     test_m128.cpp
     test_m140.cpp
@@ -52,8 +52,8 @@ add_executable(${TARGET_MODULE_NAME}
     test_m241d.cpp
     test_m242d.cpp
     test_m243d.cpp
-    test_m900d.cpp 
-    test_m901d.cpp 
+    test_m900d.cpp
+    test_m901d.cpp
     test_m902d.cpp
     test_m903d.cpp
     test_m904d.cpp
