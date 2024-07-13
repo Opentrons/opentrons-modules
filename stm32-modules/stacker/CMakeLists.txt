@@ -7,6 +7,7 @@ set(TARGET_MODULE_NAME "stacker")
 
 if (${CMAKE_CROSSCOMPILING})
     add_subdirectory(firmware)
+    add_subdirectory(src)
 else()
     add_subdirectory(tests)
 #    add_subdirectory(simulator)

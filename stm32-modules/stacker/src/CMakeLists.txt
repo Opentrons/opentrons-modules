@@ -36,7 +36,9 @@ if(ALLOW_ASYNC_ERRORS)
 endif()
 
 # Configure lintable/nonlintable sources here
-set(CORE_LINTABLE_SOURCES)
+set(CORE_LINTABLE_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/errors.cpp
+        )
 set(CORE_LINTABLE_SOURCES
         ${CORE_LINTABLE_SOURCES}
         PARENT_SCOPE)
