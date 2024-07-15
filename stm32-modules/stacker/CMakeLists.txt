@@ -3,14 +3,13 @@
 # This variable defines the name of the target for this subfolder.
 set(TARGET_MODULE_NAME "stacker")
 
-#add_subdirectory(src)
+add_subdirectory(src)
 
 if (${CMAKE_CROSSCOMPILING})
     add_subdirectory(firmware)
-    add_subdirectory(src)
 else()
     add_subdirectory(tests)
-#    add_subdirectory(simulator)
+    add_subdirectory(simulator)
 endif()
 
 file(GLOB_RECURSE ${TARGET_MODULE_NAME}_SOURCES_FOR_FORMAT
