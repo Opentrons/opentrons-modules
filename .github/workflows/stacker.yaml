@@ -94,4 +94,4 @@ jobs:
       - name: 'Build Simulator'
         run: cmake --build --preset host --target stacker-simulator
       - name: 'Build and Test'
-        run: cmake --build --preset stacker-build-and-test
+        run: cmake --build --preset stacker-tests
