@@ -1,4 +1,4 @@
-name: 'Tempdeck Gen3 build/test'
+name: 'Stacker build/test'
 on:
   pull_request:
     paths:
