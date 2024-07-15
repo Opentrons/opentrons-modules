@@ -28,8 +28,8 @@
 /* Private define ------------------------------------------------------------*/
 // TODO(alise): Uncomment these VID/PID definitions and replace
 // the temporary values with the actual values for the shuttle
-#define USBD_VID                      0x04D8  /* same as Gen1 TD */
-#define USBD_PID                      0xee93  /* same as Gen1 TD */
+#define USBD_VID                      0x0483
+#define USBD_PID                      0xEF24
 #define USBD_LANGID_STRING            0x0409  /* Replace '0xbbb' with your device language ID */
 #define USBD_MANUFACTURER_STRING      "Opentrons" /* Add your manufacturer string */
 #define USBD_PRODUCT_HS_STRING        "Stacker HS" /* Add your product High Speed string */
