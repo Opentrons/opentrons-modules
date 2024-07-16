@@ -1,4 +1,4 @@
-name: 'Stacker build/test'
+name: 'Flex Stacker build/test'
 on:
   pull_request:
     paths:
