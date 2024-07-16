@@ -1,7 +1,7 @@
 #FLEX Stacker
 
 # This variable defines the name of the target for this subfolder.
-set(TARGET_MODULE_NAME "stacker")
+set(TARGET_MODULE_NAME "flex-stacker")
 
 add_subdirectory(src)
 
