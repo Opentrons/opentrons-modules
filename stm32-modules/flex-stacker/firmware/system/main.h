@@ -36,8 +36,7 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define HOPPER_DOR_CLOSED_Pin GPIO_PIN_13
 #define HOPPER_DOR_CLOSED_GPIO_Port GPIOC
-#define SPI2_CS_Z_Pin GPIO_PIN_0
-#define SPI2_CS_Z_GPIO_Port GPIOC
+
 #define MOTOR_DIR_Z_Pin GPIO_PIN_1
 #define MOTOR_DIR_Z_GPIO_Port GPIOC
 #define MOTOR_STEP_Z_Pin GPIO_PIN_2
@@ -48,14 +47,13 @@ void Error_Handler(void);
 #define LIMIT_Z_A0_GPIO_Port GPIOA
 #define LIMIT_X__Pin GPIO_PIN_1
 #define LIMIT_X__GPIO_Port GPIOA
-#define MOTOR_EN_Z_Pin GPIO_PIN_2
+#define LIMIT_X_A2_Pin GPIO_PIN_2
+#define LIMIT_X_A2_GPIO_Port GPIOA
+#define MOTOR_EN_Z_Pin GPIO_PIN_3
 #define MOTOR_EN_Z_GPIO_Port GPIOA
-#define MOTOR_EN_ZA3_Pin GPIO_PIN_3
-#define MOTOR_EN_ZA3_GPIO_Port GPIOA
 #define MOTOR_EN_X_Pin GPIO_PIN_4
 #define MOTOR_EN_X_GPIO_Port GPIOA
-#define SPI2_CS_X_Pin GPIO_PIN_5
-#define SPI2_CS_X_GPIO_Port GPIOA
+
 #define MOTOR_DIR_X_Pin GPIO_PIN_6
 #define MOTOR_DIR_X_GPIO_Port GPIOA
 #define MOTOR_STEP_X_Pin GPIO_PIN_7
@@ -68,6 +66,7 @@ void Error_Handler(void);
 #define MOTOR_DR_L_GPIO_Port GPIOB
 #define MOTOR_STEP_L_Pin GPIO_PIN_1
 #define MOTOR_STEP_L_GPIO_Port GPIOB
+
 #define n48V_FAULT_Pin GPIO_PIN_6
 #define n48V_FAULT_GPIO_Port GPIOC
 #define nGP_INT_Pin GPIO_PIN_7
@@ -94,7 +93,6 @@ void Error_Handler(void);
 #define nBRAKE_Z_GPIO_Port GPIOB
 #define nBRAKE_X_Pin GPIO_PIN_9
 #define nBRAKE_X_GPIO_Port GPIOB
-
 
 #ifdef __cplusplus
 }

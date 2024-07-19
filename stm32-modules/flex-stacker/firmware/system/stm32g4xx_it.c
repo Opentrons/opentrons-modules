@@ -24,6 +24,7 @@
 /* External variables --------------------------------------------------------*/
 extern DMA_HandleTypeDef hdma_spi2_rx;
 extern DMA_HandleTypeDef hdma_spi2_tx;
+extern SPI_HandleTypeDef hspi2;
 
 /******************************************************************************/
 /*           Cortex-M4 Processor Interruption and Exception Handlers          */
@@ -115,18 +116,3 @@ void RCC_IRQHandler(void)
 {
 }
 
-/**
-  * @brief This function handles DMA1 channel1 global interrupt.
- */
-void DMA1_Channel1_IRQHandler(void)
-{
-    HAL_DMA_IRQHandler(&hdma_spi2_rx);
-}
-
-/**
-  * @brief This function handles DMA1 channel2 global interrupt.
- */
-void DMA1_Channel2_IRQHandler(void)
-{
-    HAL_DMA_IRQHandler(&hdma_spi2_tx);
-}
