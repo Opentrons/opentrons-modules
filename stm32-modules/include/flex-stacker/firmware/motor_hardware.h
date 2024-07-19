@@ -5,11 +5,14 @@ extern "C" {
 #endif  // __cplusplus
 
 #include <stdint.h>
+#include "systemwide.h"
 
-void motor_spi2_init(void);
-void motor_spi2_dma_sendreceive(uint8_t *tx_data, uint8_t *rx_data,
+void motor_hardware_init(void);
+
+void spi_hardware_init(void);
+void spi_dma_transmit_receive(MotorID motor_id, uint8_t *tx_data, uint8_t *rx_data,
                                 uint16_t len);
-void motor_spi2_sendreceive(uint8_t *tx_data, uint8_t *rx_data, uint16_t len);
+
 
 #ifdef __cplusplus
 }  // extern "C"

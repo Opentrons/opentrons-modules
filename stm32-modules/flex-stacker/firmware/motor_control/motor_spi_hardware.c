@@ -190,7 +190,7 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
 
 /** Public Functions -------------------------------------------------------- */
 
-void motor_spi2_init(void) {
+void spi_hardware_init(void) {
     if (!_spi.initialized) {
 
         /* SPI2 parameter configuration*/
@@ -262,22 +262,20 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
     // TODO: Implement this callback
 }
 
-bool Motor_Spi2_TransmitReceive_DMA_Continuous(
-    MotorID motor_id, uint8_t *txData, uint8_t *rxData, uint16_t size) {
+void spi_dma_transmit_receive(
+    MotorID motor_id, uint8_t *txData, uint8_t *rxData, uint16_t size
+) {
     // enable one of the motor driver for SPI communication
     enable_spi_nss(motor_id);
 
-    while (1) {}
-
     if (HAL_SPI_TransmitReceive_DMA(&_spi.handle, txData, rxData, size) != HAL_OK) {
         // Transmission error
-        return false;
+        // TODO: implement error handling
     }
 
     // Wait for the transmission to complete
     while (HAL_SPI_GetState(&_spi.handle) != HAL_SPI_STATE_READY) {}
 
     disable_spi_nss();
-
-    return true;
 }
+

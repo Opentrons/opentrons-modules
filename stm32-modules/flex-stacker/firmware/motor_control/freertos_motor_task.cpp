@@ -4,7 +4,7 @@
 #include "firmware/motor_hardware.h"
 #include "ot_utils/freertos/freertos_timer.hpp"
 
-//#include "firmware/motor_policy.hpp"
+#include "firmware/motor_policy.hpp"
 #include "flex-stacker/motor_task.hpp"
 
 namespace motor_control_task {
@@ -28,11 +28,12 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
 
-    motor_spi2_init();
+//    motor_hardware_init();
+    spi_hardware_init();
 
-    //    auto policy = motor_policy::MotorPolicy();
+//    auto policy = motor_policy::MotorPolicy();
     while (true) {
-        //        _top_task.run_once(policy);
+//        _top_task.run_once(policy);
     }
 }
 
