@@ -10,16 +10,13 @@ using EntryPoint = std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto motor_task_entry = EntryPoint(motor_control_task::run);
 
-
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
-
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto motor_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_STACK_SIZE, EntryPoint>(
         motor_task_entry);
-
 
 auto main() -> int {
     HardwareInit();

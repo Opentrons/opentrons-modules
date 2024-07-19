@@ -23,10 +23,10 @@ namespace tmc2160 {
 /** Hardware abstraction policy for the TMC2160 communication.*/
 template <typename Policy>
 concept TMC2160Policy = TMC2160InterfacePolicy<Policy> && requires(Policy& p) {
-    { p.tmc2160_transmit_receive(std::declval<MessageT>()) }
-    ->std::same_as<std::optional<MessageT>>;
-  };
-
+    {
+        p.tmc2160_transmit_receive(std::declval<MessageT>())
+        } -> std::same_as<std::optional<MessageT>>;
+};
 
 using namespace std::numbers;
 
@@ -41,7 +41,7 @@ class TMC2160 {
         -> void {
         auto converted_addr = static_cast<uint8_t>(addr);
         _spi.read(converted_addr, command_data, _task_queue, _cs_intf,
-                          message_index);
+                  message_index);
     }
 
     auto write(Registers addr, uint32_t command_data) -> bool {
@@ -461,4 +461,3 @@ class TMC2160 {
 };
 
 }  // namespace tmc2160
-

@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <variant>
 
-#include "systemwide.h"
 #include "flex-stacker/errors.hpp"
+#include "systemwide.h"
 
 namespace messages {
 
@@ -51,7 +51,7 @@ struct ErrorMessage {
 };
 
 struct AcknowledgePrevious {
-    uint32_t responding_to_id;
+    uint32_t responding_to_id{};
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 };
 
@@ -59,7 +59,6 @@ struct IncomingMessageFromHost {
     const char* buffer;
     const char* limit;
 };
-
 
 struct GetSystemInfoMessage {
     uint32_t id;
@@ -120,7 +119,6 @@ struct GetMotorDriverRegisterResponse {
     uint32_t data;
 };
 
-
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -129,8 +127,9 @@ using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage>;
 
-//using MotorMessage = ::std::variant<std::monostate, SetMotorDriverRegister,
-//                                    GetMotorDriverRegister, PollMotorDriverRegister,
+// using MotorMessage = ::std::variant<std::monostate, SetMotorDriverRegister,
+//                                    GetMotorDriverRegister,
+//                                    PollMotorDriverRegister,
 //                                    StopPollingMotorDriverRegister>;
 using MotorMessage = ::std::variant<std::monostate>;
 

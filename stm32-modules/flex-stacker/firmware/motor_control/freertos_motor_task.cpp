@@ -7,7 +7,6 @@
 //#include "firmware/motor_policy.hpp"
 #include "flex-stacker/motor_task.hpp"
 
-
 namespace motor_control_task {
 
 enum class Notifications : uint8_t {
@@ -31,9 +30,9 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
 
     motor_spi2_init();
 
-//    auto policy = motor_policy::MotorPolicy();
+    //    auto policy = motor_policy::MotorPolicy();
     while (true) {
-//        _top_task.run_once(policy);
+        //        _top_task.run_once(policy);
     }
 }
 

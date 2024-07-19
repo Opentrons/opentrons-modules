@@ -1,6 +1,6 @@
 /*
-* Interface for the firmware-specific parts of the motor control task
-*/
+ * Interface for the firmware-specific parts of the motor control task
+ */
 #pragma once
 
 #include "FreeRTOS.h"

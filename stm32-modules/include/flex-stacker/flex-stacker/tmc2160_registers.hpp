@@ -170,19 +170,17 @@ struct __attribute__((packed, __may_alias__)) OTPRead {
     uint32_t otp_tbl : 1 = 0;
 };
 
-
 struct __attribute__((packed, __may_alias__)) ShortConf {
     static constexpr Registers address = Registers::SHORT_CONF;
     static constexpr bool writable = true;
     static constexpr uint32_t value_mask = (1 << 19) - 1;
 
-    uint32_t s2vs_level: 4 = 0;
+    uint32_t s2vs_level : 4 = 0;
     uint32_t bit_padding_1 : 4 = 0;
-    uint32_t s2g_level: 4 = 0;
+    uint32_t s2g_level : 4 = 0;
     uint32_t bit_padding_2 : 4 = 0;
-    uint32_t shortfilter: 2 = 0;
-    uint32_t shortdelay: 1 = 0;
-
+    uint32_t shortfilter : 2 = 0;
+    uint32_t shortdelay : 1 = 0;
 };
 
 struct __attribute__((packed, __may_alias__)) DriverConf {
@@ -198,7 +196,6 @@ struct __attribute__((packed, __may_alias__)) DriverConf {
     uint32_t drvstrength : 2 = 0;
     uint32_t filt_isense : 2 = 0;
 };
-
 
 /**
  * This register sets the control current for holding and running.
@@ -296,7 +293,6 @@ struct __attribute__((packed, __may_alias__)) TPwmThreshold {
 
     uint32_t threshold : 20 = 0;
 };
-
 
 /**
  * This is the threshold velocity for switching on smart energy coolStep
@@ -610,8 +606,6 @@ using RegisterSerializedType = uint32_t;
 // Type definition to allow type aliasing for pointer dereferencing
 using RegisterSerializedTypeA = __attribute__((__may_alias__)) uint32_t;
 
-
-
 // R sense and VSF configuration
 struct TMC2160MotorCurrentConfig {
     float r_sense;
@@ -622,6 +616,5 @@ struct TMC2160DriverConfig {
     TMC2160RegisterMap registers{};
     TMC2160MotorCurrentConfig current_config{};
 };
-
 
 }  // namespace tmc2160

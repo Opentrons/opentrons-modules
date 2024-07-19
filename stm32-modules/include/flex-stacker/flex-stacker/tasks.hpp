@@ -11,13 +11,11 @@ namespace tasks {
 
 template <template <class> class QueueImpl>
 struct Tasks {
-
     // Message queue for motor control stask
     using MotorQueue = QueueImpl<messages::MotorMessage>;
 
     // Central aggregator
-    using QueueAggregator =
-        queue_aggregator::QueueAggregator<MotorQueue>;
+    using QueueAggregator = queue_aggregator::QueueAggregator<MotorQueue>;
 
     // Addresses
     static constexpr size_t MotorAddress =
