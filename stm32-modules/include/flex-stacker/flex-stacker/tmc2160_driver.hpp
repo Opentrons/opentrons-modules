@@ -11,26 +11,27 @@
 #include <numbers>
 #include <optional>
 
-#include "common/core/bit_utils.hpp"
-#include "common/core/logging.h"
 #include "tmc2160_registers.hpp"
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warray-bounds"
 
 namespace tmc2160 {
 
-/** Hardware abstraction policy for the TMC2160 communication.*/
+// The type of a single TMC2130 message.
+using MessageT = std::array<uint8_t, MESSAGE_LEN>;
+
+// Flag for whether this is a read or write
+enum class WriteFlag { READ = 0x00, WRITE = 0x80 };
+
+// Hardware abstraction policy for the TMC2130 communication.
 template <typename Policy>
-concept TMC2160Policy = TMC2160InterfacePolicy<Policy> && requires(Policy& p) {
-    {
-        p.tmc2160_transmit_receive(std::declval<MessageT>())
-        } -> std::same_as<std::optional<MessageT>>;
-};
+concept TMC2160InterfacePolicy = requires(Policy& p, MessageT& data) {
+     // A function to read & write to a register. addr should include the
+     // read/write bit.
+     {
+         p.tmc2160_transmit_receive(data)
+     } -> std::same_as<std::optional<MessageT>>;
+ };
 
-using namespace std::numbers;
 
-template <class Writer, class TaskQueue>
 class TMC2160 {
   public:
     TMC2160() = delete;

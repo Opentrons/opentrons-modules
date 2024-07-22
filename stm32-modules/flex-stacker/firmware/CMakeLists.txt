@@ -17,6 +17,7 @@ set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
     ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
+    ${MOTOR_CONTROL_DIR}/freertos_motor_driver_task.cpp
     ${MOTOR_CONTROL_DIR}/freertos_motor_task.cpp
     ${MOTOR_CONTROL_DIR}/motor_policy.cpp
     )
