@@ -586,7 +586,7 @@ struct __attribute__((packed, __may_alias__)) StealthChop {
 // Encapsulates all of the registers that should be configured by software
 struct TMC2160RegisterMap {
     GConfig gconfig = {};
-    ShortConf shortConf = {};
+    ShortConf short_conf = {};
     DriverConf drvconf = {};
     CurrentControl ihold_irun = {};
     PowerDownDelay tpowerdown = {};
