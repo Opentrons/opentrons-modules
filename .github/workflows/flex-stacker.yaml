@@ -1,0 +1,97 @@
+name: 'Flex Stacker build/test'
+on:
+  pull_request:
+    paths:
+      - 'stm32-modules/flex-stacker/**/*'
+      - 'stm32-modules/common/**/*'
+      - 'stm32-modules/include/common/**/*'
+      - 'stm32-modules/include/flex-stacker/**/*'
+      - 'cmake/**/*'
+      - 'CMakeLists.txt'
+      - 'stm32-modules/CMakeLists.txt'
+      - 'CMakePresets.json'
+      - '.clang-format'
+      - '.clang-tidy'
+      - 'cpp-utils/**/*'
+    paths_ignore:
+      - 'cmake/Arduino*'
+  push:
+    paths:
+      - 'stm32-modules/flex-stacker/**/*'
+      - 'stm32-modules/common/**/*'
+      - 'stm32-modules/include/common/**/*'
+      - 'stm32-modules/include/flex-stacker/**/*'
+      - 'cmake/**/*'
+      - 'CMakeLists.txt'
+      - 'stm32-modules/CMakeLists.txt'
+      - 'CMakePresets.json'
+      - '.clang-format'
+      - '.clang-tidy'
+      - '.github/workflows/flex-stacker.yaml'
+    paths_ignore:
+      - 'cmake/Arduino*'
+    branches:
+      - '*'
+    tags:
+      - 'flex-stacker@*'
+  workflow_dispatch:
+
+
+defaults:
+  run:
+    shell: bash
+
+
+jobs:
+  cross-compile-check:
+    name: 'Cross-Compile/Check'
+    runs-on: 'ubuntu-20.04'
+    timeout-minutes: 10
+    steps:
+      - uses: 'actions/checkout@v2'
+        with:
+          fetch-depth: 0
+      - uses: 'actions/cache@v2'
+        with:
+          key: stm32-cross-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
+          restore-keys: stm32-cross-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
+          path: './stm32-tools'
+      - name: 'Configure'
+        run: cmake --preset=stm32-cross .
+      - name: 'Format'
+        run: cmake --build --preset cross --target flex-stacker-format-ci
+      - name: 'Lint'
+        run: cmake --build --preset cross --target flex-stacker-lint
+      - name: 'Build startup app'
+        run: cmake --build --preset cross --target flex-stacker-startup
+      - name: 'Build'
+        run: cmake --build --preset cross --target flex-stacker-hex
+      - name: 'Build full image'
+        run: cmake --build --preset cross --target flex-stacker-image-hex
+      - name: 'Build full image binary'
+        run: cmake --build --preset cross --target flex-stacker-image-bin
+  host-compile-test:
+    name: 'Host-Compile/Test'
+    runs-on: 'ubuntu-20.04'
+    timeout-minutes: 10
+    env:
+      CC: gcc-10
+      CXX: g++-10
+    steps:
+      - run: |
+          sudo apt update
+          sudo apt install gcc-10 g++-10
+      - uses: 'actions/checkout@v2'
+        with:
+          fetch-depth: 0
+      - uses: 'actions/cache@v2'
+        with:
+          path: './stm32-tools'
+          key: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
+          restore-keys: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
+      - name: 'Configure'
+        run: cmake --preset=stm32-host .
+      - name: 'Build Simulator'
+        run: cmake --build --preset host --target flex-stacker-simulator
+      - name: 'Build and Test'
+        run: cmake --build --preset flex-stacker-tests
