@@ -588,33 +588,21 @@ struct TMC2160RegisterMap {
     GConfig gconfig = {};
     ShortConf short_conf = {};
     DriverConf drvconf = {};
+    GlobalScaler glob_scale = {};
     CurrentControl ihold_irun = {};
     PowerDownDelay tpowerdown = {};
+    TPwmThreshold tpwmthrs = {};
     TCoolThreshold tcoolthrs = {};
     THigh thigh = {};
-    TPwmThreshold tpwmthrs = {};
     ChopConfig chopconf = {};
     CoolConfig coolconf = {};
     StealthChop pwmconf = {};
     DriveStatus drvstatus = {};
     GStatus gstat = {};
-    GlobalScaler glob_scale = {};
 };
 
 // Registers are all 32 bits
 using RegisterSerializedType = uint32_t;
 // Type definition to allow type aliasing for pointer dereferencing
 using RegisterSerializedTypeA = __attribute__((__may_alias__)) uint32_t;
-
-// R sense and VSF configuration
-struct TMC2160MotorCurrentConfig {
-    float r_sense;
-    float v_sf;
-};
-
-struct TMC2160DriverConfig {
-    TMC2160RegisterMap registers{};
-    TMC2160MotorCurrentConfig current_config{};
-};
-
 }  // namespace tmc2160

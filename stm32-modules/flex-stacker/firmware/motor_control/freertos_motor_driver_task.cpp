@@ -2,6 +2,7 @@
 
 #include "FreeRTOS.h"
 #include "firmware/motor_hardware.h"
+#include "firmware/motor_driver_policy.hpp"
 #include "flex-stacker/motor_driver_task.hpp"
 #include "ot_utils/freertos/freertos_timer.hpp"
 
@@ -28,7 +29,9 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
 
     spi_hardware_init();
 
+    auto policy = motor_driver_policy::MotorDriverPolicy();
     while (true) {
+        _top_task.run_once(policy);
     }
 }
 

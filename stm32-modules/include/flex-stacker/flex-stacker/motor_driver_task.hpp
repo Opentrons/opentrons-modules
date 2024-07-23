@@ -5,26 +5,34 @@
  */
 #pragma once
 
+
+#include "systemwide.h"
 #include "core/ack_cache.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
+#include "firmware/motor_policy.hpp"
 #include "flex-stacker/messages.hpp"
 #include "flex-stacker/tasks.hpp"
+#include "flex-stacker/tmc2160.hpp"
+#include "flex-stacker/tmc2160_interface.hpp"
 #include "flex-stacker/tmc2160_registers.hpp"
 #include "hal/message_queue.hpp"
 
 namespace motor_driver_task {
 
+
 using Message = messages::MotorDriverMessage;
+
 
 static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
     .gconfig = {.diag0_error = 1, .diag1_stall = 1},
+    .glob_scale = {.global_scaler = 0x8B},
     .ihold_irun = {.hold_current = 1,
                    .run_current = 31,
                    .hold_current_delay = 1},
+    .tpwmthrs = {.threshold = 0x80000},
     .tcoolthrs = {.threshold = 0x81},
     .thigh = {.threshold = 0x81},
-    .tpwmthrs = {.threshold = 0x80000},
     .chopconf = {.toff = 0b111,
                  .hstrt = 0b100,
                  .hend = 0b11,
@@ -37,17 +45,17 @@ static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
                 .pwm_autograd = 1,
                 .pwm_reg = 4,
                 .pwm_lim = 0xC},
-    .glob_scale = {.global_scaler = 0x8B},
 };
 
 static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
     .gconfig = {.diag0_error = 1, .diag1_stall = 1},
+    .glob_scale = {.global_scaler = 0x8B},
     .ihold_irun = {.hold_current = 1,
                    .run_current = 31,
                    .hold_current_delay = 1},
+    .tpwmthrs = {.threshold = 0x80000},
     .tcoolthrs = {.threshold = 0x81},
     .thigh = {.threshold = 0x81},
-    .tpwmthrs = {.threshold = 0x80000},
     .chopconf = {.toff = 0b111,
                  .hstrt = 0b111,
                  .hend = 0b1001,
@@ -60,17 +68,17 @@ static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
                 .pwm_autograd = 1,
                 .pwm_reg = 4,
                 .pwm_lim = 0xC},
-    .glob_scale = {.global_scaler = 0x8B},
 };
 
-static constexpr tmc2160::TMC2160RegisterMap motor_l_config{
+constexpr tmc2160::TMC2160RegisterMap motor_l_config{
     .gconfig = {.diag0_error = 1, .diag1_stall = 1},
+    .glob_scale = {.global_scaler = 0x8B},
     .ihold_irun = {.hold_current = 1,
                    .run_current = 31,
                    .hold_current_delay = 1},
+    .tpwmthrs = {.threshold = 0x80000},
     .tcoolthrs = {.threshold = 0x81},
     .thigh = {.threshold = 0x81},
-    .tpwmthrs = {.threshold = 0x80000},
     .chopconf = {.toff = 0b111,
                  .hstrt = 0b111,
                  .hend = 0b1001,
@@ -83,7 +91,6 @@ static constexpr tmc2160::TMC2160RegisterMap motor_l_config{
                 .pwm_autograd = 1,
                 .pwm_reg = 4,
                 .pwm_lim = 0xC},
-    .glob_scale = {.global_scaler = 0x8B},
 };
 
 template <template <class> class QueueImpl>
@@ -107,9 +114,23 @@ class MotorDriverTask {
         _task_registry = aggregator;
     }
 
-    auto run_once() -> void {
+    template <tmc2160::TMC2160InterfacePolicy Policy>
+    auto run_once(Policy& policy) -> void {
         if (!_task_registry) {
             return;
+        }
+        if (!_initialized) {
+
+            if (!_tmc2160.initialize_config(motor_z_config, tmc2160::TMC2160Interface(policy), MotorID::MOTOR_Z)) {
+                return;
+            }
+            if (!_tmc2160.initialize_config(motor_x_config, tmc2160::TMC2160Interface(policy), MotorID::MOTOR_X)) {
+                return;
+            }
+            if (!_tmc2160.initialize_config(motor_l_config, tmc2160::TMC2160Interface(policy), MotorID::MOTOR_L)) {
+                return;
+            }
+            _initialized = true;
         }
 
         auto message = Message(std::monostate());
@@ -125,6 +146,7 @@ class MotorDriverTask {
     auto visit_message(const std::monostate& message) -> void {
         static_cast<void>(message);
     }
+
 
     auto visit_message(const messages::SetMotorDriverRegister& message) -> void {
         static_cast<void>(message);
@@ -142,9 +164,14 @@ class MotorDriverTask {
         static_cast<void>(message);
     }
 
+
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     bool _initialized;
-};
 
+    tmc2160::TMC2160 _tmc2160{};
+    tmc2160::TMC2160Interface<Policy>* _tmc2160_interface;
+
+};
 };  // namespace motor_task

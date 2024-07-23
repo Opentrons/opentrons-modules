@@ -5,7 +5,10 @@
 #include "stm32g4xx_hal_gpio.h"
 #include "stm32g4xx_hal_dma.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
 #include <stdbool.h>
+
 
 /* SPI2 Pins */
 #define SPI2_SCK_Pin (GPIO_PIN_13)
@@ -23,13 +26,20 @@
 #define nSPI2_NSS_L_Pin (GPIO_PIN_2)
 #define nSPI2_NSS_L_GPIO_Port (GPIOB)
 
+/** Maximum length of a SPI transaction is 5 bytes.*/
+#define MOTOR_MAX_SPI_LEN (5)
+
 
 /** Static Variables -------------------------------------------------------- */
 
 struct motor_spi_hardware {
     SPI_HandleTypeDef handle;
+    TaskHandle_t task_to_notify;
     bool initialized;
 };
+
+static void spi_interrupt_service(void);
+static void spi_set_nss(bool selected);
 
 
 DMA_HandleTypeDef hdma_spi2_rx;
@@ -38,6 +48,7 @@ DMA_HandleTypeDef hdma_spi2_tx;
 
 static struct motor_spi_hardware _spi = {
     .handle = {0},
+    .task_to_notify = NULL,
     .initialized = false
 };
 
@@ -246,12 +257,23 @@ void SPI2_IRQHandler(void)
     HAL_SPI_IRQHandler(&_spi.handle);
 }
 
+static void spi_interrupt_service(void) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    if( _spi.task_to_notify == NULL ) {
+        return;
+    }
+    vTaskNotifyGiveFromISR( _spi.task_to_notify, &xHigherPriorityTaskWoken );
+    _spi.task_to_notify = NULL;
+    portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+}
+
+
 /**
   * @brief TxRx Transfer completed callback.
   */
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-    // TODO: Implement this callback
+    spi_interrupt_service();
 }
 
 /**
@@ -259,23 +281,36 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
  */
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 {
-    // TODO: Implement this callback
+    spi_interrupt_service();
 }
 
-void spi_dma_transmit_receive(
+bool tmc2160_transmit_receive(
     MotorID motor_id, uint8_t *txData, uint8_t *rxData, uint16_t size
 ) {
+    const TickType_t max_block_time = pdMS_TO_TICKS(100);
+    HAL_StatusTypeDef ret;
+    uint32_t notification_val = 0;
+
+    if (!_spi.initialized || (_spi.task_to_notify != NULL) || (size > MOTOR_MAX_SPI_LEN)) {
+        return false;
+    }
     // enable one of the motor driver for SPI communication
     enable_spi_nss(motor_id);
-
+    _spi.task_to_notify = xTaskGetCurrentTaskHandle();
     if (HAL_SPI_TransmitReceive_DMA(&_spi.handle, txData, rxData, size) != HAL_OK) {
         // Transmission error
-        // TODO: implement error handling
+        _spi.task_to_notify = NULL;
+        return false;
     }
-
-    // Wait for the transmission to complete
-    while (HAL_SPI_GetState(&_spi.handle) != HAL_SPI_STATE_READY) {}
-
+    notification_val = ulTaskNotifyTake(pdTRUE, max_block_time);
     disable_spi_nss();
+    // If the task was preempted by the error handler rather than the
+    // TxRx complete callback, the remaining count should be greater
+    // than 0.
+    if((notification_val != 1) || (_spi.handle.RxXferCount > 0)) {
+        _spi.task_to_notify = NULL;
+        return true;
+    }
+    return true;
 }
 
