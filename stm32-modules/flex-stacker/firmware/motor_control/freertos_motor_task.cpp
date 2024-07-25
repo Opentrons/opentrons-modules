@@ -1,6 +1,5 @@
-#include "firmware/freertos_tasks.hpp"
-
 #include "FreeRTOS.h"
+#include "firmware/freertos_tasks.hpp"
 #include "firmware/motor_hardware.h"
 #include "firmware/motor_policy.hpp"
 #include "flex-stacker/motor_task.hpp"
@@ -27,7 +26,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
 
-//        motor_hardware_init();
+    //        motor_hardware_init();
 
     //    auto policy = motor_policy::MotorPolicy();
     while (true) {

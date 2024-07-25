@@ -16,9 +16,9 @@ struct Tasks {
     // Message queue for motor control task
     using MotorQueue = QueueImpl<messages::MotorMessage>;
 
-
     // Central aggregator
-    using QueueAggregator = queue_aggregator::QueueAggregator<MotorDriverQueue, MotorQueue>;
+    using QueueAggregator =
+        queue_aggregator::QueueAggregator<MotorDriverQueue, MotorQueue>;
 
     // Addresses
     static constexpr size_t MotorDriverAddress =

@@ -17,8 +17,8 @@ static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto driver_task =
-    ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_DRIVER_STACK_SIZE, EntryPoint>(
-        motor_driver_task_entry);
+    ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_DRIVER_STACK_SIZE,
+                                          EntryPoint>(motor_driver_task_entry);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto motor_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_STACK_SIZE, EntryPoint>(
@@ -26,7 +26,8 @@ static auto motor_task =
 
 auto main() -> int {
     HardwareInit();
-    driver_task.start(tasks::MOTOR_DRIVER_TASK_PRIORITY, "Motor Driver", &aggregator);
+    driver_task.start(tasks::MOTOR_DRIVER_TASK_PRIORITY, "Motor Driver",
+                      &aggregator);
     motor_task.start(tasks::MOTOR_TASK_PRIORITY, "Motor", &aggregator);
 
     vTaskStartScheduler();

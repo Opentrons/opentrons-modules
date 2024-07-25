@@ -39,7 +39,8 @@ struct motor_spi_hardware {
 };
 
 static void spi_interrupt_service(void);
-static void spi_set_nss(bool selected);
+static void enable_spi_nss(MotorID motor);
+static void disable_spi_nss(void);
 
 
 DMA_HandleTypeDef hdma_spi2_rx;
@@ -284,11 +285,11 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
     spi_interrupt_service();
 }
 
-bool tmc2160_transmit_receive(
+bool spi_dma_transmit_receive(
     MotorID motor_id, uint8_t *txData, uint8_t *rxData, uint16_t size
 ) {
     const TickType_t max_block_time = pdMS_TO_TICKS(100);
-    HAL_StatusTypeDef ret;
+//    HAL_StatusTypeDef ret;
     uint32_t notification_val = 0;
 
     if (!_spi.initialized || (_spi.task_to_notify != NULL) || (size > MOTOR_MAX_SPI_LEN)) {

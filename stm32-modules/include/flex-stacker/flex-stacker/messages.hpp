@@ -127,10 +127,10 @@ using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage>;
 
- using MotorDriverMessage = ::std::variant<std::monostate, SetMotorDriverRegister,
-                                    GetMotorDriverRegister,
-                                    PollMotorDriverRegister,
-                                    StopPollingMotorDriverRegister>;
+using MotorDriverMessage =
+    ::std::variant<std::monostate, SetMotorDriverRegister,
+                   GetMotorDriverRegister, PollMotorDriverRegister,
+                   StopPollingMotorDriverRegister>;
 using MotorMessage = ::std::variant<std::monostate>;
 
 };  // namespace messages
