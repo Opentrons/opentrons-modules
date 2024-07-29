@@ -18,3 +18,9 @@ namespace motor_control_task {
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
 
 }  // namespace motor_control_task
+
+namespace ui_control_task {
+
+// Actual function that runs in the task
+auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
+}  // namespace ui_control_task
