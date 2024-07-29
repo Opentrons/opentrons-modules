@@ -10,10 +10,24 @@
 #include "core/version.hpp"
 #include "flex-stacker/messages.hpp"
 #include "flex-stacker/tasks.hpp"
+#include "firmware/motor_policy.hpp"
 #include "flex-stacker/tmc2160_registers.hpp"
 #include "hal/message_queue.hpp"
 
 namespace motor_task {
+
+template <typename P>
+concept MotorControlPolicy = requires(P p, MotorID motor_id) {
+    {
+        p.enable_motor(motor_id)
+        } -> std::same_as<void>;
+    {
+        p.disable_motor(motor_id)
+        } ->  std::same_as<void>;
+    {
+        p.set_motor_speed(motor_id, double{0.0})
+        } -> std::same_as<bool>;
+};
 
 using Message = messages::MotorMessage;
 
@@ -38,7 +52,9 @@ class MotorTask {
         _task_registry = aggregator;
     }
 
-    auto run_once() -> void {
+
+    template <MotorControlPolicy Policy>
+    auto run_once(Policy& policy) -> void {
         if (!_task_registry) {
             return;
         }

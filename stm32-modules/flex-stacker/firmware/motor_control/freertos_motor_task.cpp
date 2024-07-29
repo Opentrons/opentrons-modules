@@ -26,12 +26,12 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
 
-    //        motor_hardware_init();
+    motor_hardware_init();
 
-    //    auto policy = motor_policy::MotorPolicy();
+    auto policy = motor_policy::MotorPolicy();
     while (true) {
-        vTaskDelay(1000);
-        //        _top_task.run_once(policy);
+        //vTaskDelay(1000);
+        _top_task.run_once(policy);
     }
 }
 
