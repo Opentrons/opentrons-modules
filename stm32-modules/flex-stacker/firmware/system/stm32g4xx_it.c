@@ -86,22 +86,6 @@ void DebugMon_Handler(void)
 {
 }
 
-///**
-//  * @brief This function handles System tick timer.
-// */
-//void SysTick_Handler(void)
-//{
-//    HAL_IncTick();
-//#if (INCLUDE_xTaskGetSchedulerState == 1 )
-//    if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED)
-//    {
-//#endif /* INCLUDE_xTaskGetSchedulerState */
-//        xPortSysTickHandler();
-//#if (INCLUDE_xTaskGetSchedulerState == 1 )
-//    }
-//#endif /* INCLUDE_xTaskGetSchedulerState */
-//}
-
 /******************************************************************************/
 /* STM32G4xx Peripheral Interrupt Handlers                                    */
 /* Add here the Interrupt Handlers for the used peripherals.                  */
@@ -109,10 +93,13 @@ void DebugMon_Handler(void)
 /* please refer to the startup file (startup_stm32g4xx.s).                    */
 /******************************************************************************/
 
-/**
-  * @brief This function handles RCC global interrupt.
- */
-void RCC_IRQHandler(void)
-{
-}
 
+/**
+ * TIM7 = timebase counter
+ */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if(htim->Instance == TIM7) {
+        HAL_IncTick();
+    }
+}

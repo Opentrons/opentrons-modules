@@ -30,6 +30,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
 
     //    auto policy = motor_policy::MotorPolicy();
     while (true) {
+        vTaskDelay(1000);
         //        _top_task.run_once(policy);
     }
 }

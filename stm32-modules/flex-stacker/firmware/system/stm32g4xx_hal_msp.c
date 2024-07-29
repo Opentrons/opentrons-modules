@@ -47,6 +47,20 @@ void HAL_MspInit(void)
     HAL_PWREx_DisableUCPDDeadBattery();
 }
 
+void HAL_MspDeInit(void)
+{
+    __HAL_RCC_SYSCFG_CLK_DISABLE();
+    __HAL_RCC_PWR_CLK_DISABLE();
+
+    __HAL_RCC_TIM7_CLK_DISABLE();
+    __HAL_RCC_USB_CLK_DISABLE();
+    __HAL_RCC_SYSCFG_CLK_DISABLE();
+    __HAL_RCC_PWR_CLK_DISABLE();
+    /* System interrupt init*/
+    /* PendSV_IRQn interrupt configuration */
+    HAL_NVIC_DisableIRQ(PendSV_IRQn);
+    HAL_NVIC_DisableIRQ(RCC_IRQn);
+}
 /**
 * @brief I2C MSP Initialization
 * This function configures the hardware resources used in this example
@@ -224,6 +238,11 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     {
         /* Peripheral clock enable */
         __HAL_RCC_TIM3_CLK_ENABLE();
+    }
+    else if(htim_base->Instance==TIM7)
+    {
+        /* Peripheral clock enable */
+        __HAL_RCC_TIM7_CLK_ENABLE();
     }
     else if(htim_base->Instance==TIM17)
     {
