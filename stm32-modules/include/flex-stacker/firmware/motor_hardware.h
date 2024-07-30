@@ -12,8 +12,8 @@ extern "C" {
 void motor_hardware_init(void);
 
 void spi_hardware_init(void);
-bool motor_spi_sendreceive(MotorID motor_id, uint8_t *tx_data,
-                              uint8_t *rx_data, uint16_t len);
+bool motor_spi_sendreceive(MotorID motor_id, uint8_t *tx_data, uint8_t *rx_data,
+                           uint16_t len);
 
 #ifdef __cplusplus
 }  // extern "C"
