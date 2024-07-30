@@ -7,27 +7,36 @@ add_STM32G4_freertos(${TARGET_MODULE_NAME})
 add_STM32G4_usb(${TARGET_MODULE_NAME})
 
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
-set(MOTOR_CONTROL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/motor_control")
+set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
+set(MOTOR_CONTROL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/motor_control")
 set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32G491")
 set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
 set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
 
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
-    ${COMMS_DIR}/usb_hardware.c
-    ${MOTOR_CONTROL_DIR}/motor_hardware.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
+    ${UI_DIR}/freertos_ui_task.cpp
+    ${MOTOR_CONTROL_DIR}/freertos_motor_task.cpp
+    ${MOTOR_CONTROL_DIR}/freertos_motor_driver_task.cpp
+    ${MOTOR_CONTROL_DIR}/motor_driver_policy.cpp
     )
 
 # Add source files that should NOT be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
-    ${SYSTEM_DIR}/main.c
     ${SYSTEM_DIR}/stm32g4xx_hal_msp.c
     ${SYSTEM_DIR}/stm32g4xx_it.c
     ${SYSTEM_DIR}/system_stm32g4xx.c
+    ${SYSTEM_DIR}/hal_tick.c
+    ${UI_DIR}/ui_hardware.c
     ${COMMS_DIR}/usbd_conf.c
     ${COMMS_DIR}/usbd_desc.c
-        )
+    ${COMMS_DIR}/usb_hardware.c
+    ${MOTOR_CONTROL_DIR}/motor_hardware.c
+    ${MOTOR_CONTROL_DIR}/motor_spi_hardware.c
+    )
 
 add_executable(${TARGET_MODULE_NAME}
         ${${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS}
@@ -35,7 +44,7 @@ add_executable(${TARGET_MODULE_NAME}
 
 # Incurs at least a relink when you change the linker file (and a recompile of main
 # but hopefully that's quick)
-set_source_files_properties(${SYSTEM_DIR}/main.c
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
         PROPERTIES
         OBJECT_DEPENDS "${COMMON_MCU_DIR}/STM32G491VETx_FLASH.ld")
 

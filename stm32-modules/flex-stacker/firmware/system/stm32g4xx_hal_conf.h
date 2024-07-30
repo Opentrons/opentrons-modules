@@ -1,4 +1,3 @@
-/* USER CODE BEGIN Header */
 /**
  ******************************************************************************
  * @file    stm32g4xx_hal_conf.h
@@ -16,7 +15,6 @@
  *
  ******************************************************************************
  */
-/* USER CODE END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef STM32G4xx_HAL_CONF_H
@@ -118,8 +116,8 @@ extern "C" {
  * PLL).
  */
 #if !defined(HSE_VALUE)
-#define HSE_VALUE (8000000UL) /*!< Value of the External oscillator in Hz */
-#endif                        /* HSE_VALUE */
+#define HSE_VALUE (16000000UL) /*!< Value of the External oscillator in Hz */
+#endif                         /* HSE_VALUE */
 
 #if !defined(HSE_STARTUP_TIMEOUT)
 #define HSE_STARTUP_TIMEOUT (100UL) /*!< Time out for HSE start up, in ms */
@@ -386,7 +384,7 @@ void assert_failed(uint8_t *file, uint32_t line);
 #else
 #define assert_param(expr) ((void)0U)
 #endif /* USE_FULL_ASSERT */
-
+void Error_Handler(void);
 #ifdef __cplusplus
 }
 #endif
