@@ -1,0 +1,137 @@
+/*
+ * the primary interface to the host communications task
+ */
+#pragma once
+
+#include <array>
+#include <cstring>
+#include <optional>
+#include <utility>
+#include <variant>
+
+#include "core/ack_cache.hpp"
+#include "core/gcode_parser.hpp"
+#include "core/version.hpp"
+#include "flex-stacker/messages.hpp"
+#include "hal/message_queue.hpp"
+
+namespace tasks {
+template <template <class> class QueueImpl>
+struct Tasks;
+};
+
+namespace host_comms_task {
+
+using Message = messages::HostCommsMessage;
+
+// By using a template template parameter here, we allow the code instantiating
+// this template to do so as HostCommsTask<SomeQueueImpl> rather than
+// HeaterTask<SomeQueueImpl<Message>>
+template <template <class> class QueueImpl>
+requires MessageQueue<QueueImpl<Message>, Message>
+class HostCommsTask {
+  public:
+    using Queue = QueueImpl<Message>;
+    using Aggregator = typename tasks::Tasks<QueueImpl>::QueueAggregator;
+
+  private:
+  public:
+    static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
+    explicit HostCommsTask(Queue& q, Aggregator* aggregator)
+        : message_queue(q), task_registry(aggregator) {}
+    HostCommsTask(const HostCommsTask& other) = delete;
+    auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
+    HostCommsTask(HostCommsTask&& other) noexcept = delete;
+    auto operator=(HostCommsTask&& other) noexcept -> HostCommsTask& = delete;
+    ~HostCommsTask() = default;
+    auto get_message_queue() -> Queue& { return message_queue; }
+    auto provide_aggregator(Aggregator* aggregator) {
+        task_registry = aggregator;
+    }
+
+    /**
+     * run_once() runs one spin of the task. This means it
+     * - waits for a message to come in on its queue (either from another task,
+     *or from the USB input handling machinery)
+     * - handles the message
+     *   - which may include sending other messages
+     *   - which may include writing back a response string
+     *
+     * A buffer for the response string is provided by the caller, and it's
+     *sadly provided as a c-style pointer+length pair because that's
+     *fundamentally what it is. We could wrap it as an iterator pair, but it's
+     *nice to be honest.
+     *
+     * This function returns the amount of data it actually wrote into tx_into.
+     **/
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto run_once(InputIt tx_into, InputLimit tx_limit) -> InputLimit {
+        auto message = Message(std::monostate());
+
+        // This is the call down to the provided queue. It may block
+        // indefinitely
+        message_queue.recv(&message);
+
+        // We should now be guaranteed to have a message, and can visit it to do
+        // our actual work.
+
+        // we need a this-capturing lambda to pass on the call to our set of
+        // member function overloads because otherwise we would need a pointer
+        // to member function, and you can't really do that with variant visit.
+        // we also need to current the transmit buffer details in.
+        auto visit_helper = [this, tx_into,
+                             tx_limit](auto& message) -> InputIt {
+            return this->visit_message(message, tx_into, tx_limit);
+        };
+
+        // now, calling visit on the visit helper will pass through the calls to
+        // our message handlers, and will pass through whatever the messages
+        // return (aka how much data they wrote, if any) to the caller.
+        return std::visit(visit_helper, message);
+    }
+
+    [[nodiscard]] auto may_connect() const -> bool { return may_connect_latch; }
+
+  private:
+    /**
+     * visit_message is a set of overloads for all the messages that the task
+     * accepts. Because of the way we're calling this, in a lambda with an auto
+     * param passed to std::visit, the compiler ensures that we have a handler
+     * for every kind of message we accept. All these functions have uniform
+     * arguments (the particular message they handle and the tx buffer details)
+     * and the same return type (how many bytes they put into the buffer, if
+     * any). They may call other handler functions - for instance, the one that
+     * handles incoming messages from usb does essentially this same pattern
+     * again for whatever gcodes it parses.
+     * */
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::IncomingMessageFromHost& msg,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        static_cast<void>(msg);
+        static_cast<void>(tx_into);
+        static_cast<void>(tx_limit);
+        return tx_into;
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const std::monostate& ignore, InputIt tx_into,
+                       InputLimit tx_limit) -> InputIt {
+        static_cast<void>(ignore);
+        static_cast<void>(tx_into);
+        static_cast<void>(tx_limit);
+        return tx_into;
+    }
+
+    Queue& message_queue;
+    Aggregator* task_registry;
+    bool may_connect_latch = true;
+};
+
+};  // namespace host_comms_task

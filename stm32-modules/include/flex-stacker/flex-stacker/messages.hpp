@@ -118,11 +118,15 @@ struct GetMotorDriverRegisterResponse {
     uint8_t reg;
     uint32_t data;
 };
-
+/*
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetMotorDriverRegisterResponse>;
+*/
+using HostCommsMessage =
+    ::std::variant<std::monostate, IncomingMessageFromHost>;
+
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage>;
