@@ -1,5 +1,4 @@
 #include "firmware/freertos_tasks.hpp"
-
 #include "firmware/ui_hardware.h"
 
 namespace ui_control_task {

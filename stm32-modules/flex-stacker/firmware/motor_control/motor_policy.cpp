@@ -4,7 +4,6 @@
 
 using namespace motor_policy;
 
-
 auto MotorPolicy::enable_motor(MotorID motor_id) -> void {
     enable_motor(motor_id);
 }
@@ -13,7 +12,4 @@ auto MotorPolicy::disable_motor(MotorID motor_id) -> void {
     disable_motor(motor_id);
 }
 
-
-auto MotorPolicy::step(MotorID motor_id) -> void {
-    step(motor_id);
-}
+auto MotorPolicy::step(MotorID motor_id) -> void { step(motor_id); }

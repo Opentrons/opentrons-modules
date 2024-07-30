@@ -6,7 +6,6 @@
 
 namespace motor_policy {
 
-
 class MotorPolicy {
   public:
     auto enable_motor(MotorID motor_id) -> void;
