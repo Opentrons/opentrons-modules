@@ -120,9 +120,6 @@ class MotorDriverTask {
             return;
         }
         if (!_initialized) {
-            if (!_tmc2160.hello()) {
-                return;
-            }
             static tmc2160::TMC2160Interface<Policy> tmc2160_interface(policy);
             if (!_tmc2160.initialize_config(motor_z_config, tmc2160_interface,
                                             MotorID::MOTOR_Z)) {

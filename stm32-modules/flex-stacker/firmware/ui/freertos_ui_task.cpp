@@ -1,14 +1,17 @@
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/ui_hardware.h"
 
+static constexpr uint32_t HALF_SECOND = 500;
+
 namespace ui_control_task {
 
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
+    std::ignore = aggregator;
     while (true) {
         ui_hardware_set_heartbeat_led(true);
-        vTaskDelay(500);
+        vTaskDelay(HALF_SECOND);
         ui_hardware_set_heartbeat_led(false);
-        vTaskDelay(500);
+        vTaskDelay(HALF_SECOND);
     }
 }
 

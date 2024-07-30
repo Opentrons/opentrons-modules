@@ -222,7 +222,8 @@ struct __attribute__((packed, __may_alias__)) GlobalScaler {
     static constexpr Registers address = Registers::GLOBAL_SCALER;
     static constexpr bool writable = true;
     static constexpr uint32_t value_mask = (1 << 8) - 1;
-
+    static constexpr uint32_t minimum_value = 32;
+    static constexpr uint32_t full_scale = 0;
     /**
      * Global scaling of motor current. Multiplies to the current scaling.
      *
@@ -232,10 +233,8 @@ struct __attribute__((packed, __may_alias__)) GlobalScaler {
      *
      * Hint: Values >128 recommended for best results
      */
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes,-warnings-as-errors)
     uint32_t global_scaler : 8 = 0;
-
-    static constexpr uint32_t minimum_value = 32;
-    static constexpr uint32_t full_scale = 0;
 
     auto clamp_value() -> void {
         // The minimum operational value (aside from zero) is 32.

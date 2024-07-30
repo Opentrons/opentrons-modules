@@ -22,8 +22,6 @@ using namespace std::numbers;
 
 class TMC2160 {
   public:
-    auto hello(void) -> bool { return true; }
-
     template <tmc2160::TMC2160InterfacePolicy Policy>
     auto initialize_config(const TMC2160RegisterMap& registers,
                            tmc2160::TMC2160Interface<Policy>& policy,
@@ -76,42 +74,42 @@ class TMC2160 {
         return true;
     }
 
-    auto verify_gconf(GConfig reg) -> GConfig {
+    static auto verify_gconf(GConfig reg) -> GConfig {
         reg.test_mode = 0;
         return reg;
     }
 
-    auto verify_shortconf(ShortConf reg) -> ShortConf {
+    static auto verify_shortconf(ShortConf reg) -> ShortConf {
         reg.bit_padding_1 = 0;
         reg.bit_padding_2 = 0;
         return reg;
     }
 
-    auto verify_drvconf(DriverConf reg) -> DriverConf {
+    static auto verify_drvconf(DriverConf reg) -> DriverConf {
         reg.bit_padding_1 = 0;
         reg.bit_padding_2 = 0;
         return reg;
     }
 
-    auto verify_ihold_irun(CurrentControl reg) -> CurrentControl {
+    static auto verify_ihold_irun(CurrentControl reg) -> CurrentControl {
         reg.bit_padding_1 = 0;
         reg.bit_padding_2 = 0;
         return reg;
     }
 
-    auto verify_tpowerdown(double time) -> PowerDownDelay {
+    static auto verify_tpowerdown(double time) -> PowerDownDelay {
         PowerDownDelay temp_reg = {.time =
                                        PowerDownDelay::seconds_to_reg(time)};
         return temp_reg;
     }
 
-    auto verify_chopconf(ChopConfig reg) -> ChopConfig {
+    static auto verify_chopconf(ChopConfig reg) -> ChopConfig {
         reg.padding_1 = 0;
         reg.padding_2 = 0;
         return reg;
     }
 
-    auto verify_coolconf(CoolConfig reg) -> CoolConfig {
+    static auto verify_coolconf(CoolConfig reg) -> CoolConfig {
         // Assert that bits that MUST be 0 are actually 0
         reg.padding_1 = 0;
         reg.padding_2 = 0;
@@ -121,12 +119,12 @@ class TMC2160 {
         return reg;
     }
 
-    auto verify_pwmconf(StealthChop reg) -> StealthChop {
+    static auto verify_pwmconf(StealthChop reg) -> StealthChop {
         reg.padding_0 = 0;
         return reg;
     }
 
-    auto verify_glob_scaler(GlobalScaler reg) -> GlobalScaler {
+    static auto verify_glob_scaler(GlobalScaler reg) -> GlobalScaler {
         reg.clamp_value();
         return reg;
     }
@@ -165,7 +163,7 @@ class TMC2160 {
      */
     template <TMC2160Register Reg, tmc2160::TMC2160InterfacePolicy Policy>
     requires ReadableRegister<Reg>
-    auto read_register(uint32_t data, tmc2160::TMC2160Interface<Policy>& policy,
+    auto read_register(tmc2160::TMC2160Interface<Policy>& policy,
                        MotorID motor_id) -> std::optional<Reg> {
         using RT = std::optional<Reg>;
         auto ret = policy.read(Reg::address, motor_id);

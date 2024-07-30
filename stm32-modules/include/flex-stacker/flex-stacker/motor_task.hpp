@@ -48,6 +48,7 @@ class MotorTask {
 
     template <MotorControlPolicy Policy>
     auto run_once(Policy& policy) -> void {
+        std::ignore = policy;
         if (!_task_registry) {
             return;
         }
