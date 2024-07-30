@@ -28,7 +28,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
     .glob_scale = {.global_scaler = 0x8B},
     .ihold_irun = {.hold_current = 1,
                    .run_current = 31,
-                   .hold_current_delay = 1},
+                   .hold_current_delay = 7},
     .tpwmthrs = {.threshold = 0x80000},
     .tcoolthrs = {.threshold = 0x81},
     .thigh = {.threshold = 0x81},
@@ -49,9 +49,9 @@ static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
 static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
     .gconfig = {.diag0_error = 1, .diag1_stall = 1},
     .glob_scale = {.global_scaler = 0x8B},
-    .ihold_irun = {.hold_current = 1,
-                   .run_current = 31,
-                   .hold_current_delay = 1},
+    .ihold_irun = {.hold_current = 19,
+                   .run_current = 19,
+                   .hold_current_delay = 7},
     .tpwmthrs = {.threshold = 0x80000},
     .tcoolthrs = {.threshold = 0x81},
     .thigh = {.threshold = 0x81},
@@ -74,7 +74,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_l_config{
     .glob_scale = {.global_scaler = 0x8B},
     .ihold_irun = {.hold_current = 1,
                    .run_current = 31,
-                   .hold_current_delay = 1},
+                   .hold_current_delay = 7},
     .tpwmthrs = {.threshold = 0x80000},
     .tcoolthrs = {.threshold = 0x81},
     .thigh = {.threshold = 0x81},
@@ -121,18 +121,18 @@ class MotorDriverTask {
         }
         if (!_initialized) {
             static tmc2160::TMC2160Interface<Policy> tmc2160_interface(policy);
+            if (!_tmc2160.initialize_config(motor_x_config, tmc2160_interface,
+                                            MotorID::MOTOR_X)) {
+                return;
+            }
             if (!_tmc2160.initialize_config(motor_z_config, tmc2160_interface,
                                             MotorID::MOTOR_Z)) {
                 return;
             }
-            //            if (!_tmc2160.initialize_config(motor_x_config,
-            //            _tmc2160_interface, MotorID::MOTOR_X)) {
-            //                return;
-            //            }
-            //            if (!_tmc2160.initialize_config(motor_l_config,
-            //            _tmc2160_interface, MotorID::MOTOR_L)) {
-            //                return;
-            //            }
+            if (!_tmc2160.initialize_config(motor_l_config, tmc2160_interface,
+                                            MotorID::MOTOR_L)) {
+                return;
+            }
             _initialized = true;
         }
 

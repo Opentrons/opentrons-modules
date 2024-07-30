@@ -9,8 +9,8 @@ auto MotorDriverPolicy::tmc2160_transmit_receive(MotorID motor_id,
                                                  tmc2160::MessageT& data)
     -> RxTxReturn {
     tmc2160::MessageT retBuf = {0};
-    if (spi_dma_transmit_receive(motor_id, data.data(), retBuf.data(),
-                                 data.size())) {
+    if (motor_spi_sendreceive(motor_id, data.data(), retBuf.data(),
+                              data.size())) {
         return RxTxReturn(retBuf);
     }
     return RxTxReturn();
