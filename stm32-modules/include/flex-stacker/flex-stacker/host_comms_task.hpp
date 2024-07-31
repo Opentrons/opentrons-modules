@@ -13,6 +13,8 @@
 #include "core/gcode_parser.hpp"
 #include "core/version.hpp"
 #include "flex-stacker/messages.hpp"
+#include "flex-stacker/errors.hpp"
+#include "flex-stacker/gcodes.hpp"
 #include "hal/message_queue.hpp"
 
 namespace tasks {
@@ -35,10 +37,15 @@ class HostCommsTask {
     using Aggregator = typename tasks::Tasks<QueueImpl>::QueueAggregator;
 
   private:
+    using AckOnlyCache =
+        AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber>;
+    using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
     explicit HostCommsTask(Queue& q, Aggregator* aggregator)
-        : message_queue(q), task_registry(aggregator) {}
+        : message_queue(q), task_registry(aggregator),
+          ack_only_cache(),
+          get_system_info_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -121,6 +128,28 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::ForceUSBDisconnect& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        static_cast<void>(tx_limit);
+        auto acknowledgement =
+            messages::AcknowledgePrevious{.responding_to_id = response.id};
+        may_connect_latch = false;
+        static_cast<void>(task_registry->send_to_address(
+            acknowledgement, response.return_address, TICKS_TO_WAIT_ON_SEND));
+        return tx_into;
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::ErrorMessage& msg, InputIt tx_into,
+                       InputLimit tx_limit) -> InputIt {
+        return errors::write_into_async(tx_into, tx_limit, msg.code);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const std::monostate& ignore, InputIt tx_into,
                        InputLimit tx_limit) -> InputIt {
         static_cast<void>(ignore);
@@ -129,8 +158,71 @@ class HostCommsTask {
         return tx_into;
     }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::AcknowledgePrevious& msg,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            ack_only_cache.remove_if_present(msg.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, msg](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else if (msg.with_error != errors::ErrorCode::NO_ERROR) {
+                    return errors::write_into(tx_into, tx_limit,
+                                              msg.with_error);
+                } else {
+                    return cache_element.write_response_into(tx_into, tx_limit);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetSystemInfoResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            get_system_info_cache.remove_if_present(response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.serial_number,
+                        response.fw_version, response.hw_version);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetMotorDriverRegisterResponse& msg,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        static_cast<void>(msg);
+        static_cast<void>(tx_into);
+        static_cast<void>(tx_limit);
+        return tx_into;
+    }
+
+
+
+
     Queue& message_queue;
     Aggregator* task_registry;
+    AckOnlyCache ack_only_cache;
+    GetSystemInfoCache get_system_info_cache;
     bool may_connect_latch = true;
 };
 

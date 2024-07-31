@@ -59,6 +59,7 @@ set_target_properties(${TARGET_MODULE_NAME}
 target_include_directories(${TARGET_MODULE_NAME}
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../cpp-utils/include/
+        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../stm32-tools/printf/
         )
 
 target_compile_options(${TARGET_MODULE_NAME}
