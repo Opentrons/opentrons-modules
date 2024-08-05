@@ -262,48 +262,6 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
 {
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    if(htim->Instance==TIM3)
-    {
-        __HAL_RCC_GPIOB_CLK_ENABLE();
-        /**TIM3 GPIO Configuration
-        PB1     ------> TIM3_CH4
-        */
-        GPIO_InitStruct.Pin = MOTOR_STEP_L_Pin;
-        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-        GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
-        HAL_GPIO_Init(MOTOR_STEP_L_GPIO_Port, &GPIO_InitStruct);
-
-    }
-    else if(htim->Instance==TIM17)
-    {
-        __HAL_RCC_GPIOA_CLK_ENABLE();
-        /**TIM17 GPIO Configuration
-        PA7     ------> TIM17_CH1
-        */
-        GPIO_InitStruct.Pin = MOTOR_STEP_X_Pin;
-        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-        GPIO_InitStruct.Alternate = GPIO_AF1_TIM17;
-        HAL_GPIO_Init(MOTOR_STEP_X_GPIO_Port, &GPIO_InitStruct);
-
-    }
-    else if(htim->Instance==TIM20)
-    {
-        __HAL_RCC_GPIOC_CLK_ENABLE();
-        /**TIM20 GPIO Configuration
-        PC2     ------> TIM20_CH2
-        */
-        GPIO_InitStruct.Pin = MOTOR_STEP_Z_Pin;
-        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-        GPIO_InitStruct.Alternate = GPIO_AF6_TIM20;
-        HAL_GPIO_Init(MOTOR_STEP_Z_GPIO_Port, &GPIO_InitStruct);
-    }
 
 }
 /**
