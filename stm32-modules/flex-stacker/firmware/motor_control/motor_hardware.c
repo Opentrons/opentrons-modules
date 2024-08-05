@@ -1,4 +1,6 @@
 #include "stm32g4xx_hal.h"
+#include "stm32g4xx_it.h"
+#include "systemwide.h"
 
 /******************* Motor Z *******************/
 
@@ -119,7 +121,10 @@ void motor_hardware_init(void){
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+}
+
 void hw_enable_motor(MotorID motor_id) {
+    /*
     void* port;
     uint16_t pin;
     HAL_StatusTypeDef     status = HAL_OK;
@@ -158,5 +163,29 @@ void hw_enable_motor(MotorID motor_id) {
             return;
     }
     HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
+    * */
+}
+
+void step_motor(MotorID motor_id) {
+    void* port;
+    uint16_t pin;
+    switch (motor_id) {
+        case MOTOR_Z:
+            port = Z_STEP_PORT;
+            pin = Z_STEP_PIN;
+            break;
+        case MOTOR_X:
+            port = X_STEP_PORT;
+            pin = X_STEP_PIN;
+            break;
+        case MOTOR_L:
+            port = L_STEP_PORT;
+            pin = L_STEP_PIN;
+            break;
+        default:
+            return;
+    }
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_RESET);
 }
 
