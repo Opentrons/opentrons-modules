@@ -4,6 +4,7 @@
 #include "firmware/system_stm32g4xx.h"
 #include "ot_utils/freertos/freertos_task.hpp"
 #include "task.h"
+#include "systemwide.h"
 
 using EntryPoint = std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
 
@@ -28,6 +29,7 @@ static auto motor_task =
 static auto ui_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::UI_STACK_SIZE, EntryPoint>(
         ui_task_entry);
+
 auto main() -> int {
     HardwareInit();
 

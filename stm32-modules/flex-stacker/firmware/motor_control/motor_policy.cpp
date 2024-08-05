@@ -5,7 +5,7 @@
 using namespace motor_policy;
 
 auto MotorPolicy::enable_motor(MotorID motor_id) -> void {
-    enable_motor(motor_id);
+    hw_enable_motor(motor_id);
 }
 
 auto MotorPolicy::disable_motor(MotorID motor_id) -> void {

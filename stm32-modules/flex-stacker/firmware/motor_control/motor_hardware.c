@@ -119,5 +119,44 @@ void motor_hardware_init(void){
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+void hw_enable_motor(MotorID motor_id) {
+    void* port;
+    uint16_t pin;
+    HAL_StatusTypeDef     status = HAL_OK;
+    switch (motor_id) {
+        case MOTOR_Z:
+            port = Z_EN_PORT;
+            pin = Z_EN_PIN;
+            status = HAL_TIM_Base_Start_IT(&htim20);
+            if (status == HAL_OK)
+            {
+                HAL_NVIC_SetPriority(TIM20_UP_IRQn, 6, 0);
+                HAL_NVIC_EnableIRQ(TIM20_UP_IRQn);
+            }
+            break;
+        case MOTOR_X:
+            port = X_EN_PORT;
+            pin = X_EN_PIN;
+            status = HAL_TIM_Base_Start_IT(&htim17);
+            if (status == HAL_OK)
+            {
+                HAL_NVIC_SetPriority(TIM1_TRG_COM_TIM17_IRQn, 6, 0);
+                HAL_NVIC_EnableIRQ(TIM1_TRG_COM_TIM17_IRQn);
+            }
+            break;
+        case MOTOR_L:
+            port = L_EN_PORT;
+            pin = L_EN_PIN;
+            status = HAL_TIM_Base_Start_IT(&htim3);
+            if (status == HAL_OK)
+            {
+                HAL_NVIC_SetPriority(TIM3_IRQn, 6, 0);
+                HAL_NVIC_EnableIRQ(TIM3_IRQn);
+            }
+            break;
+        default:
+            return;
+    }
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
 }
 
