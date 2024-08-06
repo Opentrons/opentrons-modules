@@ -242,6 +242,7 @@ void hw_enable_motor(MotorID motor_id) {
     HAL_StatusTypeDef     status = HAL_OK;
     switch (motor_id) {
         case MOTOR_Z:
+            return;
             port = Z_EN_PORT;
             pin = Z_EN_PIN;
             status = HAL_TIM_Base_Start_IT(&htim20);
@@ -252,6 +253,7 @@ void hw_enable_motor(MotorID motor_id) {
             }
             break;
         case MOTOR_X:
+            return;
             port = X_EN_PORT;
             pin = X_EN_PIN;
             status = HAL_TIM_Base_Start_IT(&htim17);

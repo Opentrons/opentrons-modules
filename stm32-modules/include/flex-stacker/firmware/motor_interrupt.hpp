@@ -9,7 +9,8 @@ class MotorInterruptController {
   public:
     MotorInterruptController(MotorID m_id): m_id(m_id) {}
     void tick() {
-        step_count = (step_count + 1) % 200000;
+        unstep_motor(m_id);
+        step_count = (step_count + 1) % 20000;
         if (step_count == 0) {
             step_motor(m_id);
         }
