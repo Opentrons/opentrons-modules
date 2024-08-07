@@ -52,7 +52,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     _top_task.provide_aggregator(aggregator);
 
     motor_hardware_init();
-    initalize_callbacks(callback_glue);
+    initialize_callbacks(callback_glue);
     auto policy = motor_policy::MotorPolicy();
     policy.enable_motor(MotorID::MOTOR_L);
     policy.enable_motor(MotorID::MOTOR_X);

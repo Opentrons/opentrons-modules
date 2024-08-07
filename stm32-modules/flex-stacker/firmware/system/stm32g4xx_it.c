@@ -118,6 +118,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 }
 
-void initalize_callbacks(motor_interrupt_callback callback_glue) {
+void initialize_callbacks(motor_interrupt_callback callback_glue) {
     interrupt_callback = callback_glue;
 }
