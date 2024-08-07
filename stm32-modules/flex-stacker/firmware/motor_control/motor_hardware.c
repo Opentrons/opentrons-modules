@@ -219,8 +219,8 @@ void MX_TIM3_Init(void) {
 
 void motor_hardware_interrupt_init(void){
     MX_TIM17_Init();
-//    MX_TIM20_Init();
-//    MX_TIM3_Init();
+    MX_TIM20_Init();
+    MX_TIM3_Init();
 }
 
 void motor_hardware_init(void){

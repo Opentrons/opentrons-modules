@@ -13,6 +13,6 @@ void ui_hardware_set_heartbeat_led(bool setting) {
     HAL_GPIO_WritePin(nSTATUS_LED_GPIO_Port, nSTATUS_LED_Pin,
         setting ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2,
-                      setting ? GPIO_PIN_SET : GPIO_PIN_RESET);
+//    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2,
+//                      setting ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }

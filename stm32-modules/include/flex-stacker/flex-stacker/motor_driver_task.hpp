@@ -67,7 +67,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
                  .hstrt = 0b111,
                  .hend = 0b1001,
                  .tbl = 0b1,
-                 .mres = 0b100},
+                 .mres = 0b1000},
     .coolconf = {.semin = 0b11, .semax = 0b100},
     .pwmconf = {.pwm_ofs = 0x1F,
                 .pwm_grad = 0x18,
