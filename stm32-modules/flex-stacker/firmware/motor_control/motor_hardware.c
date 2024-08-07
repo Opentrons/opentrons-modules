@@ -59,7 +59,7 @@
 #define L_N_HELD_PIN (GPIO_PIN_5)
 #define L_N_HELD_PORT (GPIOB)
 #define L_N_RELEASED_PIN (GPIO_PIN_11)
-#define L_N_RELEASED_PORT (GPIO_PIN_C)
+#define L_N_RELEASED_PORT (GPIOC)
 
 /**************** COMMON ********************/
 #define ESTOP_PIN GPIO_PIN_6
@@ -82,9 +82,7 @@ TIM_HandleTypeDef htim3;
 
 void motor_hardware_gpio_init(void){
 
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    /* USER CODE BEGIN MX_GPIO_Init_1 */
-    /* USER CODE END MX_GPIO_Init_1 */
+    GPIO_InitTypeDef init = {0};
 
     /* GPIO Ports Clock Enable */
     __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -92,79 +90,73 @@ void motor_hardware_gpio_init(void){
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
 
-    /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOC, Z_DIR_PIN|L_N_HELD_PIN, GPIO_PIN_RESET);
+    /*Configure GPIO pins : OUTPUTS */
+    init.Mode = GPIO_MODE_OUTPUT_PP;
+    init.Pull = GPIO_NOPULL;
+    init.Speed = GPIO_SPEED_FREQ_LOW;
 
-    /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOA, Z_EN_PIN|X_EN_PIN|X_DIR_PIN, GPIO_PIN_RESET);
+    // Z MOTOR
+    init.Pin = Z_EN_PIN;
+    HAL_GPIO_Init(Z_EN_PORT, &init);
 
-    /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOB, L_DIR_PIN, GPIO_PIN_RESET);
+    init.Pin = Z_DIR_PIN;
+    HAL_GPIO_Init(Z_DIR_PORT, &init);
 
-    /*Configure GPIO pins :  Z_MINUS_LIMIT_PIN */
-    GPIO_InitStruct.Pin = Z_MINUS_LIMIT_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    init.Pin = Z_N_BRAKE_PIN;
+    HAL_GPIO_Init(Z_N_BRAKE_PORT, &init);
 
-    /*Configure GPIO pins : Z_DIR_PIN L_EN_PIN */
-    GPIO_InitStruct.Pin = Z_DIR_PIN|L_EN_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    init.Pin  = Z_STEP_PIN;
+    HAL_GPIO_Init(Z_STEP_PORT, &init);
 
-    /*Configure GPIO pins : Z_PLUS_LIMIT_PIN LIMIT_X__Pin LIMIT_X_A2_Pin */
-    GPIO_InitStruct.Pin = Z_PLUS_LIMIT_PIN|X_MINUS_LIMIT_PIN|X_PLUS_LIMIT_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    // X MOTOR
+    init.Pin = X_EN_PIN;
+    HAL_GPIO_Init(X_EN_PORT, &init);
 
-    /*Configure GPIO pins : Z_EN_PIN X_EN_PIN X_DIR_PIN */
-    GPIO_InitStruct.Pin = Z_EN_PIN|X_EN_PIN|X_DIR_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    init.Pin = X_DIR_PIN;
+    HAL_GPIO_Init(X_DIR_PORT, &init);
 
-    /*Configure GPIO pins : L_DIR_PIN Z_N_BRAKE_PIN X_N_BRAKE_PIN*/
-    GPIO_InitStruct.Pin = L_DIR_PIN | Z_N_BRAKE_PIN | X_N_BRAKE_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    init.Pin = X_STEP_PIN;
+    HAL_GPIO_Init(X_STEP_PORT, &init);
 
-    /*Configure GPIO pins : L_N_HELD_PIN */
-    GPIO_InitStruct.Pin = L_N_HELD_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    // L MOTOR
+    init.Pin = L_EN_PIN;
+    HAL_GPIO_Init(L_EN_PORT, &init);
 
+    init.Pin = L_DIR_PIN;
+    HAL_GPIO_Init(L_DIR_PORT, &init);
 
-    GPIO_InitStruct.Pin = ESTOP_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(ESTOP_PORT, &GPIO_InitStruct);
+    init.Pin = L_STEP_PIN;
+    HAL_GPIO_Init(L_STEP_PORT, &init);
 
+    /*Configure GPIO pins : INPUTS */
+    init.Mode = GPIO_MODE_INPUT;
 
-    GPIO_InitStruct.Pin = X_STEP_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(X_STEP_PORT, &GPIO_InitStruct);
+    // Z MOTOR
+    init.Pin = Z_MINUS_LIMIT_PIN;
+    HAL_GPIO_Init(Z_MINUS_LIMIT_PORT, &init);
 
+    init.Pin = Z_PLUS_LIMIT_PIN;
+    HAL_GPIO_Init(Z_PLUS_LIMIT_PORT, &init);
 
-    GPIO_InitStruct.Pin = Z_STEP_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(Z_STEP_PORT, &GPIO_InitStruct);
+    // X MOTOR
+    init.Pin = X_MINUS_LIMIT_PIN;
+    HAL_GPIO_Init(X_MINUS_LIMIT_PORT, &init);
 
+    init.Pin = X_PLUS_LIMIT_PIN;
+    HAL_GPIO_Init(X_PLUS_LIMIT_PORT, &init);
 
-    GPIO_InitStruct.Pin = L_STEP_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(L_STEP_PORT, &GPIO_InitStruct);
+    // L MOTOR
+    init.Pin = L_N_HELD_PIN;
+    HAL_GPIO_Init(L_N_HELD_PORT, &init);
 
-    HAL_GPIO_WritePin(ESTOP_PORT, ESTOP_PIN, RESET);
+    init.Pin = L_N_RELEASED_PIN;
+    HAL_GPIO_Init(L_N_RELEASED_PORT, &init);
+
+    init.Pin = ESTOP_PIN;
+    HAL_GPIO_Init(ESTOP_PORT, &init);
+
+    HAL_GPIO_WritePin(Z_N_BRAKE_PORT, Z_N_BRAKE_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(X_N_BRAKE_PORT, X_N_BRAKE_PIN, GPIO_PIN_SET);
 }
 
 // X motor timer
@@ -227,8 +219,8 @@ void MX_TIM3_Init(void) {
 
 void motor_hardware_interrupt_init(void){
     MX_TIM17_Init();
-    MX_TIM20_Init();
-    MX_TIM3_Init();
+//    MX_TIM20_Init();
+//    MX_TIM3_Init();
 }
 
 void motor_hardware_init(void){
@@ -242,7 +234,6 @@ void hw_enable_motor(MotorID motor_id) {
     HAL_StatusTypeDef     status = HAL_OK;
     switch (motor_id) {
         case MOTOR_Z:
-            return;
             port = Z_EN_PORT;
             pin = Z_EN_PIN;
             status = HAL_TIM_Base_Start_IT(&htim20);
@@ -253,7 +244,6 @@ void hw_enable_motor(MotorID motor_id) {
             }
             break;
         case MOTOR_X:
-            return;
             port = X_EN_PORT;
             pin = X_EN_PIN;
             status = HAL_TIM_Base_Start_IT(&htim17);

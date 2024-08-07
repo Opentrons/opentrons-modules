@@ -1,7 +1,7 @@
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/ui_hardware.h"
 
-static constexpr uint32_t HALF_SECOND = 500;
+static constexpr uint32_t HALF_SECOND = 100;
 
 namespace ui_control_task {
 
