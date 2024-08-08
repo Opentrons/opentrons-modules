@@ -68,7 +68,7 @@
 
 // Frequency of the motor interrupt callbacks is 300kHz, providing some extra
 // overhead over the velocities used by this application.
-#define MOTOR_INTERRUPT_FREQ (300000)
+#define MOTOR_INTERRUPT_FREQ (100000)
 /** Frequency of the driving clock is 170MHz.*/
 #define TIM_APB_FREQ (170000000)
 /** Preload for APB to give a 10MHz clock.*/
@@ -156,7 +156,7 @@ void motor_hardware_gpio_init(void){
     HAL_GPIO_Init(ESTOP_PORT, &init);
 
     HAL_GPIO_WritePin(Z_N_BRAKE_PORT, Z_N_BRAKE_PIN, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(X_N_BRAKE_PORT, X_N_BRAKE_PIN, GPIO_PIN_SET);
+//    HAL_GPIO_WritePin(Z_EN_PORT, Z_EN_PIN, GPIO_PIN_SET);
 }
 
 // X motor timer
@@ -180,23 +180,71 @@ void MX_TIM17_Init(void) {
 }
 // Z motor timer
 void MX_TIM20_Init(void) {
+    TIM_ClockConfigTypeDef sClockSourceConfig = {0};
     TIM_MasterConfigTypeDef sMasterConfig = {0};
+    TIM_OC_InitTypeDef sConfigOC = {0};
+    TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
+    /* USER CODE BEGIN TIM20_Init 1 */
+
+    /* USER CODE END TIM20_Init 1 */
     htim20.Instance = TIM20;
     htim20.Init.Prescaler = TIM_PRELOAD;
     htim20.Init.CounterMode = TIM_COUNTERMODE_UP;
     htim20.Init.Period = TIM_PERIOD;
+    htim20.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    htim20.Init.RepetitionCounter = 0;
     htim20.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-    if (HAL_TIM_Base_Init(&htim20) != HAL_OK) {
+    if (HAL_TIM_Base_Init(&htim20) != HAL_OK)
+    {
         Error_Handler();
     }
-    sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+    sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+    if (HAL_TIM_ConfigClockSource(&htim20, &sClockSourceConfig) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    if (HAL_TIM_PWM_Init(&htim20) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+    sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
     sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-    if (HAL_TIMEx_MasterConfigSynchronization(&htim20, &sMasterConfig) !=
-        HAL_OK) {
+    if (HAL_TIMEx_MasterConfigSynchronization(&htim20, &sMasterConfig) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    sConfigOC.OCMode = TIM_OCMODE_PWM1;
+    sConfigOC.Pulse = 0;
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+    sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+    sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+    sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+    if (HAL_TIM_PWM_ConfigChannel(&htim20, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+    sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+    sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+    sBreakDeadTimeConfig.DeadTime = 0;
+    sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+    sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+    sBreakDeadTimeConfig.BreakFilter = 0;
+    sBreakDeadTimeConfig.BreakAFMode = TIM_BREAK_AFMODE_INPUT;
+    sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
+    sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
+    sBreakDeadTimeConfig.Break2Filter = 0;
+    sBreakDeadTimeConfig.Break2AFMode = TIM_BREAK_AFMODE_INPUT;
+    sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+    if (HAL_TIMEx_ConfigBreakDeadTime(&htim20, &sBreakDeadTimeConfig) != HAL_OK)
+    {
         Error_Handler();
     }
 }
+
 // L motor timer
 void MX_TIM3_Init(void) {
     TIM_MasterConfigTypeDef sMasterConfig = {0};
@@ -237,20 +285,20 @@ void hw_enable_motor(MotorID motor_id) {
             port = Z_EN_PORT;
             pin = Z_EN_PIN;
             status = HAL_TIM_Base_Start_IT(&htim20);
+            HAL_NVIC_SetPriority(TIM20_UP_IRQn, 5, 0);
+            HAL_NVIC_EnableIRQ(TIM20_UP_IRQn);
             if (status == HAL_OK)
             {
-                HAL_NVIC_SetPriority(TIM20_UP_IRQn, 6, 0);
-                HAL_NVIC_EnableIRQ(TIM20_UP_IRQn);
-            }
+        }
             break;
         case MOTOR_X:
             port = X_EN_PORT;
             pin = X_EN_PIN;
             status = HAL_TIM_Base_Start_IT(&htim17);
+            HAL_NVIC_SetPriority(TIM1_TRG_COM_TIM17_IRQn, 6, 0);
+            HAL_NVIC_EnableIRQ(TIM1_TRG_COM_TIM17_IRQn);
             if (status == HAL_OK)
             {
-                HAL_NVIC_SetPriority(TIM1_TRG_COM_TIM17_IRQn, 6, 0);
-                HAL_NVIC_EnableIRQ(TIM1_TRG_COM_TIM17_IRQn);
             }
             break;
         case MOTOR_L:

@@ -82,7 +82,7 @@
 #include "stm32g4xx_hal.h"
 
 #if !defined(HSE_VALUE)
-#define HSE_VALUE 24000000U /*!< Value of the External oscillator in Hz */
+#define HSE_VALUE 16000000U /*!< Value of the External oscillator in Hz */
 #endif                      /* HSE_VALUE */
 
 #if !defined(HSI_VALUE)
