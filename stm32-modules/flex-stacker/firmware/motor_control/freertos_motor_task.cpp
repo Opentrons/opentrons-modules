@@ -3,18 +3,19 @@
 #include "firmware/motor_hardware.h"
 #include "firmware/motor_policy.hpp"
 #include "flex-stacker/motor_task.hpp"
-#include "ot_utils/freertos/freertos_timer.hpp"
 #include "motor_interrupt.hpp"
-#include "systemwide.h"
+#include "ot_utils/freertos/freertos_timer.hpp"
 #include "stm32g4xx_it.h"
+#include "systemwide.h"
 
 namespace motor_control_task {
 
-
-static auto x_motor_interrupt = motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_X);
-static auto z_motor_interrupt = motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_Z);
-static auto l_motor_interrupt = motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_L);
-
+static auto x_motor_interrupt =
+    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_X);
+static auto z_motor_interrupt =
+    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_Z);
+static auto l_motor_interrupt =
+    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_L);
 
 enum class Notifications : uint8_t {
     INCOMING_MESSAGE = 1,

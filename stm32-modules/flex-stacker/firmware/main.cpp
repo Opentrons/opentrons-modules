@@ -3,8 +3,8 @@
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/system_stm32g4xx.h"
 #include "ot_utils/freertos/freertos_task.hpp"
-#include "task.h"
 #include "systemwide.h"
+#include "task.h"
 
 using EntryPoint = std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
 
