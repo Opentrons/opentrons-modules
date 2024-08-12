@@ -12,4 +12,4 @@ auto MotorPolicy::disable_motor(MotorID motor_id) -> void {
     disable_motor(motor_id);
 }
 
-auto MotorPolicy::step(MotorID motor_id) -> void { step(motor_id); }
+auto MotorPolicy::step(MotorID motor_id) -> void { step_motor(motor_id); }
