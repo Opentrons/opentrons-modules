@@ -18,6 +18,8 @@ enum class ErrorCode {
     SYSTEM_SERIAL_NUMBER_INVALID = 301,
     SYSTEM_SERIAL_NUMBER_HAL_ERROR = 302,
     SYSTEM_EEPROM_ERROR = 303,
+    // 9xx - TMC2160
+    TMC2160_READ_ERROR = 901,
 };
 
 auto errorstring(ErrorCode code) -> const char*;

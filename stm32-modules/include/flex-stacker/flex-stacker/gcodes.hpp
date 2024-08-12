@@ -1,7 +1,6 @@
 /*
 ** Definitions of valid gcodes understood by the flex-stacker; intended to work
-*with
-** the gcode parser in gcode_parser.hpp
+** with the gcode parser in gcode_parser.hpp
 */
 
 #pragma once
@@ -233,5 +232,58 @@ struct GetBoardRevision {
         return buf + res;
     }
 };
+
+struct GetTMCRegister {
+    MotorID motor_id;
+    uint8_t reg;
+
+    using ParseResult = std::optional<GetTMCRegister>;
+    static constexpr auto prefix = std::array{'M', '9', '2', '0', ' '};
+    static constexpr const char* response = "M920 OK\n";
+
+    template <typename InputIt, typename InLimit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+    template <typename InputIt, typename Limit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        MotorID motor_id = MotorID::MOTOR_Z;
+        if (*working == 'X') {
+            motor_id = MotorID::MOTOR_X;
+        } else if (*working == 'L') {
+            motor_id = MotorID::MOTOR_L;
+        }else if (*working != 'Z') {
+            return std::make_pair(ParseResult(), input);
+        }
+        working++;
+        if (working == limit) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        constexpr auto pref = std::array{' '};
+        auto before_pref = working;
+        working = prefix_matches(working, limit, pref);
+        if (working == before_pref) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto reg = parse_value<uint8_t>(working, limit);
+        if (!reg.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(
+            ParseResult(GetTMCRegister{.motor_id = motor_id, .reg = reg}), reg.second);
+    }
+};
+
 
 }  // namespace gcode

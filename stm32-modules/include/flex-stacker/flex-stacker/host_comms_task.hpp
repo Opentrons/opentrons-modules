@@ -37,15 +37,17 @@ class HostCommsTask {
     using Aggregator = typename tasks::Tasks<QueueImpl>::QueueAggregator;
 
   private:
+    using GCodeParser = gcode::GroupParser<gcode::GetTMCRegister>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
+    using GetTMCRegisterCache = AckCache<8, gcode::GetTMCRegister>;
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
     explicit HostCommsTask(Queue& q, Aggregator* aggregator)
         : message_queue(q), task_registry(aggregator),
           ack_only_cache(),
-          get_system_info_cache() {}
+          get_system_info_cache(), get_tmc_register_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -208,21 +210,62 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_message(const messages::GetMotorDriverRegisterResponse& msg,
+    auto visit_message(const messages::GetTMCRegisterResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        static_cast<void>(msg);
-        static_cast<void>(tx_into);
-        static_cast<void>(tx_limit);
-        return tx_into;
+        auto cache_entry = get_tmc_register_cache.remove_if_present(
+            response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit);
+                }
+            },
+            cache_entry);
     }
 
+    template <typename InputIt, typename InputLimit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const std::monostate& ignore, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        static_cast<void>(ignore);
+        static_cast<void>(tx_into);
+        static_cast<void>(tx_limit);
+        return std::make_pair(true, tx_into);
+    }
 
-
+    template <typename InputIt, typename InputLimit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetTMCRegister& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_tmc_register_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetTMCRegisterMessage{.id = id, .motor_id = gcode.motor_id, .reg = gcode.reg};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_tmc_register_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
 
     Queue& message_queue;
     Aggregator* task_registry;
     AckOnlyCache ack_only_cache;
     GetSystemInfoCache get_system_info_cache;
+    GetTMCRegisterCache get_tmc_register_cache;
     bool may_connect_latch = true;
 };
 

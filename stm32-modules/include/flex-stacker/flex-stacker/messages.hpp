@@ -89,30 +89,30 @@ struct ForceUSBDisconnect {
     size_t return_address;
 };
 
-struct SetMotorDriverRegister {
+struct SetTMCRegisterMessage {
     uint32_t id;
     MotorID motor_id;
     uint8_t reg;
     uint32_t data;
 };
 
-struct GetMotorDriverRegister {
+struct GetTMCRegisterMessage {
     uint32_t id;
     MotorID motor_id;
     uint8_t reg;
 };
 
-struct PollMotorDriverRegister {
+struct PollTMCRegisterMessage {
     uint32_t id;
     MotorID motor_id;
     uint8_t reg;
 };
 
-struct StopPollingMotorDriverRegister {
+struct StopPollTMCRegisterMessage {
     uint32_t id;
 };
 
-struct GetMotorDriverRegisterResponse {
+struct GetTMCRegisterResponse {
     uint32_t responding_to_id;
     MotorID motor_id;
     uint8_t reg;
@@ -122,16 +122,16 @@ struct GetMotorDriverRegisterResponse {
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetMotorDriverRegisterResponse>;
+                   GetTMCRegisterResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage>;
 
 using MotorDriverMessage =
-    ::std::variant<std::monostate, SetMotorDriverRegister,
-                   GetMotorDriverRegister, PollMotorDriverRegister,
-                   StopPollingMotorDriverRegister>;
+    ::std::variant<std::monostate, SetTMCRegisterMessage,
+                   GetTMCRegisterMessage, PollTMCRegisterMessage,
+                   StopPollTMCRegisterMessage>;
 using MotorMessage = ::std::variant<std::monostate>;
 
 };  // namespace messages
