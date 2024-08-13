@@ -241,47 +241,49 @@ struct GetTMCRegister {
     static constexpr auto prefix = std::array{'M', '9', '2', '0', ' '};
     static constexpr const char* response = "M920 OK\n";
 
-    template <typename InputIt, typename InLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputIt, InLimit>
-    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
-        return write_string_to_iterpair(buf, limit, response);
-    }
     template <typename InputIt, typename Limit>
         requires std::forward_iterator<InputIt> &&
                  std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
+        MotorID motor_id_val = MotorID::MOTOR_X;
         auto working = prefix_matches(input, limit, prefix);
         if (working == input) {
             return std::make_pair(ParseResult(), input);
         }
-        MotorID motor_id = MotorID::MOTOR_Z;
-        if (*working == 'X') {
-            motor_id = MotorID::MOTOR_X;
-        } else if (*working == 'L') {
-            motor_id = MotorID::MOTOR_L;
-        }else if (*working != 'Z') {
-            return std::make_pair(ParseResult(), input);
+        switch (*working) {
+            case 'X':
+                motor_id_val = MotorID::MOTOR_X;
+                break;
+            case 'Z':
+                motor_id_val = MotorID::MOTOR_Z;
+                break;
+            case 'L':
+                motor_id_val = MotorID::MOTOR_L;
+                break;
+            default:
+                return std::make_pair(ParseResult(), input);
         }
-        working++;
+        std::advance(working, 1);
         if (working == limit) {
             return std::make_pair(ParseResult(), input);
         }
 
-        constexpr auto pref = std::array{' '};
-        auto before_pref = working;
-        working = prefix_matches(working, limit, pref);
-        if (working == before_pref) {
+        auto reg_res = gcode::parse_value<uint8_t>(working, limit);
+        if (!reg_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
+        return std::make_pair(ParseResult(GetTMCRegister{
+                                  .motor_id = motor_id_val,
+                                  .reg = reg_res.first.value()}),
+                              reg_res.second);
+    }
 
-        auto reg = parse_value<uint8_t>(working, limit);
-        if (!reg.first.has_value()) {
-            return std::make_pair(ParseResult(), input);
-        }
-        return std::make_pair(
-            ParseResult(GetTMCRegister{.motor_id = motor_id, .reg = reg}), reg.second);
+    template <typename InputIt, typename InLimit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
     }
 };
 

@@ -121,10 +121,50 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::IncomingMessageFromHost& msg,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        static_cast<void>(msg);
-        static_cast<void>(tx_into);
-        static_cast<void>(tx_limit);
-        return tx_into;
+        auto parser = GCodeParser();
+        const auto* newline_at = std::find_if(
+            msg.buffer, msg.limit,
+            [](const auto& ch) { return ch == '\n' || ch == '\r'; });
+        if (newline_at == msg.limit) {
+            return tx_into;
+        }
+        // We're going to accumulate all the responses or errors we need into
+        // our tx buffer if we can, so let's make some temps we're free to
+        // modify.
+        const auto* current = msg.buffer;
+        InputIt current_tx_head = tx_into;
+        // As in run_once, we're going to use std::visit to invoke a set of
+        // member function overloads that also take other arguments, so we need
+        // a lambda that closes over the extra arguments and curries them into
+        // the member functions, as well as currying in the this pointer
+        auto visit_helper = [this, &current_tx_head, &tx_limit](
+                                auto gcode) -> std::pair<bool, InputIt> {
+            return this->visit_gcode(gcode, current_tx_head, tx_limit);
+        };
+        while (true) {
+            // Parse an incremental gcode
+            auto maybe_parsed = parser.parse_available(current, msg.limit);
+            current = maybe_parsed.second;
+            // Visit it; this may write stuff to the transmit buffer, send
+            // further messages, etc
+            auto handled = std::visit(visit_helper, maybe_parsed.first);
+            // Account for anything the handler might have written
+            current_tx_head = handled.second;
+            if (current_tx_head >= tx_limit) {
+                // Something bad has happened, we overran or are about to
+                // overrun our tx buffer, should let upstream know
+                current_tx_head = errors::write_into(
+                    tx_into, tx_limit, errors::ErrorCode::USB_TX_OVERRUN);
+
+                break;
+            }
+
+            if ((!handled.first) || (current == msg.limit)) {
+                // parse done
+                break;
+            }
+        }
+        return current_tx_head;
     }
 
     template <typename InputIt, typename InputLimit>
@@ -259,6 +299,18 @@ class HostCommsTask {
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
+    }
+
+    // Our error handler just writes an error and bails
+    template <typename InputIt, typename InputLimit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const GCodeParser::ParseError& _ignore, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        static_cast<void>(_ignore);
+        return std::make_pair(
+            false, errors::write_into(tx_into, tx_limit,
+                                      errors::ErrorCode::UNHANDLED_GCODE));
     }
 
     Queue& message_queue;
