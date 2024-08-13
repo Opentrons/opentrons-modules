@@ -289,7 +289,7 @@ void hw_enable_motor(MotorID motor_id) {
             HAL_NVIC_EnableIRQ(TIM20_UP_IRQn);
             if (status == HAL_OK)
             {
-        }
+            }
             break;
         case MOTOR_X:
             port = X_EN_PORT;
@@ -305,10 +305,10 @@ void hw_enable_motor(MotorID motor_id) {
             port = L_EN_PORT;
             pin = L_EN_PIN;
             status = HAL_TIM_Base_Start_IT(&htim3);
+            HAL_NVIC_SetPriority(TIM3_IRQn, 6, 0);
+            HAL_NVIC_EnableIRQ(TIM3_IRQn);
             if (status == HAL_OK)
             {
-                HAL_NVIC_SetPriority(TIM3_IRQn, 6, 0);
-                HAL_NVIC_EnableIRQ(TIM3_IRQn);
             }
             break;
         default:
@@ -326,14 +326,26 @@ void hw_disable_motor(MotorID motor_id) {
             port = Z_EN_PORT;
             pin = Z_EN_PIN;
             status = HAL_TIM_Base_Stop_IT(&htim20);
+            if (!status == HAL_OK){
+                Error_Handler();
+            }
+            break;
         case MOTOR_X:
             port = X_EN_PORT;
             pin = X_EN_PIN;
             status = HAL_TIM_Base_Stop_IT(&htim17);
+            if (!status == HAL_OK){
+                Error_Handler();
+            }
+            break;
         case MOTOR_L:
             port = L_EN_PORT;
             pin = L_EN_PIN;
             status = HAL_TIM_Base_Stop_IT(&htim3);
+            if (!status == HAL_OK){
+                Error_Handler();
+            }
+            break;
         default:
             return;
     }
