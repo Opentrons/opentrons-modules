@@ -25,6 +25,10 @@ using Message = messages::MotorDriverMessage;
 
 static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
     .gconfig = {.diag0_error = 1, .diag1_stall = 1},
+    .short_conf = {.s2vs_level = 0x6,
+                   .s2g_level = 0x6,
+                   .shortfilter = 1,
+                   .shortdelay = 0},
     .glob_scale = {.global_scaler = 0x8B},
     .ihold_irun = {.hold_current = 1,
                    .run_current = 31,
@@ -48,9 +52,13 @@ static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
 
 static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
     .gconfig = {.diag0_error = 1, .diag1_stall = 1},
+    .short_conf = {.s2vs_level = 0x6,
+                   .s2g_level = 0x6,
+                   .shortfilter = 1,
+                   .shortdelay = 0},
     .glob_scale = {.global_scaler = 0x8B},
     .ihold_irun = {.hold_current = 19,
-                   .run_current = 19,
+                   .run_current = 31,
                    .hold_current_delay = 7},
     .tpwmthrs = {.threshold = 0x80000},
     .tcoolthrs = {.threshold = 0x81},
@@ -71,6 +79,10 @@ static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
 
 static constexpr tmc2160::TMC2160RegisterMap motor_l_config{
     .gconfig = {.diag0_error = 1, .diag1_stall = 1},
+    .short_conf = {.s2vs_level = 0x6,
+                   .s2g_level = 0x6,
+                   .shortfilter = 1,
+                   .shortdelay = 0},
     .glob_scale = {.global_scaler = 0x8B},
     .ihold_irun = {.hold_current = 1,
                    .run_current = 31,

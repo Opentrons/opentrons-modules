@@ -10,7 +10,7 @@ class MotorPolicy {
   public:
     auto enable_motor(MotorID motor_id) -> void;
     auto disable_motor(MotorID motor_id) -> void;
-    auto set_motor_speed(MotorID motor_id, double speed) -> bool;
+    auto step(MotorID motor_id) -> void;
 };
 
 }  // namespace motor_policy

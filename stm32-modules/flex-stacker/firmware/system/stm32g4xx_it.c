@@ -24,8 +24,13 @@
 /* External variables --------------------------------------------------------*/
 extern DMA_HandleTypeDef hdma_spi2_rx;
 extern DMA_HandleTypeDef hdma_spi2_tx;
+extern TIM_HandleTypeDef htim17;
+extern TIM_HandleTypeDef htim20;
+extern TIM_HandleTypeDef htim3;
 extern SPI_HandleTypeDef hspi2;
 
+
+motor_interrupt_callback interrupt_callback = NULL;
 /******************************************************************************/
 /*           Cortex-M4 Processor Interruption and Exception Handlers          */
 /******************************************************************************/
@@ -96,10 +101,23 @@ void DebugMon_Handler(void)
 
 /**
  * TIM7 = timebase counter
+ * TIM17 = Interrupt for X
+ * TIM20 = Interrupt for Z
+ * TIM3 = Interrupt for L
  */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if(htim->Instance == TIM7) {
         HAL_IncTick();
+    } else if(htim->Instance == TIM17 && interrupt_callback) {
+        interrupt_callback(MOTOR_X);
+    } else if(htim->Instance == TIM20 && interrupt_callback) {
+        interrupt_callback(MOTOR_Z);
+    } else if(htim->Instance == TIM3 && interrupt_callback) {
+        interrupt_callback(MOTOR_L);
     }
+}
+
+void initialize_callbacks(motor_interrupt_callback callback_glue) {
+    interrupt_callback = callback_glue;
 }

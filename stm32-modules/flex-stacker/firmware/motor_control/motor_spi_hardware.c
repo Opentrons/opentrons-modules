@@ -56,9 +56,9 @@ static struct motor_spi_hardware _spi = {
 /** Private Functions ------------------------------------------------------- */
 
 static void disable_spi_nss(void) {
-    HAL_GPIO_WritePin(nSPI2_NSS_Z_GPIO_Port, nSPI2_NSS_Z_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(nSPI2_NSS_X_GPIO_Port, nSPI2_NSS_X_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(nSPI2_NSS_L_GPIO_Port, nSPI2_NSS_L_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(nSPI2_NSS_Z_GPIO_Port, nSPI2_NSS_Z_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(nSPI2_NSS_X_GPIO_Port, nSPI2_NSS_X_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(nSPI2_NSS_L_GPIO_Port, nSPI2_NSS_L_Pin, GPIO_PIN_SET);
 }
 
 static void enable_spi_nss(MotorID motor) {
@@ -67,13 +67,13 @@ static void enable_spi_nss(MotorID motor) {
 
     switch(motor) {
         case MOTOR_Z:
-            HAL_GPIO_WritePin(nSPI2_NSS_Z_GPIO_Port, nSPI2_NSS_Z_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(nSPI2_NSS_Z_GPIO_Port, nSPI2_NSS_Z_Pin, GPIO_PIN_RESET);
             break;
         case MOTOR_X:
-            HAL_GPIO_WritePin(nSPI2_NSS_X_GPIO_Port, nSPI2_NSS_X_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(nSPI2_NSS_X_GPIO_Port, nSPI2_NSS_X_Pin, GPIO_PIN_RESET);
             break;
         case MOTOR_L:
-            HAL_GPIO_WritePin(nSPI2_NSS_L_GPIO_Port, nSPI2_NSS_L_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(nSPI2_NSS_L_GPIO_Port, nSPI2_NSS_L_Pin, GPIO_PIN_RESET);
             break;
     }
 }

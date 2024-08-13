@@ -1,7 +1,9 @@
+
 #include "stm32g4xx_hal.h"
+#include "stm32g4xx_it.h"
+#include "systemwide.h"
 
 /******************* Motor Z *******************/
-
 /** Motor hardware **/
 #define Z_STEP_PIN (GPIO_PIN_2)
 #define Z_STEP_PORT (GPIOC)
@@ -57,67 +59,354 @@
 #define L_N_HELD_PIN (GPIO_PIN_5)
 #define L_N_HELD_PORT (GPIOB)
 #define L_N_RELEASED_PIN (GPIO_PIN_11)
-#define L_N_RELEASED_PORT (GPIO_PIN_C)
+#define L_N_RELEASED_PORT (GPIOC)
+
+/**************** COMMON ********************/
+#define ESTOP_PIN GPIO_PIN_6
+#define ESTOP_PORT GPIOB
 
 
-void motor_hardware_init(void){
+// Frequency of the motor interrupt callbacks is 300kHz, providing some extra
+// overhead over the velocities used by this application.
+#define MOTOR_INTERRUPT_FREQ (100000)
+/** Frequency of the driving clock is 170MHz.*/
+#define TIM_APB_FREQ (170000000)
+/** Preload for APB to give a 10MHz clock.*/
+#define TIM_PRELOAD (16)
+/** Calculated TIM period.*/
+#define TIM_PERIOD (((TIM_APB_FREQ/(TIM_PRELOAD + 1)) / MOTOR_INTERRUPT_FREQ) - 1)
 
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+TIM_HandleTypeDef htim17;
+TIM_HandleTypeDef htim20;
+TIM_HandleTypeDef htim3;
 
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOF_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
+void motor_hardware_gpio_init(void){
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, Z_DIR_PIN|L_N_HELD_PIN, GPIO_PIN_RESET);
+    GPIO_InitTypeDef init = {0};
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, Z_EN_PIN|X_EN_PIN|X_DIR_PIN, GPIO_PIN_RESET);
+    /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOF_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, L_DIR_PIN, GPIO_PIN_RESET);
+    /*Configure GPIO pins : OUTPUTS */
+    init.Mode = GPIO_MODE_OUTPUT_PP;
+    init.Pull = GPIO_NOPULL;
+    init.Speed = GPIO_SPEED_FREQ_LOW;
 
-  /*Configure GPIO pins :  Z_MINUS_LIMIT_PIN */
-  GPIO_InitStruct.Pin = Z_MINUS_LIMIT_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    // Z MOTOR
+    init.Pin = Z_EN_PIN;
+    HAL_GPIO_Init(Z_EN_PORT, &init);
 
-  /*Configure GPIO pins : Z_DIR_PIN L_EN_PIN */
-  GPIO_InitStruct.Pin = Z_DIR_PIN|L_EN_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    init.Pin = Z_DIR_PIN;
+    HAL_GPIO_Init(Z_DIR_PORT, &init);
 
-  /*Configure GPIO pins : Z_PLUS_LIMIT_PIN LIMIT_X__Pin LIMIT_X_A2_Pin */
-  GPIO_InitStruct.Pin = Z_PLUS_LIMIT_PIN|X_MINUS_LIMIT_PIN|X_PLUS_LIMIT_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    init.Pin = Z_N_BRAKE_PIN;
+    HAL_GPIO_Init(Z_N_BRAKE_PORT, &init);
 
-  /*Configure GPIO pins : Z_EN_PIN X_EN_PIN X_DIR_PIN */
-  GPIO_InitStruct.Pin = Z_EN_PIN|X_EN_PIN|X_DIR_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+    init.Pin  = Z_STEP_PIN;
+    HAL_GPIO_Init(Z_STEP_PORT, &init);
 
-  /*Configure GPIO pins : L_DIR_PIN Z_N_BRAKE_PIN X_N_BRAKE_PIN*/
-  GPIO_InitStruct.Pin = L_DIR_PIN | Z_N_BRAKE_PIN | X_N_BRAKE_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    // X MOTOR
+    init.Pin = X_EN_PIN;
+    HAL_GPIO_Init(X_EN_PORT, &init);
 
-  /*Configure GPIO pins : L_N_HELD_PIN */
-  GPIO_InitStruct.Pin = L_N_HELD_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    init.Pin = X_DIR_PIN;
+    HAL_GPIO_Init(X_DIR_PORT, &init);
+
+    init.Pin = X_STEP_PIN;
+    HAL_GPIO_Init(X_STEP_PORT, &init);
+
+    // L MOTOR
+    init.Pin = L_EN_PIN;
+    HAL_GPIO_Init(L_EN_PORT, &init);
+
+    init.Pin = L_DIR_PIN;
+    HAL_GPIO_Init(L_DIR_PORT, &init);
+
+    init.Pin = L_STEP_PIN;
+    HAL_GPIO_Init(L_STEP_PORT, &init);
+
+    /*Configure GPIO pins : INPUTS */
+    init.Mode = GPIO_MODE_INPUT;
+
+    // Z MOTOR
+    init.Pin = Z_MINUS_LIMIT_PIN;
+    HAL_GPIO_Init(Z_MINUS_LIMIT_PORT, &init);
+
+    init.Pin = Z_PLUS_LIMIT_PIN;
+    HAL_GPIO_Init(Z_PLUS_LIMIT_PORT, &init);
+
+    // X MOTOR
+    init.Pin = X_MINUS_LIMIT_PIN;
+    HAL_GPIO_Init(X_MINUS_LIMIT_PORT, &init);
+
+    init.Pin = X_PLUS_LIMIT_PIN;
+    HAL_GPIO_Init(X_PLUS_LIMIT_PORT, &init);
+
+    // L MOTOR
+    init.Pin = L_N_HELD_PIN;
+    HAL_GPIO_Init(L_N_HELD_PORT, &init);
+
+    init.Pin = L_N_RELEASED_PIN;
+    HAL_GPIO_Init(L_N_RELEASED_PORT, &init);
+
+    init.Pin = ESTOP_PIN;
+    HAL_GPIO_Init(ESTOP_PORT, &init);
+
+    HAL_GPIO_WritePin(Z_N_BRAKE_PORT, Z_N_BRAKE_PIN, GPIO_PIN_SET);
+//    HAL_GPIO_WritePin(Z_EN_PORT, Z_EN_PIN, GPIO_PIN_SET);
 }
 
+// X motor timer
+void MX_TIM17_Init(void) {
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+    htim17.Instance = TIM17;
+    htim17.Init.Prescaler = TIM_PRELOAD;
+    htim17.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim17.Init.Period = TIM_PERIOD;
+    htim17.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+    if (HAL_TIM_Base_Init(&htim17) != HAL_OK) {
+        Error_Handler();
+    }
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    if (HAL_TIMEx_MasterConfigSynchronization(&htim17, &sMasterConfig) !=
+        HAL_OK) {
+        Error_Handler();
+    }
+}
+// Z motor timer
+void MX_TIM20_Init(void) {
+    TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+    TIM_OC_InitTypeDef sConfigOC = {0};
+    TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+    /* USER CODE BEGIN TIM20_Init 1 */
+
+    /* USER CODE END TIM20_Init 1 */
+    htim20.Instance = TIM20;
+    htim20.Init.Prescaler = TIM_PRELOAD;
+    htim20.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim20.Init.Period = TIM_PERIOD;
+    htim20.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    htim20.Init.RepetitionCounter = 0;
+    htim20.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+    if (HAL_TIM_Base_Init(&htim20) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+    if (HAL_TIM_ConfigClockSource(&htim20, &sClockSourceConfig) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    if (HAL_TIM_PWM_Init(&htim20) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+    sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    if (HAL_TIMEx_MasterConfigSynchronization(&htim20, &sMasterConfig) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    sConfigOC.OCMode = TIM_OCMODE_PWM1;
+    sConfigOC.Pulse = 0;
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+    sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+    sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+    sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+    if (HAL_TIM_PWM_ConfigChannel(&htim20, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+    sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+    sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+    sBreakDeadTimeConfig.DeadTime = 0;
+    sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+    sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+    sBreakDeadTimeConfig.BreakFilter = 0;
+    sBreakDeadTimeConfig.BreakAFMode = TIM_BREAK_AFMODE_INPUT;
+    sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
+    sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
+    sBreakDeadTimeConfig.Break2Filter = 0;
+    sBreakDeadTimeConfig.Break2AFMode = TIM_BREAK_AFMODE_INPUT;
+    sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+    if (HAL_TIMEx_ConfigBreakDeadTime(&htim20, &sBreakDeadTimeConfig) != HAL_OK)
+    {
+        Error_Handler();
+    }
+}
+
+// L motor timer
+void MX_TIM3_Init(void) {
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+    htim3.Instance = TIM3;
+    htim3.Init.Prescaler = TIM_PRELOAD;
+    htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim3.Init.Period = TIM_PERIOD;
+    htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+    if (HAL_TIM_Base_Init(&htim3) != HAL_OK) {
+        Error_Handler();
+    }
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) !=
+        HAL_OK) {
+        Error_Handler();
+    }
+}
+
+void motor_hardware_interrupt_init(void){
+    MX_TIM17_Init();
+    MX_TIM20_Init();
+    MX_TIM3_Init();
+}
+
+void motor_hardware_init(void){
+    motor_hardware_gpio_init();
+    motor_hardware_interrupt_init();
+}
+
+void hw_enable_motor(MotorID motor_id) {
+    void* port;
+    uint16_t pin;
+    HAL_StatusTypeDef     status = HAL_OK;
+    switch (motor_id) {
+        case MOTOR_Z:
+            port = Z_EN_PORT;
+            pin = Z_EN_PIN;
+            status = HAL_TIM_Base_Start_IT(&htim20);
+            HAL_NVIC_SetPriority(TIM20_UP_IRQn, 5, 0);
+            HAL_NVIC_EnableIRQ(TIM20_UP_IRQn);
+            if (status == HAL_OK)
+            {
+            }
+            break;
+        case MOTOR_X:
+            port = X_EN_PORT;
+            pin = X_EN_PIN;
+            status = HAL_TIM_Base_Start_IT(&htim17);
+            HAL_NVIC_SetPriority(TIM1_TRG_COM_TIM17_IRQn, 6, 0);
+            HAL_NVIC_EnableIRQ(TIM1_TRG_COM_TIM17_IRQn);
+            if (status == HAL_OK)
+            {
+            }
+            break;
+        case MOTOR_L:
+            port = L_EN_PORT;
+            pin = L_EN_PIN;
+            status = HAL_TIM_Base_Start_IT(&htim3);
+            HAL_NVIC_SetPriority(TIM3_IRQn, 6, 0);
+            HAL_NVIC_EnableIRQ(TIM3_IRQn);
+            if (status == HAL_OK)
+            {
+            }
+            break;
+        default:
+            return;
+    }
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
+}
+
+void hw_disable_motor(MotorID motor_id) {
+    void* port;
+    uint16_t pin;
+    HAL_StatusTypeDef     status = HAL_OK;
+    switch (motor_id) {
+        case MOTOR_Z:
+            port = Z_EN_PORT;
+            pin = Z_EN_PIN;
+            status = HAL_TIM_Base_Stop_IT(&htim20);
+            if (!status == HAL_OK){
+                Error_Handler();
+            }
+            break;
+        case MOTOR_X:
+            port = X_EN_PORT;
+            pin = X_EN_PIN;
+            status = HAL_TIM_Base_Stop_IT(&htim17);
+            if (!status == HAL_OK){
+                Error_Handler();
+            }
+            break;
+        case MOTOR_L:
+            port = L_EN_PORT;
+            pin = L_EN_PIN;
+            status = HAL_TIM_Base_Stop_IT(&htim3);
+            if (!status == HAL_OK){
+                Error_Handler();
+            }
+            break;
+        default:
+            return;
+    }
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_RESET);
+}
+
+void step_motor(MotorID motor_id) {
+    void* port;
+    uint16_t pin;
+    switch (motor_id) {
+        case MOTOR_Z:
+            port = Z_STEP_PORT;
+            pin = Z_STEP_PIN;
+            break;
+        case MOTOR_X:
+            port = X_STEP_PORT;
+            pin = X_STEP_PIN;
+            break;
+        case MOTOR_L:
+            port = L_STEP_PORT;
+            pin = L_STEP_PIN;
+            break;
+        default:
+            return;
+    }
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
+}
+
+void unstep_motor(MotorID motor_id) {
+    void* port;
+    uint16_t pin;
+    switch (motor_id) {
+        case MOTOR_Z:
+            port = Z_STEP_PORT;
+            pin = Z_STEP_PIN;
+            break;
+        case MOTOR_X:
+            port = X_STEP_PORT;
+            pin = X_STEP_PIN;
+            break;
+        case MOTOR_L:
+            port = L_STEP_PORT;
+            pin = L_STEP_PIN;
+            break;
+        default:
+            return;
+    }
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_RESET);
+}
+
+void TIM3_IRQHandler(void)
+{
+    HAL_TIM_IRQHandler(&htim3);
+}
+
+void TIM20_UP_IRQHandler(void)
+{
+    HAL_TIM_IRQHandler(&htim20);
+}
+
+void TIM1_TRG_COM_TIM17_IRQHandler(void)
+{
+    HAL_TIM_IRQHandler(&htim17);
+}

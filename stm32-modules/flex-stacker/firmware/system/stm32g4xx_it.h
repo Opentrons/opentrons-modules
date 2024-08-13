@@ -23,6 +23,8 @@
 extern "C" {
 #endif
 
+#include "systemwide.h"
+
 /* Exported functions prototypes ---------------------------------------------*/
 void NMI_Handler(void);
 void HardFault_Handler(void);
@@ -35,6 +37,8 @@ void RCC_IRQHandler(void);
 // void DMA1_Channel1_IRQHandler(void);
 // void DMA1_Channel2_IRQHandler(void);
 
+typedef void (*motor_interrupt_callback)(MotorID motor_id);
+void initialize_callbacks(motor_interrupt_callback callback_glue);
 #ifdef __cplusplus
 }
 #endif
