@@ -763,7 +763,7 @@ class HostCommsTask {
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<InputLimit, InputIt>
+        std::sized_sentinel_f-flashInputLimit, InputIt>
     auto visit_gcode(const gcode::GetLidTemperatureDebug& gcode,
                      InputIt tx_into, InputLimit tx_limit)
         -> std::pair<bool, InputIt> {

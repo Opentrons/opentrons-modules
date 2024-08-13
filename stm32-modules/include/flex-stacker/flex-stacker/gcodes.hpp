@@ -297,4 +297,71 @@ struct GetTMCRegister {
     }
 };
 
+struct SetTMCRegister {
+    MotorID motor_id;
+    uint8_t reg;
+    uint32_t data;
+
+    using ParseResult = std::optional<SetTMCRegister>;
+    static constexpr auto prefix = std::array{'M', '9', '2', '1', ' '};
+    static constexpr const char* response = "M921 OK\n";
+
+    template <typename InputIt, typename Limit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        MotorID motor_id_val = MotorID::MOTOR_X;
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        switch (*working) {
+            case 'X':
+                motor_id_val = MotorID::MOTOR_X;
+                break;
+            case 'Z':
+                motor_id_val = MotorID::MOTOR_Z;
+                break;
+            case 'L':
+                motor_id_val = MotorID::MOTOR_L;
+                break;
+            default:
+                return std::make_pair(ParseResult(), input);
+        }
+        std::advance(working, 1);
+        if (working == limit) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto reg_res = gcode::parse_value<uint8_t>(working, limit);
+        if (!reg_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        std::advance(working, 1);
+        if (working == limit) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto data_res = gcode::parse_value<uint32_t>(working, limit);
+        if (!data_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        return std::make_pair(
+            ParseResult(SetTMCRegister{.motor_id = motor_id_val,
+                                       .reg = reg_res.first.value(),
+                                       .data = data_res.first.value()}),
+            data_res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 }  // namespace gcode

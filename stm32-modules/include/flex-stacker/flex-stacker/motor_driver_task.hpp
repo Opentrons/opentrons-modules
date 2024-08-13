@@ -171,8 +171,19 @@ class MotorDriverTask {
     auto visit_message(const messages::SetTMCRegisterMessage& m,
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
-        static_cast<void>(m);
-        static_cast<void>(tmc2160_interface);
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = m.id};
+        if (!tmc2160::is_valid_address(m.reg)) {
+            response.with_error = errors::ErrorCode::TMC2160_INVALID_ADDRESS;
+        } else {
+            auto result = tmc2160_interface.write(
+                tmc2160::Registers(m.reg), m.data, m.motor_id);
+            if (!result) {
+                response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
+            }
+        }
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
     }
 
     template <tmc2160::TMC2160InterfacePolicy Policy>

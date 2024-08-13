@@ -20,6 +20,8 @@ enum class ErrorCode {
     SYSTEM_EEPROM_ERROR = 303,
     // 9xx - TMC2160
     TMC2160_READ_ERROR = 901,
+    TMC2160_WRITE_ERROR = 902,
+    TMC2160_INVALID_ADDRESS = 903,
 };
 
 auto errorstring(ErrorCode code) -> const char*;

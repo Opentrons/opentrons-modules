@@ -16,6 +16,8 @@ const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
 const char* const SYSTEM_EEPROM_ERROR =
     "ERR303:system:EEPROM communication error\n";
 const char* const TMC2160_READ_ERROR = "ERR901:TMC2160 driver read error\n";
+const char* const TMC2160_WRITE_ERROR = "ERR902:TMC2160 driver write error\n";
+const char* const TMC2160_INVALID_ADDRESS = "ERR903:TMC2160 invalid address\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -36,6 +38,8 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
         HANDLE_CASE(SYSTEM_EEPROM_ERROR);
         HANDLE_CASE(TMC2160_READ_ERROR);
+        HANDLE_CASE(TMC2160_WRITE_ERROR);
+        HANDLE_CASE(TMC2160_INVALID_ADDRESS);
     }
     return UNKNOWN_ERROR;
 }
