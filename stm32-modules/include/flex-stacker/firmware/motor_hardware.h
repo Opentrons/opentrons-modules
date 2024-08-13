@@ -18,6 +18,7 @@ bool motor_spi_sendreceive(MotorID motor_id, uint8_t *tx_data, uint8_t *rx_data,
 void step_motor(MotorID motor_id);
 void unstep_motor(MotorID motor_id);
 void hw_enable_motor(MotorID motor_id);
+void hw_disable_motor(MotorID motor_id);
 
 #ifdef __cplusplus
 }  // extern "C"

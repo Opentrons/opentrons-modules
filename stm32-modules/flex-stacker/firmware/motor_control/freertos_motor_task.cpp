@@ -10,10 +10,13 @@
 
 namespace motor_control_task {
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto x_motor_interrupt =
     motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_X);
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto z_motor_interrupt =
     motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_Z);
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto l_motor_interrupt =
     motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_L);
 

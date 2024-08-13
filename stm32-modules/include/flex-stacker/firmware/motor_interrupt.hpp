@@ -5,12 +5,14 @@
 
 namespace motor_interrupt_controller {
 
+static constexpr int STEPS_PER_REV = 20000;
+
 class MotorInterruptController {
   public:
     MotorInterruptController(MotorID m_id) : m_id(m_id) {}
-    void tick() {
+    auto tick() -> void {
         unstep_motor(m_id);
-        step_count = (step_count + 1) % 20000;
+        step_count = (step_count + 1) % STEPS_PER_REV;
         if (step_count == 0) {
             step_motor(m_id);
         }

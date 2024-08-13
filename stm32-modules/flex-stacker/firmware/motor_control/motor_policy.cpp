@@ -4,12 +4,15 @@
 
 using namespace motor_policy;
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::enable_motor(MotorID motor_id) -> void {
     hw_enable_motor(motor_id);
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::disable_motor(MotorID motor_id) -> void {
-    disable_motor(motor_id);
+    hw_disable_motor(motor_id);
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::step(MotorID motor_id) -> void { step_motor(motor_id); }

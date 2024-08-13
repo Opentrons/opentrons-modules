@@ -317,6 +317,29 @@ void hw_enable_motor(MotorID motor_id) {
     HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
 }
 
+void hw_disable_motor(MotorID motor_id) {
+    void* port;
+    uint16_t pin;
+    HAL_StatusTypeDef     status = HAL_OK;
+    switch (motor_id) {
+        case MOTOR_Z:
+            port = Z_EN_PORT;
+            pin = Z_EN_PIN;
+            status = HAL_TIM_Base_Stop_IT(&htim20);
+        case MOTOR_X:
+            port = X_EN_PORT;
+            pin = X_EN_PIN;
+            status = HAL_TIM_Base_Stop_IT(&htim17);
+        case MOTOR_L:
+            port = L_EN_PORT;
+            pin = L_EN_PIN;
+            status = HAL_TIM_Base_Stop_IT(&htim3);
+        default:
+            return;
+    }
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_RESET);
+}
+
 void step_motor(MotorID motor_id) {
     void* port;
     uint16_t pin;

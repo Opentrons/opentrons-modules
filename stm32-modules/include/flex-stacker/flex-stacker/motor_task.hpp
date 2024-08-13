@@ -20,7 +20,6 @@ template <typename P>
 concept MotorControlPolicy = requires(P p, MotorID motor_id) {
     { p.enable_motor(motor_id) } -> std::same_as<void>;
     { p.disable_motor(motor_id) } -> std::same_as<void>;
-    { p.set_motor_speed(motor_id, double{0.0}) } -> std::same_as<bool>;
 };
 
 using Message = messages::MotorMessage;
