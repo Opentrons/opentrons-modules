@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <printf.h>  // Non-malloc printf
-
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -239,7 +237,6 @@ struct GetTMCRegister {
 
     using ParseResult = std::optional<GetTMCRegister>;
     static constexpr auto prefix = std::array{'M', '9', '2', '0', ' '};
-    static constexpr const char* response = "M920 OK\n";
 
     template <typename InputIt, typename Limit>
         requires std::forward_iterator<InputIt> &&
@@ -282,8 +279,16 @@ struct GetTMCRegister {
     template <typename InputIt, typename InLimit>
         requires std::forward_iterator<InputIt> &&
                  std::sized_sentinel_for<InputIt, InLimit>
-    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
-        return write_string_to_iterpair(buf, limit, response);
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    MotorID motor_id, uint8_t reg,
+                                    uint32_t data
+    ) -> InputIt {
+        const char* hw_prefix = motor_id == MotorID::MOTOR_X ? "X" : motor_id == MotorID::MOTOR_Z ? "Z" : "L";
+        auto res = snprintf(&*buf, (limit - buf), "M920 %s%u %lu OK\n", hw_prefix, reg, data);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
     }
 };
 
