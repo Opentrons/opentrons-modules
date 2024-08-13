@@ -17,13 +17,15 @@
 
 #include "core/gcode_parser.hpp"
 #include "core/utility.hpp"
-#include "systemwide.h"
 #include "flex-stacker/errors.hpp"
+#include "systemwide.h"
 
 namespace gcode {
 
-auto motor_id_to_char(MotorID motor_id) -> const char* {
-    return (motor_id == MotorID::MOTOR_X ? "X" : motor_id == MotorID::MOTOR_Z ? "Z" : "L");
+auto inline motor_id_to_char(MotorID motor_id) -> const char* {
+    return static_cast<const char*>(motor_id == MotorID::MOTOR_X   ? "X"
+                                    : motor_id == MotorID::MOTOR_Z ? "Z"
+                                                                   : "L");
 }
 
 struct EnterBootloader {
@@ -243,8 +245,8 @@ struct GetTMCRegister {
     static constexpr auto prefix = std::array{'M', '9', '2', '0', ' '};
 
     template <typename InputIt, typename Limit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<Limit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         MotorID motor_id_val = MotorID::MOTOR_X;
@@ -274,26 +276,25 @@ struct GetTMCRegister {
         if (!reg_res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        return std::make_pair(ParseResult(GetTMCRegister{
-                                  .motor_id = motor_id_val,
-                                  .reg = reg_res.first.value()}),
-                              reg_res.second);
+        return std::make_pair(
+            ParseResult(GetTMCRegister{.motor_id = motor_id_val,
+                                       .reg = reg_res.first.value()}),
+            reg_res.second);
     }
 
     template <typename InputIt, typename InLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputIt, InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit,
                                     MotorID motor_id, uint8_t reg,
-                                    uint32_t data
-    ) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M920 %s%u %lu OK\n", motor_id_to_char(motor_id), reg, data);
+                                    uint32_t data) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf), "M920 %s%u %lu OK\n",
+                            motor_id_to_char(motor_id), reg, data);
         if (res <= 0) {
             return buf;
         }
         return buf + res;
     }
 };
-
 
 }  // namespace gcode

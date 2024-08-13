@@ -129,9 +129,8 @@ using SystemMessage =
                    SetSerialNumberMessage, EnterBootloaderMessage>;
 
 using MotorDriverMessage =
-    ::std::variant<std::monostate, SetTMCRegisterMessage,
-                   GetTMCRegisterMessage, PollTMCRegisterMessage,
-                   StopPollTMCRegisterMessage>;
+    ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
+                   PollTMCRegisterMessage, StopPollTMCRegisterMessage>;
 using MotorMessage = ::std::variant<std::monostate>;
 
 };  // namespace messages

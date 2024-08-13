@@ -11,8 +11,8 @@
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
 #include "firmware/motor_policy.hpp"
-#include "flex-stacker/messages.hpp"
 #include "flex-stacker/errors.hpp"
+#include "flex-stacker/messages.hpp"
 #include "flex-stacker/tasks.hpp"
 #include "flex-stacker/tmc2160.hpp"
 #include "flex-stacker/tmc2160_interface.hpp"
@@ -160,50 +160,59 @@ class MotorDriverTask {
 
   private:
     template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto visit_message(const std::monostate& m, tmc2160::TMC2160Interface<Policy>& tmc2160_interface) -> void {
-        static_cast<void>(m);
-        static_cast<void>(tmc2160_interface);
-    }
-
-    template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto visit_message(const messages::SetTMCRegisterMessage& m, tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+    auto visit_message(const std::monostate& m,
+                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
         static_cast<void>(m);
         static_cast<void>(tmc2160_interface);
     }
 
     template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto visit_message(const messages::GetTMCRegisterMessage& m,  tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+    auto visit_message(const messages::SetTMCRegisterMessage& m,
+                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+        -> void {
+        static_cast<void>(m);
+        static_cast<void>(tmc2160_interface);
+    }
+
+    template <tmc2160::TMC2160InterfacePolicy Policy>
+    auto visit_message(const messages::GetTMCRegisterMessage& m,
+                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
         messages::HostCommsMessage response;
         if (tmc2160::is_valid_address(m.reg)) {
-            auto data = tmc2160_interface.read(tmc2160::Registers(m.reg), m.motor_id);
+            auto data =
+                tmc2160_interface.read(tmc2160::Registers(m.reg), m.motor_id);
             if (!data.has_value()) {
                 response = messages::ErrorMessage{
                     .code = errors::ErrorCode::TMC2160_READ_ERROR};
             } else {
-                response = messages::GetTMCRegisterResponse{
-                    .responding_to_id = m.id,
-                    .motor_id = m.motor_id,
-                    .reg = m.reg,
-                    .data = data.value()};
+                response =
+                    messages::GetTMCRegisterResponse{.responding_to_id = m.id,
+                                                     .motor_id = m.motor_id,
+                                                     .reg = m.reg,
+                                                     .data = data.value()};
             }
 
-            static_cast<void>(
-                _task_registry->send_to_address(response, Queues::HostCommsAddress));
+            static_cast<void>(_task_registry->send_to_address(
+                response, Queues::HostCommsAddress));
         }
     }
 
     template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto visit_message(const messages::PollTMCRegisterMessage& m, tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+    auto visit_message(const messages::PollTMCRegisterMessage& m,
+                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
         static_cast<void>(m);
+        static_cast<void>(tmc2160_interface);
     }
 
     template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto visit_message(const messages::StopPollTMCRegisterMessage& m, tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+    auto visit_message(const messages::StopPollTMCRegisterMessage& m,
+                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
         static_cast<void>(m);
+        static_cast<void>(tmc2160_interface);
     }
 
     Queue& _message_queue;

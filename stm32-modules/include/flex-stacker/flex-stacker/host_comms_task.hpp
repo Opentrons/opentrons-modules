@@ -12,9 +12,9 @@
 #include "core/ack_cache.hpp"
 #include "core/gcode_parser.hpp"
 #include "core/version.hpp"
-#include "flex-stacker/messages.hpp"
 #include "flex-stacker/errors.hpp"
 #include "flex-stacker/gcodes.hpp"
+#include "flex-stacker/messages.hpp"
 #include "hal/message_queue.hpp"
 
 namespace tasks {
@@ -42,12 +42,19 @@ class HostCommsTask {
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetTMCRegisterCache = AckCache<8, gcode::GetTMCRegister>;
+
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
     explicit HostCommsTask(Queue& q, Aggregator* aggregator)
-        : message_queue(q), task_registry(aggregator),
+        : message_queue(q),
+          task_registry(aggregator),
+          // These nolints are because if you don't have these inits, host
+          // builds complain NOLINTNEXTLINE(readability-redundant-member-init)
           ack_only_cache(),
-          get_system_info_cache(), get_tmc_register_cache() {}
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_system_info_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_tmc_register_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -252,8 +259,8 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetTMCRegisterResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry = get_tmc_register_cache.remove_if_present(
-            response.responding_to_id);
+        auto cache_entry =
+            get_tmc_register_cache.remove_if_present(response.responding_to_id);
         return std::visit(
             [tx_into, tx_limit, response](auto cache_element) {
                 using T = std::decay_t<decltype(cache_element)>;
@@ -263,15 +270,16 @@ class HostCommsTask {
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
                 } else {
                     return cache_element.write_response_into(
-                        tx_into, tx_limit, response.motor_id, response.reg, response.data);
+                        tx_into, tx_limit, response.motor_id, response.reg,
+                        response.data);
                 }
             },
             cache_entry);
     }
 
     template <typename InputIt, typename InputLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputLimit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const std::monostate& ignore, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         static_cast<void>(ignore);
@@ -281,8 +289,8 @@ class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputLimit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::GetTMCRegister& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = get_tmc_register_cache.add(gcode);
@@ -291,7 +299,8 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message = messages::GetTMCRegisterMessage{.id = id, .motor_id = gcode.motor_id, .reg = gcode.reg};
+        auto message = messages::GetTMCRegisterMessage{
+            .id = id, .motor_id = gcode.motor_id, .reg = gcode.reg};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
@@ -303,8 +312,8 @@ class HostCommsTask {
 
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputLimit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const GCodeParser::ParseError& _ignore, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         static_cast<void>(_ignore);
