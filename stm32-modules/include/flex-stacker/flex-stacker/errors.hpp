@@ -22,6 +22,9 @@ enum class ErrorCode {
     TMC2160_READ_ERROR = 901,
     TMC2160_WRITE_ERROR = 902,
     TMC2160_INVALID_ADDRESS = 903,
+    // 4xx - Motor Errors
+    MOTOR_ENABLE_FAILED = 401,
+    MOTOR_DISABLE_FAILED = 402,
 };
 
 auto errorstring(ErrorCode code) -> const char*;

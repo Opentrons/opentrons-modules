@@ -307,8 +307,8 @@ struct SetTMCRegister {
     static constexpr const char* response = "M921 OK\n";
 
     template <typename InputIt, typename Limit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<Limit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         MotorID motor_id_val = MotorID::MOTOR_X;
@@ -357,11 +357,109 @@ struct SetTMCRegister {
     }
 
     template <typename InputIt, typename InLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputIt, InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
 };
 
+struct ArgX {
+    static constexpr auto prefix = std::array{'X'};
+    static constexpr bool required = false;
+    bool present = false;
+};
+struct ArgZ {
+    static constexpr auto prefix = std::array{'Z'};
+    static constexpr bool required = false;
+    bool present = false;
+};
+struct ArgL {
+    static constexpr auto prefix = std::array{'L'};
+    static constexpr bool required = false;
+    bool present = false;
+};
+
+struct EnableMotor {
+    std::optional<bool> x, z, l;
+
+    using ParseResult = std::optional<EnableMotor>;
+    static constexpr auto prefix = std::array{'M', '1', '7', ' '};
+    static constexpr const char* response = "M17 OK\n";
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        // parse for motor engage
+        std::optional<bool> x;
+        std::optional<bool> z;
+        std::optional<bool> l;
+        auto res = gcode::SingleParser<ArgX, ArgZ, ArgL>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            x = true;
+        }
+        if (std::get<1>(arguments).present) {
+            z = true;
+        }
+        if (std::get<2>(arguments).present) {
+            l = true;
+        }
+        return std::make_pair(EnableMotor{.x = x, .z = z, .l = l}, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct DisableMotor {
+    std::optional<bool> x, z, l;
+
+    using ParseResult = std::optional<DisableMotor>;
+    static constexpr auto prefix = std::array{'M', '1', '8', ' '};
+    static constexpr const char* response = "M18 OK\n";
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        std::optional<bool> x;
+        std::optional<bool> z;
+        std::optional<bool> l;
+        auto res = gcode::SingleParser<ArgX, ArgZ, ArgL>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            x = false;
+        }
+        if (std::get<1>(arguments).present) {
+            z = false;
+        }
+        if (std::get<2>(arguments).present) {
+            l = false;
+        }
+        return std::make_pair(DisableMotor{.x = x, .z = z, .l = l}, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
 }  // namespace gcode
