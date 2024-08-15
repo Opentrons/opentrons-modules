@@ -91,6 +91,13 @@ class MotorTask {
         return engage ? policy.enable_motor(id) : policy.disable_motor(id);
     }
 
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::MoveMotorAtFrequencyMessage& m,
+                       Policy& policy) -> void {
+        static_cast<void>(m);
+        static_cast<void>(policy);
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     bool _initialized;
