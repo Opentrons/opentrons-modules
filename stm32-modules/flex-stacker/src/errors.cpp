@@ -22,7 +22,6 @@ const char* const TMC2160_INVALID_ADDRESS = "ERR903:TMC2160 invalid address\n";
 const char* const MOTOR_ENABLE_FAILED = "ERR401:motor enable error\n";
 const char* const MOTOR_DISABLE_FAILED = "ERR401:motor disable error\n";
 
-
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -46,7 +45,6 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(TMC2160_INVALID_ADDRESS);
         HANDLE_CASE(MOTOR_ENABLE_FAILED);
         HANDLE_CASE(MOTOR_DISABLE_FAILED);
-
     }
     return UNKNOWN_ERROR;
 }
