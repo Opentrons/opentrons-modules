@@ -28,7 +28,6 @@ auto inline motor_id_to_char(MotorID motor_id) -> const char* {
 }
 
 
-
 struct GetTMCRegister {
     MotorID motor_id;
     uint8_t reg;

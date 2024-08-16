@@ -411,8 +411,8 @@ class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputLimit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::StopMotor& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);

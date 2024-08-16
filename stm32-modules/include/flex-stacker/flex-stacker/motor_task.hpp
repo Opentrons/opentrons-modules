@@ -99,8 +99,8 @@ class MotorTask {
     }
 
     template <MotorControlPolicy Policy>
-    auto visit_message(const messages::StopMotorMessage& m,
-                       Policy& policy) -> void {
+    auto visit_message(const messages::StopMotorMessage& m, Policy& policy)
+        -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
     }
