@@ -17,6 +17,7 @@ set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    ${COMMS_DIR}/freertos_comms_task.cpp
     ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
     ${UI_DIR}/freertos_ui_task.cpp
     ${MOTOR_CONTROL_DIR}/freertos_motor_task.cpp
@@ -58,6 +59,7 @@ set_target_properties(${TARGET_MODULE_NAME}
 target_include_directories(${TARGET_MODULE_NAME}
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../cpp-utils/include/
+        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../stm32-tools/printf/
         )
 
 target_compile_options(${TARGET_MODULE_NAME}
@@ -105,7 +107,7 @@ set_target_properties(
 
 
 find_program(ARM_GDB
-        arm-none-eabi-gdb-py
+        arm-none-eabi-gdb-py3
         PATHS "${CrossGCC_BINDIR}"
         NO_DEFAULT_PATH
         REQUIRED)
