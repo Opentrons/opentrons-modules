@@ -98,6 +98,13 @@ class MotorTask {
         static_cast<void>(policy);
     }
 
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::StopMotorMessage& m,
+                       Policy& policy) -> void {
+        static_cast<void>(m);
+        static_cast<void>(policy);
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     bool _initialized;
