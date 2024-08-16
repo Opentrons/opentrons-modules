@@ -5,7 +5,7 @@
 
 namespace motor_interrupt_controller {
 
-static constexpr int STEPS_PER_REV = 20000;
+static constexpr int STEPS_PER_REV = 2000;
 
 class MotorInterruptController {
   public:

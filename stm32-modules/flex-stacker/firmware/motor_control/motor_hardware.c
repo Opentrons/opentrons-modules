@@ -156,9 +156,6 @@ void motor_hardware_gpio_init(void){
 
     init.Pin = ESTOP_PIN;
     HAL_GPIO_Init(ESTOP_PORT, &init);
-
-    HAL_GPIO_WritePin(Z_N_BRAKE_PORT, Z_N_BRAKE_PIN, GPIO_PIN_SET);
-//    HAL_GPIO_WritePin(Z_EN_PORT, Z_EN_PIN, GPIO_PIN_SET);
 }
 
 // X motor timer
@@ -278,7 +275,16 @@ void motor_hardware_init(void){
     motor_hardware_interrupt_init();
 }
 
+void hw_enable_ebrake(MotorID motor_id, bool enable) {
+    if (motor_id != MOTOR_Z) {
+        return;
+    }
+    HAL_GPIO_WritePin(Z_N_BRAKE_PORT, Z_N_BRAKE_PIN, enable ? GPIO_PIN_RESET : GPIO_PIN_SET);
+    return;
+}
+
 bool hw_enable_motor(MotorID motor_id) {
+    hw_enable_ebrake(motor_id, false);
     void* port;
     uint16_t pin;
     HAL_StatusTypeDef     status = HAL_OK;
@@ -326,16 +332,19 @@ bool hw_disable_motor(MotorID motor_id) {
     HAL_StatusTypeDef     status = HAL_OK;
     switch (motor_id) {
         case MOTOR_Z:
+            __HAL_TIM_DISABLE_IT(&htim20, TIM_IT_UPDATE);
             port = Z_EN_PORT;
             pin = Z_EN_PIN;
             status = HAL_TIM_Base_Stop_IT(&htim20);
             break;
         case MOTOR_X:
+            __HAL_TIM_DISABLE_IT(&htim17, TIM_IT_UPDATE);
             port = X_EN_PORT;
             pin = X_EN_PIN;
             status = HAL_TIM_Base_Stop_IT(&htim17);
             break;
         case MOTOR_L:
+            __HAL_TIM_DISABLE_IT(&htim3, TIM_IT_UPDATE);
             port = L_EN_PORT;
             pin = L_EN_PIN;
             status = HAL_TIM_Base_Stop_IT(&htim3);
@@ -344,6 +353,7 @@ bool hw_disable_motor(MotorID motor_id) {
             return status == HAL_OK;
     }
     HAL_GPIO_WritePin(port, pin, GPIO_PIN_RESET);
+    hw_enable_ebrake(motor_id, true);
     return status == HAL_OK;
 }
 
