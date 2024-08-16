@@ -150,6 +150,7 @@ using SystemMessage =
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
                    PollTMCRegisterMessage, StopPollTMCRegisterMessage>;
+
 using MotorMessage =
     ::std::variant<std::monostate, MotorEnableMessage,
                    MoveMotorAtFrequencyMessage, StopMotorMessage>;
