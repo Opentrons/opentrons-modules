@@ -269,31 +269,28 @@ struct MoveMotorAtFrequency {
         static constexpr auto prefix = std::array{'X'};
         static constexpr bool required = false;
         bool present = false;
+        char value = 0;
     };
     struct ZArg {
         static constexpr auto prefix = std::array{'Z'};
         static constexpr bool required = false;
         bool present = false;
+        char value = 0;
     };
     struct LArg {
         static constexpr auto prefix = std::array{'L'};
         static constexpr bool required = false;
         bool present = false;
+        char value = false;
     };
-    struct DirArg {
-        static constexpr bool required = true;
-        bool present = false;
-        bool value = false;
-    };
-
     struct StepArg {
-        static constexpr auto prefix = std::array{' ', 'S'};
+        static constexpr auto prefix = std::array{'S'};
         static constexpr bool required = true;
         bool present = false;
         int32_t value = 0;
     };
     struct FreqArg {
-        static constexpr auto prefix = std::array{' ', 'F'};
+        static constexpr auto prefix = std::array{'F'};
         static constexpr bool required = false;
         bool present = false;
         uint32_t value = 0;
@@ -318,22 +315,21 @@ struct MoveMotorAtFrequency {
         };
 
         auto arguments = res.first.value();
-        if (std::get<1>(arguments).present) {
+        auto z = std::get<1>(arguments);
+        if (std::get<0>(arguments).present) {
+            ret.direction = static_cast<bool>(std::get<0>(arguments).value);
+        } else if (z.present) {
             ret.motor_id = MotorID::MOTOR_Z;
+            ret.direction = static_cast<bool>(z.value);
         } else if (std::get<2>(arguments).present) {
             ret.motor_id = MotorID::MOTOR_L;
-        } else if (!std::get<0>(arguments).present) {
-            return std::make_pair(ParseResult(), input);
-        }
-
-        if (std::get<3>(arguments).present) {
-            ret.direction = std::get<3>(arguments).value;
+            ret.direction = static_cast<bool>(std::get<2>(arguments).value);
         } else {
             return std::make_pair(ParseResult(), input);
         }
 
-        if (std::get<4>(arguments).present) {
-            ret.steps = std::get<4>(arguments).value;
+        if (std::get<3>(arguments).present) {
+            ret.steps = std::get<3>(arguments).value;
         } else {
             return std::make_pair(ParseResult(), input);
         }
