@@ -281,7 +281,7 @@ struct MoveMotorAtFrequency {
         static constexpr auto prefix = std::array{'L'};
         static constexpr bool required = false;
         bool present = false;
-        char value = false;
+        char value = 0;
     };
     struct StepArg {
         static constexpr auto prefix = std::array{'S'};
@@ -315,12 +315,11 @@ struct MoveMotorAtFrequency {
         };
 
         auto arguments = res.first.value();
-        auto z = std::get<1>(arguments);
         if (std::get<0>(arguments).present) {
             ret.direction = static_cast<bool>(std::get<0>(arguments).value);
-        } else if (z.present) {
+        } else if (std::get<1>(arguments).present) {
             ret.motor_id = MotorID::MOTOR_Z;
-            ret.direction = static_cast<bool>(z.value);
+            ret.direction = static_cast<bool>(std::get<1>(arguments).value);
         } else if (std::get<2>(arguments).present) {
             ret.motor_id = MotorID::MOTOR_L;
             ret.direction = static_cast<bool>(std::get<2>(arguments).value);

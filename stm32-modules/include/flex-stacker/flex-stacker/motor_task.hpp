@@ -98,14 +98,14 @@ class MotorTask {
         }
         if (engage.value()) {
             return policy.enable_motor(id);
-        } else {
-            return policy.disable_motor(id);
         }
+        return policy.disable_motor(id);
     }
 
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::MoveMotorAtFrequencyMessage& m,
                        Policy& policy) -> void {
+        static_cast<void>(policy);
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         switch (m.motor_id) {
             case MotorID::MOTOR_X:
