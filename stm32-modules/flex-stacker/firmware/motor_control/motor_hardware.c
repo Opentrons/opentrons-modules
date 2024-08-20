@@ -314,7 +314,7 @@ bool hw_enable_motor(MotorID motor_id) {
             }
             break;
         default:
-            return status == HAL_OK;
+            return false;
     }
     HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
     return status == HAL_OK;
@@ -341,7 +341,7 @@ bool hw_disable_motor(MotorID motor_id) {
             status = HAL_TIM_Base_Stop_IT(&htim3);
             break;
         default:
-            return status == HAL_OK;
+            return false;
     }
     HAL_GPIO_WritePin(port, pin, GPIO_PIN_RESET);
     return status == HAL_OK;
