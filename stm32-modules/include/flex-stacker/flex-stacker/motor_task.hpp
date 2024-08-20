@@ -96,10 +96,8 @@ class MotorTask {
         if (!engage.has_value()) {
             return true;
         }
-        if (engage.value()) {
-            return policy.enable_motor(id);
-        }
-        return policy.disable_motor(id);
+        return engage.value() ? policy.enable_motor(id)
+                              : policy.disable_motor(id);
     }
 
     template <MotorControlPolicy Policy>
