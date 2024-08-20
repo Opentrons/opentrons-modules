@@ -2,7 +2,6 @@
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_it.h"
 #include "systemwide.h"
-
 #include "FreeRTOS.h"
 
 #include <stdbool.h>
@@ -10,7 +9,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
-
 
 /******************* Motor Z *******************/
 /** Motor hardware **/
@@ -348,10 +346,9 @@ bool hw_enable_motor(MotorID motor_id) {
             port = L_EN_PORT;
             pin = L_EN_PIN;
             status = HAL_TIM_Base_Start_IT(&_motor_hardware.motor_l.timer);
-
             break;
         default:
-            return status == HAL_OK;
+            return false;
     }
     HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
     return status == HAL_OK;
