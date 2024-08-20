@@ -89,7 +89,6 @@ TIM_HandleTypeDef htim17;
 TIM_HandleTypeDef htim20;
 TIM_HandleTypeDef htim3;
 
-
 typedef struct stepper_hardware_struct {
     bool enabled;
     bool moving;
@@ -411,6 +410,28 @@ void step_motor(MotorID motor_id) {
     HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(port, pin, GPIO_PIN_RESET);
 
+}
+
+void hw_set_direction(MotorID motor_id, bool direction) {
+    void* port;
+    uint16_t pin;
+    switch (motor_id) {
+        case MOTOR_Z:
+            port = Z_DIR_PORT;
+            pin = Z_DIR_PIN;
+            break;
+        case MOTOR_X:
+            port = X_DIR_PORT;
+            pin = X_DIR_PIN;
+            break;
+        case MOTOR_L:
+            port = L_DIR_PORT;
+            pin = L_DIR_PIN;
+            break;
+        default:
+            return;
+    }
+    HAL_GPIO_WritePin(port, pin, direction ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 void TIM3_IRQHandler(void)
