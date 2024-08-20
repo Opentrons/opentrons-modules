@@ -119,6 +119,25 @@ struct GetTMCRegisterResponse {
     uint32_t data;
 };
 
+struct MotorEnableMessage {
+    uint32_t id = 0;
+    std::optional<bool> x = std::nullopt;
+    std::optional<bool> z = std::nullopt;
+    std::optional<bool> l = std::nullopt;
+};
+
+struct MoveMotorAtFrequencyMessage {
+    uint32_t id;
+    MotorID motor_id;
+    bool direction;
+    int32_t steps;
+    uint32_t frequency;
+};
+
+struct StopMotorMessage {
+    uint32_t id;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -131,6 +150,9 @@ using SystemMessage =
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
                    PollTMCRegisterMessage, StopPollTMCRegisterMessage>;
-using MotorMessage = ::std::variant<std::monostate>;
+
+using MotorMessage =
+    ::std::variant<std::monostate, MotorEnableMessage,
+                   MoveMotorAtFrequencyMessage, StopMotorMessage>;
 
 };  // namespace messages
