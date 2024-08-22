@@ -34,6 +34,8 @@
 
 struct motor_spi_hardware {
     SPI_HandleTypeDef handle;
+    DMA_HandleTypeDef dma_rx;
+    DMA_HandleTypeDef dma_tx;
     TaskHandle_t task_to_notify;
     bool initialized;
 };
@@ -41,16 +43,15 @@ struct motor_spi_hardware {
 static void spi_interrupt_service(void);
 static void enable_spi_nss(MotorID motor);
 static void disable_spi_nss(void);
-
-
-//DMA_HandleTypeDef hdma_spi2_rx;
-//DMA_HandleTypeDef hdma_spi2_tx;
+static void dma_init(void);
 
 
 static struct motor_spi_hardware _spi = {
     .handle = {0},
+    .dma_rx = {0},
+    .dma_tx = {0},
     .task_to_notify = NULL,
-    .initialized = false
+    .initialized = false,
 };
 
 /** Private Functions ------------------------------------------------------- */
@@ -125,60 +126,40 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
 
         /* SPI2 DMA Init */
         /* SPI2_RX Init */
-        /*
-        hdma_spi2_rx.Instance = DMA1_Channel1;
-        hdma_spi2_rx.Init.Request = DMA_REQUEST_SPI2_RX;
-        hdma_spi2_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
-        hdma_spi2_rx.Init.PeriphInc = DMA_PINC_DISABLE;
-        hdma_spi2_rx.Init.MemInc = DMA_MINC_ENABLE;
-        hdma_spi2_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-        hdma_spi2_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-        hdma_spi2_rx.Init.Mode = DMA_NORMAL;
-        hdma_spi2_rx.Init.Priority = DMA_PRIORITY_LOW;
-        if (HAL_DMA_Init(&hdma_spi2_rx) != HAL_OK)
+        _spi.dma_rx.Instance = DMA1_Channel1;
+        _spi.dma_rx.Init.Request = DMA_REQUEST_SPI2_RX;
+        _spi.dma_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+        _spi.dma_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+        _spi.dma_rx.Init.MemInc = DMA_MINC_ENABLE;
+        _spi.dma_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+        _spi.dma_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+        _spi.dma_rx.Init.Mode = DMA_NORMAL;
+        _spi.dma_rx.Init.Priority = DMA_PRIORITY_HIGH;
+        if (HAL_DMA_Init(&_spi.dma_rx) != HAL_OK)
         {
             // TODO: implement error handling
             return;
         }
 
-        __HAL_LINKDMA(hspi,hdmarx,hdma_spi2_rx);
-        */
+        __HAL_LINKDMA(hspi,hdmarx,_spi.dma_rx);
+
         /* SPI2_TX Init */
-        /*
-        hdma_spi2_tx.Instance = DMA1_Channel2;
-        hdma_spi2_tx.Init.Request = DMA_REQUEST_SPI2_TX;
-        hdma_spi2_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
-        hdma_spi2_tx.Init.PeriphInc = DMA_PINC_DISABLE;
-        hdma_spi2_tx.Init.MemInc = DMA_MINC_ENABLE;
-        hdma_spi2_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-        hdma_spi2_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-        hdma_spi2_tx.Init.Mode = DMA_NORMAL;
-        hdma_spi2_tx.Init.Priority = DMA_PRIORITY_LOW;
-        if (HAL_DMA_Init(&hdma_spi2_tx) != HAL_OK)
+        _spi.dma_tx.Instance = DMA1_Channel2;
+        _spi.dma_tx.Init.Request = DMA_REQUEST_SPI2_TX;
+        _spi.dma_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+        _spi.dma_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+        _spi.dma_tx.Init.MemInc = DMA_MINC_ENABLE;
+        _spi.dma_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+        _spi.dma_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+        _spi.dma_tx.Init.Mode = DMA_NORMAL;
+        _spi.dma_tx.Init.Priority = DMA_PRIORITY_HIGH;
+        if (HAL_DMA_Init(&_spi.dma_tx) != HAL_OK)
         {
             // TODO: implement error handling
             return;
         }
 
-        __HAL_LINKDMA(hspi,hdmatx,hdma_spi2_tx);
-        */
-        /* SPI2 interrupt Init */
-        HAL_NVIC_SetPriority(SPI2_IRQn, 5, 0);
-        HAL_NVIC_EnableIRQ(SPI2_IRQn);
-
-        /* DMA controller clock enable */
-        //__HAL_RCC_DMAMUX1_CLK_ENABLE();
-        //__HAL_RCC_DMA1_CLK_ENABLE();
-
-        /* DMA interrupt init */
-        /* DMA1_Channel1_IRQn interrupt configuration */
-        //HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 5, 0);
-        //HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-        /* DMA1_Channel2_IRQn interrupt configuration */
-        //HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 0);
-        //HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
-
-
+        __HAL_LINKDMA(hspi,hdmatx,_spi.dma_tx);
     }
 }
 
@@ -192,15 +173,28 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
 
         HAL_GPIO_DeInit(SPI2_Port, SPI2_SCK_Pin | SPI2_CIPO_Pin | SPI2_COPI_Pin);
 
-
         /* SPI2 DMA DeInit */
-        /*
         HAL_DMA_DeInit(hspi->hdmarx);
         HAL_DMA_DeInit(hspi->hdmatx);
-        */
         /* SPI2 interrupt DeInit */
         HAL_NVIC_DisableIRQ(SPI2_IRQn);
+        HAL_NVIC_DisableIRQ(DMA1_Channel1_IRQn);
+        HAL_NVIC_DisableIRQ(DMA1_Channel2_IRQn);
     }
+}
+
+
+static void dma_init(void) {
+    /* DMA controller clock enable */
+    __HAL_RCC_DMAMUX1_CLK_ENABLE();
+    __HAL_RCC_DMA1_CLK_ENABLE();
+
+    /* DMA1_Channel1_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+    /* DMA1_Channel2_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
 }
 
 
@@ -208,6 +202,8 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
 
 void spi_hardware_init(void) {
     if (!_spi.initialized) {
+        dma_init();
+
         HAL_StatusTypeDef ret;
         _spi.handle.Instance = SPI2;
         _spi.handle.Init.Mode = SPI_MODE_MASTER;
@@ -232,34 +228,25 @@ void spi_hardware_init(void) {
 
         _spi.initialized = true;
     }
-
 }
+
 
 /**
   * @brief This function handles DMA1 channel1 global interrupt.
  */
- /*
 void DMA1_Channel1_IRQHandler(void)
 {
-    HAL_DMA_IRQHandler(&hdma_spi2_rx);
+    HAL_DMA_IRQHandler(&_spi.dma_rx);
 }
-*/
+
 /**
   * @brief This function handles DMA1 channel2 global interrupt.
  */
-/*
 void DMA1_Channel2_IRQHandler(void)
 {
-    HAL_DMA_IRQHandler(&hdma_spi2_tx);
+    HAL_DMA_IRQHandler(&_spi.dma_tx);
 }
-*/
-/**
-  * @brief This function handles SPI2 global interrupt.
- */
-void SPI2_IRQHandler(void)
-{
-    HAL_SPI_IRQHandler(&_spi.handle);
-}
+
 
 static void spi_interrupt_service(void) {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -288,38 +275,11 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
     spi_interrupt_service();
 }
 
-bool motor_spi_sendreceive(MotorID motor_id, uint8_t *in, uint8_t *out, uint16_t len) {
-    const TickType_t max_block_time = pdMS_TO_TICKS(100);
-    HAL_StatusTypeDef ret;
-    uint32_t notification_val = 0;
 
-    if(!_spi.initialized || (_spi.task_to_notify != NULL) || (len > MOTOR_MAX_SPI_LEN)) {
-        return false;
-    }
-    enable_spi_nss(motor_id);
-    _spi.task_to_notify = xTaskGetCurrentTaskHandle();
-    ret = HAL_SPI_TransmitReceive_IT(&_spi.handle, in, out, len);
-    if(ret != HAL_OK) {
-        _spi.task_to_notify = NULL;
-        return false;
-    }
-    notification_val = ulTaskNotifyTake(pdTRUE, max_block_time);
-    disable_spi_nss();
-    // If the task was preempted by the error handler rather than the
-    // TxRx complete callback, the remaining count should be greater
-    // than 0.
-    if((notification_val != 1) || (_spi.handle.RxXferCount > 0)) {
-        _spi.task_to_notify = NULL;
-        return true;
-    }
-    return true;
-}
-/*
-bool spi_dma_transmit_receive(
+bool motor_spi_sendreceive(
     MotorID motor_id, uint8_t *txData, uint8_t *rxData, uint16_t size
 ) {
     const TickType_t max_block_time = pdMS_TO_TICKS(100);
-//    HAL_StatusTypeDef ret;
     uint32_t notification_val = 0;
 
     if (!_spi.initialized || (_spi.task_to_notify != NULL) || (size > MOTOR_MAX_SPI_LEN)) {
@@ -343,8 +303,9 @@ bool spi_dma_transmit_receive(
     // than 0.
     if((notification_val != 1) || (_spi.handle.RxXferCount > 0)) {
         _spi.task_to_notify = NULL;
-        return true;
+        return false;
     }
     return true;
 }
-*/
+
+
