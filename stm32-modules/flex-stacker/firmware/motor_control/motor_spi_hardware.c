@@ -153,7 +153,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
         _spi.dma_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
         _spi.dma_tx.Init.Mode = DMA_NORMAL;
         _spi.dma_tx.Init.Priority = DMA_PRIORITY_HIGH;
-        if (HAL_DMA_Init(&_spi.dma_tx != HAL_OK)
+        if (HAL_DMA_Init(&_spi.dma_tx) != HAL_OK)
         {
             // TODO: implement error handling
             return;
@@ -236,7 +236,7 @@ void spi_hardware_init(void) {
  */
 void DMA1_Channel1_IRQHandler(void)
 {
-    HAL_DMA_IRQHandler(&hdma_spi2_rx);
+    HAL_DMA_IRQHandler(&_spi.dma_rx);
 }
 
 /**
@@ -244,7 +244,7 @@ void DMA1_Channel1_IRQHandler(void)
  */
 void DMA1_Channel2_IRQHandler(void)
 {
-    HAL_DMA_IRQHandler(&hdma_spi2_tx);
+    HAL_DMA_IRQHandler(&_spi.dma_tx);
 }
 
 
