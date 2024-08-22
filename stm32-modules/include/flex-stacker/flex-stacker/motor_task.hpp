@@ -8,6 +8,7 @@
 #include "core/ack_cache.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
+#include "firmware/motor_interrupt.hpp"
 #include "firmware/motor_policy.hpp"
 #include "flex-stacker/errors.hpp"
 #include "flex-stacker/messages.hpp"
@@ -24,6 +25,7 @@ concept MotorControlPolicy = requires(P p, MotorID motor_id) {
 };
 
 using Message = messages::MotorMessage;
+using Controller = motor_interrupt_controller::MotorInterruptController;
 
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
@@ -34,8 +36,14 @@ class MotorTask {
     using Queues = typename tasks::Tasks<QueueImpl>;
 
   public:
-    explicit MotorTask(Queue& q, Aggregator* aggregator)
-        : _message_queue(q), _task_registry(aggregator), _initialized(false) {}
+    explicit MotorTask(Queue& q, Aggregator* aggregator, Controller& x_ctrl,
+                       Controller& z_ctrl, Controller& l_ctrl)
+        : _message_queue(q),
+          _task_registry(aggregator),
+          _x_controller(x_ctrl),
+          _z_controller(z_ctrl),
+          _l_controller(l_ctrl),
+          _initialized(false) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -95,8 +103,23 @@ class MotorTask {
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::MoveMotorAtFrequencyMessage& m,
                        Policy& policy) -> void {
-        static_cast<void>(m);
         static_cast<void>(policy);
+        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
+        switch (m.motor_id) {
+            case MotorID::MOTOR_X:
+                _x_controller.set_freq(m.frequency);
+                break;
+            case MotorID::MOTOR_Z:
+                _z_controller.set_freq(m.frequency);
+                break;
+            case MotorID::MOTOR_L:
+                _l_controller.set_freq(m.frequency);
+                break;
+            default:
+                break;
+        }
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
     }
 
     template <MotorControlPolicy Policy>
@@ -108,6 +131,9 @@ class MotorTask {
 
     Queue& _message_queue;
     Aggregator* _task_registry;
+    Controller& _x_controller;
+    Controller& _z_controller;
+    Controller& _l_controller;
     bool _initialized;
 };
 

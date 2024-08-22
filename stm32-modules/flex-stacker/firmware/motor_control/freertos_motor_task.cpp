@@ -31,7 +31,8 @@ static tasks::FirmwareTasks::MotorQueue
            "Motor Queue");
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static auto _top_task = motor_task::MotorTask(_queue, nullptr);
+static auto _top_task = motor_task::MotorTask(
+    _queue, nullptr, x_motor_interrupt, z_motor_interrupt, l_motor_interrupt);
 
 static auto callback_glue(MotorID motor_id) {
     switch (motor_id) {

@@ -1,8 +1,6 @@
 /*
  * firmware-specific functions, data, and hooks for host comms control
  */
-#include "firmware/freertos_comms_task.hpp"
-
 #include <array>
 #include <functional>
 #include <utility>
