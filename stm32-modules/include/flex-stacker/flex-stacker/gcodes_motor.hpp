@@ -269,19 +269,19 @@ struct MoveMotorAtFrequency {
         static constexpr auto prefix = std::array{'X'};
         static constexpr bool required = false;
         bool present = false;
-        char value = 0;
+        int value = 0;
     };
     struct ZArg {
         static constexpr auto prefix = std::array{'Z'};
         static constexpr bool required = false;
         bool present = false;
-        char value = 0;
+        int value = 0;
     };
     struct LArg {
         static constexpr auto prefix = std::array{'L'};
         static constexpr bool required = false;
         bool present = false;
-        char value = 0;
+        int value = 0;
     };
     struct StepArg {
         static constexpr auto prefix = std::array{'S'};
