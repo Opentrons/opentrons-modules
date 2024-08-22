@@ -87,7 +87,7 @@ auto parse_value(const Input& start_from, Limit stop_at)
         // separating it from the next gcode or an \r\n terminator sequence
         return std::make_pair(std::optional<ValueType>(), start_from);
     }
-    auto after = working + (after_ptr - &(*working));
+    const auto * after = working + (after_ptr - &(*working));
     return std::make_pair(std::optional<ValueType>(value), after);
 }
 
