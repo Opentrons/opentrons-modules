@@ -6,6 +6,7 @@
 #pragma once
 
 #include "core/ack_cache.hpp"
+#include "core/linear_motion_system.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
 #include "firmware/motor_interrupt.hpp"
@@ -26,6 +27,25 @@ concept MotorControlPolicy = requires(P p, MotorID motor_id) {
 
 using Message = messages::MotorMessage;
 using Controller = motor_interrupt_controller::MotorInterruptController;
+
+static constexpr struct lms::LinearMotionSystemConfig<lms::LeadScrewConfig>
+    motor_x_config = {
+    .mech_config = lms::LeadScrewConfig{.lead_screw_pitch = 9.7536,
+                                        .gear_reduction_ratio = 1.0},
+    .steps_per_rev = 200, .microstep = 16,
+};
+static constexpr struct lms::LinearMotionSystemConfig<lms::LeadScrewConfig>
+    motor_z_config = {
+    .mech_config = lms::LeadScrewConfig{.lead_screw_pitch = 9.7536,
+                                        .gear_reduction_ratio = 1.0},
+    .steps_per_rev = 200, .microstep = 16,
+};
+static constexpr struct lms::LinearMotionSystemConfig<lms::GearBoxConfig>
+    motor_l_config = {
+    .mech_config = lms::GearBoxConfig{.gear_diameter = 16.0,
+                                      .gear_reduction_ratio = 16.0 / 30.0},
+    .steps_per_rev = 200, .microstep = 16,
+};
 
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
