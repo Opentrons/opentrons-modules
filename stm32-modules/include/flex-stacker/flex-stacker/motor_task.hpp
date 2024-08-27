@@ -74,6 +74,19 @@ class MotorTask {
         _task_registry = aggregator;
     }
 
+    auto controller_from_id(MotorID motor_id) -> Controller& {
+        switch (motor_id) {
+            case MotorID::MOTOR_X:
+                return _x_controller;
+            case MotorID::MOTOR_Z:
+                return _z_controller;
+            case MotorID::MOTOR_L:
+                return _l_controller;
+            default:
+                return _x_controller;
+        }
+    }
+
     template <MotorControlPolicy Policy>
     auto run_once(Policy& policy) -> void {
         if (!_task_registry) {
@@ -131,22 +144,9 @@ class MotorTask {
     auto visit_message(const messages::MoveMotorAtFrequencyMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
-        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
-        switch (m.motor_id) {
-            case MotorID::MOTOR_X:
-                _x_controller.set_freq(m.frequency);
-                break;
-            case MotorID::MOTOR_Z:
-                _z_controller.set_freq(m.frequency);
-                break;
-            case MotorID::MOTOR_L:
-                _l_controller.set_freq(m.frequency);
-                break;
-            default:
-                break;
-        }
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
+        auto controller = controller_from_id(m.motor_id);
+        controller.set_direction(m.direction);
+        controller.start_movement(m.id, m.steps, m.frequency);
     }
 
     template <MotorControlPolicy Policy>
@@ -154,6 +154,17 @@ class MotorTask {
         -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
+    }
+
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::MoveCompleteMessage& m, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        auto controller = controller_from_id(m.motor_id);
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id = controller.get_response_id()};
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
     }
 
     Queue& _message_queue;
