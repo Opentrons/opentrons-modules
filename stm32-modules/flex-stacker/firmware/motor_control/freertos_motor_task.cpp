@@ -12,13 +12,16 @@ namespace motor_control_task {
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto x_motor_interrupt =
-    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_X);
+    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_X,
+                                                         nullptr);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto z_motor_interrupt =
-    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_Z);
+    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_Z,
+                                                         nullptr);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto l_motor_interrupt =
-    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_L);
+    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_L,
+                                                         nullptr);
 
 enum class Notifications : uint8_t {
     INCOMING_MESSAGE = 1,

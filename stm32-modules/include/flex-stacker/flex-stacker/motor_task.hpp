@@ -82,6 +82,13 @@ class MotorTask {
 
         auto message = Message(std::monostate());
 
+        if (!_initialized) {
+            _x_controller.initialize(&policy);
+            _z_controller.initialize(&policy);
+            _l_controller.initialize(&policy);
+            _initialized = true;
+        }
+
         _message_queue.recv(&message);
         auto visit_helper = [this, &policy](auto& message) -> void {
             this->visit_message(message, policy);
