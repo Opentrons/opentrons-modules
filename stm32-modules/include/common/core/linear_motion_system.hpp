@@ -15,7 +15,7 @@ struct BeltConfig {
 
 struct LeadScrewConfig {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    float lead_screw_pitch;      // mm/rev
+    float lead_screw_pitch;  // mm/rev
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     float gear_reduction_ratio;  // large teeth / small teeth
     [[nodiscard]] constexpr auto get_mm_per_rev() const -> float {
@@ -25,7 +25,7 @@ struct LeadScrewConfig {
 
 struct GearBoxConfig {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    float gear_diameter;         // mm
+    float gear_diameter;  // mm
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     float gear_reduction_ratio;  // large teeth / small teeth
     [[nodiscard]] constexpr auto get_mm_per_rev() const -> float {
@@ -36,9 +36,9 @@ struct GearBoxConfig {
 
 template <typename MC>
 concept MotorMechanicalConfig = requires {
-                                    std::is_same_v<MC, BeltConfig> || std::is_same_v<MC, LeadScrewConfig> ||
-                                        std::is_same_v<MC, GearBoxConfig>;
-                                };
+    std::is_same_v<MC, BeltConfig> || std::is_same_v<MC, LeadScrewConfig> ||
+        std::is_same_v<MC, GearBoxConfig>;
+};
 
 template <MotorMechanicalConfig MEConfig>
 struct LinearMotionSystemConfig {
@@ -53,12 +53,12 @@ struct LinearMotionSystemConfig {
     }
     [[nodiscard]] constexpr auto get_usteps_per_um() const -> float {
         return (steps_per_rev * microstep) /
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+               // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
                (mech_config.get_mm_per_rev() * 1000.0);
     }
     [[nodiscard]] constexpr auto get_um_per_step() const -> float {
         return (mech_config.get_mm_per_rev()) / (steps_per_rev * microstep) *
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+               // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
                1000;
     }
 };
