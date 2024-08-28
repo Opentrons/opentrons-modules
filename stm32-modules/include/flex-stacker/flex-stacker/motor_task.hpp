@@ -144,7 +144,6 @@ class MotorTask {
     auto visit_message(const messages::MoveMotorAtFrequencyMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
-        //        auto controller = controller_from_id(m.motor_id);
         controller_from_id(m.motor_id).set_direction(m.direction);
         controller_from_id(m.motor_id)
             .start_movement(m.id, m.steps, m.frequency);
