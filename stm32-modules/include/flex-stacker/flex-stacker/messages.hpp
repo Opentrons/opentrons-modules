@@ -134,6 +134,27 @@ struct MoveMotorAtFrequencyMessage {
     uint32_t frequency;
 };
 
+struct MoveMotorMessage {
+    uint32_t id;
+    MotorID motor_id;
+    bool direction;
+    uint32_t frequency;
+};
+
+struct GetLimitSwitchesMessage {
+    uint32_t id;
+};
+
+struct GetLimitSwitchesResponses {
+    uint32_t responding_to_id;
+    bool x_extend_triggered;
+    bool x_retract_triggered;
+    bool z_extend_triggered;
+    bool z_retract_triggered;
+    bool l_released_triggered;
+    bool l_held_triggered;
+};
+
 struct MoveCompleteMessage {
     MotorID motor_id;
 };
@@ -145,7 +166,7 @@ struct StopMotorMessage {
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetTMCRegisterResponse>;
+                   GetTMCRegisterResponse, GetLimitSwitchesResponses>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -155,8 +176,10 @@ using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
                    PollTMCRegisterMessage, StopPollTMCRegisterMessage>;
 
-using MotorMessage = ::std::variant<std::monostate, MotorEnableMessage,
-                                    MoveMotorAtFrequencyMessage,
-                                    StopMotorMessage, MoveCompleteMessage>;
+using MotorMessage =
+    ::std::variant<std::monostate, MotorEnableMessage,
+                   MoveMotorAtFrequencyMessage, MoveMotorMessage,
+                   StopMotorMessage, MoveCompleteMessage,
+                   GetLimitSwitchesMessage>;
 
 };  // namespace messages

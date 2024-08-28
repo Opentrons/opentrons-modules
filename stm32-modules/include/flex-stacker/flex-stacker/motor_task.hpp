@@ -145,7 +145,15 @@ class MotorTask {
                        Policy& policy) -> void {
         static_cast<void>(policy);
         controller_from_id(m.motor_id)
-            .start_movement(m.id, m.direction, m.steps, m.frequency);
+            .start_fixed_movement(m.id, m.direction, m.steps, m.frequency);
+    }
+
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::MoveMotorMessage& m, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        controller_from_id(m.motor_id)
+            .start_movement(m.id, m.direction, m.frequency);
     }
 
     template <MotorControlPolicy Policy>
@@ -153,6 +161,28 @@ class MotorTask {
         -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
+    }
+
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::GetLimitSwitchesMessage& m,
+                       Policy& policy) -> void {
+        auto response = messages::GetLimitSwitchesResponses{
+            .responding_to_id = m.id,
+            .x_extend_triggered =
+                policy.check_limit_switch(MotorID::MOTOR_X, true),
+            .x_retract_triggered =
+                policy.check_limit_switch(MotorID::MOTOR_X, false),
+            .z_extend_triggered =
+                policy.check_limit_switch(MotorID::MOTOR_Z, true),
+            .z_retract_triggered =
+                policy.check_limit_switch(MotorID::MOTOR_Z, false),
+            .l_released_triggered =
+                policy.check_limit_switch(MotorID::MOTOR_L, true),
+            .l_held_triggered =
+                policy.check_limit_switch(MotorID::MOTOR_L, false),
+        };
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
     }
 
     template <MotorControlPolicy Policy>

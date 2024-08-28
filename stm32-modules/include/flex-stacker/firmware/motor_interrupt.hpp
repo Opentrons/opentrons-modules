@@ -38,18 +38,20 @@ class MotorInterruptController {
         if (ret.step && !stop_condition_met()) {
             _policy->step(_id);
         }
-        if (ret.done) {
+        if (ret.done || stop_condition_met()) {
             _policy->disable_motor(_id);
+            return true;
         }
         return ret.done;
     }
+
     auto set_freq(uint32_t freq) -> void { step_freq = freq; }
     auto initialize(MotorPolicy* policy) -> void {
         _policy = policy;
         _initialized = true;
     }
-    auto start_movement(uint32_t move_id, bool direction, long steps,
-                        uint32_t frequency) -> void {
+    auto start_fixed_movement(uint32_t move_id, bool direction, long steps,
+                              uint32_t frequency) -> void {
         set_direction(direction);
         _profile = motor_util::MovementProfile(
             TIMER_FREQ, 0, frequency, 0,
@@ -57,6 +59,15 @@ class MotorInterruptController {
         _policy->enable_motor(_id);
         _response_id = move_id;
     }
+    auto start_movement(uint32_t move_id, bool direction, uint32_t frequency)
+        -> void {
+        set_direction(direction);
+        _profile = motor_util::MovementProfile(
+            TIMER_FREQ, 0, frequency, 0, motor_util::MovementType::OpenLoop, 0);
+        _policy->enable_motor(_id);
+        _response_id = move_id;
+    }
+
     auto set_direction(bool direction) -> void {
         _policy->set_direction(_id, direction);
         _direction = direction;

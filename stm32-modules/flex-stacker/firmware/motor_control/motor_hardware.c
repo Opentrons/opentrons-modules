@@ -136,8 +136,8 @@ static motor_hardware_t _motor_hardware = {
         .enable = {L_EN_PORT, L_EN_PIN, GPIO_PIN_SET},
         .direction = {L_DIR_PORT, L_DIR_PIN, GPIO_PIN_SET},
         .step = {L_STEP_PORT, L_STEP_PIN, GPIO_PIN_SET},
-        .limit_switch_minus = {L_N_HELD_PORT, L_N_HELD_PIN, GPIO_PIN_RESET},
-        .limit_switch_plus = {L_N_RELEASED_PORT, L_N_RELEASED_PIN, GPIO_PIN_RESET},
+        .limit_switch_minus = {L_N_RELEASED_PORT, L_N_RELEASED_PIN, GPIO_PIN_RESET},
+        .limit_switch_plus = {L_N_HELD_PORT, L_N_HELD_PIN, GPIO_PIN_RESET},
         .ebrake = {0},
     }
 };
@@ -396,13 +396,13 @@ void hw_set_direction(MotorID motor_id, bool direction) {
 bool hw_read_limit_switch(MotorID motor_id, bool direction) {
     stepper_hardware_t motor = get_motor(motor_id);
     if (direction) {
-        return HAL_GPIO_ReadPin(motor.limit_switch_plus.port,
-                                motor.limit_switch_plus.pin) ==
-               motor.limit_switch_plus.active_setting;
+        return HAL_GPIO_ReadPin(motor.limit_switch_minus.port,
+                                motor.limit_switch_minus.pin) ==
+               motor.limit_switch_minus.active_setting;
     }
-    return HAL_GPIO_ReadPin(motor.limit_switch_minus.port,
-                            motor.limit_switch_minus.pin) ==
-           motor.limit_switch_minus.active_setting;
+    return HAL_GPIO_ReadPin(motor.limit_switch_plus.port,
+                            motor.limit_switch_plus.pin) ==
+           motor.limit_switch_plus.active_setting;
 }
 
 void TIM3_IRQHandler(void)
