@@ -75,3 +75,8 @@ auto MovementProfile::tick() -> TickReturn {
 [[nodiscard]] auto MovementProfile::current_distance() const -> ticks {
     return _current_distance;
 }
+
+/** Returns the movement type.*/
+[[nodiscard]] auto MovementProfile::movement_type() const -> MovementType {
+    return _type;
+}

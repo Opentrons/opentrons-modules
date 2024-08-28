@@ -144,9 +144,9 @@ class MotorTask {
     auto visit_message(const messages::MoveMotorAtFrequencyMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
-        auto controller = controller_from_id(m.motor_id);
-        controller.set_direction(m.direction);
-        controller.start_movement(m.id, m.steps, m.frequency);
+//        auto controller = controller_from_id(m.motor_id);
+        controller_from_id(m.motor_id).set_direction(m.direction);
+        controller_from_id(m.motor_id).start_movement(m.id, m.steps, m.frequency);
     }
 
     template <MotorControlPolicy Policy>
@@ -160,9 +160,8 @@ class MotorTask {
     auto visit_message(const messages::MoveCompleteMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        auto controller = controller_from_id(m.motor_id);
         auto response = messages::AcknowledgePrevious{
-            .responding_to_id = controller.get_response_id()};
+            .responding_to_id = controller_from_id(m.motor_id).get_response_id()};
         static_cast<void>(_task_registry->send_to_address(
             response, Queues::HostCommsAddress));
     }
