@@ -48,12 +48,14 @@ class MotorInterruptController {
         _policy = policy;
         _initialized = true;
     }
-    auto start_movement(uint32_t id, long steps, uint32_t frequency) -> void {
+    auto start_movement(uint32_t move_id, bool direction, long steps,
+                        uint32_t frequency) -> void {
+        set_direction(direction);
         _profile = motor_util::MovementProfile(
             TIMER_FREQ, 0, frequency, 0,
             motor_util::MovementType::FixedDistance, steps);
         _policy->enable_motor(_id);
-        _response_id = id;
+        _response_id = move_id;
     }
     auto set_direction(bool direction) -> void {
         _policy->set_direction(_id, direction);
