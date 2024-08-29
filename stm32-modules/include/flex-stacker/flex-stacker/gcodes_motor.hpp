@@ -255,13 +255,13 @@ struct DisableMotor {
     }
 };
 
-struct MoveMotorAtFrequency {
+struct MoveMotorInSteps {
     MotorID motor_id;
-    bool direction;
     int32_t steps;
-    uint32_t frequency;
+    uint32_t steps_per_second;
+    uint32_t steps_per_second_sq;
 
-    using ParseResult = std::optional<MoveMotorAtFrequency>;
+    using ParseResult = std::optional<MoveMotorInSteps>;
     static constexpr auto prefix = std::array{'G', '6', ' '};
     static constexpr const char* response = "G6 OK\n";
 
@@ -269,28 +269,28 @@ struct MoveMotorAtFrequency {
         static constexpr auto prefix = std::array{'X'};
         static constexpr bool required = false;
         bool present = false;
-        int value = 0;
+        int32_t value = 0;
     };
     struct ZArg {
         static constexpr auto prefix = std::array{'Z'};
         static constexpr bool required = false;
         bool present = false;
-        int value = 0;
+        int32_t value = 0;
     };
     struct LArg {
         static constexpr auto prefix = std::array{'L'};
         static constexpr bool required = false;
         bool present = false;
-        int value = 0;
-    };
-    struct StepArg {
-        static constexpr auto prefix = std::array{'S'};
-        static constexpr bool required = true;
-        bool present = false;
         int32_t value = 0;
     };
     struct FreqArg {
         static constexpr auto prefix = std::array{'F'};
+        static constexpr bool required = false;
+        bool present = false;
+        uint32_t value = 0;
+    };
+    struct RampArg {
+        static constexpr auto prefix = std::array{'R'};
         static constexpr bool required = false;
         bool present = false;
         uint32_t value = 0;
@@ -302,39 +302,39 @@ struct MoveMotorAtFrequency {
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         auto res =
-            gcode::SingleParser<XArg, ZArg, LArg, StepArg,
-                                FreqArg>::parse_gcode(input, limit, prefix);
+            gcode::SingleParser<XArg, ZArg, LArg, FreqArg,
+                                RampArg>::parse_gcode(input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        auto ret = MoveMotorAtFrequency{
+        auto ret = MoveMotorInSteps{
             .motor_id = MotorID::MOTOR_X,
-            .direction = false,
             .steps = 0,
-            .frequency = 0,
+            .steps_per_second = 0,
+            .steps_per_second_sq = 0,
         };
 
         auto arguments = res.first.value();
         if (std::get<0>(arguments).present) {
-            ret.direction = static_cast<bool>(std::get<0>(arguments).value);
+            ret.steps = std::get<0>(arguments).value;
         } else if (std::get<1>(arguments).present) {
             ret.motor_id = MotorID::MOTOR_Z;
-            ret.direction = static_cast<bool>(std::get<1>(arguments).value);
+            ret.steps = std::get<1>(arguments).value;
         } else if (std::get<2>(arguments).present) {
             ret.motor_id = MotorID::MOTOR_L;
-            ret.direction = static_cast<bool>(std::get<2>(arguments).value);
+            ret.steps = std::get<2>(arguments).value;
         } else {
             return std::make_pair(ParseResult(), input);
         }
 
         if (std::get<3>(arguments).present) {
-            ret.steps = std::get<3>(arguments).value;
+            ret.steps_per_second = std::get<3>(arguments).value;
         } else {
             return std::make_pair(ParseResult(), input);
         }
 
         if (std::get<4>(arguments).present) {
-            ret.frequency = std::get<4>(arguments).value;
+            ret.steps_per_second_sq = std::get<4>(arguments).value;
         }
         return std::make_pair(ret, res.second);
     }
@@ -347,12 +347,106 @@ struct MoveMotorAtFrequency {
     }
 };
 
-struct MoveMotor {
+struct MoveMotorInMm {
+    MotorID motor_id;
+    int32_t mm;
+    uint32_t mm_per_second;
+    uint32_t mm_per_second_sq;
+
+    using ParseResult = std::optional<MoveMotorInMm>;
+    static constexpr auto prefix = std::array{'G', '0', ' '};
+    static constexpr const char* response = "G0 OK\n";
+
+    struct XArg {
+        static constexpr auto prefix = std::array{'X'};
+        static constexpr bool required = false;
+        bool present = false;
+        int32_t value = 0;
+    };
+    struct ZArg {
+        static constexpr auto prefix = std::array{'Z'};
+        static constexpr bool required = false;
+        bool present = false;
+        int32_t value = 0;
+    };
+    struct LArg {
+        static constexpr auto prefix = std::array{'L'};
+        static constexpr bool required = false;
+        bool present = false;
+        int32_t value = 0;
+    };
+    struct VelArg {
+        static constexpr auto prefix = std::array{'V'};
+        static constexpr bool required = true;
+        bool present = false;
+        uint32_t value = 0;
+    };
+
+    struct AccelArg {
+        static constexpr auto prefix = std::array{'A'};
+        static constexpr bool required = true;
+        bool present = false;
+        uint32_t value = 0;
+    };
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res =
+            gcode::SingleParser<XArg, ZArg, LArg, VelArg,
+                                AccelArg>::parse_gcode(input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto ret = MoveMotorInMm{
+            .motor_id = MotorID::MOTOR_X,
+            .mm = 0,
+            .mm_per_second = 0,
+            .mm_per_second_sq = 0,
+        };
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.mm = std::get<0>(arguments).value;
+        } else if (std::get<1>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_Z;
+            ret.mm = std::get<1>(arguments).value;
+        } else if (std::get<2>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_L;
+            ret.mm = std::get<2>(arguments).value;
+        } else {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        if (std::get<3>(arguments).present) {
+            ret.mm_per_second = std::get<3>(arguments).value;
+        } else {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        if (std::get<4>(arguments).present) {
+            ret.mm_per_second_sq = std::get<4>(arguments).value;
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct MoveToLimitSwitch {
     MotorID motor_id;
     bool direction;
-    uint32_t frequency;
+    uint32_t mm_per_second;
+    uint32_t mm_per_second_sq;
 
-    using ParseResult = std::optional<MoveMotor>;
+    using ParseResult = std::optional<MoveToLimitSwitch>;
     static constexpr auto prefix = std::array{'G', '5', ' '};
     static constexpr const char* response = "G5 OK\n";
 
@@ -374,8 +468,14 @@ struct MoveMotor {
         bool present = false;
         int value = 0;
     };
-    struct FreqArg {
-        static constexpr auto prefix = std::array{'F'};
+    struct VelArg {
+        static constexpr auto prefix = std::array{'V'};
+        static constexpr bool required = true;
+        bool present = false;
+        uint32_t value = 0;
+    };
+    struct AccelArg {
+        static constexpr auto prefix = std::array{'A'};
         static constexpr bool required = false;
         bool present = false;
         uint32_t value = 0;
@@ -386,15 +486,17 @@ struct MoveMotor {
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        auto res = gcode::SingleParser<XArg, ZArg, LArg, FreqArg>::parse_gcode(
-            input, limit, prefix);
+        auto res =
+            gcode::SingleParser<XArg, ZArg, LArg, VelArg,
+                                AccelArg>::parse_gcode(input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        auto ret = MoveMotor{
+        auto ret = MoveToLimitSwitch{
             .motor_id = MotorID::MOTOR_X,
             .direction = false,
-            .frequency = 0,
+            .mm_per_second = 0,
+            .mm_per_second_sq = 0,
         };
 
         auto arguments = res.first.value();
@@ -411,7 +513,13 @@ struct MoveMotor {
         }
 
         if (std::get<3>(arguments).present) {
-            ret.frequency = std::get<3>(arguments).value;
+            ret.mm_per_second = std::get<3>(arguments).value;
+        } else {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        if (std::get<4>(arguments).present) {
+            ret.mm_per_second_sq = std::get<4>(arguments).value;
         }
         return std::make_pair(ret, res.second);
     }

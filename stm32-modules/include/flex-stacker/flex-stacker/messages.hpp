@@ -126,19 +126,28 @@ struct MotorEnableMessage {
     std::optional<bool> l = std::nullopt;
 };
 
-struct MoveMotorAtFrequencyMessage {
+struct MoveMotorInStepsMessage {
     uint32_t id;
     MotorID motor_id;
-    bool direction;
     int32_t steps;
-    uint32_t frequency;
+    uint32_t steps_per_second;
+    uint32_t steps_per_second_sq;
 };
 
-struct MoveMotorMessage {
+struct MoveMotorInMmMessage {
+    uint32_t id;
+    MotorID motor_id;
+    int32_t mm;
+    uint32_t mm_per_second;
+    uint32_t mm_per_second_sq;
+};
+
+struct MoveToLimitSwitchMessage {
     uint32_t id;
     MotorID motor_id;
     bool direction;
-    uint32_t frequency;
+    uint32_t mm_per_second;
+    uint32_t mm_per_second_sq;
 };
 
 struct GetLimitSwitchesMessage {
@@ -177,9 +186,9 @@ using MotorDriverMessage =
                    PollTMCRegisterMessage, StopPollTMCRegisterMessage>;
 
 using MotorMessage =
-    ::std::variant<std::monostate, MotorEnableMessage,
-                   MoveMotorAtFrequencyMessage, MoveMotorMessage,
-                   StopMotorMessage, MoveCompleteMessage,
-                   GetLimitSwitchesMessage>;
+    ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
+                   MoveToLimitSwitchMessage, StopMotorMessage,
+                   MoveCompleteMessage, GetLimitSwitchesMessage,
+                   MoveMotorInMmMessage>;
 
 };  // namespace messages
