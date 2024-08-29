@@ -262,8 +262,8 @@ struct MoveMotorInSteps {
     uint32_t steps_per_second_sq;
 
     using ParseResult = std::optional<MoveMotorInSteps>;
-    static constexpr auto prefix = std::array{'G', '6', ' '};
-    static constexpr const char* response = "G6 OK\n";
+    static constexpr auto prefix = std::array{'G', '0', '.', 'S',' '};
+    static constexpr const char* response = "G0.S OK\n";
 
     struct XArg {
         static constexpr auto prefix = std::array{'X'};
@@ -285,7 +285,7 @@ struct MoveMotorInSteps {
     };
     struct FreqArg {
         static constexpr auto prefix = std::array{'F'};
-        static constexpr bool required = false;
+        static constexpr bool required = true;
         bool present = false;
         uint32_t value = 0;
     };
@@ -384,7 +384,7 @@ struct MoveMotorInMm {
 
     struct AccelArg {
         static constexpr auto prefix = std::array{'A'};
-        static constexpr bool required = true;
+        static constexpr bool required = false;
         bool present = false;
         uint32_t value = 0;
     };
