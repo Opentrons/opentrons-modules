@@ -125,7 +125,7 @@ static motor_hardware_t _motor_hardware = {
     .motor_z = {
         .timer = {0},
         .enable = {Z_EN_PORT, Z_EN_PIN, GPIO_PIN_SET},
-        .direction = {Z_DIR_PORT, Z_DIR_PIN, GPIO_PIN_SET},
+        .direction = {Z_DIR_PORT, Z_DIR_PIN, GPIO_PIN_RESET},
         .step = {Z_STEP_PORT, Z_STEP_PIN, GPIO_PIN_SET},
         .limit_switch_minus = {Z_MINUS_LIMIT_PORT, Z_MINUS_LIMIT_PIN, GPIO_PIN_SET},
         .limit_switch_plus = {Z_PLUS_LIMIT_PORT, Z_PLUS_LIMIT_PIN, GPIO_PIN_SET},
@@ -136,8 +136,8 @@ static motor_hardware_t _motor_hardware = {
         .enable = {L_EN_PORT, L_EN_PIN, GPIO_PIN_SET},
         .direction = {L_DIR_PORT, L_DIR_PIN, GPIO_PIN_SET},
         .step = {L_STEP_PORT, L_STEP_PIN, GPIO_PIN_SET},
-        .limit_switch_minus = {L_N_RELEASED_PORT, L_N_RELEASED_PIN, GPIO_PIN_RESET},
-        .limit_switch_plus = {L_N_HELD_PORT, L_N_HELD_PIN, GPIO_PIN_RESET},
+        .limit_switch_minus = {L_N_HELD_PORT, L_N_HELD_PIN, GPIO_PIN_RESET},
+        .limit_switch_plus = {L_N_RELEASED_PORT, L_N_RELEASED_PIN, GPIO_PIN_RESET},
         .ebrake = {0},
     }
 };
@@ -363,46 +363,54 @@ static uint8_t invert_gpio_value(uint8_t setting) {
     }
 }
 
+void set_pin(PinConfig config) {
+    HAL_GPIO_WritePin(config.port, config.pin, config.active_setting);
+}
+
+void reset_pin(PinConfig config) {
+    HAL_GPIO_WritePin(config.port, config.pin, invert_gpio_value(config.active_setting));
+}
+
+
 bool hw_enable_motor(MotorID motor_id) {
     stepper_hardware_t motor = get_motor(motor_id);
     hw_enable_ebrake(motor_id, false);
     HAL_StatusTypeDef status = HAL_OK;
     status = HAL_TIM_Base_Start_IT(&motor.timer);
-    HAL_GPIO_WritePin(motor.enable.port, motor.enable.pin, motor.enable.active_setting);
+    set_pin(motor.enable);
     return status == HAL_OK;
 }
 
 bool hw_disable_motor(MotorID motor_id) {
     stepper_hardware_t motor = get_motor(motor_id);
     HAL_StatusTypeDef status = HAL_OK;
-//    _HAL_TIM_DISABLE_IT(&motor.timer, TIM_IT_UPDATE);
     status = HAL_TIM_Base_Stop_IT(&motor.timer);
-    HAL_GPIO_WritePin(motor.enable.port, motor.enable.pin, invert_gpio_value(motor.enable.active_setting));
+    reset_pin(motor.enable);
     hw_enable_ebrake(motor_id, true);
     return status == HAL_OK;
 }
 
 void hw_step_motor(MotorID motor_id) {
     stepper_hardware_t motor = get_motor(motor_id);
-    HAL_GPIO_WritePin(motor.step.port, motor.step.pin, motor.step.active_setting);
-    HAL_GPIO_WritePin(motor.step.port, motor.step.pin, invert_gpio_value(motor.step.active_setting));
+    set_pin(motor.step);
+    reset_pin(motor.step);
 }
 
 void hw_set_direction(MotorID motor_id, bool direction) {
     stepper_hardware_t motor = get_motor(motor_id);
-    HAL_GPIO_WritePin(motor.direction.port, motor.direction.pin, direction ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    direction ? set_pin(motor.direction) : reset_pin(motor.direction);
 }
 
 bool hw_read_limit_switch(MotorID motor_id, bool direction) {
     stepper_hardware_t motor = get_motor(motor_id);
     if (direction) {
-        return HAL_GPIO_ReadPin(motor.limit_switch_minus.port,
-                                motor.limit_switch_minus.pin) ==
-               motor.limit_switch_minus.active_setting;
-    }
-    return HAL_GPIO_ReadPin(motor.limit_switch_plus.port,
+        return HAL_GPIO_ReadPin(motor.limit_switch_plus.port,
                             motor.limit_switch_plus.pin) ==
            motor.limit_switch_plus.active_setting;
+    }
+        return HAL_GPIO_ReadPin(motor.limit_switch_minus.port,
+                                motor.limit_switch_minus.pin) ==
+           motor.limit_switch_minus.active_setting;
 }
 
 void TIM3_IRQHandler(void)
