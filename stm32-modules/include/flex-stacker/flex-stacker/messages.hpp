@@ -154,7 +154,6 @@ struct GetLimitSwitchesResponses {
     bool l_released_triggered;
     bool l_held_triggered;
 };
-
 struct MoveCompleteMessage {
     MotorID motor_id;
 };

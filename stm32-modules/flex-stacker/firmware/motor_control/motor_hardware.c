@@ -371,7 +371,6 @@ void reset_pin(PinConfig config) {
     HAL_GPIO_WritePin(config.port, config.pin, invert_gpio_value(config.active_setting));
 }
 
-
 bool hw_enable_motor(MotorID motor_id) {
     stepper_hardware_t motor = get_motor(motor_id);
     hw_enable_ebrake(motor_id, false);

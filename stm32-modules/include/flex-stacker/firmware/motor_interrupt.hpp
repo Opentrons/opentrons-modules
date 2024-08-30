@@ -67,7 +67,6 @@ class MotorInterruptController {
         _policy->enable_motor(_id);
         _response_id = move_id;
     }
-
     auto set_direction(bool direction) -> void {
         _policy->set_direction(_id, direction);
         _direction = direction;
