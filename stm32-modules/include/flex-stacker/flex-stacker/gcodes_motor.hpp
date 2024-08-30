@@ -262,7 +262,7 @@ struct MoveMotorInSteps {
     uint32_t steps_per_second_sq;
 
     using ParseResult = std::optional<MoveMotorInSteps>;
-    static constexpr auto prefix = std::array{'G', '0', '.', 'S',' '};
+    static constexpr auto prefix = std::array{'G', '0', '.', 'S', ' '};
     static constexpr const char* response = "G0.S OK\n";
 
     struct XArg {
