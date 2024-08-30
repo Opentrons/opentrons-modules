@@ -134,6 +134,10 @@ struct MoveMotorAtFrequencyMessage {
     uint32_t frequency;
 };
 
+struct MoveCompleteMessage {
+    MotorID motor_id;
+};
+
 struct StopMotorMessage {
     uint32_t id;
 };
@@ -151,8 +155,8 @@ using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
                    PollTMCRegisterMessage, StopPollTMCRegisterMessage>;
 
-using MotorMessage =
-    ::std::variant<std::monostate, MotorEnableMessage,
-                   MoveMotorAtFrequencyMessage, StopMotorMessage>;
+using MotorMessage = ::std::variant<std::monostate, MotorEnableMessage,
+                                    MoveMotorAtFrequencyMessage,
+                                    StopMotorMessage, MoveCompleteMessage>;
 
 };  // namespace messages

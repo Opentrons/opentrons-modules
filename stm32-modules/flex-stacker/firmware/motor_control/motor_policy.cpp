@@ -15,4 +15,14 @@ auto MotorPolicy::disable_motor(MotorID motor_id) -> bool {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::step(MotorID motor_id) -> void { step_motor(motor_id); }
+auto MotorPolicy::step(MotorID motor_id) -> void { hw_step_motor(motor_id); }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::set_direction(MotorID motor_id, bool direction) -> void {
+    hw_set_direction(motor_id, direction);
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::check_limit_switch(MotorID motor_id, bool direction) -> bool {
+    return hw_read_limit_switch(motor_id, direction);
+}

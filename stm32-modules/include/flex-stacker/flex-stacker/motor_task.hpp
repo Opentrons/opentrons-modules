@@ -6,6 +6,7 @@
 #pragma once
 
 #include "core/ack_cache.hpp"
+#include "core/linear_motion_system.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
 #include "firmware/motor_interrupt.hpp"
@@ -26,6 +27,25 @@ concept MotorControlPolicy = requires(P p, MotorID motor_id) {
 
 using Message = messages::MotorMessage;
 using Controller = motor_interrupt_controller::MotorInterruptController;
+
+static constexpr struct lms::LinearMotionSystemConfig<lms::LeadScrewConfig>
+    motor_x_config = {
+    .mech_config = lms::LeadScrewConfig{.lead_screw_pitch = 9.7536,
+                                        .gear_reduction_ratio = 1.0},
+    .steps_per_rev = 200, .microstep = 16,
+};
+static constexpr struct lms::LinearMotionSystemConfig<lms::LeadScrewConfig>
+    motor_z_config = {
+    .mech_config = lms::LeadScrewConfig{.lead_screw_pitch = 9.7536,
+                                        .gear_reduction_ratio = 1.0},
+    .steps_per_rev = 200, .microstep = 16,
+};
+static constexpr struct lms::LinearMotionSystemConfig<lms::GearBoxConfig>
+    motor_l_config = {
+    .mech_config = lms::GearBoxConfig{.gear_diameter = 16.0,
+                                      .gear_reduction_ratio = 16.0 / 30.0},
+    .steps_per_rev = 200, .microstep = 16,
+};
 
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
@@ -54,6 +74,19 @@ class MotorTask {
         _task_registry = aggregator;
     }
 
+    auto controller_from_id(MotorID motor_id) -> Controller& {
+        switch (motor_id) {
+            case MotorID::MOTOR_X:
+                return _x_controller;
+            case MotorID::MOTOR_Z:
+                return _z_controller;
+            case MotorID::MOTOR_L:
+                return _l_controller;
+            default:
+                return _x_controller;
+        }
+    }
+
     template <MotorControlPolicy Policy>
     auto run_once(Policy& policy) -> void {
         if (!_task_registry) {
@@ -61,6 +94,13 @@ class MotorTask {
         }
 
         auto message = Message(std::monostate());
+
+        if (!_initialized) {
+            _x_controller.initialize(&policy);
+            _z_controller.initialize(&policy);
+            _l_controller.initialize(&policy);
+            _initialized = true;
+        }
 
         _message_queue.recv(&message);
         auto visit_helper = [this, &policy](auto& message) -> void {
@@ -104,22 +144,8 @@ class MotorTask {
     auto visit_message(const messages::MoveMotorAtFrequencyMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
-        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
-        switch (m.motor_id) {
-            case MotorID::MOTOR_X:
-                _x_controller.set_freq(m.frequency);
-                break;
-            case MotorID::MOTOR_Z:
-                _z_controller.set_freq(m.frequency);
-                break;
-            case MotorID::MOTOR_L:
-                _l_controller.set_freq(m.frequency);
-                break;
-            default:
-                break;
-        }
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
+        controller_from_id(m.motor_id)
+            .start_movement(m.id, m.direction, m.steps, m.frequency);
     }
 
     template <MotorControlPolicy Policy>
@@ -127,6 +153,17 @@ class MotorTask {
         -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
+    }
+
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::MoveCompleteMessage& m, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id =
+                controller_from_id(m.motor_id).get_response_id()};
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
     }
 
     Queue& _message_queue;

@@ -15,10 +15,11 @@ void spi_hardware_init(void);
 bool motor_spi_sendreceive(MotorID motor_id, uint8_t *tx_data, uint8_t *rx_data,
                            uint16_t len);
 
-void step_motor(MotorID motor_id);
+void hw_step_motor(MotorID motor_id);
 bool hw_enable_motor(MotorID motor_id);
 bool hw_disable_motor(MotorID motor_id);
 void hw_set_direction(MotorID, bool direction);
+bool hw_read_limit_switch(MotorID motor_id, bool direction);
 
 #ifdef __cplusplus
 }  // extern "C"

@@ -12,13 +12,16 @@ namespace motor_control_task {
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto x_motor_interrupt =
-    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_X);
+    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_X,
+                                                         nullptr);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto z_motor_interrupt =
-    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_Z);
+    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_Z,
+                                                         nullptr);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto l_motor_interrupt =
-    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_L);
+    motor_interrupt_controller::MotorInterruptController(MotorID::MOTOR_L,
+                                                         nullptr);
 
 enum class Notifications : uint8_t {
     INCOMING_MESSAGE = 1,
@@ -34,19 +37,24 @@ static tasks::FirmwareTasks::MotorQueue
 static auto _top_task = motor_task::MotorTask(
     _queue, nullptr, x_motor_interrupt, z_motor_interrupt, l_motor_interrupt);
 
-static auto callback_glue(MotorID motor_id) {
+[[nodiscard]] static auto callback_glue(MotorID motor_id) {
+    bool done = false;
     switch (motor_id) {
         case MotorID::MOTOR_L:
-            l_motor_interrupt.tick();
+            done = l_motor_interrupt.tick();
             break;
         case MotorID::MOTOR_X:
-            x_motor_interrupt.tick();
+            done = x_motor_interrupt.tick();
             break;
         case MotorID::MOTOR_Z:
-            z_motor_interrupt.tick();
+            done = z_motor_interrupt.tick();
             break;
         default:
             break;
+    }
+    if (done) {
+        static_cast<void>(_queue.try_send_from_isr(
+            messages::MoveCompleteMessage{.motor_id = motor_id}));
     }
 }
 

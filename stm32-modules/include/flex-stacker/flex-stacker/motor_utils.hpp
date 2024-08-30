@@ -91,6 +91,9 @@ class MovementProfile {
     /** Returns the number of ticks that have been taken.*/
     [[nodiscard]] auto current_distance() const -> ticks;
 
+    /** Returns the movement type.*/
+    [[nodiscard]] auto movement_type() const -> MovementType;
+
   private:
     uint32_t _ticks_per_second;           // Tick frequency
     steps_per_tick _velocity = 0;         // Current velocity
