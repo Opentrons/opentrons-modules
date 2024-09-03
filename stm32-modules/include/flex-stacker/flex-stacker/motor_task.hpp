@@ -4,6 +4,7 @@
  *
  */
 #pragma once
+#include <cmath>
 
 #include "core/ack_cache.hpp"
 #include "core/linear_motion_system.hpp"
@@ -87,6 +88,19 @@ class MotorTask {
         }
     }
 
+    auto steps_per_mm(MotorID motor_id) -> float {
+        switch (motor_id) {
+            case MotorID::MOTOR_X:
+                return motor_x_config.get_usteps_per_mm();
+            case MotorID::MOTOR_Z:
+                return motor_z_config.get_usteps_per_mm();
+            case MotorID::MOTOR_L:
+                return motor_l_config.get_usteps_per_mm();
+            default:
+                return motor_x_config.get_usteps_per_mm();
+        }
+    }
+
     template <MotorControlPolicy Policy>
     auto run_once(Policy& policy) -> void {
         if (!_task_registry) {
@@ -141,19 +155,35 @@ class MotorTask {
     }
 
     template <MotorControlPolicy Policy>
-    auto visit_message(const messages::MoveMotorAtFrequencyMessage& m,
+    auto visit_message(const messages::MoveMotorInStepsMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
+        auto direction = m.steps > 0;
         controller_from_id(m.motor_id)
-            .start_fixed_movement(m.id, m.direction, m.steps, m.frequency);
+            .start_fixed_movement(m.id, direction, std::abs(m.steps),
+                                  m.steps_per_second, m.steps_per_second_sq);
     }
 
     template <MotorControlPolicy Policy>
-    auto visit_message(const messages::MoveMotorMessage& m, Policy& policy)
+    auto visit_message(const messages::MoveMotorInMmMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
+        auto direction = m.mm > 0;
+        auto s_per_m = steps_per_mm(m.motor_id);
         controller_from_id(m.motor_id)
-            .start_movement(m.id, m.direction, m.frequency);
+            .start_fixed_movement(m.id, direction, std::abs(m.mm * s_per_m),
+                                  m.mm_per_second * s_per_m,
+                                  m.mm_per_second_sq * s_per_m * s_per_m);
+    }
+
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::MoveToLimitSwitchMessage& m,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        auto s_per_m = steps_per_mm(m.motor_id);
+        controller_from_id(m.motor_id)
+            .start_movement(m.id, m.direction, m.mm_per_second * s_per_m,
+                            m.mm_per_second_sq * s_per_m * s_per_m);
     }
 
     template <MotorControlPolicy Policy>
