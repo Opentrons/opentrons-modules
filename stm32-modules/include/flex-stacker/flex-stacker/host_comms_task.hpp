@@ -458,7 +458,8 @@ class HostCommsTask {
             .motor_id = gcode.motor_id,
             .mm = gcode.mm,
             .mm_per_second = gcode.mm_per_second,
-            .mm_per_second_sq = gcode.mm_per_second_sq};
+            .mm_per_second_sq = gcode.mm_per_second_sq,
+            .mm_per_second_discont = gcode.mm_per_second_discont};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
@@ -484,7 +485,8 @@ class HostCommsTask {
             .motor_id = gcode.motor_id,
             .direction = gcode.direction,
             .mm_per_second = gcode.mm_per_second,
-            .mm_per_second_sq = gcode.mm_per_second_sq};
+            .mm_per_second_sq = gcode.mm_per_second_sq,
+            .mm_per_second_discont = gcode.mm_per_second_discont};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);

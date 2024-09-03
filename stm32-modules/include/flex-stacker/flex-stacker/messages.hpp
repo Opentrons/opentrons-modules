@@ -140,6 +140,7 @@ struct MoveMotorInMmMessage {
     int32_t mm;
     uint32_t mm_per_second;
     uint32_t mm_per_second_sq;
+    uint32_t mm_per_second_discont;
 };
 
 struct MoveToLimitSwitchMessage {
@@ -148,6 +149,7 @@ struct MoveToLimitSwitchMessage {
     bool direction;
     uint32_t mm_per_second;
     uint32_t mm_per_second_sq;
+    uint32_t mm_per_second_discont;
 };
 
 struct GetLimitSwitchesMessage {

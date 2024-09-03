@@ -352,6 +352,7 @@ struct MoveMotorInMm {
     int32_t mm;
     uint32_t mm_per_second;
     uint32_t mm_per_second_sq;
+    uint32_t mm_per_second_discont;
 
     using ParseResult = std::optional<MoveMotorInMm>;
     static constexpr auto prefix = std::array{'G', '0', ' '};
@@ -389,14 +390,21 @@ struct MoveMotorInMm {
         uint32_t value = 0;
     };
 
+    struct DiscontArg {
+        static constexpr auto prefix = std::array{'D'};
+        static constexpr bool required = false;
+        bool present = false;
+        uint32_t value = 0;
+    };
+
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         auto res =
-            gcode::SingleParser<XArg, ZArg, LArg, VelArg,
-                                AccelArg>::parse_gcode(input, limit, prefix);
+            gcode::SingleParser<XArg, ZArg, LArg, VelArg, AccelArg,
+                                DiscontArg>::parse_gcode(input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
@@ -405,6 +413,7 @@ struct MoveMotorInMm {
             .mm = 0,
             .mm_per_second = 0,
             .mm_per_second_sq = 0,
+            .mm_per_second_discont = 0,
         };
 
         auto arguments = res.first.value();
@@ -429,6 +438,9 @@ struct MoveMotorInMm {
         if (std::get<4>(arguments).present) {
             ret.mm_per_second_sq = std::get<4>(arguments).value;
         }
+        if (std::get<5>(arguments).present) {
+            ret.mm_per_second_discont = std::get<5>(arguments).value;
+        }
         return std::make_pair(ret, res.second);
     }
 
@@ -445,6 +457,7 @@ struct MoveToLimitSwitch {
     bool direction;
     uint32_t mm_per_second;
     uint32_t mm_per_second_sq;
+    uint32_t mm_per_second_discont;
 
     using ParseResult = std::optional<MoveToLimitSwitch>;
     static constexpr auto prefix = std::array{'G', '5', ' '};
@@ -480,6 +493,12 @@ struct MoveToLimitSwitch {
         bool present = false;
         uint32_t value = 0;
     };
+    struct DiscontArg {
+        static constexpr auto prefix = std::array{'D'};
+        static constexpr bool required = false;
+        bool present = false;
+        uint32_t value = 0;
+    };
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -487,8 +506,8 @@ struct MoveToLimitSwitch {
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         auto res =
-            gcode::SingleParser<XArg, ZArg, LArg, VelArg,
-                                AccelArg>::parse_gcode(input, limit, prefix);
+            gcode::SingleParser<XArg, ZArg, LArg, VelArg, AccelArg,
+                                DiscontArg>::parse_gcode(input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
@@ -497,6 +516,7 @@ struct MoveToLimitSwitch {
             .direction = false,
             .mm_per_second = 0,
             .mm_per_second_sq = 0,
+            .mm_per_second_discont = 0,
         };
 
         auto arguments = res.first.value();
@@ -520,6 +540,9 @@ struct MoveToLimitSwitch {
 
         if (std::get<4>(arguments).present) {
             ret.mm_per_second_sq = std::get<4>(arguments).value;
+        }
+        if (std::get<5>(arguments).present) {
+            ret.mm_per_second_discont = std::get<5>(arguments).value;
         }
         return std::make_pair(ret, res.second);
     }
