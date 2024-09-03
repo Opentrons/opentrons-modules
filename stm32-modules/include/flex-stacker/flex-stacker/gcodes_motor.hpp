@@ -532,6 +532,83 @@ struct MoveToLimitSwitch {
     }
 };
 
+struct MoveMotor {
+    MotorID motor_id;
+    bool direction;
+    uint32_t frequency;
+
+    using ParseResult = std::optional<MoveMotor>;
+    static constexpr auto prefix = std::array{'G', '5', ' '};
+    static constexpr const char* response = "G5 OK\n";
+
+    struct XArg {
+        static constexpr auto prefix = std::array{'X'};
+        static constexpr bool required = false;
+        bool present = false;
+        int value = 0;
+    };
+    struct ZArg {
+        static constexpr auto prefix = std::array{'Z'};
+        static constexpr bool required = false;
+        bool present = false;
+        int value = 0;
+    };
+    struct LArg {
+        static constexpr auto prefix = std::array{'L'};
+        static constexpr bool required = false;
+        bool present = false;
+        int value = 0;
+    };
+    struct FreqArg {
+        static constexpr auto prefix = std::array{'F'};
+        static constexpr bool required = false;
+        bool present = false;
+        uint32_t value = 0;
+    };
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<XArg, ZArg, LArg, FreqArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto ret = MoveMotor{
+            .motor_id = MotorID::MOTOR_X,
+            .direction = false,
+            .frequency = 0,
+        };
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.direction = static_cast<bool>(std::get<0>(arguments).value);
+        } else if (std::get<1>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_Z;
+            ret.direction = static_cast<bool>(std::get<1>(arguments).value);
+        } else if (std::get<2>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_L;
+            ret.direction = static_cast<bool>(std::get<2>(arguments).value);
+        } else {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        if (std::get<3>(arguments).present) {
+            ret.frequency = std::get<3>(arguments).value;
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 struct StopMotor {
     using ParseResult = std::optional<StopMotor>;
     static constexpr auto prefix = std::array{'M', '0'};

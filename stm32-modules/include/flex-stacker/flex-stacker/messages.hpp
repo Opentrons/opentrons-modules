@@ -168,6 +168,30 @@ struct MoveCompleteMessage {
     MotorID motor_id;
 };
 
+struct MoveMotorMessage {
+    uint32_t id;
+    MotorID motor_id;
+    bool direction;
+    uint32_t frequency;
+};
+
+struct GetLimitSwitchesMessage {
+    uint32_t id;
+};
+
+struct GetLimitSwitchesResponses {
+    uint32_t responding_to_id;
+    bool x_extend_triggered;
+    bool x_retract_triggered;
+    bool z_extend_triggered;
+    bool z_retract_triggered;
+    bool l_released_triggered;
+    bool l_held_triggered;
+};
+struct MoveCompleteMessage {
+    MotorID motor_id;
+};
+
 struct StopMotorMessage {
     uint32_t id;
 };
