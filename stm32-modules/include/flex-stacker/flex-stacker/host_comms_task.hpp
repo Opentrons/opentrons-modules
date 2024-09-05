@@ -39,12 +39,14 @@ class HostCommsTask {
   private:
     using GCodeParser =
         gcode::GroupParser<gcode::GetTMCRegister, gcode::SetTMCRegister,
+                           gcode::SetRunCurrent, gcode::SetHoldCurrent,
                            gcode::EnableMotor, gcode::DisableMotor,
                            gcode::MoveMotorInSteps, gcode::MoveToLimitSwitch,
                            gcode::MoveMotorInMm, gcode::GetLimitSwitches>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
-                 gcode::SetTMCRegister, gcode::EnableMotor, gcode::DisableMotor,
+                 gcode::SetTMCRegister, gcode::SetRunCurrent,
+                 gcode::SetHoldCurrent, gcode::EnableMotor, gcode::DisableMotor,
                  gcode::MoveMotorInSteps, gcode::MoveToLimitSwitch,
                  gcode::MoveMotorInMm>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
@@ -363,6 +365,56 @@ class HostCommsTask {
                                             .motor_id = gcode.motor_id,
                                             .reg = gcode.reg,
                                             .data = gcode.data};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetRunCurrent& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message =
+            messages::SetMotorCurrentMessage{.id = id,
+                                             .motor_id = gcode.motor_id,
+                                             .run_current = gcode.current,
+                                             .hold_current = 0.0};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetHoldCurrent& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message =
+            messages::SetMotorCurrentMessage{.id = id,
+                                             .motor_id = gcode.motor_id,
+                                             .run_current = 0.0,
+                                             .hold_current = gcode.current};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);

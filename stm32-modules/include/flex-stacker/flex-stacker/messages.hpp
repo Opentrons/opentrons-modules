@@ -89,6 +89,13 @@ struct ForceUSBDisconnect {
     size_t return_address;
 };
 
+struct SetMotorCurrentMessage {
+    uint32_t id;
+    MotorID motor_id;
+    float run_current;
+    float hold_current;
+};
+
 struct SetTMCRegisterMessage {
     uint32_t id;
     MotorID motor_id;
@@ -192,7 +199,8 @@ using SystemMessage =
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
-                   PollTMCRegisterMessage, StopPollTMCRegisterMessage>;
+                   PollTMCRegisterMessage, StopPollTMCRegisterMessage,
+                   SetMotorCurrentMessage>;
 
 using MotorMessage =
     ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
