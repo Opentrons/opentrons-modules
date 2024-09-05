@@ -382,10 +382,15 @@ bool hw_enable_motor(MotorID motor_id) {
 
 bool hw_disable_motor(MotorID motor_id) {
     stepper_hardware_t motor = get_motor(motor_id);
-    HAL_StatusTypeDef status = HAL_OK;
-    status = HAL_TIM_Base_Stop_IT(&motor.timer);
     reset_pin(motor.enable);
     hw_enable_ebrake(motor_id, true);
+    return true;
+}
+
+bool hw_stop_motor(MotorID motor_id) {
+    stepper_hardware_t motor = get_motor(motor_id);
+    HAL_StatusTypeDef status = HAL_OK;
+    status = HAL_TIM_Base_Stop_IT(&motor.timer);
     return status == HAL_OK;
 }
 
