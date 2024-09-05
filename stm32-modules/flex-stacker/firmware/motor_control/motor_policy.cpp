@@ -15,6 +15,11 @@ auto MotorPolicy::disable_motor(MotorID motor_id) -> bool {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::stop_motor(MotorID motor_id) -> bool {
+    return hw_stop_motor(motor_id);
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::step(MotorID motor_id) -> void { hw_step_motor(motor_id); }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

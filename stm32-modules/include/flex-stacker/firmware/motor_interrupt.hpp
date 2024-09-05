@@ -39,7 +39,10 @@ class MotorInterruptController {
             _policy->step(_id);
         }
         if (ret.done || stop_condition_met()) {
-            _policy->disable_motor(_id);
+            _policy->stop_motor(_id);
+            if (_id == MotorID::MOTOR_Z) {
+                _policy->disable_motor(_id);
+            }
             return true;
         }
         return ret.done;
