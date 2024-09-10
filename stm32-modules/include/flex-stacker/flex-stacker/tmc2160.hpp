@@ -139,7 +139,7 @@ class TMC2160 {
 
     // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
     [[nodiscard]] auto convert_peak_current_to_tmc2160_value(
-        float peak_c, const GlobalScaler& glob_scale,
+        uint32_t peak_c, const GlobalScaler& glob_scale,
         const TMC2160MotorCurrentConfig& current_config) const -> uint32_t {
         /*
          * This function allows us to calculate the current scaling value (rms)
@@ -157,8 +157,11 @@ class TMC2160 {
         auto VOLTAGE_INV = current_config.r_sense / current_config.v_sf;
         auto RMS_CURRENT_CONSTANT =
             globale_scaler_inv * CS_SCALER * VOLTAGE_INV;
-        auto shifted_current_cs = static_cast<uint64_t>(
-            RMS_CURRENT_CONSTANT * peak_c * static_cast<float>(1LL << 32));
+        auto fixed_point_constant = static_cast<uint32_t>(
+            RMS_CURRENT_CONSTANT * static_cast<float>(1LL << 16));
+        uint64_t shifted_current_cs =
+            static_cast<uint64_t>(fixed_point_constant) *
+            static_cast<uint64_t>(peak_c);
         auto current_cs = static_cast<uint32_t>(shifted_current_cs >> 32);
         if (current_cs > 32) {
             current_cs = 32;

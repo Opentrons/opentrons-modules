@@ -174,7 +174,7 @@ struct ArgL {
 
 struct SetRunCurrent {
     MotorID motor_id;
-    float current;
+    uint32_t current;
 
     using ParseResult = std::optional<SetRunCurrent>;
     static constexpr auto prefix = std::array{'M', '9', '0', '6', ' '};
@@ -184,19 +184,19 @@ struct SetRunCurrent {
         static constexpr auto prefix = std::array{'X'};
         static constexpr bool required = false;
         bool present = false;
-        float value = 0;
+        uint32_t value = 0;
     };
     struct ZArg {
         static constexpr auto prefix = std::array{'Z'};
         static constexpr bool required = false;
         bool present = false;
-        float value = 0;
+        uint32_t value = 0;
     };
     struct LArg {
         static constexpr auto prefix = std::array{'L'};
         static constexpr bool required = false;
         bool present = false;
-        float value = 0;
+        uint32_t value = 0;
     };
 
     template <typename InputIt, typename Limit>
@@ -211,7 +211,7 @@ struct SetRunCurrent {
         }
         auto ret = SetRunCurrent{
             .motor_id = MotorID::MOTOR_X,
-            .current = 0.0,
+            .current = 0,
         };
 
         auto arguments = res.first.value();
@@ -239,7 +239,7 @@ struct SetRunCurrent {
 
 struct SetHoldCurrent {
     MotorID motor_id;
-    float current;
+    uint32_t current;
 
     using ParseResult = std::optional<SetHoldCurrent>;
     static constexpr auto prefix = std::array{'M', '9', '0', '7', ' '};
@@ -249,19 +249,19 @@ struct SetHoldCurrent {
         static constexpr auto prefix = std::array{'X'};
         static constexpr bool required = false;
         bool present = false;
-        float value = 0;
+        uint32_t value = 0;
     };
     struct ZArg {
         static constexpr auto prefix = std::array{'Z'};
         static constexpr bool required = false;
         bool present = false;
-        float value = 0;
+        uint32_t value = 0;
     };
     struct LArg {
         static constexpr auto prefix = std::array{'L'};
         static constexpr bool required = false;
         bool present = false;
-        float value = 0;
+        uint32_t value = 0;
     };
 
     template <typename InputIt, typename Limit>
@@ -276,7 +276,7 @@ struct SetHoldCurrent {
         }
         auto ret = SetHoldCurrent{
             .motor_id = MotorID::MOTOR_X,
-            .current = 0.0,
+            .current = 0,
         };
 
         auto arguments = res.first.value();

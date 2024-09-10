@@ -244,11 +244,11 @@ class MotorDriverTask {
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
-        if (m.hold_current != 0.0) {
+        if (m.hold_current != 0) {
             driver_conf_from_id(m.motor_id).ihold_irun.hold_current =
                 get_current_value(m.motor_id, m.hold_current);
         };
-        if (m.run_current != 0.0) {
+        if (m.run_current != 0) {
             driver_conf_from_id(m.motor_id).ihold_irun.run_current =
                 get_current_value(m.motor_id, m.run_current);
         }
