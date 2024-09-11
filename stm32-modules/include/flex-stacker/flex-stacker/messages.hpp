@@ -89,6 +89,13 @@ struct ForceUSBDisconnect {
     size_t return_address;
 };
 
+struct SetMotorCurrentMessage {
+    uint32_t id;
+    MotorID motor_id;
+    uint32_t run_current;
+    uint32_t hold_current;
+};
+
 struct SetTMCRegisterMessage {
     uint32_t id;
     MotorID motor_id;
@@ -140,6 +147,7 @@ struct MoveMotorInMmMessage {
     int32_t mm;
     uint32_t mm_per_second;
     uint32_t mm_per_second_sq;
+    uint32_t mm_per_second_discont;
 };
 
 struct MoveToLimitSwitchMessage {
@@ -148,6 +156,7 @@ struct MoveToLimitSwitchMessage {
     bool direction;
     uint32_t mm_per_second;
     uint32_t mm_per_second_sq;
+    uint32_t mm_per_second_discont;
 };
 
 struct GetLimitSwitchesMessage {
@@ -190,7 +199,8 @@ using SystemMessage =
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
-                   PollTMCRegisterMessage, StopPollTMCRegisterMessage>;
+                   PollTMCRegisterMessage, StopPollTMCRegisterMessage,
+                   SetMotorCurrentMessage>;
 
 using MotorMessage =
     ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,

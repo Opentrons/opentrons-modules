@@ -160,7 +160,7 @@ class MotorTask {
         static_cast<void>(policy);
         auto direction = m.steps > 0;
         controller_from_id(m.motor_id)
-            .start_fixed_movement(m.id, direction, std::abs(m.steps),
+            .start_fixed_movement(m.id, direction, std::abs(m.steps), 0,
                                   m.steps_per_second, m.steps_per_second_sq);
     }
 
@@ -172,6 +172,7 @@ class MotorTask {
         auto s_per_m = steps_per_mm(m.motor_id);
         controller_from_id(m.motor_id)
             .start_fixed_movement(m.id, direction, std::abs(m.mm * s_per_m),
+                                  m.mm_per_second_discont * s_per_m,
                                   m.mm_per_second * s_per_m,
                                   m.mm_per_second_sq * s_per_m * s_per_m);
     }
@@ -182,7 +183,9 @@ class MotorTask {
         static_cast<void>(policy);
         auto s_per_m = steps_per_mm(m.motor_id);
         controller_from_id(m.motor_id)
-            .start_movement(m.id, m.direction, m.mm_per_second * s_per_m,
+            .start_movement(m.id, m.direction,
+                            m.mm_per_second_discont * s_per_m,
+                            m.mm_per_second * s_per_m,
                             m.mm_per_second_sq * s_per_m * s_per_m);
     }
 

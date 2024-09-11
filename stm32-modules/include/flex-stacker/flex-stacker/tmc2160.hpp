@@ -74,6 +74,14 @@ class TMC2160 {
         return true;
     }
 
+    template <tmc2160::TMC2160InterfacePolicy Policy>
+    auto update_current(const TMC2160RegisterMap& registers,
+                        tmc2160::TMC2160Interface<Policy>& policy,
+                        MotorID motor_id) -> bool {
+        return set_register(verify_ihold_irun(registers.ihold_irun), policy,
+                            motor_id);
+    }
+
     static auto verify_gconf(GConfig reg) -> GConfig {
         reg.test_mode = 0;
         return reg;
@@ -127,6 +135,38 @@ class TMC2160 {
     static auto verify_glob_scaler(GlobalScaler reg) -> GlobalScaler {
         reg.clamp_value();
         return reg;
+    }
+
+    // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+    [[nodiscard]] auto convert_peak_current_to_tmc2160_value(
+        uint32_t peak_c, const GlobalScaler& glob_scale,
+        const TMC2160MotorCurrentConfig& current_config) const -> uint32_t {
+        /*
+         * This function allows us to calculate the current scaling value (rms)
+         * from the desired peak current in mA to send to the motor driver
+         * register
+         */
+        static constexpr float CS_SCALER = 32.0;
+        static constexpr float GLOBAL_SCALER = 256.0;
+
+        auto globale_scaler_inv = 1.0;
+        if (glob_scale.global_scaler != 0U) {
+            globale_scaler_inv =
+                GLOBAL_SCALER / static_cast<float>(glob_scale.global_scaler);
+        }
+        auto VOLTAGE_INV = current_config.r_sense / current_config.v_sf;
+        auto RMS_CURRENT_CONSTANT =
+            globale_scaler_inv * CS_SCALER * VOLTAGE_INV;
+        auto fixed_point_constant = static_cast<uint32_t>(
+            RMS_CURRENT_CONSTANT * static_cast<float>(1LL << 16));
+        uint64_t shifted_current_cs =
+            static_cast<uint64_t>(fixed_point_constant) *
+            static_cast<uint64_t>(peak_c);
+        auto current_cs = static_cast<uint32_t>(shifted_current_cs >> 32);
+        if (current_cs > 32) {
+            current_cs = 32;
+        }
+        return current_cs - 1;
     }
 
   private:

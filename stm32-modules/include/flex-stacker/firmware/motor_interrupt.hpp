@@ -54,21 +54,22 @@ class MotorInterruptController {
         _initialized = true;
     }
     auto start_fixed_movement(uint32_t move_id, bool direction, long steps,
+                              uint32_t steps_per_sec_discont,
                               uint32_t steps_per_sec, uint32_t step_per_sec_sq)
         -> void {
         set_direction(direction);
         _profile = motor_util::MovementProfile(
-            TIMER_FREQ, 0, steps_per_sec, step_per_sec_sq,
+            TIMER_FREQ, steps_per_sec_discont, steps_per_sec, step_per_sec_sq,
             motor_util::MovementType::FixedDistance, steps);
         _policy->enable_motor(_id);
         _response_id = move_id;
     }
     auto start_movement(uint32_t move_id, bool direction,
-                        uint32_t steps_per_sec, uint32_t step_per_sec_sq)
-        -> void {
+                        uint32_t steps_per_sec_discont, uint32_t steps_per_sec,
+                        uint32_t step_per_sec_sq) -> void {
         set_direction(direction);
         _profile = motor_util::MovementProfile(
-            TIMER_FREQ, 0, steps_per_sec, step_per_sec_sq,
+            TIMER_FREQ, steps_per_sec_discont, steps_per_sec, step_per_sec_sq,
             motor_util::MovementType::OpenLoop, 0);
         _policy->enable_motor(_id);
         _response_id = move_id;

@@ -8,6 +8,7 @@
 #include <optional>
 
 #include "core/ack_cache.hpp"
+#include "core/fixed_point.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
 #include "firmware/motor_policy.hpp"
@@ -127,6 +128,19 @@ class MotorDriverTask {
         _task_registry = aggregator;
     }
 
+    auto driver_conf_from_id(MotorID motor_id) -> tmc2160::TMC2160RegisterMap& {
+        switch (motor_id) {
+            case MotorID::MOTOR_X:
+                return _x_config;
+            case MotorID::MOTOR_Z:
+                return _z_config;
+            case MotorID::MOTOR_L:
+                return _l_config;
+            default:
+                return _x_config;
+        }
+    }
+
     template <tmc2160::TMC2160InterfacePolicy Policy>
     auto run_once(Policy& policy) -> void {
         if (!_task_registry) {
@@ -225,10 +239,45 @@ class MotorDriverTask {
         static_cast<void>(tmc2160_interface);
     }
 
+    template <tmc2160::TMC2160InterfacePolicy Policy>
+    auto visit_message(const messages::SetMotorCurrentMessage& m,
+                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+        -> void {
+        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
+        if (m.hold_current != 0) {
+            driver_conf_from_id(m.motor_id).ihold_irun.hold_current =
+                get_current_value(m.motor_id, m.hold_current);
+        };
+        if (m.run_current != 0) {
+            driver_conf_from_id(m.motor_id).ihold_irun.run_current =
+                get_current_value(m.motor_id, m.run_current);
+        }
+        if (!_tmc2160.update_current(driver_conf_from_id(m.motor_id),
+                                     tmc2160_interface, m.motor_id)) {
+            response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
+        };
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
+    auto get_current_value(MotorID motor_id, float current) -> uint32_t {
+        return _tmc2160.convert_peak_current_to_tmc2160_value(
+            current, driver_conf_from_id(motor_id).glob_scale,
+            _motor_current_config);
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     bool _initialized;
 
     tmc2160::TMC2160 _tmc2160{};
+    // same motor current config for all three motors
+    const tmc2160::TMC2160MotorCurrentConfig _motor_current_config{
+        .r_sense = 0.22,
+        .v_sf = 0.325,
+    };
+    tmc2160::TMC2160RegisterMap _x_config = motor_x_config;
+    tmc2160::TMC2160RegisterMap _z_config = motor_z_config;
+    tmc2160::TMC2160RegisterMap _l_config = motor_l_config;
 };
 };  // namespace motor_driver_task
