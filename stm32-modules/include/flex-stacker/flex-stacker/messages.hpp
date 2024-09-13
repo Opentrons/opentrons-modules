@@ -92,8 +92,8 @@ struct ForceUSBDisconnect {
 struct SetMotorCurrentMessage {
     uint32_t id;
     MotorID motor_id;
-    uint32_t run_current;
-    uint32_t hold_current;
+    float run_current;
+    float hold_current;
 };
 
 struct SetTMCRegisterMessage {

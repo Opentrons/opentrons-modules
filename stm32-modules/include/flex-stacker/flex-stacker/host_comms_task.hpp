@@ -389,7 +389,7 @@ class HostCommsTask {
             messages::SetMotorCurrentMessage{.id = id,
                                              .motor_id = gcode.motor_id,
                                              .run_current = gcode.current,
-                                             .hold_current = 0};
+                                             .hold_current = 0.0};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
@@ -413,7 +413,7 @@ class HostCommsTask {
         auto message =
             messages::SetMotorCurrentMessage{.id = id,
                                              .motor_id = gcode.motor_id,
-                                             .run_current = 0,
+                                             .run_current = 0.0,
                                              .hold_current = gcode.current};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
