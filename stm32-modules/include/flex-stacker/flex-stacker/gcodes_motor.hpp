@@ -587,9 +587,9 @@ struct MoveMotorInMm {
 struct MoveToLimitSwitch {
     MotorID motor_id;
     bool direction;
-    uint32_t mm_per_second;
-    uint32_t mm_per_second_sq;
-    uint32_t mm_per_second_discont;
+    float mm_per_second;
+    float mm_per_second_sq;
+    float mm_per_second_discont;
 
     using ParseResult = std::optional<MoveToLimitSwitch>;
     static constexpr auto prefix = std::array{'G', '5', ' '};
@@ -617,19 +617,19 @@ struct MoveToLimitSwitch {
         static constexpr auto prefix = std::array{'V'};
         static constexpr bool required = true;
         bool present = false;
-        uint32_t value = 0;
+        float value = 0;
     };
     struct AccelArg {
         static constexpr auto prefix = std::array{'A'};
         static constexpr bool required = false;
         bool present = false;
-        uint32_t value = 0;
+        float value = 0;
     };
     struct DiscontArg {
         static constexpr auto prefix = std::array{'D'};
         static constexpr bool required = false;
         bool present = false;
-        uint32_t value = 0;
+        float value = 0;
     };
 
     template <typename InputIt, typename Limit>
@@ -646,9 +646,9 @@ struct MoveToLimitSwitch {
         auto ret = MoveToLimitSwitch{
             .motor_id = MotorID::MOTOR_X,
             .direction = false,
-            .mm_per_second = 0,
-            .mm_per_second_sq = 0,
-            .mm_per_second_discont = 0,
+            .mm_per_second = 0.0,
+            .mm_per_second_sq = 0.0,
+            .mm_per_second_discont = 0.0,
         };
 
         auto arguments = res.first.value();

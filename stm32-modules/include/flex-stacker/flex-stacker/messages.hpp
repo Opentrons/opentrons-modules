@@ -154,9 +154,9 @@ struct MoveToLimitSwitchMessage {
     uint32_t id;
     MotorID motor_id;
     bool direction;
-    uint32_t mm_per_second;
-    uint32_t mm_per_second_sq;
-    uint32_t mm_per_second_discont;
+    float mm_per_second;
+    float mm_per_second_sq;
+    float mm_per_second_discont;
 };
 
 struct GetLimitSwitchesMessage {
