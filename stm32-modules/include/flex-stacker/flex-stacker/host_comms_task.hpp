@@ -35,6 +35,7 @@ class HostCommsTask {
   public:
     using Queue = QueueImpl<Message>;
     using Aggregator = typename tasks::Tasks<QueueImpl>::QueueAggregator;
+    using Queues = typename tasks::Tasks<QueueImpl>;
 
   private:
     using GCodeParser =
@@ -42,13 +43,13 @@ class HostCommsTask {
                            gcode::SetRunCurrent, gcode::SetHoldCurrent,
                            gcode::EnableMotor, gcode::DisableMotor,
                            gcode::MoveMotorInSteps, gcode::MoveToLimitSwitch,
-                           gcode::MoveMotorInMm, gcode::GetLimitSwitches>;
+                           gcode::MoveMotorInMm, gcode::GetLimitSwitches, gcode::SetMicrosteps>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::SetTMCRegister, gcode::SetRunCurrent,
                  gcode::SetHoldCurrent, gcode::EnableMotor, gcode::DisableMotor,
                  gcode::MoveMotorInSteps, gcode::MoveToLimitSwitch,
-                 gcode::MoveMotorInMm>;
+                 gcode::MoveMotorInMm, gcode::SetMicrosteps>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetTMCRegisterCache = AckCache<8, gcode::GetTMCRegister>;
     using GetLimitSwitchesCache = AckCache<8, gcode::GetLimitSwitches>;
@@ -416,6 +417,30 @@ class HostCommsTask {
                                              .run_current = 0.0,
                                              .hold_current = gcode.current};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetMicrosteps& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message =
+            messages::SetMicrostepsMessage{.id = id,
+                                           .motor_id = gcode.motor_id,
+                                           .microsteps_power = std::min(gcode.microsteps_power, static_cast<uint8_t>(8))};
+        if (!task_registry->send_to_address(message, Queues::MotorDriverAddress, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
             ack_only_cache.remove_if_present(id);

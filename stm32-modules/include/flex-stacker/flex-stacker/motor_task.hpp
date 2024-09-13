@@ -120,7 +120,7 @@ class MotorTask {
         }
     }
 
-    auto motor_conf(MotorID motor_id) -> MotorState& {
+    auto motor_state(MotorID motor_id) -> MotorState& {
         switch (motor_id) {
             case MotorID::MOTOR_X:
                 return _x_state;
@@ -201,42 +201,40 @@ class MotorTask {
         -> void {
         static_cast<void>(policy);
         auto direction = m.mm > 0;
-        auto conf = motor_conf(m.motor_id);
         if (m.mm_per_second.has_value()) {
-            conf.speed_mm_per_sec = m.mm_per_second.value();
+            motor_state(m.motor_id).speed_mm_per_sec = m.mm_per_second.value();
         }
         if (m.mm_per_second_sq.has_value()) {
-            conf.accel_mm_per_sec_sq = m.mm_per_second_sq.value();
+            motor_state(m.motor_id).accel_mm_per_sec_sq = m.mm_per_second_sq.value();
         }
         if (m.mm_per_second_discont.has_value()) {
-            conf.speed_mm_per_sec_discont = m.mm_per_second_discont.value();
+            motor_state(m.motor_id).speed_mm_per_sec_discont = m.mm_per_second_discont.value();
         }
         controller_from_id(m.motor_id)
-            .start_fixed_movement(m.id, direction, conf.get_distance(m.mm),
-                                  conf.get_speed_discont(),
-                                  conf.get_speed(),
-                                  conf.get_accel());
+            .start_fixed_movement(m.id, direction, motor_state(m.motor_id).get_distance(m.mm),
+                                  motor_state(m.motor_id).get_speed_discont(),
+                                  motor_state(m.motor_id).get_speed(),
+                                  motor_state(m.motor_id).get_accel());
     }
 
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::MoveToLimitSwitchMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
-        auto conf = motor_conf(m.motor_id);
         if (m.mm_per_second.has_value()) {
-            conf.speed_mm_per_sec = m.mm_per_second.value();
+            motor_state(m.motor_id).speed_mm_per_sec = m.mm_per_second.value();
         }
         if (m.mm_per_second_sq.has_value()) {
-            conf.accel_mm_per_sec_sq = m.mm_per_second_sq.value();
+            motor_state(m.motor_id).accel_mm_per_sec_sq = m.mm_per_second_sq.value();
         }
         if (m.mm_per_second_discont.has_value()) {
-            conf.speed_mm_per_sec_discont = m.mm_per_second_discont.value();
+            motor_state(m.motor_id).speed_mm_per_sec_discont = m.mm_per_second_discont.value();
         }
         controller_from_id(m.motor_id)
             .start_movement(m.id, m.direction,
-                            conf.get_speed_discont(),
-                            conf.get_speed(),
-                            conf.get_accel());
+                            motor_state(m.motor_id).get_speed_discont(),
+                            motor_state(m.motor_id).get_speed(),
+                            motor_state(m.motor_id).get_accel());
     }
 
     template <MotorControlPolicy Policy>
@@ -279,12 +277,41 @@ class MotorTask {
             response, Queues::HostCommsAddress));
     }
 
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::SetMicrostepsMessage& m, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        // sent from the driver task so we know we've written to driver successfully
+        switch (m.motor_id) {
+            case MotorID::MOTOR_X:
+                _x_mech_conf.microstep = static_cast<float>(pow(2, m.microsteps_power));
+                _x_state.steps_per_mm = _x_mech_conf.get_usteps_per_mm();
+                break;
+            case MotorID::MOTOR_Z:
+                _z_mech_conf.microstep = static_cast<float>(pow(2, m.microsteps_power));
+                _z_state.steps_per_mm = _z_mech_conf.get_usteps_per_mm();
+                break;
+            case MotorID::MOTOR_L:
+                _l_mech_conf.microstep = static_cast<float>(pow(2, m.microsteps_power));
+                _l_state.steps_per_mm = _l_mech_conf.get_usteps_per_mm();
+                break;
+            default:
+                break;
+            }
+        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     Controller& _x_controller;
     Controller& _z_controller;
     Controller& _l_controller;
     bool _initialized;
+    lms::LinearMotionSystemConfig<lms::LeadScrewConfig> _x_mech_conf = motor_x_config;
+    lms::LinearMotionSystemConfig<lms::LeadScrewConfig> _z_mech_conf = motor_z_config;
+    lms::LinearMotionSystemConfig<lms::GearBoxConfig> _l_mech_conf = motor_l_config;
     MotorState _x_state{
         .steps_per_mm = motor_x_config.get_usteps_per_mm(),
         .speed_mm_per_sec = XState::DEFAULT_SPEED,

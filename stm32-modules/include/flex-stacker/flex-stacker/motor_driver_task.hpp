@@ -240,6 +240,24 @@ class MotorDriverTask {
     }
 
     template <tmc2160::TMC2160InterfacePolicy Policy>
+    auto visit_message(const messages::SetMicrostepsMessage& m,
+                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+        -> void {
+        driver_conf_from_id(m.motor_id).chopconf.mres = m.microsteps_power;
+        if (!_tmc2160.update_chopconf(driver_conf_from_id(m.motor_id),
+                                     tmc2160_interface, m.motor_id)) {
+            auto response = messages::AcknowledgePrevious{
+                .responding_to_id = m.id,
+                .with_error = errors::ErrorCode::TMC2160_WRITE_ERROR};
+            static_cast<void>(_task_registry->send_to_address(
+                response, Queues::HostCommsAddress));
+            return;
+        };
+        static_cast<void>(_task_registry->send_to_address(
+            m, Queues::MotorAddress));
+    }
+
+    template <tmc2160::TMC2160InterfacePolicy Policy>
     auto visit_message(const messages::SetMotorCurrentMessage& m,
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {

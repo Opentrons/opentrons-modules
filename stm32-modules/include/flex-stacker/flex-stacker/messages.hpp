@@ -96,6 +96,12 @@ struct SetMotorCurrentMessage {
     float hold_current;
 };
 
+struct SetMicrostepsMessage {
+    uint32_t id;
+    MotorID motor_id;
+    uint8_t microsteps_power;
+};
+
 struct SetTMCRegisterMessage {
     uint32_t id;
     MotorID motor_id;
@@ -200,12 +206,12 @@ using SystemMessage =
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
                    PollTMCRegisterMessage, StopPollTMCRegisterMessage,
-                   SetMotorCurrentMessage>;
+                   SetMotorCurrentMessage, SetMicrostepsMessage>;
 
 using MotorMessage =
     ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
                    MoveToLimitSwitchMessage, StopMotorMessage,
                    MoveCompleteMessage, GetLimitSwitchesMessage,
-                   MoveMotorInMmMessage>;
+                   MoveMotorInMmMessage, SetMicrostepsMessage>;
 
 };  // namespace messages

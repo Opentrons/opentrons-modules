@@ -87,6 +87,61 @@ struct GetTMCRegister {
     }
 };
 
+struct SetMicrosteps {
+    MotorID motor_id;
+    uint8_t microsteps_power;
+
+    using ParseResult = std::optional<SetMicrosteps>;
+    static constexpr auto prefix = std::array{'M', '9', '0', '9', ' '};
+    static constexpr const char* response = "M909 OK\n";
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        MotorID motor_id_val = MotorID::MOTOR_X;
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        switch (*working) {
+            case 'X':
+                motor_id_val = MotorID::MOTOR_X;
+                break;
+            case 'Z':
+                motor_id_val = MotorID::MOTOR_Z;
+                break;
+            case 'L':
+                motor_id_val = MotorID::MOTOR_L;
+                break;
+            default:
+                return std::make_pair(ParseResult(), input);
+        }
+        std::advance(working, 1);
+        if (working == limit) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ustep_res = gcode::parse_value<uint8_t>(working, limit);
+        if (!ustep_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        return std::make_pair(
+            ParseResult(SetMicrosteps{.motor_id = motor_id_val,
+                                       .microsteps_power = ustep_res.first.value()}),
+            ustep_res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 struct SetTMCRegister {
     MotorID motor_id;
     uint8_t reg;
@@ -97,8 +152,8 @@ struct SetTMCRegister {
     static constexpr const char* response = "M921 OK\n";
 
     template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<Limit, InputIt>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         MotorID motor_id_val = MotorID::MOTOR_X;
@@ -147,8 +202,8 @@ struct SetTMCRegister {
     }
 
     template <typename InputIt, typename InLimit>
-    requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<InputIt, InLimit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
