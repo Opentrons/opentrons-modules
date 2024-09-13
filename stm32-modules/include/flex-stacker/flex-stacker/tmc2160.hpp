@@ -84,8 +84,8 @@ class TMC2160 {
 
     template <tmc2160::TMC2160InterfacePolicy Policy>
     auto update_chopconf(const TMC2160RegisterMap& registers,
-                        tmc2160::TMC2160Interface<Policy>& policy,
-                        MotorID motor_id) -> bool {
+                         tmc2160::TMC2160Interface<Policy>& policy,
+                         MotorID motor_id) -> bool {
         return set_register(verify_chopconf(registers.chopconf), policy,
                             motor_id);
     }
