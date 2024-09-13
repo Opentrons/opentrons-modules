@@ -142,21 +142,21 @@ struct MoveMotorInStepsMessage {
 };
 
 struct MoveMotorInMmMessage {
-    uint32_t id;
-    MotorID motor_id;
-    float mm;
-    float mm_per_second;
-    float mm_per_second_sq;
-    float mm_per_second_discont;
+    uint32_t id = 0;
+    MotorID motor_id = MotorID::MOTOR_X;
+    float mm = 0;
+    std::optional<float> mm_per_second = std::nullopt;
+    std::optional<float> mm_per_second_sq = std::nullopt;
+    std::optional<float> mm_per_second_discont = std::nullopt;
 };
 
 struct MoveToLimitSwitchMessage {
-    uint32_t id;
-    MotorID motor_id;
-    bool direction;
-    float mm_per_second;
-    float mm_per_second_sq;
-    float mm_per_second_discont;
+    uint32_t id = 0;
+    MotorID motor_id = MotorID::MOTOR_X;
+    bool direction = false;
+    std::optional<float> mm_per_second = std::nullopt;
+    std::optional<float> mm_per_second_sq = std::nullopt;
+    std::optional<float> mm_per_second_discont = std::nullopt;
 };
 
 struct GetLimitSwitchesMessage {

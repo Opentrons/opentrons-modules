@@ -480,9 +480,7 @@ struct MoveMotorInSteps {
 struct MoveMotorInMm {
     MotorID motor_id;
     float mm;
-    float mm_per_second;
-    float mm_per_second_sq;
-    float mm_per_second_discont;
+    std::optional<float> mm_per_second, mm_per_second_sq, mm_per_second_discont;
 
     using ParseResult = std::optional<MoveMotorInMm>;
     static constexpr auto prefix = std::array{'G', '0', ' '};
@@ -508,7 +506,7 @@ struct MoveMotorInMm {
     };
     struct VelArg {
         static constexpr auto prefix = std::array{'V'};
-        static constexpr bool required = true;
+        static constexpr bool required = false;
         bool present = false;
         float value = 0;
     };
@@ -541,9 +539,9 @@ struct MoveMotorInMm {
         auto ret = MoveMotorInMm{
             .motor_id = MotorID::MOTOR_X,
             .mm = 0.0,
-            .mm_per_second = 0.0,
-            .mm_per_second_sq = 0.0,
-            .mm_per_second_discont = 0.0,
+            .mm_per_second = std::nullopt,
+            .mm_per_second_sq = std::nullopt,
+            .mm_per_second_discont = std::nullopt,
         };
 
         auto arguments = res.first.value();
@@ -561,8 +559,6 @@ struct MoveMotorInMm {
 
         if (std::get<3>(arguments).present) {
             ret.mm_per_second = std::get<3>(arguments).value;
-        } else {
-            return std::make_pair(ParseResult(), input);
         }
 
         if (std::get<4>(arguments).present) {
@@ -587,9 +583,7 @@ struct MoveMotorInMm {
 struct MoveToLimitSwitch {
     MotorID motor_id;
     bool direction;
-    float mm_per_second;
-    float mm_per_second_sq;
-    float mm_per_second_discont;
+    std::optional<float> mm_per_second, mm_per_second_sq, mm_per_second_discont;
 
     using ParseResult = std::optional<MoveToLimitSwitch>;
     static constexpr auto prefix = std::array{'G', '5', ' '};
@@ -646,9 +640,9 @@ struct MoveToLimitSwitch {
         auto ret = MoveToLimitSwitch{
             .motor_id = MotorID::MOTOR_X,
             .direction = false,
-            .mm_per_second = 0.0,
-            .mm_per_second_sq = 0.0,
-            .mm_per_second_discont = 0.0,
+            .mm_per_second = std::nullopt,
+            .mm_per_second_sq = std::nullopt,
+            .mm_per_second_discont = std::nullopt,
         };
 
         auto arguments = res.first.value();

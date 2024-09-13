@@ -48,6 +48,38 @@ static constexpr struct lms::LinearMotionSystemConfig<lms::GearBoxConfig>
     .steps_per_rev = 200, .microstep = 16,
 };
 
+struct MotorState {
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    float steps_per_mm;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    float speed_mm_per_sec;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    float accel_mm_per_sec_sq;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    float speed_mm_per_sec_discont;
+    [[nodiscard]] auto get_speed() const -> float { return speed_mm_per_sec * steps_per_mm; }
+    [[nodiscard]] auto get_accel() const -> float { return accel_mm_per_sec_sq * steps_per_mm * steps_per_mm; }
+    [[nodiscard]] auto get_speed_discont() const -> float { return speed_mm_per_sec_discont * steps_per_mm; }
+    [[nodiscard]] auto get_distance(float mm) const -> float { return mm * steps_per_mm; }
+};
+
+struct XState {
+    static constexpr float DEFAULT_SPEED = 200.0;
+    static constexpr float DEFAULT_ACCELERATION = 50.0;
+    static constexpr float DEFAULT_SPEED_DISCONT = 5.0;
+};
+
+struct ZState {
+    static constexpr float DEFAULT_SPEED = 200.0;
+    static constexpr float DEFAULT_ACCELERATION = 50.0;
+    static constexpr float DEFAULT_SPEED_DISCONT = 5.0;
+};
+struct LState {
+    static constexpr float DEFAULT_SPEED = 200.0;
+    static constexpr float DEFAULT_ACCELERATION = 50.0;
+    static constexpr float DEFAULT_SPEED_DISCONT = 5.0;
+};
+
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
 class MotorTask {
@@ -88,16 +120,16 @@ class MotorTask {
         }
     }
 
-    auto steps_per_mm(MotorID motor_id) -> float {
+    auto motor_conf(MotorID motor_id) -> MotorState& {
         switch (motor_id) {
             case MotorID::MOTOR_X:
-                return motor_x_config.get_usteps_per_mm();
+                return _x_state;
             case MotorID::MOTOR_Z:
-                return motor_z_config.get_usteps_per_mm();
+                return _z_state;
             case MotorID::MOTOR_L:
-                return motor_l_config.get_usteps_per_mm();
+                return _l_state;
             default:
-                return motor_x_config.get_usteps_per_mm();
+                return _x_state;
         }
     }
 
@@ -169,24 +201,42 @@ class MotorTask {
         -> void {
         static_cast<void>(policy);
         auto direction = m.mm > 0;
-        auto s_per_m = steps_per_mm(m.motor_id);
+        auto conf = motor_conf(m.motor_id);
+        if (m.mm_per_second.has_value()) {
+            conf.speed_mm_per_sec = m.mm_per_second.value();
+        }
+        if (m.mm_per_second_sq.has_value()) {
+            conf.accel_mm_per_sec_sq = m.mm_per_second_sq.value();
+        }
+        if (m.mm_per_second_discont.has_value()) {
+            conf.speed_mm_per_sec_discont = m.mm_per_second_discont.value();
+        }
         controller_from_id(m.motor_id)
-            .start_fixed_movement(m.id, direction, std::abs(m.mm * s_per_m),
-                                  m.mm_per_second_discont * s_per_m,
-                                  m.mm_per_second * s_per_m,
-                                  m.mm_per_second_sq * s_per_m * s_per_m);
+            .start_fixed_movement(m.id, direction, conf.get_distance(m.mm),
+                                  conf.get_speed_discont(),
+                                  conf.get_speed(),
+                                  conf.get_accel());
     }
 
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::MoveToLimitSwitchMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
-        auto s_per_m = steps_per_mm(m.motor_id);
+        auto conf = motor_conf(m.motor_id);
+        if (m.mm_per_second.has_value()) {
+            conf.speed_mm_per_sec = m.mm_per_second.value();
+        }
+        if (m.mm_per_second_sq.has_value()) {
+            conf.accel_mm_per_sec_sq = m.mm_per_second_sq.value();
+        }
+        if (m.mm_per_second_discont.has_value()) {
+            conf.speed_mm_per_sec_discont = m.mm_per_second_discont.value();
+        }
         controller_from_id(m.motor_id)
             .start_movement(m.id, m.direction,
-                            m.mm_per_second_discont * s_per_m,
-                            m.mm_per_second * s_per_m,
-                            m.mm_per_second_sq * s_per_m * s_per_m);
+                            conf.get_speed_discont(),
+                            conf.get_speed(),
+                            conf.get_accel());
     }
 
     template <MotorControlPolicy Policy>
@@ -235,6 +285,24 @@ class MotorTask {
     Controller& _z_controller;
     Controller& _l_controller;
     bool _initialized;
+    MotorState _x_state{
+        .steps_per_mm = motor_x_config.get_usteps_per_mm(),
+        .speed_mm_per_sec = XState::DEFAULT_SPEED,
+        .accel_mm_per_sec_sq = XState::DEFAULT_SPEED,
+        .speed_mm_per_sec_discont = XState::DEFAULT_SPEED_DISCONT,
+    };
+    MotorState _z_state{
+        .steps_per_mm = motor_z_config.get_usteps_per_mm(),
+        .speed_mm_per_sec = XState::DEFAULT_SPEED,
+        .accel_mm_per_sec_sq = XState::DEFAULT_SPEED,
+        .speed_mm_per_sec_discont = XState::DEFAULT_SPEED_DISCONT,
+    };
+    MotorState _l_state{
+        .steps_per_mm = motor_l_config.get_usteps_per_mm(),
+        .speed_mm_per_sec = LState::DEFAULT_SPEED,
+        .accel_mm_per_sec_sq = LState::DEFAULT_SPEED,
+        .speed_mm_per_sec_discont = LState::DEFAULT_SPEED_DISCONT,
+    };
 };
 
 };  // namespace motor_task
