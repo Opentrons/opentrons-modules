@@ -479,10 +479,10 @@ struct MoveMotorInSteps {
 
 struct MoveMotorInMm {
     MotorID motor_id;
-    int32_t mm;
-    uint32_t mm_per_second;
-    uint32_t mm_per_second_sq;
-    uint32_t mm_per_second_discont;
+    float mm;
+    float mm_per_second;
+    float mm_per_second_sq;
+    float mm_per_second_discont;
 
     using ParseResult = std::optional<MoveMotorInMm>;
     static constexpr auto prefix = std::array{'G', '0', ' '};
@@ -492,39 +492,39 @@ struct MoveMotorInMm {
         static constexpr auto prefix = std::array{'X'};
         static constexpr bool required = false;
         bool present = false;
-        int32_t value = 0;
+        float value = 0;
     };
     struct ZArg {
         static constexpr auto prefix = std::array{'Z'};
         static constexpr bool required = false;
         bool present = false;
-        int32_t value = 0;
+        float value = 0;
     };
     struct LArg {
         static constexpr auto prefix = std::array{'L'};
         static constexpr bool required = false;
         bool present = false;
-        int32_t value = 0;
+        float value = 0;
     };
     struct VelArg {
         static constexpr auto prefix = std::array{'V'};
         static constexpr bool required = true;
         bool present = false;
-        uint32_t value = 0;
+        float value = 0;
     };
 
     struct AccelArg {
         static constexpr auto prefix = std::array{'A'};
         static constexpr bool required = false;
         bool present = false;
-        uint32_t value = 0;
+        float value = 0;
     };
 
     struct DiscontArg {
         static constexpr auto prefix = std::array{'D'};
         static constexpr bool required = false;
         bool present = false;
-        uint32_t value = 0;
+        float value = 0;
     };
 
     template <typename InputIt, typename Limit>
@@ -540,10 +540,10 @@ struct MoveMotorInMm {
         }
         auto ret = MoveMotorInMm{
             .motor_id = MotorID::MOTOR_X,
-            .mm = 0,
-            .mm_per_second = 0,
-            .mm_per_second_sq = 0,
-            .mm_per_second_discont = 0,
+            .mm = 0.0,
+            .mm_per_second = 0.0,
+            .mm_per_second_sq = 0.0,
+            .mm_per_second_discont = 0.0,
         };
 
         auto arguments = res.first.value();

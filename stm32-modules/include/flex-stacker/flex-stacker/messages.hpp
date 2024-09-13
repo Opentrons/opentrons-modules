@@ -144,10 +144,10 @@ struct MoveMotorInStepsMessage {
 struct MoveMotorInMmMessage {
     uint32_t id;
     MotorID motor_id;
-    int32_t mm;
-    uint32_t mm_per_second;
-    uint32_t mm_per_second_sq;
-    uint32_t mm_per_second_discont;
+    float mm;
+    float mm_per_second;
+    float mm_per_second_sq;
+    float mm_per_second_discont;
 };
 
 struct MoveToLimitSwitchMessage {
