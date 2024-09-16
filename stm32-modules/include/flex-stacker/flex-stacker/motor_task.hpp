@@ -221,11 +221,12 @@ class MotorTask {
                 m.mm_per_second_discont.value();
         }
         controller_from_id(m.motor_id)
-            .start_fixed_movement(m.id, direction,
-                                  motor_state(m.motor_id).get_distance(m.mm),
-                                  motor_state(m.motor_id).get_speed_discont(),
-                                  motor_state(m.motor_id).get_speed(),
-                                  motor_state(m.motor_id).get_accel());
+            .start_fixed_movement(
+                m.id, direction,
+                motor_state(m.motor_id).get_distance(std::abs(m.mm)),
+                motor_state(m.motor_id).get_speed_discont(),
+                motor_state(m.motor_id).get_speed(),
+                motor_state(m.motor_id).get_accel());
     }
 
     template <MotorControlPolicy Policy>
