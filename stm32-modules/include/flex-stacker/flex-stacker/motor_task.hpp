@@ -321,6 +321,22 @@ class MotorTask {
             response, Queues::HostCommsAddress));
     }
 
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::GetMoveParamsMessage& m, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        auto response = messages::GetMoveParamsResponse{
+            .responding_to_id = m.id,
+            .motor_id = m.motor_id,
+            .velocity = motor_state(m.motor_id).speed_mm_per_sec,
+            .acceleration = motor_state(m.motor_id).accel_mm_per_sec_sq,
+            .velocity_discont =
+                motor_state(m.motor_id).speed_mm_per_sec_discont,
+        };
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     Controller& _x_controller;

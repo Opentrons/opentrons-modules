@@ -875,4 +875,53 @@ struct GetLimitSwitches {
     }
 };
 
+struct GetMoveParams {
+    MotorID motor_id;
+    using ParseResult = std::optional<GetMoveParams>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '0'};
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        MotorID motor = MotorID::MOTOR_X;
+        auto res = gcode::SingleParser<ArgX, ArgZ, ArgL>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        if (std::get<1>(arguments).present) {
+            motor = MotorID::MOTOR_Z;
+        } else if (std::get<2>(arguments).present) {
+            motor = MotorID::MOTOR_L;
+        } else if (!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetMoveParams{.motor_id = motor}),
+                              res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    MotorID motor_id, float velocity,
+                                    float accel, float velocity_discont)
+        -> InputIt {
+        char motor_char = motor_id == MotorID::MOTOR_X   ? 'X'
+                          : motor_id == MotorID::MOTOR_Z ? 'Z'
+                                                         : 'L';
+        int res = 0;
+        res =
+            snprintf(&*buf, (limit - buf), "M120 %c V:%.3f A:%.3f D:%.3f OK\n",
+                     motor_char, velocity, accel, velocity_discont);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
 }  // namespace gcode

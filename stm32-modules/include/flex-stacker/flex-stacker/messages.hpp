@@ -194,10 +194,24 @@ struct StopMotorMessage {
     uint32_t id;
 };
 
+struct GetMoveParamsMessage {
+    uint32_t id;
+    MotorID motor_id;
+};
+
+struct GetMoveParamsResponse {
+    uint32_t responding_to_id;
+    MotorID motor_id;
+    float velocity;
+    float acceleration;
+    float velocity_discont;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetTMCRegisterResponse, GetLimitSwitchesResponses>;
+                   GetTMCRegisterResponse, GetLimitSwitchesResponses,
+                   GetMoveParamsResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -212,6 +226,7 @@ using MotorMessage =
     ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
                    MoveToLimitSwitchMessage, StopMotorMessage,
                    MoveCompleteMessage, GetLimitSwitchesMessage,
-                   MoveMotorInMmMessage, SetMicrostepsMessage>;
+                   MoveMotorInMmMessage, SetMicrostepsMessage,
+                   GetMoveParamsMessage>;
 
 };  // namespace messages
