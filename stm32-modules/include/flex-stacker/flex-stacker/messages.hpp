@@ -92,8 +92,8 @@ struct ForceUSBDisconnect {
 struct SetMotorCurrentMessage {
     uint32_t id;
     MotorID motor_id;
-    uint32_t run_current;
-    uint32_t hold_current;
+    float run_current;
+    float hold_current;
 };
 
 struct SetTMCRegisterMessage {
@@ -144,19 +144,19 @@ struct MoveMotorInStepsMessage {
 struct MoveMotorInMmMessage {
     uint32_t id;
     MotorID motor_id;
-    int32_t mm;
-    uint32_t mm_per_second;
-    uint32_t mm_per_second_sq;
-    uint32_t mm_per_second_discont;
+    float mm;
+    float mm_per_second;
+    float mm_per_second_sq;
+    float mm_per_second_discont;
 };
 
 struct MoveToLimitSwitchMessage {
     uint32_t id;
     MotorID motor_id;
     bool direction;
-    uint32_t mm_per_second;
-    uint32_t mm_per_second_sq;
-    uint32_t mm_per_second_discont;
+    float mm_per_second;
+    float mm_per_second_sq;
+    float mm_per_second_discont;
 };
 
 struct GetLimitSwitchesMessage {
