@@ -96,6 +96,12 @@ struct SetMotorCurrentMessage {
     float hold_current;
 };
 
+struct SetMicrostepsMessage {
+    uint32_t id;
+    MotorID motor_id;
+    uint8_t microsteps_power;
+};
+
 struct SetTMCRegisterMessage {
     uint32_t id;
     MotorID motor_id;
@@ -142,21 +148,21 @@ struct MoveMotorInStepsMessage {
 };
 
 struct MoveMotorInMmMessage {
-    uint32_t id;
-    MotorID motor_id;
-    float mm;
-    float mm_per_second;
-    float mm_per_second_sq;
-    float mm_per_second_discont;
+    uint32_t id = 0;
+    MotorID motor_id = MotorID::MOTOR_X;
+    float mm = 0;
+    std::optional<float> mm_per_second = std::nullopt;
+    std::optional<float> mm_per_second_sq = std::nullopt;
+    std::optional<float> mm_per_second_discont = std::nullopt;
 };
 
 struct MoveToLimitSwitchMessage {
-    uint32_t id;
-    MotorID motor_id;
-    bool direction;
-    float mm_per_second;
-    float mm_per_second_sq;
-    float mm_per_second_discont;
+    uint32_t id = 0;
+    MotorID motor_id = MotorID::MOTOR_X;
+    bool direction = false;
+    std::optional<float> mm_per_second = std::nullopt;
+    std::optional<float> mm_per_second_sq = std::nullopt;
+    std::optional<float> mm_per_second_discont = std::nullopt;
 };
 
 struct GetLimitSwitchesMessage {
@@ -188,10 +194,24 @@ struct StopMotorMessage {
     uint32_t id;
 };
 
+struct GetMoveParamsMessage {
+    uint32_t id;
+    MotorID motor_id;
+};
+
+struct GetMoveParamsResponse {
+    uint32_t responding_to_id;
+    MotorID motor_id;
+    float velocity;
+    float acceleration;
+    float velocity_discont;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetTMCRegisterResponse, GetLimitSwitchesResponses>;
+                   GetTMCRegisterResponse, GetLimitSwitchesResponses,
+                   GetMoveParamsResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -200,12 +220,13 @@ using SystemMessage =
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
                    PollTMCRegisterMessage, StopPollTMCRegisterMessage,
-                   SetMotorCurrentMessage>;
+                   SetMotorCurrentMessage, SetMicrostepsMessage>;
 
 using MotorMessage =
     ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
                    MoveToLimitSwitchMessage, StopMotorMessage,
                    MoveCompleteMessage, GetLimitSwitchesMessage,
-                   MoveMotorInMmMessage>;
+                   MoveMotorInMmMessage, SetMicrostepsMessage,
+                   GetMoveParamsMessage>;
 
 };  // namespace messages

@@ -82,6 +82,14 @@ class TMC2160 {
                             motor_id);
     }
 
+    template <tmc2160::TMC2160InterfacePolicy Policy>
+    auto update_chopconf(const TMC2160RegisterMap& registers,
+                         tmc2160::TMC2160Interface<Policy>& policy,
+                         MotorID motor_id) -> bool {
+        return set_register(verify_chopconf(registers.chopconf), policy,
+                            motor_id);
+    }
+
     static auto verify_gconf(GConfig reg) -> GConfig {
         reg.test_mode = 0;
         return reg;

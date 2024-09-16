@@ -87,6 +87,61 @@ struct GetTMCRegister {
     }
 };
 
+struct SetMicrosteps {
+    MotorID motor_id;
+    uint8_t microsteps_power;
+
+    using ParseResult = std::optional<SetMicrosteps>;
+    static constexpr auto prefix = std::array{'M', '9', '0', '9', ' '};
+    static constexpr const char* response = "M909 OK\n";
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        MotorID motor_id_val = MotorID::MOTOR_X;
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        switch (*working) {
+            case 'X':
+                motor_id_val = MotorID::MOTOR_X;
+                break;
+            case 'Z':
+                motor_id_val = MotorID::MOTOR_Z;
+                break;
+            case 'L':
+                motor_id_val = MotorID::MOTOR_L;
+                break;
+            default:
+                return std::make_pair(ParseResult(), input);
+        }
+        std::advance(working, 1);
+        if (working == limit) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ustep_res = gcode::parse_value<uint8_t>(working, limit);
+        if (!ustep_res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        return std::make_pair(ParseResult(SetMicrosteps{
+                                  .motor_id = motor_id_val,
+                                  .microsteps_power = ustep_res.first.value()}),
+                              ustep_res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 struct SetTMCRegister {
     MotorID motor_id;
     uint8_t reg;
@@ -480,9 +535,7 @@ struct MoveMotorInSteps {
 struct MoveMotorInMm {
     MotorID motor_id;
     float mm;
-    float mm_per_second;
-    float mm_per_second_sq;
-    float mm_per_second_discont;
+    std::optional<float> mm_per_second, mm_per_second_sq, mm_per_second_discont;
 
     using ParseResult = std::optional<MoveMotorInMm>;
     static constexpr auto prefix = std::array{'G', '0', ' '};
@@ -508,7 +561,7 @@ struct MoveMotorInMm {
     };
     struct VelArg {
         static constexpr auto prefix = std::array{'V'};
-        static constexpr bool required = true;
+        static constexpr bool required = false;
         bool present = false;
         float value = 0;
     };
@@ -541,9 +594,9 @@ struct MoveMotorInMm {
         auto ret = MoveMotorInMm{
             .motor_id = MotorID::MOTOR_X,
             .mm = 0.0,
-            .mm_per_second = 0.0,
-            .mm_per_second_sq = 0.0,
-            .mm_per_second_discont = 0.0,
+            .mm_per_second = std::nullopt,
+            .mm_per_second_sq = std::nullopt,
+            .mm_per_second_discont = std::nullopt,
         };
 
         auto arguments = res.first.value();
@@ -561,8 +614,6 @@ struct MoveMotorInMm {
 
         if (std::get<3>(arguments).present) {
             ret.mm_per_second = std::get<3>(arguments).value;
-        } else {
-            return std::make_pair(ParseResult(), input);
         }
 
         if (std::get<4>(arguments).present) {
@@ -587,9 +638,7 @@ struct MoveMotorInMm {
 struct MoveToLimitSwitch {
     MotorID motor_id;
     bool direction;
-    float mm_per_second;
-    float mm_per_second_sq;
-    float mm_per_second_discont;
+    std::optional<float> mm_per_second, mm_per_second_sq, mm_per_second_discont;
 
     using ParseResult = std::optional<MoveToLimitSwitch>;
     static constexpr auto prefix = std::array{'G', '5', ' '};
@@ -646,9 +695,9 @@ struct MoveToLimitSwitch {
         auto ret = MoveToLimitSwitch{
             .motor_id = MotorID::MOTOR_X,
             .direction = false,
-            .mm_per_second = 0.0,
-            .mm_per_second_sq = 0.0,
-            .mm_per_second_discont = 0.0,
+            .mm_per_second = std::nullopt,
+            .mm_per_second_sq = std::nullopt,
+            .mm_per_second_discont = std::nullopt,
         };
 
         auto arguments = res.first.value();
@@ -819,6 +868,55 @@ struct GetLimitSwitches {
                        "M119 XE:%i XR:%i ZE:%i ZR:%i LR:%i LH:%i OK\n",
                        x_extended, x_retracted, z_extended, z_retracted,
                        l_released, l_held);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
+struct GetMoveParams {
+    MotorID motor_id;
+    using ParseResult = std::optional<GetMoveParams>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '0'};
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        MotorID motor = MotorID::MOTOR_X;
+        auto res = gcode::SingleParser<ArgX, ArgZ, ArgL>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        if (std::get<1>(arguments).present) {
+            motor = MotorID::MOTOR_Z;
+        } else if (std::get<2>(arguments).present) {
+            motor = MotorID::MOTOR_L;
+        } else if (!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetMoveParams{.motor_id = motor}),
+                              res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    MotorID motor_id, float velocity,
+                                    float accel, float velocity_discont)
+        -> InputIt {
+        char motor_char = motor_id == MotorID::MOTOR_X   ? 'X'
+                          : motor_id == MotorID::MOTOR_Z ? 'Z'
+                                                         : 'L';
+        int res = 0;
+        res =
+            snprintf(&*buf, (limit - buf), "M120 %c V:%.3f A:%.3f D:%.3f OK\n",
+                     motor_char, velocity, accel, velocity_discont);
         if (res <= 0) {
             return buf;
         }
