@@ -82,6 +82,8 @@ class MovementProfile {
      */
     auto tick() -> TickReturn __attribute__((optimize(3)));
 
+    auto fixed_distance_tick() -> void;
+
     /** Returns the current motor velocity in steps_per_tick.*/
     [[nodiscard]] auto current_velocity() const -> steps_per_tick;
 

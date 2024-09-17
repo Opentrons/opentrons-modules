@@ -45,28 +45,7 @@ auto MovementProfile::reset() -> void {
 auto MovementProfile::tick() -> TickReturn {
     bool step = false;
     if (_type == MovementType::FixedDistance) {
-        // Acceleration phase (until half of the profile is reached)
-        if (_velocity < _peak_velocity &&
-            _current_distance < _target_distance / 2) {
-            _velocity += _acceleration;
-            if (_velocity > _peak_velocity) {
-                _velocity = _peak_velocity;
-                // we're done accelerating
-                _accel_distance = _current_distance;
-            }
-        } else {
-            if (_accel_distance == 0) {
-                _accel_distance = _current_distance;
-            }
-            if (remaining_distance() <= _accel_distance) {
-                // Deceleration phase (after more than half of the target
-                // distance is covered)
-                _velocity -= _acceleration;
-                if (_velocity < _start_velocity) {
-                    _velocity = _start_velocity;
-                }
-            }
-        }
+        fixed_distance_tick();
     } else {
         // TODO: re-evaluate if we need to accelerate during open loop movement
         // Acceleration gets clamped to _peak_velocity
@@ -89,6 +68,37 @@ auto MovementProfile::tick() -> TickReturn {
     return TickReturn{.done = (_current_distance >= _target_distance &&
                                _type == MovementType::FixedDistance),
                       .step = step};
+}
+
+auto MovementProfile::fixed_distance_tick() -> void {
+    // Acceleration phase
+    // 1. when the velocity hasn't reached peak value
+    // 2. traveled distance is less than half of the target
+    if (_velocity < _peak_velocity &&
+        _current_distance < _target_distance / 2) {
+        _velocity += _acceleration;
+        if (_velocity > _peak_velocity) {
+            _velocity = _peak_velocity;
+            // we're done accelerating, record the distance traveled,
+            // this will be used to determine when to start decelerating
+            _accel_distance = _current_distance;
+        }
+    } else {
+        // no longer accelerating
+        if (_accel_distance == 0) {
+            // if we haven't set the acceleration distance, set it now
+            _accel_distance = _current_distance;
+        }
+        // Deceleration phase
+        // when the remaining distance is equal/less than
+        // the accelerating distance
+        if (remaining_distance() <= _accel_distance) {
+            _velocity -= _acceleration;
+            if (_velocity < _start_velocity) {
+                _velocity = _start_velocity;
+            }
+        }
+    }
 }
 
 [[nodiscard]] auto MovementProfile::current_velocity() const -> steps_per_tick {
