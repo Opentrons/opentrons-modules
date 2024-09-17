@@ -94,6 +94,8 @@ class MovementProfile {
     /** Returns the movement type.*/
     [[nodiscard]] auto movement_type() const -> MovementType;
 
+    [[nodiscard]] auto remaining_distance() const -> ticks;
+
   private:
     uint32_t _ticks_per_second;           // Tick frequency
     steps_per_tick _velocity = 0;         // Current velocity
@@ -104,6 +106,7 @@ class MovementProfile {
     ticks _target_distance;               // Distance for the movement
     ticks _current_distance = 0;          // Distance this movement has reached
     q31_31 _tick_tracker = 0;             // Running tracker for the tick motion
+    ticks _accel_distance = 0;  // Distance covered during acceleration phase
 
     // When incrementing position tracker, if this bit changes then
     // a step should take place.
