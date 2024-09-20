@@ -227,8 +227,7 @@ class MotorDriverTask {
     auto visit_message(const messages::PollTMCRegisterMessage& m,
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
-        static_cast<void>(m);
-        static_cast<void>(tmc2160_interface);
+        tmc2160_interface.start_stream(m.motor_id);
     }
 
     template <tmc2160::TMC2160InterfacePolicy Policy>
@@ -236,7 +235,7 @@ class MotorDriverTask {
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
         static_cast<void>(m);
-        static_cast<void>(tmc2160_interface);
+        tmc2160_interface.stop_stream();
     }
 
     template <tmc2160::TMC2160InterfacePolicy Policy>
@@ -283,6 +282,15 @@ class MotorDriverTask {
             current, driver_conf_from_id(motor_id).glob_scale,
             _motor_current_config);
     }
+
+    template <tmc2160::TMC2160InterfacePolicy Policy>
+    auto visit_message(const messages::StallGuardResult& m,
+                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+        -> void {
+        static_cast<void>(_task_registry->send_to_address(
+            m, Queues::HostCommsAddress));
+    }
+
 
     Queue& _message_queue;
     Aggregator* _task_registry;

@@ -25,12 +25,14 @@
 extern DMA_HandleTypeDef hdma_spi2_rx;
 extern DMA_HandleTypeDef hdma_spi2_tx;
 extern TIM_HandleTypeDef htim17;
+extern TIM_HandleTypeDef htim6;
 extern TIM_HandleTypeDef htim20;
 extern TIM_HandleTypeDef htim3;
 extern SPI_HandleTypeDef hspi2;
 
 
 motor_interrupt_callback interrupt_callback = NULL;
+stallguard_interrupt_callback stallguard_callback = NULL;
 /******************************************************************************/
 /*           Cortex-M4 Processor Interruption and Exception Handlers          */
 /******************************************************************************/
@@ -116,8 +118,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     } else if(htim->Instance == TIM3 && interrupt_callback) {
         interrupt_callback(MOTOR_L);
     }
+    else if (htim->Instance == TIM6 && stallguard_callback) {
+        stallguard_callback();
+    }
 }
 
 void initialize_callbacks(motor_interrupt_callback callback_glue) {
     interrupt_callback = callback_glue;
+}
+
+void initialize_stallguard_callback(stallguard_interrupt_callback callback_glue) {
+    stallguard_callback = callback_glue;
 }

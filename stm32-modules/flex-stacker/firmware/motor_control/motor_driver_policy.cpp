@@ -15,3 +15,11 @@ auto MotorDriverPolicy::tmc2160_transmit_receive(MotorID motor_id,
     }
     return RxTxReturn();
 }
+
+auto MotorDriverPolicy::start_stream(MotorID motor_id) -> bool {
+    return start_spi_stream(motor_id);
+}
+
+auto MotorDriverPolicy::stop_stream() -> bool {
+    return stop_spi_stream();
+}

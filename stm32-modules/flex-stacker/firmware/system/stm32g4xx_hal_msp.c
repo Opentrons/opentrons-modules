@@ -242,6 +242,11 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
         /* Peripheral clock enable */
         __HAL_RCC_TIM3_CLK_ENABLE();
     }
+    else if(htim_base->Instance==TIM6)
+    {
+        /* Peripheral clock enable */
+        __HAL_RCC_TIM6_CLK_ENABLE();
+    }
     else if(htim_base->Instance==TIM7)
     {
         /* Peripheral clock enable */
@@ -276,16 +281,25 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
     {
         /* Peripheral clock disable */
         __HAL_RCC_TIM3_CLK_DISABLE();
+        HAL_NVIC_DisableIRQ(TIM3_IRQn);
     }
     else if(htim_base->Instance==TIM17)
     {
         /* Peripheral clock disable */
         __HAL_RCC_TIM17_CLK_DISABLE();
+        HAL_NVIC_DisableIRQ(TIM1_TRG_COM_TIM17_IRQn);
     }
     else if(htim_base->Instance==TIM20)
     {
         /* Peripheral clock disable */
         __HAL_RCC_TIM20_CLK_DISABLE();
+        HAL_NVIC_DisableIRQ(TIM20_UP_IRQn);
+    }
+    else if(htim_base->Instance==TIM6)
+    {
+        /* Peripheral clock disable */
+        __HAL_RCC_TIM6_CLK_DISABLE();
+        HAL_NVIC_DisableIRQ(TIM6_DAC_IRQn);
     }
 
 }

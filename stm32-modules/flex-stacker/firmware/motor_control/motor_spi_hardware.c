@@ -30,14 +30,17 @@
 #define MOTOR_MAX_SPI_LEN (5)
 
 
+
 /** Static Variables -------------------------------------------------------- */
 
 struct motor_spi_hardware {
     SPI_HandleTypeDef handle;
     DMA_HandleTypeDef dma_rx;
     DMA_HandleTypeDef dma_tx;
+    TIM_HandleTypeDef timer;
     TaskHandle_t task_to_notify;
     bool initialized;
+    bool streaming;
 };
 
 static void spi_interrupt_service(void);
@@ -50,8 +53,10 @@ static struct motor_spi_hardware _spi = {
     .handle = {0},
     .dma_rx = {0},
     .dma_tx = {0},
+    .timer = {0},
     .task_to_notify = NULL,
     .initialized = false,
+    .streaming = false,
 };
 
 /** Private Functions ------------------------------------------------------- */
@@ -198,6 +203,30 @@ static void dma_init(void) {
 }
 
 
+static void tim6_init(TIM_HandleTypeDef* htim)
+{
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+    HAL_StatusTypeDef hal_ret;
+
+    htim->Instance = TIM6;
+    htim->Init.Prescaler = 16999;
+    htim->Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim->Init.Period = 99;
+    htim->Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+    hal_ret = HAL_TIM_Base_Init(htim);
+    configASSERT(hal_ret == HAL_OK);
+
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    hal_ret = HAL_TIMEx_MasterConfigSynchronization(htim, &sMasterConfig);
+    configASSERT(hal_ret == HAL_OK);
+
+    HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
+
+}
+
+
 /** Public Functions -------------------------------------------------------- */
 
 void spi_hardware_init(void) {
@@ -226,6 +255,8 @@ void spi_hardware_init(void) {
         // configure nss pins
         spi2_nss_init();
 
+        tim6_init(&_spi.timer);
+
         _spi.initialized = true;
     }
 }
@@ -247,6 +278,10 @@ void DMA1_Channel2_IRQHandler(void)
     HAL_DMA_IRQHandler(&_spi.dma_tx);
 }
 
+void TIM6_DAC_IRQHandler(void)
+{
+    HAL_TIM_IRQHandler(&_spi.timer);
+}
 
 static void spi_interrupt_service(void) {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -308,4 +343,29 @@ bool motor_spi_sendreceive(
     return true;
 }
 
+bool start_spi_stream(MotorID motor_id) {
+    // 1. enable spi nss
+    // 2. start spi stream timer
+    if (!_spi.initialized || (_spi.task_to_notify != NULL) || (_spi.streaming)) {
+        return false;
+    }
+    HAL_StatusTypeDef status;
+    status = HAL_TIM_Base_Start_IT(&_spi.timer);
+    _spi.streaming = true;
+    return status == HAL_OK;
+}
 
+bool stop_spi_stream() {
+    if (!_spi.streaming) {
+        return false;
+    }
+    HAL_StatusTypeDef status;
+    status = HAL_TIM_Base_Stop_IT(&_spi.timer);
+    disable_spi_nss();
+    _spi.streaming = false;
+    return status == HAL_OK;
+}
+
+bool spi_stream() {
+    return true;
+}

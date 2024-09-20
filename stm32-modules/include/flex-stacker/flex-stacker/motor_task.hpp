@@ -227,6 +227,13 @@ class MotorTask {
                 motor_state(m.motor_id).get_speed_discont(),
                 motor_state(m.motor_id).get_speed(),
                 motor_state(m.motor_id).get_accel());
+
+        auto stream_m = messages::PollTMCRegisterMessage{
+            .id = m.id,
+            .motor_id = m.motor_id,
+        };
+        static_cast<void>(
+            _task_registry->send_to_address(stream_m, Queues::MotorDriverAddress));
     }
 
     template <MotorControlPolicy Policy>
@@ -284,6 +291,8 @@ class MotorTask {
     auto visit_message(const messages::MoveCompleteMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
+        static_cast<void>(_task_registry->send_to_address(
+            messages::StopPollTMCRegisterMessage{}, Queues::MotorDriverAddress));
         auto response = messages::AcknowledgePrevious{
             .responding_to_id =
                 controller_from_id(m.motor_id).get_response_id()};

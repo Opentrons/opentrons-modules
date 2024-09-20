@@ -114,6 +114,14 @@ class TMC2160Interface {
         return RT(retval);
     }
 
+    auto start_stream(MotorID motor_id) -> void {
+        _policy.start_stream(motor_id);
+    }
+
+    auto stop_stream() -> void {
+        _policy.stop_stream();
+    }
+
   private:
     Policy& _policy;
 };

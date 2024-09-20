@@ -14,6 +14,9 @@ void motor_hardware_init(void);
 void spi_hardware_init(void);
 bool motor_spi_sendreceive(MotorID motor_id, uint8_t *tx_data, uint8_t *rx_data,
                            uint16_t len);
+bool start_spi_stream(MotorID motor_id);
+bool stop_spi_stream(void);
+bool spi_stream(void);
 
 void hw_step_motor(MotorID motor_id);
 bool hw_enable_motor(MotorID motor_id);
