@@ -237,8 +237,8 @@ void tim17_init(TIM_HandleTypeDef* htim) {
     hal_ret = HAL_TIMEx_MasterConfigSynchronization(htim, &sMasterConfig);
     configASSERT(hal_ret == HAL_OK);
 
-    HAL_NVIC_SetPriority(TIM20_UP_IRQn, 10, 0);
-    HAL_NVIC_EnableIRQ(TIM20_UP_IRQn);
+    HAL_NVIC_SetPriority(TIM1_TRG_COM_TIM17_IRQn, 10, 0);
+    HAL_NVIC_EnableIRQ(TIM1_TRG_COM_TIM17_IRQn);
 }
 
 // Z motor timer
@@ -298,8 +298,8 @@ void tim20_init(TIM_HandleTypeDef* htim) {
     hal_ret = HAL_TIMEx_ConfigBreakDeadTime(htim, &sBreakDeadTimeConfig);
     configASSERT(hal_ret == HAL_OK);
 
-    HAL_NVIC_SetPriority(TIM1_TRG_COM_TIM17_IRQn, 10, 0);
-    HAL_NVIC_EnableIRQ(TIM1_TRG_COM_TIM17_IRQn);
+    HAL_NVIC_SetPriority(TIM20_UP_IRQn, 10, 0);
+    HAL_NVIC_EnableIRQ(TIM20_UP_IRQn);
 }
 
 // L motor timer
