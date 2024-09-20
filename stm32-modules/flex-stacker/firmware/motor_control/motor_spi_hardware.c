@@ -41,6 +41,7 @@ struct motor_spi_hardware {
     TaskHandle_t task_to_notify;
     bool initialized;
     bool streaming;
+    uint8_t *tx_data;
 };
 
 static void spi_interrupt_service(void);
@@ -57,6 +58,7 @@ static struct motor_spi_hardware _spi = {
     .task_to_notify = NULL,
     .initialized = false,
     .streaming = false,
+    .tx_data = NULL,
 };
 
 /** Private Functions ------------------------------------------------------- */
@@ -343,7 +345,7 @@ bool motor_spi_sendreceive(
     return true;
 }
 
-bool start_spi_stream(MotorID motor_id) {
+bool start_spi_stream(MotorID motor_id, uint8_t *txData) {
     // 1. enable spi nss
     // 2. start spi stream timer
     if (!_spi.initialized || (_spi.task_to_notify != NULL) || (_spi.streaming)) {
@@ -352,6 +354,7 @@ bool start_spi_stream(MotorID motor_id) {
     HAL_StatusTypeDef status;
     status = HAL_TIM_Base_Start_IT(&_spi.timer);
     _spi.streaming = true;
+    _spi.tx_data = txData;
     return status == HAL_OK;
 }
 
@@ -366,6 +369,8 @@ bool stop_spi_stream() {
     return status == HAL_OK;
 }
 
-bool spi_stream() {
-    return true;
+bool spi_stream(uint8_t *rxData) {
+    HAL_StatusTypeDef status;
+    status = HAL_SPI_TransmitReceive_DMA(&_spi.handle, _spi.tx_data, rxData, SPI_DATASIZE_8BIT);
+    return status == HAL_OK;
 }

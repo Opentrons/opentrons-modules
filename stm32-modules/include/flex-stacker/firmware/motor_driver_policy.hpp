@@ -13,7 +13,7 @@ class MotorDriverPolicy {
     auto tmc2160_transmit_receive(MotorID motor_id, tmc2160::MessageT& data)
         -> RxTxReturn;
 
-    auto start_stream(MotorID motor_id)
+    auto start_stream(MotorID motor_id, tmc2160::MessageT& data)
         -> bool;
 
     auto stop_stream()

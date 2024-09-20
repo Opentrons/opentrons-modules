@@ -115,7 +115,11 @@ class TMC2160Interface {
     }
 
     auto start_stream(MotorID motor_id) -> void {
-        _policy.start_stream(motor_id);
+        auto buffer = build_message(Registers::DRVSTATUS, WriteFlag::READ, 0);
+        if (!buffer.has_value()) {
+            return;
+        }
+        _policy.start_stream(motor_id, buffer.value());
     }
 
     auto stop_stream() -> void {

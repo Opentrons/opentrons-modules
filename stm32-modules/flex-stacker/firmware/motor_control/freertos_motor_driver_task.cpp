@@ -20,7 +20,8 @@ static tasks::FirmwareTasks::MotorDriverQueue
            "Motor Driver Queue");
 
 [[nodiscard]] static auto motor_driver_callback_glue(void) {
-    if (spi_stream()) {
+    tmc2160::MessageT retBuf = {0};
+    if (spi_stream(retBuf.data())) {
         static_cast<void>(_queue.try_send_from_isr(
             messages::StallGuardResult{.value = 1}));
     }
