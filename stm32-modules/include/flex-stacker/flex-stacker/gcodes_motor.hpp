@@ -91,16 +91,16 @@ struct StallGuardResult {
     using ParseResult = std::optional<StallGuardResult>;
 
     template <typename InputIt, typename Limit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<Limit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         return std::make_pair(ParseResult(), input);
-        }
+    }
 
     template <typename InputIt, typename InLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputIt, InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
         auto res = snprintf(&*buf, (limit - buf), "M920 1 OK\n");
         if (res <= 0) {
@@ -108,7 +108,6 @@ struct StallGuardResult {
         }
         return buf + res;
     }
-
 };
 
 struct SetMicrosteps {

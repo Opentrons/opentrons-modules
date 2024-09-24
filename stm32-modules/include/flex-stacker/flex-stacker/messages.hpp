@@ -221,7 +221,8 @@ using SystemMessage =
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
                    PollTMCRegisterMessage, StopPollTMCRegisterMessage,
-                   SetMotorCurrentMessage, SetMicrostepsMessage, StallGuardResult>;
+                   SetMotorCurrentMessage, SetMicrostepsMessage,
+                   StallGuardResult>;
 
 using MotorMessage =
     ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,

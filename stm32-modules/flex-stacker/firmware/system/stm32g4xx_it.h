@@ -40,7 +40,8 @@ void RCC_IRQHandler(void);
 typedef void (*motor_interrupt_callback)(MotorID motor_id);
 typedef void (*stallguard_interrupt_callback)();
 void initialize_callbacks(motor_interrupt_callback callback_glue);
-void initialize_stallguard_callback(stallguard_interrupt_callback callback_glue);
+void initialize_stallguard_callback(
+    stallguard_interrupt_callback callback_glue);
 #ifdef __cplusplus
 }
 #endif

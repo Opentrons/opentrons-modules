@@ -11,12 +11,12 @@
 #include "core/fixed_point.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
+#include "firmware/motor_driver_policy.hpp"
 #include "firmware/motor_policy.hpp"
 #include "flex-stacker/errors.hpp"
 #include "flex-stacker/messages.hpp"
 #include "flex-stacker/tasks.hpp"
 #include "flex-stacker/tmc2160.hpp"
-#include "flex-stacker/tmc2160_interface.hpp"
 #include "flex-stacker/tmc2160_registers.hpp"
 #include "hal/message_queue.hpp"
 #include "systemwide.h"
@@ -24,6 +24,11 @@
 namespace motor_driver_task {
 
 using Message = messages::MotorDriverMessage;
+
+template <typename P>
+concept MotorDriverPolicy = requires(P p, MotorID motor_id) {
+    { p.stop_stream() } -> std::same_as<bool>;
+};
 
 static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
     .gconfig = {.diag0_error = 1, .diag1_stall = 1},
@@ -115,8 +120,12 @@ class MotorDriverTask {
     using Queues = typename tasks::Tasks<QueueImpl>;
 
   public:
-    explicit MotorDriverTask(Queue& q, Aggregator* aggregator)
-        : _message_queue(q), _task_registry(aggregator), _initialized(false) {}
+    explicit MotorDriverTask(Queue& q, Aggregator* aggregator,
+                             tmc2160::TMC2160& tmc2160)
+        : _message_queue(q),
+          _task_registry(aggregator),
+          _tmc2160(tmc2160),
+          _initialized(false) {}
     MotorDriverTask(const MotorDriverTask& other) = delete;
     auto operator=(const MotorDriverTask& other) -> MotorDriverTask& = delete;
     MotorDriverTask(MotorDriverTask&& other) noexcept = delete;
@@ -141,23 +150,20 @@ class MotorDriverTask {
         }
     }
 
-    template <tmc2160::TMC2160InterfacePolicy Policy>
+    template <MotorDriverPolicy Policy>
     auto run_once(Policy& policy) -> void {
         if (!_task_registry) {
             return;
         }
-        auto tmc2160_interface = tmc2160::TMC2160Interface<Policy>(policy);
         if (!_initialized) {
-            if (!_tmc2160.initialize_config(motor_x_config, tmc2160_interface,
-                                            MotorID::MOTOR_X)) {
+            _tmc2160.initialize(&policy);
+            if (!_tmc2160.initialize_config(motor_x_config, MotorID::MOTOR_X)) {
                 return;
             }
-            if (!_tmc2160.initialize_config(motor_z_config, tmc2160_interface,
-                                            MotorID::MOTOR_Z)) {
+            if (!_tmc2160.initialize_config(motor_z_config, MotorID::MOTOR_Z)) {
                 return;
             }
-            if (!_tmc2160.initialize_config(motor_l_config, tmc2160_interface,
-                                            MotorID::MOTOR_L)) {
+            if (!_tmc2160.initialize_config(motor_l_config, MotorID::MOTOR_L)) {
                 return;
             }
             _initialized = true;
@@ -166,31 +172,28 @@ class MotorDriverTask {
         auto message = Message(std::monostate());
 
         _message_queue.recv(&message);
-        auto visit_helper = [this, &tmc2160_interface](auto& message) -> void {
-            this->visit_message(message, tmc2160_interface);
+        auto visit_helper = [this, &policy](auto& message) -> void {
+            this->visit_message(message, policy);
         };
         std::visit(visit_helper, message);
     }
 
   private:
-    template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto visit_message(const std::monostate& m,
-                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
-        -> void {
+    template <MotorDriverPolicy Policy>
+    auto visit_message(const std::monostate& m, Policy& policy) -> void {
         static_cast<void>(m);
-        static_cast<void>(tmc2160_interface);
+        static_cast<void>(policy);
     }
 
-    template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto visit_message(const messages::SetTMCRegisterMessage& m,
-                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+    template <MotorDriverPolicy Policy>
+    auto visit_message(const messages::SetTMCRegisterMessage& m, Policy& policy)
         -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         if (!tmc2160::is_valid_address(m.reg)) {
             response.with_error = errors::ErrorCode::TMC2160_INVALID_ADDRESS;
         } else {
-            auto result = tmc2160_interface.write(tmc2160::Registers(m.reg),
-                                                  m.data, m.motor_id);
+            auto result =
+                _tmc2160.write(tmc2160::Registers(m.reg), m.data, m.motor_id);
             if (!result) {
                 response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
             }
@@ -199,14 +202,12 @@ class MotorDriverTask {
             response, Queues::HostCommsAddress));
     }
 
-    template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto visit_message(const messages::GetTMCRegisterMessage& m,
-                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+    template <MotorDriverPolicy Policy>
+    auto visit_message(const messages::GetTMCRegisterMessage& m, Policy& policy)
         -> void {
         messages::HostCommsMessage response;
         if (tmc2160::is_valid_address(m.reg)) {
-            auto data =
-                tmc2160_interface.read(tmc2160::Registers(m.reg), m.motor_id);
+            auto data = _tmc2160.read(tmc2160::Registers(m.reg), m.motor_id);
             if (!data.has_value()) {
                 response = messages::ErrorMessage{
                     .code = errors::ErrorCode::TMC2160_READ_ERROR};
@@ -223,28 +224,25 @@ class MotorDriverTask {
         }
     }
 
-    template <tmc2160::TMC2160InterfacePolicy Policy>
+    template <MotorDriverPolicy Policy>
     auto visit_message(const messages::PollTMCRegisterMessage& m,
-                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
-        -> void {
-        tmc2160_interface.start_stream(m.motor_id);
+                       Policy& policy) -> void {
+        _tmc2160.start_stream(m.motor_id);
     }
 
-    template <tmc2160::TMC2160InterfacePolicy Policy>
+    template <MotorDriverPolicy Policy>
     auto visit_message(const messages::StopPollTMCRegisterMessage& m,
-                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
-        -> void {
+                       Policy& policy) -> void {
         static_cast<void>(m);
-        tmc2160_interface.stop_stream();
+        _tmc2160.stop_stream();
     }
 
-    template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto visit_message(const messages::SetMicrostepsMessage& m,
-                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+    template <MotorDriverPolicy Policy>
+    auto visit_message(const messages::SetMicrostepsMessage& m, Policy& policy)
         -> void {
         driver_conf_from_id(m.motor_id).chopconf.mres = m.microsteps_power;
         if (!_tmc2160.update_chopconf(driver_conf_from_id(m.motor_id),
-                                      tmc2160_interface, m.motor_id)) {
+                                      m.motor_id)) {
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = m.id,
                 .with_error = errors::ErrorCode::TMC2160_WRITE_ERROR};
@@ -256,10 +254,9 @@ class MotorDriverTask {
             _task_registry->send_to_address(m, Queues::MotorAddress));
     }
 
-    template <tmc2160::TMC2160InterfacePolicy Policy>
+    template <MotorDriverPolicy Policy>
     auto visit_message(const messages::SetMotorCurrentMessage& m,
-                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
-        -> void {
+                       Policy& policy) -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         if (m.hold_current != 0.0) {
             driver_conf_from_id(m.motor_id).ihold_irun.hold_current =
@@ -270,7 +267,7 @@ class MotorDriverTask {
                 get_current_value(m.motor_id, m.run_current);
         }
         if (!_tmc2160.update_current(driver_conf_from_id(m.motor_id),
-                                     tmc2160_interface, m.motor_id)) {
+                                     m.motor_id)) {
             response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
         };
         static_cast<void>(_task_registry->send_to_address(
@@ -283,20 +280,18 @@ class MotorDriverTask {
             _motor_current_config);
     }
 
-    template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto visit_message(const messages::StallGuardResult& m,
-                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+    template <MotorDriverPolicy Policy>
+    auto visit_message(const messages::StallGuardResult& m, Policy& policy)
         -> void {
-        static_cast<void>(_task_registry->send_to_address(
-            m, Queues::HostCommsAddress));
+        static_cast<void>(
+            _task_registry->send_to_address(m, Queues::HostCommsAddress));
     }
-
 
     Queue& _message_queue;
     Aggregator* _task_registry;
+    tmc2160::TMC2160& _tmc2160;
     bool _initialized;
 
-    tmc2160::TMC2160 _tmc2160{};
     // same motor current config for all three motors
     const tmc2160::TMC2160MotorCurrentConfig _motor_current_config{
         .r_sense = 0.22,
