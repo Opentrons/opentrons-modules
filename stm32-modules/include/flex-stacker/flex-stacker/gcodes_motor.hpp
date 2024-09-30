@@ -27,6 +27,21 @@ auto inline motor_id_to_char(MotorID motor_id) -> const char* {
                                                                    : "L");
 }
 
+template<typename ValueType, char... Chars>
+struct Arg {
+    static constexpr auto prefix = std::array{Chars...};
+    static constexpr bool required = false;
+    bool present = false;
+    ValueType value = ValueType{};
+};
+
+template<char... Chars>
+struct ArgNoVal {
+    static constexpr auto prefix = std::array{Chars...};
+    static constexpr bool required = false;
+    bool present = false;
+};
+
 struct GetTMCRegister {
     MotorID motor_id;
     uint8_t reg;
