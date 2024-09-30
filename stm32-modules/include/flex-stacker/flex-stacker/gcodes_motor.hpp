@@ -27,7 +27,7 @@ auto inline motor_id_to_char(MotorID motor_id) -> const char* {
                                                                    : "L");
 }
 
-template<typename ValueType, char... Chars>
+template <typename ValueType, char... Chars>
 struct Arg {
     static constexpr auto prefix = std::array{Chars...};
     static constexpr bool required = false;
@@ -35,11 +35,18 @@ struct Arg {
     ValueType value = ValueType{};
 };
 
-template<char... Chars>
+template <char... Chars>
 struct ArgNoVal {
     static constexpr auto prefix = std::array{Chars...};
     static constexpr bool required = false;
     bool present = false;
+};
+
+template <typename ValueType>
+struct ArgNoPrefix {
+    static constexpr bool required = false;
+    bool present = false;
+    ValueType value = ValueType{};
 };
 
 struct GetTMCRegister {
@@ -49,42 +56,39 @@ struct GetTMCRegister {
     using ParseResult = std::optional<GetTMCRegister>;
     static constexpr auto prefix = std::array{'M', '9', '2', '0', ' '};
 
+    using XArg = Arg<uint8_t, 'X'>;
+    using ZArg = Arg<uint8_t, 'Z'>;
+    using LArg = Arg<uint8_t, 'L'>;
+
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        MotorID motor_id_val = MotorID::MOTOR_X;
-        auto working = prefix_matches(input, limit, prefix);
-        if (working == input) {
-            return std::make_pair(ParseResult(), input);
-        }
-        switch (*working) {
-            case 'X':
-                motor_id_val = MotorID::MOTOR_X;
-                break;
-            case 'Z':
-                motor_id_val = MotorID::MOTOR_Z;
-                break;
-            case 'L':
-                motor_id_val = MotorID::MOTOR_L;
-                break;
-            default:
-                return std::make_pair(ParseResult(), input);
-        }
-        std::advance(working, 1);
-        if (working == limit) {
+        auto res = gcode::SingleParser<XArg, ZArg, LArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
 
-        auto reg_res = gcode::parse_value<uint8_t>(working, limit);
-        if (!reg_res.first.has_value()) {
+        auto ret = GetTMCRegister{
+            .motor_id = MotorID::MOTOR_X,
+            .reg = 0,
+        };
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.reg = std::get<0>(arguments).value;
+        } else if (std::get<1>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_Z;
+            ret.reg = std::get<1>(arguments).value;
+        } else if (std::get<2>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_L;
+            ret.reg = std::get<2>(arguments).value;
+        } else {
             return std::make_pair(ParseResult(), input);
         }
-        return std::make_pair(
-            ParseResult(GetTMCRegister{.motor_id = motor_id_val,
-                                       .reg = reg_res.first.value()}),
-            reg_res.second);
+        return std::make_pair(ret, res.second);
     }
 
     template <typename InputIt, typename InLimit>
@@ -110,43 +114,37 @@ struct SetMicrosteps {
     static constexpr auto prefix = std::array{'M', '9', '0', '9', ' '};
     static constexpr const char* response = "M909 OK\n";
 
+    using XArg = Arg<uint8_t, 'X'>;
+    using ZArg = Arg<uint8_t, 'Z'>;
+    using LArg = Arg<uint8_t, 'L'>;
+
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        MotorID motor_id_val = MotorID::MOTOR_X;
-        auto working = prefix_matches(input, limit, prefix);
-        if (working == input) {
-            return std::make_pair(ParseResult(), input);
-        }
-        switch (*working) {
-            case 'X':
-                motor_id_val = MotorID::MOTOR_X;
-                break;
-            case 'Z':
-                motor_id_val = MotorID::MOTOR_Z;
-                break;
-            case 'L':
-                motor_id_val = MotorID::MOTOR_L;
-                break;
-            default:
-                return std::make_pair(ParseResult(), input);
-        }
-        std::advance(working, 1);
-        if (working == limit) {
+        auto res = gcode::SingleParser<XArg, ZArg, LArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
 
-        auto ustep_res = gcode::parse_value<uint8_t>(working, limit);
-        if (!ustep_res.first.has_value()) {
+        auto ret =
+            SetMicrosteps{.motor_id = MotorID::MOTOR_X, .microsteps_power = 0};
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.microsteps_power = std::get<0>(arguments).value;
+        } else if (std::get<1>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_Z;
+            ret.microsteps_power = std::get<1>(arguments).value;
+        } else if (std::get<2>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_L;
+            ret.microsteps_power = std::get<2>(arguments).value;
+        } else {
             return std::make_pair(ParseResult(), input);
         }
-
-        return std::make_pair(ParseResult(SetMicrosteps{
-                                  .motor_id = motor_id_val,
-                                  .microsteps_power = ustep_res.first.value()}),
-                              ustep_res.second);
+        return std::make_pair(ret, res.second);
     }
 
     template <typename InputIt, typename InLimit>
@@ -166,54 +164,47 @@ struct SetTMCRegister {
     static constexpr auto prefix = std::array{'M', '9', '2', '1', ' '};
     static constexpr const char* response = "M921 OK\n";
 
+    using XArg = Arg<uint8_t, 'X'>;
+    using ZArg = Arg<uint8_t, 'Z'>;
+    using LArg = Arg<uint8_t, 'L'>;
+    using DataArg = ArgNoPrefix<uint32_t>;
+
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        MotorID motor_id_val = MotorID::MOTOR_X;
-        auto working = prefix_matches(input, limit, prefix);
-        if (working == input) {
-            return std::make_pair(ParseResult(), input);
-        }
-        switch (*working) {
-            case 'X':
-                motor_id_val = MotorID::MOTOR_X;
-                break;
-            case 'Z':
-                motor_id_val = MotorID::MOTOR_Z;
-                break;
-            case 'L':
-                motor_id_val = MotorID::MOTOR_L;
-                break;
-            default:
-                return std::make_pair(ParseResult(), input);
-        }
-        std::advance(working, 1);
-        if (working == limit) {
+        auto res = gcode::SingleParser<XArg, ZArg, LArg, DataArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
 
-        auto reg_res = gcode::parse_value<uint8_t>(working, limit);
-        if (!reg_res.first.has_value()) {
+        auto ret = SetTMCRegister{
+            .motor_id = MotorID::MOTOR_X,
+            .reg = 0,
+            .data = 0,
+        };
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.reg = std::get<0>(arguments).value;
+        } else if (std::get<1>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_Z;
+            ret.reg = std::get<1>(arguments).value;
+        } else if (std::get<2>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_L;
+            ret.reg = std::get<2>(arguments).value;
+        } else {
             return std::make_pair(ParseResult(), input);
         }
 
-        std::advance(working, 1);
-        if (working == limit) {
+        if (std::get<3>(arguments).present) {
+            ret.data = std::get<3>(arguments).value;
+        } else {
             return std::make_pair(ParseResult(), input);
         }
-
-        auto data_res = gcode::parse_value<uint32_t>(working, limit);
-        if (!data_res.first.has_value()) {
-            return std::make_pair(ParseResult(), input);
-        }
-
-        return std::make_pair(
-            ParseResult(SetTMCRegister{.motor_id = motor_id_val,
-                                       .reg = reg_res.first.value(),
-                                       .data = data_res.first.value()}),
-            data_res.second);
+        return std::make_pair(ret, res.second);
     }
 
     template <typename InputIt, typename InLimit>
@@ -224,24 +215,6 @@ struct SetTMCRegister {
     }
 };
 
-struct ArgX {
-    static constexpr auto prefix = std::array{'X'};
-    static constexpr bool required = false;
-    bool present = false;
-};
-
-struct ArgZ {
-    static constexpr auto prefix = std::array{'Z'};
-    static constexpr bool required = false;
-    bool present = false;
-};
-
-struct ArgL {
-    static constexpr auto prefix = std::array{'L'};
-    static constexpr bool required = false;
-    bool present = false;
-};
-
 struct SetRunCurrent {
     MotorID motor_id;
     float current;
@@ -249,25 +222,9 @@ struct SetRunCurrent {
     using ParseResult = std::optional<SetRunCurrent>;
     static constexpr auto prefix = std::array{'M', '9', '0', '6', ' '};
     static constexpr const char* response = "M906 OK\n";
-
-    struct XArg {
-        static constexpr auto prefix = std::array{'X'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
-    struct ZArg {
-        static constexpr auto prefix = std::array{'Z'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
-    struct LArg {
-        static constexpr auto prefix = std::array{'L'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
+    using XArg = Arg<float, 'X'>;
+    using ZArg = Arg<float, 'Z'>;
+    using LArg = Arg<float, 'L'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -314,25 +271,9 @@ struct SetHoldCurrent {
     using ParseResult = std::optional<SetHoldCurrent>;
     static constexpr auto prefix = std::array{'M', '9', '0', '7', ' '};
     static constexpr const char* response = "M907 OK\n";
-
-    struct XArg {
-        static constexpr auto prefix = std::array{'X'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
-    struct ZArg {
-        static constexpr auto prefix = std::array{'Z'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
-    struct LArg {
-        static constexpr auto prefix = std::array{'L'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
+    using XArg = Arg<float, 'X'>;
+    using ZArg = Arg<float, 'Z'>;
+    using LArg = Arg<float, 'L'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -379,6 +320,10 @@ struct EnableMotor {
     static constexpr auto prefix = std::array{'M', '1', '7', ' '};
     static constexpr const char* response = "M17 OK\n";
 
+    using ArgX = ArgNoVal<'X'>;
+    using ArgZ = ArgNoVal<'Z'>;
+    using ArgL = ArgNoVal<'L'>;
+
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<Limit, InputIt>
@@ -420,6 +365,10 @@ struct DisableMotor {
     using ParseResult = std::optional<DisableMotor>;
     static constexpr auto prefix = std::array{'M', '1', '8', ' '};
     static constexpr const char* response = "M18 OK\n";
+
+    using ArgX = ArgNoVal<'X'>;
+    using ArgZ = ArgNoVal<'Z'>;
+    using ArgL = ArgNoVal<'L'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -465,36 +414,11 @@ struct MoveMotorInSteps {
     static constexpr auto prefix = std::array{'G', '0', '.', 'S', ' '};
     static constexpr const char* response = "G0.S OK\n";
 
-    struct XArg {
-        static constexpr auto prefix = std::array{'X'};
-        static constexpr bool required = false;
-        bool present = false;
-        int32_t value = 0;
-    };
-    struct ZArg {
-        static constexpr auto prefix = std::array{'Z'};
-        static constexpr bool required = false;
-        bool present = false;
-        int32_t value = 0;
-    };
-    struct LArg {
-        static constexpr auto prefix = std::array{'L'};
-        static constexpr bool required = false;
-        bool present = false;
-        int32_t value = 0;
-    };
-    struct FreqArg {
-        static constexpr auto prefix = std::array{'F'};
-        static constexpr bool required = true;
-        bool present = false;
-        uint32_t value = 0;
-    };
-    struct RampArg {
-        static constexpr auto prefix = std::array{'R'};
-        static constexpr bool required = false;
-        bool present = false;
-        uint32_t value = 0;
-    };
+    using XArg = Arg<int32_t, 'X'>;
+    using ZArg = Arg<int32_t, 'Z'>;
+    using LArg = Arg<int32_t, 'L'>;
+    using FreqArg = Arg<uint32_t, 'F'>;
+    using RampArg = Arg<uint32_t, 'R'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -556,44 +480,12 @@ struct MoveMotorInMm {
     static constexpr auto prefix = std::array{'G', '0', ' '};
     static constexpr const char* response = "G0 OK\n";
 
-    struct XArg {
-        static constexpr auto prefix = std::array{'X'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
-    struct ZArg {
-        static constexpr auto prefix = std::array{'Z'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
-    struct LArg {
-        static constexpr auto prefix = std::array{'L'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
-    struct VelArg {
-        static constexpr auto prefix = std::array{'V'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
-
-    struct AccelArg {
-        static constexpr auto prefix = std::array{'A'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
-
-    struct DiscontArg {
-        static constexpr auto prefix = std::array{'D'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
+    using XArg = Arg<float, 'X'>;
+    using ZArg = Arg<float, 'Z'>;
+    using LArg = Arg<float, 'L'>;
+    using VelArg = Arg<float, 'V'>;
+    using AccelArg = Arg<float, 'A'>;
+    using DiscontArg = Arg<float, 'D'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -659,42 +551,12 @@ struct MoveToLimitSwitch {
     static constexpr auto prefix = std::array{'G', '5', ' '};
     static constexpr const char* response = "G5 OK\n";
 
-    struct XArg {
-        static constexpr auto prefix = std::array{'X'};
-        static constexpr bool required = false;
-        bool present = false;
-        int value = 0;
-    };
-    struct ZArg {
-        static constexpr auto prefix = std::array{'Z'};
-        static constexpr bool required = false;
-        bool present = false;
-        int value = 0;
-    };
-    struct LArg {
-        static constexpr auto prefix = std::array{'L'};
-        static constexpr bool required = false;
-        bool present = false;
-        int value = 0;
-    };
-    struct VelArg {
-        static constexpr auto prefix = std::array{'V'};
-        static constexpr bool required = true;
-        bool present = false;
-        float value = 0;
-    };
-    struct AccelArg {
-        static constexpr auto prefix = std::array{'A'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
-    struct DiscontArg {
-        static constexpr auto prefix = std::array{'D'};
-        static constexpr bool required = false;
-        bool present = false;
-        float value = 0;
-    };
+    using XArg = Arg<int, 'X'>;
+    using ZArg = Arg<int, 'Z'>;
+    using LArg = Arg<int, 'L'>;
+    using VelArg = Arg<float, 'V'>;
+    using AccelArg = Arg<float, 'A'>;
+    using DiscontArg = Arg<float, 'D'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -762,30 +624,10 @@ struct MoveMotor {
     static constexpr auto prefix = std::array{'G', '5', ' '};
     static constexpr const char* response = "G5 OK\n";
 
-    struct XArg {
-        static constexpr auto prefix = std::array{'X'};
-        static constexpr bool required = false;
-        bool present = false;
-        int value = 0;
-    };
-    struct ZArg {
-        static constexpr auto prefix = std::array{'Z'};
-        static constexpr bool required = false;
-        bool present = false;
-        int value = 0;
-    };
-    struct LArg {
-        static constexpr auto prefix = std::array{'L'};
-        static constexpr bool required = false;
-        bool present = false;
-        int value = 0;
-    };
-    struct FreqArg {
-        static constexpr auto prefix = std::array{'F'};
-        static constexpr bool required = false;
-        bool present = false;
-        uint32_t value = 0;
-    };
+    using XArg = Arg<int, 'X'>;
+    using ZArg = Arg<int, 'Z'>;
+    using LArg = Arg<int, 'L'>;
+    using FreqArg = Arg<uint32_t, 'F'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -894,6 +736,10 @@ struct GetMoveParams {
     MotorID motor_id;
     using ParseResult = std::optional<GetMoveParams>;
     static constexpr auto prefix = std::array{'M', '1', '2', '0'};
+
+    using ArgX = ArgNoVal<'X'>;
+    using ArgZ = ArgNoVal<'Z'>;
+    using ArgL = ArgNoVal<'L'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
