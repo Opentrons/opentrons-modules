@@ -121,3 +121,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void initialize_callbacks(motor_interrupt_callback callback_glue) {
     interrupt_callback = callback_glue;
 }
+
+// MOTOR_DIAG0_PIN interrupt
+void EXTI15_10_IRQHandler(void) {
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_12)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_12);
+    }
+}
+

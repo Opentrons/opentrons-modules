@@ -2,6 +2,7 @@
 #include <array>
 #include <concepts>
 #include <cstdint>
+#include <optional>
 #include <variant>
 
 #include "flex-stacker/errors.hpp"
@@ -38,6 +39,14 @@ concept MessageWithReturn = requires(MessageType mt) {
 template <typename ResponseType>
 concept Response = requires(ResponseType rt) {
     { get_responding_to_id(rt) } -> std::same_as<uint32_t>;
+};
+
+/**
+ * A message sent when an external interrupt is triguered
+ */
+struct GPIOInterruptMessage {
+    uint16_t pin;
+    uint8_t state;
 };
 
 /*
@@ -192,6 +201,7 @@ struct MoveMotorMessage {
 
 struct StopMotorMessage {
     uint32_t id;
+    MotorID motor_id;
 };
 
 struct GetMoveParamsMessage {
@@ -207,6 +217,13 @@ struct GetMoveParamsResponse {
     float velocity_discont;
 };
 
+struct SetMotorStallGuardMessage {
+    uint32_t id = 0;
+    MotorID motor_id = MotorID::MOTOR_X;
+    bool enable = false;
+    std::optional<int32_t> sgt = std::nullopt;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -220,13 +237,14 @@ using SystemMessage =
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
                    PollTMCRegisterMessage, StopPollTMCRegisterMessage,
-                   SetMotorCurrentMessage, SetMicrostepsMessage>;
+                   SetMotorCurrentMessage, SetMicrostepsMessage,
+                   SetMotorStallGuardMessage>;
 
 using MotorMessage =
     ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
                    MoveToLimitSwitchMessage, StopMotorMessage,
                    MoveCompleteMessage, GetLimitSwitchesMessage,
                    MoveMotorInMmMessage, SetMicrostepsMessage,
-                   GetMoveParamsMessage>;
+                   GetMoveParamsMessage, GPIOInterruptMessage>;
 
 };  // namespace messages

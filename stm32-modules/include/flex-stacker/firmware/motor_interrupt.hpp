@@ -57,6 +57,7 @@ class MotorInterruptController {
                               uint32_t steps_per_sec_discont,
                               uint32_t steps_per_sec, uint32_t step_per_sec_sq)
         -> void {
+        _stop = false;
         set_direction(direction);
         _profile = motor_util::MovementProfile(
             TIMER_FREQ, steps_per_sec_discont, steps_per_sec, step_per_sec_sq,
@@ -67,11 +68,17 @@ class MotorInterruptController {
     auto start_movement(uint32_t move_id, bool direction,
                         uint32_t steps_per_sec_discont, uint32_t steps_per_sec,
                         uint32_t step_per_sec_sq) -> void {
+        _stop = false;
         set_direction(direction);
         _profile = motor_util::MovementProfile(
             TIMER_FREQ, steps_per_sec_discont, steps_per_sec, step_per_sec_sq,
             motor_util::MovementType::OpenLoop, 0);
         _policy->enable_motor(_id);
+        _response_id = move_id;
+    }
+    auto stop_movement(uint32_t move_id) -> void {
+        _stop = true;
+        _policy->disable_motor(_id);
         _response_id = move_id;
     }
 
@@ -86,6 +93,7 @@ class MotorInterruptController {
         return _response_id;
     }
     auto stop_condition_met() -> bool {
+        if (_stop) return true;
         if (_profile.movement_type() == motor_util::MovementType::OpenLoop) {
             return limit_switch_triggered();
         }
@@ -101,6 +109,7 @@ class MotorInterruptController {
     uint32_t step_freq = DEFAULT_MOTOR_FREQ;
     uint32_t _response_id = 0;
     bool _direction = false;
+    bool _stop = false;
 };
 
 }  // namespace motor_interrupt_controller

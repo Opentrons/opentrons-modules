@@ -924,4 +924,81 @@ struct GetMoveParams {
     }
 };
 
+struct SetMotorStallGuard {
+    MotorID motor_id;
+    bool enable;
+    std::optional<int32_t> sgt;
+
+    using ParseResult = std::optional<SetMotorStallGuard>;
+    static constexpr auto prefix = std::array{'M', '9', '1', '0', ' '};
+    static constexpr const char* response = "M910 OK\n";
+
+    struct XArg {
+        static constexpr auto prefix = std::array{'X'};
+        static constexpr bool required = false;
+        bool present = false;
+        int value = 0;
+    };
+    struct ZArg {
+        static constexpr auto prefix = std::array{'Z'};
+        static constexpr bool required = false;
+        bool present = false;
+        int value = 0;
+    };
+    struct LArg {
+        static constexpr auto prefix = std::array{'L'};
+        static constexpr bool required = false;
+        bool present = false;
+        int value = 0;
+    };
+    struct SGTArg {
+        static constexpr auto prefix = std::array{'T'};
+        static constexpr bool required = false;
+        bool present = false;
+        int value = 0;
+    };
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<XArg, ZArg, LArg, SGTArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto ret = SetMotorStallGuard{
+            .motor_id = MotorID::MOTOR_X,
+            .enable = false,
+            .sgt = std::nullopt,
+        };
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.enable = static_cast<bool>(std::get<0>(arguments).value);
+        } else if (std::get<1>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_Z;
+            ret.enable = static_cast<bool>(std::get<1>(arguments).value);
+        } else if (std::get<2>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_L;
+            ret.enable = static_cast<bool>(std::get<2>(arguments).value);
+        } else {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        if (std::get<3>(arguments).present) {
+            ret.sgt = std::get<3>(arguments).value;
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 }  // namespace gcode
