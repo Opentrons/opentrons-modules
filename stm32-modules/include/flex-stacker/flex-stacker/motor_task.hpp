@@ -61,7 +61,7 @@ struct MotorState {
         return speed_mm_per_sec * steps_per_mm;
     }
     [[nodiscard]] auto get_accel() const -> float {
-        return accel_mm_per_sec_sq * steps_per_mm * steps_per_mm;
+        return accel_mm_per_sec_sq * steps_per_mm;
     }
     [[nodiscard]] auto get_speed_discont() const -> float {
         return speed_mm_per_sec_discont * steps_per_mm;
