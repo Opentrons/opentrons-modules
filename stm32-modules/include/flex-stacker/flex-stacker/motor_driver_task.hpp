@@ -224,7 +224,7 @@ class MotorDriverTask {
     }
 
     template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto visit_message(const messages::PollTMCRegisterMessage& m,
+    auto visit_message(const messages::PollStallGuardMessage& m,
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
         static_cast<void>(m);
@@ -232,7 +232,7 @@ class MotorDriverTask {
     }
 
     template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto visit_message(const messages::StopPollTMCRegisterMessage& m,
+    auto visit_message(const messages::StopPollStallGuardMessage& m,
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
         static_cast<void>(m);

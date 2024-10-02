@@ -227,6 +227,11 @@ class MotorTask {
                 motor_state(m.motor_id).get_speed_discont(),
                 motor_state(m.motor_id).get_speed(),
                 motor_state(m.motor_id).get_accel());
+
+        auto driver_message = messages::PollStallGuardMessage{
+            .id = m.id, .motor_id = m.motor_id};
+        static_cast<void>(_task_registry->send_to_address(
+            driver_message, Queues::MotorDriverAddress));
     }
 
     template <MotorControlPolicy Policy>
@@ -289,7 +294,10 @@ class MotorTask {
                 controller_from_id(m.motor_id).get_response_id()};
         static_cast<void>(_task_registry->send_to_address(
             response, Queues::HostCommsAddress));
-    }
+        auto driver_message = messages::StopPollStallGuardMessage{};
+        static_cast<void>(_task_registry->send_to_address(
+            driver_message, Queues::MotorDriverAddress));
+    };
 
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::SetMicrostepsMessage& m, Policy& policy)

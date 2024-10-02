@@ -115,15 +115,12 @@ struct GetTMCRegisterMessage {
     uint8_t reg;
 };
 
-struct PollTMCRegisterMessage {
+struct PollStallGuardMessage {
     uint32_t id;
     MotorID motor_id;
-    uint8_t reg;
 };
 
-struct StopPollTMCRegisterMessage {
-    uint32_t id;
-};
+struct StopPollStallGuardMessage {};
 
 struct GetTMCRegisterResponse {
     uint32_t responding_to_id;
@@ -219,7 +216,7 @@ using SystemMessage =
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
-                   PollTMCRegisterMessage, StopPollTMCRegisterMessage,
+                   PollStallGuardMessage, StopPollStallGuardMessage,
                    SetMotorCurrentMessage, SetMicrostepsMessage>;
 
 using MotorMessage =
