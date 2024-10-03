@@ -3,6 +3,7 @@
 #include "firmware/motor_driver_policy.hpp"
 #include "firmware/motor_hardware.h"
 #include "flex-stacker/motor_driver_task.hpp"
+#include "flex-stacker/tmc2160_interface.hpp"
 #include "ot_utils/freertos/freertos_timer.hpp"
 
 namespace motor_driver_task {
@@ -29,8 +30,9 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     spi_hardware_init();
 
     auto policy = motor_driver_policy::MotorDriverPolicy();
+    auto tmc2160_interface = tmc2160::TMC2160Interface(policy);
     while (true) {
-        _top_task.run_once(policy);
+        _top_task.run_once(tmc2160_interface);
     }
 }
 

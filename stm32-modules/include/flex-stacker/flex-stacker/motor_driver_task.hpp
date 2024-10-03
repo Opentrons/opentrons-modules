@@ -142,11 +142,11 @@ class MotorDriverTask {
     }
 
     template <tmc2160::TMC2160InterfacePolicy Policy>
-    auto run_once(Policy& policy) -> void {
+    auto run_once(tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+        -> void {
         if (!_task_registry) {
             return;
         }
-        auto tmc2160_interface = tmc2160::TMC2160Interface<Policy>(policy);
         if (!_initialized) {
             if (!_tmc2160.initialize_config(motor_x_config, tmc2160_interface,
                                             MotorID::MOTOR_X)) {
