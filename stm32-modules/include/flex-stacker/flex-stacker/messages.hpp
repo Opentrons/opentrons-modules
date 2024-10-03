@@ -224,11 +224,23 @@ struct SetMotorStallGuardMessage {
     std::optional<int32_t> sgt = std::nullopt;
 };
 
+struct GetMotorStallGuardMessage {
+    uint32_t id = 0;
+    MotorID motor_id = MotorID::MOTOR_X;
+};
+
+struct GetMotorStallGuardResponse {
+    uint32_t id;
+    MotorID motor_id;
+    bool enabled;
+    int sgt;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
-                   GetMoveParamsResponse>;
+                   GetMoveParamsResponse, GetMotorStallGuardResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -238,7 +250,7 @@ using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
                    PollTMCRegisterMessage, StopPollTMCRegisterMessage,
                    SetMotorCurrentMessage, SetMicrostepsMessage,
-                   SetMotorStallGuardMessage>;
+                   SetMotorStallGuardMessage, GetMotorStallGuardMessage>;
 
 using MotorMessage =
     ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,

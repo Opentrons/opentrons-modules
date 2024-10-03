@@ -256,7 +256,7 @@ class MotorTask {
         -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
-        controller_from_id(m.motor_id).stop_movement(m.id);
+        controller_from_id(m.motor_id).stop_movement(m.id, true);
     }
 
     template <MotorControlPolicy Policy>
@@ -342,9 +342,9 @@ class MotorTask {
     auto visit_message(const messages::GPIOInterruptMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        _x_controller.stop_movement(0);
-        _z_controller.stop_movement(0);
-        _l_controller.stop_movement(0);
+        _z_controller.stop_movement(0, true);
+        _x_controller.stop_movement(0, false);
+        _l_controller.stop_movement(0, false);
         auto msg = messages::ErrorMessage{
             .code = errors::ErrorCode::MOTOR_STALL_DETECTED};
         static_cast<void>(

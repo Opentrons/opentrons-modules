@@ -304,6 +304,23 @@ class MotorDriverTask {
             response, Queues::HostCommsAddress));
     }
 
+    template <tmc2160::TMC2160InterfacePolicy Policy>
+    auto visit_message(const messages::GetMotorStallGuardMessage& m,
+                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+        -> void {
+        bool enabled = static_cast<bool>(
+            driver_conf_from_id(m.motor_id).gconfig.diag0_stall);
+        int sgt = driver_conf_from_id(m.motor_id).coolconf.sgt;
+        auto response = messages::GetMotorStallGuardResponse{
+            .id = m.id,
+            .motor_id = m.motor_id,
+            .enabled = enabled,
+            .sgt = sgt,
+        };
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
     auto get_current_value(MotorID motor_id, float current) -> uint32_t {
         return _tmc2160.convert_peak_current_to_tmc2160_value(
             current, driver_conf_from_id(motor_id).glob_scale,

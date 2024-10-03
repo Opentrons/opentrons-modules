@@ -794,24 +794,9 @@ struct SetMotorStallGuard {
     static constexpr auto prefix = std::array{'M', '9', '1', '0', ' '};
     static constexpr const char* response = "M910 OK\n";
 
-    struct XArg {
-        static constexpr auto prefix = std::array{'X'};
-        static constexpr bool required = false;
-        bool present = false;
-        int value = 0;
-    };
-    struct ZArg {
-        static constexpr auto prefix = std::array{'Z'};
-        static constexpr bool required = false;
-        bool present = false;
-        int value = 0;
-    };
-    struct LArg {
-        static constexpr auto prefix = std::array{'L'};
-        static constexpr bool required = false;
-        bool present = false;
-        int value = 0;
-    };
+    using XArg = Arg<uint8_t, 'X'>;
+    using ZArg = Arg<uint8_t, 'Z'>;
+    using LArg = Arg<uint8_t, 'L'>;
     struct SGTArg {
         static constexpr auto prefix = std::array{'T'};
         static constexpr bool required = false;
@@ -859,6 +844,57 @@ struct SetMotorStallGuard {
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct GetMotorStallGuard {
+    MotorID motor_id;
+    using ParseResult = std::optional<GetMotorStallGuard>;
+    static constexpr auto prefix = std::array{'M', '9', '1', '1'};
+
+    using ArgX = ArgNoVal<'X'>;
+    using ArgZ = ArgNoVal<'Z'>;
+    using ArgL = ArgNoVal<'L'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        MotorID motor = MotorID::MOTOR_X;
+        auto res = gcode::SingleParser<ArgX, ArgZ, ArgL>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        if (std::get<1>(arguments).present) {
+            motor = MotorID::MOTOR_Z;
+        } else if (std::get<2>(arguments).present) {
+            motor = MotorID::MOTOR_L;
+        } else if (!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(
+            ParseResult(GetMotorStallGuard{.motor_id = motor}), res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    MotorID motor_id, bool enabled,
+                                    int threshold) -> InputIt {
+        char motor_char = motor_id == MotorID::MOTOR_X   ? 'X'
+                          : motor_id == MotorID::MOTOR_Z ? 'Z'
+                                                         : 'L';
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf), "M911 %c%d T:%d OK\n", motor_char,
+                       int(enabled), threshold);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
     }
 };
 

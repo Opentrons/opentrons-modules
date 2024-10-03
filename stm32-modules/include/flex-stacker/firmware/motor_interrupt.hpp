@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <cstdint>
 
 #include "firmware/motor_hardware.h"
 #include "firmware/motor_policy.hpp"
@@ -76,9 +77,9 @@ class MotorInterruptController {
         _policy->enable_motor(_id);
         _response_id = move_id;
     }
-    auto stop_movement(uint32_t move_id) -> void {
+    auto stop_movement(uint32_t move_id, bool disable_motor) -> void {
         _stop = true;
-        _policy->disable_motor(_id);
+        disable_motor ? _policy->disable_motor(_id) : _policy->stop_motor(_id);
         _response_id = move_id;
     }
 
