@@ -247,6 +247,15 @@ class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::StallGuardResultMessage& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        return gcode::StallGuardResult::write_response_into(
+            tx_into, tx_limit, response.data);
+    }
+
+    template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetSystemInfoResponse& response,

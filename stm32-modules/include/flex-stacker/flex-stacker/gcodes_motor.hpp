@@ -49,6 +49,37 @@ struct ArgNoPrefix {
     ValueType value = ValueType{};
 };
 
+struct StallGuardResult {
+    uint32_t data;
+
+    using ParseResult = std::optional<StallGuardResult>;
+    static constexpr auto prefix = std::array{'M', '9', '0', '0', ' '};
+
+    template <typename InputIt, typename Limit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(StallGuardResult()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    uint32_t data) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf), "M900 %lu OK\n", data);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
 struct GetTMCRegister {
     MotorID motor_id;
     uint8_t reg;

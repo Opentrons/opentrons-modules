@@ -120,6 +120,10 @@ struct PollStallGuardMessage {
     MotorID motor_id;
 };
 
+struct StallGuardResultMessage {
+    uint32_t data;
+};
+
 struct StopPollStallGuardMessage {};
 
 struct GetTMCRegisterResponse {
@@ -208,7 +212,7 @@ using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
-                   GetMoveParamsResponse>;
+                   GetMoveParamsResponse, StallGuardResultMessage>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -217,7 +221,7 @@ using SystemMessage =
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
                    PollStallGuardMessage, StopPollStallGuardMessage,
-                   SetMotorCurrentMessage, SetMicrostepsMessage>;
+                   SetMotorCurrentMessage, SetMicrostepsMessage, StallGuardResultMessage>;
 
 using MotorMessage =
     ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
