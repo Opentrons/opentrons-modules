@@ -114,6 +114,38 @@ class TMC2160Interface {
         return RT(retval);
     }
 
+    auto create_stallguard_message() -> MessageT {
+        return build_message(Registers::DRVSTATUS, WriteFlag::READ, 0).value();
+    }
+
+    auto stream_stallguard(MotorID motor_id)
+        -> std::optional<RegisterSerializedType> {
+        using RT = std::optional<RegisterSerializedType>;
+        auto buffer = create_stallguard_message();
+        auto ret = _policy.tmc2160_transmit_receive(motor_id, buffer.value());
+        if (!ret.has_value()) {
+            return RT();
+        }
+
+
+        for (;;) {
+
+            ret = _policy.tmc2160_transmit_receive(motor_id, buffer.value());
+            if (!ret.has_value()) {
+                return RT();
+            }
+            ret = _policy.tmc2160_transmit_receive(motor_id, buffer.value());
+            if (!ret.has_value()) {
+                return RT();
+            }
+            auto* iter = ret.value().begin();
+            std::advance(iter, 1);
+
+            RegisterSerializedType retval = 0;
+            iter = bit_utils::bytes_to_int(iter, ret.value().end(), retval);
+        }
+    }
+
   private:
     Policy& _policy;
 };
