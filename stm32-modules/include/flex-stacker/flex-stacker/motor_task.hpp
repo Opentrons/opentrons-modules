@@ -228,8 +228,8 @@ class MotorTask {
                 motor_state(m.motor_id).get_speed(),
                 motor_state(m.motor_id).get_accel());
 
-        auto driver_message = messages::PollStallGuardMessage{
-            .id = m.id, .motor_id = m.motor_id};
+        auto driver_message =
+            messages::PollStallGuardMessage{.id = m.id, .motor_id = m.motor_id};
         static_cast<void>(_task_registry->send_to_address(
             driver_message, Queues::MotorDriverAddress));
     }

@@ -21,39 +21,43 @@ static tasks::FirmwareTasks::MotorDriverQueue
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _top_task = motor_driver_task::MotorDriverTask(_queue, nullptr);
 
-
 static constexpr uint32_t STREAM_TASK_DEPTH = 200;
 StaticTask_t stream_task_buffer;
-StackType_t stream_task_stack[ STREAM_TASK_DEPTH ];
+StackType_t stream_task_stack[STREAM_TASK_DEPTH];
+static constexpr uint32_t FREQ_MS = 50;
 
 static void run_stallguard_task(void* arg) {
-    auto& interface = *static_cast<tmc2160::TMC2160Interface*>(arg);
+    auto* interface = static_cast<
+        tmc2160::TMC2160Interface<motor_driver_policy::MotorDriverPolicy>*>(
+        arg);
+
     uint32_t ulNotifiedValue;
     MotorID motor_id;
 
-    xTaskNotifyWait(0, 0, &ulNotifiedValue, portMAX_DELAY);
-    switch (ulNotifiedValue) {
-        case 1:
-            motor_id = MotorID::MOTOR_X;
-            break;
-        case 2:
-            motor_id = MotorID::MOTOR_Z;
-            break;
-        case 3:
-            motor_id = MotorID::MOTOR_L;
-            break;
-        default:
-            return;
-    }
+    xTaskNotifyWait(0, 0xffffffff, &ulNotifiedValue, portMAX_DELAY);
+    motor_id = ulNotifiedValue == 1 ? MotorID::MOTOR_X
+               : 2                  ? MotorID::MOTOR_Z
+                                    : MotorID::MOTOR_L;
+    static_cast<void>(interface->read_stallguard(motor_id));
     for (;;) {
-//        auto value = interface.stream_stallguard(motor_id);
-//        if (value.has_value()) {
-//            _queue.send_message(value.value());
-//        }
-        auto msg = messages::StallGuardResultMessage{.data = motor_id};
-        static_cast<void>(_queue.try_send_from_isr(msg));
-        vTaskDelay(pdMS_TO_TICKS(100));
+        if (xTaskNotifyWait(0x00, 0xFFFFFFFF, &ulNotifiedValue, 0) == pdPASS) {
+            // value changed
+            motor_id = (ulNotifiedValue == 1)   ? MotorID::MOTOR_X
+                       : (ulNotifiedValue == 2) ? MotorID::MOTOR_Z
+                                                : MotorID::MOTOR_L;
+            // restart first reading
+            static_cast<void>(interface->read_stallguard(motor_id));
+        } else {
+            auto value = interface->read_stallguard(motor_id);
+            if (value.has_value()) {
+                auto msg =
+                    messages::StallGuardResultMessage{.data = value.value()};
+                static_cast<void>(_queue.try_send_from_isr(msg));
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(FREQ_MS));
     }
+
 }
 
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
@@ -67,7 +71,9 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     auto policy = motor_driver_policy::MotorDriverPolicy();
     auto tmc2160_interface = tmc2160::TMC2160Interface(policy);
 
-    auto* stream_handle = xTaskCreateStatic(run_stallguard_task, "Stallguard Task", STREAM_TASK_DEPTH, (void *)&tmc2160_interface, 1, stream_task_stack, &stream_task_buffer);
+    auto* stream_handle = xTaskCreateStatic(
+        run_stallguard_task, "Stallguard Task", STREAM_TASK_DEPTH,
+        &tmc2160_interface, 1, stream_task_stack, &stream_task_buffer);
     vTaskSuspend(stream_handle);
     _top_task.provide_stallguard_handle(stream_handle);
 

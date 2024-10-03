@@ -145,6 +145,19 @@ class MotorDriverTask {
         }
     }
 
+    auto int_from_id(MotorID motor_id) -> uint8_t {
+        switch (motor_id) {
+            case MotorID::MOTOR_X:
+                return 1;
+            case MotorID::MOTOR_Z:
+                return 2;
+            case MotorID::MOTOR_L:
+                return 3;
+            default:
+                return 0;
+        }
+    }
+
     template <tmc2160::TMC2160InterfacePolicy Policy>
     auto run_once(tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
@@ -233,8 +246,8 @@ class MotorDriverTask {
         -> void {
         if (_stream_task_handle != NULL) {
             vTaskResume(_stream_task_handle);
-            auto motor_id = m.motor_id;
-            xTaskNotify(_stream_task_handle, static_cast<uint8_t>(motor_id), eSetValueWithOverwrite);
+            xTaskNotify(_stream_task_handle, int_from_id(m.motor_id),
+                        eSetValueWithoutOverwrite);
         }
     }
 
@@ -243,6 +256,7 @@ class MotorDriverTask {
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
         if (_stream_task_handle != NULL) {
+            xTaskNotify(_stream_task_handle, 0, eSetValueWithoutOverwrite);
             vTaskSuspend(_stream_task_handle);
         }
     }
@@ -251,8 +265,8 @@ class MotorDriverTask {
     auto visit_message(const messages::StallGuardResultMessage& m,
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
-        static_cast<void>(_task_registry->send_to_address(
-            m, Queues::HostCommsAddress));
+        static_cast<void>(
+            _task_registry->send_to_address(m, Queues::HostCommsAddress));
     }
 
     template <tmc2160::TMC2160InterfacePolicy Policy>
