@@ -114,9 +114,9 @@ class TMC2160Interface {
         return RT(retval);
     }
 
-    auto read_stallguard(MotorID motor_id)
-        -> uint32_t {
-        MessageT stallguard_msg = {static_cast<uint8_t>(Registers::DRVSTATUS), 0x00, 0x00, 0x00, 0x00};
+    auto read_stallguard(MotorID motor_id) -> uint32_t {
+        MessageT stallguard_msg = {static_cast<uint8_t>(Registers::DRVSTATUS),
+                                   0x00, 0x00, 0x00, 0x00};
         auto ret = _policy.tmc2160_transmit_receive(motor_id, stallguard_msg);
         if (!ret.has_value()) {
             return 0;
