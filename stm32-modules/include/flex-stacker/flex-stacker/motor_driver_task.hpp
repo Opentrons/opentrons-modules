@@ -248,7 +248,7 @@ class MotorDriverTask {
         if (_stream_task_handle != nullptr) {
             vTaskResume(_stream_task_handle);
             xTaskNotify(_stream_task_handle, int_from_id(m.motor_id),
-                        eSetValueWithoutOverwrite);
+                        eSetValueWithOverwrite);
         }
     }
 
@@ -259,7 +259,7 @@ class MotorDriverTask {
         static_cast<void>(m);
         static_cast<void>(tmc2160_interface);
         if (_stream_task_handle != nullptr) {
-            xTaskNotify(_stream_task_handle, 0, eSetValueWithoutOverwrite);
+            xTaskNotify(_stream_task_handle, 0, eSetValueWithOverwrite);
             vTaskSuspend(_stream_task_handle);
         }
     }
