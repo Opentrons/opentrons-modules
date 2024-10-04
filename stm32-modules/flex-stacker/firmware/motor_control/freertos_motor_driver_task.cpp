@@ -1,4 +1,5 @@
 #include "FreeRTOS.h"
+#include "climits"
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/motor_driver_policy.hpp"
 #include "firmware/motor_hardware.h"
@@ -22,25 +23,27 @@ static tasks::FirmwareTasks::MotorDriverQueue
 static auto _top_task = motor_driver_task::MotorDriverTask(_queue, nullptr);
 
 static constexpr uint32_t STREAM_TASK_DEPTH = 200;
-StaticTask_t stream_task_buffer;
-StackType_t stream_task_stack[STREAM_TASK_DEPTH];
-static constexpr uint32_t FREQ_MS = 50;
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static StaticTask_t stream_task_buffer;
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static std::array<StackType_t, STREAM_TASK_DEPTH> stream_task_stack;
+static constexpr uint32_t FREQ_MS = 10;
 
 static void run_stallguard_task(void* arg) {
     auto* interface = static_cast<
         tmc2160::TMC2160Interface<motor_driver_policy::MotorDriverPolicy>*>(
         arg);
 
-    uint32_t ulNotifiedValue;
-    MotorID motor_id;
+    uint32_t ulNotifiedValue = 0;
+    MotorID motor_id = MotorID::MOTOR_X;
 
-    xTaskNotifyWait(0, 0xffffffff, &ulNotifiedValue, portMAX_DELAY);
-    motor_id = ulNotifiedValue == 1 ? MotorID::MOTOR_X
-               : 2                  ? MotorID::MOTOR_Z
-                                    : MotorID::MOTOR_L;
+    xTaskNotifyWait(0, ULONG_MAX, &ulNotifiedValue, portMAX_DELAY);
+    motor_id = (ulNotifiedValue == 1)   ? MotorID::MOTOR_X
+               : (ulNotifiedValue == 2) ? MotorID::MOTOR_Z
+                                        : MotorID::MOTOR_L;
     static_cast<void>(interface->read_stallguard(motor_id));
     for (;;) {
-        if (xTaskNotifyWait(0x00, 0xFFFFFFFF, &ulNotifiedValue, 0) == pdPASS) {
+        if (xTaskNotifyWait(0, ULONG_MAX, &ulNotifiedValue, 0) == pdPASS) {
             // value changed
             motor_id = (ulNotifiedValue == 1)   ? MotorID::MOTOR_X
                        : (ulNotifiedValue == 2) ? MotorID::MOTOR_Z
@@ -48,16 +51,12 @@ static void run_stallguard_task(void* arg) {
             // restart first reading
             static_cast<void>(interface->read_stallguard(motor_id));
         } else {
-            auto value = interface->read_stallguard(motor_id);
-            if (value.has_value()) {
-                auto msg =
-                    messages::StallGuardResultMessage{.data = value.value()};
-                static_cast<void>(_queue.try_send_from_isr(msg));
-            }
+            auto result = interface->read_stallguard(motor_id);
+            auto msg = messages::StallGuardResultMessage{.data = result};
+            static_cast<void>(_queue.try_send_from_isr(msg));
         }
         vTaskDelay(pdMS_TO_TICKS(FREQ_MS));
     }
-
 }
 
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
@@ -73,7 +72,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
 
     auto* stream_handle = xTaskCreateStatic(
         run_stallguard_task, "Stallguard Task", STREAM_TASK_DEPTH,
-        &tmc2160_interface, 1, stream_task_stack, &stream_task_buffer);
+        &tmc2160_interface, 1, stream_task_stack.data(), &stream_task_buffer);
     vTaskSuspend(stream_handle);
     _top_task.provide_stallguard_handle(stream_handle);
 

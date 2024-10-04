@@ -244,7 +244,8 @@ class MotorDriverTask {
     auto visit_message(const messages::PollStallGuardMessage& m,
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
-        if (_stream_task_handle != NULL) {
+        static_cast<void>(tmc2160_interface);
+        if (_stream_task_handle != nullptr) {
             vTaskResume(_stream_task_handle);
             xTaskNotify(_stream_task_handle, int_from_id(m.motor_id),
                         eSetValueWithoutOverwrite);
@@ -255,7 +256,9 @@ class MotorDriverTask {
     auto visit_message(const messages::StopPollStallGuardMessage& m,
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
-        if (_stream_task_handle != NULL) {
+        static_cast<void>(m);
+        static_cast<void>(tmc2160_interface);
+        if (_stream_task_handle != nullptr) {
             xTaskNotify(_stream_task_handle, 0, eSetValueWithoutOverwrite);
             vTaskSuspend(_stream_task_handle);
         }
@@ -265,6 +268,7 @@ class MotorDriverTask {
     auto visit_message(const messages::StallGuardResultMessage& m,
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
+        static_cast<void>(tmc2160_interface);
         static_cast<void>(
             _task_registry->send_to_address(m, Queues::HostCommsAddress));
     }
@@ -328,6 +332,6 @@ class MotorDriverTask {
     tmc2160::TMC2160RegisterMap _z_config = motor_z_config;
     tmc2160::TMC2160RegisterMap _l_config = motor_l_config;
 
-    TaskHandle_t _stream_task_handle = NULL;
+    TaskHandle_t _stream_task_handle = nullptr;
 };
 };  // namespace motor_driver_task
