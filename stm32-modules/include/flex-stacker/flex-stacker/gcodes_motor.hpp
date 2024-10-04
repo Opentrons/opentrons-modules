@@ -495,7 +495,9 @@ struct MoveMotorInSteps {
             ret.steps_per_second_sq = std::get<4>(arguments).value;
         }
 
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (std::get<5>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
             ret.stream_stallguard = true;
         }
         return std::make_pair(ret, res.second);
@@ -572,6 +574,7 @@ struct MoveMotorInMm {
             // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
             ret.mm_per_second_discont = std::get<5>(arguments).value;
         }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (std::get<6>(arguments).present) {
             // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
             ret.stream_stallguard = true;

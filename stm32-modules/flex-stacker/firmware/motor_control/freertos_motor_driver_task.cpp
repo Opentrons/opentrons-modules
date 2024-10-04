@@ -46,7 +46,8 @@ static void run_stallguard_task(void* arg) {
                                                 : MotorID::MOTOR_L;
             static_cast<void>(interface->read_stallguard(motor_id));
             for (;;) {
-                if (xTaskNotifyWait(ULONG_MAX, ULONG_MAX, NULL, 0) == pdPASS) {
+                if (xTaskNotifyWait(ULONG_MAX, ULONG_MAX, nullptr, 0) ==
+                    pdPASS) {
                     // Received a notification! This notification should only be
                     // used to break the for loop and the value would not be
                     // read. This, together with the task suspend issued by the
