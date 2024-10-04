@@ -202,6 +202,12 @@ class MotorTask {
         controller_from_id(m.motor_id)
             .start_fixed_movement(m.id, direction, std::abs(m.steps), 0,
                                   m.steps_per_second, m.steps_per_second_sq);
+        if (m.stream_stallguard) {
+            auto driver_message = messages::PollStallGuardMessage{
+                .id = m.id, .motor_id = m.motor_id};
+            static_cast<void>(_task_registry->send_to_address(
+                driver_message, Queues::MotorDriverAddress));
+        }
     }
 
     template <MotorControlPolicy Policy>
@@ -228,10 +234,12 @@ class MotorTask {
                 motor_state(m.motor_id).get_speed(),
                 motor_state(m.motor_id).get_accel());
 
-        auto driver_message =
-            messages::PollStallGuardMessage{.id = m.id, .motor_id = m.motor_id};
-        static_cast<void>(_task_registry->send_to_address(
-            driver_message, Queues::MotorDriverAddress));
+        if (m.stream_stallguard) {
+            auto driver_message = messages::PollStallGuardMessage{
+                .id = m.id, .motor_id = m.motor_id};
+            static_cast<void>(_task_registry->send_to_address(
+                driver_message, Queues::MotorDriverAddress));
+        }
     }
 
     template <MotorControlPolicy Policy>
@@ -254,6 +262,12 @@ class MotorTask {
                             motor_state(m.motor_id).get_speed_discont(),
                             motor_state(m.motor_id).get_speed(),
                             motor_state(m.motor_id).get_accel());
+        if (m.stream_stallguard) {
+            auto driver_message = messages::PollStallGuardMessage{
+                .id = m.id, .motor_id = m.motor_id};
+            static_cast<void>(_task_registry->send_to_address(
+                driver_message, Queues::MotorDriverAddress));
+        }
     }
 
     template <MotorControlPolicy Policy>
@@ -261,6 +275,10 @@ class MotorTask {
         -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
+        // stops stallguard streaming task if it's running
+        auto driver_message = messages::StopPollStallGuardMessage{};
+        static_cast<void>(_task_registry->send_to_address(
+            driver_message, Queues::MotorDriverAddress));
     }
 
     template <MotorControlPolicy Policy>

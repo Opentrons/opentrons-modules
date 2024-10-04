@@ -40,24 +40,25 @@ static void run_stallguard_task(void* arg) {
     while (true) {
         // wait for a new notification
         xTaskNotifyWait(0, ULONG_MAX, &ulNotifiedValue, portMAX_DELAY);
-        motor_id = (ulNotifiedValue == 1)   ? MotorID::MOTOR_X
-                   : (ulNotifiedValue == 2) ? MotorID::MOTOR_Z
-                                            : MotorID::MOTOR_L;
-        static_cast<void>(interface->read_stallguard(motor_id));
-        for (;;) {
-            if (xTaskNotifyWait(ULONG_MAX, ULONG_MAX, &ulNotifiedValue, 0) ==
-                pdPASS) {
-                // Received a notification! This notification should only be
-                // used to break the for loop and the value would not be read.
-                // This, together with the task suspend issued by the top task,
-                // makes sure that we can't just switch from the current motor
-                // to another one immediately
-                break;
+        if (ulNotifiedValue > 0) {
+            motor_id = (ulNotifiedValue == 1)   ? MotorID::MOTOR_X
+                       : (ulNotifiedValue == 2) ? MotorID::MOTOR_Z
+                                                : MotorID::MOTOR_L;
+            static_cast<void>(interface->read_stallguard(motor_id));
+            for (;;) {
+                if (xTaskNotifyWait(ULONG_MAX, ULONG_MAX, NULL, 0) == pdPASS) {
+                    // Received a notification! This notification should only be
+                    // used to break the for loop and the value would not be
+                    // read. This, together with the task suspend issued by the
+                    // top task, makes sure that we can't just switch from the
+                    // current motor to another one immediately
+                    break;
+                }
+                auto result = interface->read_stallguard(motor_id);
+                auto msg = messages::StallGuardResultMessage{.data = result};
+                static_cast<void>(_queue.try_send_from_isr(msg));
+                vTaskDelay(pdMS_TO_TICKS(FREQ_MS));
             }
-            auto result = interface->read_stallguard(motor_id);
-            auto msg = messages::StallGuardResultMessage{.data = result};
-            static_cast<void>(_queue.try_send_from_isr(msg));
-            vTaskDelay(pdMS_TO_TICKS(FREQ_MS));
         }
     }
 }
