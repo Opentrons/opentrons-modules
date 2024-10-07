@@ -101,6 +101,8 @@ class MotorInterruptController {
         return false;
     }
 
+    auto set_diag0_irq(bool enable) -> void { _policy->set_diag0_irq(enable); }
+
   private:
     MotorID _id;
     MotorPolicy* _policy;

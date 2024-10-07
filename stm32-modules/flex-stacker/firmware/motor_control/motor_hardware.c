@@ -172,7 +172,6 @@ void motor_hardware_gpio_init(void){
     init.Pin = MOTOR_DIAG0_PIN;
     HAL_GPIO_Init(MOTOR_DIAG0_PORT, &init);
     HAL_NVIC_SetPriority(EXTI15_10_IRQn, 6, 0);
-    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 // X motor timer
@@ -364,6 +363,12 @@ bool hw_read_limit_switch(MotorID motor_id, bool direction) {
         return HAL_GPIO_ReadPin(motor.limit_switch_minus.port,
                                 motor.limit_switch_minus.pin) ==
            motor.limit_switch_minus.active_setting;
+}
+
+void hw_set_diag0_irq(bool enable) {
+    enable ?
+        HAL_NVIC_EnableIRQ(EXTI15_10_IRQn) :
+        HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 }
 
 void TIM3_IRQHandler(void)

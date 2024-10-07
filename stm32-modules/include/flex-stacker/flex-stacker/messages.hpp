@@ -41,14 +41,6 @@ concept Response = requires(ResponseType rt) {
     { get_responding_to_id(rt) } -> std::same_as<uint32_t>;
 };
 
-/**
- * A message sent when an external interrupt is triguered
- */
-struct GPIOInterruptMessage {
-    uint16_t pin;
-    uint8_t state;
-};
-
 /*
 ** Message structs initiate actions. These may be changes in physical state, or
 ** a request to send back some data. Each carries an ID, which should be copied
@@ -217,6 +209,17 @@ struct GetMoveParamsResponse {
     float velocity_discont;
 };
 
+// Message to enable/disable the diag0 pin
+struct SetDiag0IRQMessage {
+    bool enable;
+};
+
+// Message sent when there is an irq on the diag0 line
+struct GPIOInterruptMessage {
+    uint16_t pin;
+    uint8_t state;
+};
+
 struct SetMotorStallGuardMessage {
     uint32_t id = 0;
     MotorID motor_id = MotorID::MOTOR_X;
@@ -252,11 +255,10 @@ using MotorDriverMessage =
                    SetMotorCurrentMessage, SetMicrostepsMessage,
                    SetMotorStallGuardMessage, GetMotorStallGuardMessage>;
 
-using MotorMessage =
-    ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
-                   MoveToLimitSwitchMessage, StopMotorMessage,
-                   MoveCompleteMessage, GetLimitSwitchesMessage,
-                   MoveMotorInMmMessage, SetMicrostepsMessage,
-                   GetMoveParamsMessage, GPIOInterruptMessage>;
+using MotorMessage = ::std::variant<
+    std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
+    MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
+    GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
+    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage>;
 
 };  // namespace messages

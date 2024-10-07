@@ -17,6 +17,7 @@
 #include "flex-stacker/tasks.hpp"
 #include "flex-stacker/tmc2160_registers.hpp"
 #include "hal/message_queue.hpp"
+#include "messages.hpp"
 
 namespace motor_task {
 
@@ -339,8 +340,17 @@ class MotorTask {
     }
 
     template <MotorControlPolicy Policy>
+    auto visit_message(const messages::SetDiag0IRQMessage& m, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        // NOTE: The diag0 pin is shared by all motors.
+        _x_controller.set_diag0_irq(m.enable);
+    }
+
+    template <MotorControlPolicy Policy>
     auto visit_message(const messages::GPIOInterruptMessage& m, Policy& policy)
         -> void {
+        static_cast<void>(m);
         static_cast<void>(policy);
         _z_controller.stop_movement(0, true);
         _x_controller.stop_movement(0, false);

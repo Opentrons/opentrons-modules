@@ -160,6 +160,12 @@ class TMC2160 {
         return reg;
     }
 
+    static auto verify_sgt_value(std::optional<int> sgt) -> bool {
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (sgt.has_value()) return sgt.value() >= -64 && sgt.value() <= 63;
+        return true;
+    }
+
     // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
     [[nodiscard]] auto convert_peak_current_to_tmc2160_value(
         float peak_c, const GlobalScaler& glob_scale,

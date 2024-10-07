@@ -765,33 +765,6 @@ class HostCommsTask {
             cache_entry);
     }
 
-    /*
-
-    template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_message(const messages::GetMoveParamsResponse& response,
-                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry =
-            get_move_params_cache.remove_if_present(response.responding_to_id);
-        return std::visit(
-            [tx_into, tx_limit, response](auto cache_element) {
-                using T = std::decay_t<decltype(cache_element)>;
-                if constexpr (std::is_same_v<std::monostate, T>) {
-                    return errors::write_into(
-                        tx_into, tx_limit,
-                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
-                } else {
-                    return cache_element.write_response_into(
-                        tx_into, tx_limit, response.motor_id, response.velocity,
-                        response.acceleration, response.velocity_discont);
-                }
-            },
-            cache_entry);
-    }
-
-    */
-
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&

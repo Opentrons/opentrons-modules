@@ -20,6 +20,7 @@ bool hw_disable_motor(MotorID motor_id);
 bool hw_stop_motor(MotorID motor_id);
 void hw_set_direction(MotorID, bool direction);
 bool hw_read_limit_switch(MotorID motor_id, bool direction);
+void hw_set_diag0_irq(bool enable);
 
 #ifdef __cplusplus
 }  // extern "C"

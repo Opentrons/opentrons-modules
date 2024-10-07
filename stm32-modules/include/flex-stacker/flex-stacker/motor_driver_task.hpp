@@ -282,24 +282,31 @@ class MotorDriverTask {
     auto visit_message(const messages::SetMotorStallGuardMessage& m,
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
-        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
-        driver_conf_from_id(m.motor_id).gconfig.diag0_stall =
-            static_cast<int>(m.enable);
-        if (m.sgt.has_value()) {
-            if (m.sgt.value() >= -64 && m.sgt.value() <= 63) {
-                driver_conf_from_id(m.motor_id).coolconf.sgt = m.sgt.value();
-            } else {
-                response.with_error = errors::ErrorCode::TMC2160_INVALID_VALUE;
-            }
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id = m.id,
+            .with_error = errors::ErrorCode::NO_ERROR};
+
+        if (_tmc2160.verify_sgt_value(m.sgt)) {
+            driver_conf_from_id(m.motor_id).coolconf.sgt = m.sgt.value();
+            driver_conf_from_id(m.motor_id).gconfig.diag0_stall =
+                static_cast<int>(m.enable);
+        } else {
+            response.with_error = errors::ErrorCode::TMC2160_INVALID_VALUE;
         }
         if (!_tmc2160.update_coolconf(driver_conf_from_id(m.motor_id),
                                       tmc2160_interface, m.motor_id)) {
             response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
-        };
+        }
         if (!_tmc2160.update_gconfig(driver_conf_from_id(m.motor_id),
                                      tmc2160_interface, m.motor_id)) {
             response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
-        };
+        }
+
+        if (response.with_error == errors::ErrorCode::NO_ERROR) {
+            auto message = messages::SetDiag0IRQMessage{.enable = m.enable};
+            static_cast<void>(
+                _task_registry->send_to_address(message, Queues::MotorAddress));
+        }
         static_cast<void>(_task_registry->send_to_address(
             response, Queues::HostCommsAddress));
     }
