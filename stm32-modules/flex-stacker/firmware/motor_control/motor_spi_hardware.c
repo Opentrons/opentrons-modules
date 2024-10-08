@@ -279,7 +279,7 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 bool motor_spi_sendreceive(
     MotorID motor_id, uint8_t *txData, uint8_t *rxData, uint16_t size
 ) {
-    const TickType_t max_block_time = pdMS_TO_TICKS(100);
+    const TickType_t max_block_time = pdMS_TO_TICKS(10);
     uint32_t notification_val = 0;
 
     if (!_spi.initialized || (_spi.task_to_notify != NULL) || (size > MOTOR_MAX_SPI_LEN)) {

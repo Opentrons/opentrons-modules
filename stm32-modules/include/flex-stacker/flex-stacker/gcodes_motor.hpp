@@ -49,6 +49,37 @@ struct ArgNoPrefix {
     ValueType value = ValueType{};
 };
 
+struct StallGuardResult {
+    uint32_t data;
+
+    using ParseResult = std::optional<StallGuardResult>;
+    static constexpr auto prefix = std::array{'M', '9', '0', '0', ' '};
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(StallGuardResult()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit, uint32_t data)
+        -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf), "M900 %lu OK\n", data);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
 struct GetTMCRegister {
     MotorID motor_id;
     uint8_t reg;
@@ -409,6 +440,7 @@ struct MoveMotorInSteps {
     int32_t steps;
     uint32_t steps_per_second;
     uint32_t steps_per_second_sq;
+    bool stream_stallguard;
 
     using ParseResult = std::optional<MoveMotorInSteps>;
     static constexpr auto prefix = std::array{'G', '0', '.', 'S', ' '};
@@ -419,6 +451,7 @@ struct MoveMotorInSteps {
     using LArg = Arg<int32_t, 'L'>;
     using FreqArg = Arg<uint32_t, 'F'>;
     using RampArg = Arg<uint32_t, 'R'>;
+    using StreamArg = ArgNoVal<'S'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -426,8 +459,8 @@ struct MoveMotorInSteps {
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         auto res =
-            gcode::SingleParser<XArg, ZArg, LArg, FreqArg,
-                                RampArg>::parse_gcode(input, limit, prefix);
+            gcode::SingleParser<XArg, ZArg, LArg, FreqArg, RampArg,
+                                StreamArg>::parse_gcode(input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
@@ -436,6 +469,7 @@ struct MoveMotorInSteps {
             .steps = 0,
             .steps_per_second = 0,
             .steps_per_second_sq = 0,
+            .stream_stallguard = false,
         };
 
         auto arguments = res.first.value();
@@ -460,6 +494,12 @@ struct MoveMotorInSteps {
         if (std::get<4>(arguments).present) {
             ret.steps_per_second_sq = std::get<4>(arguments).value;
         }
+
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (std::get<5>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            ret.stream_stallguard = true;
+        }
         return std::make_pair(ret, res.second);
     }
 
@@ -474,6 +514,7 @@ struct MoveMotorInSteps {
 struct MoveMotorInMm {
     MotorID motor_id;
     float mm;
+    bool stream_stallguard;
     std::optional<float> mm_per_second, mm_per_second_sq, mm_per_second_discont;
 
     using ParseResult = std::optional<MoveMotorInMm>;
@@ -486,6 +527,7 @@ struct MoveMotorInMm {
     using VelArg = Arg<float, 'V'>;
     using AccelArg = Arg<float, 'A'>;
     using DiscontArg = Arg<float, 'D'>;
+    using StreamArg = ArgNoVal<'S'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -493,14 +535,15 @@ struct MoveMotorInMm {
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         auto res =
-            gcode::SingleParser<XArg, ZArg, LArg, VelArg, AccelArg,
-                                DiscontArg>::parse_gcode(input, limit, prefix);
+            gcode::SingleParser<XArg, ZArg, LArg, VelArg, AccelArg, DiscontArg,
+                                StreamArg>::parse_gcode(input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
         auto ret = MoveMotorInMm{
             .motor_id = MotorID::MOTOR_X,
             .mm = 0.0,
+            .stream_stallguard = false,
             .mm_per_second = std::nullopt,
             .mm_per_second_sq = std::nullopt,
             .mm_per_second_discont = std::nullopt,
@@ -531,6 +574,11 @@ struct MoveMotorInMm {
             // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
             ret.mm_per_second_discont = std::get<5>(arguments).value;
         }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (std::get<6>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            ret.stream_stallguard = true;
+        }
         return std::make_pair(ret, res.second);
     }
 
@@ -545,6 +593,7 @@ struct MoveMotorInMm {
 struct MoveToLimitSwitch {
     MotorID motor_id;
     bool direction;
+    bool stream_stallguard;
     std::optional<float> mm_per_second, mm_per_second_sq, mm_per_second_discont;
 
     using ParseResult = std::optional<MoveToLimitSwitch>;
@@ -557,6 +606,7 @@ struct MoveToLimitSwitch {
     using VelArg = Arg<float, 'V'>;
     using AccelArg = Arg<float, 'A'>;
     using DiscontArg = Arg<float, 'D'>;
+    using StreamArg = ArgNoVal<'S'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -564,14 +614,15 @@ struct MoveToLimitSwitch {
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         auto res =
-            gcode::SingleParser<XArg, ZArg, LArg, VelArg, AccelArg,
-                                DiscontArg>::parse_gcode(input, limit, prefix);
+            gcode::SingleParser<XArg, ZArg, LArg, VelArg, AccelArg, DiscontArg,
+                                StreamArg>::parse_gcode(input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
         auto ret = MoveToLimitSwitch{
             .motor_id = MotorID::MOTOR_X,
             .direction = false,
+            .stream_stallguard = false,
             .mm_per_second = std::nullopt,
             .mm_per_second_sq = std::nullopt,
             .mm_per_second_discont = std::nullopt,
@@ -604,6 +655,12 @@ struct MoveToLimitSwitch {
             // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
             ret.mm_per_second_discont = std::get<5>(arguments).value;
         }
+
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (std::get<6>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            ret.stream_stallguard = true;
+        }
         return std::make_pair(ret, res.second);
     }
 
@@ -619,6 +676,7 @@ struct MoveMotor {
     MotorID motor_id;
     bool direction;
     uint32_t frequency;
+    bool stream_stallguard;
 
     using ParseResult = std::optional<MoveMotor>;
     static constexpr auto prefix = std::array{'G', '5', ' '};
@@ -628,6 +686,7 @@ struct MoveMotor {
     using ZArg = Arg<int, 'Z'>;
     using LArg = Arg<int, 'L'>;
     using FreqArg = Arg<uint32_t, 'F'>;
+    using StreamArg = ArgNoVal<'S'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -643,6 +702,7 @@ struct MoveMotor {
             .motor_id = MotorID::MOTOR_X,
             .direction = false,
             .frequency = 0,
+            .stream_stallguard = false,
         };
 
         auto arguments = res.first.value();
@@ -660,6 +720,9 @@ struct MoveMotor {
 
         if (std::get<3>(arguments).present) {
             ret.frequency = std::get<3>(arguments).value;
+        }
+        if (std::get<4>(arguments).present) {
+            ret.stream_stallguard = true;
         }
         return std::make_pair(ret, res.second);
     }

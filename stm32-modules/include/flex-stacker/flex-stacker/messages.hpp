@@ -115,15 +115,16 @@ struct GetTMCRegisterMessage {
     uint8_t reg;
 };
 
-struct PollTMCRegisterMessage {
+struct PollStallGuardMessage {
     uint32_t id;
     MotorID motor_id;
-    uint8_t reg;
 };
 
-struct StopPollTMCRegisterMessage {
-    uint32_t id;
+struct StallGuardResultMessage {
+    uint32_t data;
 };
+
+struct StopPollStallGuardMessage {};
 
 struct GetTMCRegisterResponse {
     uint32_t responding_to_id;
@@ -145,12 +146,14 @@ struct MoveMotorInStepsMessage {
     int32_t steps;
     uint32_t steps_per_second;
     uint32_t steps_per_second_sq;
+    bool stream_stallguard;
 };
 
 struct MoveMotorInMmMessage {
     uint32_t id = 0;
     MotorID motor_id = MotorID::MOTOR_X;
     float mm = 0;
+    bool stream_stallguard = false;
     std::optional<float> mm_per_second = std::nullopt;
     std::optional<float> mm_per_second_sq = std::nullopt;
     std::optional<float> mm_per_second_discont = std::nullopt;
@@ -160,6 +163,7 @@ struct MoveToLimitSwitchMessage {
     uint32_t id = 0;
     MotorID motor_id = MotorID::MOTOR_X;
     bool direction = false;
+    bool stream_stallguard = false;
     std::optional<float> mm_per_second = std::nullopt;
     std::optional<float> mm_per_second_sq = std::nullopt;
     std::optional<float> mm_per_second_discont = std::nullopt;
@@ -188,6 +192,7 @@ struct MoveMotorMessage {
     MotorID motor_id;
     bool direction;
     uint32_t frequency;
+    bool stream_stallguard;
 };
 
 struct StopMotorMessage {
@@ -211,7 +216,7 @@ using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
-                   GetMoveParamsResponse>;
+                   GetMoveParamsResponse, StallGuardResultMessage>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -219,8 +224,9 @@ using SystemMessage =
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
-                   PollTMCRegisterMessage, StopPollTMCRegisterMessage,
-                   SetMotorCurrentMessage, SetMicrostepsMessage>;
+                   PollStallGuardMessage, StopPollStallGuardMessage,
+                   SetMotorCurrentMessage, SetMicrostepsMessage,
+                   StallGuardResultMessage>;
 
 using MotorMessage =
     ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,

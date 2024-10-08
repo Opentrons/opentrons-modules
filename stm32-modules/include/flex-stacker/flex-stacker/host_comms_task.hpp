@@ -249,6 +249,15 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::StallGuardResultMessage& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        return gcode::StallGuardResult::write_response_into(tx_into, tx_limit,
+                                                            response.data);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetSystemInfoResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
         auto cache_entry =
@@ -536,7 +545,8 @@ class HostCommsTask {
             .motor_id = gcode.motor_id,
             .steps = gcode.steps,
             .steps_per_second = gcode.steps_per_second,
-            .steps_per_second_sq = gcode.steps_per_second_sq};
+            .steps_per_second_sq = gcode.steps_per_second_sq,
+            .stream_stallguard = gcode.stream_stallguard};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
@@ -561,6 +571,7 @@ class HostCommsTask {
             .id = id,
             .motor_id = gcode.motor_id,
             .mm = gcode.mm,
+            .stream_stallguard = gcode.stream_stallguard,
             .mm_per_second = gcode.mm_per_second,
             .mm_per_second_sq = gcode.mm_per_second_sq,
             .mm_per_second_discont = gcode.mm_per_second_discont};
@@ -588,6 +599,7 @@ class HostCommsTask {
             .id = id,
             .motor_id = gcode.motor_id,
             .direction = gcode.direction,
+            .stream_stallguard = gcode.stream_stallguard,
             .mm_per_second = gcode.mm_per_second,
             .mm_per_second_sq = gcode.mm_per_second_sq,
             .mm_per_second_discont = gcode.mm_per_second_discont};
@@ -611,10 +623,12 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message = messages::MoveMotorMessage{.id = id,
-                                                  .motor_id = gcode.motor_id,
-                                                  .direction = gcode.direction,
-                                                  .frequency = gcode.frequency};
+        auto message = messages::MoveMotorMessage{
+            .id = id,
+            .motor_id = gcode.motor_id,
+            .direction = gcode.direction,
+            .frequency = gcode.frequency,
+            .stream_stallguard = gcode.stream_stallguard};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
