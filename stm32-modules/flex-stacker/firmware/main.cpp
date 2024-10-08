@@ -54,7 +54,6 @@ static auto ui_task =
 extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     switch (GPIO_Pin) {
         case MOTOR_DIAG0_PIN:
-            // vTaskSuspendAll();
             static_cast<void>(aggregator.send_from_isr(
                 messages::GPIOInterruptMessage{.pin = GPIO_Pin}));
             break;
