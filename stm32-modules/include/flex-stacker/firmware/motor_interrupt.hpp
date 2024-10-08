@@ -94,7 +94,9 @@ class MotorInterruptController {
         return _response_id;
     }
     auto stop_condition_met() -> bool {
-        if (_stop) return true;
+        if (_stop) {
+            return true;
+        }
         if (_profile.movement_type() == motor_util::MovementType::OpenLoop) {
             return limit_switch_triggered();
         }
