@@ -160,9 +160,10 @@ class TMC2160 {
         return reg;
     }
 
+    // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
     [[nodiscard]] auto verify_sgt_value(std::optional<int> sgt) -> bool {
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (sgt.has_value()) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
             return sgt.value() >= -64 && sgt.value() <= 63;
         }
         return true;
