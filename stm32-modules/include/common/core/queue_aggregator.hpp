@@ -211,6 +211,21 @@ class QueueAggregator {
         return SendHelper<TaskCount>::send(msg, address, timeout_ms, this);
     }
 
+    /**
+     * @brief Send a message from isr and automatically deduce the mailbox
+     * to forward it to. This will fail if the type of the message
+     * is not unique.
+     *
+     * @tparam Message The type of message to send
+     * @param msg The message to send
+     * @return true if the message could be sent, false otherwise
+     */
+    template <typename Message>
+    auto send_from_isr(const Message& msg) -> bool {
+        constexpr auto idx = get_message_idx<Message>();
+        return send_from_isr_to<idx>(msg);
+    }
+
   private:
     /**
      * @brief Wrapper class for holding a pointer to a queue with
@@ -243,6 +258,24 @@ class QueueAggregator {
             return false;
         }
         return std::get<Idx>(_handles)._handle->try_send(msg, timeout_ms);
+    }
+
+    /**
+     * @brief Internal function for sending a message from isr
+     *
+     * @tparam Idx The index of the message to send to, as returned by
+     *             \ref get_queue_idx()
+     * @tparam Message The type of message to send
+     * @param msg The message to send
+     * @return true if the message could be sent, false otherwise
+     */
+    template <size_t Idx, typename Message>
+    auto send_from_isr_to(const Message& msg) -> bool {
+        static_assert(Idx < TaskCount, "Invalid task index");
+        if (std::get<Idx>(_handles)._handle == nullptr) {
+            return false;
+        }
+        return std::get<Idx>(_handles)._handle->try_send_from_isr(msg);
     }
 
     /**

@@ -785,4 +785,117 @@ struct GetMoveParams {
     }
 };
 
+struct SetMotorStallGuard {
+    MotorID motor_id;
+    bool enable;
+    std::optional<int32_t> sgt;
+
+    using ParseResult = std::optional<SetMotorStallGuard>;
+    static constexpr auto prefix = std::array{'M', '9', '1', '0', ' '};
+    static constexpr const char* response = "M910 OK\n";
+
+    using XArg = Arg<uint8_t, 'X'>;
+    using ZArg = Arg<uint8_t, 'Z'>;
+    using LArg = Arg<uint8_t, 'L'>;
+    struct SGTArg {
+        static constexpr auto prefix = std::array{'T'};
+        static constexpr bool required = false;
+        bool present = false;
+        int value = 0;
+    };
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<XArg, ZArg, LArg, SGTArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto ret = SetMotorStallGuard{
+            .motor_id = MotorID::MOTOR_X,
+            .enable = false,
+            .sgt = std::nullopt,
+        };
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.enable = static_cast<bool>(std::get<0>(arguments).value);
+        } else if (std::get<1>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_Z;
+            ret.enable = static_cast<bool>(std::get<1>(arguments).value);
+        } else if (std::get<2>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_L;
+            ret.enable = static_cast<bool>(std::get<2>(arguments).value);
+        } else {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        if (std::get<3>(arguments).present) {
+            ret.sgt = std::get<3>(arguments).value;
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct GetMotorStallGuard {
+    MotorID motor_id;
+    using ParseResult = std::optional<GetMotorStallGuard>;
+    static constexpr auto prefix = std::array{'M', '9', '1', '1'};
+
+    using ArgX = ArgNoVal<'X'>;
+    using ArgZ = ArgNoVal<'Z'>;
+    using ArgL = ArgNoVal<'L'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        MotorID motor = MotorID::MOTOR_X;
+        auto res = gcode::SingleParser<ArgX, ArgZ, ArgL>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        if (std::get<1>(arguments).present) {
+            motor = MotorID::MOTOR_Z;
+        } else if (std::get<2>(arguments).present) {
+            motor = MotorID::MOTOR_L;
+        } else if (!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(
+            ParseResult(GetMotorStallGuard{.motor_id = motor}), res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    MotorID motor_id, bool enabled,
+                                    int threshold) -> InputIt {
+        char motor_char = motor_id == MotorID::MOTOR_X   ? 'X'
+                          : motor_id == MotorID::MOTOR_Z ? 'Z'
+                                                         : 'L';
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf), "M911 %c%d T:%d OK\n", motor_char,
+                       int(enabled), threshold);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
 }  // namespace gcode

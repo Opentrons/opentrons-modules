@@ -17,6 +17,7 @@
 #include "flex-stacker/tasks.hpp"
 #include "flex-stacker/tmc2160_registers.hpp"
 #include "hal/message_queue.hpp"
+#include "messages.hpp"
 
 namespace motor_task {
 
@@ -256,6 +257,7 @@ class MotorTask {
         -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
+        controller_from_id(m.motor_id).stop_movement(m.id, true);
     }
 
     template <MotorControlPolicy Policy>
@@ -335,6 +337,28 @@ class MotorTask {
         };
         static_cast<void>(_task_registry->send_to_address(
             response, Queues::HostCommsAddress));
+    }
+
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::SetDiag0IRQMessage& m, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        // NOTE: The diag0 pin is shared by all motors.
+        _x_controller.set_diag0_irq(m.enable);
+    }
+
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::GPIOInterruptMessage& m, Policy& policy)
+        -> void {
+        static_cast<void>(m);
+        static_cast<void>(policy);
+        _z_controller.stop_movement(0, true);
+        _x_controller.stop_movement(0, false);
+        _l_controller.stop_movement(0, false);
+        auto msg = messages::ErrorMessage{
+            .code = errors::ErrorCode::MOTOR_STALL_DETECTED};
+        static_cast<void>(
+            _task_registry->send_to_address(msg, Queues::HostCommsAddress));
     }
 
     Queue& _message_queue;

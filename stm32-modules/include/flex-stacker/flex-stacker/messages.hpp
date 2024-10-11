@@ -2,6 +2,7 @@
 #include <array>
 #include <concepts>
 #include <cstdint>
+#include <optional>
 #include <variant>
 
 #include "flex-stacker/errors.hpp"
@@ -192,6 +193,7 @@ struct MoveMotorMessage {
 
 struct StopMotorMessage {
     uint32_t id;
+    MotorID motor_id;
 };
 
 struct GetMoveParamsMessage {
@@ -207,11 +209,41 @@ struct GetMoveParamsResponse {
     float velocity_discont;
 };
 
+// Message to enable/disable the diag0 pin
+struct SetDiag0IRQMessage {
+    bool enable;
+};
+
+// Message sent when there is an irq on the diag0 line
+struct GPIOInterruptMessage {
+    uint16_t pin;
+    uint8_t state;
+};
+
+struct SetMotorStallGuardMessage {
+    uint32_t id = 0;
+    MotorID motor_id = MotorID::MOTOR_X;
+    bool enable = false;
+    std::optional<int32_t> sgt = std::nullopt;
+};
+
+struct GetMotorStallGuardMessage {
+    uint32_t id = 0;
+    MotorID motor_id = MotorID::MOTOR_X;
+};
+
+struct GetMotorStallGuardResponse {
+    uint32_t id;
+    MotorID motor_id;
+    bool enabled;
+    int sgt;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
-                   GetMoveParamsResponse>;
+                   GetMoveParamsResponse, GetMotorStallGuardResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -220,13 +252,13 @@ using SystemMessage =
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
                    PollTMCRegisterMessage, StopPollTMCRegisterMessage,
-                   SetMotorCurrentMessage, SetMicrostepsMessage>;
+                   SetMotorCurrentMessage, SetMicrostepsMessage,
+                   SetMotorStallGuardMessage, GetMotorStallGuardMessage>;
 
-using MotorMessage =
-    ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
-                   MoveToLimitSwitchMessage, StopMotorMessage,
-                   MoveCompleteMessage, GetLimitSwitchesMessage,
-                   MoveMotorInMmMessage, SetMicrostepsMessage,
-                   GetMoveParamsMessage>;
+using MotorMessage = ::std::variant<
+    std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
+    MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
+    GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
+    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage>;
 
 };  // namespace messages

@@ -1,77 +1,15 @@
-
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_it.h"
+#include "motor_hardware.h"
 #include "systemwide.h"
 #include "FreeRTOS.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
-
-/******************* Motor Z *******************/
-/** Motor hardware **/
-#define Z_STEP_PIN (GPIO_PIN_2)
-#define Z_STEP_PORT (GPIOC)
-#define Z_DIR_PIN (GPIO_PIN_1)
-#define Z_DIR_PORT (GPIOC)
-#define Z_EN_PIN (GPIO_PIN_3)
-#define Z_EN_PORT (GPIOA)
-#define Z_N_BRAKE_PIN (GPIO_PIN_7)
-#define Z_N_BRAKE_PORT (GPIOB)
-
-/** Limit switches **/
-/* Note: Photointerrupters limit switches */
-#define Z_MINUS_LIMIT_PIN (GPIO_PIN_3)
-#define Z_MINUS_LIMIT_PORT (GPIOC)
-#define Z_PLUS_LIMIT_PIN (GPIO_PIN_0)
-#define Z_PLUS_LIMIT_PORT (GPIOA)
-
-
-/******************* Motor X *******************/
-
-/** Motor hardware **/
-#define X_STEP_PIN (GPIO_PIN_7)
-#define X_STEP_PORT (GPIOA)
-#define X_DIR_PIN (GPIO_PIN_6)
-#define X_DIR_PORT (GPIOA)
-#define X_EN_PIN (GPIO_PIN_4)
-#define X_EN_PORT (GPIOA)
-#define X_N_BRAKE_PIN (GPIO_PIN_9)
-#define X_N_BRAKE_PORT (GPIOB)
-
-
-/** Limit switches **/
-/* Note: Photointerrupters limit switches */
-#define X_MINUS_LIMIT_PIN (GPIO_PIN_1)
-#define X_MINUS_LIMIT_PORT (GPIOA)
-#define X_PLUS_LIMIT_PIN (GPIO_PIN_2)
-#define X_PLUS_LIMIT_PORT (GPIOA)
-
-
-/******************* Motor L *******************/
-
-/** Motor hardware **/
-#define L_STEP_PIN (GPIO_PIN_1)
-#define L_STEP_PORT (GPIOB)
-#define L_DIR_PIN (GPIO_PIN_0)
-#define L_DIR_PORT (GPIOB)
-#define L_EN_PIN (GPIO_PIN_5)
-#define L_EN_PORT (GPIOC)
-
-
-/** Limit switches **/
-/* Note: Mechanical limit switches */
-#define L_N_HELD_PIN (GPIO_PIN_5)
-#define L_N_HELD_PORT (GPIOB)
-#define L_N_RELEASED_PIN (GPIO_PIN_11)
-#define L_N_RELEASED_PORT (GPIOC)
-
-/**************** COMMON ********************/
-#define ESTOP_PIN GPIO_PIN_6
-#define ESTOP_PORT GPIOB
-
 
 // Frequency of the motor interrupt callbacks is 300kHz, providing some extra
 // overhead over the velocities used by this application.
@@ -101,6 +39,7 @@ typedef struct stepper_hardware_struct {
     PinConfig limit_switch_minus;
     PinConfig limit_switch_plus;
     PinConfig ebrake;
+    PinConfig diag0;
 } stepper_hardware_t;
 
 typedef struct motor_hardware_struct {
@@ -120,6 +59,7 @@ static motor_hardware_t _motor_hardware = {
         .step = {X_STEP_PORT, X_STEP_PIN, GPIO_PIN_SET},
         .limit_switch_minus = {X_MINUS_LIMIT_PORT, X_MINUS_LIMIT_PIN, GPIO_PIN_SET},
         .limit_switch_plus = {X_PLUS_LIMIT_PORT, X_PLUS_LIMIT_PIN, GPIO_PIN_SET},
+        .diag0 = {MOTOR_DIAG0_PORT, MOTOR_DIAG0_PIN, GPIO_PIN_SET},
         .ebrake = {0},
     },
     .motor_z = {
@@ -129,6 +69,7 @@ static motor_hardware_t _motor_hardware = {
         .step = {Z_STEP_PORT, Z_STEP_PIN, GPIO_PIN_SET},
         .limit_switch_minus = {Z_MINUS_LIMIT_PORT, Z_MINUS_LIMIT_PIN, GPIO_PIN_SET},
         .limit_switch_plus = {Z_PLUS_LIMIT_PORT, Z_PLUS_LIMIT_PIN, GPIO_PIN_SET},
+        .diag0 = {MOTOR_DIAG0_PORT, MOTOR_DIAG0_PIN, GPIO_PIN_SET},
         .ebrake = {Z_N_BRAKE_PORT, Z_N_BRAKE_PIN, GPIO_PIN_RESET},
     },
     .motor_l = {
@@ -138,10 +79,10 @@ static motor_hardware_t _motor_hardware = {
         .step = {L_STEP_PORT, L_STEP_PIN, GPIO_PIN_SET},
         .limit_switch_minus = {L_N_HELD_PORT, L_N_HELD_PIN, GPIO_PIN_RESET},
         .limit_switch_plus = {L_N_RELEASED_PORT, L_N_RELEASED_PIN, GPIO_PIN_RESET},
+        .diag0 = {MOTOR_DIAG0_PORT, MOTOR_DIAG0_PIN, GPIO_PIN_SET},
         .ebrake = {0},
     }
 };
-
 
 void motor_hardware_gpio_init(void){
 
@@ -168,8 +109,11 @@ void motor_hardware_gpio_init(void){
     init.Pin = Z_N_BRAKE_PIN;
     HAL_GPIO_Init(Z_N_BRAKE_PORT, &init);
 
-    init.Pin  = Z_STEP_PIN;
+    init.Pin = Z_STEP_PIN;
     HAL_GPIO_Init(Z_STEP_PORT, &init);
+
+    init.Pin = MOTOR_DIAG0_PIN;
+    HAL_GPIO_Init(MOTOR_DIAG0_PORT, &init);
 
     // X MOTOR
     init.Pin = X_EN_PIN;
@@ -193,6 +137,8 @@ void motor_hardware_gpio_init(void){
 
     /*Configure GPIO pins : INPUTS */
     init.Mode = GPIO_MODE_INPUT;
+    init.Pull = GPIO_NOPULL;
+    init.Speed = GPIO_SPEED_FREQ_LOW;
 
     // Z MOTOR
     init.Pin = Z_MINUS_LIMIT_PIN;
@@ -217,6 +163,15 @@ void motor_hardware_gpio_init(void){
 
     init.Pin = ESTOP_PIN;
     HAL_GPIO_Init(ESTOP_PORT, &init);
+
+    /*Configure GPIO pins : INPUTs IRQ */
+    init.Mode = GPIO_MODE_IT_FALLING;
+    init.Pull = GPIO_PULLUP;
+    init.Speed = GPIO_SPEED_FREQ_LOW;
+
+    init.Pin = MOTOR_DIAG0_PIN;
+    HAL_GPIO_Init(MOTOR_DIAG0_PORT, &init);
+    HAL_NVIC_SetPriority(EXTI15_10_IRQn, 6, 0);
 }
 
 // X motor timer
@@ -330,6 +285,7 @@ void motor_hardware_init(void){
         tim17_init(&_motor_hardware.motor_x.timer);
         tim20_init(&_motor_hardware.motor_z.timer);
         tim3_init(&_motor_hardware.motor_l.timer);
+
     }
     _motor_hardware.initialized = true;
 }
@@ -344,23 +300,15 @@ void hw_enable_ebrake(MotorID motor_id, bool enable) {
 
 stepper_hardware_t get_motor(MotorID motor_id) {
     switch (motor_id) {
-        case MOTOR_Z:
-            return _motor_hardware.motor_z;
-        case MOTOR_X:
-            return _motor_hardware.motor_x;
-        case MOTOR_L:
-            return _motor_hardware.motor_l;
-        default:
-            return (stepper_hardware_t){0};
+        case MOTOR_Z: return _motor_hardware.motor_z;
+        case MOTOR_X: return _motor_hardware.motor_x;
+        case MOTOR_L: return _motor_hardware.motor_l;
+        default: return (stepper_hardware_t){0};
     }
 }
 
 static uint8_t invert_gpio_value(uint8_t setting) {
-    if (setting == GPIO_PIN_SET) {
-        return GPIO_PIN_RESET;
-    } else {
-        return GPIO_PIN_SET;
-    }
+    return setting == GPIO_PIN_SET ? GPIO_PIN_RESET : GPIO_PIN_SET;
 }
 
 void set_pin(PinConfig config) {
@@ -415,6 +363,12 @@ bool hw_read_limit_switch(MotorID motor_id, bool direction) {
         return HAL_GPIO_ReadPin(motor.limit_switch_minus.port,
                                 motor.limit_switch_minus.pin) ==
            motor.limit_switch_minus.active_setting;
+}
+
+void hw_set_diag0_irq(bool enable) {
+    enable ?
+        HAL_NVIC_EnableIRQ(EXTI15_10_IRQn) :
+        HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 }
 
 void TIM3_IRQHandler(void)

@@ -1,10 +1,18 @@
 #include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_tasks.hpp"
+#include "firmware/motor_hardware.h"
 #include "firmware/system_stm32g4xx.h"
+#include "flex-stacker/messages.hpp"
 #include "ot_utils/freertos/freertos_task.hpp"
 #include "systemwide.h"
 #include "task.h"
+
+#pragma GCC diagnostic push
+// NOLINTNEXTLINE(clang-diagnostic-unknown-warning-option)
+#pragma GCC diagnostic ignored "-Wvolatile"
+#include "stm32g4xx_hal.h"
+#pragma GCC diagnostic pop
 
 using EntryPoint = std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
 
@@ -42,6 +50,17 @@ static auto host_comms_task =
 static auto ui_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::UI_STACK_SIZE, EntryPoint>(
         ui_task_entry);
+
+extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+    switch (GPIO_Pin) {
+        case MOTOR_DIAG0_PIN:
+            static_cast<void>(aggregator.send_from_isr(
+                messages::GPIOInterruptMessage{.pin = GPIO_Pin}));
+            break;
+        default:
+            break;
+    }
+}
 
 auto main() -> int {
     HardwareInit();

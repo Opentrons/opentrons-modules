@@ -31,3 +31,8 @@ auto MotorPolicy::set_direction(MotorID motor_id, bool direction) -> void {
 auto MotorPolicy::check_limit_switch(MotorID motor_id, bool direction) -> bool {
     return hw_read_limit_switch(motor_id, direction);
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::set_diag0_irq(bool enable) -> void {
+    hw_set_diag0_irq(enable);
+}

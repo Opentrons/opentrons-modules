@@ -83,6 +83,21 @@ class TMC2160 {
     }
 
     template <tmc2160::TMC2160InterfacePolicy Policy>
+    auto update_gconfig(const TMC2160RegisterMap& registers,
+                        tmc2160::TMC2160Interface<Policy>& policy,
+                        MotorID motor_id) -> bool {
+        return set_register(verify_gconf(registers.gconfig), policy, motor_id);
+    }
+
+    template <tmc2160::TMC2160InterfacePolicy Policy>
+    auto update_coolconf(const TMC2160RegisterMap& registers,
+                         tmc2160::TMC2160Interface<Policy>& policy,
+                         MotorID motor_id) -> bool {
+        return set_register(verify_coolconf(registers.coolconf), policy,
+                            motor_id);
+    }
+
+    template <tmc2160::TMC2160InterfacePolicy Policy>
     auto update_chopconf(const TMC2160RegisterMap& registers,
                          tmc2160::TMC2160Interface<Policy>& policy,
                          MotorID motor_id) -> bool {
@@ -143,6 +158,15 @@ class TMC2160 {
     static auto verify_glob_scaler(GlobalScaler reg) -> GlobalScaler {
         reg.clamp_value();
         return reg;
+    }
+
+    // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+    [[nodiscard]] auto verify_sgt_value(std::optional<int> sgt) -> bool {
+        if (sgt.has_value()) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            return sgt.value() >= -64 && sgt.value() <= 63;
+        }
+        return true;
     }
 
     // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

@@ -5,12 +5,11 @@
  */
 #pragma once
 
-#include <optional>
-
 #include "core/ack_cache.hpp"
 #include "core/fixed_point.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
+#include "errors.hpp"
 #include "firmware/motor_policy.hpp"
 #include "flex-stacker/errors.hpp"
 #include "flex-stacker/messages.hpp"
@@ -19,6 +18,7 @@
 #include "flex-stacker/tmc2160_interface.hpp"
 #include "flex-stacker/tmc2160_registers.hpp"
 #include "hal/message_queue.hpp"
+#include "messages.hpp"
 #include "systemwide.h"
 
 namespace motor_driver_task {
@@ -26,7 +26,7 @@ namespace motor_driver_task {
 using Message = messages::MotorDriverMessage;
 
 static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
-    .gconfig = {.diag0_error = 1, .diag1_stall = 1},
+    .gconfig = {.diag0_error = 0, .diag0_stall = 0},
     .short_conf = {.s2vs_level = 0x6,
                    .s2g_level = 0x6,
                    .shortfilter = 1,
@@ -36,14 +36,14 @@ static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
                    .run_current = 31,
                    .hold_current_delay = 15},
     .tpwmthrs = {.threshold = 0x80000},
-    .tcoolthrs = {.threshold = 0x81},
+    .tcoolthrs = {.threshold = 0x2FF},
     .thigh = {.threshold = 0x81},
     .chopconf = {.toff = 0b111,
                  .hstrt = 0b100,
                  .hend = 0b11,
                  .tbl = 0b1,
                  .mres = 0b100},
-    .coolconf = {.semin = 0b11, .semax = 0b100},
+    .coolconf = {.semin = 0b11, .semax = 0b100, .sgt = 1},
     .pwmconf = {.pwm_ofs = 0x1F,
                 .pwm_grad = 0x18,
                 .pwm_autoscale = 1,
@@ -53,7 +53,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
 };
 
 static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
-    .gconfig = {.diag0_error = 1, .diag1_stall = 1},
+    .gconfig = {.diag0_error = 0, .diag0_stall = 0},
     .short_conf = {.s2vs_level = 0x6,
                    .s2g_level = 0x6,
                    .shortfilter = 1,
@@ -63,14 +63,14 @@ static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
                    .run_current = 31,
                    .hold_current_delay = 7},
     .tpwmthrs = {.threshold = 0x80000},
-    .tcoolthrs = {.threshold = 0x81},
+    .tcoolthrs = {.threshold = 0x2FF},
     .thigh = {.threshold = 0x81},
     .chopconf = {.toff = 0b111,
                  .hstrt = 0b111,
                  .hend = 0b1001,
                  .tbl = 0b1,
                  .mres = 0b100},
-    .coolconf = {.semin = 0b11, .semax = 0b100},
+    .coolconf = {.semin = 0b11, .semax = 0b100, .sgt = 1},
     .pwmconf = {.pwm_ofs = 0x1F,
                 .pwm_grad = 0x18,
                 .pwm_autoscale = 1,
@@ -80,7 +80,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
 };
 
 static constexpr tmc2160::TMC2160RegisterMap motor_l_config{
-    .gconfig = {.diag0_error = 1, .diag1_stall = 1},
+    .gconfig = {.diag0_error = 0, .diag0_stall = 0},
     .short_conf = {.s2vs_level = 0x6,
                    .s2g_level = 0x6,
                    .shortfilter = 1,
@@ -90,14 +90,14 @@ static constexpr tmc2160::TMC2160RegisterMap motor_l_config{
                    .run_current = 8,
                    .hold_current_delay = 7},
     .tpwmthrs = {.threshold = 0x80000},
-    .tcoolthrs = {.threshold = 0x81},
+    .tcoolthrs = {.threshold = 0x2FF},
     .thigh = {.threshold = 0x81},
     .chopconf = {.toff = 0b111,
                  .hstrt = 0b111,
                  .hend = 0b1001,
                  .tbl = 0b1,
                  .mres = 0b100},
-    .coolconf = {.semin = 0b11, .semax = 0b100},
+    .coolconf = {.semin = 0b11, .semax = 0b100, .sgt = 1},
     .pwmconf = {.pwm_ofs = 0x1F,
                 .pwm_grad = 0x18,
                 .pwm_autoscale = 1,
@@ -273,6 +273,58 @@ class MotorDriverTask {
         if (!_tmc2160.update_current(driver_conf_from_id(m.motor_id),
                                      tmc2160_interface, m.motor_id)) {
             response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
+        };
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
+    template <tmc2160::TMC2160InterfacePolicy Policy>
+    auto visit_message(const messages::SetMotorStallGuardMessage& m,
+                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+        -> void {
+        static_cast<void>(tmc2160_interface);
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id = m.id,
+            .with_error = errors::ErrorCode::NO_ERROR};
+
+        if (_tmc2160.verify_sgt_value(m.sgt)) {
+            driver_conf_from_id(m.motor_id).coolconf.sgt = m.sgt.value();
+            driver_conf_from_id(m.motor_id).gconfig.diag0_stall =
+                static_cast<int>(m.enable);
+        } else {
+            response.with_error = errors::ErrorCode::TMC2160_INVALID_VALUE;
+        }
+        if (!_tmc2160.update_coolconf(driver_conf_from_id(m.motor_id),
+                                      tmc2160_interface, m.motor_id)) {
+            response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
+        }
+        if (!_tmc2160.update_gconfig(driver_conf_from_id(m.motor_id),
+                                     tmc2160_interface, m.motor_id)) {
+            response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
+        }
+
+        if (response.with_error == errors::ErrorCode::NO_ERROR) {
+            auto message = messages::SetDiag0IRQMessage{.enable = m.enable};
+            static_cast<void>(
+                _task_registry->send_to_address(message, Queues::MotorAddress));
+        }
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
+    template <tmc2160::TMC2160InterfacePolicy Policy>
+    auto visit_message(const messages::GetMotorStallGuardMessage& m,
+                       tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
+        -> void {
+        static_cast<void>(tmc2160_interface);
+        bool enabled = static_cast<bool>(
+            driver_conf_from_id(m.motor_id).gconfig.diag0_stall);
+        int sgt = driver_conf_from_id(m.motor_id).coolconf.sgt;
+        auto response = messages::GetMotorStallGuardResponse{
+            .id = m.id,
+            .motor_id = m.motor_id,
+            .enabled = enabled,
+            .sgt = sgt,
         };
         static_cast<void>(_task_registry->send_to_address(
             response, Queues::HostCommsAddress));
