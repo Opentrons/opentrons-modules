@@ -1272,6 +1272,15 @@ class MotorTask {
                 error = handle_lid_state_end(policy);
                 break;
             case LidStepperState::Status::CLOSE_TO_SWITCH:
+                if (!policy.lid_read_closed_switch()) {
+                    error = errors::ErrorCode::UNEXPECTED_LID_STATE;
+                    // send error message instead
+                    auto response = messages::ErrorMessage{
+                        .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
+                    static_cast<void>(
+                        _task_registry->comms->get_message_queue().try_send(
+                            messages::HostCommsMessage(response)));
+                }
                 // Overdrive the lid stepper into the switch
                 policy.lid_stepper_start(
                     LidStepperState::CLOSE_OVERDRIVE_DEGREES, true);
