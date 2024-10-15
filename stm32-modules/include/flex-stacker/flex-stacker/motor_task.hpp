@@ -361,6 +361,14 @@ class MotorTask {
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));
     }
 
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::MoveDebugMessage& m, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        static_cast<void>(
+            _task_registry->send_to_address(m, Queues::HostCommsAddress));
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     Controller& _x_controller;

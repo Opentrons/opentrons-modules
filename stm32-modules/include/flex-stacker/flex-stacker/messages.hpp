@@ -191,6 +191,12 @@ struct MoveMotorMessage {
     uint32_t frequency;
 };
 
+struct MoveDebugMessage {
+    uint64_t step_count;
+    uint64_t distance;
+    uint32_t velocity;
+};
+
 struct StopMotorMessage {
     uint32_t id;
     MotorID motor_id;
@@ -243,7 +249,8 @@ using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
-                   GetMoveParamsResponse, GetMotorStallGuardResponse>;
+                   GetMoveParamsResponse, GetMotorStallGuardResponse,
+                   MoveDebugMessage>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -259,6 +266,7 @@ using MotorMessage = ::std::variant<
     std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
     MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
     GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
-    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage>;
+    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
+    MoveDebugMessage>;
 
 };  // namespace messages

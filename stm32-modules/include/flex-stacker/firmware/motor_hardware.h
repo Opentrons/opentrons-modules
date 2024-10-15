@@ -9,7 +9,8 @@ extern "C" {
 
 #include "systemwide.h"
 
-void motor_hardware_init(void);
+typedef void (*debug_callback)(uint64_t step_count, uint64_t distance, uint32_t velocity);
+void motor_hardware_init(debug_callback callback);
 void spi_hardware_init(void);
 bool motor_spi_sendreceive(MotorID motor_id, uint8_t *tx_data, uint8_t *rx_data,
                            uint16_t len);
@@ -21,6 +22,7 @@ bool hw_stop_motor(MotorID motor_id);
 void hw_set_direction(MotorID, bool direction);
 bool hw_read_limit_switch(MotorID motor_id, bool direction);
 void hw_set_diag0_irq(bool enable);
+void hw_report_callback(uint64_t step_count, uint64_t distance, uint32_t velocity);
 
 #ifdef __cplusplus
 }  // extern "C"

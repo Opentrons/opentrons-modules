@@ -36,3 +36,8 @@ auto MotorPolicy::check_limit_switch(MotorID motor_id, bool direction) -> bool {
 auto MotorPolicy::set_diag0_irq(bool enable) -> void {
     hw_set_diag0_irq(enable);
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::report_data(uint64_t step_count, uint64_t distance, uint32_t velocity) -> void {
+    hw_report_callback(step_count, distance, velocity);
+}

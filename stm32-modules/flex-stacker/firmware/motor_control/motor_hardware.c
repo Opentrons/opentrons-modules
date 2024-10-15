@@ -47,6 +47,7 @@ typedef struct motor_hardware_struct {
     stepper_hardware_t motor_x;
     stepper_hardware_t motor_z;
     stepper_hardware_t motor_l;
+    debug_callback report_callback;
 } motor_hardware_t;
 
 
@@ -81,7 +82,8 @@ static motor_hardware_t _motor_hardware = {
         .limit_switch_plus = {L_N_RELEASED_PORT, L_N_RELEASED_PIN, GPIO_PIN_RESET},
         .diag0 = {MOTOR_DIAG0_PORT, MOTOR_DIAG0_PIN, GPIO_PIN_SET},
         .ebrake = {0},
-    }
+    },
+    .report_callback = NULL,
 };
 
 void motor_hardware_gpio_init(void){
@@ -279,7 +281,7 @@ void tim3_init(TIM_HandleTypeDef* htim) {
     HAL_NVIC_EnableIRQ(TIM3_IRQn);
 }
 
-void motor_hardware_init(void){
+void motor_hardware_init(debug_callback callback){
     if (!_motor_hardware.initialized) {
         motor_hardware_gpio_init();
         tim17_init(&_motor_hardware.motor_x.timer);
@@ -288,6 +290,7 @@ void motor_hardware_init(void){
 
     }
     _motor_hardware.initialized = true;
+    _motor_hardware.report_callback = callback;
 }
 
 void hw_enable_ebrake(MotorID motor_id, bool enable) {
@@ -369,6 +372,12 @@ void hw_set_diag0_irq(bool enable) {
     enable ?
         HAL_NVIC_EnableIRQ(EXTI15_10_IRQn) :
         HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+}
+
+void hw_report_callback(uint64_t step_count, uint64_t distance, uint32_t velocity) {
+    if (_motor_hardware.report_callback) {
+        _motor_hardware.report_callback(step_count, distance, velocity);
+    }
 }
 
 void TIM3_IRQHandler(void)

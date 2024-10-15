@@ -50,6 +50,8 @@ class MovementProfile {
     struct TickReturn {
         bool done;  // If true, this movement is done
         bool step;  // If true, motor should step
+        ticks distance;  // Distance covered in this tick
+        steps_per_tick velocity;  // Current velocity
     };
 
     /**

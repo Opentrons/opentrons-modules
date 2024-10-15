@@ -221,6 +221,15 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::MoveDebugMessage& msg, InputIt tx_into,
+                       InputLimit tx_limit) -> InputIt {
+        return gcode::MotorDebug::write_response_into(tx_into, tx_limit, msg.step_count, msg.distance, msg.velocity);
+    }
+
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const std::monostate& ignore, InputIt tx_into,
                        InputLimit tx_limit) -> InputIt {
         static_cast<void>(ignore);

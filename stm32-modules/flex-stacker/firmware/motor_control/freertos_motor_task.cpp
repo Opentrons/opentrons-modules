@@ -58,13 +58,22 @@ static auto _top_task = motor_task::MotorTask(
     }
 }
 
+[[nodiscard]] static auto report_callback_glue(uint64_t step_count,
+                                               uint64_t distance,
+                                               uint32_t velocity) {
+    static_cast<void>(_queue.try_send_from_isr(
+        messages::MoveDebugMessage{.step_count = step_count,
+                                   .distance = distance,
+                                   .velocity = velocity}));
+}
+
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     auto* handle = xTaskGetCurrentTaskHandle();
     _queue.provide_handle(handle);
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
 
-    motor_hardware_init();
+    motor_hardware_init(report_callback_glue);
     initialize_callbacks(callback_glue);
     auto policy = motor_policy::MotorPolicy();
     while (true) {

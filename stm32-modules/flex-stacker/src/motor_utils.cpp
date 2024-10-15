@@ -67,7 +67,9 @@ auto MovementProfile::tick() -> TickReturn {
     }
     return TickReturn{.done = (_current_distance >= _target_distance &&
                                _type == MovementType::FixedDistance),
-                      .step = step};
+                      .step = step,
+                      .distance = _current_distance,
+                      .velocity = _velocity};
 }
 
 auto MovementProfile::fixed_distance_tick() -> void {

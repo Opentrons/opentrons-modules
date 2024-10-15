@@ -37,7 +37,9 @@ class MotorInterruptController {
         }
         auto ret = _profile.tick();
         if (ret.step && !stop_condition_met()) {
+            step_count ++;
             _policy->step(_id);
+            _policy->report_data(step_count, ret.distance, ret.velocity);
         }
         if (ret.done || stop_condition_met()) {
             _policy->stop_motor(_id);
@@ -59,6 +61,7 @@ class MotorInterruptController {
                               uint32_t steps_per_sec, uint32_t step_per_sec_sq)
         -> void {
         _stop = false;
+        step_count = 0;
         set_direction(direction);
         _profile = motor_util::MovementProfile(
             TIMER_FREQ, steps_per_sec_discont, steps_per_sec, step_per_sec_sq,
@@ -70,6 +73,7 @@ class MotorInterruptController {
                         uint32_t steps_per_sec_discont, uint32_t steps_per_sec,
                         uint32_t step_per_sec_sq) -> void {
         _stop = false;
+        step_count = 0;
         set_direction(direction);
         _profile = motor_util::MovementProfile(
             TIMER_FREQ, steps_per_sec_discont, steps_per_sec, step_per_sec_sq,
@@ -79,7 +83,8 @@ class MotorInterruptController {
     }
     auto stop_movement(uint32_t move_id, bool disable_motor) -> void {
         _stop = true;
-        disable_motor ? _policy->disable_motor(_id) : _policy->stop_motor(_id);
+        _policy->stop_motor(_id);
+        if (disable_motor) _policy->disable_motor(_id);
         _response_id = move_id;
     }
 
@@ -110,7 +115,7 @@ class MotorInterruptController {
     MotorPolicy* _policy;
     std::atomic_bool _initialized;
     motor_util::MovementProfile _profile;
-    uint32_t step_count = 0;
+    uint64_t step_count = 0;
     uint32_t step_freq = DEFAULT_MOTOR_FREQ;
     uint32_t _response_id = 0;
     bool _direction = false;

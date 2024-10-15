@@ -898,4 +898,37 @@ struct GetMotorStallGuard {
     }
 };
 
+struct MotorDebug {
+    using ParseResult = std::optional<MotorDebug>;
+    static constexpr auto prefix = std::array{'G', '0', '.', 'D'};
+
+    template <typename InputIt, typename Limit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(MotorDebug()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+        requires std::forward_iterator<InputIt> &&
+                 std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    int step_count, int distance,
+                                    int velocity) -> InputIt {
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf), "G0.D S:%d D:%d V:%d OK\n", step_count,
+                       distance, velocity);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
+
 }  // namespace gcode
