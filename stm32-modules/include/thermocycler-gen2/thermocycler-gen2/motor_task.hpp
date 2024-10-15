@@ -1234,7 +1234,7 @@ class MotorTask {
     }
 
     template <MotorExecutionPolicy Policy>
-    auto handle_movement_error(Policy& policy) {
+    auto handle_lid_movement_error(Policy& policy) {
         policy.lid_solenoid_disengage();
         // Turn off lid stepper current
         policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
@@ -1264,28 +1264,47 @@ class MotorTask {
                     motor_util::LidStepper::Position::BETWEEN;
                 break;
             case LidStepperState::Status::OPEN_TO_SWITCH:
-                // Now that the lid is at the open position,
-                // the solenoid can be safely turned off
-                policy.lid_solenoid_disengage();
-                // Overdrive into switch
-                policy.lid_stepper_start(
-                    LidStepperState::OPEN_OVERDRIVE_DEGREES, true);
-                _lid_stepper_state.status =
-                    LidStepperState::Status::OPEN_OVERDRIVE;
+                if (!policy.lid_read_open_switch()) {
+                    handle_lid_movement_error(policy);
+                    auto response = messages::ErrorMessage{
+                        .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
+                    static_cast<void>(
+                        _task_registry->comms->get_message_queue().try_send(
+                            messages::HostCommsMessage(response)));
+                } else {
+                    // Now that the lid is at the open position,
+                    // the solenoid can be safely turned off
+                    policy.lid_solenoid_disengage();
+                    // Overdrive into switch
+                    policy.lid_stepper_start(
+                        LidStepperState::OPEN_OVERDRIVE_DEGREES, true);
+                    _lid_stepper_state.status =
+                        LidStepperState::Status::OPEN_OVERDRIVE;
+                }
                 break;
             case LidStepperState::Status::OPEN_OVERDRIVE:
-                // Turn off lid stepper current
-                policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
-                // Movement is done
-                _lid_stepper_state.status = LidStepperState::Status::IDLE;
-                _lid_stepper_state.position =
-                    motor_util::LidStepper::Position::OPEN;
-                // The overall lid state machine can advance now
-                error = handle_lid_state_end(policy);
+                // lid open switch should no longer be triggered
+                if (policy.lid_read_open_switch()) {
+                    handle_lid_movement_error(policy);
+                    auto response = messages::ErrorMessage{
+                        .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
+                    static_cast<void>(
+                        _task_registry->comms->get_message_queue().try_send(
+                            messages::HostCommsMessage(response)));
+                } else {
+                    // Turn off lid stepper current
+                    policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
+                    // Movement is done
+                    _lid_stepper_state.status = LidStepperState::Status::IDLE;
+                    _lid_stepper_state.position =
+                        motor_util::LidStepper::Position::OPEN;
+                    // The overall lid state machine can advance now
+                    error = handle_lid_state_end(policy);
+                }
                 break;
             case LidStepperState::Status::CLOSE_TO_SWITCH:
                 if (!policy.lid_read_closed_switch()) {
-                    handle_movement_error(policy);
+                    handle_lid_movement_error(policy);
                     auto response = messages::ErrorMessage{
                         .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
                     static_cast<void>(
@@ -1301,7 +1320,7 @@ class MotorTask {
                 break;
             case LidStepperState::Status::CLOSE_OVERDRIVE:
                 if (!policy.lid_read_closed_switch()) {
-                    handle_movement_error(policy);
+                    handle_lid_movement_error(policy);
                     auto response = messages::ErrorMessage{
                         .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
                     static_cast<void>(
