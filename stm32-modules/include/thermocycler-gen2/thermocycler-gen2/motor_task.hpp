@@ -1300,18 +1300,6 @@ class MotorTask {
                 }
                 break;
             case LidStepperState::Status::CLOSE_OVERDRIVE:
-                // Now that the lid is at the closed position,
-                // the solenoid can be safely turned off
-                policy.lid_solenoid_disengage();
-                // Turn off lid stepper current
-                policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
-                // Movement is done
-                _lid_stepper_state.status = LidStepperState::Status::IDLE;
-                _lid_stepper_state.position =
-                    motor_util::LidStepper::Position::CLOSED;
-                // The overall lid state machine can advance now
-                error = handle_lid_state_end(policy);
-                // if the lid isn't actually closed, overwrite error status
                 if (!policy.lid_read_closed_switch()) {
                     handle_movement_error(policy);
                     auto response = messages::ErrorMessage{
@@ -1319,6 +1307,19 @@ class MotorTask {
                     static_cast<void>(
                         _task_registry->comms->get_message_queue().try_send(
                             messages::HostCommsMessage(response)));
+                } else {
+                    // Now that the lid is at the closed position,
+                    // the solenoid can be safely turned off
+                    policy.lid_solenoid_disengage();
+                    // Turn off lid stepper current
+                    policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
+                    // Movement is done
+                    _lid_stepper_state.status = LidStepperState::Status::IDLE;
+                    _lid_stepper_state.position =
+                        motor_util::LidStepper::Position::CLOSED;
+                    // The overall lid state machine can advance now
+                    error = handle_lid_state_end(policy);
+                    // if the lid isn't actually closed, overwrite error status
                 }
                 break;
             case LidStepperState::Status::LIFT_NUDGE:
