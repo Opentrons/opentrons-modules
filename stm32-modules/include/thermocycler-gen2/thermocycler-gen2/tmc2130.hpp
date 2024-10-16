@@ -295,10 +295,13 @@ class TMC2130 {
     template <TMC2130Register Reg, TMC2130Policy Policy>
     requires WritableRegister<Reg>
     auto set_register(Policy& policy, Reg reg) -> bool {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
         // Ignore the typical linter warning because we're only using
         // this on __packed structures that mimic hardware registers
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         auto value = *reinterpret_cast<RegisterSerializedTypeA*>(&reg);
+#pragma GCC diagnostic pop
         value &= Reg::value_mask;
         return _spi.write(Reg::address, value, policy);
     }

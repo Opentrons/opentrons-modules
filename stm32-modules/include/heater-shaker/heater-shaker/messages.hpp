@@ -2,6 +2,7 @@
 #include <array>
 #include <concepts>
 #include <cstdint>
+#include <optional>
 #include <variant>
 
 #include "heater-shaker/errors.hpp"
