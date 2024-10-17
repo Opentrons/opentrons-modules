@@ -12,7 +12,7 @@ namespace motor_interrupt_controller {
 using MotorPolicy = motor_policy::MotorPolicy;
 
 static constexpr int TIMER_FREQ = 100000;
-static constexpr int DEFAULT_MOTOR_FREQ = 50;
+static constexpr int DEBUG_REPORT_FREQUENCY = 50;  // report once every 50 steps
 
 static constexpr double DEFAULT_VELOCITY = 64000;  // steps per second
 static constexpr double DEFAULT_ACCEL = 50000;     // steps per second^2
@@ -39,7 +39,9 @@ class MotorInterruptController {
         if (ret.step && !stop_condition_met()) {
             step_count ++;
             _policy->step(_id);
-            _policy->report_data(step_count, ret.distance, ret.velocity);
+            if (_debug && step_count % DEBUG_REPORT_FREQUENCY == 0 && !ret.done) {
+                _policy->report_data(step_count, ret.distance, ret.velocity);
+            }
         }
         if (ret.done || stop_condition_met()) {
             _policy->stop_motor(_id);
@@ -51,7 +53,6 @@ class MotorInterruptController {
         return ret.done;
     }
 
-    auto set_freq(uint32_t freq) -> void { step_freq = freq; }
     auto initialize(MotorPolicy* policy) -> void {
         _policy = policy;
         _initialized = true;
@@ -116,10 +117,10 @@ class MotorInterruptController {
     std::atomic_bool _initialized;
     motor_util::MovementProfile _profile;
     uint64_t step_count = 0;
-    uint32_t step_freq = DEFAULT_MOTOR_FREQ;
     uint32_t _response_id = 0;
     bool _direction = false;
     bool _stop = false;
+    bool _debug = false;
 };
 
 }  // namespace motor_interrupt_controller
