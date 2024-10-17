@@ -921,7 +921,7 @@ struct MotorDebug {
                                     int step_count, int distance,
                                     int velocity) -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "G0.D S:%d D:%d V:%d OK\n", step_count,
+        res = snprintf(&*buf, (limit - buf), "G0.D S:%d D:%d V:%d\n", step_count,
                        distance, velocity);
         if (res <= 0) {
             return buf;
