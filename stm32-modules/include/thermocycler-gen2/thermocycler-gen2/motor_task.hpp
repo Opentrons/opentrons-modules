@@ -984,7 +984,7 @@ class MotorTask {
             LidStepperState::LID_DEFAULT_VELOCITY_RPM);
         // Now start a lid motor movement to the endstop
         policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
-        policy.lid_stepper_start(LidStepperState::LATCH_RELEASE_OVERDRIVE_DEGREES, false);
+        policy.lid_stepper_start(LidStepperState::LATCH_RELEASE_OVERDRIVE_DEGREES, true);
         // Store the new state, as well as the response ID
         _lid_stepper_state.status = LidStepperState::Status::LATCH_RELEASE_OVERDRIVE;
         _lid_stepper_state.response_id = response_id;
