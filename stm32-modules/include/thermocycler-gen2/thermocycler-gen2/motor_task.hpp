@@ -3,6 +3,7 @@
  */
 #pragma once
 
+#include <iostream>
 #include <algorithm>
 #include <atomic>
 #include <concepts>
@@ -1265,6 +1266,7 @@ class MotorTask {
                 break;
             case LidStepperState::Status::OPEN_TO_SWITCH:
                 if (!policy.lid_read_open_switch()) {
+                    std::cout << "AAAAAAA1111" << std::endl;
                     handle_lid_movement_error(policy);
                     auto response = messages::ErrorMessage{
                         .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
@@ -1274,6 +1276,7 @@ class MotorTask {
                 } else {
                     // Now that the lid is at the open position,
                     // the solenoid can be safely turned off
+                    std::cout << "all good calling start 1" << std::endl;
                     policy.lid_solenoid_disengage();
                     // Overdrive into switch
                     policy.lid_stepper_start(
@@ -1285,6 +1288,7 @@ class MotorTask {
             case LidStepperState::Status::OPEN_OVERDRIVE:
                 // lid open switch should no longer be triggered
                 if (policy.lid_read_open_switch()) {
+                    std::cout << "BBBBBB" << std::endl;
                     handle_lid_movement_error(policy);
                     auto response = messages::ErrorMessage{
                         .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
@@ -1292,6 +1296,7 @@ class MotorTask {
                         _task_registry->comms->get_message_queue().try_send(
                             messages::HostCommsMessage(response)));
                 } else {
+                    std::cout << "all good calling start 2" << std::endl;
                     // Turn off lid stepper current
                     policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
                     // Movement is done
@@ -1304,6 +1309,7 @@ class MotorTask {
                 break;
             case LidStepperState::Status::CLOSE_TO_SWITCH:
                 if (!policy.lid_read_closed_switch()) {
+                    std::cout << "BBBBBB" << std::endl;
                     handle_lid_movement_error(policy);
                     auto response = messages::ErrorMessage{
                         .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
@@ -1311,6 +1317,7 @@ class MotorTask {
                         _task_registry->comms->get_message_queue().try_send(
                             messages::HostCommsMessage(response)));
                 } else {
+                    std::cout << "all good calling start 3" << std::endl;
                     // Overdrive the lid stepper into the switch
                     policy.lid_stepper_start(
                         LidStepperState::CLOSE_OVERDRIVE_DEGREES, true);
@@ -1320,6 +1327,7 @@ class MotorTask {
                 break;
             case LidStepperState::Status::CLOSE_OVERDRIVE:
                 if (!policy.lid_read_closed_switch()) {
+                    std::cout << "DDDDDDD" << std::endl;
                     handle_lid_movement_error(policy);
                     auto response = messages::ErrorMessage{
                         .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
@@ -1327,6 +1335,7 @@ class MotorTask {
                         _task_registry->comms->get_message_queue().try_send(
                             messages::HostCommsMessage(response)));
                 } else {
+                    std::cout << "all good calling start 4" << std::endl;
                     // Now that the lid is at the closed position,
                     // the solenoid can be safely turned off
                     policy.lid_solenoid_disengage();

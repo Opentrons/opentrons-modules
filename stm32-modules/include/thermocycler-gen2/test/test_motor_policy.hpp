@@ -16,13 +16,17 @@ class TestMotorPolicy : public TestTMC2130Policy {
 
     auto lid_stepper_set_dac(uint8_t dac_val) -> void { _dac_val = dac_val; }
     auto lid_stepper_start(int32_t steps, bool overdrive) -> void {
+        std::cout << "lid stepper start" << std::endl;
+        std::cout << "steps = " << steps << std::endl;
         _lid_overdrive = overdrive;
         // Simulate jumping right to the end
         if (_lid_fault) {
+            std::cout << "LID FAULt AHHHHHHHHHHHHH\n" << std::endl;
             return;
         }
         _actual_angle += steps;
         _lid_moving = false;
+        // angle gets changed here
     }
     auto lid_stepper_stop() -> void { _lid_moving = false; }
 
@@ -85,6 +89,7 @@ class TestMotorPolicy : public TestTMC2130Policy {
     // Test-specific functions
 
     auto tick() -> void {
+//        std::cout << "tick called" << std::endl;
         if (_seal_moving) {
             _callback();
         }

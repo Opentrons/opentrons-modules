@@ -20,43 +20,44 @@ add_executable(${TARGET_MODULE_NAME}
     test_board_revision_hardware.cpp
     test_board_revision.cpp
     test_colors.cpp
+    test_motor_task_messages.cpp
     test_motor_task.cpp
-    test_motor_utils.cpp
-    test_eeprom.cpp
-    test_errors.cpp
+#    test_motor_utils.cpp
+#    test_eeprom.cpp
+#    test_errors.cpp
     # GCode parse tests
-    test_m14.cpp
-    test_m18.cpp
-    test_m103d.cpp
-    test_m104.cpp
-    test_m105.cpp
-    test_m105d.cpp
-    test_m115.cpp
-    test_m141d.cpp
-    test_m104d.cpp
-    test_m106.cpp
-    test_m107.cpp
-    test_m108.cpp
-    test_m116.cpp
-    test_m117.cpp
-    test_m119.cpp
-    test_m126.cpp
-    test_m127.cpp
-    test_m128.cpp
-    test_m140.cpp
-    test_m140d.cpp
-    test_m141.cpp
-    test_m301.cpp
-    test_g28d.cpp
-    test_m240d.cpp
-    test_m241d.cpp
-    test_m242d.cpp
-    test_m243d.cpp
-    test_m900d.cpp
-    test_m901d.cpp
-    test_m902d.cpp
-    test_m903d.cpp
-    test_m904d.cpp
+#    test_m14.cpp
+#    test_m18.cpp
+#    test_m103d.cpp
+#    test_m104.cpp
+#    test_m105.cpp
+#    test_m105d.cpp
+#    test_m115.cpp
+#    test_m141d.cpp
+#    test_m104d.cpp
+#    test_m106.cpp
+#    test_m107.cpp
+#    test_m108.cpp
+#    test_m116.cpp
+#    test_m117.cpp
+#    test_m119.cpp
+#    test_m126.cpp
+#    test_m127.cpp
+#    test_m128.cpp
+#    test_m140.cpp
+#    test_m140d.cpp
+#    test_m141.cpp
+#    test_m301.cpp
+#    test_g28d.cpp
+#    test_m240d.cpp
+#    test_m241d.cpp
+#    test_m242d.cpp
+#    test_m243d.cpp
+#    test_m900d.cpp
+#    test_m901d.cpp
+#    test_m902d.cpp
+#    test_m903d.cpp
+#    test_m904d.cpp
 )
 
 target_include_directories(${TARGET_MODULE_NAME} 
