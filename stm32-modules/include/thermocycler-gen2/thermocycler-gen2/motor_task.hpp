@@ -1176,10 +1176,10 @@ class MotorTask {
                 error = handle_lid_state_enter(
                     LidState::Status::OPENING_OPEN_HINGE, policy);
                 break;
-                case LidState::Status::OPENING_OPEN_HINGE:
-                    error =
-                        handle_lid_state_enter(LidState::Status::IDLE, policy);
-                    break;
+            }
+            case LidState::Status::OPENING_OPEN_HINGE: {
+                error = handle_lid_state_enter(LidState::Status::IDLE, policy);
+                break;
             }
             case LidState::Status::CLOSING_RETRACT_SEAL: {
                 _seal_position =
@@ -1199,10 +1199,11 @@ class MotorTask {
                 error = handle_lid_state_enter(
                     LidState::Status::CLOSING_CLOSE_HINGE, policy);
                 break;
-                case LidState::Status::CLOSING_CLOSE_HINGE:
-                    error = handle_lid_state_enter(
-                        LidState::Status::CLOSING_EXTEND_SEAL, policy);
-                    break;
+            }
+            case LidState::Status::CLOSING_CLOSE_HINGE: {
+                error = handle_lid_state_enter(
+                    LidState::Status::CLOSING_EXTEND_SEAL, policy);
+                break;
             }
             case LidState::Status::CLOSING_EXTEND_SEAL: {
                 _seal_position = shared_switches
