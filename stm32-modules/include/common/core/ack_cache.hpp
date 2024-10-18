@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <variant>
 
 template <size_t max_size, typename... Contents>
