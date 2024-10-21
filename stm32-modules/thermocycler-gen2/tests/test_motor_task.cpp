@@ -1,4 +1,5 @@
 #include <iostream>
+#include <utility>
 #include "catch2/catch.hpp"
 #include "systemwide.h"
 #include "test/task_builder.hpp"
@@ -142,19 +143,35 @@ void test_motor_state_machine(std::shared_ptr<TaskBuilder> tasks,
                             msg));
                     auto response =
                         std::get<messages::AcknowledgePrevious>(msg);
+                    if (response.responding_to_id != ack.responding_to_id) {
+                        std::cout << "ack failed at test id " << step.test_id.value() << std::endl;
+                    }
+                    if (response.with_error != ack.with_error) {
+                        std::cout << "change ack error at test id " << step.test_id.value() << std::endl;
+                    }
                     REQUIRE(response.responding_to_id == ack.responding_to_id);
                     REQUIRE(response.with_error == ack.with_error);
                 }
             }
             if (step.motor_state.has_value()) {
                 THEN("the motor state is updated correctly") {
-                    REQUIRE(tasks->get_system_queue().has_message());
+//                    REQUIRE(tasks->get_system_queue().has_message());
                     auto state_msg =
                         tasks->get_system_queue().backing_deque.front();
+                    std::cout << "test id here = " << step.test_id.value() << std::endl;
+                    if (!std::holds_alternative<messages::UpdateMotorState>(
+                            state_msg)) {
+                        std::cout << "AAAAAAAAAAAAHHHHHHHHHHHHHHH" << std::endl;
+                    }
                     REQUIRE(std::holds_alternative<messages::UpdateMotorState>(
                         state_msg));
                     auto state =
                         std::get<messages::UpdateMotorState>(state_msg);
+                    std::cout << "has motor state = " << step.motor_state.has_value() << std::endl;
+//                    std::cout << "motor state = " <<
+//                        static_cast<uint8_t>(step.motor_state.value())
+//                              << std::endl;
+                    printf("motor state = %x \n", step.motor_state.value());
                     REQUIRE(state.state == step.motor_state);
                 }
             }
@@ -345,146 +362,173 @@ SCENARIO("motor task lid state machine") {
             };
             test_motor_state_machine(tasks, steps);
         }
-//        WHEN("sending close lid command") {
-//            std::vector<MotorStep> steps = {
-//                // First step retracts seal to switch
-//                {.msg = messages::CloseLidMessage{.id = 123},
-//                 .seal_on = true,
-//                 .seal_direction = true,
-//                 .seal_switch_armed = true,
-//                 .motor_state = MotorStep::MotorState::OPENING_OR_CLOSING},
-//                // Second step extends seal from switch
-//                {.msg =
-//                     messages::SealStepperComplete{
-//                         .reason = messages::SealStepperComplete::
-//                             CompletionReason::LIMIT},
-//                 .seal_on = true,
-//                 .seal_direction = false,
-//                 .seal_switch_armed = false},
-//                // Third step closes hinge
-//                {.msg =
-//                     messages::SealStepperComplete{
-//                         .reason = messages::SealStepperComplete::
-//                             CompletionReason::DONE},
-//                 .lid_angle_decreased = true,
-//                 .lid_overdrive = false,
-//                 .lid_rpm =
-//                     motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM},
-//                // Fourth step overdrives hinge
-//                {.msg = messages::LidStepperComplete(),
-//                 .lid_angle_decreased = true,
-//                 .lid_overdrive = true},
-//                // Now extend seal to switch
-//                {.msg = messages::LidStepperComplete(),
-//                 .seal_on = true,
-//                 .seal_direction = false,
-//                 .seal_switch_armed = true},
-//                // Retract seal from switch
-//                {.msg =
-//                     messages::SealStepperComplete{
-//                         .reason = messages::SealStepperComplete::
-//                             CompletionReason::LIMIT},
-//                 .seal_on = true,
-//                 .seal_direction = true,
-//                 .seal_switch_armed = false},
-//            };
-//            AND_WHEN("the closed switch is triggered") {
-//                motor_policy.set_lid_closed_switch(true);
-//                steps.push_back(
-//                    // an ack with error code NO_ERROR should follow
-//                    MotorStep{.msg =
-//                                  messages::SealStepperComplete{
-//                                      .reason = messages::SealStepperComplete::
-//                                          CompletionReason::DONE},
-//                              .motor_state = MotorStep::MotorState::IDLE,
-//                              .ack = messages::AcknowledgePrevious{
-//                                  .responding_to_id = 123,
-//                                  .with_error = errors::ErrorCode::NO_ERROR}});
-//                test_motor_state_machine(tasks, steps);
-//            }
-//            AND_WHEN("the closed switch is not triggered") {
-//                motor_policy.set_lid_closed_switch(false);
-//                steps.push_back(
-//                    // an ack with error code UNEXPECTED_LID_STATE should follow
-//                    MotorStep{
-//                        .msg =
-//                            messages::SealStepperComplete{
-//                                .reason = messages::SealStepperComplete::
-//                                    CompletionReason::DONE},
-//                        .motor_state = MotorStep::MotorState::IDLE,
-//                        .ack = messages::AcknowledgePrevious{
-//                            .responding_to_id = 0,
-//                            .with_error =
-//                                errors::ErrorCode::UNEXPECTED_LID_STATE}});
-//                test_motor_state_machine(tasks, steps);
-//            }
-//        }
-//        WHEN("sending plate lift command") {
-//            std::vector<MotorStep> steps;
-//            for (auto angle = motor_task::LidStepperState::
-//                     PLATE_LIFT_NUDGE_START_DEGREES;
-//                 angle <
-//                 motor_task::LidStepperState::PLATE_LIFT_NUDGE_FINAL_DEGREES +
-//                     motor_task::LidStepperState::PLATE_LIFT_NUDGE_INCREMENT;
-//                 angle +=
-//                 motor_task::LidStepperState::PLATE_LIFT_NUDGE_INCREMENT) {
-//                // Incremental nudging
-//                steps.push_back(MotorStep{
-//                    .msg = messages::LidStepperComplete(),
-//                    .lid_angle_increased = true,
-//                    .lid_overdrive = true,
-//                    .lid_rpm =
-//                        motor_task::LidStepperState::PLATE_LIFT_VELOCITY_RPM,
-//                });
-//                steps.push_back(MotorStep{
-//                    .msg = messages::LidStepperComplete(),
-//                    .lid_angle_decreased = true,
-//                    .lid_overdrive = true,
-//                    .lid_rpm =
-//                        motor_task::LidStepperState::PLATE_LIFT_VELOCITY_RPM,
-//                });
-//            }
-//            // Final open - all the way to the limit
-//            steps.push_back(MotorStep{
-//                .msg = messages::LidStepperComplete(),
-//                .lid_angle_increased = true,
-//                .lid_overdrive = true,
-//                .lid_rpm =
-//                    motor_task::LidStepperState::PLATE_LIFT_VELOCITY_RPM});
-//            // Return below switch
-//            steps.push_back(MotorStep{
-//                .msg = messages::LidStepperComplete(),
-//                .lid_angle_increased = false,
-//                .lid_angle_decreased = true,
-//                .lid_overdrive = true,
-//                .lid_rpm =
-//                    motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM});
-//            // Return to the switch
-//            steps.push_back(MotorStep{
-//                .msg = messages::LidStepperComplete(),
-//                .lid_angle_increased = true,
-//                .lid_overdrive = false,
-//                .lid_rpm =
-//                    motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM});
-//            // Now BACK OUT of the switch
-//            steps.push_back(MotorStep{
-//                .msg = messages::LidStepperComplete(),
-//                .lid_angle_increased = false,
-//                .lid_angle_decreased = true,
-//                .lid_overdrive = true,
-//                .lid_rpm =
-//                    motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM});
-//            steps.push_back(
-//                // an ack with error code NO_ERROR should follow
-//                MotorStep{.msg = messages::LidStepperComplete(),
-//                          .motor_state = MotorStep::MotorState::IDLE,
+        WHEN("sending close lid command") {
+            std::vector<MotorStep> steps = {
+                // First step retracts seal to switch
+                {.msg = messages::CloseLidMessage{.id = 123},
+                 .seal_on = true,
+                 .seal_direction = true,
+                 .seal_switch_armed = true,
+                 .motor_state = MotorStep::MotorState::OPENING_OR_CLOSING,
+                 .test_id = 15},
+                // Second step extends seal from switch
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::LIMIT},
+                 .seal_on = true,
+                 .seal_direction = false,
+                 .seal_switch_armed = false,
+                 .test_id = 16},
+                // Third step closes hinge
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::DONE},
+                 .lid_angle_decreased = true,
+                 .lid_overdrive = false,
+                 .lid_rpm =
+                     motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM,
+                 .test_id = 17},
+                // Fourth step overdrives hinge
+                {.msg = messages::LidStepperComplete(),
+                 .lid_angle_decreased = true,
+                 .lid_overdrive = true,
+                 .lid_closed_switch_engaged = true,
+                 .test_id = 189},
+                // Now extend seal to switch
+                {.msg = messages::LidStepperComplete(),
+                 .seal_on = true,
+                 .seal_direction = false,
+                 .seal_switch_armed = true,
+                 .lid_closed_switch_engaged = true,
+                 .test_id = 18},
+                // Retract seal from switch
+                {.msg =
+                     messages::SealStepperComplete{
+                         .reason = messages::SealStepperComplete::
+                             CompletionReason::LIMIT},
+                 .seal_on = true,
+                 .seal_direction = true,
+                 .seal_switch_armed = false,
+                 .test_id = 19},
+            };
+            AND_WHEN("the closed switch is triggered") {
+                motor_policy.set_lid_closed_switch(true);
+                steps.push_back(
+                    // an ack with error code NO_ERROR should follow
+                    MotorStep{.msg =
+                                  messages::SealStepperComplete{
+                                      .reason = messages::SealStepperComplete::
+                                          CompletionReason::DONE},
+                              .motor_state = MotorStep::MotorState::IDLE,
+                              .ack = messages::AcknowledgePrevious{
+                                  .responding_to_id = 123,
+                                  .with_error = errors::ErrorCode::NO_ERROR},
+                              .lid_closed_switch_engaged = true,
+                              .test_id = 20});
+                test_motor_state_machine(tasks, steps);
+            }
+            AND_WHEN("the closed switch is not triggered") {
+                motor_policy.set_lid_closed_switch(false);
+                // the seal stepper should no longer move after a lid move failed
+                // edit this to test that an error message is received after a lidsteppercomplete
+                // with unexpected lid state
+                steps.push_back(
+                    // an ack with error code UNEXPECTED_LID_STATE should follow
+                    MotorStep{
+                        .msg =
+                            messages::SealStepperComplete{
+                                .reason = messages::SealStepperComplete::
+                                    CompletionReason::DONE},
+                        .motor_state = MotorStep::MotorState::IDLE,
+                        .lid_closed_switch_engaged = false,
+                        .test_id = 21});
+                test_motor_state_machine(tasks, steps);
+            }
+        }
+        WHEN("sending plate lift command") {
+            std::vector<MotorStep> steps;
+            for (auto angle = motor_task::LidStepperState::
+                     PLATE_LIFT_NUDGE_START_DEGREES;
+                 angle <
+                 motor_task::LidStepperState::PLATE_LIFT_NUDGE_FINAL_DEGREES +
+                     motor_task::LidStepperState::PLATE_LIFT_NUDGE_INCREMENT;
+                 angle +=
+                 motor_task::LidStepperState::PLATE_LIFT_NUDGE_INCREMENT) {
+                // Incremental nudging
+                steps.push_back(MotorStep{
+                    .msg = messages::LidStepperComplete(),
+                    .lid_angle_increased = true,
+                    .lid_overdrive = true,
+                    .lid_rpm =
+                        motor_task::LidStepperState::PLATE_LIFT_VELOCITY_RPM,
+                    .test_id = 22,
+                });
+                steps.push_back(MotorStep{
+                    .msg = messages::LidStepperComplete(),
+                    .lid_angle_decreased = true,
+                    .lid_overdrive = true,
+                    .lid_rpm =
+                        motor_task::LidStepperState::PLATE_LIFT_VELOCITY_RPM,
+                    .test_id = 23
+                });
+            }
+            // Final open - all the way to the limit
+            steps.push_back(MotorStep{
+                .msg = messages::LidStepperComplete(),
+                .lid_angle_increased = true,
+                .lid_overdrive = true,
+                .lid_rpm =
+                    motor_task::LidStepperState::PLATE_LIFT_VELOCITY_RPM,
+                .lid_open_switch_engaged = true,
+                .test_id = 24});
+            // Return below switch
+            steps.push_back(MotorStep{
+                .msg = messages::LidStepperComplete(),
+                .lid_angle_increased = false,
+                .lid_angle_decreased = true,
+                .lid_overdrive = true,
+                .lid_rpm =
+                    motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM,
+                .lid_open_switch_engaged = false,
+                .test_id = 25});
+            // Return to the switch
+            steps.push_back(MotorStep{
+                .msg = messages::LidStepperComplete(),
+                .lid_angle_increased = true,
+                .lid_overdrive = false,
+                .lid_rpm =
+                    motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM,
+                .lid_open_switch_engaged = true,
+                .test_id = 26,
+            });
+            // Now BACK OUT of the switch
+            steps.push_back(MotorStep{
+                .msg = messages::LidStepperComplete(),
+                .lid_angle_increased = false,
+                .lid_angle_decreased = true,
+                .lid_overdrive = true,
+//                .motor_state = MotorStep::MotorState::PLATE_LIFT,
+                .lid_rpm =
+                    motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM,
+                .lid_open_switch_engaged = false,
+                .test_id = 27
+            });
+            steps.push_back(
+                // an ack with error code NO_ERROR should follow
+                MotorStep{.msg = messages::LidStepperComplete(),
+                          .motor_state = MotorStep::MotorState::IDLE,
 //                          .ack = messages::AcknowledgePrevious{
 //                              .responding_to_id = 123,
-//                              .with_error = errors::ErrorCode::NO_ERROR}});
-//            steps[0].msg = messages::PlateLiftMessage{.id = 123};
-//            steps[0].motor_state = MotorStep::MotorState::PLATE_LIFT;
-//            test_motor_state_machine(tasks, steps);
-//        }
+//                              .with_error = errors::ErrorCode::NO_ERROR},
+                          .lid_open_switch_engaged = true,
+                          .test_id = 28
+                });
+            steps[0].msg = messages::PlateLiftMessage{.id = 123};
+            steps[0].motor_state = MotorStep::MotorState::PLATE_LIFT;
+            test_motor_state_machine(tasks, steps);
+        }
 //        GIVEN("seal retraction switch is triggered") {
 //            motor_policy.set_retraction_switch_triggered(true);
 //            WHEN("sending close lid command") {

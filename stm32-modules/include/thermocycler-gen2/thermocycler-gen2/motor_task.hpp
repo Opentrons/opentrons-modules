@@ -371,11 +371,21 @@ class MotorTask {
         static_cast<void>(msg);  // No contents in message
         LidStepperState::Status old_state = _lid_stepper_state.status.load();
         auto error = handle_hinge_state_end(policy);
+        std::cout << "LIDSTEPPERCOMPLETE ERROR = " <<
+            static_cast<int>(error) << std::endl;
+        std::cout << "OLD STATE == NEW STATE = " <<
+                (old_state != _lid_stepper_state.status) << std::endl;
+        if (error != errors::ErrorCode::NO_ERROR) {
+            std::cout << "old state = " << old_state << std::endl;
+            std::cout << "new state = " << _lid_stepper_state.status << std::endl;
+
+        }
         if ((_lid_stepper_state.status == LidStepperState::Status::IDLE &&
              old_state != _lid_stepper_state.status &&
              _lid_stepper_state.response_id != INVALID_ID) ||
             error != errors::ErrorCode::NO_ERROR) {
             // Send an ACK if a movement just finished
+            std::cout << "FINISHED GOOD " << std::endl;
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = _lid_stepper_state.response_id,
                 .with_error = error};
@@ -438,12 +448,14 @@ class MotorTask {
                     break;
             }
             _seal_stepper_state.status = SealStepperState::Status::IDLE;
+            std::cout << "WITH ERROR = " << static_cast<int>(with_error) << std::endl;
             if (with_error == errors::ErrorCode::NO_ERROR) {
                 with_error = handle_lid_state_end(policy);
             } else {
                 // Send error response on behalf of the lid state machine
+                std::cout << "CALL 1" << std::endl;
                 lid_response_send_and_clear(with_error);
-                handle_lid_state_enter(LidState::Status::IDLE, policy);
+//                handle_lid_state_enter(LidState::Status::IDLE, policy);
             }
             if (_seal_stepper_state.response_id != INVALID_ID) {
                 auto response = messages::SealStepperDebugResponse{
@@ -608,6 +620,7 @@ class MotorTask {
     template <MotorExecutionPolicy Policy>
     auto visit_message(const messages::PlateLiftMessage& msg, Policy& policy)
         -> void {
+        std::cout << "STARTING PLATE LIFTEWIADJ" << std::endl;
         auto error = start_plate_lift(msg.id, policy);
 
         if (error != errors::ErrorCode::NO_ERROR) {
@@ -950,6 +963,7 @@ class MotorTask {
             motor_util::LidStepper::Position::OPEN) {
             return errors::ErrorCode::LID_CLOSED;
         }
+        std::cout << "ERROR EQUALS PLATE LIFT AAAAHH" << std::endl;
         auto error =
             handle_lid_state_enter(LidState::Status::PLATE_LIFTING, policy);
 
@@ -1028,6 +1042,7 @@ class MotorTask {
     auto lid_response_send_and_clear(
         errors::ErrorCode error = errors::ErrorCode::NO_ERROR) -> void {
         if (_state.response_id != INVALID_ID) {
+            std::cout << "SENDING ERROR HERE " << static_cast<int>(error) << std::endl;
             auto response = messages::AcknowledgePrevious{
                 .responding_to_id = _state.response_id, .with_error = error};
             static_cast<void>(
@@ -1053,6 +1068,7 @@ class MotorTask {
             messages::UpdateMotorState::MotorState::IDLE;
         switch (state) {
             case LidState::Status::IDLE:
+                std::cout << "CALL 2" << std::endl;
                 lid_response_send_and_clear();
                 state_for_system_task =
                     messages::UpdateMotorState::MotorState::IDLE;
@@ -1118,6 +1134,7 @@ class MotorTask {
                 break;
             case LidState::Status::PLATE_LIFTING:
                 // The lid state machine handles everything
+                std::cout << "PLATE LIFTING AAAAAAHH" << std::endl;
                 if (!start_lid_hinge_plate_lift(INVALID_ID, policy)) {
                     error = errors::ErrorCode::LID_MOTOR_FAULT;
                 }
@@ -1132,6 +1149,7 @@ class MotorTask {
             state_for_system_task =
                 messages::UpdateMotorState::MotorState::IDLE;
         }
+        std::cout << "sending state call 2" << std::endl;
         static_cast<void>(_task_registry->system->get_message_queue().try_send(
             messages::UpdateMotorState{.state = state_for_system_task},
             system_msg_timeout_ticks));
@@ -1178,6 +1196,8 @@ class MotorTask {
                     LidState::Status::OPENING_OPEN_HINGE, policy);
                 break;
                 case LidState::Status::OPENING_OPEN_HINGE:
+                    // call 2 might come from here
+                    std::cout << "CALL 2@ MAYBE" << std::endl;
                     error =
                         handle_lid_state_enter(LidState::Status::IDLE, policy);
                     break;
@@ -1218,32 +1238,45 @@ class MotorTask {
             }
             case LidState::Status::CLOSING_EXTEND_SEAL_BACKOFF: {
                 _seal_position = motor_util::SealStepper::Status::ENGAGED;
+                std::cout << "LID ENTER 1" << std::endl;
                 error = handle_lid_state_enter(LidState::Status::IDLE, policy);
                 break;
             }
             case LidState::Status::PLATE_LIFTING: {
+                std::cout << "LID ENTER 2" << std::endl;
                 error = handle_lid_state_enter(LidState::Status::IDLE, policy);
                 break;
             }
         }
         if (error != errors::ErrorCode::NO_ERROR) {
             // Clear the lid status no matter what
+            std::cout << "CALL 3" << std::endl;
             lid_response_send_and_clear(error);
+            std::cout << "LID ENTER 3" << std::endl;
             handle_lid_state_enter(LidState::Status::IDLE, policy);
         }
         return error;
     }
 
     template <MotorExecutionPolicy Policy>
-    auto handle_lid_movement_error(Policy& policy) {
+    auto handle_lid_movement_error(Policy& policy, errors::ErrorCode error) {
         policy.lid_solenoid_disengage();
         // Turn off lid stepper current
         policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
+//        handle_lid_state_enter(LidState::Status::IDLE, policy);
+        std::cout << "CALL 4" << std::endl;
+        lid_response_send_and_clear(error);
 
         // update status
         _lid_stepper_state.status = LidStepperState::Status::IDLE;
         _state.status = LidState::Status::IDLE;
         _lid_stepper_state.position = motor_util::LidStepper::Position::UNKNOWN;
+
+        constexpr uint32_t system_msg_timeout_ticks = 100;
+        std::cout << "SENDIONG IDLE STATE" << std::endl;
+        static_cast<void>(_task_registry->system->get_message_queue().try_send(
+            messages::UpdateMotorState{.state = messages::UpdateMotorState::MotorState::IDLE},
+            system_msg_timeout_ticks));
     }
 
     /**
@@ -1267,7 +1300,8 @@ class MotorTask {
             case LidStepperState::Status::OPEN_TO_SWITCH:
                 if (!policy.lid_read_open_switch()) {
                     std::cout << "AAAAAAA1111" << std::endl;
-                    handle_lid_movement_error(policy);
+                    error = errors::ErrorCode::UNEXPECTED_LID_STATE;
+                    handle_lid_movement_error(policy, error);
                     auto response = messages::ErrorMessage{
                         .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
                     static_cast<void>(
@@ -1289,7 +1323,8 @@ class MotorTask {
                 // lid open switch should no longer be triggered
                 if (policy.lid_read_open_switch()) {
                     std::cout << "BBBBBB" << std::endl;
-                    handle_lid_movement_error(policy);
+                    error = errors::ErrorCode::UNEXPECTED_LID_STATE;
+                    handle_lid_movement_error(policy, error);
                     auto response = messages::ErrorMessage{
                         .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
                     static_cast<void>(
@@ -1309,8 +1344,9 @@ class MotorTask {
                 break;
             case LidStepperState::Status::CLOSE_TO_SWITCH:
                 if (!policy.lid_read_closed_switch()) {
-                    std::cout << "BBBBBB" << std::endl;
-                    handle_lid_movement_error(policy);
+                    std::cout << "ccccccccc" << std::endl;
+                    error = errors::ErrorCode::UNEXPECTED_LID_STATE;
+                    handle_lid_movement_error(policy, error);
                     auto response = messages::ErrorMessage{
                         .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
                     static_cast<void>(
@@ -1328,7 +1364,8 @@ class MotorTask {
             case LidStepperState::Status::CLOSE_OVERDRIVE:
                 if (!policy.lid_read_closed_switch()) {
                     std::cout << "DDDDDDD" << std::endl;
-                    handle_lid_movement_error(policy);
+                    error = errors::ErrorCode::UNEXPECTED_LID_STATE;
+                    handle_lid_movement_error(policy, error);
                     auto response = messages::ErrorMessage{
                         .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
                     static_cast<void>(
