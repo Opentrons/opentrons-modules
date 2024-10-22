@@ -1309,7 +1309,12 @@ class MotorTask {
                         motor_util::LidStepper::Position::BETWEEN;
                 } else {
                     // The latch is stuck, stop and raise error
-                    error = errors::ErrorCode::LID_MOTOR_FAULT;
+                    handle_lid_movement_error(policy);
+                    auto response = messages::ErrorMessage{
+                        .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
+                    static_cast<void>(
+                        _task_registry->comms->get_message_queue().try_send(
+                            messages::HostCommsMessage(response)));
                 }
                 break;
             case LidStepperState::Status::OPEN_TO_SWITCH:

@@ -607,6 +607,12 @@ SCENARIO("motor task message passing") {
 struct MotorStep {
     // Message to send on this step
     messages::MotorMessage msg;
+
+    // Set the lid closed switch if there's a value before this message
+    std::optional<bool> lid_closed_switch_condition = std::nullopt;
+    // Set the lid open switch if there's a value before this message
+    std::optional<bool> lid_open_switch_condition = std::nullopt;
+
     // If true, expect that the lid angle increased after this message
     bool lid_angle_increased = false;
     // If true, expect that the lid angle decreased after this message
@@ -652,20 +658,16 @@ void test_motor_state_machine(std::shared_ptr<TaskBuilder> tasks,
     for (size_t i = 0; i < steps.size(); ++i) {
         auto &step = steps[i];
 
-        motor_policy.set_lid_open_switch(false);
-        motor_policy.set_lid_closed_switch(false);
+        if (step.lid_open_switch_condition.has_value()) {
+            motor_policy.set_lid_open_switch(step.lid_open_switch_condition.value());
+        }
+        if (step.lid_closed_switch_condition.has_value()) {
+            motor_policy.set_lid_closed_switch(step.lid_closed_switch_condition.value());
+        }
+
         auto lid_angle_before = motor_policy.get_angle();
         motor_queue.backing_deque.push_back(step.msg);
         tasks->get_system_queue().backing_deque.clear();
-
-        if (step.lid_open_switch_engaged) {
-            motor_policy.set_lid_open_switch(true);
-        }
-        if (step.lid_closed_switch_engaged) {
-            motor_policy.set_lid_closed_switch(true);
-
-        }
-
 
         tasks->run_motor_task();
 
@@ -746,21 +748,33 @@ SCENARIO("motor task lid state machine") {
                  .seal_on = true,
                  .seal_direction = false,
                  .seal_switch_armed = false},
-                // Third step opens hinge
+                // Third step overdrive lid close to ease off the latch
                 {.msg =
                      messages::SealStepperComplete{
                          .reason = messages::SealStepperComplete::
                              CompletionReason::DONE},
-                 .lid_angle_increased = true,
-                 .lid_overdrive = false,
+                 .lid_angle_decreased = true,
+                 .lid_overdrive = true,
                  .lid_rpm =
                      motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM},
-                // Fourth step overdrives hinge
+                // Fourth step open lid to backoff from latch
                 {.msg = messages::LidStepperComplete(),
+                 .lid_angle_increased = true,
+                 .lid_overdrive = false,
+                },
+                // Fifth step fully opening lid
+                {.msg = messages::LidStepperComplete(),
+                 .lid_closed_switch_condition = false,
+                 .lid_angle_increased = true,
+                 .lid_overdrive = false},
+                // Sixth step open overdrive
+                {.msg = messages::LidStepperComplete(),
+                 .lid_open_switch_condition = true,
                  .lid_angle_decreased = true,
                  .lid_overdrive = true},
                 // Should send ACK now
                 {.msg = messages::LidStepperComplete(),
+                 .lid_open_switch_condition = false,
                  .motor_state = MotorStep::MotorState::IDLE,
                  .ack =
                      messages::AcknowledgePrevious{
