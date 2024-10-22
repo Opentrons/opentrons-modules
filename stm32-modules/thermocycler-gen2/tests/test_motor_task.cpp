@@ -633,6 +633,10 @@ struct MotorStep {
     std::optional<double> lid_rpm = std::nullopt;
     // If true, expect an ack in the host comms task
     std::optional<messages::AcknowledgePrevious> ack = std::nullopt;
+
+    bool lid_open_switch_engaged = false;
+    bool lid_closed_switch_engaged = false;
+    std::optional<int> test_id = std::nullopt;
 };
 
 /**
