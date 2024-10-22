@@ -1231,26 +1231,39 @@ SCENARIO("motor task lid state machine") {
                  .lid_angle_increased = true,
                  .lid_overdrive = false,
                  .lid_rpm =
-                     motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM},
+                     motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM}};
+
+            WHEN("lid backoff from the latch successfully") {
                 // Fourth step fully opening lid
-                {.msg = messages::LidStepperComplete(),
-                 .lid_closed_switch_condition = false,
-                 .lid_angle_increased = true,
-                 .lid_overdrive = false},
-                // Fifth step open overdrive
-                {.msg = messages::LidStepperComplete(),
-                 .lid_open_switch_condition = true,
-                 .lid_angle_decreased = true,
-                 .lid_overdrive = true},
-                // Should send ACK now
-                {.msg = messages::LidStepperComplete(),
-                 .lid_open_switch_condition = false,
-                 .ack =
-                     messages::AcknowledgePrevious{
+                steps.push_back(
+                    MotorStep{.msg = messages::LidStepperComplete(),
+                     .lid_closed_switch_condition = false,
+                     .lid_angle_increased = true,
+                     .lid_overdrive = false});
+                    // Fifth step open overdrive
+                steps.push_back(
+                    MotorStep{.msg = messages::LidStepperComplete(),
+                     .lid_open_switch_condition = true,
+                     .lid_angle_decreased = true,
+                     .lid_overdrive = true});
+                    // Should send ACK now
+                steps.push_back(
+                    MotorStep{.msg = messages::LidStepperComplete(),
+                     .lid_open_switch_condition = false,
+                     .ack = messages::AcknowledgePrevious{
                          .responding_to_id = 123,
-                         .with_error = errors::ErrorCode::NO_ERROR}},
-            };
-            test_motor_state_machine(tasks, steps);
+                         .with_error = errors::ErrorCode::NO_ERROR}});
+                test_motor_state_machine(tasks, steps);
+            }
+            WHEN("lid is stuck on latch") {
+                // Fourth step fully opening lid
+                steps.push_back(
+                    MotorStep{.msg = messages::LidStepperComplete(),
+                     .lid_closed_switch_condition = true,
+                     .error = messages::ErrorMessage{
+                         .code = errors::ErrorCode::UNEXPECTED_LID_STATE}});
+                test_motor_state_machine(tasks, steps);
+            }
         }
         WHEN("sending close lid command") {
             std::vector<MotorStep> steps = {
