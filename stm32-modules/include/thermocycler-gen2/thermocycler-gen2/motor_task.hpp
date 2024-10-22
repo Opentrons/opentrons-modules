@@ -1274,6 +1274,12 @@ class MotorTask {
         _lid_stepper_state.status = LidStepperState::Status::IDLE;
         _state.status = LidState::Status::IDLE;
         _lid_stepper_state.position = motor_util::LidStepper::Position::UNKNOWN;
+
+        auto error_msg = messages::UpdateTaskErrorState{
+            .task = messages::UpdateTaskErrorState::Tasks::MOTOR,
+            .current_error = most_relevant_error()};
+        static_cast<void>(
+            _task_registry->system->get_message_queue().try_send(error_msg));
     }
 
     /**
