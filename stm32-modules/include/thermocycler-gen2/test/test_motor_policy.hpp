@@ -43,10 +43,9 @@ class TestMotorPolicy : public TestTMC2130Policy {
     auto lid_solenoid_disengage() -> void { _solenoid_engaged = false; }
     auto lid_solenoid_engage() -> void { _solenoid_engaged = true; }
 
-    auto lid_read_closed_switch() -> bool {
-        return _lid_closed_switch; }
+    auto lid_read_closed_switch() -> bool { return _lid_closed_switch; }
 
-    auto lid_read_open_switch() -> bool {return _lid_open_switch; }
+    auto lid_read_open_switch() -> bool { return _lid_open_switch; }
 
     auto seal_stepper_start(Callback cb) -> bool {
         if (_seal_moving) {
