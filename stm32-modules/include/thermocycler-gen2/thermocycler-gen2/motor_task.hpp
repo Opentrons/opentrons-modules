@@ -1236,6 +1236,14 @@ class MotorTask {
                 break;
             }
             case LidState::Status::CLOSING_EXTEND_SEAL: {
+                if (!policy.lid_read_closed_switch()) {
+                    handle_lid_movement_error(policy);
+                    auto response = messages::ErrorMessage{
+                        .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
+                    static_cast<void>(
+                        _task_registry->comms->get_message_queue().try_send(
+                            messages::HostCommsMessage(response)));
+                }
                 _seal_position = shared_switches
                                      ? motor_util::SealStepper::Status::BETWEEN
                                      : motor_util::SealStepper::Status::ENGAGED;
@@ -1276,6 +1284,12 @@ class MotorTask {
         _lid_stepper_state.position = motor_util::LidStepper::Position::UNKNOWN;
 
         // TODO: issue an update task error state to system task
+        constexpr uint32_t system_msg_timeout_ticks = 100;
+        auto state_for_system_task =
+            messages::UpdateMotorState::MotorState::IDLE;
+        static_cast<void>(_task_registry->system->get_message_queue().try_send(
+            messages::UpdateMotorState{.state = state_for_system_task},
+            system_msg_timeout_ticks));
     }
 
     /**
@@ -1287,7 +1301,9 @@ class MotorTask {
     template <MotorExecutionPolicy Policy>
     auto handle_hinge_state_end(Policy& policy) -> errors::ErrorCode {
         auto error = errors::ErrorCode::NO_ERROR;
-        switch (_lid_stepper_state.status.load()) {
+//        switch (_lid_stepper_state.status.load()) {
+        auto _status = _lid_stepper_state.status.load();
+        switch (_status) {
             case LidStepperState::Status::SIMPLE_MOVEMENT:
                 // Turn off the drive current
                 policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
