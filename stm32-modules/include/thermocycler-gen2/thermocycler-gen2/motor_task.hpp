@@ -95,6 +95,12 @@ concept MotorExecutionPolicy = requires(Policy& p,
 
 // Structure to encapsulate state of the lid stepper
 struct LidStepperState {
+    // Further closing the lid to ensure the latch is not stuck.
+    constexpr static double LATCH_RELEASE_OVERDRIVE_DEGREES =
+        motor_util::LidStepper::angle_to_microsteps(-1);
+    // Opening lid slightly to check if latch is stuck. If so, raise an error.
+    constexpr static double LATCH_RELEASE_BACKOFF_DEGREES =
+        motor_util::LidStepper::angle_to_microsteps(8);
     // Full open/close movements run until they hit an endstop switch, so the
     // distance is 120 degrees which is far wider than the actual travel angle.
     constexpr static double FULL_OPEN_DEGREES =
@@ -129,15 +135,19 @@ struct LidStepperState {
     constexpr static double PLATE_LIFT_VELOCITY_RPM = 40.0F;
     // Velocity for all lid movements other than plate lift
     constexpr static double LID_DEFAULT_VELOCITY_RPM = 125.0F;
+    constexpr static double LID_OPEN_LATCH_BACKOFF_RPM = 10.0F;
     // States for lid stepper
     enum Status {
-        IDLE,            /**< Not moving.*/
-        SIMPLE_MOVEMENT, /**< Single stage movement.*/
-        OPEN_TO_SWITCH,  /**< Open until the open switch is hit.*/
-        OPEN_OVERDRIVE,  /**< Close from switch back to 90º position.*/
-        CLOSE_TO_SWITCH, /**< Close lid until it hits the switch.*/
-        CLOSE_OVERDRIVE, /**< Close lid a few degrees into the switch.*/
-        LIFT_NUDGE,      /**< Nudge the plate up with one pin.*/
+        IDLE,                    /**< Not moving.*/
+        SIMPLE_MOVEMENT,         /**< Single stage movement.*/
+        LATCH_RELEASE_OVERDRIVE, /**< Close lid to ease off latch.*/
+        LATCH_RELEASE_BACKOFF, /**< Open lid slightly to make sure latch is not
+                                  stuck before fully opening.*/
+        OPEN_TO_SWITCH,        /**< Open until the open switch is hit.*/
+        OPEN_OVERDRIVE,        /**< Close from switch back to 90º position.*/
+        CLOSE_TO_SWITCH,       /**< Close lid until it hits the switch.*/
+        CLOSE_OVERDRIVE,       /**< Close lid a few degrees into the switch.*/
+        LIFT_NUDGE,            /**< Nudge the plate up with one pin.*/
         LIFT_NUDGE_DOWN, /**< Move back to the "open" position after nudging.*/
         LIFT_RAISE,      /**< Open lid to raise the plate lift.*/
         LIFT_LOWER,      /**< Close lid to lower the plate lift.*/
@@ -210,11 +220,11 @@ struct LidState {
         OPENING_RETRACT_SEAL,         /**< Retracting seal before opening lid.*/
         OPENING_RETRACT_SEAL_BACKOFF, /**< Extend seal to ease off of the
                                            limit switch.*/
-        OPENING_OPEN_HINGE,           /**< Opening lid hinge.*/
+        OPENING_LID_HINGE,            /**< Opening lid hinge.*/
         CLOSING_RETRACT_SEAL,         /**< Retracting seal before closing lid.*/
         CLOSING_RETRACT_SEAL_BACKOFF, /**< Extend seal to ease off of the
                                            limit switch.*/
-        CLOSING_CLOSE_HINGE,          /**< Closing lid hinge.*/
+        CLOSING_LID_HINGE,            /**< Closing lid hinge.*/
         CLOSING_EXTEND_SEAL,          /**< Extending seal after closing
                                            lid hinge.*/
         CLOSING_EXTEND_SEAL_BACKOFF,  /**< Retract seal to ease off of the
@@ -860,7 +870,7 @@ class MotorTask {
             error = errors::ErrorCode::SEAL_MOTOR_SWITCH;
         } else if (retract_switch) {
             // Seal is already retracted, so just open the hinge
-            error = handle_lid_state_enter(LidState::Status::OPENING_OPEN_HINGE,
+            error = handle_lid_state_enter(LidState::Status::OPENING_LID_HINGE,
                                            policy);
         } else {
             // Seal isn't retracted yet, so retract it
@@ -912,8 +922,8 @@ class MotorTask {
             error = errors::ErrorCode::SEAL_MOTOR_SWITCH;
         } else if (retract_switch) {
             // Seal is already retracted, so just open the hinge
-            error = handle_lid_state_enter(
-                LidState::Status::CLOSING_CLOSE_HINGE, policy);
+            error = handle_lid_state_enter(LidState::Status::CLOSING_LID_HINGE,
+                                           policy);
         } else {
             // Always retract seal before closing
             error = handle_lid_state_enter(
@@ -965,14 +975,41 @@ class MotorTask {
         }
         // First release the latch
         policy.lid_solenoid_engage();
+        if (policy.lid_read_closed_switch()) {
+            return start_latch_release_overdrive(response_id, policy);
+        }
+        return start_latch_release_backoff(response_id, policy);
+    }
+
+    template <MotorExecutionPolicy Policy>
+    auto start_latch_release_overdrive(uint32_t response_id, Policy& policy)
+        -> bool {
         // Update velocity for this movement
         std::ignore = policy.lid_stepper_set_rpm(
-            LidStepperState::LID_DEFAULT_VELOCITY_RPM);
+            LidStepperState::LID_OPEN_LATCH_BACKOFF_RPM);
         // Now start a lid motor movement to the endstop
         policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
-        policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES, false);
+        policy.lid_stepper_start(
+            LidStepperState::LATCH_RELEASE_OVERDRIVE_DEGREES, true);
         // Store the new state, as well as the response ID
-        _lid_stepper_state.status = LidStepperState::Status::OPEN_TO_SWITCH;
+        _lid_stepper_state.status =
+            LidStepperState::Status::LATCH_RELEASE_OVERDRIVE;
+        _lid_stepper_state.response_id = response_id;
+        return true;
+    }
+
+    template <MotorExecutionPolicy Policy>
+    auto start_latch_release_backoff(uint32_t response_id, Policy& policy)
+        -> bool {
+        std::ignore = policy.lid_stepper_set_rpm(
+            LidStepperState::LID_OPEN_LATCH_BACKOFF_RPM);
+        // Now start a lid motor movement to the endstop
+        policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
+        policy.lid_stepper_start(LidStepperState::LATCH_RELEASE_BACKOFF_DEGREES,
+                                 false);
+        // Store the new state, as well as the response ID
+        _lid_stepper_state.status =
+            LidStepperState::Status::LATCH_RELEASE_BACKOFF;
         _lid_stepper_state.position = motor_util::LidStepper::Position::BETWEEN;
         _lid_stepper_state.response_id = response_id;
         return true;
@@ -983,8 +1020,6 @@ class MotorTask {
         if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
             return false;
         }
-        // First release the latch
-        policy.lid_solenoid_engage();
         // Update velocity for this movement
         std::ignore = policy.lid_stepper_set_rpm(
             LidStepperState::LID_DEFAULT_VELOCITY_RPM);
@@ -1071,7 +1106,7 @@ class MotorTask {
                 state_for_system_task =
                     messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
-            case LidState::Status::OPENING_OPEN_HINGE:
+            case LidState::Status::OPENING_LID_HINGE:
                 if (!start_lid_hinge_open(INVALID_ID, policy)) {
                     error = errors::ErrorCode::LID_MOTOR_BUSY;
                 }
@@ -1093,7 +1128,7 @@ class MotorTask {
                 state_for_system_task =
                     messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
-            case LidState::Status::CLOSING_CLOSE_HINGE:
+            case LidState::Status::CLOSING_LID_HINGE:
                 if (!start_lid_hinge_close(INVALID_ID, policy)) {
                     error = errors::ErrorCode::LID_MOTOR_BUSY;
                 }
@@ -1166,7 +1201,7 @@ class MotorTask {
                 auto next_state =
                     shared_switches
                         ? LidState::Status::OPENING_RETRACT_SEAL_BACKOFF
-                        : LidState::Status::OPENING_OPEN_HINGE;
+                        : LidState::Status::OPENING_LID_HINGE;
                 error = handle_lid_state_enter(next_state, policy);
                 break;
             }
@@ -1174,12 +1209,12 @@ class MotorTask {
                 _seal_position = motor_util::SealStepper::Status::RETRACTED;
                 // Start lid motor movement
                 error = handle_lid_state_enter(
-                    LidState::Status::OPENING_OPEN_HINGE, policy);
+                    LidState::Status::OPENING_LID_HINGE, policy);
                 break;
-                case LidState::Status::OPENING_OPEN_HINGE:
-                    error =
-                        handle_lid_state_enter(LidState::Status::IDLE, policy);
-                    break;
+            }
+            case LidState::Status::OPENING_LID_HINGE: {
+                error = handle_lid_state_enter(LidState::Status::IDLE, policy);
+                break;
             }
             case LidState::Status::CLOSING_RETRACT_SEAL: {
                 _seal_position =
@@ -1189,7 +1224,7 @@ class MotorTask {
                 auto next_state =
                     shared_switches
                         ? LidState::Status::CLOSING_RETRACT_SEAL_BACKOFF
-                        : LidState::Status::CLOSING_CLOSE_HINGE;
+                        : LidState::Status::CLOSING_LID_HINGE;
                 error = handle_lid_state_enter(next_state, policy);
                 break;
             }
@@ -1197,14 +1232,23 @@ class MotorTask {
                 _seal_position = motor_util::SealStepper::Status::RETRACTED;
                 // Start lid motor movement
                 error = handle_lid_state_enter(
-                    LidState::Status::CLOSING_CLOSE_HINGE, policy);
+                    LidState::Status::CLOSING_LID_HINGE, policy);
                 break;
-                case LidState::Status::CLOSING_CLOSE_HINGE:
-                    error = handle_lid_state_enter(
-                        LidState::Status::CLOSING_EXTEND_SEAL, policy);
-                    break;
+            }
+            case LidState::Status::CLOSING_LID_HINGE: {
+                error = handle_lid_state_enter(
+                    LidState::Status::CLOSING_EXTEND_SEAL, policy);
+                break;
             }
             case LidState::Status::CLOSING_EXTEND_SEAL: {
+                if (!policy.lid_read_closed_switch()) {
+                    handle_lid_movement_error(policy);
+                    auto response = messages::ErrorMessage{
+                        .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
+                    static_cast<void>(
+                        _task_registry->comms->get_message_queue().try_send(
+                            messages::HostCommsMessage(response)));
+                }
                 _seal_position = shared_switches
                                      ? motor_util::SealStepper::Status::BETWEEN
                                      : motor_util::SealStepper::Status::ENGAGED;
@@ -1233,6 +1277,26 @@ class MotorTask {
         return error;
     }
 
+    template <MotorExecutionPolicy Policy>
+    auto handle_lid_movement_error(Policy& policy) {
+        policy.lid_solenoid_disengage();
+        // Turn off lid stepper current
+        policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
+
+        // update status
+        _lid_stepper_state.status = LidStepperState::Status::IDLE;
+        _state.status = LidState::Status::IDLE;
+        _lid_stepper_state.position = motor_util::LidStepper::Position::UNKNOWN;
+
+        // TODO: issue an update task error state to system task
+        constexpr uint32_t system_msg_timeout_ticks = 100;
+        auto state_for_system_task =
+            messages::UpdateMotorState::MotorState::IDLE;
+        static_cast<void>(_task_registry->system->get_message_queue().try_send(
+            messages::UpdateMotorState{.state = state_for_system_task},
+            system_msg_timeout_ticks));
+    }
+
     /**
      * @brief Handler to transition between lid hinge motor states. Should be
      * called every time a lid motor movement complete callback is triggered.
@@ -1251,48 +1315,103 @@ class MotorTask {
                 _lid_stepper_state.position =
                     motor_util::LidStepper::Position::BETWEEN;
                 break;
+            case LidStepperState::Status::LATCH_RELEASE_OVERDRIVE:
+                start_latch_release_backoff(_lid_stepper_state.response_id,
+                                            policy);
+                break;
+            case LidStepperState::Status::LATCH_RELEASE_BACKOFF:
+                if (!policy.lid_read_closed_switch()) {
+                    std::ignore = policy.lid_stepper_set_rpm(
+                        LidStepperState::LID_DEFAULT_VELOCITY_RPM);
+                    // The latch is not holding the lid down, continue to open
+                    policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES,
+                                             false);
+                    // Store the new state, as well as the response ID
+                    _lid_stepper_state.status =
+                        LidStepperState::Status::OPEN_TO_SWITCH;
+                    _lid_stepper_state.position =
+                        motor_util::LidStepper::Position::BETWEEN;
+                    policy.lid_solenoid_disengage();
+                } else {
+                    // The latch is stuck, stop and raise error
+                    handle_lid_movement_error(policy);
+                    auto response = messages::ErrorMessage{
+                        .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
+                    static_cast<void>(
+                        _task_registry->comms->get_message_queue().try_send(
+                            messages::HostCommsMessage(response)));
+                }
+                break;
             case LidStepperState::Status::OPEN_TO_SWITCH:
-                // Now that the lid is at the open position,
-                // the solenoid can be safely turned off
-                policy.lid_solenoid_disengage();
-                // Overdrive into switch
-                policy.lid_stepper_start(
-                    LidStepperState::OPEN_OVERDRIVE_DEGREES, true);
-                _lid_stepper_state.status =
-                    LidStepperState::Status::OPEN_OVERDRIVE;
+                if (!policy.lid_read_open_switch()) {
+                    handle_lid_movement_error(policy);
+                    auto response = messages::ErrorMessage{
+                        .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
+                    static_cast<void>(
+                        _task_registry->comms->get_message_queue().try_send(
+                            messages::HostCommsMessage(response)));
+                } else {
+                    // Overdrive into switch
+                    policy.lid_stepper_start(
+                        LidStepperState::OPEN_OVERDRIVE_DEGREES, true);
+                    _lid_stepper_state.status =
+                        LidStepperState::Status::OPEN_OVERDRIVE;
+                }
                 break;
             case LidStepperState::Status::OPEN_OVERDRIVE:
-                // Turn off lid stepper current
-                policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
-                // Movement is done
-                _lid_stepper_state.status = LidStepperState::Status::IDLE;
-                _lid_stepper_state.position =
-                    motor_util::LidStepper::Position::OPEN;
-                // The overall lid state machine can advance now
-                error = handle_lid_state_end(policy);
+                // lid open switch should no longer be triggered
+                if (policy.lid_read_open_switch()) {
+                    handle_lid_movement_error(policy);
+                    auto response = messages::ErrorMessage{
+                        .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
+                    static_cast<void>(
+                        _task_registry->comms->get_message_queue().try_send(
+                            messages::HostCommsMessage(response)));
+                } else {
+                    // Turn off lid stepper current
+                    policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
+                    // Movement is done
+                    _lid_stepper_state.status = LidStepperState::Status::IDLE;
+                    _lid_stepper_state.position =
+                        motor_util::LidStepper::Position::OPEN;
+                    // The overall lid state machine can advance now
+                    error = handle_lid_state_end(policy);
+                }
                 break;
             case LidStepperState::Status::CLOSE_TO_SWITCH:
-                // Overdrive the lid stepper into the switch
-                policy.lid_stepper_start(
-                    LidStepperState::CLOSE_OVERDRIVE_DEGREES, true);
-                _lid_stepper_state.status =
-                    LidStepperState::Status::CLOSE_OVERDRIVE;
+                if (!policy.lid_read_closed_switch()) {
+                    handle_lid_movement_error(policy);
+                    auto response = messages::ErrorMessage{
+                        .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
+                    static_cast<void>(
+                        _task_registry->comms->get_message_queue().try_send(
+                            messages::HostCommsMessage(response)));
+                } else {
+                    // Overdrive the lid stepper into the switch
+                    policy.lid_stepper_start(
+                        LidStepperState::CLOSE_OVERDRIVE_DEGREES, true);
+                    _lid_stepper_state.status =
+                        LidStepperState::Status::CLOSE_OVERDRIVE;
+                }
                 break;
             case LidStepperState::Status::CLOSE_OVERDRIVE:
-                // Now that the lid is at the closed position,
-                // the solenoid can be safely turned off
-                policy.lid_solenoid_disengage();
-                // Turn off lid stepper current
-                policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
-                // Movement is done
-                _lid_stepper_state.status = LidStepperState::Status::IDLE;
-                _lid_stepper_state.position =
-                    motor_util::LidStepper::Position::CLOSED;
-                // The overall lid state machine can advance now
-                error = handle_lid_state_end(policy);
-                // if the lid isn't actually closed, overwrite error status
                 if (!policy.lid_read_closed_switch()) {
-                    error = errors::ErrorCode::UNEXPECTED_LID_STATE;
+                    handle_lid_movement_error(policy);
+                    auto response = messages::ErrorMessage{
+                        .code = errors::ErrorCode::UNEXPECTED_LID_STATE};
+                    static_cast<void>(
+                        _task_registry->comms->get_message_queue().try_send(
+                            messages::HostCommsMessage(response)));
+                } else {
+                    // Turn off lid stepper current
+                    policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
+                    // Movement is done
+                    _lid_stepper_state.status = LidStepperState::Status::IDLE;
+                    _lid_stepper_state.position =
+                        motor_util::LidStepper::Position::CLOSED;
+                    // The overall lid state machine can advance now
+                    error = handle_lid_state_end(policy);
+                    // if the lid isn't actually closed, overwrite error status
                 }
                 break;
             case LidStepperState::Status::LIFT_NUDGE:
