@@ -1319,6 +1319,8 @@ class MotorTask {
                                             policy);
                 break;
             case LidStepperState::Status::LATCH_RELEASE_BACKOFF:
+                // Close the latch
+                policy.lid_solenoid_disengage();
                 if (!policy.lid_read_closed_switch()) {
                     // The latch is not holding the lid down, continue to open
                     policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES,
@@ -1347,9 +1349,6 @@ class MotorTask {
                         _task_registry->comms->get_message_queue().try_send(
                             messages::HostCommsMessage(response)));
                 } else {
-                    // Now that the lid is at the open position,
-                    // the solenoid can be safely turned off
-                    policy.lid_solenoid_disengage();
                     // Overdrive into switch
                     policy.lid_stepper_start(
                         LidStepperState::OPEN_OVERDRIVE_DEGREES, true);
