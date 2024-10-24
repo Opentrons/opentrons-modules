@@ -100,7 +100,7 @@ struct LidStepperState {
         motor_util::LidStepper::angle_to_microsteps(-1);
     // Opening lid slightly to check if latch is stuck. If so, raise an error.
     constexpr static double LATCH_RELEASE_BACKOFF_DEGREES =
-        motor_util::LidStepper::angle_to_microsteps(10);
+        motor_util::LidStepper::angle_to_microsteps(8);
     // Full open/close movements run until they hit an endstop switch, so the
     // distance is 120 degrees which is far wider than the actual travel angle.
     constexpr static double FULL_OPEN_DEGREES =
@@ -135,6 +135,7 @@ struct LidStepperState {
     constexpr static double PLATE_LIFT_VELOCITY_RPM = 40.0F;
     // Velocity for all lid movements other than plate lift
     constexpr static double LID_DEFAULT_VELOCITY_RPM = 125.0F;
+    constexpr static double LID_OPEN_LATCH_BACKOFF_RPM = 10.0F;
     // States for lid stepper
     enum Status {
         IDLE,                    /**< Not moving.*/
@@ -985,7 +986,7 @@ class MotorTask {
         -> bool {
         // Update velocity for this movement
         std::ignore = policy.lid_stepper_set_rpm(
-            LidStepperState::LID_DEFAULT_VELOCITY_RPM);
+            LidStepperState::LID_OPEN_LATCH_BACKOFF_RPM);
         // Now start a lid motor movement to the endstop
         policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
         policy.lid_stepper_start(
@@ -1001,7 +1002,7 @@ class MotorTask {
     auto start_latch_release_backoff(uint32_t response_id, Policy& policy)
         -> bool {
         std::ignore = policy.lid_stepper_set_rpm(
-            LidStepperState::LID_DEFAULT_VELOCITY_RPM);
+            LidStepperState::LID_OPEN_LATCH_BACKOFF_RPM);
         // Now start a lid motor movement to the endstop
         policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
         policy.lid_stepper_start(LidStepperState::LATCH_RELEASE_BACKOFF_DEGREES,
@@ -1319,9 +1320,9 @@ class MotorTask {
                                             policy);
                 break;
             case LidStepperState::Status::LATCH_RELEASE_BACKOFF:
-                // Close the latch
-                policy.lid_solenoid_disengage();
                 if (!policy.lid_read_closed_switch()) {
+                    std::ignore = policy.lid_stepper_set_rpm(
+                        LidStepperState::LID_DEFAULT_VELOCITY_RPM);
                     // The latch is not holding the lid down, continue to open
                     policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES,
                                              false);
@@ -1330,6 +1331,7 @@ class MotorTask {
                         LidStepperState::Status::OPEN_TO_SWITCH;
                     _lid_stepper_state.position =
                         motor_util::LidStepper::Position::BETWEEN;
+                    policy.lid_solenoid_disengage();
                 } else {
                     // The latch is stuck, stop and raise error
                     handle_lid_movement_error(policy);
