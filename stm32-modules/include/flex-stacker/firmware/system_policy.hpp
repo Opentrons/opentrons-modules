@@ -4,8 +4,8 @@
 
 #include "firmware/system_hardware.h"
 #include "firmware/system_serial_number.h"
-#include "systemwide.h"
 #include "flex-stacker/errors.hpp"
+#include "systemwide.h"
 
 class SystemPolicy {
   private:

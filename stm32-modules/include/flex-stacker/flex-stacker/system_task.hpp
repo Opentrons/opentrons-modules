@@ -8,9 +8,9 @@
 #include "core/ack_cache.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
-#include "hal/message_queue.hpp"
 #include "flex-stacker/messages.hpp"
 #include "flex-stacker/tasks.hpp"
+#include "hal/message_queue.hpp"
 
 namespace system_task {
 
@@ -85,8 +85,8 @@ class SystemTask {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = message.id};
         response.with_error = policy.set_serial_number(message.serial_number);
-        static_cast<void>(
-            _task_registry->send_to_address(response, Queues::HostCommsAddress));
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
     }
 
     template <SystemExecutionPolicy Policy>
@@ -96,7 +96,8 @@ class SystemTask {
         auto id = _prep_cache.add(0);
         auto usb_msg = messages::ForceUSBDisconnect{
             .id = id, .return_address = MY_ADDRESS};
-        if (!_task_registry->send_to_address(usb_msg, Queues::HostCommsAddress)) {
+        if (!_task_registry->send_to_address(usb_msg,
+                                             Queues::HostCommsAddress)) {
             _prep_cache.remove_if_present(id);
         }
 
@@ -107,8 +108,8 @@ class SystemTask {
 
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = message.id};
-        static_cast<void>(
-            _task_registry->send_to_address(response, Queues::HostCommsAddress));
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
     }
 
     // Any Ack messages should be in response to bootloader prep messages
