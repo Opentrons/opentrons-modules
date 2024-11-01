@@ -66,6 +66,8 @@ struct Defaults {
             lms::LeadScrewConfig::mm_per_rev(9.7536, 1.0);
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
+
+        static constexpr float SWITCH_TO_SWITCH_DISTANCE = 202.0;
     };
 
     struct Z {
@@ -77,6 +79,8 @@ struct Defaults {
             lms::LeadScrewConfig::mm_per_rev(9.7536, 1.0);
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
+
+        static constexpr float SWITCH_TO_SWITCH_DISTANCE = 113.75;
     };
 
     struct L {
@@ -89,7 +93,6 @@ struct Defaults {
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
     };
-};
 
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
@@ -167,6 +170,44 @@ class MotorTask {
     }
 
   private:
+    auto send_error_message(errors::ErrorCode error) -> void {
+        if (_task_registry) {
+            auto msg = messages::ErrorMessage{.code = error};
+            static_cast<void>(
+                _task_registry->send_to_address(msg, Queues::HostCommsAddress));
+        }
+    }
+
+    auto send_ack_message(uint32_t response_id, errors::ErrorCode error_code = errors::ErrorCode::NO_ERROR) -> void {
+        if (_task_registry) {
+            auto msg = messages::AcknowledgePrevious{
+                .responding_to_id = response_id, .with_error = error_code};
+            static_cast<void>(
+                _task_registry->send_to_address(msg, Queues::HostCommsAddress));
+        }
+    }
+
+    template <MotorControlPolicy Policy>
+    auto start_home_motor(uint32_t msg_id, MotorID motor_id, bool direction, Policy& policy) -> errors::ErrorCode {
+        Controller& controller = controller_from_id(motor_id);
+        MotorState& state = motor_state(motor_id);
+        if (motor_id != MotorID::MOTOR_L && policy.check_limit_switch(motor_id, !direction)) {
+            // if the opposite limit switch is triggered, we know where we are
+            // and can do a fast homing routine
+            auto fast_move = controller.create_fixed_move(msg_id, direction, 200.0, state, true);
+            auto slow_move = controller.create_move(msg_id, direction, state, false);
+            // schedule the slow move
+            _move_queue.push(ScheduledMove{.motor_id = motor_id, .profile=slow_move});
+            // start the fast move now
+            controller.start_move(fast_move);
+        } else {
+            // we don't know where we are, move towards the limit switch slowly
+            auto slow_move = controller.create_move(msg_id, direction, state, false);
+            controller.start_move(slow_move);
+        }
+        return errors::ErrorCode::NO_ERROR;
+    }
+
     template <MotorControlPolicy Policy>
     auto visit_message(const std::monostate& m, Policy& policy) -> void {
         static_cast<void>(m);
@@ -211,41 +252,43 @@ class MotorTask {
     auto visit_message(const messages::MoveMotorInMmMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        auto direction = m.mm > 0;
+        Controller& controller = controller_from_id(m.motor_id);
         MotorState& state = motor_state(m.motor_id);
+        auto direction = m.mm > 0;
         if (m.mm_per_second.has_value()) {
             state.speed_mm_per_sec = m.mm_per_second.value();
         }
         if (m.mm_per_second_sq.has_value()) {
-            state.accel_mm_per_sec_sq = m.mm_per_second_sq.value();
+            state.accel_mm_per_sec_sq =
+                m.mm_per_second_sq.value();
         }
         if (m.mm_per_second_discont.has_value()) {
-            state.speed_mm_per_sec_discont = m.mm_per_second_discont.value();
+            state.speed_mm_per_sec_discont =
+                m.mm_per_second_discont.value();
         }
-        controller_from_id(m.motor_id)
-            .start_fixed_movement(m.id, direction,
-                                  state.get_distance(std::abs(m.mm)),
-                                  state.get_speed_discont(), state.get_speed(),
-                                  state.get_accel());
+        auto move = controller.create_fixed_move(m.id, direction, std::abs(m.mm), state);
+        controller.start_move(move);
     }
 
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::MoveToLimitSwitchMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
+        Controller& controller = controller_from_id(m.motor_id);
         MotorState& state = motor_state(m.motor_id);
         if (m.mm_per_second.has_value()) {
             state.speed_mm_per_sec = m.mm_per_second.value();
         }
         if (m.mm_per_second_sq.has_value()) {
-            state.accel_mm_per_sec_sq = m.mm_per_second_sq.value();
+            state.accel_mm_per_sec_sq =
+                m.mm_per_second_sq.value();
         }
         if (m.mm_per_second_discont.has_value()) {
-            state.speed_mm_per_sec_discont = m.mm_per_second_discont.value();
+            state.speed_mm_per_sec_discont =
+                m.mm_per_second_discont.value();
         }
-        controller_from_id(m.motor_id)
-            .start_movement(m.id, m.direction, state.get_speed_discont(),
-                            state.get_speed(), state.get_accel());
+        auto move = controller.create_move(m.id, m.direction, state);
+        controller.start_move(move);
     }
 
     template <MotorControlPolicy Policy>
@@ -297,9 +340,7 @@ class MotorTask {
         // successfully
         motor_state(m.motor_id).lms_config.microstep =
             pow(2, m.microsteps_power);
-        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
+        send_ack_message(m.id);
     }
 
     template <MotorControlPolicy Policy>
@@ -334,10 +375,22 @@ class MotorTask {
         _z_controller.stop_movement(0, true);
         _x_controller.stop_movement(0, false);
         _l_controller.stop_movement(0, false);
-        auto msg = messages::ErrorMessage{
-            .code = errors::ErrorCode::MOTOR_STALL_DETECTED};
-        static_cast<void>(
-            _task_registry->send_to_address(msg, Queues::HostCommsAddress));
+        send_error_message(errors::ErrorCode::MOTOR_STALL_DETECTED);
+    }
+
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::HomeMotorMessage& m, Policy& policy)
+        -> void {
+        if (policy.check_limit_switch(m.motor_id, m.direction)) {
+            // motor is already homed
+            send_ack_message(m.id);
+            return;
+        }
+        auto error = start_home_motor(m.id, m.motor_id, m.direction, policy);
+        if (error != errors::ErrorCode::NO_ERROR) {
+            // failed to start homing
+            send_ack_message(m.id, error);
+        };
     }
 
     Queue& _message_queue;

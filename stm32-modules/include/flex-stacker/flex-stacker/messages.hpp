@@ -239,6 +239,12 @@ struct GetMotorStallGuardResponse {
     int sgt;
 };
 
+struct HomeMotorMessage {
+    uint32_t id;
+    MotorID motor_id;
+    bool direction;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -259,6 +265,6 @@ using MotorMessage = ::std::variant<
     std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
     MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
     GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
-    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage>;
+    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage, HomeMotorMessage>;
 
 };  // namespace messages

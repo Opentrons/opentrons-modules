@@ -697,6 +697,54 @@ struct StopMotor {
     }
 };
 
+struct HomeMotor {
+    MotorID motor_id;
+    bool direction;
+
+    using ParseResult = std::optional<HomeMotor>;
+    static constexpr auto prefix = std::array{'G', '2', '8', ' '};
+    static constexpr const char* response = "G28 OK\n";
+
+    using XArg = Arg<int, 'X'>;
+    using ZArg = Arg<int, 'Z'>;
+    using LArg = Arg<int, 'L'>;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<XArg, ZArg, LArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto ret = HomeMotor{
+            .motor_id = MotorID::MOTOR_X,
+            .direction = false};
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.direction = static_cast<bool>(std::get<0>(arguments).value);
+        } else if (std::get<1>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_Z;
+            ret.direction = static_cast<bool>(std::get<1>(arguments).value);
+        } else if (std::get<2>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_L;
+            ret.direction = static_cast<bool>(std::get<2>(arguments).value);
+        } else {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ret, res.second);
+    }
+};
+
 struct GetLimitSwitches {
     using ParseResult = std::optional<GetLimitSwitches>;
     static constexpr auto prefix = std::array{'M', '1', '1', '9'};
