@@ -23,6 +23,7 @@ const char* const TMC2160_INVALID_VALUE = "ERR904:TMC2160 invalid value\n";
 const char* const MOTOR_ENABLE_FAILED = "ERR401:motor enable error\n";
 const char* const MOTOR_DISABLE_FAILED = "ERR402:motor disable error\n";
 const char* const MOTOR_STALL_DETECTED = "ERR403:motor stall error\n";
+const char* const MOTOR_QUEUE_FULL = "ERR404:motor queue full error\n";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -49,6 +50,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(MOTOR_ENABLE_FAILED);
         HANDLE_CASE(MOTOR_DISABLE_FAILED);
         HANDLE_CASE(MOTOR_STALL_DETECTED);
+        HANDLE_CASE(MOTOR_QUEUE_FULL);
     }
     return UNKNOWN_ERROR;
 }
