@@ -31,6 +31,7 @@ concept MotorControlPolicy = requires(P p, MotorID motor_id) {
 using Message = messages::MotorMessage;
 using Controller = motor_interrupt_controller::MotorInterruptController;
 using Move = motor_interrupt_controller::Move;
+using Error = errors::ErrorCode;
 
 struct MotorState {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
@@ -189,7 +190,7 @@ class MotorTask {
                     .has_next_move = has_next_move};
     }
 
-    auto send_error_message(errors::ErrorCode error) -> void {
+    auto send_error_message(Error error) -> void {
         if (_task_registry) {
             auto msg = messages::ErrorMessage{.code = error};
             static_cast<void>(
@@ -197,12 +198,11 @@ class MotorTask {
         }
     }
 
-    auto send_ack_message(uint32_t response_id, errors::ErrorCode error_code =
-                                                    errors::ErrorCode::NO_ERROR)
+    auto send_ack_message(uint32_t response_id, Error error = Error::NO_ERROR)
         -> void {
         if (_task_registry) {
             auto msg = messages::AcknowledgePrevious{
-                .responding_to_id = response_id, .with_error = error_code};
+                .responding_to_id = response_id, .with_error = error};
             static_cast<void>(
                 _task_registry->send_to_address(msg, Queues::HostCommsAddress));
         }
@@ -210,7 +210,7 @@ class MotorTask {
 
     template <MotorControlPolicy Policy>
     auto start_home_motor(uint32_t msg_id, MotorID motor_id, bool direction,
-                          Policy& policy) -> errors::ErrorCode {
+                          Policy& policy) -> Error {
         Controller& controller = controller_from_id(motor_id);
         if (motor_id != MotorID::MOTOR_L &&
             policy.check_limit_switch(motor_id, !direction)) {
@@ -229,7 +229,7 @@ class MotorTask {
             auto slow_move = make_move(msg_id, motor_id, direction);
             controller.start_move(slow_move);
         }
-        return errors::ErrorCode::NO_ERROR;
+        return Error::NO_ERROR;
     }
 
     template <MotorControlPolicy Policy>
@@ -241,24 +241,26 @@ class MotorTask {
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::MotorEnableMessage& m, Policy& policy)
         -> void {
-        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
-        if (!(motor_enable(MotorID::MOTOR_X, m.x, policy) &&
-              motor_enable(MotorID::MOTOR_Z, m.z, policy) &&
-              motor_enable(MotorID::MOTOR_L, m.l, policy))) {
-            response.with_error = m.x ? errors::ErrorCode::MOTOR_ENABLE_FAILED
-                                      : errors::ErrorCode::MOTOR_DISABLE_FAILED;
+        Error error = Error::NO_ERROR;
+        bool enable_tracker;
+        if (!(motor_enable(MotorID::MOTOR_X, m.x, policy, enable_tracker) &&
+              motor_enable(MotorID::MOTOR_Z, m.z, policy, enable_tracker) &&
+              motor_enable(MotorID::MOTOR_L, m.l, policy, enable_tracker))) {
+            error = enable_tracker ? Error::MOTOR_ENABLE_FAILED
+                                   : Error::MOTOR_DISABLE_FAILED;
         };
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
+
+        send_ack_message(m.id, error);
     }
 
     template <MotorControlPolicy Policy>
-    auto motor_enable(MotorID id, std::optional<bool> engage, Policy& policy)
-        -> bool {
+    auto motor_enable(MotorID id, std::optional<bool> engage, Policy& policy,
+                      bool& enable_tracker) -> bool {
         if (!engage.has_value()) {
             return true;
         }
-        return engage.value() ? policy.enable_motor(id)
+        enable_tracker = engage.value();
+        return enable_tracker ? policy.enable_motor(id)
                               : policy.disable_motor(id);
     }
 
@@ -401,7 +403,7 @@ class MotorTask {
         _z_controller.stop_movement(0, true);
         _x_controller.stop_movement(0, false);
         _l_controller.stop_movement(0, false);
-        send_error_message(errors::ErrorCode::MOTOR_STALL_DETECTED);
+        send_error_message(Error::MOTOR_STALL_DETECTED);
     }
 
     template <MotorControlPolicy Policy>
@@ -413,7 +415,7 @@ class MotorTask {
             return;
         }
         auto error = start_home_motor(m.id, m.motor_id, m.direction, policy);
-        if (error != errors::ErrorCode::NO_ERROR) {
+        if (error != Error::NO_ERROR) {
             // failed to start homing
             send_ack_message(m.id, error);
         };
