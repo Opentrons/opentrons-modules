@@ -296,7 +296,7 @@ class MotorTask {
         // sent from the driver task so we know we've written to driver
         // successfully
         motor_state(m.motor_id).lms_config.microstep =
-            static_cast<float>(pow(2, m.microsteps_power));
+            pow(2, m.microsteps_power);
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         static_cast<void>(_task_registry->send_to_address(
             response, Queues::HostCommsAddress));

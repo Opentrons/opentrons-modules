@@ -5,23 +5,20 @@
 
 namespace lms {
 
-class BeltConfig {
-  public:
+struct BeltConfig {
     static constexpr auto mm_per_rev(float pulley_diameter) -> float {
         return static_cast<float>(pulley_diameter * std::numbers::pi);
     }
 };
 
-class LeadScrewConfig {
-  public:
+struct LeadScrewConfig {
     static constexpr auto mm_per_rev(float lead_screw_pitch,
                                      float gear_reduction_ratio) -> float {
         return lead_screw_pitch / gear_reduction_ratio;
     }
 };
 
-class GearBoxConfig {
-  public:
+struct GearBoxConfig {
     static constexpr auto mm_per_rev(float gear_diameter,
                                      float gear_reduction_ratio) -> float {
         return static_cast<float>((gear_diameter * std::numbers::pi) /
