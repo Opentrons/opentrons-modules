@@ -55,7 +55,7 @@ struct MotorState {
         return speed_mm_per_sec_discont * get_usteps_per_mm();
     }
     [[nodiscard]] auto get_distance(float mm) const -> long {
-        return mm * get_usteps_per_mm();
+        return (long)(mm * get_usteps_per_mm());
     }
 };
 
@@ -108,6 +108,7 @@ class MotorTask {
     using Aggregator = typename tasks::Tasks<QueueImpl>::QueueAggregator;
     using Queues = typename tasks::Tasks<QueueImpl>;
     using MoveBuffer = circular_buffer::CircularBuffer<Move>;
+    static constexpr size_t MOVE_BUFFER_SIZE = 10;
 
   public:
     explicit MotorTask(Queue& q, Aggregator* aggregator, Controller& x_ctrl,
@@ -221,7 +222,9 @@ class MotorTask {
 
     auto schedule_move(Move to_scheduled) -> void {
         auto scheduled = _move_queue.enqueue(to_scheduled);
-        if (!scheduled) send_error_message(Error::MOTOR_QUEUE_FULL);
+        if (!scheduled) {
+            send_error_message(Error::MOTOR_QUEUE_FULL);
+        }
     }
 
     auto send_error_message(Error error) -> void {
@@ -251,27 +254,25 @@ class MotorTask {
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::MotorEnableMessage& m, Policy& policy)
         -> void {
-        Error error = Error::NO_ERROR;
-        bool enable_tracker;
-        if (!(motor_enable(MotorID::MOTOR_X, m.x, policy, enable_tracker) &&
-              motor_enable(MotorID::MOTOR_Z, m.z, policy, enable_tracker) &&
-              motor_enable(MotorID::MOTOR_L, m.l, policy, enable_tracker))) {
-            error = enable_tracker ? Error::MOTOR_ENABLE_FAILED
-                                   : Error::MOTOR_DISABLE_FAILED;
-        };
-
-        send_ack_message(m.id, error);
+        motor_enable(MotorID::MOTOR_X, m.x, policy);
+        motor_enable(MotorID::MOTOR_Z, m.z, policy);
+        motor_enable(MotorID::MOTOR_L, m.l, policy);
+        send_ack_message(m.id);
     }
 
     template <MotorControlPolicy Policy>
-    auto motor_enable(MotorID id, std::optional<bool> engage, Policy& policy,
-                      bool& enable_tracker) -> bool {
+    auto motor_enable(MotorID id, std::optional<bool> engage, Policy& policy)
+        -> void {
         if (!engage.has_value()) {
-            return true;
+            return;
         }
-        enable_tracker = engage.value();
-        return enable_tracker ? policy.enable_motor(id)
-                              : policy.disable_motor(id);
+
+        auto result =
+            engage.value() ? policy.enable_motor(id) : policy.disable_motor(id);
+        if (!result) {
+            send_error_message(engage.value() ? Error::MOTOR_ENABLE_FAILED
+                                              : Error::MOTOR_DISABLE_FAILED);
+        }
     }
 
     template <MotorControlPolicy Policy>
@@ -489,7 +490,7 @@ class MotorTask {
         .accel_mm_per_sec_sq = Defaults::L::ACCELERATION,
         .speed_mm_per_sec_discont = Defaults::L::SPEED_DISCONT,
     };
-    MoveBuffer _move_queue{10, false};
+    MoveBuffer _move_queue{MOVE_BUFFER_SIZE};
 };
 
 };  // namespace motor_task

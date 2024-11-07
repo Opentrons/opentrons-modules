@@ -5,7 +5,8 @@ namespace circular_buffer {
 template <typename T>
 class CircularBuffer {
   public:
-    explicit CircularBuffer(std::size_t buffer_size, bool allow_overwrite)
+    explicit CircularBuffer(std::size_t buffer_size, bool allow_overwrite = false)
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
         : _buffer(std::make_unique<T[]>(buffer_size)),
           _max_size(buffer_size),
           _overwrite(allow_overwrite) {}
@@ -49,6 +50,7 @@ class CircularBuffer {
     }
 
   private:
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
     std::unique_ptr<T[]> _buffer;
     const std::size_t _max_size;
     bool _overwrite;
