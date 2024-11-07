@@ -278,6 +278,11 @@ class MotorTask {
     auto visit_message(const messages::MoveMotorInStepsMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
+        auto error = all_motors_idle();
+        if (error != Error::NO_ERROR) {
+            send_ack_message(m.id, error);
+            return;
+        }
         auto direction = m.steps > 0;
         controller_from_id(m.motor_id)
             .start_fixed_movement(m.id, direction, std::abs(m.steps), 0,
@@ -288,6 +293,11 @@ class MotorTask {
     auto visit_message(const messages::MoveMotorInMmMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
+        auto error = all_motors_idle();
+        if (error != Error::NO_ERROR) {
+            send_ack_message(m.id, error);
+            return;
+        }
         Controller& controller = controller_from_id(m.motor_id);
         MotorState& state = motor_state(m.motor_id);
         auto direction = m.mm > 0;
@@ -309,6 +319,11 @@ class MotorTask {
     auto visit_message(const messages::MoveToLimitSwitchMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
+        auto error = all_motors_idle();
+        if (error != Error::NO_ERROR) {
+            send_ack_message(m.id, error);
+            return;
+        }
         Controller& controller = controller_from_id(m.motor_id);
         MotorState& state = motor_state(m.motor_id);
         if (m.mm_per_second.has_value()) {
