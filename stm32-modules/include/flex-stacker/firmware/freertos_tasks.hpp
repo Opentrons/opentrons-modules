@@ -29,3 +29,8 @@ namespace host_comms_control_task {
 // Actual function that runs in the task
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
 }  // namespace host_comms_control_task
+
+namespace system_control_task {
+// Actual function that runs in the task
+auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
+}  // namespace system_control_task

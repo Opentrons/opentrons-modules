@@ -15,11 +15,14 @@ struct Tasks {
     using MotorDriverQueue = QueueImpl<messages::MotorDriverMessage>;
     // Message queue for motor control task
     using MotorQueue = QueueImpl<messages::MotorMessage>;
+    // Message queue for host comms
     using HostCommsQueue = QueueImpl<messages::HostCommsMessage>;
+    // Message queue for system task
+    using SystemQueue = QueueImpl<messages::SystemMessage>;
     // Central aggregator
     using QueueAggregator =
         queue_aggregator::QueueAggregator<MotorDriverQueue, MotorQueue,
-                                          HostCommsQueue>;
+                                          HostCommsQueue, SystemQueue>;
 
     // Addresses
     static constexpr size_t MotorDriverAddress =
@@ -28,6 +31,8 @@ struct Tasks {
         QueueAggregator::template get_queue_idx<MotorQueue>();
     static constexpr size_t HostCommsAddress =
         QueueAggregator::template get_queue_idx<HostCommsQueue>();
+    static constexpr size_t SystemAddress =
+        QueueAggregator::template get_queue_idx<SystemQueue>();
 };
 
 };  // namespace tasks

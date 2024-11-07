@@ -25,7 +25,20 @@ if (NOT VERSION)
     set(VERSION "(dev)")
 endif()
 
+set(ALLOWED_REVISIONS nff a1)
+set(DEFAULT_REV a1)
+if(DEFINED STACKER_REVISION)
+    list(FIND ALLOWED_REVISIONS ${STACKER_REVISION} index)
+    if(index EQUAL -1)
+        message(FATAL_ERROR "Invalid REVISION value: ${STACKER_REVISION}. Allowed values are: ${ALLOWED_REVISIONS}")
+    endif()
+else()
+    set(STACKER_REVISION ${DEFAULT_REV})
+endif()
+
 set(${TARGET_MODULE_NAME}_VERSION "${VERSION}" CACHE STRING "${TARGET_MODULE_NAME} fw version" FORCE)
+set(${TARGET_MODULE_NAME}_BOARD_REVISION "${TARGET_MODULE_NAME}-${STACKER_REVISION}" CACHE STRING "${TARGET_MODULE_NAME} board revision" FORCE)
+message(STATUS "Building ${TARGET_MODULE_NAME} version: ${${TARGET_MODULE_NAME}_VERSION} for board revision: ${${TARGET_MODULE_NAME}_BOARD_REVISION}")
 
 configure_file(./version.cpp.in ./version.cpp)
 
