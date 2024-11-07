@@ -141,7 +141,7 @@ class MotorInterruptController {
     uint32_t step_freq = DEFAULT_MOTOR_FREQ;
     uint32_t _response_id = 0;
     bool _direction = false;
-    bool _stop = false;
+    bool _stop = true;
 };
 
 }  // namespace motor_interrupt_controller
