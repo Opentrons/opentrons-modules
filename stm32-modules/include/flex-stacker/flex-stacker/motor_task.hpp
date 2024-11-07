@@ -346,11 +346,16 @@ class MotorTask {
     auto visit_message(const messages::MoveCompleteMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        auto response = messages::AcknowledgePrevious{
-            .responding_to_id =
-                controller_from_id(m.motor_id).get_response_id()};
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
+        if (!_move_queue.empty()) {
+            auto next_move = _move_queue.dequeue();
+            controller_from_id(next_move.motor_id).start_move(next_move);
+        } else {
+            auto response = messages::AcknowledgePrevious{
+                .responding_to_id =
+                    controller_from_id(m.motor_id).get_response_id()};
+            static_cast<void>(_task_registry->send_to_address(
+                response, Queues::HostCommsAddress));
+        }
     }
 
     template <MotorControlPolicy Policy>
