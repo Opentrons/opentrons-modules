@@ -177,6 +177,19 @@ class MotorTask {
     }
 
   private:
+    auto all_motors_idle() -> Error {
+        if (_x_controller.is_moving()) {
+            return Error::X_MOTOR_BUSY;
+        }
+        if (_z_controller.is_moving()) {
+            return Error::Z_MOTOR_BUSY;
+        }
+        if (_l_controller.is_moving()) {
+            return Error::L_MOTOR_BUSY;
+        }
+        return Error::NO_ERROR;
+    }
+
     auto make_move(uint32_t id, MotorID motor_id, bool direction,
                    float distance, bool has_next_move = false) -> Move {
         MotorState& state = motor_state(motor_id);
@@ -402,6 +415,12 @@ class MotorTask {
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::HomeMotorMessage& m, Policy& policy)
         -> void {
+        auto error = all_motors_idle();
+        if (error != Error::NO_ERROR) {
+            send_ack_message(m.id, error);
+            return;
+        }
+
         if (policy.check_limit_switch(m.motor_id, m.direction)) {
             // motor is already homed
             send_ack_message(m.id);

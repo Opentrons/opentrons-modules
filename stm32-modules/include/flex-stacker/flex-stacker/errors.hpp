@@ -28,6 +28,9 @@ enum class ErrorCode {
     MOTOR_DISABLE_FAILED = 402,
     MOTOR_STALL_DETECTED = 403,
     MOTOR_QUEUE_FULL = 404,
+    X_MOTOR_BUSY = 501,
+    Z_MOTOR_BUSY = 502,
+    L_MOTOR_BUSY = 503,
 };
 
 auto errorstring(ErrorCode code) -> const char*;

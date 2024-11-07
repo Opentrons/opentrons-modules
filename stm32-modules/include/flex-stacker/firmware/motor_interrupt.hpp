@@ -56,6 +56,7 @@ class MotorInterruptController {
             if (_id == MotorID::MOTOR_Z) {
                 _policy->disable_motor(_id);
             }
+            _stop = true;
             return true;
         }
         return ret.done;
@@ -128,6 +129,8 @@ class MotorInterruptController {
     }
 
     auto set_diag0_irq(bool enable) -> void { _policy->set_diag0_irq(enable); }
+
+    [[nodiscard]] auto is_moving() const -> bool { return !_stop; }
 
   private:
     MotorID _id;

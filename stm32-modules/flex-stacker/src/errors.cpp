@@ -25,6 +25,10 @@ const char* const MOTOR_DISABLE_FAILED = "ERR402:motor disable error\n";
 const char* const MOTOR_STALL_DETECTED = "ERR403:motor stall error\n";
 const char* const MOTOR_QUEUE_FULL = "ERR404:motor queue full error\n";
 
+const char* const X_MOTOR_BUSY = "ERR501:X motor busy error\n";
+const char* const Z_MOTOR_BUSY = "ERR502:Z motor busy error\n";
+const char* const L_MOTOR_BUSY = "ERR503:L motor busy error\n";
+
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -51,6 +55,9 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(MOTOR_DISABLE_FAILED);
         HANDLE_CASE(MOTOR_STALL_DETECTED);
         HANDLE_CASE(MOTOR_QUEUE_FULL);
+        HANDLE_CASE(X_MOTOR_BUSY);
+        HANDLE_CASE(Z_MOTOR_BUSY);
+        HANDLE_CASE(L_MOTOR_BUSY);
     }
     return UNKNOWN_ERROR;
 }
