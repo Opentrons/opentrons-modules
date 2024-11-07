@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include "core/ack_cache.hpp"
+#include "core/circular_buffer.hpp"
 #include "core/linear_motion_system.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
@@ -29,6 +30,7 @@ concept MotorControlPolicy = requires(P p, MotorID motor_id) {
 
 using Message = messages::MotorMessage;
 using Controller = motor_interrupt_controller::MotorInterruptController;
+using Move = motor_interrupt_controller::Move;
 
 struct MotorState {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
@@ -51,7 +53,7 @@ struct MotorState {
     [[nodiscard]] auto get_speed_discont() const -> float {
         return speed_mm_per_sec_discont * get_usteps_per_mm();
     }
-    [[nodiscard]] auto get_distance(float mm) const -> float {
+    [[nodiscard]] auto get_distance(float mm) const -> long {
         return mm * get_usteps_per_mm();
     }
 };
@@ -93,6 +95,7 @@ struct Defaults {
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
     };
+};
 
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
@@ -101,6 +104,7 @@ class MotorTask {
     using Queue = QueueImpl<Message>;
     using Aggregator = typename tasks::Tasks<QueueImpl>::QueueAggregator;
     using Queues = typename tasks::Tasks<QueueImpl>;
+    using MoveBuffer = circular_buffer::CircularBuffer<Move>;
 
   public:
     explicit MotorTask(Queue& q, Aggregator* aggregator, Controller& x_ctrl,
@@ -170,6 +174,21 @@ class MotorTask {
     }
 
   private:
+    auto make_move(uint32_t id, MotorID motor_id, bool direction,
+                   float distance = 0.0f, bool limit_switch = true,
+                   bool has_next_move = false) -> Move {
+        MotorState& state = motor_state(motor_id);
+        return Move{.motor_id = motor_id,
+                    .move_id = id,
+                    .direction = direction,
+                    .speed = state.get_speed(),
+                    .acceleration = state.get_accel(),
+                    .speed_discont = state.get_speed_discont(),
+                    .steps = state.get_distance(distance),
+                    .limit_switch = limit_switch,
+                    .has_next_move = has_next_move};
+    }
+
     auto send_error_message(errors::ErrorCode error) -> void {
         if (_task_registry) {
             auto msg = messages::ErrorMessage{.code = error};
@@ -178,7 +197,9 @@ class MotorTask {
         }
     }
 
-    auto send_ack_message(uint32_t response_id, errors::ErrorCode error_code = errors::ErrorCode::NO_ERROR) -> void {
+    auto send_ack_message(uint32_t response_id, errors::ErrorCode error_code =
+                                                    errors::ErrorCode::NO_ERROR)
+        -> void {
         if (_task_registry) {
             auto msg = messages::AcknowledgePrevious{
                 .responding_to_id = response_id, .with_error = error_code};
@@ -188,21 +209,24 @@ class MotorTask {
     }
 
     template <MotorControlPolicy Policy>
-    auto start_home_motor(uint32_t msg_id, MotorID motor_id, bool direction, Policy& policy) -> errors::ErrorCode {
+    auto start_home_motor(uint32_t msg_id, MotorID motor_id, bool direction,
+                          Policy& policy) -> errors::ErrorCode {
         Controller& controller = controller_from_id(motor_id);
-        MotorState& state = motor_state(motor_id);
-        if (motor_id != MotorID::MOTOR_L && policy.check_limit_switch(motor_id, !direction)) {
+        if (motor_id != MotorID::MOTOR_L &&
+            policy.check_limit_switch(motor_id, !direction)) {
             // if the opposite limit switch is triggered, we know where we are
             // and can do a fast homing routine
-            auto fast_move = controller.create_fixed_move(msg_id, direction, 200.0, state, true);
-            auto slow_move = controller.create_move(msg_id, direction, state, false);
+            auto fast_move =
+                make_move(msg_id, motor_id, direction, 200.0, false, true);
+            auto slow_move =
+                make_move(msg_id, motor_id, direction, 0.0, true, false);
             // schedule the slow move
-            _move_queue.push(ScheduledMove{.motor_id = motor_id, .profile=slow_move});
+            static_cast<void>(_move_queue.enqueue(slow_move));
             // start the fast move now
             controller.start_move(fast_move);
         } else {
             // we don't know where we are, move towards the limit switch slowly
-            auto slow_move = controller.create_move(msg_id, direction, state, false);
+            auto slow_move = make_move(msg_id, motor_id, direction);
             controller.start_move(slow_move);
         }
         return errors::ErrorCode::NO_ERROR;
@@ -259,14 +283,13 @@ class MotorTask {
             state.speed_mm_per_sec = m.mm_per_second.value();
         }
         if (m.mm_per_second_sq.has_value()) {
-            state.accel_mm_per_sec_sq =
-                m.mm_per_second_sq.value();
+            state.accel_mm_per_sec_sq = m.mm_per_second_sq.value();
         }
         if (m.mm_per_second_discont.has_value()) {
-            state.speed_mm_per_sec_discont =
-                m.mm_per_second_discont.value();
+            state.speed_mm_per_sec_discont = m.mm_per_second_discont.value();
         }
-        auto move = controller.create_fixed_move(m.id, direction, std::abs(m.mm), state);
+        auto move = make_move(m.id, m.motor_id, direction, std::abs(m.mm),
+                              false, false);
         controller.start_move(move);
     }
 
@@ -280,14 +303,12 @@ class MotorTask {
             state.speed_mm_per_sec = m.mm_per_second.value();
         }
         if (m.mm_per_second_sq.has_value()) {
-            state.accel_mm_per_sec_sq =
-                m.mm_per_second_sq.value();
+            state.accel_mm_per_sec_sq = m.mm_per_second_sq.value();
         }
         if (m.mm_per_second_discont.has_value()) {
-            state.speed_mm_per_sec_discont =
-                m.mm_per_second_discont.value();
+            state.speed_mm_per_sec_discont = m.mm_per_second_discont.value();
         }
-        auto move = controller.create_move(m.id, m.direction, state);
+        auto move = make_move(m.id, m.motor_id, m.direction);
         controller.start_move(move);
     }
 
@@ -423,6 +444,7 @@ class MotorTask {
         .accel_mm_per_sec_sq = Defaults::L::ACCELERATION,
         .speed_mm_per_sec_discont = Defaults::L::SPEED_DISCONT,
     };
+    MoveBuffer _move_queue{10, false};
 };
 
 };  // namespace motor_task

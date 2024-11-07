@@ -17,6 +17,18 @@ static constexpr int DEFAULT_MOTOR_FREQ = 50;
 static constexpr double DEFAULT_VELOCITY = 64000;  // steps per second
 static constexpr double DEFAULT_ACCEL = 50000;     // steps per second^2
 
+struct Move {
+    MotorID motor_id;
+    uint32_t move_id;
+    bool direction;
+    float speed;
+    float acceleration;
+    float speed_discont;
+    long steps;
+    bool limit_switch;
+    bool has_next_move;
+};
+
 class MotorInterruptController {
   public:
     explicit MotorInterruptController(MotorID id, MotorPolicy* policy)
@@ -66,6 +78,18 @@ class MotorInterruptController {
         _policy->enable_motor(_id);
         _response_id = move_id;
     }
+    auto start_move(Move move) -> void {
+        _stop = false;
+        set_direction(move.direction);
+        _profile = motor_util::MovementProfile(
+            TIMER_FREQ, move.speed_discont, move.speed, move.acceleration,
+            move.limit_switch ? motor_util::MovementType::OpenLoop
+                              : motor_util::MovementType::FixedDistance,
+            move.steps);
+        _policy->enable_motor(move.motor_id);
+        _response_id = move.move_id;
+    }
+
     auto start_movement(uint32_t move_id, bool direction,
                         uint32_t steps_per_sec_discont, uint32_t steps_per_sec,
                         uint32_t step_per_sec_sq) -> void {

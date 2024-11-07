@@ -726,9 +726,7 @@ struct HomeMotor {
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        auto ret = HomeMotor{
-            .motor_id = MotorID::MOTOR_X,
-            .direction = false};
+        auto ret = HomeMotor{.motor_id = MotorID::MOTOR_X, .direction = false};
         auto arguments = res.first.value();
         if (std::get<0>(arguments).present) {
             ret.direction = static_cast<bool>(std::get<0>(arguments).value);

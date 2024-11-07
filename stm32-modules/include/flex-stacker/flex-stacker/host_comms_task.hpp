@@ -701,8 +701,8 @@ class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputLimit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::HomeMotor& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
@@ -711,9 +711,8 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message = messages::HomeMotorMessage{.id = id,
-                                                  .motor_id = gcode.motor_id,
-                                                  .direction = gcode.direction};
+        auto message = messages::HomeMotorMessage{
+            .id = id, .motor_id = gcode.motor_id, .direction = gcode.direction};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
