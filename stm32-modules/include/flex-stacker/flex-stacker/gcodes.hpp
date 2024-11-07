@@ -143,24 +143,22 @@ struct GetSystemInfo {
 };
 
 struct SetSerialNumber {
-    /*
-    ** Set Serial Number uses a random gcode, M996, adjacent to the firmware
-    *update gcode, 997
-    ** Format: M996 <SN>
-    ** Example: M996 HSM02071521A4 sets serial number to HSM02071521A4
-    */
     using ParseResult = std::optional<SetSerialNumber>;
-    static constexpr auto prefix = std::array{'M', '9', '9', '6', ' '};
+    static constexpr auto prefix = std::array{'M', '9', '9', '6'};
     static constexpr const char* response = "M996 OK\n";
-    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
-        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
-    std::array<char, SERIAL_NUMBER_LENGTH> serial_number = {};
-    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
 
-    template <typename InputIt, typename InputLimit>
+    struct SerialArg {
+        static constexpr bool required = true;
+        bool present = false;
+        std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> value = {' '};
+    };
+
+    std::array<char, SYSTEM_WIDE_SERIAL_NUMBER_LENGTH> value;
+
+    template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<InputLimit, InputIt>
-    static auto write_response_into(InputIt buf, InputLimit limit) -> InputIt {
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
     }
 
@@ -169,66 +167,17 @@ struct SetSerialNumber {
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        auto working = prefix_matches(input, limit, prefix);
-        if (working == input) {
+        auto res =
+            gcode::SingleParser<SerialArg>::parse_gcode(input, limit, prefix);
+        if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-
-        auto after = working;
-        bool found = false;
-        for (auto index = working; index != limit && (!found); index++) {
-            if (std::isspace(*index) || (*index == '\0')) {
-                after = index;
-                found = true;
-            }
-        }
-        if ((after != working) && (std::distance(working, after) <
-                                   static_cast<int>(SERIAL_NUMBER_LENGTH))) {
-            std::array<char, SERIAL_NUMBER_LENGTH> serial_number_res = {};
-            std::copy(working, after, serial_number_res.begin());
-            return std::make_pair(ParseResult(SetSerialNumber{
-                                      .serial_number = serial_number_res}),
-                                  after);
-        }
-        if (std::distance(working, after) >
-            static_cast<int>(SERIAL_NUMBER_LENGTH)) {
-            return std::make_pair(
-                ParseResult(SetSerialNumber{
-                    .with_error =
-                        errors::ErrorCode::SYSTEM_SERIAL_NUMBER_INVALID}),
-                input);
-        }
-        return std::make_pair(ParseResult(), input);
-    }
-};
-
-struct GetBoardRevision {
-    using ParseResult = std::optional<GetBoardRevision>;
-    static constexpr auto prefix = std::array{'M', '9', '0', '0', '.', 'D'};
-
-    template <typename InputIt, typename Limit>
-    requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<Limit, InputIt>
-    static auto parse(const InputIt& input, Limit limit)
-        -> std::pair<ParseResult, InputIt> {
-        auto working = prefix_matches(input, limit, prefix);
-        if (working == input) {
+        auto arguments = res.first.value();
+        if (!std::get<0>(arguments).present) {
             return std::make_pair(ParseResult(), input);
         }
-        return std::make_pair(ParseResult(GetBoardRevision()), working);
-    }
-
-    template <typename InputIt, typename InLimit>
-    requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<InputIt, InLimit>
-    static auto write_response_into(InputIt buf, InLimit limit, int revision)
-        -> InputIt {
-        int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M900.D C:%i OK\n", revision);
-        if (res <= 0) {
-            return buf;
-        }
-        return buf + res;
+        auto ret = SetSerialNumber{.value = std::get<0>(arguments).value};
+        return std::make_pair(ret, res.second);
     }
 };
 

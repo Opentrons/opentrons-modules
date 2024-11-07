@@ -19,6 +19,8 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
     ${COMMS_DIR}/freertos_comms_task.cpp
     ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
+    ${SYSTEM_DIR}/freertos_system_task.cpp
+    ${SYSTEM_DIR}/system_policy.cpp
     ${UI_DIR}/freertos_ui_task.cpp
     ${MOTOR_CONTROL_DIR}/freertos_motor_task.cpp
     ${MOTOR_CONTROL_DIR}/freertos_motor_driver_task.cpp
@@ -32,6 +34,8 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${SYSTEM_DIR}/stm32g4xx_it.c
     ${SYSTEM_DIR}/system_stm32g4xx.c
     ${SYSTEM_DIR}/hal_tick.c
+    ${SYSTEM_DIR}/system_serial_number.c
+    ${SYSTEM_DIR}/system_hardware.c
     ${UI_DIR}/ui_hardware.c
     ${COMMS_DIR}/usbd_conf.c
     ${COMMS_DIR}/usbd_desc.c
