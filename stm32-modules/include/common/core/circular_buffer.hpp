@@ -42,6 +42,12 @@ class CircularBuffer {
         return item;
     }
 
+    auto reset() -> void {
+        while (!empty()) {
+            static_cast<void>(dequeue());
+        }
+    }
+
   private:
     std::unique_ptr<T[]> _buffer;
     const std::size_t _max_size;

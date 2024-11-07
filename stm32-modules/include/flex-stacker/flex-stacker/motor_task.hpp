@@ -70,7 +70,8 @@ struct Defaults {
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
 
-        static constexpr float SWITCH_TO_SWITCH_DISTANCE = 202.0;
+        // switch-to-switch: 202.0 mm - 5.0 mm offset
+        static constexpr float FAST_HOME_DISTANCE = 197.0;
     };
 
     struct Z {
@@ -83,7 +84,8 @@ struct Defaults {
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
 
-        static constexpr float SWITCH_TO_SWITCH_DISTANCE = 113.75;
+        // switch-to-switch: 113.75 mm - 5.0 mm offset
+        static constexpr float FAST_HOME_DISTANCE = 108.75;
     };
 
     struct L {
@@ -176,8 +178,7 @@ class MotorTask {
 
   private:
     auto make_move(uint32_t id, MotorID motor_id, bool direction,
-                   float distance = 0.0f, bool limit_switch = true,
-                   bool has_next_move = false) -> Move {
+                   float distance, bool has_next_move = false) -> Move {
         MotorState& state = motor_state(motor_id);
         return Move{.motor_id = motor_id,
                     .move_id = id,
@@ -186,8 +187,28 @@ class MotorTask {
                     .acceleration = state.get_accel(),
                     .speed_discont = state.get_speed_discont(),
                     .steps = state.get_distance(distance),
-                    .limit_switch = limit_switch,
+                    .limit_switch = false,
                     .has_next_move = has_next_move};
+    }
+
+    auto make_home_move(uint32_t id, MotorID motor_id, bool direction,
+                        bool has_next_move = false) -> Move {
+        MotorState& state = motor_state(motor_id);
+        return Move{.motor_id = motor_id,
+                    .move_id = id,
+                    .direction = direction,
+                    // slow speed to reach limit switch
+                    .speed = state.get_speed_discont(),
+                    .acceleration = state.get_accel(),
+                    .speed_discont = state.get_speed_discont(),
+                    .steps = 0,
+                    .limit_switch = true,
+                    .has_next_move = has_next_move};
+    }
+
+    auto schedule_move(Move to_scheduled) -> void {
+        auto scheduled = _move_queue.enqueue(to_scheduled);
+        if (!scheduled) send_error_message(Error::MOTOR_QUEUE_FULL);
     }
 
     auto send_error_message(Error error) -> void {
@@ -206,30 +227,6 @@ class MotorTask {
             static_cast<void>(
                 _task_registry->send_to_address(msg, Queues::HostCommsAddress));
         }
-    }
-
-    template <MotorControlPolicy Policy>
-    auto start_home_motor(uint32_t msg_id, MotorID motor_id, bool direction,
-                          Policy& policy) -> Error {
-        Controller& controller = controller_from_id(motor_id);
-        if (motor_id != MotorID::MOTOR_L &&
-            policy.check_limit_switch(motor_id, !direction)) {
-            // if the opposite limit switch is triggered, we know where we are
-            // and can do a fast homing routine
-            auto fast_move =
-                make_move(msg_id, motor_id, direction, 200.0, false, true);
-            auto slow_move =
-                make_move(msg_id, motor_id, direction, 0.0, true, false);
-            // schedule the slow move
-            static_cast<void>(_move_queue.enqueue(slow_move));
-            // start the fast move now
-            controller.start_move(fast_move);
-        } else {
-            // we don't know where we are, move towards the limit switch slowly
-            auto slow_move = make_move(msg_id, motor_id, direction);
-            controller.start_move(slow_move);
-        }
-        return Error::NO_ERROR;
     }
 
     template <MotorControlPolicy Policy>
@@ -290,8 +287,8 @@ class MotorTask {
         if (m.mm_per_second_discont.has_value()) {
             state.speed_mm_per_sec_discont = m.mm_per_second_discont.value();
         }
-        auto move = make_move(m.id, m.motor_id, direction, std::abs(m.mm),
-                              false, false);
+        auto move =
+            make_move(m.id, m.motor_id, direction, std::abs(m.mm), false);
         controller.start_move(move);
     }
 
@@ -310,7 +307,7 @@ class MotorTask {
         if (m.mm_per_second_discont.has_value()) {
             state.speed_mm_per_sec_discont = m.mm_per_second_discont.value();
         }
-        auto move = make_move(m.id, m.motor_id, m.direction);
+        auto move = make_home_move(m.id, m.motor_id, m.direction);
         controller.start_move(move);
     }
 
@@ -410,11 +407,22 @@ class MotorTask {
             send_ack_message(m.id);
             return;
         }
-        auto error = start_home_motor(m.id, m.motor_id, m.direction, policy);
-        if (error != Error::NO_ERROR) {
-            // failed to start homing
-            send_ack_message(m.id, error);
-        };
+        _move_queue.reset();
+        Move move;
+        if (m.motor_id != MotorID::MOTOR_L &&
+            policy.check_limit_switch(m.motor_id, !m.direction)) {
+            // if the opposite limit switch is triggered, we know where we are
+            // and can do a fast homing routine
+            schedule_move(make_home_move(m.id, m.motor_id, m.direction));
+            auto distance = m.motor_id == MotorID::MOTOR_X
+                                ? Defaults::X::FAST_HOME_DISTANCE
+                                : Defaults::Z::FAST_HOME_DISTANCE;
+            move = make_move(m.id, m.motor_id, m.direction, distance, true);
+        } else {
+            // we don't know where we are, move towards the limit switch slowly
+            move = make_home_move(m.id, m.motor_id, m.direction);
+        }
+        controller_from_id(m.motor_id).start_move(move);
     }
 
     Queue& _message_queue;
