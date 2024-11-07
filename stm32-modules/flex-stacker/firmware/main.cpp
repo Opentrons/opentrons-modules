@@ -29,6 +29,9 @@ static auto ui_task_entry = EntryPoint(ui_control_task::run);
 static auto host_comms_entry = EntryPoint(host_comms_control_task::run);
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static auto system_task_entry = EntryPoint(system_control_task::run);
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -51,6 +54,11 @@ static auto ui_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::UI_STACK_SIZE, EntryPoint>(
         ui_task_entry);
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static auto system_task =
+    ot_utils::freertos_task::FreeRTOSTask<tasks::SYSTEM_STACK_SIZE, EntryPoint>(
+        system_task_entry);
+
 extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     switch (GPIO_Pin) {
         case MOTOR_DIAG0_PIN:
@@ -65,6 +73,8 @@ extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 auto main() -> int {
     HardwareInit();
 
+    system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
+
     driver_task.start(tasks::MOTOR_DRIVER_TASK_PRIORITY, "Motor Driver",
                       &aggregator);
     motor_task.start(tasks::MOTOR_TASK_PRIORITY, "Motor", &aggregator);
@@ -72,6 +82,7 @@ auto main() -> int {
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);
 
     ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator);
+
     vTaskStartScheduler();
     return 0;
 }
