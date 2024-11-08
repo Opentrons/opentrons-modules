@@ -22,7 +22,7 @@ class CircularBuffer {
             return false;
         }
 
-        _buffer[_tail] = item;
+        _buffer.at(_tail) = item;
         _tail = (_tail + 1) % buffer_size;
 
         if (full()) {
@@ -34,7 +34,7 @@ class CircularBuffer {
     }
 
     auto dequeue() -> T {
-        T item = _buffer[_head];
+        T item = _buffer.at(_head);
         _head = (_head + 1) % buffer_size;
         _count--;
 

@@ -15,12 +15,10 @@ static constexpr int TIMER_FREQ = 100000;
 
 struct Move {
     MotorID motor_id;
+    motor_util::MotorState* motor_state;
     uint32_t move_id;
     bool direction;
-    float speed;
-    float acceleration;
-    float speed_discont;
-    uint64_t steps;
+    float distance;
     bool limit_switch;
     bool has_next_move;
 };
@@ -74,27 +72,18 @@ class MotorInterruptController {
         _response_id = move_id;
     }
     auto start_move(Move move) -> void {
+        motor_util::MotorState* state = move.motor_state;
         _stop = false;
         set_direction(move.direction);
         _profile = motor_util::MovementProfile(
-            TIMER_FREQ, move.speed_discont, move.speed, move.acceleration,
+            TIMER_FREQ, state->get_speed_discont(),
+            move.limit_switch ? state->get_speed_discont() : state->get_speed(),
+            state->get_accel(),
             move.limit_switch ? motor_util::MovementType::OpenLoop
                               : motor_util::MovementType::FixedDistance,
-            move.steps);
-        _policy->enable_motor(move.motor_id);
-        _response_id = move.move_id;
-    }
-
-    auto start_movement(uint32_t move_id, bool direction,
-                        uint32_t steps_per_sec_discont, uint32_t steps_per_sec,
-                        uint32_t step_per_sec_sq) -> void {
-        _stop = false;
-        set_direction(direction);
-        _profile = motor_util::MovementProfile(
-            TIMER_FREQ, steps_per_sec_discont, steps_per_sec, step_per_sec_sq,
-            motor_util::MovementType::OpenLoop, 0);
+            state->get_distance(move.distance));
         _policy->enable_motor(_id);
-        _response_id = move_id;
+        _response_id = move.move_id;
     }
     auto stop_movement(uint32_t move_id, bool disable_motor) -> void {
         _stop = true;

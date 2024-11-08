@@ -167,32 +167,24 @@ class MotorTask {
         return Error::NO_ERROR;
     }
 
-
     auto make_move(uint32_t id, MotorID motor_id, bool direction,
                    float distance, bool has_next_move = false) -> Move {
-        MotorState& state = motor_state(motor_id);
         return Move{.motor_id = motor_id,
+                    .motor_state = &motor_state(motor_id),
                     .move_id = id,
                     .direction = direction,
-                    .speed = state.get_speed(),
-                    .acceleration = state.get_accel(),
-                    .speed_discont = state.get_speed_discont(),
-                    .steps = state.get_distance(distance),
+                    .distance = distance,
                     .limit_switch = false,
                     .has_next_move = has_next_move};
     }
 
     auto make_home_move(uint32_t id, MotorID motor_id, bool direction,
                         bool has_next_move = false) -> Move {
-        MotorState& state = motor_state(motor_id);
         return Move{.motor_id = motor_id,
+                    .motor_state = &motor_state(motor_id),
                     .move_id = id,
                     .direction = direction,
-                    // slow speed to reach limit switch
-                    .speed = state.get_speed_discont(),
-                    .acceleration = state.get_accel(),
-                    .speed_discont = state.get_speed_discont(),
-                    .steps = 0,
+                    .distance = 0,
                     .limit_switch = true,
                     .has_next_move = has_next_move};
     }
@@ -278,7 +270,6 @@ class MotorTask {
         }
         Controller& controller = controller_from_id(m.motor_id);
         MotorState& state = motor_state(m.motor_id);
-        auto direction = m.mm > 0;
         if (m.mm_per_second.has_value()) {
             state.speed_mm_per_sec = m.mm_per_second.value();
         }
@@ -288,6 +279,7 @@ class MotorTask {
         if (m.mm_per_second_discont.has_value()) {
             state.speed_mm_per_sec_discont = m.mm_per_second_discont.value();
         }
+        auto direction = m.mm > 0;
         auto move =
             make_move(m.id, m.motor_id, direction, std::abs(m.mm), false);
         controller.start_move(move);
