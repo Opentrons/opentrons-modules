@@ -107,8 +107,8 @@ class MotorTask {
     using Queue = QueueImpl<Message>;
     using Aggregator = typename tasks::Tasks<QueueImpl>::QueueAggregator;
     using Queues = typename tasks::Tasks<QueueImpl>;
-    using MoveBuffer = circular_buffer::CircularBuffer<Move>;
     static constexpr size_t MOVE_BUFFER_SIZE = 10;
+    using MoveBuffer = circular_buffer::CircularBuffer<Move, MOVE_BUFFER_SIZE>;
 
   public:
     explicit MotorTask(Queue& q, Aggregator* aggregator, Controller& x_ctrl,
@@ -190,6 +190,7 @@ class MotorTask {
         }
         return Error::NO_ERROR;
     }
+
 
     auto make_move(uint32_t id, MotorID motor_id, bool direction,
                    float distance, bool has_next_move = false) -> Move {
@@ -428,6 +429,10 @@ class MotorTask {
         send_error_message(Error::MOTOR_STALL_DETECTED);
     }
 
+    /**
+     * @brief Move the motor to the limit switch; apply fast moves to XZ motors
+     * whenever possible.
+     */
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::HomeMotorMessage& m, Policy& policy)
         -> void {
@@ -436,7 +441,6 @@ class MotorTask {
             send_ack_message(m.id, error);
             return;
         }
-
         if (policy.check_limit_switch(m.motor_id, m.direction)) {
             // motor is already homed
             send_ack_message(m.id);
@@ -490,7 +494,7 @@ class MotorTask {
         .accel_mm_per_sec_sq = Defaults::L::ACCELERATION,
         .speed_mm_per_sec_discont = Defaults::L::SPEED_DISCONT,
     };
-    MoveBuffer _move_queue{MOVE_BUFFER_SIZE};
+    MoveBuffer _move_queue{};
 };
 
 };  // namespace motor_task

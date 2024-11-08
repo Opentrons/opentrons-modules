@@ -2,20 +2,18 @@
 
 namespace circular_buffer {
 
-template <typename T>
+template <typename T, std::size_t buffer_size>
 class CircularBuffer {
   public:
-    explicit CircularBuffer(std::size_t buffer_size, bool allow_overwrite = false)
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
-        : _buffer(std::make_unique<T[]>(buffer_size)),
-          _max_size(buffer_size),
+    explicit CircularBuffer(bool allow_overwrite = false)
+        : _buffer(std::array<T, buffer_size>()),
           _overwrite(allow_overwrite) {}
 
     [[nodiscard]] auto empty() const -> bool { return _count == 0; }
 
-    [[nodiscard]] auto full() const -> bool { return _count == _max_size; }
+    [[nodiscard]] auto full() const -> bool { return _count == buffer_size; }
 
-    [[nodiscard]] auto capacity() const -> std::size_t { return _max_size; }
+    [[nodiscard]] auto capacity() const -> std::size_t { return buffer_size; }
 
     [[nodiscard]] auto size() const -> std::size_t { return _count; }
 
@@ -25,10 +23,10 @@ class CircularBuffer {
         }
 
         _buffer[_tail] = item;
-        _tail = (_tail + 1) % _max_size;
+        _tail = (_tail + 1) % buffer_size;
 
         if (full()) {
-            _head = (_head + 1) % _max_size;
+            _head = (_head + 1) % buffer_size;
         } else {
             _count++;
         }
@@ -37,7 +35,7 @@ class CircularBuffer {
 
     auto dequeue() -> T {
         T item = _buffer[_head];
-        _head = (_head + 1) % _max_size;
+        _head = (_head + 1) % buffer_size;
         _count--;
 
         return item;
@@ -50,9 +48,7 @@ class CircularBuffer {
     }
 
   private:
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
-    std::unique_ptr<T[]> _buffer;
-    const std::size_t _max_size;
+    std::array<T, buffer_size> _buffer;
     bool _overwrite;
     std::size_t _head = 0;
     std::size_t _tail = 0;
