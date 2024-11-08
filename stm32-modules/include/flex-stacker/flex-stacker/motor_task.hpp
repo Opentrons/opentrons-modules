@@ -15,6 +15,7 @@
 #include "firmware/motor_policy.hpp"
 #include "flex-stacker/errors.hpp"
 #include "flex-stacker/messages.hpp"
+#include "flex-stacker/motor_utils.hpp"
 #include "flex-stacker/tasks.hpp"
 #include "flex-stacker/tmc2160_registers.hpp"
 #include "hal/message_queue.hpp"
@@ -32,32 +33,6 @@ using Message = messages::MotorMessage;
 using Controller = motor_interrupt_controller::MotorInterruptController;
 using Move = motor_interrupt_controller::Move;
 using Error = errors::ErrorCode;
-
-struct MotorState {
-    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    lms::LinearMotionSystemConfig lms_config;
-    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    float speed_mm_per_sec;
-    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    float accel_mm_per_sec_sq;
-    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    float speed_mm_per_sec_discont;
-    [[nodiscard]] auto get_usteps_per_mm() const -> float {
-        return lms_config.get_usteps_per_mm();
-    }
-    [[nodiscard]] auto get_speed() const -> float {
-        return speed_mm_per_sec * get_usteps_per_mm();
-    }
-    [[nodiscard]] auto get_accel() const -> float {
-        return accel_mm_per_sec_sq * get_usteps_per_mm();
-    }
-    [[nodiscard]] auto get_speed_discont() const -> float {
-        return speed_mm_per_sec_discont * get_usteps_per_mm();
-    }
-    [[nodiscard]] auto get_distance(float mm) const -> uint64_t {
-        return static_cast<uint64_t>(mm * get_usteps_per_mm());
-    }
-};
 
 struct Defaults {
     struct X {
@@ -109,6 +84,7 @@ class MotorTask {
     using Queues = typename tasks::Tasks<QueueImpl>;
     static constexpr size_t MOVE_BUFFER_SIZE = 10;
     using MoveBuffer = circular_buffer::CircularBuffer<Move, MOVE_BUFFER_SIZE>;
+    using MotorState = motor_util::MotorState;
 
   public:
     explicit MotorTask(Queue& q, Aggregator* aggregator, Controller& x_ctrl,
