@@ -274,7 +274,8 @@ class MotorTask {
           _state{.status = LidState::Status::IDLE, .response_id = INVALID_ID},
           _lid_stepper_state{
               .status = LidStepperState::Status::IDLE,
-              .position = motor_util::LidStepper::Position::BETWEEN,
+//              .position = motor_util::LidStepper::Position::BETWEEN,
+              .position = motor_util::LidStepper::Position::UNKNOWN,
               .response_id = INVALID_ID},
           _seal_stepper_state{.status = SealStepperState::Status::IDLE,
                               .response_id = INVALID_ID,
@@ -308,6 +309,7 @@ class MotorTask {
             _initialized = true;
             _tmc2130.write_config(policy);
             policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
+            startup_check_if_lid_open(policy);
         }
 
         // This is the call down to the provided queue. It will block for
@@ -797,6 +799,7 @@ class MotorTask {
     template <MotorExecutionPolicy Policy>
     [[nodiscard]] auto get_lid_position(Policy& policy) const
         -> motor_util::LidStepper::Position {
+        return motor_util::LidStepper::Position::UNKNOWN;
         auto closed_switch = policy.lid_read_closed_switch();
         auto open_switch = policy.lid_read_open_switch();
 
@@ -966,6 +969,17 @@ class MotorTask {
             _state.response_id = response_id;
         }
         return error;
+    }
+
+    template <MotorExecutionPolicy Policy>
+    auto startup_check_if_lid_open(Policy& policy) -> void {
+        /*
+         * This is a bandaid fix to a problem where the thermocycler firmware rarely but sometimes
+         * crashes momentarily during a protocol. If this happens, we may be able to recover by
+         * determining if the lid is either all the way open or all the way closed.
+         * */
+        // would make just wanna do this in host_comms_task instead so I can call it w policy
+        _lid_stepper_state.position = get_lid_position(policy);
     }
 
     template <MotorExecutionPolicy Policy>
