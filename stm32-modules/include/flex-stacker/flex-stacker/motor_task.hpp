@@ -54,8 +54,8 @@ struct MotorState {
     [[nodiscard]] auto get_speed_discont() const -> float {
         return speed_mm_per_sec_discont * get_usteps_per_mm();
     }
-    [[nodiscard]] auto get_distance(float mm) const -> long {
-        return (long)(mm * get_usteps_per_mm());
+    [[nodiscard]] auto get_distance(float mm) const -> uint64_t {
+        return static_cast<uint64_t>(mm * get_usteps_per_mm());
     }
 };
 

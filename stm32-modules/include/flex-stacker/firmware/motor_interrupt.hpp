@@ -12,10 +12,6 @@ namespace motor_interrupt_controller {
 using MotorPolicy = motor_policy::MotorPolicy;
 
 static constexpr int TIMER_FREQ = 100000;
-static constexpr int DEFAULT_MOTOR_FREQ = 50;
-
-static constexpr double DEFAULT_VELOCITY = 64000;  // steps per second
-static constexpr double DEFAULT_ACCEL = 50000;     // steps per second^2
 
 struct Move {
     MotorID motor_id;
@@ -24,7 +20,7 @@ struct Move {
     float speed;
     float acceleration;
     float speed_discont;
-    long steps;
+    uint64_t steps;
     bool limit_switch;
     bool has_next_move;
 };
@@ -61,8 +57,6 @@ class MotorInterruptController {
         }
         return ret.done;
     }
-
-    auto set_freq(uint32_t freq) -> void { step_freq = freq; }
     auto initialize(MotorPolicy* policy) -> void {
         _policy = policy;
         _initialized = true;
@@ -137,8 +131,6 @@ class MotorInterruptController {
     MotorPolicy* _policy;
     std::atomic_bool _initialized;
     motor_util::MovementProfile _profile;
-    uint32_t step_count = 0;
-    uint32_t step_freq = DEFAULT_MOTOR_FREQ;
     uint32_t _response_id = 0;
     bool _direction = false;
     bool _stop = true;
