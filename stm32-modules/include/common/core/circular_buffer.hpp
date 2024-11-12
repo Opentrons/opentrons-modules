@@ -2,7 +2,8 @@
 
 namespace circular_buffer {
 
-template <typename T, std::size_t buffer_size> class CircularBuffer {
+template <typename T, std::size_t buffer_size>
+class CircularBuffer {
   public:
     explicit CircularBuffer(bool allow_overwrite = false)
         : _buffer(std::array<T, buffer_size>()), _overwrite(allow_overwrite) {}
@@ -53,4 +54,4 @@ template <typename T, std::size_t buffer_size> class CircularBuffer {
     std::size_t _count = 0;
 };
 
-} // namespace circular_buffer
+}  // namespace circular_buffer
