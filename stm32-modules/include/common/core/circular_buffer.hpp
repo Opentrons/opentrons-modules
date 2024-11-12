@@ -24,8 +24,7 @@ class CircularBuffer {
             return false;
         }
 
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
-        (*_buffer)[_tail] = item;
+        _buffer->at(_tail) = item;
         _tail = (_tail + 1) % MaxSize;
 
         if (full() && _overwrite) {
@@ -41,8 +40,7 @@ class CircularBuffer {
         if (empty()) {
             return false;
         }
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
-        item = (*_buffer)[_head];
+        item = _buffer->at(_head);
         _head = (_head + 1) % MaxSize;
         _count--;
 
