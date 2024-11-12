@@ -77,6 +77,7 @@ class MotorInterruptController {
         set_direction(move.direction);
         _profile = motor_util::MovementProfile(
             TIMER_FREQ, state->get_speed_discont(),
+            // if moving to limit switch, use max speed discont
             move.limit_switch ? state->get_speed_discont() : state->get_speed(),
             state->get_accel(),
             move.limit_switch ? motor_util::MovementType::OpenLoop
