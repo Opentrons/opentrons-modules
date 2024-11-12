@@ -343,8 +343,9 @@ class MotorTask {
     auto visit_message(const messages::MoveCompleteMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        if (!_move_queue.empty()) {
-            auto next_move = _move_queue.dequeue();
+        Move next_move;
+        if (_move_queue.dequeue(next_move)) {
+            // if there's a next move in the queue, start it
             controller_from_id(next_move.motor_id).start_move(next_move);
         } else {
             send_ack_message(controller_from_id(m.motor_id).get_response_id());

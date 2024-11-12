@@ -2,17 +2,18 @@
 
 namespace circular_buffer {
 
-template <typename T, std::size_t buffer_size>
+template <typename T, std::size_t MaxSize>
 class CircularBuffer {
   public:
+    using BackingStore = std::array<T, MaxSize>;
     explicit CircularBuffer(bool allow_overwrite = false)
-        : _buffer(std::array<T, buffer_size>()), _overwrite(allow_overwrite) {}
+        : _buffer(std::make_unique<BackingStore>()), _overwrite(allow_overwrite) {}
 
     [[nodiscard]] auto empty() const -> bool { return _count == 0; }
 
-    [[nodiscard]] auto full() const -> bool { return _count == buffer_size; }
+    [[nodiscard]] auto full() const -> bool { return _count == MaxSize; }
 
-    [[nodiscard]] auto capacity() const -> std::size_t { return buffer_size; }
+    [[nodiscard]] auto capacity() const -> std::size_t { return MaxSize; }
 
     [[nodiscard]] auto size() const -> std::size_t { return _count; }
 
@@ -21,33 +22,37 @@ class CircularBuffer {
             return false;
         }
 
-        _buffer.at(_tail) = item;
-        _tail = (_tail + 1) % buffer_size;
+        (*_buffer)[_tail] = item;
+        _tail = (_tail + 1) % MaxSize;
 
-        if (full()) {
-            _head = (_head + 1) % buffer_size;
-        } else {
+        if (full() && _overwrite) {
+            // overwrite the oldest item
+            _head = (_head + 1) % MaxSize;
+        } else if (!full()) {
             _count++;
         }
         return true;
     }
 
-    auto dequeue() -> T {
-        T item = _buffer.at(_head);
-        _head = (_head + 1) % buffer_size;
+    auto dequeue(T& item) -> bool {
+        if (empty()) {
+            return false;
+        }
+        item = (*_buffer)[_head];
+        _head = (_head + 1) % MaxSize;
         _count--;
 
-        return item;
+        return true;
     }
 
     auto reset() -> void {
-        while (!empty()) {
-            static_cast<void>(dequeue());
-        }
+        _head = 0;
+        _tail = 0;
+        _count = 0;
     }
 
   private:
-    std::array<T, buffer_size> _buffer;
+    std::unique_ptr<BackingStore> _buffer;
     bool _overwrite;
     std::size_t _head = 0;
     std::size_t _tail = 0;
