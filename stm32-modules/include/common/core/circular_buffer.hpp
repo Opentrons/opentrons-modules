@@ -8,8 +8,7 @@ class CircularBuffer {
     using BackingStore = std::array<T, MaxSize>;
 
     explicit CircularBuffer(bool allow_overwrite = false)
-        : _buffer(BackingStore()),
-          _overwrite(allow_overwrite) {}
+        : _buffer(BackingStore()), _overwrite(allow_overwrite) {}
 
     CircularBuffer(CircularBuffer& other) = delete;
     auto operator=(CircularBuffer& other) -> CircularBuffer& = delete;
