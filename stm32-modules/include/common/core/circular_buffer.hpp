@@ -8,8 +8,14 @@ class CircularBuffer {
     using BackingStore = std::array<T, MaxSize>;
 
     explicit CircularBuffer(bool allow_overwrite = false)
-        : _buffer(std::make_unique<BackingStore>()),
+        : _buffer(BackingStore()),
           _overwrite(allow_overwrite) {}
+
+    CircularBuffer(CircularBuffer& other) = delete;
+    auto operator=(CircularBuffer& other) -> CircularBuffer& = delete;
+    CircularBuffer(CircularBuffer&& other) noexcept = delete;
+    auto operator=(CircularBuffer&& other) noexcept -> CircularBuffer& = delete;
+    ~CircularBuffer() = default;
 
     [[nodiscard]] auto empty() const -> bool { return _count == 0; }
 
@@ -24,7 +30,7 @@ class CircularBuffer {
             return false;
         }
 
-        _buffer->at(_tail) = item;
+        _buffer.at(_tail) = item;
         _tail = (_tail + 1) % MaxSize;
 
         if (full() && _overwrite) {
@@ -40,7 +46,7 @@ class CircularBuffer {
         if (empty()) {
             return false;
         }
-        item = _buffer->at(_head);
+        item = _buffer.at(_head);
         _head = (_head + 1) % MaxSize;
         _count--;
 
@@ -54,7 +60,7 @@ class CircularBuffer {
     }
 
   private:
-    std::unique_ptr<BackingStore> _buffer;
+    BackingStore _buffer;
     bool _overwrite;
     std::size_t _head = 0;
     std::size_t _tail = 0;
