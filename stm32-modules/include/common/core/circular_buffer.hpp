@@ -6,8 +6,10 @@ template <typename T, std::size_t MaxSize>
 class CircularBuffer {
   public:
     using BackingStore = std::array<T, MaxSize>;
+
     explicit CircularBuffer(bool allow_overwrite = false)
-        : _buffer(std::make_unique<BackingStore>()), _overwrite(allow_overwrite) {}
+        : _buffer(std::make_unique<BackingStore>()),
+          _overwrite(allow_overwrite) {}
 
     [[nodiscard]] auto empty() const -> bool { return _count == 0; }
 
@@ -22,6 +24,7 @@ class CircularBuffer {
             return false;
         }
 
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
         (*_buffer)[_tail] = item;
         _tail = (_tail + 1) % MaxSize;
 
@@ -38,6 +41,7 @@ class CircularBuffer {
         if (empty()) {
             return false;
         }
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
         item = (*_buffer)[_head];
         _head = (_head + 1) % MaxSize;
         _count--;
