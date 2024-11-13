@@ -26,14 +26,14 @@ namespace motor_driver_task {
 using Message = messages::MotorDriverMessage;
 
 static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
-    .gconfig = {.diag0_error = 0, .diag0_stall = 0},
+    .gconfig = {.diag0_error = 0, .diag0_stall = 1},
     .short_conf = {.s2vs_level = 0x6,
                    .s2g_level = 0x6,
                    .shortfilter = 1,
                    .shortdelay = 0},
     .glob_scale = {.global_scaler = 0x0},
     .ihold_irun = {.hold_current = 10,
-                   .run_current = 31,
+                   .run_current = 16,
                    .hold_current_delay = 15},
     .tpwmthrs = {.threshold = 0x80000},
     .tcoolthrs = {.threshold = 0x2FF},
@@ -43,7 +43,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
                  .hend = 0b11,
                  .tbl = 0b1,
                  .mres = 0b100},
-    .coolconf = {.semin = 0b11, .semax = 0b100, .sgt = 1},
+    .coolconf = {.semin = 0b11, .semax = 0b100, .sgt = 12},
     .pwmconf = {.pwm_ofs = 0x1F,
                 .pwm_grad = 0x18,
                 .pwm_autoscale = 1,
@@ -53,14 +53,14 @@ static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
 };
 
 static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
-    .gconfig = {.diag0_error = 0, .diag0_stall = 0},
+    .gconfig = {.diag0_error = 0, .diag0_stall = 1},
     .short_conf = {.s2vs_level = 0x6,
                    .s2g_level = 0x6,
                    .shortfilter = 1,
                    .shortdelay = 0},
     .glob_scale = {.global_scaler = 0x0},
     .ihold_irun = {.hold_current = 12,
-                   .run_current = 31,
+                   .run_current = 1,
                    .hold_current_delay = 7},
     .tpwmthrs = {.threshold = 0x80000},
     .tcoolthrs = {.threshold = 0x2FF},
@@ -80,7 +80,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
 };
 
 static constexpr tmc2160::TMC2160RegisterMap motor_l_config{
-    .gconfig = {.diag0_error = 0, .diag0_stall = 0},
+    .gconfig = {.diag0_error = 0, .diag0_stall = 1},
     .short_conf = {.s2vs_level = 0x6,
                    .s2g_level = 0x6,
                    .shortfilter = 1,
