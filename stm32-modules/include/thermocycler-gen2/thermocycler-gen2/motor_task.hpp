@@ -983,8 +983,6 @@ class MotorTask {
         if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
             return false;
         }
-        // First release the latch
-        policy.lid_solenoid_engage();
         // Update velocity for this movement
         std::ignore = policy.lid_stepper_set_rpm(
             LidStepperState::LID_DEFAULT_VELOCITY_RPM);
