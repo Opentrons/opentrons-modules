@@ -992,9 +992,7 @@ class MotorTask {
         -> bool {
         // Update velocity for this movement
         std::ignore = policy.lid_stepper_set_rpm(
-            std::ignore = policy.lid_stepper_set_rpm(
-                LidStepperState::LID_DEFAULT_VELOCITY_RPM);
-            LidStepperState::LID_OPEN_LATCH_BACKOFF_RPM);
+            LidStepperState::LID_DEFAULT_VELOCITY_RPM);
         // Now start a lid motor movement to the endstop
         policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
         policy.lid_stepper_start(
@@ -1252,18 +1250,6 @@ class MotorTask {
                 error = handle_lid_state_enter(LidState::Status::IDLE, policy);
                 break;
             }
-            case LidStepperState::Status::LATCH_RELEASE_OVERDRIVE:
-                std::ignore = policy.lid_stepper_set_rpm(
-                    LidStepperState::LID_DEFAULT_VELOCITY_RPM);
-                // The latch is not holding the lid down, continue to open
-                policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES,
-                                         false);
-                // Store the new state, as well as the response ID
-                _lid_stepper_state.status =
-                    LidStepperState::Status::OPEN_TO_SWITCH;
-                _lid_stepper_state.position =
-                    motor_util::LidStepper::Position::BETWEEN;
-                policy.lid_solenoid_disengage();
         }
         if (error != errors::ErrorCode::NO_ERROR) {
             // Clear the lid status no matter what
@@ -1381,6 +1367,18 @@ class MotorTask {
                                          false);
                 _lid_stepper_state.status =
                     LidStepperState::Status::OPEN_TO_SWITCH;
+                break;
+            case LidStepperState::Status::LATCH_RELEASE_OVERDRIVE:
+                std::ignore = policy.lid_stepper_set_rpm(
+                    LidStepperState::LID_DEFAULT_VELOCITY_RPM);
+                // The latch is not holding the lid down, continue to open
+                policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES,
+                                         false);
+                // Store the new state, as well as the response ID
+                _lid_stepper_state.status =
+                    LidStepperState::Status::OPEN_TO_SWITCH;
+                _lid_stepper_state.position =
+                    motor_util::LidStepper::Position::BETWEEN;
                 break;
             case LidStepperState::Status::IDLE:
                 [[fallthrough]];
