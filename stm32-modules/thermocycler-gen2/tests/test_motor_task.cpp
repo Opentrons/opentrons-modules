@@ -735,11 +735,15 @@ SCENARIO("motor task lid state machine") {
                      messages::SealStepperComplete{
                          .reason = messages::SealStepperComplete::
                              CompletionReason::DONE},
-                 .lid_angle_increased = true,
-                 .lid_overdrive = false,
+                 .lid_angle_decreased = true,
+                 .lid_overdrive = true,
                  .lid_rpm =
                      motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM},
-                // Fourth step overdrives hinge
+                // Fourth step fully opening lid
+                {.msg = messages::LidStepperComplete(),
+                 .lid_angle_increased = true,
+                 .lid_overdrive = false},
+                // Sixth step open overdrive
                 {.msg = messages::LidStepperComplete(),
                  .lid_angle_decreased = true,
                  .lid_overdrive = true},
@@ -763,16 +767,20 @@ SCENARIO("motor task lid state machine") {
                      .seal_direction = true,
                      .seal_switch_armed = true,
                      .motor_state = MotorStep::MotorState::OPENING_OR_CLOSING},
-                    // Second step opens hinge
+                    // Second step overdrives lid to ease off the latch
                     {.msg =
                          messages::SealStepperComplete{
                              .reason = messages::SealStepperComplete::
                                  CompletionReason::DONE},
-                     .lid_angle_increased = true,
-                     .lid_overdrive = false,
+                     .lid_angle_decreased = true,
+                     .lid_overdrive = true,
                      .lid_rpm =
                          motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM},
-                    // Fourth step overdrives hinge
+                    // Third open fully if the close switch is not engaged
+                    {.msg = messages::LidStepperComplete(),
+                     .lid_angle_increased = true,
+                     .lid_overdrive = false},
+                    // Fifth open overdrive
                     {.msg = messages::LidStepperComplete(),
                      .lid_angle_decreased = true,
                      .lid_overdrive = true},
@@ -809,10 +817,10 @@ SCENARIO("motor task lid state machine") {
             motor_policy.set_retraction_switch_triggered(true);
             WHEN("sending open lid command") {
                 std::vector<MotorStep> steps = {
-                    // First step retracts seal switch
+                    // First step closes lid to ease off latch
                     {.msg = messages::OpenLidMessage{.id = 123},
-                     .lid_angle_increased = true,
-                     .lid_overdrive = false,
+                     .lid_angle_decreased = true,
+                     .lid_overdrive = true,
                      .lid_rpm =
                          motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM},
                 };
