@@ -1009,8 +1009,6 @@ class MotorTask {
         if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
             return false;
         }
-        // First release the latch
-        policy.lid_solenoid_engage();
         // Update velocity for this movement
         std::ignore = policy.lid_stepper_set_rpm(
             LidStepperState::LID_DEFAULT_VELOCITY_RPM);
@@ -1305,9 +1303,6 @@ class MotorTask {
                     LidStepperState::Status::CLOSE_OVERDRIVE;
                 break;
             case LidStepperState::Status::CLOSE_OVERDRIVE:
-                // Now that the lid is at the closed position,
-                // the solenoid can be safely turned off
-                policy.lid_solenoid_disengage();
                 // Turn off lid stepper current
                 policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
                 // Movement is done
