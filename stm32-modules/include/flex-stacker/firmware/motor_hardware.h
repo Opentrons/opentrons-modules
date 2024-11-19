@@ -69,6 +69,14 @@ void hw_set_diag0_irq(bool enable);
 #define X_PLUS_LIMIT_PIN (GPIO_PIN_2)
 #define X_PLUS_LIMIT_PORT (GPIOA)
 
+
+/** Platform Sensor **/
+/* + (PC6) and - (PD2) */
+#define PLAT_SENSE_PLUS_PIN (GPIO_PIN_6)
+#define PLAT_SENSE_PLUS_PORT (GPIOC)
+#define PLAT_SENSE_MINUS_PIN (GPIO_PIN_2)
+#define PLAT_SENSE_MINUS_PORT (GPIOD)
+
 /******************* Motor L *******************/
 
 /** Motor hardware **/
