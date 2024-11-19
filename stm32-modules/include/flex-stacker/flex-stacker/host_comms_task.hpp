@@ -399,7 +399,8 @@ class HostCommsTask {
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
                 } else {
                     return cache_element.write_response_into(
-                        tx_into, tx_limit, response.extend, response.retract);
+                        tx_into, tx_limit, response.extend_presence,
+                        response.retract_presence);
                 }
             },
             cache_entry);
