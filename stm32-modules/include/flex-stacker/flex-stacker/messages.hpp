@@ -258,6 +258,12 @@ struct GetPlatformSensorsResponse {
     bool retract_presence;  // Sensor located on the negative end of X axis
 };
 
+struct HomeMotorMessage {
+    uint32_t id;
+    MotorID motor_id;
+    bool direction;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -282,6 +288,7 @@ using MotorMessage =
                    MoveCompleteMessage, GetLimitSwitchesMessage,
                    MoveMotorInMmMessage, SetMicrostepsMessage,
                    GetMoveParamsMessage, SetDiag0IRQMessage,
-                   GPIOInterruptMessage, GetPlatformSensorsMessage>;
+                   GPIOInterruptMessage, HomeMotorMessage,
+                   GetPlatformSensorsMessage>;
 
 };  // namespace messages

@@ -4,14 +4,34 @@
 #include <concepts>
 
 #include "core/fixed_point.hpp"
+#include "core/linear_motion_system.hpp"
 
 namespace motor_util {
 
-enum class Parameter : char {
-    Velocity = 'V',
-    Acceleration = 'A',
-    RunCurrent = 'R',
-    HoldCurrent = 'H'
+struct MotorState {
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    lms::LinearMotionSystemConfig lms_config;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    float speed_mm_per_sec;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    float accel_mm_per_sec_sq;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    float speed_mm_per_sec_discont;
+    [[nodiscard]] auto get_usteps_per_mm() const -> float {
+        return lms_config.get_usteps_per_mm();
+    }
+    [[nodiscard]] auto get_speed() const -> float {
+        return speed_mm_per_sec * get_usteps_per_mm();
+    }
+    [[nodiscard]] auto get_accel() const -> float {
+        return accel_mm_per_sec_sq * get_usteps_per_mm();
+    }
+    [[nodiscard]] auto get_speed_discont() const -> float {
+        return speed_mm_per_sec_discont * get_usteps_per_mm();
+    }
+    [[nodiscard]] auto get_distance(float mm) const -> uint64_t {
+        return static_cast<uint64_t>(mm * get_usteps_per_mm());
+    }
 };
 
 enum class MovementType {

@@ -12,10 +12,16 @@ namespace motor_interrupt_controller {
 using MotorPolicy = motor_policy::MotorPolicy;
 
 static constexpr int TIMER_FREQ = 100000;
-static constexpr int DEFAULT_MOTOR_FREQ = 50;
 
-static constexpr double DEFAULT_VELOCITY = 64000;  // steps per second
-static constexpr double DEFAULT_ACCEL = 50000;     // steps per second^2
+struct Move {
+    MotorID motor_id;
+    motor_util::MotorState* motor_state;
+    uint32_t move_id;
+    bool direction;
+    float distance;
+    bool limit_switch;
+    bool has_next_move;
+};
 
 class MotorInterruptController {
   public:
@@ -44,12 +50,11 @@ class MotorInterruptController {
             if (_id == MotorID::MOTOR_Z) {
                 _policy->disable_motor(_id);
             }
+            _stop = true;
             return true;
         }
         return ret.done;
     }
-
-    auto set_freq(uint32_t freq) -> void { step_freq = freq; }
     auto initialize(MotorPolicy* policy) -> void {
         _policy = policy;
         _initialized = true;
@@ -66,16 +71,20 @@ class MotorInterruptController {
         _policy->enable_motor(_id);
         _response_id = move_id;
     }
-    auto start_movement(uint32_t move_id, bool direction,
-                        uint32_t steps_per_sec_discont, uint32_t steps_per_sec,
-                        uint32_t step_per_sec_sq) -> void {
+    auto start_move(Move move) -> void {
+        motor_util::MotorState* state = move.motor_state;
         _stop = false;
-        set_direction(direction);
+        set_direction(move.direction);
         _profile = motor_util::MovementProfile(
-            TIMER_FREQ, steps_per_sec_discont, steps_per_sec, step_per_sec_sq,
-            motor_util::MovementType::OpenLoop, 0);
+            TIMER_FREQ, state->get_speed_discont(),
+            // if moving to limit switch, use max speed discont
+            move.limit_switch ? state->get_speed_discont() : state->get_speed(),
+            state->get_accel(),
+            move.limit_switch ? motor_util::MovementType::OpenLoop
+                              : motor_util::MovementType::FixedDistance,
+            state->get_distance(move.distance));
         _policy->enable_motor(_id);
-        _response_id = move_id;
+        _response_id = move.move_id;
     }
     auto stop_movement(uint32_t move_id, bool disable_motor) -> void {
         _stop = true;
@@ -105,16 +114,16 @@ class MotorInterruptController {
 
     auto set_diag0_irq(bool enable) -> void { _policy->set_diag0_irq(enable); }
 
+    [[nodiscard]] auto is_moving() const -> bool { return !_stop; }
+
   private:
     MotorID _id;
     MotorPolicy* _policy;
     std::atomic_bool _initialized;
     motor_util::MovementProfile _profile;
-    uint32_t step_count = 0;
-    uint32_t step_freq = DEFAULT_MOTOR_FREQ;
     uint32_t _response_id = 0;
     bool _direction = false;
-    bool _stop = false;
+    bool _stop = true;
 };
 
 }  // namespace motor_interrupt_controller
