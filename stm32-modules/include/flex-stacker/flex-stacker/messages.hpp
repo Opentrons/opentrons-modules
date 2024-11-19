@@ -262,7 +262,8 @@ using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
-                   GetMoveParamsResponse, GetMotorStallGuardResponse>;
+                   GetMoveParamsResponse, GetMotorStallGuardResponse,
+                   GetDoorClosedResponse, GetPlatformSensorsResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
