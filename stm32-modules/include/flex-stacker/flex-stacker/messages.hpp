@@ -245,7 +245,6 @@ struct GetDoorClosedMessage {
 
 struct GetDoorClosedResponse {
     uint32_t responding_to_id;
-    ;
     bool door_closed;
 };
 
@@ -255,9 +254,8 @@ struct GetPlatformSensorsMessage {
 
 struct GetPlatformSensorsResponse {
     uint32_t responding_to_id;
-    ;
-    bool extend;   // Sensor located on the positive end of X axis
-    bool retract;  // Sensor located on the negative end of X axis
+    bool extend_presence;   // Sensor located on the positive end of X axis
+    bool retract_presence;  // Sensor located on the negative end of X axis
 };
 
 using HostCommsMessage =

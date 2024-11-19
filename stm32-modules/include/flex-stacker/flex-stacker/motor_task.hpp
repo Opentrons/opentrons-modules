@@ -283,8 +283,8 @@ class MotorTask {
                        Policy& policy) -> void {
         auto response = messages::GetPlatformSensorsResponse{
             .responding_to_id = m.id,
-            .extend = policy.check_platform_sensor(true),
-            .retract = policy.check_platform_sensor(false)};
+            .extend_presence = policy.check_platform_sensor(true),
+            .retract_presence = policy.check_platform_sensor(false)};
         static_cast<void>(_task_registry->send_to_address(
             response, Queues::HostCommsAddress));
     }
