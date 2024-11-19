@@ -57,3 +57,11 @@ auto SystemPolicy::get_serial_number()
     }
     return serial_number_array;
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto SystemPolicy::initialize() -> void { system_hardware_gpio_init(); }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto SystemPolicy::get_door_closed() -> bool {
+    return system_hardware_read_door_closed();
+}

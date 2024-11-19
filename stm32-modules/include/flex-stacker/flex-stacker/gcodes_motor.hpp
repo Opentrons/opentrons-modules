@@ -903,8 +903,8 @@ struct GetPlatformSensors {
     static constexpr auto prefix = std::array{'M', '1', '2', '1'};
 
     template <typename InputIt, typename Limit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<Limit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         auto working = prefix_matches(input, limit, prefix);
@@ -915,8 +915,8 @@ struct GetPlatformSensors {
     }
 
     template <typename InputIt, typename InLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputIt, InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit,
                                     int extend_presence, int retract_presence)
         -> InputIt {

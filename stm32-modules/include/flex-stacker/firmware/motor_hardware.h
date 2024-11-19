@@ -21,6 +21,7 @@ bool hw_stop_motor(MotorID motor_id);
 void hw_set_direction(MotorID, bool direction);
 bool hw_read_limit_switch(MotorID motor_id, bool direction);
 void hw_set_diag0_irq(bool enable);
+bool hw_read_platform_sensor(bool direction);
 
 #ifdef __cplusplus
 }  // extern "C"
@@ -68,7 +69,6 @@ void hw_set_diag0_irq(bool enable);
 #define X_MINUS_LIMIT_PORT (GPIOA)
 #define X_PLUS_LIMIT_PIN (GPIO_PIN_2)
 #define X_PLUS_LIMIT_PORT (GPIOA)
-
 
 /** Platform Sensor **/
 /* + (PC6) and - (PD2) */

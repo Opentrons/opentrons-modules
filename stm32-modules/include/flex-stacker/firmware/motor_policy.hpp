@@ -15,6 +15,7 @@ class MotorPolicy {
     auto set_direction(MotorID motor_id, bool direction) -> void;
     auto check_limit_switch(MotorID motor_id, bool direction) -> bool;
     auto set_diag0_irq(bool enable) -> void;
+    auto check_platform_sensor(bool direction) -> bool;
 };
 
 }  // namespace motor_policy

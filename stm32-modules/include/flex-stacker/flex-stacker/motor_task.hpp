@@ -281,17 +281,12 @@ class MotorTask {
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::GetPlatformSensorsMessage& m,
                        Policy& policy) -> void {
-        static_cast<void>(policy);
-        static_cast<void>(m);
-//        auto response = messages::GetPlatformSensorsResponse{
-//            .responding_to_id = m.id,
-//            .extend =
-//                policy.check_limit_switch(MotorID::MOTOR_X, true),
-//            .retract =
-//                policy.check_limit_switch(MotorID::MOTOR_X, false)
-//        };
-//        static_cast<void>(_task_registry->send_to_address(
-//            response, Queues::HostCommsAddress));
+        auto response = messages::GetPlatformSensorsResponse{
+            .responding_to_id = m.id,
+            .extend = policy.check_platform_sensor(true),
+            .retract = policy.check_platform_sensor(false)};
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
     }
 
     template <MotorControlPolicy Policy>

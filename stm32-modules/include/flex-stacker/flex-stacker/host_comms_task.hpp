@@ -46,8 +46,8 @@ class HostCommsTask {
         gcode::SetHoldCurrent, gcode::EnableMotor, gcode::DisableMotor,
         gcode::MoveMotorInSteps, gcode::MoveToLimitSwitch, gcode::MoveMotorInMm,
         gcode::GetLimitSwitches, gcode::SetMicrosteps, gcode::GetMoveParams,
-        gcode::SetMotorStallGuard, gcode::GetMotorStallGuard, gcode::GetPlatformSensors,
-        gcode::GetDoorClosed>;
+        gcode::SetMotorStallGuard, gcode::GetMotorStallGuard,
+        gcode::GetPlatformSensors, gcode::GetDoorClosed>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::SetTMCRegister, gcode::SetRunCurrent,
@@ -362,12 +362,12 @@ class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputLimit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetDoorClosedResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry = get_door_closed_cache.remove_if_present(
-            response.responding_to_id);
+        auto cache_entry =
+            get_door_closed_cache.remove_if_present(response.responding_to_id);
         return std::visit(
             [tx_into, tx_limit, response](auto cache_element) {
                 using T = std::decay_t<decltype(cache_element)>;
@@ -384,8 +384,8 @@ class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputLimit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetPlatformSensorsResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
         auto cache_entry = get_platform_sensors_cache.remove_if_present(
@@ -886,8 +886,8 @@ class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputLimit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::GetDoorClosed& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = get_door_closed_cache.add(gcode);
@@ -907,8 +907,8 @@ class HostCommsTask {
     }
 
     template <typename InputIt, typename InputLimit>
-        requires std::forward_iterator<InputIt> &&
-                 std::sized_sentinel_for<InputLimit, InputIt>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::GetPlatformSensors& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = get_platform_sensors_cache.add(gcode);

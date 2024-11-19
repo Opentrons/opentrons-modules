@@ -244,7 +244,8 @@ struct GetDoorClosedMessage {
 };
 
 struct GetDoorClosedResponse {
-    uint32_t responding_to_id;;
+    uint32_t responding_to_id;
+    ;
     bool door_closed;
 };
 
@@ -253,9 +254,10 @@ struct GetPlatformSensorsMessage {
 };
 
 struct GetPlatformSensorsResponse {
-    uint32_t responding_to_id;;
-    bool extend;    // Sensor located on the positive end of X axis
-    bool retract;   // Sensor located on the negative end of X axis
+    uint32_t responding_to_id;
+    ;
+    bool extend;   // Sensor located on the positive end of X axis
+    bool retract;  // Sensor located on the negative end of X axis
 };
 
 using HostCommsMessage =
@@ -266,7 +268,8 @@ using HostCommsMessage =
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
-                   SetSerialNumberMessage, EnterBootloaderMessage, GetDoorClosedMessage>;
+                   SetSerialNumberMessage, EnterBootloaderMessage,
+                   GetDoorClosedMessage>;
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
@@ -274,11 +277,12 @@ using MotorDriverMessage =
                    SetMotorCurrentMessage, SetMicrostepsMessage,
                    SetMotorStallGuardMessage, GetMotorStallGuardMessage>;
 
-using MotorMessage = ::std::variant<
-    std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
-    MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
-    GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
-    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
-    GetPlatformSensorsMessage>;
+using MotorMessage =
+    ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
+                   MoveToLimitSwitchMessage, StopMotorMessage,
+                   MoveCompleteMessage, GetLimitSwitchesMessage,
+                   MoveMotorInMmMessage, SetMicrostepsMessage,
+                   GetMoveParamsMessage, SetDiag0IRQMessage,
+                   GPIOInterruptMessage, GetPlatformSensorsMessage>;
 
 };  // namespace messages

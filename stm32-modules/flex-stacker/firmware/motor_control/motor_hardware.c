@@ -43,8 +43,8 @@ typedef struct stepper_hardware_struct {
 } stepper_hardware_t;
 
 typedef struct platform_sensor_struct {
-    PinConfig x_plus;
     PinConfig x_minus;
+    PinConfig x_plus;
 } platform_sensor_t;
 
 typedef struct motor_hardware_struct {
@@ -89,8 +89,8 @@ static motor_hardware_t _motor_hardware = {
         .ebrake = {0},
     },
     .platform_sensors = {
-        .x_plus = {PLAT_SENSE_PLUS_PORT, PLAT_SENSE_PLUS_PIN, GPIO_PIN_SET},
         .x_minus = {PLAT_SENSE_MINUS_PORT, PLAT_SENSE_MINUS_PIN, GPIO_PIN_SET},
+        .x_plus = {PLAT_SENSE_PLUS_PORT, PLAT_SENSE_PLUS_PIN, GPIO_PIN_SET},
     },
 };
 
@@ -381,6 +381,17 @@ bool hw_read_limit_switch(MotorID motor_id, bool direction) {
         return HAL_GPIO_ReadPin(motor.limit_switch_minus.port,
                                 motor.limit_switch_minus.pin) ==
            motor.limit_switch_minus.active_setting;
+}
+
+bool hw_read_platform_sensor(bool direction) {
+    if (direction) {
+        return HAL_GPIO_ReadPin(_motor_hardware.platform_sensors.x_plus.port,
+                            _motor_hardware.platform_sensors.x_plus.pin) ==
+           _motor_hardware.platform_sensors.x_plus.active_setting;
+    }
+    return HAL_GPIO_ReadPin(_motor_hardware.platform_sensors.x_minus.port,
+                            _motor_hardware.platform_sensors.x_minus.pin) ==
+       _motor_hardware.platform_sensors.x_minus.active_setting;
 }
 
 void hw_set_diag0_irq(bool enable) {
