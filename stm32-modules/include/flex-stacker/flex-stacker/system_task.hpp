@@ -128,6 +128,20 @@ class SystemTask {
     }
 
     template <SystemExecutionPolicy Policy>
+    auto visit_message(const messages::GetDoorClosedMessage& m,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        static_cast<void>(m);
+        //        auto response = messages::GetDoorClosedResponse{
+        //            .responding_to_id = m.id,
+        //            .door_closed =
+        //                policy.check_limit_switch(MotorID::MOTOR_X, true),
+        //        };
+        //        static_cast<void>(_task_registry->send_to_address(
+        //            response, Queues::HostCommsAddress));
+    }
+
+    template <SystemExecutionPolicy Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
         static_cast<void>(message);
         static_cast<void>(policy);

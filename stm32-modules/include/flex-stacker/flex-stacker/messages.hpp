@@ -239,6 +239,25 @@ struct GetMotorStallGuardResponse {
     int sgt;
 };
 
+struct GetDoorClosedMessage {
+    uint32_t id;
+};
+
+struct GetDoorClosedResponse {
+    uint32_t responding_to_id;;
+    bool door_closed;
+};
+
+struct GetPlatformSensorsMessage {
+    uint32_t id;
+};
+
+struct GetPlatformSensorsResponse {
+    uint32_t responding_to_id;;
+    bool extend;    // Sensor located on the positive end of X axis
+    bool retract;   // Sensor located on the negative end of X axis
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -247,7 +266,7 @@ using HostCommsMessage =
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
-                   SetSerialNumberMessage, EnterBootloaderMessage>;
+                   SetSerialNumberMessage, EnterBootloaderMessage, GetDoorClosedMessage>;
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
@@ -259,6 +278,7 @@ using MotorMessage = ::std::variant<
     std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
     MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
     GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
-    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage>;
+    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
+    GetPlatformSensorsMessage>;
 
 };  // namespace messages
