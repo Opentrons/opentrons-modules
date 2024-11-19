@@ -95,6 +95,9 @@ concept MotorExecutionPolicy = requires(Policy& p,
 
 // Structure to encapsulate state of the lid stepper
 struct LidStepperState {
+    // Further closing the lid to ensure the latch is not stuck.
+    constexpr static double LATCH_RELEASE_OVERDRIVE_DEGREES =
+        motor_util::LidStepper::angle_to_microsteps(-1);
     // Full open/close movements run until they hit an endstop switch, so the
     // distance is 120 degrees which is far wider than the actual travel angle.
     constexpr static double FULL_OPEN_DEGREES =
@@ -131,13 +134,14 @@ struct LidStepperState {
     constexpr static double LID_DEFAULT_VELOCITY_RPM = 125.0F;
     // States for lid stepper
     enum Status {
-        IDLE,            /**< Not moving.*/
-        SIMPLE_MOVEMENT, /**< Single stage movement.*/
-        OPEN_TO_SWITCH,  /**< Open until the open switch is hit.*/
-        OPEN_OVERDRIVE,  /**< Close from switch back to 90º position.*/
-        CLOSE_TO_SWITCH, /**< Close lid until it hits the switch.*/
-        CLOSE_OVERDRIVE, /**< Close lid a few degrees into the switch.*/
-        LIFT_NUDGE,      /**< Nudge the plate up with one pin.*/
+        IDLE,                    /**< Not moving.*/
+        SIMPLE_MOVEMENT,         /**< Single stage movement.*/
+        LATCH_RELEASE_OVERDRIVE, /**< Close lid to ease off latch.*/
+        OPEN_TO_SWITCH,          /**< Open until the open switch is hit.*/
+        OPEN_OVERDRIVE,          /**< Close from switch back to 90º position.*/
+        CLOSE_TO_SWITCH,         /**< Close lid until it hits the switch.*/
+        CLOSE_OVERDRIVE,         /**< Close lid a few degrees into the switch.*/
+        LIFT_NUDGE,              /**< Nudge the plate up with one pin.*/
         LIFT_NUDGE_DOWN, /**< Move back to the "open" position after nudging.*/
         LIFT_RAISE,      /**< Open lid to raise the plate lift.*/
         LIFT_LOWER,      /**< Close lid to lower the plate lift.*/
@@ -965,6 +969,11 @@ class MotorTask {
         }
         // First release the latch
         policy.lid_solenoid_engage();
+        // If the move is starting at the bottom of the lid's axis,
+        // overdrive the lid first to release the solenoid latch
+        if (policy.lid_read_closed_switch()) {
+            return start_latch_release_overdrive(response_id, policy);
+        }
         // Update velocity for this movement
         std::ignore = policy.lid_stepper_set_rpm(
             LidStepperState::LID_DEFAULT_VELOCITY_RPM);
@@ -979,12 +988,27 @@ class MotorTask {
     }
 
     template <MotorExecutionPolicy Policy>
+    auto start_latch_release_overdrive(uint32_t response_id, Policy& policy)
+        -> bool {
+        // Update velocity for this movement
+        std::ignore = policy.lid_stepper_set_rpm(
+            LidStepperState::LID_DEFAULT_VELOCITY_RPM);
+        // Now start a lid motor movement to the endstop
+        policy.lid_stepper_set_dac(LID_STEPPER_RUN_CURRENT);
+        policy.lid_stepper_start(
+            LidStepperState::LATCH_RELEASE_OVERDRIVE_DEGREES, true);
+        // Store the new state, as well as the response ID
+        _lid_stepper_state.status =
+            LidStepperState::Status::LATCH_RELEASE_OVERDRIVE;
+        _lid_stepper_state.response_id = response_id;
+        return true;
+    }
+
+    template <MotorExecutionPolicy Policy>
     auto start_lid_hinge_close(uint32_t response_id, Policy& policy) -> bool {
         if (_lid_stepper_state.status != LidStepperState::Status::IDLE) {
             return false;
         }
-        // First release the latch
-        policy.lid_solenoid_engage();
         // Update velocity for this movement
         std::ignore = policy.lid_stepper_set_rpm(
             LidStepperState::LID_DEFAULT_VELOCITY_RPM);
@@ -1279,9 +1303,6 @@ class MotorTask {
                     LidStepperState::Status::CLOSE_OVERDRIVE;
                 break;
             case LidStepperState::Status::CLOSE_OVERDRIVE:
-                // Now that the lid is at the closed position,
-                // the solenoid can be safely turned off
-                policy.lid_solenoid_disengage();
                 // Turn off lid stepper current
                 policy.lid_stepper_set_dac(LID_STEPPER_HOLD_CURRENT);
                 // Movement is done
@@ -1341,6 +1362,18 @@ class MotorTask {
                                          false);
                 _lid_stepper_state.status =
                     LidStepperState::Status::OPEN_TO_SWITCH;
+                break;
+            case LidStepperState::Status::LATCH_RELEASE_OVERDRIVE:
+                std::ignore = policy.lid_stepper_set_rpm(
+                    LidStepperState::LID_DEFAULT_VELOCITY_RPM);
+                // The latch is not holding the lid down, continue to open
+                policy.lid_stepper_start(LidStepperState::FULL_OPEN_DEGREES,
+                                         false);
+                // Store the new state, as well as the response ID
+                _lid_stepper_state.status =
+                    LidStepperState::Status::OPEN_TO_SWITCH;
+                _lid_stepper_state.position =
+                    motor_util::LidStepper::Position::BETWEEN;
                 break;
             case LidStepperState::Status::IDLE:
                 [[fallthrough]];
