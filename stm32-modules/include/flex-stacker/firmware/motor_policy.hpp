@@ -17,6 +17,8 @@ class MotorPolicy {
     auto set_diag0_irq(bool enable) -> void;
     auto check_platform_sensor(bool direction) -> bool;
     auto check_estop() -> bool;
+    auto is_diag0_pin(uint16_t pin) -> bool;
+    auto is_estop_pin(uint16_t pin) -> bool;
 };
 
 }  // namespace motor_policy

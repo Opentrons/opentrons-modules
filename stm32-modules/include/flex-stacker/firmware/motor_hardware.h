@@ -23,6 +23,8 @@ bool hw_read_limit_switch(MotorID motor_id, bool direction);
 void hw_set_diag0_irq(bool enable);
 bool hw_read_platform_sensor(bool direction);
 bool hw_read_estop(void);
+bool hw_is_diag0_pin(uint16_t pin);
+bool hw_is_estop_pin(uint16_t pin);
 
 #ifdef __cplusplus
 }  // extern "C"

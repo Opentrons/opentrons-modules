@@ -9,8 +9,7 @@ const char* const UNHANDLED_GCODE = "ERR003:unhandled gcode\n";
 const char* const GCODE_CACHE_FULL = "ERR004:gcode cache full\n";
 const char* const BAD_MESSAGE_ACKNOWLEDGEMENT =
     "ERR005:bad message acknowledgement\n";
-const char* const ESTOP_TRIGGERED =
-    "ERR006:estop triggered\n";
+const char* const ESTOP_TRIGGERED = "ERR006:estop triggered\n";
 const char* const SYSTEM_SERIAL_NUMBER_INVALID =
     "ERR301:system:serial number invalid format\n";
 const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =

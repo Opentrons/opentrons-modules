@@ -181,9 +181,6 @@ void motor_hardware_gpio_init(void){
     init.Pin = L_N_RELEASED_PIN;
     HAL_GPIO_Init(L_N_RELEASED_PORT, &init);
 
-    init.Pin = N_ESTOP_PIN;
-    HAL_GPIO_Init(N_ESTOP_PORT, &init);
-
     /*Configure GPIO pins : INPUTs IRQ */
     init.Mode = GPIO_MODE_IT_FALLING;
     init.Pull = GPIO_PULLUP;
@@ -192,6 +189,11 @@ void motor_hardware_gpio_init(void){
     init.Pin = MOTOR_DIAG0_PIN;
     HAL_GPIO_Init(MOTOR_DIAG0_PORT, &init);
     HAL_NVIC_SetPriority(EXTI15_10_IRQn, 6, 0);
+
+    init.Pin = N_ESTOP_PIN;
+    HAL_GPIO_Init(N_ESTOP_PORT, &init);
+    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 }
 
 // X motor timer
@@ -405,6 +407,14 @@ void hw_set_diag0_irq(bool enable) {
     enable ?
         HAL_NVIC_EnableIRQ(EXTI15_10_IRQn) :
         HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+}
+
+bool hw_is_diag0_pin(uint16_t pin) {
+    return pin == MOTOR_DIAG0_PIN;
+}
+
+bool hw_is_estop_pin(uint16_t pin) {
+    return pin == N_ESTOP_PIN;
 }
 
 void TIM3_IRQHandler(void)

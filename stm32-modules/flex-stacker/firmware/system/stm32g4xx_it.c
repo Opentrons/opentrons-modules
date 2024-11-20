@@ -129,3 +129,10 @@ void EXTI15_10_IRQHandler(void) {
     }
 }
 
+// Estop interrupt
+void EXTI9_5_IRQHandler(void)
+{
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_6)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_6);
+    }
+}

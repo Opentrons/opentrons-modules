@@ -415,7 +415,11 @@ class MotorTask {
         _z_controller.stop_movement(0, true);
         _x_controller.stop_movement(0, false);
         _l_controller.stop_movement(0, false);
-        send_error_message(Error::MOTOR_STALL_DETECTED);
+        if (policy.is_diag0_pin(m.pin)) {
+            send_error_message(Error::MOTOR_STALL_DETECTED);
+        } else {
+            send_error_message(Error::ESTOP_TRIGGERED);
+        }
     }
 
     /**
