@@ -41,3 +41,6 @@ auto MotorPolicy::check_platform_sensor(bool direction) -> bool {
 auto MotorPolicy::set_diag0_irq(bool enable) -> void {
     hw_set_diag0_irq(enable);
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::check_estop() -> bool { return hw_read_estop(); }

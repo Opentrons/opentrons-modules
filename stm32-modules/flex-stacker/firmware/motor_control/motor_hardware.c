@@ -53,6 +53,7 @@ typedef struct motor_hardware_struct {
     stepper_hardware_t motor_z;
     stepper_hardware_t motor_l;
     platform_sensor_t platform_sensors;
+    PinConfig estop;
 } motor_hardware_t;
 
 
@@ -92,6 +93,7 @@ static motor_hardware_t _motor_hardware = {
         .x_minus = {PLAT_SENSE_MINUS_PORT, PLAT_SENSE_MINUS_PIN, GPIO_PIN_SET},
         .x_plus = {PLAT_SENSE_PLUS_PORT, PLAT_SENSE_PLUS_PIN, GPIO_PIN_SET},
     },
+    .estop = {N_ESTOP_PORT, N_ESTOP_PIN, GPIO_PIN_RESET},
 };
 
 void motor_hardware_gpio_init(void){
@@ -179,8 +181,8 @@ void motor_hardware_gpio_init(void){
     init.Pin = L_N_RELEASED_PIN;
     HAL_GPIO_Init(L_N_RELEASED_PORT, &init);
 
-    init.Pin = ESTOP_PIN;
-    HAL_GPIO_Init(ESTOP_PORT, &init);
+    init.Pin = N_ESTOP_PIN;
+    HAL_GPIO_Init(N_ESTOP_PORT, &init);
 
     /*Configure GPIO pins : INPUTs IRQ */
     init.Mode = GPIO_MODE_IT_FALLING;
@@ -392,6 +394,11 @@ bool hw_read_platform_sensor(bool direction) {
     return HAL_GPIO_ReadPin(_motor_hardware.platform_sensors.x_minus.port,
                             _motor_hardware.platform_sensors.x_minus.pin) ==
        _motor_hardware.platform_sensors.x_minus.active_setting;
+}
+
+bool hw_read_estop(void) {
+    return HAL_GPIO_ReadPin(_motor_hardware.estop.port, _motor_hardware.estop.pin) ==
+           _motor_hardware.estop.active_setting;
 }
 
 void hw_set_diag0_irq(bool enable) {

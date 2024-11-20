@@ -47,7 +47,7 @@ class HostCommsTask {
         gcode::MoveMotorInSteps, gcode::MoveToLimitSwitch, gcode::MoveMotorInMm,
         gcode::GetLimitSwitches, gcode::SetMicrosteps, gcode::GetMoveParams,
         gcode::SetMotorStallGuard, gcode::GetMotorStallGuard, gcode::HomeMotor,
-        gcode::GetPlatformSensors, gcode::GetDoorClosed>;
+        gcode::GetPlatformSensors, gcode::GetDoorClosed, gcode::GetEstopStatus>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::SetTMCRegister, gcode::SetRunCurrent,
@@ -62,6 +62,7 @@ class HostCommsTask {
     using GetMotorStallGuardCache = AckCache<8, gcode::GetMotorStallGuard>;
     using GetDoorClosedCache = AckCache<8, gcode::GetDoorClosed>;
     using GetPlatformSensorsCache = AckCache<8, gcode::GetPlatformSensors>;
+    using GetEstopCache = AckCache<8, gcode::GetEstopStatus>;
 
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
@@ -84,7 +85,9 @@ class HostCommsTask {
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_door_closed_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          get_platform_sensors_cache() {}
+          get_platform_sensors_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_estop_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -224,7 +227,7 @@ class HostCommsTask {
     auto visit_message(const messages::ErrorMessage& msg, InputIt tx_into,
                        InputLimit tx_limit) -> InputIt {
         // stall detected, clear the message cache.
-        if (msg.code == errors::ErrorCode::MOTOR_STALL_DETECTED) {
+        if (msg.code == errors::ErrorCode::MOTOR_STALL_DETECTED) || (msg.code == errors::ErrorCode::ESTOP_TRIGGERED) {
             ack_only_cache.clear();
         }
         return errors::write_into_async(tx_into, tx_limit, msg.code);
@@ -401,6 +404,28 @@ class HostCommsTask {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.extend_presence,
                         response.retract_presence);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetEstopResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            get_estop_cache.remove_if_present(response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.triggered);
                 }
             },
             cache_entry);
@@ -950,6 +975,27 @@ class HostCommsTask {
         return std::make_pair(true, tx_into);
     }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetEstopStatus& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_estop_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetEstopMessage{.id = id};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_estop_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -972,6 +1018,7 @@ class HostCommsTask {
     GetMotorStallGuardCache get_motor_stall_guard_cache;
     GetDoorClosedCache get_door_closed_cache;
     GetPlatformSensorsCache get_platform_sensors_cache;
+    GetEstopCache get_estop_cache;
     bool may_connect_latch = true;
 };
 

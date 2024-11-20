@@ -351,6 +351,15 @@ class MotorTask {
     }
 
     template <MotorControlPolicy Policy>
+    auto visit_message(const messages::GetEstopMessage& m, Policy& policy)
+        -> void {
+        auto response = messages::GetEstopResponse{
+            .responding_to_id = m.id, .triggered = policy.check_estop()};
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
+    template <MotorControlPolicy Policy>
     auto visit_message(const messages::MoveCompleteMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
