@@ -16,9 +16,11 @@ class SystemPolicy {
         SYSTEM_SERIAL_NUMBER_LENGTH / ADDRESS_LENGTH;
 
   public:
+    auto initialize() -> void;
     auto enter_bootloader() -> void;
     auto set_serial_number(
         std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> system_serial_number)
         -> errors::ErrorCode;
     auto get_serial_number() -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
+    auto get_door_closed() -> bool;
 };

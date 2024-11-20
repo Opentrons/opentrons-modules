@@ -944,4 +944,36 @@ struct GetMotorStallGuard {
     }
 };
 
+struct GetPlatformSensors {
+    using ParseResult = std::optional<GetPlatformSensors>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '1'};
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetPlatformSensors()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    int extend_presence, int retract_presence)
+        -> InputIt {
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf), "M121 E:%i R:%i OK\n",
+                       extend_presence, retract_presence);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
 }  // namespace gcode

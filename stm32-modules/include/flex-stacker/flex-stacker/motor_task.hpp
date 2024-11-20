@@ -340,6 +340,17 @@ class MotorTask {
     }
 
     template <MotorControlPolicy Policy>
+    auto visit_message(const messages::GetPlatformSensorsMessage& m,
+                       Policy& policy) -> void {
+        auto response = messages::GetPlatformSensorsResponse{
+            .responding_to_id = m.id,
+            .extend_presence = policy.check_platform_sensor(true),
+            .retract_presence = policy.check_platform_sensor(false)};
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
+    template <MotorControlPolicy Policy>
     auto visit_message(const messages::MoveCompleteMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);

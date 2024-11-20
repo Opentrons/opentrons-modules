@@ -33,6 +33,11 @@ auto MotorPolicy::check_limit_switch(MotorID motor_id, bool direction) -> bool {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::check_platform_sensor(bool direction) -> bool {
+    return hw_read_platform_sensor(direction);
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::set_diag0_irq(bool enable) -> void {
     hw_set_diag0_irq(enable);
 }

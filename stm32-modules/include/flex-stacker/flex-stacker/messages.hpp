@@ -239,6 +239,25 @@ struct GetMotorStallGuardResponse {
     int sgt;
 };
 
+struct GetDoorClosedMessage {
+    uint32_t id;
+};
+
+struct GetDoorClosedResponse {
+    uint32_t responding_to_id;
+    bool door_closed;
+};
+
+struct GetPlatformSensorsMessage {
+    uint32_t id;
+};
+
+struct GetPlatformSensorsResponse {
+    uint32_t responding_to_id;
+    bool extend_presence;   // Sensor located on the positive end of X axis
+    bool retract_presence;  // Sensor located on the negative end of X axis
+};
+
 struct HomeMotorMessage {
     uint32_t id;
     MotorID motor_id;
@@ -249,11 +268,13 @@ using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
-                   GetMoveParamsResponse, GetMotorStallGuardResponse>;
+                   GetMoveParamsResponse, GetMotorStallGuardResponse,
+                   GetDoorClosedResponse, GetPlatformSensorsResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
-                   SetSerialNumberMessage, EnterBootloaderMessage>;
+                   SetSerialNumberMessage, EnterBootloaderMessage,
+                   GetDoorClosedMessage>;
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
@@ -261,12 +282,11 @@ using MotorDriverMessage =
                    SetMotorCurrentMessage, SetMicrostepsMessage,
                    SetMotorStallGuardMessage, GetMotorStallGuardMessage>;
 
-using MotorMessage =
-    ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
-                   MoveToLimitSwitchMessage, StopMotorMessage,
-                   MoveCompleteMessage, GetLimitSwitchesMessage,
-                   MoveMotorInMmMessage, SetMicrostepsMessage,
-                   GetMoveParamsMessage, SetDiag0IRQMessage,
-                   GPIOInterruptMessage, HomeMotorMessage>;
+using MotorMessage = ::std::variant<
+    std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
+    MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
+    GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
+    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
+    HomeMotorMessage, GetPlatformSensorsMessage>;
 
 };  // namespace messages

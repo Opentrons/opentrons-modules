@@ -6,10 +6,15 @@ extern "C" {
 
 #include <stdbool.h>
 
+#define HOPPER_DOR_CLOSED_PIN GPIO_PIN_13
+#define HOPPER_DOR_CLOSED_GPIO_PORT GPIOC
+
 /**
  * @brief Enter the bootloader. This function never returns.
  */
 void system_hardware_enter_bootloader(void);
+void system_hardware_gpio_init(void);
+bool system_hardware_read_door_closed(void);
 
 #ifdef __cplusplus
 }  // extern "C"

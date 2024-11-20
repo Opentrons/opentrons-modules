@@ -46,7 +46,8 @@ class SystemTask {
         : _message_queue(q),
           _task_registry(aggregator),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          _prep_cache() {}
+          _prep_cache(),
+          _initialized(false) {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
     SystemTask(SystemTask&& other) noexcept = delete;
@@ -61,6 +62,12 @@ class SystemTask {
     auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
         _message_queue.recv(&message);
+
+        if (!_initialized) {
+            policy.initialize();
+            _initialized = true;
+        }
+
         auto visit_helper = [this, &policy](auto& message) -> void {
             this->visit_message(message, policy);
         };
@@ -128,6 +135,15 @@ class SystemTask {
     }
 
     template <SystemExecutionPolicy Policy>
+    auto visit_message(const messages::GetDoorClosedMessage& m, Policy& policy)
+        -> void {
+        auto response = messages::GetDoorClosedResponse{
+            .responding_to_id = m.id, .door_closed = policy.get_door_closed()};
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
+    template <SystemExecutionPolicy Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
         static_cast<void>(message);
         static_cast<void>(policy);
@@ -136,6 +152,7 @@ class SystemTask {
     Queue& _message_queue;
     Aggregator* _task_registry;
     BootloaderPrepCache _prep_cache;
+    bool _initialized;
 };
 
 };  // namespace system_task

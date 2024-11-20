@@ -42,11 +42,17 @@ typedef struct stepper_hardware_struct {
     PinConfig diag0;
 } stepper_hardware_t;
 
+typedef struct platform_sensor_struct {
+    PinConfig x_minus;
+    PinConfig x_plus;
+} platform_sensor_t;
+
 typedef struct motor_hardware_struct {
     bool initialized;
     stepper_hardware_t motor_x;
     stepper_hardware_t motor_z;
     stepper_hardware_t motor_l;
+    platform_sensor_t platform_sensors;
 } motor_hardware_t;
 
 
@@ -81,7 +87,11 @@ static motor_hardware_t _motor_hardware = {
         .limit_switch_plus = {L_N_RELEASED_PORT, L_N_RELEASED_PIN, GPIO_PIN_RESET},
         .diag0 = {MOTOR_DIAG0_PORT, MOTOR_DIAG0_PIN, GPIO_PIN_SET},
         .ebrake = {0},
-    }
+    },
+    .platform_sensors = {
+        .x_minus = {PLAT_SENSE_MINUS_PORT, PLAT_SENSE_MINUS_PIN, GPIO_PIN_SET},
+        .x_plus = {PLAT_SENSE_PLUS_PORT, PLAT_SENSE_PLUS_PIN, GPIO_PIN_SET},
+    },
 };
 
 void motor_hardware_gpio_init(void){
@@ -93,6 +103,7 @@ void motor_hardware_gpio_init(void){
     __HAL_RCC_GPIOF_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOD_CLK_ENABLE();
 
     /*Configure GPIO pins : OUTPUTS */
     init.Mode = GPIO_MODE_OUTPUT_PP;
@@ -153,6 +164,13 @@ void motor_hardware_gpio_init(void){
 
     init.Pin = X_PLUS_LIMIT_PIN;
     HAL_GPIO_Init(X_PLUS_LIMIT_PORT, &init);
+
+    // Platform sensors
+    init.Pin = PLAT_SENSE_PLUS_PIN;
+    HAL_GPIO_Init(PLAT_SENSE_PLUS_PORT, &init);
+
+    init.Pin = PLAT_SENSE_MINUS_PIN;
+    HAL_GPIO_Init(PLAT_SENSE_MINUS_PORT, &init);
 
     // L MOTOR
     init.Pin = L_N_HELD_PIN;
@@ -363,6 +381,17 @@ bool hw_read_limit_switch(MotorID motor_id, bool direction) {
         return HAL_GPIO_ReadPin(motor.limit_switch_minus.port,
                                 motor.limit_switch_minus.pin) ==
            motor.limit_switch_minus.active_setting;
+}
+
+bool hw_read_platform_sensor(bool direction) {
+    if (direction) {
+        return HAL_GPIO_ReadPin(_motor_hardware.platform_sensors.x_plus.port,
+                            _motor_hardware.platform_sensors.x_plus.pin) ==
+           _motor_hardware.platform_sensors.x_plus.active_setting;
+    }
+    return HAL_GPIO_ReadPin(_motor_hardware.platform_sensors.x_minus.port,
+                            _motor_hardware.platform_sensors.x_minus.pin) ==
+       _motor_hardware.platform_sensors.x_minus.active_setting;
 }
 
 void hw_set_diag0_irq(bool enable) {

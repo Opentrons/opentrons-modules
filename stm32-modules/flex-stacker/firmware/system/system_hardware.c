@@ -58,3 +58,21 @@ void system_hardware_enter_bootloader(void) {
         : "r" (*sysmem_boot_loc)
         : "memory"  );
 }
+
+void system_hardware_gpio_init(void) {
+    GPIO_InitTypeDef init = {0};
+
+    /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+
+    init.Mode = GPIO_MODE_INPUT;
+    init.Pull = GPIO_NOPULL;
+    init.Speed = GPIO_SPEED_FREQ_LOW;
+    init.Pin = HOPPER_DOR_CLOSED_PIN;
+    HAL_GPIO_Init(HOPPER_DOR_CLOSED_GPIO_PORT, &init);
+}
+
+
+bool system_hardware_read_door_closed(void) {
+    return HAL_GPIO_ReadPin(HOPPER_DOR_CLOSED_GPIO_PORT, HOPPER_DOR_CLOSED_PIN) == GPIO_PIN_SET;
+}

@@ -33,8 +33,6 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void Error_Handler(void);
 
 /* Private defines -----------------------------------------------------------*/
-#define HOPPER_DOR_CLOSED_Pin GPIO_PIN_13
-#define HOPPER_DOR_CLOSED_GPIO_Port GPIOC
 
 #define MOTOR_DIR_Z_Pin GPIO_PIN_1
 #define MOTOR_DIR_Z_GPIO_Port GPIOC
