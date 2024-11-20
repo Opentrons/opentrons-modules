@@ -282,13 +282,11 @@ using MotorDriverMessage =
                    SetMotorCurrentMessage, SetMicrostepsMessage,
                    SetMotorStallGuardMessage, GetMotorStallGuardMessage>;
 
-using MotorMessage =
-    ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
-                   MoveToLimitSwitchMessage, StopMotorMessage,
-                   MoveCompleteMessage, GetLimitSwitchesMessage,
-                   MoveMotorInMmMessage, SetMicrostepsMessage,
-                   GetMoveParamsMessage, SetDiag0IRQMessage,
-                   GPIOInterruptMessage, HomeMotorMessage,
-                   GetPlatformSensorsMessage>;
+using MotorMessage = ::std::variant<
+    std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
+    MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
+    GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
+    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
+    HomeMotorMessage, GetPlatformSensorsMessage>;
 
 };  // namespace messages
