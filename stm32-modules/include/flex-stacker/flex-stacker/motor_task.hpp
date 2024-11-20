@@ -411,15 +411,17 @@ class MotorTask {
     auto visit_message(const messages::GPIOInterruptMessage& m, Policy& policy)
         -> void {
         static_cast<void>(m);
-        static_cast<void>(policy);
+        if (policy.is_diag0_pin(m.pin)) {
+            send_error_message(Error::MOTOR_STALL_DETECTED);
+        } else if (policy.is_estop_pin(m.pin)) {
+            send_error_message(Error::ESTOP_TRIGGERED);
+        } else {
+            // don't care about other interrupts
+            return;
+        }
         _z_controller.stop_movement(0, true);
         _x_controller.stop_movement(0, false);
         _l_controller.stop_movement(0, false);
-        if (policy.is_diag0_pin(m.pin)) {
-            send_error_message(Error::MOTOR_STALL_DETECTED);
-        } else {
-            send_error_message(Error::ESTOP_TRIGGERED);
-        }
     }
 
     /**
