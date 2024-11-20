@@ -91,8 +91,6 @@ bool hw_read_platform_sensor(bool direction);
 /* Note: Mechanical limit switches */
 #define L_N_HELD_PIN (GPIO_PIN_5)
 #define L_N_HELD_PORT (GPIOB)
-#define L_N_RELEASED_PIN (GPIO_PIN_11)
-#define L_N_RELEASED_PORT (GPIOC)
 
 /**************** COMMON ********************/
 #define ESTOP_PIN (GPIO_PIN_6)

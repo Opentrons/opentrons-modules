@@ -331,7 +331,6 @@ class HostCommsTask {
                         response.x_retract_triggered,
                         response.z_extend_triggered,
                         response.x_retract_triggered,
-                        response.l_released_triggered,
                         response.l_held_triggered);
                 }
             },
