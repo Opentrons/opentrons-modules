@@ -154,6 +154,6 @@ auto MotorPolicy::seal_switch_set_disarmed() -> void {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-[[nodiscard]] auto MotorPolicy::last_reset_reason() const -> char* {
+[[nodiscard]] auto MotorPolicy::last_reset_reason() const -> uint16_t {
     return motor_hardware_reset_reason();
 }

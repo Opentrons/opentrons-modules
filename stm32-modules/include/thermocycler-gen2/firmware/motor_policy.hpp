@@ -191,7 +191,7 @@ class MotorPolicy {
      * reset of the software.
      * @return a string describing the reason for reset.
      * */
-    [[nodiscard]] auto last_reset_reason() const -> char*;
+    [[nodiscard]] auto last_reset_reason() const -> uint16_t;
 
     /**
      * @brief Call the seal callback function

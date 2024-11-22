@@ -359,7 +359,7 @@ struct GetResetReasonMessage {
 
 struct GetResetReasonResponse {
     uint32_t responding_to_id;
-    char* reason;
+    uint16_t reason;
 };
 
 struct OpenLidMessage {

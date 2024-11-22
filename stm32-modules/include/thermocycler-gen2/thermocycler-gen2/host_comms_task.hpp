@@ -258,8 +258,7 @@ class HostCommsTask {
                     return errors::write_into(tx_into, tx_limit,
                                               msg.with_error);
                 } else {
-                    return cache_element.write_response_into(
-                        tx_into, tx_limit);
+                    return cache_element.write_response_into(tx_into, tx_limit);
                 }
             },
             cache_entry);
