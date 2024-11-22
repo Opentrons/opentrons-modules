@@ -349,6 +349,15 @@ class MotorTask {
     }
 
     template <MotorControlPolicy Policy>
+    auto visit_message(const messages::GetEstopMessage& m, Policy& policy)
+        -> void {
+        auto response = messages::GetEstopResponse{
+            .responding_to_id = m.id, .triggered = policy.check_estop()};
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
+    template <MotorControlPolicy Policy>
     auto visit_message(const messages::MoveCompleteMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
@@ -400,11 +409,17 @@ class MotorTask {
     auto visit_message(const messages::GPIOInterruptMessage& m, Policy& policy)
         -> void {
         static_cast<void>(m);
-        static_cast<void>(policy);
+        if (policy.is_diag0_pin(m.pin)) {
+            send_error_message(Error::MOTOR_STALL_DETECTED);
+        } else if (policy.is_estop_pin(m.pin)) {
+            send_error_message(Error::ESTOP_TRIGGERED);
+        } else {
+            // don't care about other interrupts
+            return;
+        }
         _z_controller.stop_movement(0, true);
         _x_controller.stop_movement(0, false);
         _l_controller.stop_movement(0, false);
-        send_error_message(Error::MOTOR_STALL_DETECTED);
     }
 
     /**

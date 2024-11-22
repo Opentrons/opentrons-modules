@@ -263,12 +263,22 @@ struct HomeMotorMessage {
     bool direction;
 };
 
+struct GetEstopMessage {
+    uint32_t id;
+};
+
+struct GetEstopResponse {
+    uint32_t responding_to_id;
+    bool triggered;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
                    GetMoveParamsResponse, GetMotorStallGuardResponse,
-                   GetDoorClosedResponse, GetPlatformSensorsResponse>;
+                   GetDoorClosedResponse, GetPlatformSensorsResponse,
+                   GetEstopResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -286,6 +296,6 @@ using MotorMessage = ::std::variant<
     MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
     GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
     GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
-    HomeMotorMessage, GetPlatformSensorsMessage>;
+    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage>;
 
 };  // namespace messages

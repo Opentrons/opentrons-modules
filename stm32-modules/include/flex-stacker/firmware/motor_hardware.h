@@ -22,6 +22,9 @@ void hw_set_direction(MotorID, bool direction);
 bool hw_read_limit_switch(MotorID motor_id, bool direction);
 void hw_set_diag0_irq(bool enable);
 bool hw_read_platform_sensor(bool direction);
+bool hw_read_estop(void);
+bool hw_is_diag0_pin(uint16_t pin);
+bool hw_is_estop_pin(uint16_t pin);
 
 #ifdef __cplusplus
 }  // extern "C"
@@ -93,7 +96,7 @@ bool hw_read_platform_sensor(bool direction);
 #define L_N_HELD_PORT (GPIOB)
 
 /**************** COMMON ********************/
-#define ESTOP_PIN (GPIO_PIN_6)
-#define ESTOP_PORT (GPIOB)
+#define N_ESTOP_PIN (GPIO_PIN_6)
+#define N_ESTOP_PORT (GPIOB)
 #define MOTOR_DIAG0_PIN (GPIO_PIN_12)
 #define MOTOR_DIAG0_PORT (GPIOB)

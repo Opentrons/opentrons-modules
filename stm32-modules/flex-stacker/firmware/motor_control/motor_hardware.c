@@ -53,6 +53,7 @@ typedef struct motor_hardware_struct {
     stepper_hardware_t motor_z;
     stepper_hardware_t motor_l;
     platform_sensor_t platform_sensors;
+    PinConfig estop;
 } motor_hardware_t;
 
 
@@ -92,6 +93,7 @@ static motor_hardware_t _motor_hardware = {
         .x_minus = {PLAT_SENSE_MINUS_PORT, PLAT_SENSE_MINUS_PIN, GPIO_PIN_SET},
         .x_plus = {PLAT_SENSE_PLUS_PORT, PLAT_SENSE_PLUS_PIN, GPIO_PIN_SET},
     },
+    .estop = {N_ESTOP_PORT, N_ESTOP_PIN, GPIO_PIN_RESET},
 };
 
 void motor_hardware_gpio_init(void){
@@ -176,9 +178,6 @@ void motor_hardware_gpio_init(void){
     init.Pin = L_N_HELD_PIN;
     HAL_GPIO_Init(L_N_HELD_PORT, &init);
 
-    init.Pin = ESTOP_PIN;
-    HAL_GPIO_Init(ESTOP_PORT, &init);
-
     /*Configure GPIO pins : INPUTs IRQ */
     init.Mode = GPIO_MODE_IT_FALLING;
     init.Pull = GPIO_PULLUP;
@@ -187,6 +186,11 @@ void motor_hardware_gpio_init(void){
     init.Pin = MOTOR_DIAG0_PIN;
     HAL_GPIO_Init(MOTOR_DIAG0_PORT, &init);
     HAL_NVIC_SetPriority(EXTI15_10_IRQn, 6, 0);
+
+    init.Pin = N_ESTOP_PIN;
+    HAL_GPIO_Init(N_ESTOP_PORT, &init);
+    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 }
 
 // X motor timer
@@ -391,10 +395,23 @@ bool hw_read_platform_sensor(bool direction) {
        _motor_hardware.platform_sensors.x_minus.active_setting;
 }
 
+bool hw_read_estop(void) {
+    return HAL_GPIO_ReadPin(_motor_hardware.estop.port, _motor_hardware.estop.pin) ==
+           _motor_hardware.estop.active_setting;
+}
+
 void hw_set_diag0_irq(bool enable) {
     enable ?
         HAL_NVIC_EnableIRQ(EXTI15_10_IRQn) :
         HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+}
+
+bool hw_is_diag0_pin(uint16_t pin) {
+    return pin == MOTOR_DIAG0_PIN;
+}
+
+bool hw_is_estop_pin(uint16_t pin) {
+    return pin == N_ESTOP_PIN;
 }
 
 void TIM3_IRQHandler(void)
