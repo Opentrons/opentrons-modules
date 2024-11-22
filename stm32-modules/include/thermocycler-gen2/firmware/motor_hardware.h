@@ -184,6 +184,13 @@ void motor_hardware_seal_switch_set_disarmed();
  */
 void motor_hardware_seal_switch_interrupt();
 
+/**
+ * @brief Returns the reason saved upon startup for the last
+ * reset of the software.
+ * @return a string describing the reason for reset.
+ * */
+char* motor_hardware_reset_reason();
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus

@@ -193,11 +193,14 @@ static void init_dac1(DAC_HandleTypeDef* hdac);
 static void init_tim2(TIM_HandleTypeDef* htim);
 static void init_tim6(TIM_HandleTypeDef* htim);
 static bool lid_active();
+static void save_reset_reason();
+static char* reset_reason;
 
 // ----------------------------------------------------------------------------
 // Public function implementation
 
 void motor_hardware_setup(const motor_hardware_callbacks* callbacks) {
+    save_reset_reason();
     configASSERT(callbacks != NULL);
     configASSERT(callbacks->lid_stepper_complete != NULL);
     configASSERT(callbacks->seal_stepper_tick != NULL);
@@ -405,6 +408,10 @@ void motor_hardware_seal_switch_set_retraction_armed() {
 void motor_hardware_seal_switch_set_disarmed() {
     _motor_hardware.seal.extension_switch_armed = false;
     _motor_hardware.seal.retraction_switch_armed = false;
+}
+
+char* motor_hardware_reset_reason() {
+    return reset_reason;
 }
 
 // ----------------------------------------------------------------------------
@@ -621,6 +628,68 @@ static bool lid_active() {
     return TIM_CHANNEL_STATE_GET
         (&(_motor_hardware.lid_stepper.timer), LID_STEPPER_STEP_Channel) 
         != HAL_TIM_CHANNEL_STATE_READY;
+}
+
+static void save_reset_reason() {
+    // check various reset flags to see if the HAL RCC
+    // reset flag matches any of them
+
+    // high speed internal clock ready
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSIRDY)) {
+        reset_reason = "hsi clock ready";
+    }
+    // high speed external clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSERDY)) {
+        reset_reason = "hse clock ready";
+    }
+    // main phase-locked loop clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PLLRDY)) {
+        reset_reason = "pll clock ready";
+    }
+    // hsi48 clock ready if applicable ?
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSI48RDY)) {
+        reset_reason = "hsi 48 clock ready";
+    }
+    // low-speed external clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY)) {
+        reset_reason = "lsi clock ready";
+    }
+    // lse clock security system failure
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSECSSD)) {
+        reset_reason = "lse security failure";
+    }
+    // low-speed internal clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSIRDY)) {
+        reset_reason = "lsi clock ready";
+    }
+    // brown out
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_BORRST)) {
+        reset_reason = "brown out";
+    }
+    // option byte-loader reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_OBLRST)) {
+        reset_reason = "oblrst";
+    }
+    // pin reset ?
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PINRST)) {
+        reset_reason = "pin reset";
+    }
+    // software reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
+        reset_reason = "software reset";
+    }
+    // independent watchdog
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
+        reset_reason = "independent watchdog";
+    }
+    // window watchdog
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_WWDGRST)) {
+        reset_reason = "window watchdog";
+    }
+    // low power reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LPWRRST)) {
+        reset_reason = "low power";
+    }
 }
 
 // ----------------------------------------------------------------------------
