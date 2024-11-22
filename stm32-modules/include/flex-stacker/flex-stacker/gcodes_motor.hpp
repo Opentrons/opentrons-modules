@@ -592,8 +592,6 @@ struct MoveToLimitSwitch {
 
         if (std::get<3>(arguments).present) {
             ret.mm_per_second = std::get<3>(arguments).value;
-        } else {
-            return std::make_pair(ParseResult(), input);
         }
 
         if (std::get<4>(arguments).present) {
@@ -998,7 +996,7 @@ struct GetEstopStatus {
     static auto write_response_into(InputIt buf, InLimit limit, int triggered)
         -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M112 %i OK", triggered);
+        res = snprintf(&*buf, (limit - buf), "M112 %i OK\n", triggered);
         if (res <= 0) {
             return buf;
         }
