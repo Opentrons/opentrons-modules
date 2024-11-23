@@ -7,6 +7,11 @@ typedef enum MotorID {
     MOTOR_L,
 } MotorID;
 
+typedef enum TOFSensorID {
+    TOF_Z,
+    TOF_X,
+} TOFSensorID;
+
 enum MotorSelection { Z, X, L, ALL };
 
 /* size of array for setting serial number */

@@ -321,7 +321,7 @@ class MotorDriverTask {
             driver_conf_from_id(m.motor_id).gconfig.diag0_stall);
         int sgt = driver_conf_from_id(m.motor_id).coolconf.sgt;
         auto response = messages::GetMotorStallGuardResponse{
-            .id = m.id,
+            .responding_to_id = m.id,
             .motor_id = m.motor_id,
             .enabled = enabled,
             .sgt = sgt,

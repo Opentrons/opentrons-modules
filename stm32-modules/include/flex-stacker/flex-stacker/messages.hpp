@@ -233,7 +233,7 @@ struct GetMotorStallGuardMessage {
 };
 
 struct GetMotorStallGuardResponse {
-    uint32_t id;
+    uint32_t responding_to_id;
     MotorID motor_id;
     bool enabled;
     int sgt;
@@ -273,13 +273,27 @@ struct GetEstopResponse {
     bool triggered;
 };
 
+struct GetTOFSensorStatusMessage {
+    uint32_t id;
+    TOFSensorID sensor_id;
+};
+
+struct GetTOFSensorStatusResponse {
+    uint32_t responding_to_id;
+    TOFSensorID sensor_id;
+    bool initialized;
+    // TODO: What else do we need
+    // sensor version
+    // configured ?
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
                    GetMoveParamsResponse, GetMotorStallGuardResponse,
                    GetDoorClosedResponse, GetPlatformSensorsResponse,
-                   GetEstopResponse>;
+                   GetEstopResponse, GetTOFSensorStatusResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -297,6 +311,8 @@ using MotorMessage = ::std::variant<
     MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
     GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
     GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
-    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage>;
+    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage, GetTOFSensorStatusMessage>;
+
+using TOFSensorMessage = ::std::variant<std::monostate, GetTOFSensorStatusMessage>;
 
 };  // namespace messages

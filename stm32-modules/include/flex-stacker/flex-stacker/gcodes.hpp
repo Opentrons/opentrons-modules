@@ -211,4 +211,51 @@ struct GetDoorClosed {
     }
 };
 
+struct GetTOFSensorStatus {
+    TOFSensorID sensor_id;
+    using ParseResult = std::optional<GetTOFSensorStatus>;
+    static constexpr auto prefix = std::array{'M', '2', '1', '5'};
+
+    using ArgX = ArgNoVal<'X'>;
+    using ArgZ = ArgNoVal<'Z'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+
+        auto sensor = TOFSensorID::TOF_X;
+        auto res = gcode::SingleParser<ArgX, ArgZ>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        if (std::get<1>(arguments).present) {
+            sensor = TOFSensorID::TOF_Z;
+        } else if (!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(
+            ParseResult(GetTOFSensorStatus{.sensor_id = sensor}), res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit, TOFSensorID sensor_id,
+                                    bool initialized)
+        -> InputIt {
+
+        char sensor_char = sensor_id == TOFSensorID::TOF_X ? 'X' : 'Z';
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf), "M215 %c I:%d OK\n", sensor_char, initialized);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
 }  // namespace gcode
