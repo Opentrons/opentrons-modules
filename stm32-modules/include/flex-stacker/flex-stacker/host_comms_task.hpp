@@ -85,7 +85,7 @@ class HostCommsTask {
           get_platform_sensors_cache(),
           get_estop_cache(),
           get_tof_sensor_status_cache() {}
-          // NOLINTEND(readability-redundant-member-init)
+    // NOLINTEND(readability-redundant-member-init)
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -914,8 +914,8 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetMotorStallGuardResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry =
-            get_motor_stall_guard_cache.remove_if_present(response.responding_to_id);
+        auto cache_entry = get_motor_stall_guard_cache.remove_if_present(
+            response.responding_to_id);
         return std::visit(
             [tx_into, tx_limit, response](auto cache_element) {
                 using T = std::decay_t<decltype(cache_element)>;
@@ -1006,7 +1006,8 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message = messages::GetTOFSensorStatusMessage{.id = id, .sensor_id = gcode.sensor_id};
+        auto message = messages::GetTOFSensorStatusMessage{
+            .id = id, .sensor_id = gcode.sensor_id};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
@@ -1021,8 +1022,8 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetTOFSensorStatusResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry =
-            get_tof_sensor_status_cache.remove_if_present(response.responding_to_id);
+        auto cache_entry = get_tof_sensor_status_cache.remove_if_present(
+            response.responding_to_id);
         return std::visit(
             [tx_into, tx_limit, response](auto cache_element) {
                 using T = std::decay_t<decltype(cache_element)>;

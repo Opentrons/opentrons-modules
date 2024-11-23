@@ -311,8 +311,10 @@ using MotorMessage = ::std::variant<
     MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
     GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
     GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
-    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage, GetTOFSensorStatusMessage>;
+    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage,
+    GetTOFSensorStatusMessage>;
 
-using TOFSensorMessage = ::std::variant<std::monostate, GetTOFSensorStatusMessage>;
+using TOFSensorMessage =
+    ::std::variant<std::monostate, GetTOFSensorStatusMessage>;
 
 };  // namespace messages

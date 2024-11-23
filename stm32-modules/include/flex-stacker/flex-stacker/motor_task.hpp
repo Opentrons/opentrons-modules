@@ -461,8 +461,8 @@ class MotorTask {
 
     // TODO: FOR TESTING, this will move to tof_sensor_task
     template <MotorControlPolicy Policy>
-    auto visit_message(const messages::GetTOFSensorStatusMessage& m, Policy& policy)
-        -> void {
+    auto visit_message(const messages::GetTOFSensorStatusMessage& m,
+                       Policy& policy) -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
     }
