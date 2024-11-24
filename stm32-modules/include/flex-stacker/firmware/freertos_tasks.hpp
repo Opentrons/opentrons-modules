@@ -34,3 +34,8 @@ namespace system_control_task {
 // Actual function that runs in the task
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
 }  // namespace system_control_task
+
+namespace tof_driver_task {
+// Actual function that runs in the task
+auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
+}  // namespace tof_driver_task

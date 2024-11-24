@@ -23,6 +23,10 @@
 
 namespace gcode {
 
+auto inline sensor_id_to_char(TOFSensorID sensor_id) -> char {
+    return static_cast<char>(sensor_id == TOFSensorID::TOF_X  ? 'X' : 'Z');
+}
+
 struct EnterBootloader {
     /**
      * EnterBootloader uses the command string "dfu" instead of a gcode to be
@@ -256,5 +260,119 @@ struct GetTOFSensorStatus {
         return buf + res;
     }
 };
+
+
+struct GetTOFRegister {
+    TOFSensorID sensor_id;
+    uint8_t reg;
+
+    using ParseResult = std::optional<GetTOFRegister>;
+    static constexpr auto prefix = std::array{'M', '2', '2', '2', ' '};
+
+    using XArg = Arg<uint8_t, 'X'>;
+    using ZArg = Arg<uint8_t, 'Z'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<XArg, ZArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = GetTOFRegister{
+            .sensor_id = TOFSensorID::TOF_X,
+            .reg = 0,
+        };
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.reg = std::get<0>(arguments).value;
+        } else if (std::get<1>(arguments).present) {
+            ret.sensor_id = TOFSensorID::TOF_Z;
+            ret.reg = std::get<1>(arguments).value;
+        } else {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    TOFSensorID sensor_id, uint8_t reg,
+                                    uint32_t data) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf), "M222 %c: %u %lu OK\n",
+                            sensor_id_to_char(sensor_id), reg, data);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
+//struct SetTMCRegister {
+//    MotorID motor_id;
+//    uint8_t reg;
+//    uint32_t data;
+//
+//    using ParseResult = std::optional<SetTMCRegister>;
+//    static constexpr auto prefix = std::array{'M', '9', '2', '1', ' '};
+//    static constexpr const char* response = "M921 OK\n";
+//
+//    using XArg = Arg<uint8_t, 'X'>;
+//    using ZArg = Arg<uint8_t, 'Z'>;
+//    using LArg = Arg<uint8_t, 'L'>;
+//    using DataArg = ArgNoPrefix<uint32_t>;
+//
+//    template <typename InputIt, typename Limit>
+//    requires std::forward_iterator<InputIt> &&
+//        std::sized_sentinel_for<Limit, InputIt>
+//    static auto parse(const InputIt& input, Limit limit)
+//        -> std::pair<ParseResult, InputIt> {
+//        auto res = gcode::SingleParser<XArg, ZArg, LArg, DataArg>::parse_gcode(
+//            input, limit, prefix);
+//        if (!res.first.has_value()) {
+//            return std::make_pair(ParseResult(), input);
+//        }
+//
+//        auto ret = SetTMCRegister{
+//            .motor_id = MotorID::MOTOR_X,
+//            .reg = 0,
+//            .data = 0,
+//        };
+//
+//        auto arguments = res.first.value();
+//        if (std::get<0>(arguments).present) {
+//            ret.reg = std::get<0>(arguments).value;
+//        } else if (std::get<1>(arguments).present) {
+//            ret.motor_id = MotorID::MOTOR_Z;
+//            ret.reg = std::get<1>(arguments).value;
+//        } else if (std::get<2>(arguments).present) {
+//            ret.motor_id = MotorID::MOTOR_L;
+//            ret.reg = std::get<2>(arguments).value;
+//        } else {
+//            return std::make_pair(ParseResult(), input);
+//        }
+//
+//        if (std::get<3>(arguments).present) {
+//            ret.data = std::get<3>(arguments).value;
+//        } else {
+//            return std::make_pair(ParseResult(), input);
+//        }
+//        return std::make_pair(ret, res.second);
+//    }
+//
+//    template <typename InputIt, typename InLimit>
+//    requires std::forward_iterator<InputIt> &&
+//        std::sized_sentinel_for<InputIt, InLimit>
+//    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+//        return write_string_to_iterpair(buf, limit, response);
+//    }
+//};
 
 }  // namespace gcode

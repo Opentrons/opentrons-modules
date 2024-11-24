@@ -287,13 +287,33 @@ struct GetTOFSensorStatusResponse {
     // configured ?
 };
 
+struct SetTOFRegisterMessage {
+    uint32_t id;
+    TOFSensorID sensor_id;
+    uint8_t reg;
+    uint32_t data;
+};
+
+struct GetTOFRegisterMessage {
+    uint32_t id;
+    TOFSensorID sensor_id;
+    uint8_t reg;
+};
+
+struct GetTOFRegisterResponse {
+    uint32_t responding_to_id;
+    TOFSensorID sensor_id;
+    uint8_t reg;
+    uint32_t data;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
                    GetMoveParamsResponse, GetMotorStallGuardResponse,
                    GetDoorClosedResponse, GetPlatformSensorsResponse,
-                   GetEstopResponse, GetTOFSensorStatusResponse>;
+                   GetEstopResponse, GetTOFSensorStatusResponse, GetTOFRegisterResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -312,7 +332,10 @@ using MotorMessage = ::std::variant<
     GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
     GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
     HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage,
-    GetTOFSensorStatusMessage>;
+    GetTOFSensorStatusMessage>;  // TODO: remove GetTOFSensorStatusMessage
+
+using TOFDriverMessage =
+    ::std::variant<std::monostate, SetTOFRegisterMessage, GetTOFRegisterMessage>;
 
 using TOFSensorMessage =
     ::std::variant<std::monostate, GetTOFSensorStatusMessage>;
