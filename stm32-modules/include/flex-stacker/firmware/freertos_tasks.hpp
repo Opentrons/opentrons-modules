@@ -39,3 +39,8 @@ namespace tof_driver_task {
 // Actual function that runs in the task
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
 }  // namespace tof_driver_task
+
+namespace tof_sensor_task {
+// Actual function that runs in the task
+auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
+}  // namespace tof_sensor_task

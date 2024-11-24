@@ -24,26 +24,36 @@ static auto ui_task_entry = EntryPoint(ui_control_task::run);
 static auto host_comms_entry = EntryPoint(host_comms_control_task::run);
 static auto system_task_entry = EntryPoint(system_control_task::run);
 static auto tof_driver_task_entry = EntryPoint(tof_driver_task::run);
+static auto tof_sensor_task_entry = EntryPoint(tof_sensor_task::run);
 
 // Tasks
 static auto driver_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_DRIVER_STACK_SIZE, EntryPoint>(
         motor_driver_task_entry);
+
 static auto motor_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_STACK_SIZE, EntryPoint>(
         motor_task_entry);
+
 static auto host_comms_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::COMMS_STACK_SIZE, EntryPoint>(
         host_comms_entry);
+
 static auto ui_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::UI_STACK_SIZE, EntryPoint>(
         ui_task_entry);
+
 static auto system_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::SYSTEM_STACK_SIZE, EntryPoint>(
         system_task_entry);
+
 static auto tof_d_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::TOF_DRIVER_STACK_SIZE, EntryPoint>(
         tof_driver_task_entry);
+
+static auto tof_s_task =
+    ot_utils::freertos_task::FreeRTOSTask<tasks::TOF_SENSOR_STACK_SIZE, EntryPoint>(
+        tof_sensor_task_entry);
 
 // Agregator
 static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
@@ -69,6 +79,7 @@ auto main() -> int {
     driver_task.start(tasks::MOTOR_DRIVER_TASK_PRIORITY, "Motor Driver", &aggregator);
     motor_task.start(tasks::MOTOR_TASK_PRIORITY, "Motor", &aggregator);
     tof_d_task.start(tasks::TOF_DRIVER_TASK_PRIORITY, "TOF Driver", &aggregator);
+    tof_s_task.start(tasks::TOF_SENSOR_TASK_PRIORITY, "TOF Sensor", &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);
     ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator);
 

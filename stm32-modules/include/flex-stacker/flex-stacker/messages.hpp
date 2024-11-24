@@ -331,8 +331,7 @@ using MotorMessage = ::std::variant<
     MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
     GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
     GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
-    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage,
-    GetTOFSensorStatusMessage>;  // TODO: remove GetTOFSensorStatusMessage
+    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage>;
 
 using TOFDriverMessage =
     ::std::variant<std::monostate, SetTOFRegisterMessage, GetTOFRegisterMessage>;

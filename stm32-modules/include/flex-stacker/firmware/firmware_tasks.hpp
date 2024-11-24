@@ -12,21 +12,24 @@ namespace tasks {
 
 using FirmwareTasks = Tasks<FreeRTOSMessageQueue>;
 
-constexpr size_t COMMS_STACK_SIZE = 2048;
+constexpr size_t  COMMS_STACK_SIZE = 2048;
 constexpr uint8_t COMMS_TASK_PRIORITY = 1;
 
-constexpr size_t SYSTEM_STACK_SIZE = 256;
+constexpr size_t  SYSTEM_STACK_SIZE = 256;
 constexpr uint8_t SYSTEM_TASK_PRIORITY = 1;
 
-constexpr size_t MOTOR_STACK_SIZE = 256;
+constexpr size_t  MOTOR_STACK_SIZE = 256;
 constexpr uint8_t MOTOR_TASK_PRIORITY = 1;
 
-constexpr size_t MOTOR_DRIVER_STACK_SIZE = 256;
+constexpr size_t  MOTOR_DRIVER_STACK_SIZE = 256;
 constexpr uint8_t MOTOR_DRIVER_TASK_PRIORITY = 1;
 
-constexpr size_t UI_STACK_SIZE = 256;
+constexpr size_t  UI_STACK_SIZE = 256;
 constexpr uint8_t UI_TASK_PRIORITY = 1;
 
-constexpr size_t TOF_DRIVER_STACK_SIZE = 256;
+constexpr size_t  TOF_DRIVER_STACK_SIZE = 256;
 constexpr uint8_t TOF_DRIVER_TASK_PRIORITY = 1;
+
+constexpr size_t  TOF_SENSOR_STACK_SIZE = 256;
+constexpr uint8_t TOF_SENSOR_TASK_PRIORITY = 1;
 };  // namespace tasks

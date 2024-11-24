@@ -28,6 +28,7 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${MOTOR_CONTROL_DIR}/motor_driver_policy.cpp
     ${MOTOR_CONTROL_DIR}/motor_policy.cpp
     ${TOF_SENSOR_DIR}/freertos_tof_driver_task.cpp
+    ${TOF_SENSOR_DIR}/freertos_tof_sensor_task.cpp
     )
 
 # Add source files that should NOT be checked by clang-tidy here

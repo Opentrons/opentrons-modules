@@ -19,13 +19,16 @@ struct Tasks {
     using HostCommsQueue = QueueImpl<messages::HostCommsMessage>;
     // Message queue for system task
     using SystemQueue = QueueImpl<messages::SystemMessage>;
-    // Message queue for tof sensor driver task
+    // Message queue for tof driver task
     using TOFDriverQueue = QueueImpl<messages::TOFDriverMessage>;
+    // Message queue for tof sensor task
+    using TOFSensorQueue = QueueImpl<messages::TOFSensorMessage>;
+
     // Central aggregator
     using QueueAggregator =
         queue_aggregator::QueueAggregator<MotorDriverQueue, MotorQueue,
                                           HostCommsQueue, SystemQueue, 
-                                          TOFDriverQueue>;
+                                          TOFDriverQueue, TOFSensorQueue>;
 
     // Addresses
     static constexpr size_t MotorDriverAddress =
@@ -38,6 +41,8 @@ struct Tasks {
         QueueAggregator::template get_queue_idx<SystemQueue>();
     static constexpr size_t TOFDriverAddress =
         QueueAggregator::template get_queue_idx<TOFDriverQueue>();
+    static constexpr size_t TOFSensorAddress =
+        QueueAggregator::template get_queue_idx<TOFSensorQueue>();
 };
 
 };  // namespace tasks
