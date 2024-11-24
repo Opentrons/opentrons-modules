@@ -313,7 +313,8 @@ using HostCommsMessage =
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
                    GetMoveParamsResponse, GetMotorStallGuardResponse,
                    GetDoorClosedResponse, GetPlatformSensorsResponse,
-                   GetEstopResponse, GetTOFSensorStatusResponse, GetTOFRegisterResponse>;
+                   GetEstopResponse, GetTOFSensorStatusResponse,
+                   GetTOFRegisterResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -333,8 +334,8 @@ using MotorMessage = ::std::variant<
     GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
     HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage>;
 
-using TOFDriverMessage =
-    ::std::variant<std::monostate, SetTOFRegisterMessage, GetTOFRegisterMessage>;
+using TOFDriverMessage = ::std::variant<std::monostate, SetTOFRegisterMessage,
+                                        GetTOFRegisterMessage>;
 
 using TOFSensorMessage =
     ::std::variant<std::monostate, GetTOFSensorStatusMessage>;

@@ -10,9 +10,8 @@ enum class Notifications : uint8_t {
 };
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
-static tasks::FirmwareTasks::TOFDriverQueue
-    _queue(static_cast<uint8_t>(Notifications::INCOMING_MESSAGE),
-           "TOF Driver Queue");
+static tasks::FirmwareTasks::TOFDriverQueue _queue(
+    static_cast<uint8_t>(Notifications::INCOMING_MESSAGE), "TOF Driver Queue");
 
 static auto _top_task = tof_driver_task::TOFDriverTask(_queue, nullptr);
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
@@ -23,9 +22,9 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
 
-    //spi_hardware_init();
+    // spi_hardware_init();
 
-    //auto policy = motor_driver_policy::MotorDriverPolicy();
+    // auto policy = motor_driver_policy::MotorDriverPolicy();
     while (true) {
         _top_task.run_once();
     }

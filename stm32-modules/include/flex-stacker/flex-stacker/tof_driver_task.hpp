@@ -28,8 +28,7 @@ class TOFDriverTask {
     TOFDriverTask(const TOFDriverTask& other) = delete;
     auto operator=(const TOFDriverTask& other) -> TOFDriverTask& = delete;
     TOFDriverTask(TOFDriverTask&& other) noexcept = delete;
-    auto operator=(TOFDriverTask&& other) noexcept
-        -> TOFDriverTask& = delete;
+    auto operator=(TOFDriverTask&& other) noexcept -> TOFDriverTask& = delete;
     ~TOFDriverTask() = default;
 
     auto provide_aggregator(Aggregator* aggregator) {
@@ -52,18 +51,15 @@ class TOFDriverTask {
     }
 
   private:
-    auto visit_message(const std::monostate& m)
-        -> void {
+    auto visit_message(const std::monostate& m) -> void {
         static_cast<void>(m);
     }
 
-    auto visit_message(const messages::GetTOFRegisterMessage& m)
-        -> void {
+    auto visit_message(const messages::GetTOFRegisterMessage& m) -> void {
         static_cast<void>(m);
     }
 
-    auto visit_message(const messages::SetTOFRegisterMessage& m)
-        -> void {
+    auto visit_message(const messages::SetTOFRegisterMessage& m) -> void {
         static_cast<void>(m);
     }
 

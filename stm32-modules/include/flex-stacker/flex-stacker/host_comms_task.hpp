@@ -1069,8 +1069,8 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetTOFRegisterResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry = get_tof_register_cache.remove_if_present(
-            response.responding_to_id);
+        auto cache_entry =
+            get_tof_register_cache.remove_if_present(response.responding_to_id);
         return std::visit(
             [tx_into, tx_limit, response](auto cache_element) {
                 using T = std::decay_t<decltype(cache_element)>;
@@ -1080,8 +1080,8 @@ class HostCommsTask {
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
                 } else {
                     return cache_element.write_response_into(
-                        tx_into, tx_limit, response.sensor_id,
-                        response.reg, response.data);
+                        tx_into, tx_limit, response.sensor_id, response.reg,
+                        response.data);
                 }
             },
             cache_entry);

@@ -11,9 +11,8 @@ enum class Notifications : uint8_t {
 };
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
-static tasks::FirmwareTasks::TOFSensorQueue
-    _queue(static_cast<uint8_t>(Notifications::INCOMING_MESSAGE),
-           "TOF Sensor Queue");
+static tasks::FirmwareTasks::TOFSensorQueue _queue(
+    static_cast<uint8_t>(Notifications::INCOMING_MESSAGE), "TOF Sensor Queue");
 
 static auto _top_task = tof_sensor_task::TOFSensorTask(_queue, nullptr);
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
@@ -29,5 +28,5 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     }
 }
 
-};  // namespace tof_driver_task
-;  // namespace tof_driver_task
+};     // namespace tof_sensor_task
+    ;  // namespace tof_driver_task

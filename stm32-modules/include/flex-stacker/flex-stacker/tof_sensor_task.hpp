@@ -28,8 +28,7 @@ class TOFSensorTask {
     TOFSensorTask(const TOFSensorTask& other) = delete;
     auto operator=(const TOFSensorTask& other) -> TOFSensorTask& = delete;
     TOFSensorTask(TOFSensorTask&& other) noexcept = delete;
-    auto operator=(TOFSensorTask&& other) noexcept
-        -> TOFSensorTask& = delete;
+    auto operator=(TOFSensorTask&& other) noexcept -> TOFSensorTask& = delete;
     ~TOFSensorTask() = default;
 
     auto provide_aggregator(Aggregator* aggregator) {
@@ -52,13 +51,11 @@ class TOFSensorTask {
     }
 
   private:
-    auto visit_message(const std::monostate& m)
-        -> void {
+    auto visit_message(const std::monostate& m) -> void {
         static_cast<void>(m);
     }
 
-    auto visit_message(const messages::GetTOFSensorStatusMessage& m)
-        -> void {
+    auto visit_message(const messages::GetTOFSensorStatusMessage& m) -> void {
         static_cast<void>(m);
     }
 

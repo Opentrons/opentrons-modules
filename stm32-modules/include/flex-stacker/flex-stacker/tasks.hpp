@@ -27,7 +27,7 @@ struct Tasks {
     // Central aggregator
     using QueueAggregator =
         queue_aggregator::QueueAggregator<MotorDriverQueue, MotorQueue,
-                                          HostCommsQueue, SystemQueue, 
+                                          HostCommsQueue, SystemQueue,
                                           TOFDriverQueue, TOFSensorQueue>;
 
     // Addresses

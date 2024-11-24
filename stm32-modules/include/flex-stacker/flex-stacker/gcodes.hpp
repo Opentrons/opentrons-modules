@@ -24,7 +24,7 @@
 namespace gcode {
 
 auto inline sensor_id_to_char(TOFSensorID sensor_id) -> char {
-    return static_cast<char>(sensor_id == TOFSensorID::TOF_X  ? 'X' : 'Z');
+    return static_cast<char>(sensor_id == TOFSensorID::TOF_X ? 'X' : 'Z');
 }
 
 struct EnterBootloader {
@@ -261,7 +261,6 @@ struct GetTOFSensorStatus {
     }
 };
 
-
 struct GetTOFRegister {
     TOFSensorID sensor_id;
     uint8_t reg;
@@ -277,8 +276,8 @@ struct GetTOFRegister {
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        auto res = gcode::SingleParser<XArg, ZArg>::parse_gcode(
-            input, limit, prefix);
+        auto res =
+            gcode::SingleParser<XArg, ZArg>::parse_gcode(input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
@@ -315,7 +314,7 @@ struct GetTOFRegister {
     }
 };
 
-//struct SetTMCRegister {
+// struct SetTMCRegister {
 //    MotorID motor_id;
 //    uint8_t reg;
 //    uint32_t data;
@@ -334,7 +333,8 @@ struct GetTOFRegister {
 //        std::sized_sentinel_for<Limit, InputIt>
 //    static auto parse(const InputIt& input, Limit limit)
 //        -> std::pair<ParseResult, InputIt> {
-//        auto res = gcode::SingleParser<XArg, ZArg, LArg, DataArg>::parse_gcode(
+//        auto res = gcode::SingleParser<XArg, ZArg, LArg,
+//        DataArg>::parse_gcode(
 //            input, limit, prefix);
 //        if (!res.first.has_value()) {
 //            return std::make_pair(ParseResult(), input);

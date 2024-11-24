@@ -28,8 +28,8 @@ static auto tof_sensor_task_entry = EntryPoint(tof_sensor_task::run);
 
 // Tasks
 static auto driver_task =
-    ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_DRIVER_STACK_SIZE, EntryPoint>(
-        motor_driver_task_entry);
+    ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_DRIVER_STACK_SIZE,
+                                          EntryPoint>(motor_driver_task_entry);
 
 static auto motor_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_STACK_SIZE, EntryPoint>(
@@ -48,12 +48,12 @@ static auto system_task =
         system_task_entry);
 
 static auto tof_d_task =
-    ot_utils::freertos_task::FreeRTOSTask<tasks::TOF_DRIVER_STACK_SIZE, EntryPoint>(
-        tof_driver_task_entry);
+    ot_utils::freertos_task::FreeRTOSTask<tasks::TOF_DRIVER_STACK_SIZE,
+                                          EntryPoint>(tof_driver_task_entry);
 
 static auto tof_s_task =
-    ot_utils::freertos_task::FreeRTOSTask<tasks::TOF_SENSOR_STACK_SIZE, EntryPoint>(
-        tof_sensor_task_entry);
+    ot_utils::freertos_task::FreeRTOSTask<tasks::TOF_SENSOR_STACK_SIZE,
+                                          EntryPoint>(tof_sensor_task_entry);
 
 // Agregator
 static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
@@ -76,10 +76,13 @@ auto main() -> int {
     HardwareInit();
 
     system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
-    driver_task.start(tasks::MOTOR_DRIVER_TASK_PRIORITY, "Motor Driver", &aggregator);
+    driver_task.start(tasks::MOTOR_DRIVER_TASK_PRIORITY, "Motor Driver",
+                      &aggregator);
     motor_task.start(tasks::MOTOR_TASK_PRIORITY, "Motor", &aggregator);
-    tof_d_task.start(tasks::TOF_DRIVER_TASK_PRIORITY, "TOF Driver", &aggregator);
-    tof_s_task.start(tasks::TOF_SENSOR_TASK_PRIORITY, "TOF Sensor", &aggregator);
+    tof_d_task.start(tasks::TOF_DRIVER_TASK_PRIORITY, "TOF Driver",
+                     &aggregator);
+    tof_s_task.start(tasks::TOF_SENSOR_TASK_PRIORITY, "TOF Sensor",
+                     &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);
     ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator);
 
