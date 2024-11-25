@@ -1,7 +1,10 @@
 #include "FreeRTOS.h"
 #include "firmware/freertos_tasks.hpp"
+#include "firmware/i2c_comms.hpp"
+#include "firmware/tof_driver_policy.hpp"
 #include "flex-stacker/tof_driver_task.hpp"
 #include "ot_utils/freertos/freertos_timer.hpp"
+#include "firmware/tof_sensor_hardware.h"
 
 namespace tof_driver_task {
 
@@ -13,7 +16,7 @@ enum class Notifications : uint8_t {
 static tasks::FirmwareTasks::TOFDriverQueue _queue(
     static_cast<uint8_t>(Notifications::INCOMING_MESSAGE), "TOF Driver Queue");
 
-static auto _top_task = tof_driver_task::TOFDriverTask(_queue, nullptr);
+static auto _top_task = tof_driver_task::TOFDriverTask(_queue, nullptr, nullptr);
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
@@ -22,9 +25,16 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
 
-    // spi_hardware_init();
+    static auto i2c_comms2 = i2c::hardware::I2C();
+    static auto i2c_handles = I2CHandlerStruct{};
+    i2c_setup(&i2c_handles);
+    i2c_comms2.set_handle(i2c_handles.i2c2);
 
-    // auto policy = motor_driver_policy::MotorDriverPolicy();
+    // TODO: need to pass i2c_comms to sensorPolicy
+
+    auto policy = tof_driver_policy::TOFDriverPolicy();
+    _top_task.set_driver_policy(&policy);
+
     while (true) {
         _top_task.run_once();
     }

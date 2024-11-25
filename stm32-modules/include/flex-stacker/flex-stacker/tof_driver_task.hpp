@@ -9,11 +9,14 @@
 #include "flex-stacker/messages.hpp"
 #include "flex-stacker/tasks.hpp"
 #include "hal/message_queue.hpp"
+#include "firmware/tof_driver_policy.hpp"
 #include "messages.hpp"
 #include "systemwide.h"
 
 namespace tof_driver_task {
+using namespace tof_driver_policy;
 using Message = messages::TOFDriverMessage;
+
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
 class TOFDriverTask {
@@ -23,8 +26,9 @@ class TOFDriverTask {
     using Queues = typename tasks::Tasks<QueueImpl>;
 
   public:
-    explicit TOFDriverTask(Queue& q, Aggregator* aggregator)
-        : _message_queue(q), _task_registry(aggregator), _initialized(false) {}
+    explicit TOFDriverTask(Queue& q, Aggregator* aggregator, TOFDriverPolicy* policy)
+        : _message_queue(q), _task_registry(aggregator), _policy(policy),
+     _initialized(false){}
     TOFDriverTask(const TOFDriverTask& other) = delete;
     auto operator=(const TOFDriverTask& other) -> TOFDriverTask& = delete;
     TOFDriverTask(TOFDriverTask&& other) noexcept = delete;
@@ -33,6 +37,10 @@ class TOFDriverTask {
 
     auto provide_aggregator(Aggregator* aggregator) {
         _task_registry = aggregator;
+    }
+
+    auto set_driver_policy(TOFDriverPolicy* policy) -> void {
+        _policy = policy;
     }
 
     auto run_once() -> void {
@@ -65,6 +73,7 @@ class TOFDriverTask {
 
     Queue& _message_queue;
     Aggregator* _task_registry;
-    bool _initialized;
+    TOFDriverPolicy* _policy;
+    bool _initialized = false;
 };
 };  // namespace tof_driver_task
