@@ -334,7 +334,7 @@ class HostCommsTask {
                         tx_into, tx_limit, response.x_extend_triggered,
                         response.x_retract_triggered,
                         response.z_extend_triggered,
-                        response.x_retract_triggered,
+                        response.z_retract_triggered,
                         response.l_held_triggered);
                 }
             },
