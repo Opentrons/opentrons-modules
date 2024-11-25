@@ -762,13 +762,11 @@ struct GetLimitSwitches {
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit, int x_extended,
                                     int x_retracted, int z_extended,
-                                    int z_retracted, int l_released, int l_held)
-        -> InputIt {
+                                    int z_retracted, int l_held) -> InputIt {
         int res = 0;
         res = snprintf(&*buf, (limit - buf),
-                       "M119 XE:%i XR:%i ZE:%i ZR:%i LR:%i LH:%i OK\n",
-                       x_extended, x_retracted, z_extended, z_retracted,
-                       l_released, l_held);
+                       "M119 XE:%i XR:%i ZE:%i ZR:%i LR:%i OK\n", x_extended,
+                       x_retracted, z_extended, z_retracted, l_held);
         if (res <= 0) {
             return buf;
         }

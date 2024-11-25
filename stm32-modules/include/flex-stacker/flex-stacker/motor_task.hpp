@@ -330,8 +330,6 @@ class MotorTask {
                 policy.check_limit_switch(MotorID::MOTOR_Z, true),
             .z_retract_triggered =
                 policy.check_limit_switch(MotorID::MOTOR_Z, false),
-            .l_released_triggered =
-                policy.check_limit_switch(MotorID::MOTOR_L, true),
             .l_held_triggered =
                 policy.check_limit_switch(MotorID::MOTOR_L, false),
         };

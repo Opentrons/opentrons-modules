@@ -85,7 +85,7 @@ static motor_hardware_t _motor_hardware = {
         .direction = {L_DIR_PORT, L_DIR_PIN, GPIO_PIN_SET},
         .step = {L_STEP_PORT, L_STEP_PIN, GPIO_PIN_SET},
         .limit_switch_minus = {L_N_HELD_PORT, L_N_HELD_PIN, GPIO_PIN_RESET},
-        .limit_switch_plus = {L_N_RELEASED_PORT, L_N_RELEASED_PIN, GPIO_PIN_RESET},
+        .limit_switch_plus = {0},
         .diag0 = {MOTOR_DIAG0_PORT, MOTOR_DIAG0_PIN, GPIO_PIN_SET},
         .ebrake = {0},
     },
@@ -177,9 +177,6 @@ void motor_hardware_gpio_init(void){
     // L MOTOR
     init.Pin = L_N_HELD_PIN;
     HAL_GPIO_Init(L_N_HELD_PORT, &init);
-
-    init.Pin = L_N_RELEASED_PIN;
-    HAL_GPIO_Init(L_N_RELEASED_PORT, &init);
 
     /*Configure GPIO pins : INPUTs IRQ */
     init.Mode = GPIO_MODE_IT_FALLING;
