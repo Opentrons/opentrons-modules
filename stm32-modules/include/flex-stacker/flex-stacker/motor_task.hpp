@@ -360,7 +360,6 @@ class MotorTask {
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::MoveCompleteMessage& m, Policy& policy)
         -> void {
-        static_cast<void>(policy);
         Move next_move;
         if (_move_queue.dequeue(next_move)) {
             // if there's a next move in the queue, start it
