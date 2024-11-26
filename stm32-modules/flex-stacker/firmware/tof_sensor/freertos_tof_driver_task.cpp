@@ -30,8 +30,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     i2c_setup(&i2c_handles);
     i2c_comms2.set_handle(i2c_handles.i2c2);
 
-    // TODO: need to pass i2c_comms to sensorPolicy
-
+    // TODO: need to pass i2c_comms to driverPolicy
     auto policy = tof_driver_policy::TOFDriverPolicy();
     _top_task.set_driver_policy(&policy);
 
