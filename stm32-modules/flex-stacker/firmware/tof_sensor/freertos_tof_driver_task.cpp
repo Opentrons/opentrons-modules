@@ -25,14 +25,12 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
 
-    static auto i2c_comms2 = i2c::hardware::I2C();
-    static auto i2c_handles = I2CHandlerStruct{};
-    i2c_setup(&i2c_handles);
-    i2c_comms2.set_handle(i2c_handles.i2c2);
+    static auto i2c_comms = i2c::hardware::I2C();
+    static auto i2c_handle = I2CHandlerStruct{};
+    i2c_setup(&i2c_handle);
 
-    // TODO: need to pass i2c_comms to driverPolicy
-    auto policy = tof_driver_policy::TOFDriverPolicy();
-    _top_task.set_driver_policy(&policy);
+    i2c_comms.set_handle(i2c_handle.i2c2);
+    _top_task.set_i2c_comms(&i2c_comms);
 
     while (true) {
         _top_task.run_once();

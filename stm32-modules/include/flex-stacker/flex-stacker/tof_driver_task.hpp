@@ -10,6 +10,7 @@
 #include "flex-stacker/tasks.hpp"
 #include "hal/message_queue.hpp"
 #include "firmware/tof_driver_policy.hpp"
+#include "i2c_comms.hpp"
 #include "messages.hpp"
 #include "systemwide.h"
 
@@ -26,7 +27,7 @@ class TOFDriverTask {
     using Queues = typename tasks::Tasks<QueueImpl>;
 
   public:
-    explicit TOFDriverTask(Queue& q, Aggregator* aggregator, TOFDriverPolicy* policy)
+    explicit TOFDriverTask(Queue& q, Aggregator* aggregator, i2c::hardware::I2C* policy)
         : _message_queue(q), _task_registry(aggregator), _policy(policy),
      _initialized(false){}
     TOFDriverTask(const TOFDriverTask& other) = delete;
@@ -39,7 +40,7 @@ class TOFDriverTask {
         _task_registry = aggregator;
     }
 
-    auto set_driver_policy(TOFDriverPolicy* policy) -> void {
+    auto set_i2c_comms(i2c::hardware::I2C* policy) -> void {
         _policy = policy;
     }
 
@@ -48,7 +49,10 @@ class TOFDriverTask {
             return;
         }
 
-        _initialized = true;
+        if (!_initialized) {
+            _initialized = true;
+        }
+
         auto message = Message(std::monostate());
 
         _message_queue.recv(&message);
@@ -65,6 +69,9 @@ class TOFDriverTask {
 
     auto visit_message(const messages::GetTOFRegisterMessage& m) -> void {
         static_cast<void>(m);
+        MessageT msg = {};
+        auto resp = _policy->transmit_receive(0x44, msg, true);
+        if(resp) return;
     }
 
     auto visit_message(const messages::SetTOFRegisterMessage& m) -> void {
@@ -73,7 +80,7 @@ class TOFDriverTask {
 
     Queue& _message_queue;
     Aggregator* _task_registry;
-    TOFDriverPolicy* _policy;
+    i2c::hardware::I2C* _policy;
     bool _initialized = false;
 };
 };  // namespace tof_driver_task
