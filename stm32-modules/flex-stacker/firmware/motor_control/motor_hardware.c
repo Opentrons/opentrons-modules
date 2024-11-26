@@ -3,6 +3,8 @@
 #include "motor_hardware.h"
 #include "systemwide.h"
 #include "FreeRTOS.h"
+#include "task.h"
+
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -313,7 +315,11 @@ void hw_enable_ebrake(MotorID motor_id, bool enable) {
     if (motor_id != MOTOR_Z) {
         return;
     }
+    if (!enable) {
+        vTaskDelay(1);
+    }
     HAL_GPIO_WritePin(Z_N_BRAKE_PORT, Z_N_BRAKE_PIN, enable ? GPIO_PIN_RESET : GPIO_PIN_SET);
+    vTaskDelay(70);
     return;
 }
 
@@ -340,17 +346,21 @@ void reset_pin(PinConfig config) {
 
 bool hw_enable_motor(MotorID motor_id) {
     stepper_hardware_t motor = get_motor(motor_id);
-    hw_enable_ebrake(motor_id, false);
     HAL_StatusTypeDef status = HAL_OK;
-    status = HAL_TIM_Base_Start_IT(&motor.timer);
     set_pin(motor.enable);
+    hw_enable_ebrake(motor_id, false);
     return status == HAL_OK;
+}
+
+void hw_start_motor_timer(MotorID motor_id) {
+    stepper_hardware_t motor = get_motor(motor_id);
+    HAL_TIM_Base_Start_IT(&motor.timer);
 }
 
 bool hw_disable_motor(MotorID motor_id) {
     stepper_hardware_t motor = get_motor(motor_id);
-    reset_pin(motor.enable);
     hw_enable_ebrake(motor_id, true);
+    reset_pin(motor.enable);
     return true;
 }
 

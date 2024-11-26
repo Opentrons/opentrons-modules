@@ -47,9 +47,6 @@ class MotorInterruptController {
         }
         if (ret.done || stop_condition_met()) {
             _policy->stop_motor(_id);
-            if (_id == MotorID::MOTOR_Z) {
-                _policy->disable_motor(_id);
-            }
             _stop = true;
             return true;
         }
@@ -74,6 +71,7 @@ class MotorInterruptController {
     auto start_move(Move move) -> void {
         motor_util::MotorState* state = move.motor_state;
         _stop = false;
+        _policy->enable_motor(_id);
         set_direction(move.direction);
         _profile = motor_util::MovementProfile(
             TIMER_FREQ, state->get_speed_discont(),
@@ -83,12 +81,15 @@ class MotorInterruptController {
             move.limit_switch ? motor_util::MovementType::OpenLoop
                               : motor_util::MovementType::FixedDistance,
             state->get_distance(move.distance));
-        _policy->enable_motor(_id);
         _response_id = move.move_id;
+        _policy->start_motor_timer(_id);
     }
     auto stop_movement(uint32_t move_id, bool disable_motor) -> void {
         _stop = true;
-        disable_motor ? _policy->disable_motor(_id) : _policy->stop_motor(_id);
+        _policy->stop_motor(_id);
+        if (disable_motor) {
+            _policy->disable_motor(_id);
+        }
         _response_id = move_id;
     }
 
