@@ -343,7 +343,7 @@ class MotorDriverTask {
     tmc2160::TMC2160 _tmc2160{};
     // same motor current config for all three motors
     const tmc2160::TMC2160MotorCurrentConfig _motor_current_config{
-        .r_sense = 0.22,
+        .r_sense = 0.15,
         .v_sf = 0.325,
     };
     tmc2160::TMC2160RegisterMap _x_config = motor_x_config;

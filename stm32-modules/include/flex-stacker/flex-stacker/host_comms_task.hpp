@@ -47,14 +47,15 @@ class HostCommsTask {
         gcode::MoveMotorInSteps, gcode::MoveToLimitSwitch, gcode::MoveMotorInMm,
         gcode::GetLimitSwitches, gcode::SetMicrosteps, gcode::GetMoveParams,
         gcode::SetMotorStallGuard, gcode::GetMotorStallGuard, gcode::HomeMotor,
-        gcode::GetPlatformSensors, gcode::GetDoorClosed, gcode::GetEstopStatus>;
+        gcode::GetPlatformSensors, gcode::GetDoorClosed, gcode::GetEstopStatus,
+        gcode::StopMotor>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::SetTMCRegister, gcode::SetRunCurrent,
                  gcode::SetHoldCurrent, gcode::EnableMotor, gcode::DisableMotor,
                  gcode::MoveMotorInSteps, gcode::MoveToLimitSwitch,
                  gcode::MoveMotorInMm, gcode::SetMicrosteps,
-                 gcode::SetMotorStallGuard, gcode::HomeMotor>;
+                 gcode::SetMotorStallGuard, gcode::HomeMotor, gcode::StopMotor>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetTMCRegisterCache = AckCache<8, gcode::GetTMCRegister>;
     using GetLimitSwitchesCache = AckCache<8, gcode::GetLimitSwitches>;
@@ -479,7 +480,7 @@ class HostCommsTask {
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            get_system_info_cache.remove_if_present(id);
+            ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
@@ -500,7 +501,7 @@ class HostCommsTask {
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            get_system_info_cache.remove_if_present(id);
+            ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
