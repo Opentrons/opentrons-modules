@@ -16,6 +16,7 @@ bool motor_spi_sendreceive(MotorID motor_id, uint8_t *tx_data, uint8_t *rx_data,
 
 void hw_step_motor(MotorID motor_id);
 bool hw_enable_motor(MotorID motor_id);
+void hw_start_motor_timer(MotorID motor_id);
 bool hw_disable_motor(MotorID motor_id);
 bool hw_stop_motor(MotorID motor_id);
 void hw_set_direction(MotorID, bool direction);
@@ -94,8 +95,6 @@ bool hw_is_estop_pin(uint16_t pin);
 /* Note: Mechanical limit switches */
 #define L_N_HELD_PIN (GPIO_PIN_5)
 #define L_N_HELD_PORT (GPIOB)
-#define L_N_RELEASED_PIN (GPIO_PIN_11)
-#define L_N_RELEASED_PORT (GPIOC)
 
 /**************** COMMON ********************/
 #define N_ESTOP_PIN (GPIO_PIN_6)

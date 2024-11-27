@@ -176,7 +176,6 @@ struct GetLimitSwitchesResponses {
     bool x_retract_triggered;
     bool z_extend_triggered;
     bool z_retract_triggered;
-    bool l_released_triggered;
     bool l_held_triggered;
 };
 

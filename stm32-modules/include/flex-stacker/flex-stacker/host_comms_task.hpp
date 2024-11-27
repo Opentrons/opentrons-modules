@@ -55,7 +55,8 @@ class HostCommsTask {
         gcode::SetTMCRegister, gcode::SetRunCurrent, gcode::SetHoldCurrent,
         gcode::EnableMotor, gcode::DisableMotor, gcode::MoveMotorInSteps,
         gcode::MoveToLimitSwitch, gcode::MoveMotorInMm, gcode::SetMicrosteps,
-        gcode::SetMotorStallGuard, gcode::HomeMotor, gcode::SetTOFRegister>;
+        gcode::SetMotorStallGuard, gcode::HomeMotor, gcode::SetTOFRegister,
+        gcode::StopMotor>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetTMCRegisterCache = AckCache<8, gcode::GetTMCRegister>;
     using GetLimitSwitchesCache = AckCache<8, gcode::GetLimitSwitches>;
@@ -334,8 +335,7 @@ class HostCommsTask {
                         tx_into, tx_limit, response.x_extend_triggered,
                         response.x_retract_triggered,
                         response.z_extend_triggered,
-                        response.x_retract_triggered,
-                        response.l_released_triggered,
+                        response.z_retract_triggered,
                         response.l_held_triggered);
                 }
             },
@@ -480,7 +480,7 @@ class HostCommsTask {
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            get_system_info_cache.remove_if_present(id);
+            ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
@@ -501,7 +501,7 @@ class HostCommsTask {
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            get_system_info_cache.remove_if_present(id);
+            ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);

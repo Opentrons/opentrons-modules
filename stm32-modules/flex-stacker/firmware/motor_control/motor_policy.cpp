@@ -10,6 +10,11 @@ auto MotorPolicy::enable_motor(MotorID motor_id) -> bool {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::start_motor_timer(MotorID motor_id) -> void {
+    hw_start_motor_timer(motor_id);
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::disable_motor(MotorID motor_id) -> bool {
     return hw_disable_motor(motor_id);
 }
