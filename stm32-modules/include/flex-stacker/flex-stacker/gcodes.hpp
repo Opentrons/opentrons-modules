@@ -314,7 +314,7 @@ struct GetTOFRegister {
     }
 };
 
- struct SetTOFRegister {
+struct SetTOFRegister {
     TOFSensorID sensor_id;
     uint8_t reg;
     uint32_t data;
@@ -332,8 +332,7 @@ struct GetTOFRegister {
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        auto res = gcode::SingleParser<XArg, ZArg,
-        DataArg>::parse_gcode(
+        auto res = gcode::SingleParser<XArg, ZArg, DataArg>::parse_gcode(
             input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);

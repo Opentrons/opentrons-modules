@@ -5,15 +5,15 @@
  * Datasheet:
  * https://look.ams-osram.com/m/52236c476132a095/original/TMF8820-21-28-Multizone-Time-of-Flight-Sensor.pdf
  *
- * dToF (direct Time of Flight) wide field of view optical distance sensor module.
+ * dToF (direct Time of Flight) wide field of view optical distance sensor
+ * module.
  *
  */
 
-
 /* TODO
  *
- * 1. We have 2 TOF sensors so this address needs to be set at runtime for each one.
- *  We should use non-default i2c addresses to be sure we arent talking to 
+ * 1. We have 2 TOF sensors so this address needs to be set at runtime for each
+ * one. We should use non-default i2c addresses to be sure we arent talking to
  *  a sensor that has been reset for example.
  *
  * 2. Condense into large registers like AMBIENT_LIGHT(0-4) and read and read
@@ -21,11 +21,11 @@
  *
  * */
 #include <sys/types.h>
+
 #include <cstdint>
 namespace sensors {
 namespace tmf8821 {
 constexpr uint16_t ADDRESS = 0x44 << 1;
-
 
 // Any appid, any cid_rid – Registers always available
 enum class BaseRegisters : uint8_t {
@@ -49,7 +49,7 @@ enum class AppRegisters : uint8_t {
     CMD_STAT = 0x08,
     PREV_CMD = 0x09,
     LIVE_BEAT = 0x0A,
-    MODE = 0x10, // (TMF8828 ONLY) 
+    MODE = 0x10,  // (TMF8828 ONLY)
     ACTIVE_RANGE = 0x19,
     SERIAL_NUMBER_0 = 0x1C,
     SERIAL_NUMBER_1 = 0x1D,
@@ -144,7 +144,8 @@ enum class UserSPADConfigRegisters : uint8_t {
 
 // appid=0x03, cid_rid=0x19 – Factory Calibration
 enum class FactoryCalibrationRegisters : uint16_t {
-    FACTORY_CALIBRATION_FIRST = 0x24,  // TODO: factory_calibration_first – see section 7.3
+    FACTORY_CALIBRATION_FIRST =
+        0x24,  // TODO: factory_calibration_first – see section 7.3
     CROSSTALK_ZONE1 = 0x6063,
     CROSSTALK_ZONE1_TMUX = 0x8083,
     CALIBRATION_STATUS_FC = 0xDC,
@@ -164,8 +165,10 @@ enum class RawDataHistRegisters : uint8_t {
 enum class BootloaderRegisters : uint8_t {
     BL_CMD_STAT = 0x08,
     BL_SIZE = 0x09,
-    BL_DATA = 0x0A, // bl_data0 … bl_data127 - size depends on bl_cmd_stat – can be from 0 to 128
-    BL_CSUM = 0x0A, // actual location depends on bl_cmd_stat – can be from 0x0A to 0x8B
+    BL_DATA = 0x0A,  // bl_data0 … bl_data127 - size depends on bl_cmd_stat –
+                     // can be from 0 to 128
+    BL_CSUM = 0x0A,  // actual location depends on bl_cmd_stat – can be from
+                     // 0x0A to 0x8B
 };
 
 enum class RegisterType : uint8_t {
@@ -193,33 +196,46 @@ union Registers {
 inline auto is_valid_address(RegisterType type, const uint16_t reg) -> bool {
     switch (type) {
         case RegisterType::BASE:
-            return (reg >= static_cast<uint8_t>(BaseRegisters::APPID) && 
+            return (reg >= static_cast<uint8_t>(BaseRegisters::APPID) &&
                     reg <= static_cast<uint8_t>(BaseRegisters::REVID));
         case RegisterType::MAIN_APP:
-            return (reg >= static_cast<uint8_t>(AppRegisters::PATCH) && 
+            return (reg >= static_cast<uint8_t>(AppRegisters::PATCH) &&
                     reg <= static_cast<uint8_t>(AppRegisters::SIZE_MSB));
         case RegisterType::MEASURE_RESULT:
-            return (reg >= static_cast<uint8_t>(MeasurementResultsRegisters::RESULT_NUMBER) && 
-                    reg <= static_cast<uint8_t>(MeasurementResultsRegisters::RES_DISTANCE_35_MSB));
+            return (reg >= static_cast<uint8_t>(
+                               MeasurementResultsRegisters::RESULT_NUMBER) &&
+                    reg <=
+                        static_cast<uint8_t>(
+                            MeasurementResultsRegisters::RES_DISTANCE_35_MSB));
         case RegisterType::CONFIG:
-            return (reg >= static_cast<uint8_t>(ConfigurationRegisters::PERIOD_MS_LSB) && 
-                    reg <= static_cast<uint8_t>(ConfigurationRegisters::I2C_ADDR_CHANGE));
+            return (reg >= static_cast<uint8_t>(
+                               ConfigurationRegisters::PERIOD_MS_LSB) &&
+                    reg <= static_cast<uint8_t>(
+                               ConfigurationRegisters::I2C_ADDR_CHANGE));
         case RegisterType::USER_SPAD_CONFIG:
-            return (reg >= static_cast<uint8_t>(UserSPADConfigRegisters::SPAD_ENABLE_FIRST) && 
-                    reg <= static_cast<uint8_t>(UserSPADConfigRegisters::SPAD_Y_SIZE));
+            return (reg >= static_cast<uint8_t>(
+                               UserSPADConfigRegisters::SPAD_ENABLE_FIRST) &&
+                    reg <= static_cast<uint8_t>(
+                               UserSPADConfigRegisters::SPAD_Y_SIZE));
         case RegisterType::FACTORY_CALIBRATION:
-            return (reg >= static_cast<uint16_t>(FactoryCalibrationRegisters::FACTORY_CALIBRATION_FIRST) && 
-                    reg <= static_cast<uint16_t>(FactoryCalibrationRegisters::FACTORY_CALIBRATION_LAST));
+            return (
+                reg >= static_cast<uint16_t>(FactoryCalibrationRegisters::
+                                                 FACTORY_CALIBRATION_FIRST) &&
+                reg <=
+                    static_cast<uint16_t>(
+                        FactoryCalibrationRegisters::FACTORY_CALIBRATION_LAST));
         case RegisterType::RAW_DATA_HISTOGRAM:
-            return (reg >= static_cast<uint8_t>(RawDataHistRegisters::SUBPACKET_NUMBER) && 
-                    reg <= static_cast<uint8_t>(RawDataHistRegisters::SUBPACKET_DATA127));
+            return (reg >= static_cast<uint8_t>(
+                               RawDataHistRegisters::SUBPACKET_NUMBER) &&
+                    reg <= static_cast<uint8_t>(
+                               RawDataHistRegisters::SUBPACKET_DATA127));
         case RegisterType::BOOTLOADER:
-            return (reg >= static_cast<uint8_t>(BootloaderRegisters::BL_CMD_STAT) && 
-                    reg <= static_cast<uint8_t>(BootloaderRegisters::BL_CSUM));
+            return (
+                reg >= static_cast<uint8_t>(BootloaderRegisters::BL_CMD_STAT) &&
+                reg <= static_cast<uint8_t>(BootloaderRegisters::BL_CSUM));
     }
     return false;
 }
-
 
 /** Template concept to constrain what structures encapsulate registers.*/
 template <typename Reg>
@@ -232,9 +248,7 @@ concept TMF8821CommandRegister =
     std::integral<decltype(Reg::value_mask)> &&
     std::is_array_v<decltype(Reg::mode_map)>;
 
-concept WritableRegister = requires() {
-    {Reg::writable};
-};
+concept WritableRegister = requires() { {Reg::writable}; };
 
 template <typename Reg>
 concept ReadableRegister = requires() {
@@ -260,5 +274,5 @@ enum class BaseRegisters : uint8_t {
     REVID = 0xE4,
 };
 
-} // tmf8821
-} // sensors
+}  // namespace tmf8821
+}  // namespace sensors

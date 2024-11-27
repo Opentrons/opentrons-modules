@@ -48,14 +48,14 @@ class HostCommsTask {
         gcode::GetLimitSwitches, gcode::SetMicrosteps, gcode::GetMoveParams,
         gcode::SetMotorStallGuard, gcode::GetMotorStallGuard, gcode::HomeMotor,
         gcode::GetPlatformSensors, gcode::GetDoorClosed, gcode::GetEstopStatus,
-        gcode::GetTOFSensorStatus, gcode::GetTOFRegister, gcode::SetTOFRegister>;
-    using AckOnlyCache =
-        AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
-                 gcode::SetTMCRegister, gcode::SetRunCurrent,
-                 gcode::SetHoldCurrent, gcode::EnableMotor, gcode::DisableMotor,
-                 gcode::MoveMotorInSteps, gcode::MoveToLimitSwitch,
-                 gcode::MoveMotorInMm, gcode::SetMicrosteps,
-                 gcode::SetMotorStallGuard, gcode::HomeMotor, gcode::SetTOFRegister>;
+        gcode::GetTOFSensorStatus, gcode::GetTOFRegister,
+        gcode::SetTOFRegister>;
+    using AckOnlyCache = AckCache<
+        8, gcode::EnterBootloader, gcode::SetSerialNumber,
+        gcode::SetTMCRegister, gcode::SetRunCurrent, gcode::SetHoldCurrent,
+        gcode::EnableMotor, gcode::DisableMotor, gcode::MoveMotorInSteps,
+        gcode::MoveToLimitSwitch, gcode::MoveMotorInMm, gcode::SetMicrosteps,
+        gcode::SetMotorStallGuard, gcode::HomeMotor, gcode::SetTOFRegister>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetTMCRegisterCache = AckCache<8, gcode::GetTMCRegister>;
     using GetLimitSwitchesCache = AckCache<8, gcode::GetLimitSwitches>;
@@ -1053,6 +1053,7 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
+
         auto message = messages::GetTOFRegisterMessage{
             .id = id, .sensor_id = gcode.sensor_id, .reg = gcode.reg};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {

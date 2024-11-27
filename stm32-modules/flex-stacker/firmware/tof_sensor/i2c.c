@@ -88,14 +88,15 @@ bool i2c_register_handle(HAL_I2C_HANDLE handle) {
 /**
  * Wrapper around HAL_I2C_Master_Transmit
  */
-bool hal_i2c_master_transmit(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint8_t *data, uint16_t size, uint32_t timeout)
+uint8_t hal_i2c_master_transmit(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint8_t *data, uint16_t size, uint32_t timeout)
 {
     uint32_t notification_val = 0;
     I2C_HandleTypeDef* i2c_handle = (I2C_HandleTypeDef*)handle;
     NotificationHandle_t *notification_handle = lookup_handle(i2c_handle);
 
+    int res = 0;
     if(notification_handle == NULL) {
-        return false;
+        res = 1;
     }
 
     uint32_t tickstart = HAL_GetTick();
@@ -107,28 +108,33 @@ bool hal_i2c_master_transmit(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint8_t
         notification_val = ulTaskNotifyTake(pdTRUE, timeout); // Wait for callback
         if (notification_handle->should_retry) {
             tx_result = HAL_BUSY;
+            res = 2;
         }
         if(notification_val != 1) {
             // Interrupt never fired
             tx_result = HAL_TIMEOUT;
+            res = 3;
         }
         if (tx_result == HAL_OK) {
+            res = 4;
             break;
         }
     } while ((HAL_GetTick() - tickstart) < timeout);
+    return res;
     return tx_result == HAL_OK;
 }
 
 /**
  * Wrapper around HAL_I2C_Master_Receive
  */
-bool hal_i2c_master_receive(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint8_t *data, uint16_t size, uint32_t timeout){
+uint8_t hal_i2c_master_receive(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint8_t *data, uint16_t size, uint32_t timeout){
     uint32_t notification_val = 0;
     I2C_HandleTypeDef* i2c_handle = (I2C_HandleTypeDef*)handle;
     NotificationHandle_t *notification_handle = lookup_handle(i2c_handle);
 
+    int res = 0;
     if(notification_handle == NULL) {
-        return false;
+        res = 1;
     }
 
     uint32_t tickstart = HAL_GetTick();
@@ -139,15 +145,19 @@ bool hal_i2c_master_receive(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint8_t 
         notification_val = ulTaskNotifyTake(pdTRUE, timeout); // Wait for callback
         if (notification_handle->should_retry) {
             rx_result = HAL_BUSY;
+            res = 2;
         }
         if(notification_val != 1) {
             // Interrupt never fired
             rx_result = HAL_TIMEOUT;
+            res = 3;
         }
         if (rx_result == HAL_OK) {
+            res = 4;
             break;
         }
     } while ((HAL_GetTick() - tickstart) < timeout);
+    return res;
     return rx_result == HAL_OK;
 }
 

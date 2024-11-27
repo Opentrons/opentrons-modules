@@ -1,5 +1,7 @@
 #include "firmware/i2c_comms.hpp"
+
 #include <stdint.h>
+
 #include "systemwide.h"
 
 using namespace i2c::hardware;
@@ -13,10 +15,13 @@ using namespace i2c::hardware;
  *
  */
 
-auto I2C::transmit_receive(uint16_t dev_address, MessageT& msg, bool read = false) -> RxTxReturn {
-    MessageT read_buf{0};
+auto I2C::transmit_receive(uint16_t dev_address, MessageT& msg,
+                           bool read = false) -> RxTxReturn {
+    // MessageT read_buf{0};
     auto ret = central_transmit(msg.data(), msg.size(), dev_address, TIMEOUT);
-    if (ret && read) {
+    MessageT read_buf{ret};
+    return RxTxReturn(read_buf);
+    if (read) {
         central_receive(read_buf.data(), read_buf.size(), dev_address, TIMEOUT);
         return RxTxReturn(read_buf);
     }
@@ -24,12 +29,12 @@ auto I2C::transmit_receive(uint16_t dev_address, MessageT& msg, bool read = fals
 }
 
 auto I2C::central_transmit(uint8_t* data, uint16_t size, uint16_t dev_address,
-                           uint32_t timeout) -> bool {
+                           uint32_t timeout) -> uint8_t {
     return hal_i2c_master_transmit(handle, dev_address, data, size, timeout);
 }
 
 auto I2C::central_receive(uint8_t* data, uint16_t size, uint16_t dev_address,
-                          uint32_t timeout) -> bool {
+                          uint32_t timeout) -> uint8_t {
     return hal_i2c_master_receive(handle, dev_address, data, size, timeout);
 }
 

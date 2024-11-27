@@ -1,9 +1,10 @@
 #pragma once
 
 #include <stdint.h>
-#include <optional>
-#include <cstdint>
+
 #include <algorithm>
+#include <cstdint>
+#include <optional>
 
 #include "firmware/hardware_iface.hpp"
 #include "firmware/i2c.h"
@@ -29,16 +30,16 @@ class I2C : public I2CBase {
     auto operator=(const I2C &) = delete;
     auto operator=(const I2C &&) = delete;
 
-    auto transmit_receive(uint16_t dev_address, MessageT& data, bool read) -> RxTxReturn;
+    auto transmit_receive(uint16_t dev_address, MessageT &data, bool read)
+        -> RxTxReturn;
     auto set_handle(HAL_I2C_HANDLE i2c_handle) -> void;
 
   private:
-
     auto central_transmit(uint8_t *data, uint16_t size, uint16_t dev_address,
-                          uint32_t timeout) -> bool final;
+                          uint32_t timeout) -> uint8_t final;
 
     auto central_receive(uint8_t *data, uint16_t size, uint16_t dev_address,
-                         uint32_t timeout) -> bool final;
+                         uint32_t timeout) -> uint8_t final;
 
     HAL_I2C_HANDLE handle = nullptr;
 

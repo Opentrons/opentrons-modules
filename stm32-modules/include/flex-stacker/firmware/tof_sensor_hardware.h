@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "systemwide.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
@@ -10,10 +12,10 @@ extern "C" {
 typedef void *HAL_I2C_HANDLE;
 
 typedef struct HandlerStruct {
-    HAL_I2C_HANDLE i2c2;
+    HAL_I2C_HANDLE i2c3;
 } I2CHandlerStruct;
 
-void i2c_setup(I2CHandlerStruct* i2c_handles);
+void i2c_setup(I2CHandlerStruct *i2c_handles);
 
 /**
  * @brief Before using an I2C struct, it should be "registered" so that
@@ -24,24 +26,24 @@ bool i2c_register_handle(HAL_I2C_HANDLE handle);
 /**
  * Wrapper around HAL_I2C_Master_Transmit
  */
-bool hal_i2c_master_transmit(HAL_I2C_HANDLE handle, uint16_t dev_address,
-                             uint8_t *data, uint16_t size, uint32_t timeout);
+uint8_t hal_i2c_master_transmit(HAL_I2C_HANDLE handle, uint16_t dev_address,
+                                uint8_t *data, uint16_t size, uint32_t timeout);
 
 /**
  * Wrapper around HAL_I2C_Master_Receive
  */
-bool hal_i2c_master_receive(HAL_I2C_HANDLE handle, uint16_t dev_address,
-                            uint8_t *data, uint16_t size, uint32_t timeout);
+uint8_t hal_i2c_master_receive(HAL_I2C_HANDLE handle, uint16_t dev_address,
+                               uint8_t *data, uint16_t size, uint32_t timeout);
 
 /**
- * enable writing to the eeprom.
+ * enable/disable writing to the eeprom.
  */
-void enable_eeprom_write();
+void enable_eeprom_write(bool enable);
 
 /**
- * disable writing to the eeprom.
+ * enable/disable writing to a tof sensor.
  */
-void disable_eeprom_write();
+void enable_tof_sensor_write(TOFSensorID sensor_id, bool enable);
 
 #ifdef __cplusplus
 }  // extern "C"

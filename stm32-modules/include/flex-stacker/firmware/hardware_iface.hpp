@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 #include <cstdint>
 
 namespace i2c {
@@ -23,7 +25,7 @@ class I2CBase {
      */
     virtual auto central_transmit(uint8_t* data, uint16_t size,
                                   uint16_t dev_address, uint32_t timeout)
-        -> bool = 0;
+        -> uint8_t = 0;
 
     /**
      * Abstract receive function
@@ -31,7 +33,7 @@ class I2CBase {
      */
     virtual auto central_receive(uint8_t* data, uint16_t size,
                                  uint16_t dev_address, uint32_t timeout)
-        -> bool = 0;
+        -> uint8_t = 0;
 };
 
 };  // namespace hardware

@@ -1,6 +1,7 @@
 #pragma once
 #include <stdbool.h>
 #include <stdint.h>
+
 #include "stm32g4xx_hal.h"
 
 #ifdef __cplusplus
@@ -19,7 +20,6 @@ extern "C" {
 // NOLINTNEXTLINE(clang-diagnostic-unknown-warning-option)
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic pop
-
 
 #define n48V_FAULT_Pin GPIO_PIN_6
 #define n48V_FAULT_GPIO_Port GPIOC
@@ -51,4 +51,3 @@ extern "C" {
 #define nBRAKE_Z_GPIO_Port GPIOB
 #define nBRAKE_X_Pin GPIO_PIN_9
 #define nBRAKE_X_GPIO_Port GPIOB
-

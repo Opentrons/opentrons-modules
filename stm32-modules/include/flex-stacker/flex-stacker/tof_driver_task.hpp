@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "core/ack_cache.hpp"
 #include "core/fixed_point.hpp"
 #include "core/queue_aggregator.hpp"
@@ -9,7 +11,6 @@
 #include "flex-stacker/messages.hpp"
 #include "flex-stacker/tasks.hpp"
 #include "hal/message_queue.hpp"
-#include "firmware/tof_driver_policy.hpp"
 #include "i2c_comms.hpp"
 #include "messages.hpp"
 #include "systemwide.h"
@@ -27,9 +28,12 @@ class TOFDriverTask {
     using Queues = typename tasks::Tasks<QueueImpl>;
 
   public:
-    explicit TOFDriverTask(Queue& q, Aggregator* aggregator, i2c::hardware::I2C* policy)
-        : _message_queue(q), _task_registry(aggregator), _policy(policy),
-     _initialized(false){}
+    explicit TOFDriverTask(Queue& q, Aggregator* aggregator,
+                           i2c::hardware::I2C* policy)
+        : _message_queue(q),
+          _task_registry(aggregator),
+          _policy(policy),
+          _initialized(false) {}
     TOFDriverTask(const TOFDriverTask& other) = delete;
     auto operator=(const TOFDriverTask& other) -> TOFDriverTask& = delete;
     TOFDriverTask(TOFDriverTask&& other) noexcept = delete;
@@ -40,9 +44,7 @@ class TOFDriverTask {
         _task_registry = aggregator;
     }
 
-    auto set_i2c_comms(i2c::hardware::I2C* policy) -> void {
-        _policy = policy;
-    }
+    auto set_i2c_comms(i2c::hardware::I2C* policy) -> void { _policy = policy; }
 
     auto run_once() -> void {
         if (!_task_registry) {
@@ -54,8 +56,8 @@ class TOFDriverTask {
         }
 
         auto message = Message(std::monostate());
-
         _message_queue.recv(&message);
+
         auto visit_helper = [this](auto& message) -> void {
             this->visit_message(message);
         };
@@ -68,10 +70,24 @@ class TOFDriverTask {
     }
 
     auto visit_message(const messages::GetTOFRegisterMessage& m) -> void {
-        static_cast<void>(m);
-        MessageT msg = {};
+        // FOR TESTING
+        // reg, write_flag, data
+        MessageT msg = {m.reg, 0x00, 0x00};  // read from APPID Reg (0x00)
+        auto response = messages::GetTOFRegisterResponse{
+            .responding_to_id = m.id,
+            .sensor_id = m.sensor_id,
+            .reg = 0xff,
+            .data = 0xffff,
+        };
+        //
         auto resp = _policy->transmit_receive(0x44, msg, true);
-        if(resp) return;
+        if (resp.has_value()) {
+            response.reg = m.reg;
+            response.data = static_cast<uint32_t>(*resp.value().data());
+        }
+
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
     }
 
     auto visit_message(const messages::SetTOFRegisterMessage& m) -> void {

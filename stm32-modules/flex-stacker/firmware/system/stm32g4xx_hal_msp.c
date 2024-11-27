@@ -99,6 +99,11 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 
         /* Peripheral clock enable */
         __HAL_RCC_I2C2_CLK_ENABLE();
+
+        HAL_NVIC_SetPriority(I2C2_EV_IRQn, 7, 0);
+        HAL_NVIC_EnableIRQ(I2C2_EV_IRQn);
+        HAL_NVIC_SetPriority(I2C2_ER_IRQn, 7, 0);
+        HAL_NVIC_EnableIRQ(I2C2_ER_IRQn);
     }
     else if(hi2c->Instance==I2C3)
     {
@@ -125,8 +130,12 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 
         /* Peripheral clock enable */
         __HAL_RCC_I2C3_CLK_ENABLE();
-    }
 
+        HAL_NVIC_SetPriority(I2C3_EV_IRQn, 7, 0);
+        HAL_NVIC_EnableIRQ(I2C3_EV_IRQn);
+        HAL_NVIC_SetPriority(I2C3_ER_IRQn, 7, 0);
+        HAL_NVIC_EnableIRQ(I2C3_ER_IRQn);
+    }
 }
 
 /**
