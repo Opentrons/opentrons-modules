@@ -27,6 +27,13 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator, i2c::hardware::I2C* 
     _top_task.provide_aggregator(aggregator);
     _top_task.set_i2c_comms(i2c_comms);
 
+    // Maybe initialize sensors here?
+    // 0. disable both sensors (TOF_EN == RESET)
+    // 1. enable the Z sensor, set the i2c address 0x39, disable Z sensor
+    // 2. enable the X sensor, set the i2c address 0x40, disable X sensor 
+    // 3. get the current status over i2c
+    //_top_task.initialize_sensors()
+
     while (true) {
         _top_task.run_once();
     }

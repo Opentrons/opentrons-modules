@@ -72,7 +72,7 @@ class TOFDriverTask {
     auto visit_message(const messages::GetTOFRegisterMessage& m) -> void {
         // FOR TESTING
         // reg, write_flag, data
-        MessageT msg = {m.reg, 0x00, 0x00};  // read from APPID Reg (0x00)
+        MessageT msg = {m.reg, 0x00, 0x00};
         auto response = messages::GetTOFRegisterResponse{
             .responding_to_id = m.id,
             .sensor_id = m.sensor_id,
@@ -81,9 +81,11 @@ class TOFDriverTask {
         };
 
         // Adrress needs to be shifted left once.
-        //static constexpr const uint8_t ADC_1_ADDRESS = (0x50) << 1;
-        static constexpr const uint8_t ADC_2_ADDRESS = (0x41) << 1;
-        auto resp = _policy->transmit_receive(ADC_2_ADDRESS, msg, true);
+        //static constexpr const uint8_t EEPROM_ADDRESS = (0x50) << 1;
+        //static constexpr const uint8_t TOF_X_ADDRESS = (0x40) << 1;
+        //static constexpr const uint8_t TOF_Z_ADDRESS = (0x39) << 1;
+        static constexpr const uint8_t TOF_DEFAULT_ADDR = (0x41) << 1;  // 0x41 DEFAULT address
+        auto resp = _policy->transmit_receive(TOF_DEFAULT_ADDR, msg, true);
         if (resp.has_value()) {
             response.reg = m.reg;
             response.data = static_cast<uint32_t>(*resp.value().data());

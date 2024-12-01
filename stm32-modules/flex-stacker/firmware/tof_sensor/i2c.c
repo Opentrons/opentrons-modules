@@ -100,6 +100,11 @@ uint8_t hal_i2c_master_transmit(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint
     I2C_HandleTypeDef* i2c_handle = (I2C_HandleTypeDef*)handle;
     NotificationHandle_t *notification_handle = lookup_handle(i2c_handle);
 
+    // Make sure the device is ok
+    HAL_StatusTypeDef dev_status = HAL_OK;
+    dev_status = hal_i2c_comms_ready(handle, DevAddress, 3, timeout);
+    if (dev_status != HAL_OK) return dev_status;
+
     int res = 0;
     if(notification_handle == NULL) {
         res = 1;

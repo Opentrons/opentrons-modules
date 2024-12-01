@@ -22,8 +22,9 @@ auto I2C::transmit_receive(uint16_t dev_address, MessageT& msg,
     //MessageT read_buf{ret};
     //return RxTxReturn(read_buf);
     if (read) {
-        auto ret = central_receive(read_buf.data(), read_buf.size(), dev_address, TIMEOUT);
-        MessageT read_buf{ret};
+        //central_receive(read_buf.data(), read_buf.size(), dev_address, TIMEOUT);
+        central_receive(read_buf.data(), 8, dev_address, TIMEOUT);
+        //MessageT read_buf{ret};
         return RxTxReturn(read_buf);
     }
     return RxTxReturn();
