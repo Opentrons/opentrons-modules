@@ -79,8 +79,7 @@ class TOFDriverTask {
             .reg = 0xff,
             .data = 0xffff,
         };
-        //
-        auto resp = _policy->transmit_receive(0x44, msg, true);
+        auto resp = _policy->transmit_receive(0x50, msg, true);
         if (resp.has_value()) {
             response.reg = m.reg;
             response.data = static_cast<uint32_t>(*resp.value().data());

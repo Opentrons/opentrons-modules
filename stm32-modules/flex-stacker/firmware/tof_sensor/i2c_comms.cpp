@@ -17,12 +17,13 @@ using namespace i2c::hardware;
 
 auto I2C::transmit_receive(uint16_t dev_address, MessageT& msg,
                            bool read = false) -> RxTxReturn {
-    // MessageT read_buf{0};
-    auto ret = central_transmit(msg.data(), msg.size(), dev_address, TIMEOUT);
-    MessageT read_buf{ret};
-    return RxTxReturn(read_buf);
+    MessageT read_buf{0};
+    //central_transmit(msg.data(), msg.size(), dev_address, TIMEOUT);
+    //MessageT read_buf{ret};
+    //return RxTxReturn(read_buf);
     if (read) {
-        central_receive(read_buf.data(), read_buf.size(), dev_address, TIMEOUT);
+        auto ret = central_receive(read_buf.data(), read_buf.size(), dev_address, TIMEOUT);
+        MessageT read_buf{ret};
         return RxTxReturn(read_buf);
     }
     return RxTxReturn();

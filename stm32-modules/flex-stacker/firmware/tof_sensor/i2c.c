@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 #include "stm32g4xx_hal.h"
+#include "stm32g4xx_hal_def.h"
 #include "stm32g4xx_it.h"
 #include "FreeRTOS.h"
 
@@ -84,6 +85,11 @@ bool i2c_register_handle(HAL_I2C_HANDLE handle) {
 
 }
 
+uint8_t hal_i2c_comms_ready(HAL_I2C_HANDLE handle, uint16_t dev_address, uint8_t tries, uint32_t timeout) {
+    HAL_StatusTypeDef status = HAL_OK;
+    status = HAL_I2C_IsDeviceReady(handle, dev_address, tries, timeout);
+    return (uint8_t)status;
+}
 
 /**
  * Wrapper around HAL_I2C_Master_Transmit
@@ -132,9 +138,14 @@ uint8_t hal_i2c_master_receive(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint8
     I2C_HandleTypeDef* i2c_handle = (I2C_HandleTypeDef*)handle;
     NotificationHandle_t *notification_handle = lookup_handle(i2c_handle);
 
-    int res = 0;
+    // Make sure the device is ok
+    HAL_StatusTypeDef dev_status = HAL_OK;
+    dev_status = hal_i2c_comms_ready(handle, DevAddress, 3, timeout);
+    if (dev_status != HAL_OK) return dev_status;
+
+    int res = 5;
     if(notification_handle == NULL) {
-        res = 1;
+        res = 6;
     }
 
     uint32_t tickstart = HAL_GetTick();
@@ -145,15 +156,15 @@ uint8_t hal_i2c_master_receive(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint8
         notification_val = ulTaskNotifyTake(pdTRUE, timeout); // Wait for callback
         if (notification_handle->should_retry) {
             rx_result = HAL_BUSY;
-            res = 2;
+            res = 7;
         }
         if(notification_val != 1) {
             // Interrupt never fired
             rx_result = HAL_TIMEOUT;
-            res = 3;
+            res = 8;
         }
         if (rx_result == HAL_OK) {
-            res = 4;
+            res = 9;
             break;
         }
     } while ((HAL_GetTick() - tickstart) < timeout);

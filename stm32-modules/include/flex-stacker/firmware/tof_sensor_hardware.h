@@ -12,6 +12,7 @@ extern "C" {
 typedef void *HAL_I2C_HANDLE;
 
 typedef struct HandlerStruct {
+    HAL_I2C_HANDLE i2c2;
     HAL_I2C_HANDLE i2c3;
 } I2CHandlerStruct;
 
