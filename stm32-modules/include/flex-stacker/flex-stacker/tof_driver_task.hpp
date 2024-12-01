@@ -79,7 +79,11 @@ class TOFDriverTask {
             .reg = 0xff,
             .data = 0xffff,
         };
-        auto resp = _policy->transmit_receive(0x50, msg, true);
+
+        // Adrress needs to be shifted left once.
+        //static constexpr const uint8_t ADC_1_ADDRESS = (0x50) << 1;
+        static constexpr const uint8_t ADC_2_ADDRESS = (0x41) << 1;
+        auto resp = _policy->transmit_receive(ADC_2_ADDRESS, msg, true);
         if (resp.has_value()) {
             response.reg = m.reg;
             response.data = static_cast<uint32_t>(*resp.value().data());

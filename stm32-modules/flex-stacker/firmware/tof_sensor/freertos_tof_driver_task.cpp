@@ -33,7 +33,6 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
 
     i2c2_comms.set_handle(i2c_handle.i2c2);
     i2c3_comms.set_handle(i2c_handle.i2c3);
-    _top_task.set_i2c_comms(&i2c2_comms);
     _top_task.set_i2c_comms(&i2c3_comms);
 
     while (true) {

@@ -73,18 +73,8 @@ void HAL_MspDeInit(void)
 void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
-    RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
     if(hi2c->Instance==I2C2)
     {
-        /** Initializes the peripherals clocks
-         */
-        PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_I2C2;
-        PeriphClkInit.I2c2ClockSelection = RCC_I2C2CLKSOURCE_PCLK1;
-        if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-        {
-            Error_Handler();
-        }
-
         __HAL_RCC_GPIOA_CLK_ENABLE();
         /**I2C2 GPIO Configuration
         PA8     ------> I2C2_SDA
@@ -107,15 +97,6 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
     }
     else if(hi2c->Instance==I2C3)
     {
-        /** Initializes the peripherals clocks
-         */
-        PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_I2C3;
-        PeriphClkInit.I2c3ClockSelection = RCC_I2C3CLKSOURCE_PCLK1;
-        if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-        {
-            Error_Handler();
-        }
-
         __HAL_RCC_GPIOC_CLK_ENABLE();
         /**I2C3 GPIO Configuration
         PC8     ------> I2C3_SCL

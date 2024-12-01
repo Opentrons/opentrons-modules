@@ -10,6 +10,7 @@ static I2C_HandleTypeDef hi2c3;
 
 HAL_I2C_HANDLE MX_I2C2_Init()
 {
+    hi2c2.State = HAL_I2C_STATE_RESET;
     hi2c2.Instance = I2C2;
     hi2c2.Init.Timing = 0x10C0ECFF;
     hi2c2.Init.OwnAddress1 = 0;
@@ -35,6 +36,9 @@ HAL_I2C_HANDLE MX_I2C2_Init()
     {
         Error_Handler();
     }
+
+    /** I2C Fast mode Plus enable */
+    __HAL_SYSCFG_FASTMODEPLUS_ENABLE(I2C_FASTMODEPLUS_I2C2);
 
     return &hi2c2;
 }
@@ -63,6 +67,10 @@ HAL_I2C_HANDLE MX_I2C3_Init() {
     if (HAL_I2CEx_ConfigDigitalFilter(&hi2c3, 0) != HAL_OK) {
         Error_Handler();
     }
+
+    /** I2C Fast mode Plus enable */
+    __HAL_SYSCFG_FASTMODEPLUS_ENABLE(I2C_FASTMODEPLUS_I2C3);
+
     return &hi2c3;
 }
 
@@ -76,8 +84,9 @@ void eeprom_write_protect_init(void) {
     /*Configure GPIO pin : PA10 */
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     GPIO_InitStruct.Pin = EEPROM_WP_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(EEPROM_WP_PORT, &GPIO_InitStruct);
 }
 
@@ -129,8 +138,8 @@ void i2c_setup(I2CHandlerStruct* i2c_handles) {
     tof_write_protect_init();
 
     // write protect the eeprom and tof sensors.
-    enable_eeprom_write(false);
-    enable_tof_sensor_write(TOF_X, true);
+    enable_eeprom_write(true);
+    enable_tof_sensor_write(TOF_X, false);
     enable_tof_sensor_write(TOF_Z, false);
 }
 
