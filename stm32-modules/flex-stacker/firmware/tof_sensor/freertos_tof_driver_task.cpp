@@ -20,20 +20,12 @@ static auto _top_task =
     tof_driver_task::TOFDriverTask(_queue, nullptr, nullptr);
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
-auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
+auto run(tasks::FirmwareTasks::QueueAggregator* aggregator, i2c::hardware::I2C* i2c_comms) -> void {
     auto* handle = xTaskGetCurrentTaskHandle();
     _queue.provide_handle(handle);
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
-
-    static auto i2c2_comms = i2c::hardware::I2C();
-    static auto i2c3_comms = i2c::hardware::I2C();
-    static auto i2c_handle = I2CHandlerStruct{};
-    i2c_setup(&i2c_handle);
-
-    i2c2_comms.set_handle(i2c_handle.i2c2);
-    i2c3_comms.set_handle(i2c_handle.i2c3);
-    _top_task.set_i2c_comms(&i2c3_comms);
+    _top_task.set_i2c_comms(i2c_comms);
 
     while (true) {
         _top_task.run_once();

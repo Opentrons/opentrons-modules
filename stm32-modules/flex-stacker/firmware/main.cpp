@@ -3,6 +3,8 @@
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/motor_hardware.h"
 #include "firmware/system_stm32g4xx.h"
+#include "firmware/i2c_comms.hpp"
+#include "firmware/tof_sensor_hardware.h"
 #include "flex-stacker/messages.hpp"
 #include "ot_utils/freertos/freertos_task.hpp"
 #include "systemwide.h"
@@ -18,12 +20,14 @@
 
 // Task EntryPoint
 using EntryPoint = std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
+using EntryPointTOFDriver = std::function<void(tasks::FirmwareTasks::QueueAggregator *, i2c::hardware::I2C *)>;
+
 static auto motor_driver_task_entry = EntryPoint(motor_driver_task::run);
 static auto motor_task_entry = EntryPoint(motor_control_task::run);
 static auto ui_task_entry = EntryPoint(ui_control_task::run);
 static auto host_comms_entry = EntryPoint(host_comms_control_task::run);
 static auto system_task_entry = EntryPoint(system_control_task::run);
-static auto tof_driver_task_entry = EntryPoint(tof_driver_task::run);
+static auto tof_driver_task_entry = EntryPointTOFDriver(tof_driver_task::run);
 static auto tof_sensor_task_entry = EntryPoint(tof_sensor_task::run);
 
 // Tasks
@@ -49,7 +53,7 @@ static auto system_task =
 
 static auto tof_d_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::TOF_DRIVER_STACK_SIZE,
-                                          EntryPoint>(tof_driver_task_entry);
+                                          EntryPointTOFDriver>(tof_driver_task_entry);
 
 static auto tof_s_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::TOF_SENSOR_STACK_SIZE,
@@ -72,15 +76,23 @@ extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     }
 }
 
+static auto i2c2_comms = i2c::hardware::I2C();
+static auto i2c3_comms = i2c::hardware::I2C();
+static auto i2c_handles = I2CHandlerStruct{};
+
 auto main() -> int {
     HardwareInit();
+
+    i2c_setup(&i2c_handles);
+    i2c2_comms.set_handle(i2c_handles.i2c2);
+    i2c3_comms.set_handle(i2c_handles.i2c3);
 
     system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
     driver_task.start(tasks::MOTOR_DRIVER_TASK_PRIORITY, "Motor Driver",
                       &aggregator);
     motor_task.start(tasks::MOTOR_TASK_PRIORITY, "Motor", &aggregator);
     tof_d_task.start(tasks::TOF_DRIVER_TASK_PRIORITY, "TOF Driver",
-                     &aggregator);
+                     &aggregator, &i2c3_comms);
     tof_s_task.start(tasks::TOF_SENSOR_TASK_PRIORITY, "TOF Sensor",
                      &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);

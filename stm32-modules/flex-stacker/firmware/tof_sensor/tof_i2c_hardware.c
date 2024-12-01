@@ -137,8 +137,9 @@ void i2c_setup(I2CHandlerStruct* i2c_handles) {
     eeprom_write_protect_init();
     tof_write_protect_init();
 
-    // write protect the eeprom and tof sensors.
-    enable_eeprom_write(true);
+    // write protect the eeprom
+    enable_eeprom_write(false);
+    // Disable tof sensors
     enable_tof_sensor_write(TOF_X, false);
     enable_tof_sensor_write(TOF_Z, false);
 }
