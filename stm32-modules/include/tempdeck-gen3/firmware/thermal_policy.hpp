@@ -19,6 +19,8 @@ class ThermalPolicy {
 
     auto disable_peltier() -> void;
 
+    auto last_reset_reason() -> uint16_t;
+
     auto set_peltier_heat_power(double power) -> bool;
 
     auto set_peltier_cool_power(double power) -> bool;

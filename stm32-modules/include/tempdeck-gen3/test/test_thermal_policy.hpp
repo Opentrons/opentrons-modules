@@ -34,6 +34,12 @@ struct TestThermalPolicy : public m24128_test_policy::TestM24128Policy {
         return true;
     }
 
+    auto last_reset_reason() -> uint16_t { return _reset_reason; }
+
+    auto set_last_reset_reason(uint16_t sim_reason) {
+        _reset_reason = sim_reason;
+    }
+
     auto get_fan_rpm() -> double { return _fan_rpm; }
 
     // Test integration functions
@@ -48,4 +54,5 @@ struct TestThermalPolicy : public m24128_test_policy::TestM24128Policy {
     double _power = 0.0F;  // Positive for heat, negative for cool
     double _fans = 0.0F;
     double _fan_rpm = 0.0F;  // Should be manually set by the test code
+    uint16_t _reset_reason = 0;
 };
