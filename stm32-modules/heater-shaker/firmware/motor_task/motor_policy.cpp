@@ -131,3 +131,7 @@ auto MotorPolicy::get_serial_number(void)
     -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> {
     return _serial.get_serial_number();
 }
+
+auto MotorPolicy::last_reset_reason() const -> uint16_t {
+    return motor_hardware_reset_reason();
+}

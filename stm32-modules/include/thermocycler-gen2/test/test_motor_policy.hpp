@@ -122,6 +122,12 @@ class TestMotorPolicy : public TestTMC2130Policy {
         _shared_switch_lines = shared;
     }
 
+    auto last_reset_reason() const -> uint16_t { return _reset_reason; }
+
+    auto set_last_reset_reason(uint16_t sim_reason) -> void {
+        _reset_reason = sim_reason;
+    }
+
   private:
     // Solenoid is engaged when unpowered
     bool _solenoid_engaged = true;
@@ -138,6 +144,7 @@ class TestMotorPolicy : public TestTMC2130Policy {
     bool _extension_switch_armed = false;
     bool _retraction_switch_armed = false;
     double _lid_rpm = 0;
+    uint16_t _reset_reason = 0;
     // Default to shared switch lines (pre-DVT)
     bool _shared_switch_lines = true;
     Callback _callback;

@@ -109,6 +109,12 @@ struct SimMotorPolicy {
         }
     }
 
+    auto last_reset_reason() -> uint16_t { return reset_reason; }
+
+    auto set_last_reset_reason(uint16_t sim_reason) -> void {
+        reset_reason = sim_reason;
+    }
+
   private:
     int16_t rpm_setpoint = 0;
     int16_t rpm_current = 0;
@@ -116,6 +122,8 @@ struct SimMotorPolicy {
     float sim_plate_lock_power = 0;
     bool sim_plate_lock_enabled = false;
     bool sim_plate_lock_braked = false;
+    // Simulated reset reason from HAL RCC flag
+    uint16_t reset_reason = 0;
 };
 
 struct motor_thread::TaskControlBlock {

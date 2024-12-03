@@ -269,6 +269,15 @@ struct GetOffsetConstantsResponse {
     double const_b, const_c;
 };
 
+struct GetResetReasonMessage {
+    uint32_t id;
+};
+
+struct GetResetReasonResponse {
+    uint32_t responding_to_id;
+    uint16_t reason;
+};
+
 struct DeactivateHeaterMessage {
     uint32_t id;
 };
@@ -295,7 +304,7 @@ using MotorMessage = ::std::variant<
     ActuateSolenoidMessage, SetPlateLockPowerMessage, OpenPlateLockMessage,
     ClosePlateLockMessage, SetPIDConstantsMessage, PlateLockComplete,
     GetPlateLockStateMessage, GetPlateLockStateDebugMessage,
-    CheckPlateLockStatusMessage>;
+    CheckPlateLockStatusMessage, GetResetReasonMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage, SetLEDMessage,
@@ -307,5 +316,6 @@ using HostCommsMessage =
                    ErrorMessage, GetTemperatureResponse, GetRPMResponse,
                    GetTemperatureDebugResponse, ForceUSBDisconnectMessage,
                    GetPlateLockStateResponse, GetPlateLockStateDebugResponse,
-                   GetSystemInfoResponse, GetOffsetConstantsResponse>;
+                   GetSystemInfoResponse, GetOffsetConstantsResponse,
+                   GetResetReasonResponse>;
 };  // namespace messages

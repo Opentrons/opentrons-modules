@@ -46,6 +46,7 @@ class MotorPolicy {
     auto plate_lock_closed_sensor_read() -> bool;
     auto get_serial_number(void)
         -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
+    auto last_reset_reason() const -> uint16_t;
 
   private:
     static constexpr uint16_t MAX_SOLENOID_CURRENT_MA = 330;
