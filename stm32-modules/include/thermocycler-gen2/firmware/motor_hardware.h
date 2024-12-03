@@ -187,7 +187,7 @@ void motor_hardware_seal_switch_interrupt();
 /**
  * @brief Returns the reason saved upon startup for the last
  * reset of the software.
- * @return a string describing the reason for reset.
+ * @return a flag containing the reasons for reset.
  * */
 uint16_t motor_hardware_reset_reason();
 

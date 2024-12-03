@@ -641,6 +641,44 @@ struct GetSystemInfo {
     }
 };
 
+struct GetResetReason {
+    /*
+     * M114- GetResetReason retrieves the value of the RCC reset flag
+     * that was captured at the beginning of the hardware setup
+     * */
+    using ParseResult = std::optional<GetResetReason>;
+    static constexpr auto prefix = std::array{'M', '1', '1', '4'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit, uint16_t reason)
+        -> InputIt {
+        int res = 0;
+        // print a hexadecimal representation of the reset flags
+        res = snprintf(&*buf, (limit - buf), "M114 Last Reset Reason: %X OK\n",
+                       reason);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetResetReason()), working);
+    }
+};
+
 struct SetSerialNumber {
     /*
     ** Set Serial Number uses a random gcode, M996, adjacent to the firmware

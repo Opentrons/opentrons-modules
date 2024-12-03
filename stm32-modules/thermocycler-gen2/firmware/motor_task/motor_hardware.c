@@ -226,7 +226,6 @@ static void init_tim2(TIM_HandleTypeDef* htim);
 static void init_tim6(TIM_HandleTypeDef* htim);
 static bool lid_active();
 static void save_reset_reason();
-//static char* reset_reason;
 uint16_t reset_reason;
 
 // ----------------------------------------------------------------------------
