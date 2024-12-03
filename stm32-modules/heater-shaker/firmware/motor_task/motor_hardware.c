@@ -19,6 +19,39 @@ motor_hardware_handles *MOTOR_HW_HANDLE = NULL;
 
 static _Atomic int16_t motor_speed_buffer[MOTOR_SPEED_BUFFER_SIZE];
 static _Atomic size_t motor_speed_buffer_itr = 0;
+uint16_t reset_reason;
+
+enum RCC_FLAGS {
+    _NONE,
+    // high speed internal clock ready
+    HSIRDY, // = 1
+    // high speed external clock ready
+    HSERDY, // = 2
+    // main phase-locked loop clock ready
+    PLLRDY, // = 3
+    // hsi48 clock ready
+    HSI48RDY, // = 4
+    // low-speed external clock ready
+    LSERDY, // = 5
+    // lse clock security system failure
+    LSECSSD, // = 6
+    // low-speed internal clock ready
+    LSIRDY, // = 7
+    // brown out
+    BORRST, // = 8
+    // option byte-loader reset
+    OBLRST, // = 9
+    // pin reset
+    PINRST, // = 10
+    // software reset
+    SFTRST, // = 11
+    // independent watchdog
+    IWDGRST, // = 12
+    // window watchdog
+    WWDGRST, // = 13
+    // low power reset
+    LPWRRST, // = 14
+};
 
 static void MX_NVIC_Init(void)
 {
@@ -491,6 +524,69 @@ static void DAC_Init(DAC_HandleTypeDef* dac) {
   HAL_DAC_SetValue(dac, SOLENOID_DAC_CHANNEL, DAC_ALIGN_8B_R, 0);
 }
 
+static void save_reset_reason() {
+    // check various reset flags to see if the HAL RCC
+    // reset flag matches any of them
+    reset_reason = 0;
+
+    // high speed internal clock ready
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSIRDY)) {
+        reset_reason |= HSIRDY;
+    }
+    // high speed external clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSERDY)) {
+        reset_reason |= HSERDY;
+    }
+    // main phase-locked loop clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PLLRDY)) {
+        reset_reason |= PLLRDY;
+    }
+    // hsi48 clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSIRDY)) {
+        reset_reason |= HSI48RDY;
+    }
+    // low-speed external clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY)) {
+        reset_reason |= LSERDY;
+    }
+    // lse clock security system failure
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY)) {
+        reset_reason |= LSECSSD;
+    }
+    // low-speed internal clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSIRDY)) {
+        reset_reason |= LSIRDY;
+    }
+    // brown out
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PORRST)) {
+        reset_reason |= BORRST;
+    }
+    // option byte-loader reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_OBLRST)) {
+        reset_reason |= OBLRST;
+    }
+    // pin reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PINRST)) {
+        reset_reason |= PINRST;
+    }
+    // software reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
+        reset_reason |= SFTRST;
+    }
+    // independent watchdog
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
+        reset_reason |= IWDGRST;
+    }
+    // window watchdog
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_WWDGRST)) {
+        reset_reason |= WWDGRST;
+    }
+    // low power reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LPWRRST)) {
+        reset_reason |= LPWRRST;
+    }
+}
+
 /**
   * Initializes the Global MSP.
   */
@@ -814,6 +910,7 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
 }
 
 void motor_hardware_setup(motor_hardware_handles* handles) {
+  save_reset_reason();
   MOTOR_HW_HANDLE = handles;
   memset(motor_speed_buffer, 0, sizeof(motor_speed_buffer));
   MX_GPIO_Init();
@@ -838,6 +935,10 @@ void motor_hardware_solenoid_drive(DAC_HandleTypeDef* dac1, uint8_t dacval) {
 void motor_hardware_solenoid_release(DAC_HandleTypeDef* dac1) {
   HAL_GPIO_WritePin(SOLENOID_1_Port, SOLENOID_1_Pin, GPIO_PIN_RESET);
   HAL_DAC_SetValue(dac1, SOLENOID_DAC_CHANNEL, DAC_ALIGN_8B_R, 0);
+}
+
+uint16_t motor_hardware_reset_reason() {
+    return reset_reason;
 }
 
 void motor_hardware_plate_lock_on(TIM_HandleTypeDef* tim3, float power) {

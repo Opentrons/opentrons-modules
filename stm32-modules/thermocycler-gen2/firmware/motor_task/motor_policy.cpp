@@ -152,3 +152,8 @@ auto MotorPolicy::seal_switch_set_disarmed() -> void {
 [[nodiscard]] auto MotorPolicy::seal_switches_are_shared() const -> bool {
     return _shared_seal_switch_lines;
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+[[nodiscard]] auto MotorPolicy::last_reset_reason() const -> uint16_t {
+    return motor_hardware_reset_reason();
+}
