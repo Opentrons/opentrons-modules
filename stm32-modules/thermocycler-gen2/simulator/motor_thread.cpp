@@ -119,6 +119,12 @@ class SimMotorPolicy : public SimTMC2130Policy {
 
     auto seal_switches_are_shared() -> bool { return false; }
 
+    auto last_reset_reason() -> uint16_t { return reset_reason; }
+
+    auto set_last_reset_reason(uint16_t sim_reason) -> void {
+        reset_reason = sim_reason;
+    }
+
   private:
     // Lowest position the lid can move before stalling
     static constexpr uint32_t min_lid_steps =
@@ -132,6 +138,8 @@ class SimMotorPolicy : public SimTMC2130Policy {
     static constexpr double open_switch_pos_angle = 90.0F;
     // Simulated width of each lid switch in degrees
     static constexpr double switch_width_angle = 1.0F;
+    // Simulated reset reason from HAL RCC flag
+    uint16_t reset_reason = 0;
 
     // Check if open switch is triggered
     [[nodiscard]] static auto open_switch_triggered(double angle) -> bool {

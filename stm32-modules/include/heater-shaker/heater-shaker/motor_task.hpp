@@ -538,7 +538,7 @@ class MotorTask {
 
         auto response = messages::GetResetReasonResponse{
             .responding_to_id = msg.id, .reason = reason};
-        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
             messages::HostCommsMessage(response)));
     }
 
