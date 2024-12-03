@@ -167,6 +167,13 @@ class MotorTask {
         return Error::NO_ERROR;
     }
 
+    auto stop_motors(uint32_t id = 0) -> void {
+        _z_controller.stop_movement(id, true);
+        _x_controller.stop_movement(id, false);
+        _l_controller.stop_movement(id, false);
+        _move_queue.reset();
+    }
+
     auto make_move(uint32_t id, MotorID motor_id, bool direction,
                    float distance, bool has_next_move = false) -> Move {
         return Move{.motor_id = motor_id,
@@ -312,9 +319,9 @@ class MotorTask {
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::StopMotorMessage& m, Policy& policy)
         -> void {
-        static_cast<void>(m);
         static_cast<void>(policy);
-        controller_from_id(m.motor_id).stop_movement(m.id, true);
+        stop_motors(m.id);
+        send_ack_message(m.id);
     }
 
     template <MotorControlPolicy Policy>
@@ -419,9 +426,7 @@ class MotorTask {
             // don't care about other interrupts
             return;
         }
-        _z_controller.stop_movement(0, true);
-        _x_controller.stop_movement(0, false);
-        _l_controller.stop_movement(0, false);
+        stop_motors();
     }
 
     /**
