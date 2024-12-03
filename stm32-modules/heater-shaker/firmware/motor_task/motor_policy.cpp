@@ -72,10 +72,6 @@ auto MotorPolicy::get_current_rpm() const -> int16_t {
     return 0;
 }
 
-auto MotorPolicy::last_reset_reason() const -> uint16_t {
-    return motor_hardware_reset_reason();
-}
-
 auto MotorPolicy::get_target_rpm() const -> int16_t {
     if (IDLE != MCI_GetSTMState(hw_handles->mci[0])) {
         return -MCI_GetMecSpeedRefUnit(hw_handles->mci[0]) * _RPM / _01HZ;
