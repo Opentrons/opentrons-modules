@@ -37,7 +37,7 @@ using Error = errors::ErrorCode;
 struct Defaults {
     struct X {
         static constexpr float SPEED = 200.0;
-        static constexpr float ACCELERATION = 50.0;
+        static constexpr float ACCELERATION = 1500.0;
         static constexpr float SPEED_DISCONT = 5.0;
 
         static constexpr float MM_PER_REV =
@@ -45,13 +45,13 @@ struct Defaults {
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
 
-        // switch-to-switch: 202.0 mm - 5.0 mm offset
-        static constexpr float FAST_HOME_DISTANCE = 197.0;
+        // switch-to-switch: 192.5 mm - 5.0 mm offset
+        static constexpr float FAST_HOME_DISTANCE = 187.5;
     };
 
     struct Z {
         static constexpr float SPEED = 200.0;
-        static constexpr float ACCELERATION = 50.0;
+        static constexpr float ACCELERATION = 80.0;
         static constexpr float SPEED_DISCONT = 5.0;
 
         static constexpr float MM_PER_REV =
@@ -59,13 +59,13 @@ struct Defaults {
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
 
-        // switch-to-switch: 113.75 mm - 5.0 mm offset
-        static constexpr float FAST_HOME_DISTANCE = 108.75;
+        // switch-to-switch: 136.0 mm - 5.0 mm offset
+        static constexpr float FAST_HOME_DISTANCE = 131.0;
     };
 
     struct L {
-        static constexpr float SPEED = 200.0;
-        static constexpr float ACCELERATION = 50.0;
+        static constexpr float SPEED = 100.0;
+        static constexpr float ACCELERATION = 100.0;
         static constexpr float SPEED_DISCONT = 5.0;
 
         static constexpr float MM_PER_REV =
