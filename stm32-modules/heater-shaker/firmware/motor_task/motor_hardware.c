@@ -22,7 +22,7 @@ static _Atomic size_t motor_speed_buffer_itr = 0;
 uint16_t reset_reason;
 
 enum RCC_FLAGS {
-    NONE,
+    _NONE,
     // high speed internal clock ready
     HSIRDY, // = 1
     // high speed external clock ready
@@ -524,6 +524,69 @@ static void DAC_Init(DAC_HandleTypeDef* dac) {
   HAL_DAC_SetValue(dac, SOLENOID_DAC_CHANNEL, DAC_ALIGN_8B_R, 0);
 }
 
+static void save_reset_reason() {
+    // check various reset flags to see if the HAL RCC
+    // reset flag matches any of them
+    reset_reason = 0;
+
+    // high speed internal clock ready
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSIRDY)) {
+        reset_reason |= HSIRDY;
+    }
+    // high speed external clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSERDY)) {
+        reset_reason |= HSERDY;
+    }
+    // main phase-locked loop clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PLLRDY)) {
+        reset_reason |= PLLRDY;
+    }
+    // hsi48 clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSIRDY)) {
+        reset_reason |= HSI48RDY;
+    }
+    // low-speed external clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY)) {
+        reset_reason |= LSERDY;
+    }
+    // lse clock security system failure
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY)) {
+        reset_reason |= LSECSSD;
+    }
+    // low-speed internal clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSIRDY)) {
+        reset_reason |= LSIRDY;
+    }
+    // brown out
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PORRST)) {
+        reset_reason |= BORRST;
+    }
+    // option byte-loader reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_OBLRST)) {
+        reset_reason |= OBLRST;
+    }
+    // pin reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PINRST)) {
+        reset_reason |= PINRST;
+    }
+    // software reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
+        reset_reason |= SFTRST;
+    }
+    // independent watchdog
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
+        reset_reason |= IWDGRST;
+    }
+    // window watchdog
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_WWDGRST)) {
+        reset_reason |= WWDGRST;
+    }
+    // low power reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LPWRRST)) {
+        reset_reason |= LPWRRST;
+    }
+}
+
 /**
   * Initializes the Global MSP.
   */
@@ -872,69 +935,6 @@ void motor_hardware_solenoid_drive(DAC_HandleTypeDef* dac1, uint8_t dacval) {
 void motor_hardware_solenoid_release(DAC_HandleTypeDef* dac1) {
   HAL_GPIO_WritePin(SOLENOID_1_Port, SOLENOID_1_Pin, GPIO_PIN_RESET);
   HAL_DAC_SetValue(dac1, SOLENOID_DAC_CHANNEL, DAC_ALIGN_8B_R, 0);
-}
-
-static void save_reset_reason() {
-    // check various reset flags to see if the HAL RCC
-    // reset flag matches any of them
-    reset_reason = 0;
-
-    // high speed internal clock ready
-    if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSIRDY)) {
-        reset_reason |= HSIRDY;
-    }
-    // high speed external clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSERDY)) {
-        reset_reason |= HSERDY;
-    }
-    // main phase-locked loop clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PLLRDY)) {
-        reset_reason |= PLLRDY;
-    }
-    // hsi48 clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSI48RDY)) {
-        reset_reason |= HSI48RDY;
-    }
-    // low-speed external clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY)) {
-        reset_reason |= LSERDY;
-    }
-    // lse clock security system failure
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSECSSD)) {
-        reset_reason |= LSECSSD;
-    }
-    // low-speed internal clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSIRDY)) {
-        reset_reason |= LSIRDY;
-    }
-    // brown out
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_BORRST)) {
-        reset_reason |= BORRST;
-    }
-    // option byte-loader reset
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_OBLRST)) {
-        reset_reason |= OBLRST;
-    }
-    // pin reset
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PINRST)) {
-        reset_reason |= PINRST;
-    }
-    // software reset
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
-        reset_reason |= SFTRST;
-    }
-    // independent watchdog
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
-        reset_reason |= IWDGRST;
-    }
-    // window watchdog
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_WWDGRST)) {
-        reset_reason |= WWDGRST;
-    }
-    // low power reset
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LPWRRST)) {
-        reset_reason |= LPWRRST;
-    }
 }
 
 uint16_t motor_hardware_reset_reason() {
