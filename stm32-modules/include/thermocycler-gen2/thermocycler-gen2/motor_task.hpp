@@ -565,6 +565,17 @@ class MotorTask {
     }
 
     template <MotorExecutionPolicy Policy>
+    auto visit_message(const messages::GetResetReasonMessage& msg,
+                       Policy& policy) -> void {
+        auto reason = policy.last_reset_reason();
+
+        auto response = messages::GetResetReasonResponse{
+            .responding_to_id = msg.id, .reason = reason};
+        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
+    template <MotorExecutionPolicy Policy>
     auto visit_message(const messages::OpenLidMessage& msg, Policy& policy)
         -> void {
         auto error = start_lid_open(msg.id, policy);

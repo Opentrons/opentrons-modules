@@ -38,6 +38,13 @@ bool motor_hardware_plate_lock_sensor_read(uint16_t GPIO_Pin);
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim);
 
 /**
+ * @brief Returns the reason saved upon startup for the last
+ * reset of the software.
+ * @return a flag containing the reason for reset.
+ * */
+uint16_t motor_hardware_reset_reason();
+
+/**
  * @brief To be called every time the motor control library updates its speed
  * measurement. This function adds new speed values to a circular buffer,
  * which can then be averaged to get a smoothed RPM value.
