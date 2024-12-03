@@ -16,11 +16,6 @@ auto ThermalPolicy::disable_peltier() -> void {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto ThermalPolicy::last_reset_reason() -> uint16_t {
-    return thermal_hardware_reset_reason();
-}
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPolicy::set_peltier_heat_power(double power) -> bool {
     return thermal_hardware_set_peltier_heat(power);
 }

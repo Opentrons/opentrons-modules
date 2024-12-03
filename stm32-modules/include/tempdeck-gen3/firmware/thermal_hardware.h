@@ -19,13 +19,6 @@ extern "C" {
 void thermal_hardware_init();
 
 /**
- * @brief Reports the reason for the last fimrware reset, according to
- * the HAL RCC flag.
- *
- * */
-uint16_t thermal_hardware_reset_reason();
-
-/**
  * @brief Enable the peltiers. If the peltiers are already enabled,
  * this will have no real effect.
  *

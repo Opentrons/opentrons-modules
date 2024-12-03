@@ -448,17 +448,6 @@ class ThermalTask {
             _task_registry->send_to_address(response, Queues::HostAddress));
     }
 
-    template <ThermalPolicy Policy>
-    auto visit_message(const messages::GetResetReasonMessage& msg,
-                       Policy& policy) -> void {
-        auto reason = policy.last_reset_reason();
-
-        auto response = messages::GetResetReasonResponse{
-            .responding_to_id = msg.id, .reason = reason};
-        static_cast<void>(
-            _task_registry->send_to_address(response, Queues::HostAddress));
-    }
-
     /**
      * @brief Updates control of the peltier and fan based off of the current
      * state of the system.
