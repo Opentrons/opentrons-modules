@@ -97,21 +97,26 @@ class TOFDriverTask {
     }
 
     auto visit_message(const messages::SetTOFRegisterMessage& m) -> void {
-        // FOR DEBUGGING
-        enable_tof_sensor_write(TOF_X, true);
-
         // TODO: This should be done by some message builder
-        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         auto reg = static_cast<uint16_t>(m.reg);
         auto value = static_cast<uint8_t>(m.data);
         auto size = 1;
 
+        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         // TODO: Validate register and value
 
         auto [res, data] = _policy->i2c_write(TOF_DEFAULT_ADDR, reg, &value, size);
         if (res != 0) {
             response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
         }
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
+    auto visit_message(const messages::EnableTOFSensorMessage& m) -> void {
+        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
+        // TODO: add return value
+        enable_tof_sensor_write(m.sensor_id, m.enable);
         static_cast<void>(_task_registry->send_to_address(
             response, Queues::HostCommsAddress));
     }

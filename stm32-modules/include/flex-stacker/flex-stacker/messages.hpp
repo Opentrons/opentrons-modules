@@ -286,6 +286,13 @@ struct GetTOFSensorStatusResponse {
     // configured ?
 };
 
+
+struct EnableTOFSensorMessage {
+    uint32_t id;
+    TOFSensorID sensor_id;
+    bool enable;
+};
+
 struct SetTOFRegisterMessage {
     uint32_t id;
     TOFSensorID sensor_id;
@@ -334,7 +341,7 @@ using MotorMessage = ::std::variant<
     HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage>;
 
 using TOFDriverMessage = ::std::variant<std::monostate, SetTOFRegisterMessage,
-                                        GetTOFRegisterMessage>;
+                                        GetTOFRegisterMessage, EnableTOFSensorMessage>;
 
 using TOFSensorMessage =
     ::std::variant<std::monostate, GetTOFSensorStatusMessage>;
