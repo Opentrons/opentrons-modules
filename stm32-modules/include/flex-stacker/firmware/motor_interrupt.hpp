@@ -67,6 +67,7 @@ class MotorInterruptController {
             motor_util::MovementType::FixedDistance, steps);
         _policy->enable_motor(_id);
         _response_id = move_id;
+        _policy->start_motor_timer(_id);
     }
     auto start_move(Move move) -> void {
         motor_util::MotorState* state = move.motor_state;
