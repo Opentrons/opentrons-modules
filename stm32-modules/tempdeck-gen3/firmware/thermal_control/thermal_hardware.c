@@ -424,7 +424,7 @@ static void save_reset_reason() {
         reset_reason |= LSIRDY;
     }
     // brown out
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PORRST)) {
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_BORRST)) {
         reset_reason |= BORRST;
     }
     // option byte-loader reset
