@@ -429,6 +429,17 @@ class MotorTask {
         stop_motors();
     }
 
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::GetResetReasonMessage& msg,
+                       Policy& policy) -> void {
+        auto reason = policy.last_reset_reason();
+
+        auto response = messages::GetResetReasonResponse{
+            .responding_to_id = msg.id, .reason = reason};
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
     /**
      * @brief Move the motor to the limit switch; apply fast moves to XZ motors
      * whenever possible.

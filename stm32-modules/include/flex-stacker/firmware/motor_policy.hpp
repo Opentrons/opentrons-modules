@@ -20,6 +20,7 @@ class MotorPolicy {
     auto check_estop() -> bool;
     auto is_diag0_pin(uint16_t pin) -> bool;
     auto is_estop_pin(uint16_t pin) -> bool;
+    [[nodiscard]] auto last_reset_reason() const -> uint16_t;
 };
 
 }  // namespace motor_policy

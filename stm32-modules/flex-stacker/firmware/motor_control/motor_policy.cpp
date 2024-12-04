@@ -59,3 +59,8 @@ auto MotorPolicy::is_diag0_pin(uint16_t pin) -> bool {
 auto MotorPolicy::is_estop_pin(uint16_t pin) -> bool {
     return hw_is_estop_pin(pin);
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::last_reset_reason() const -> uint16_t {
+    return motor_hardware_reset_reason();
+}

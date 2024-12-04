@@ -74,6 +74,15 @@ struct GetSystemInfoResponse {
     const char* hw_version;
 };
 
+struct GetResetReasonMessage {
+    uint32_t id;
+};
+
+struct GetResetReasonResponse {
+    uint32_t responding_to_id;
+    uint16_t reason;
+};
+
 struct SetSerialNumberMessage {
     uint32_t id;
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
@@ -278,7 +287,7 @@ using HostCommsMessage =
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
                    GetMoveParamsResponse, GetMotorStallGuardResponse,
                    GetDoorClosedResponse, GetPlatformSensorsResponse,
-                   GetEstopResponse>;
+                   GetEstopResponse, GetResetReasonResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -296,6 +305,7 @@ using MotorMessage = ::std::variant<
     MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
     GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
     GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
-    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage>;
+    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage,
+    GetResetReasonMessage>;
 
 };  // namespace messages
