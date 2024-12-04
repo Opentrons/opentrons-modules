@@ -46,8 +46,8 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${COMMS_DIR}/usb_hardware.c
     ${MOTOR_CONTROL_DIR}/motor_hardware.c
     ${MOTOR_CONTROL_DIR}/motor_spi_hardware.c
-    ${TOF_SENSOR_DIR}/tof_i2c_hardware.c
-    ${TOF_SENSOR_DIR}/i2c.c
+    ${TOF_SENSOR_DIR}/tof_sensor_hardware.c
+    ${TOF_SENSOR_DIR}/i2c_hardware.c
     )
 
 add_executable(${TARGET_MODULE_NAME}

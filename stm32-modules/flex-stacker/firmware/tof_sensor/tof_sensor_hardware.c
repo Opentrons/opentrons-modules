@@ -1,7 +1,8 @@
 #include "stm32g4xx_hal_conf.h"
+#include "stm32g4xx_hal_gpio.h"
 
 #include "firmware/tof_sensor_hardware.h"
-#include "stm32g4xx_hal_gpio.h"
+#include "firmware/i2c_hardware.h"
 #include "systemwide.h"
 #include "main.h"
 
@@ -129,7 +130,7 @@ void enable_tof_sensor_write(TOFSensorID sensor_id, bool enable) {
     }
 }
 
-void i2c_setup(I2CHandlerStruct* i2c_handles) {
+void i2c_hardware_init(I2CHandlerStruct* i2c_handles) {
     HAL_I2C_HANDLE i2c2 = MX_I2C2_Init();
     HAL_I2C_HANDLE i2c3 = MX_I2C3_Init();
     i2c_handles->i2c2 = i2c2;

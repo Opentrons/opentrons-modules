@@ -4,9 +4,9 @@
 #include "stm32g4xx_hal_def.h"
 #include "stm32g4xx_it.h"
 #include "FreeRTOS.h"
-
-#include "firmware/i2c.h"
 #include "task.h"
+
+#include "firmware/i2c_hardware.h"
 
 #define MAX_I2C_HANDLES (3)
 #define NO_HANDLE_ERROR (255)
@@ -91,63 +91,10 @@ uint8_t hal_i2c_comms_ready(HAL_I2C_HANDLE handle, uint16_t dev_address, uint8_t
     return (uint8_t)status;
 }
 
-// FOR DEBUGGING
-#define TMF8822_I2C_ADDRESS  0x41  // Adjust based on your configuration
-#define ENABLE_REGISTER      0xE0  // Address of the ENABLE register
-
-uint8_t i2c_tx_complete = 0;
-uint8_t i2c_rx_complete = 0;
-
-uint8_t CheckI2CWrite(HAL_I2C_HANDLE handle, uint8_t reg, uint8_t value) {
-    HAL_StatusTypeDef status;
-    i2c_tx_complete = 0;
-    status = HAL_I2C_Mem_Write_IT(handle, TMF8822_I2C_ADDRESS << 1, reg, 1, &value, 1);
-    while (i2c_tx_complete != 1) HAL_Delay(1);
-    if (status != HAL_OK) return 1;
-    return 2;
-}
-
-uint8_t CheckI2CRead(HAL_I2C_HANDLE handle, uint8_t reg) {
-    uint8_t value = 13;
-    HAL_StatusTypeDef status;
-    i2c_rx_complete = 0;
-    status = HAL_I2C_Mem_Read_IT(handle, TMF8822_I2C_ADDRESS << 1, reg, 2, &value, 1);
-    while (i2c_rx_complete != 1) HAL_Delay(1);
-    if (status != HAL_OK) return 255;
-    return value;
-}
-
-uint8_t DebugTMF8820(HAL_I2C_HANDLE handle, uint8_t *data) {
-    // Set X Enable pin (PC12)
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_12, GPIO_PIN_SET);
-    HAL_Delay(10);
-    // Read the ENABLE register
-    uint8_t ret = CheckI2CRead(handle, *data);
-    return ret;
-    if (ret != 0x41) return 1;
-
-    // Read the APPID and MINOR registers
-    uint8_t app_id = CheckI2CRead(handle, 0x00);
-    uint8_t minor = CheckI2CRead(handle, 0x01);
-    // We are in bootloader mode
-    if (app_id == 0x80) {
-       return minor; 
-    }
-    return minor;
-}
-
-
 /**
- * Wrapper around HAL_I2C_Master_Transmit
+ * Wrapper around HAL_I2C_Mem_Write
  */
-uint8_t hal_i2c_write(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint16_t reg, uint8_t *data, uint16_t size, uint32_t timeout)
-{
-    // FOR DEBUGGING
-    if(0) {
-        uint8_t ret = DebugTMF8820(handle, data); 
-        return ret;
-    }
-
+uint8_t hal_i2c_write(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint16_t reg, uint8_t *data, uint16_t size, uint32_t timeout) {
     uint32_t notification_val = 0;
     I2C_HandleTypeDef* i2c_handle = (I2C_HandleTypeDef*)handle;
     NotificationHandle_t *notification_handle = lookup_handle(i2c_handle);
@@ -186,16 +133,9 @@ uint8_t hal_i2c_write(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint16_t reg, 
 }
 
 /**
- * Wrapper around HAL_I2C_Master_Receive
+ * Wrapper around HAL_I2C_Mem_Read
  */
-uint8_t hal_i2c_read(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint16_t reg, uint8_t *data, uint16_t size, uint32_t timeout){
-
-    // FOR DEBUGGING
-    if(0) {
-        uint8_t ret = DebugTMF8820(handle, data); 
-        return ret;
-    }
-
+uint8_t hal_i2c_read(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint16_t reg, uint8_t *data, uint16_t size, uint32_t timeout) {
     uint32_t notification_val = 0;
     I2C_HandleTypeDef* i2c_handle = (I2C_HandleTypeDef*)handle;
     NotificationHandle_t *notification_handle = lookup_handle(i2c_handle);
@@ -233,11 +173,11 @@ uint8_t hal_i2c_read(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint16_t reg, u
     return (uint8_t)rx_result;
 }
 
-void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *i2c_handle){
+void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *i2c_handle) {
     handle_i2c_callback(i2c_handle, false);
 }
 
-void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *i2c_handle){
+void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *i2c_handle) {
     handle_i2c_callback(i2c_handle, false);
 }
 

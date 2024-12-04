@@ -1,14 +1,15 @@
 #include "FreeRTOS.h"
-#include "firmware/firmware_tasks.hpp"
+#include "task.h"
+
+#include "ot_utils/freertos/freertos_task.hpp"
 #include "firmware/freertos_tasks.hpp"
+#include "firmware/firmware_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
 #include "firmware/motor_hardware.h"
-#include "firmware/system_stm32g4xx.h"
 #include "firmware/tof_sensor_hardware.h"
+#include "firmware/system_stm32g4xx.h"
 #include "flex-stacker/messages.hpp"
-#include "ot_utils/freertos/freertos_task.hpp"
 #include "systemwide.h"
-#include "task.h"
 
 #pragma GCC diagnostic push
 // NOLINTNEXTLINE(clang-diagnostic-unknown-warning-option)
@@ -83,7 +84,7 @@ static auto i2c_handles = I2CHandlerStruct{};
 auto main() -> int {
     HardwareInit();
 
-    i2c_setup(&i2c_handles);
+    i2c_hardware_init(&i2c_handles);
     i2c2_comms.set_handle(i2c_handles.i2c2);
     i2c3_comms.set_handle(i2c_handles.i2c3);
 

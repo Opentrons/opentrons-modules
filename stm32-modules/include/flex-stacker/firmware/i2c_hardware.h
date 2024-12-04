@@ -16,13 +16,13 @@ typedef void *HAL_I2C_HANDLE;
 bool i2c_register_handle(HAL_I2C_HANDLE handle);
 
 /**
- * Wrapper around HAL_I2C_Master_Transmit
+ * Wrapper around HAL_I2C_Mem_Write
  */
 uint8_t hal_i2c_write(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint16_t reg,
                       uint8_t *data, uint16_t size, uint32_t timeout);
 
 /**
- * Wrapper around HAL_I2C_Master_Receive
+ * Wrapper around HAL_I2C_Mem_Read
  */
 uint8_t hal_i2c_read(HAL_I2C_HANDLE handle, uint16_t DevAddress, uint16_t reg,
                      uint8_t *data, uint16_t size, uint32_t timeout);

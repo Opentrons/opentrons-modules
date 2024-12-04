@@ -1,13 +1,12 @@
 #pragma once
 
 #include <stdint.h>
-
 #include <algorithm>
 #include <cstdint>
 #include <optional>
 
 #include "firmware/hardware_iface.hpp"
-#include "firmware/i2c.h"
+#include "firmware/i2c_hardware.h"
 #include "systemwide.h"
 
 namespace i2c {
