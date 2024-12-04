@@ -1070,6 +1070,7 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetTOFRegisterResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
+
         auto cache_entry =
             get_tof_register_cache.remove_if_present(response.responding_to_id);
         return std::visit(

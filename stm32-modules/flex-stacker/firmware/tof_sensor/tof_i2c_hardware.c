@@ -123,9 +123,9 @@ void enable_eeprom_write(bool enable) {
  */
 void enable_tof_sensor_write(TOFSensorID sensor_id, bool enable) {
     if (sensor_id == TOF_X) {
-        HAL_GPIO_WritePin(TOF_EN_X_PORT, TOF_EN_X_PIN, enable ? GPIO_PIN_RESET : GPIO_PIN_SET);
+        HAL_GPIO_WritePin(TOF_EN_X_PORT, TOF_EN_X_PIN, enable ? GPIO_PIN_SET : GPIO_PIN_RESET);
     } else if (sensor_id == TOF_Z) {
-        HAL_GPIO_WritePin(TOF_EN_Z_PORT, TOF_EN_Z_PIN, enable ? GPIO_PIN_RESET : GPIO_PIN_SET);
+        HAL_GPIO_WritePin(TOF_EN_Z_PORT, TOF_EN_Z_PIN, enable ? GPIO_PIN_SET : GPIO_PIN_RESET);
     }
 }
 
