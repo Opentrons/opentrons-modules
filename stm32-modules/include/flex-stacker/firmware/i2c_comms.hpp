@@ -22,7 +22,8 @@ class I2C : public I2CBase {
     auto operator=(const I2C &&) = delete;
 
     auto i2c_read(uint16_t dev_addr, uint16_t reg, uint16_t size) -> RxTxReturn;
-    auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t* data, uint16_t size) -> RxTxReturn;
+    auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t *data,
+                   uint16_t size) -> RxTxReturn;
     auto set_handle(HAL_I2C_HANDLE i2c_handle) -> void;
     auto enable_tof_sensor(TOFSensorID sensor_id, bool enable) -> void;
 

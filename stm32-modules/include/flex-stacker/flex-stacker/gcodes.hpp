@@ -386,8 +386,8 @@ struct EnableTOFSensor {
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        auto res = gcode::SingleParser<XArg, ZArg>::parse_gcode(
-            input, limit, prefix);
+        auto res =
+            gcode::SingleParser<XArg, ZArg>::parse_gcode(input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }

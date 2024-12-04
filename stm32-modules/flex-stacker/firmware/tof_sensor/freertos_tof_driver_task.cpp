@@ -20,7 +20,8 @@ static auto _top_task =
     tof_driver_task::TOFDriverTask(_queue, nullptr, nullptr);
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
-auto run(tasks::FirmwareTasks::QueueAggregator* aggregator, i2c::hardware::I2C* i2c_comms) -> void {
+auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
+         i2c::hardware::I2C* i2c_comms) -> void {
     auto* handle = xTaskGetCurrentTaskHandle();
     _queue.provide_handle(handle);
     aggregator->register_queue(_queue);
@@ -30,7 +31,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator, i2c::hardware::I2C* 
     // Maybe initialize sensors here?
     // 0. disable both sensors (TOF_EN == RESET)
     // 1. enable the Z sensor, set the i2c address 0x39, disable Z sensor
-    // 2. enable the X sensor, set the i2c address 0x40, disable X sensor 
+    // 2. enable the X sensor, set the i2c address 0x40, disable X sensor
     // 3. get the current status over i2c
     //_top_task.initialize_sensors()
 

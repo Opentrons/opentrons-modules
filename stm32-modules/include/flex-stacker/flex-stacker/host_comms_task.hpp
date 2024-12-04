@@ -48,8 +48,8 @@ class HostCommsTask {
         gcode::GetLimitSwitches, gcode::SetMicrosteps, gcode::GetMoveParams,
         gcode::SetMotorStallGuard, gcode::GetMotorStallGuard, gcode::HomeMotor,
         gcode::GetPlatformSensors, gcode::GetDoorClosed, gcode::GetEstopStatus,
-        gcode::GetTOFSensorStatus, gcode::GetTOFRegister,
-        gcode::SetTOFRegister, gcode::EnableTOFSensor>;
+        gcode::GetTOFSensorStatus, gcode::GetTOFRegister, gcode::SetTOFRegister,
+        gcode::EnableTOFSensor>;
     using AckOnlyCache = AckCache<
         8, gcode::EnterBootloader, gcode::SetSerialNumber,
         gcode::SetTMCRegister, gcode::SetRunCurrent, gcode::SetHoldCurrent,
@@ -1070,7 +1070,6 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetTOFRegisterResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-
         auto cache_entry =
             get_tof_register_cache.remove_if_present(response.responding_to_id);
         return std::visit(
@@ -1125,10 +1124,8 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message =
-            messages::EnableTOFSensorMessage{.id = id,
-                                            .sensor_id = gcode.sensor_id,
-                                            .enable = gcode.enable};
+        auto message = messages::EnableTOFSensorMessage{
+            .id = id, .sensor_id = gcode.sensor_id, .enable = gcode.enable};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);

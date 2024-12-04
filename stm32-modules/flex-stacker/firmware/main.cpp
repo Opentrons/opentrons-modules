@@ -1,9 +1,9 @@
 #include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_tasks.hpp"
+#include "firmware/i2c_comms.hpp"
 #include "firmware/motor_hardware.h"
 #include "firmware/system_stm32g4xx.h"
-#include "firmware/i2c_comms.hpp"
 #include "firmware/tof_sensor_hardware.h"
 #include "flex-stacker/messages.hpp"
 #include "ot_utils/freertos/freertos_task.hpp"
@@ -20,7 +20,8 @@
 
 // Task EntryPoint
 using EntryPoint = std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
-using EntryPointTOFDriver = std::function<void(tasks::FirmwareTasks::QueueAggregator *, i2c::hardware::I2C *)>;
+using EntryPointTOFDriver = std::function<void(
+    tasks::FirmwareTasks::QueueAggregator *, i2c::hardware::I2C *)>;
 
 static auto motor_driver_task_entry = EntryPoint(motor_driver_task::run);
 static auto motor_task_entry = EntryPoint(motor_control_task::run);
@@ -51,9 +52,8 @@ static auto system_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::SYSTEM_STACK_SIZE, EntryPoint>(
         system_task_entry);
 
-static auto tof_d_task =
-    ot_utils::freertos_task::FreeRTOSTask<tasks::TOF_DRIVER_STACK_SIZE,
-                                          EntryPointTOFDriver>(tof_driver_task_entry);
+static auto tof_d_task = ot_utils::freertos_task::FreeRTOSTask<
+    tasks::TOF_DRIVER_STACK_SIZE, EntryPointTOFDriver>(tof_driver_task_entry);
 
 static auto tof_s_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::TOF_SENSOR_STACK_SIZE,
@@ -91,8 +91,8 @@ auto main() -> int {
     driver_task.start(tasks::MOTOR_DRIVER_TASK_PRIORITY, "Motor Driver",
                       &aggregator);
     motor_task.start(tasks::MOTOR_TASK_PRIORITY, "Motor", &aggregator);
-    tof_d_task.start(tasks::TOF_DRIVER_TASK_PRIORITY, "TOF Driver",
-                     &aggregator, &i2c3_comms);
+    tof_d_task.start(tasks::TOF_DRIVER_TASK_PRIORITY, "TOF Driver", &aggregator,
+                     &i2c3_comms);
     tof_s_task.start(tasks::TOF_SENSOR_TASK_PRIORITY, "TOF Sensor",
                      &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);

@@ -1,8 +1,9 @@
 #pragma once
 
 #include <stdio.h>
-#include <cstdint>
+
 #include <array>
+#include <cstdint>
 
 #include "core/ack_cache.hpp"
 #include "core/fixed_point.hpp"
@@ -16,8 +17,38 @@
 #include "systemwide.h"
 #include "tof_sensor_hardware.h"
 
+/*
+TODO:
+- need to add way to `initialize` the sensors
+    - enable the sensor
+    - wrte 0x01 to ENABLE (0xE0) reg
+    - read the ENABLE (0xE0) reg until result = 0x41
+    - read APPID (0x00) reg
+    - if APPID = 0x80 do bootloader routine
+    - if APPID = 0x03 do measureument routine      <--------- INITIALIZED?
+
+- need to handle APPID = 0x80 bootloader routine
+    - figure out how to store app image in Flash
+    - add mechanism to detect bootloader mode
+    - add mechanism to determine if an update is required
+    - add mechanism to send app image in Flash to sensor
+    - add mechanism to verify the update is complete
+    - add mechanism to transition from bootloader mode to Factory Mode or Main
+App Mode
+
+- need to handle APPID = 0x03 Main App Mode
+    - add mechanism to detect we are in Main App Mode
+    - add mechanism to get/set the measurement configs
+    - add mechanism to get/set the calibration
+
+- need to handle APPID = 0x03, CIDRID = 0x19 Factory Mode
+    - add mechanism to detect we are in Factory Mode
+    - add mechanism to set/get factory calibration
+*/
+
 // This is the default address, this will be changed in sw.
-static constexpr const uint8_t TOF_DEFAULT_ADDR = (0x41) << 1;  // 0x41 DEFAULT address
+static constexpr const uint8_t TOF_DEFAULT_ADDR = (0x41)
+                                                  << 1;  // 0x41 DEFAULT address
 
 namespace tof_driver_task {
 using namespace tof_driver_policy;
@@ -82,7 +113,8 @@ class TOFDriverTask {
 
         auto [res, data] = _policy->i2c_read(TOF_DEFAULT_ADDR, reg, size);
         if (res != 0) {
-            response = messages::ErrorMessage{.code = errors::ErrorCode::TMC2160_READ_ERROR};
+            response = messages::ErrorMessage{
+                .code = errors::ErrorCode::TMC2160_READ_ERROR};
         } else {
             auto value = static_cast<uint32_t>(*data.data());
             response = messages::GetTOFRegisterResponse{
@@ -105,7 +137,8 @@ class TOFDriverTask {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         // TODO: Validate register and value
 
-        auto [res, data] = _policy->i2c_write(TOF_DEFAULT_ADDR, reg, &value, size);
+        auto [res, data] =
+            _policy->i2c_write(TOF_DEFAULT_ADDR, reg, &value, size);
         if (res != 0) {
             response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
         }

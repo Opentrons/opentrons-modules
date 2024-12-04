@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+
 #include <cstdint>
 #include <optional>
 #include <tuple>
@@ -21,8 +22,10 @@ class I2CBase {
     I2CBase(I2CBase&&) = default;
     auto operator=(I2CBase&&) -> I2CBase& = default;
 
-    virtual auto i2c_read(uint16_t dev_addr, uint16_t reg, uint16_t size) -> RxTxReturn;
-    virtual auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t* data, uint16_t size) -> RxTxReturn;
+    virtual auto i2c_read(uint16_t dev_addr, uint16_t reg, uint16_t size)
+        -> RxTxReturn;
+    virtual auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t* data,
+                           uint16_t size) -> RxTxReturn;
 };
 
 };  // namespace hardware
