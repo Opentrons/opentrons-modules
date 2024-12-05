@@ -292,7 +292,7 @@ using HostCommsMessage =
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage,
-                   GetDoorClosedMessage>;
+                   GetDoorClosedMessage, GetResetReasonMessage>;
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
@@ -305,7 +305,6 @@ using MotorMessage = ::std::variant<
     MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
     GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
     GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
-    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage,
-    GetResetReasonMessage>;
+    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage>;
 
 };  // namespace messages
