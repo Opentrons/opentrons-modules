@@ -48,7 +48,7 @@ class HostCommsTask {
         gcode::GetLimitSwitches, gcode::SetMicrosteps, gcode::GetMoveParams,
         gcode::SetMotorStallGuard, gcode::GetMotorStallGuard, gcode::HomeMotor,
         gcode::GetPlatformSensors, gcode::GetDoorClosed, gcode::GetEstopStatus,
-        gcode::StopMotor>;
+        gcode::StopMotor, gcode::GetResetReason>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::SetTMCRegister, gcode::SetRunCurrent,
@@ -64,6 +64,7 @@ class HostCommsTask {
     using GetDoorClosedCache = AckCache<8, gcode::GetDoorClosed>;
     using GetPlatformSensorsCache = AckCache<8, gcode::GetPlatformSensors>;
     using GetEstopCache = AckCache<8, gcode::GetEstopStatus>;
+    using GetResetReasonCache = AckCache<8, gcode::GetResetReason>;
 
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
@@ -88,7 +89,9 @@ class HostCommsTask {
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_platform_sensors_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          get_estop_cache() {}
+          get_estop_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_reset_reason_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -291,6 +294,50 @@ class HostCommsTask {
                 }
             },
             cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetResetReasonResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            get_reset_reason_cache.remove_if_present(response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(tx_into, tx_limit,
+                                                             response.reason);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetResetReason& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_reset_reason_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetResetReasonMessage{.id = id};
+
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_reset_reason_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
     }
 
     template <typename InputIt, typename InputLimit>
@@ -1020,6 +1067,7 @@ class HostCommsTask {
     GetDoorClosedCache get_door_closed_cache;
     GetPlatformSensorsCache get_platform_sensors_cache;
     GetEstopCache get_estop_cache;
+    GetResetReasonCache get_reset_reason_cache;
     bool may_connect_latch = true;
 };
 
