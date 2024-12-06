@@ -168,7 +168,7 @@ class MotorTask {
     }
 
     auto stop_motors(uint32_t id = 0) -> void {
-        _z_controller.stop_movement(id, true);
+        _z_controller.stop_movement(id, false);
         _x_controller.stop_movement(id, false);
         _l_controller.stop_movement(id, false);
         _move_queue.reset();
@@ -372,9 +372,6 @@ class MotorTask {
             // if there's a next move in the queue, start it
             controller_from_id(next_move.motor_id).start_move(next_move);
         } else {
-            if (m.motor_id == MotorID::MOTOR_Z) {
-                policy.disable_motor(m.motor_id);
-            }
             send_ack_message(controller_from_id(m.motor_id).get_response_id());
         }
     }
