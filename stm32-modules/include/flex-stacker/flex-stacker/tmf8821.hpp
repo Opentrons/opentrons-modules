@@ -43,22 +43,27 @@ class TMF8821 {
         return policy.i2c_write(dev_address, Reg::address, value);
     }
 
-    template <TMF8821Register Reg, TMF8821Policy Policy>
-    requires ReadableRegister<Reg>
-    auto read(Policy& policy, TOFSensorID sensor_id) -> std::optional<Reg> {
-        using RT = std::optional<Reg>;
+    auto read(RegisterType type, uint32_t reg, TOFSensorID sensor_id)
+        -> std::optional<RegisterSerializedType> {
+        using RT = std::optional<RegisterSerializedType>;
         // TODO: This should be done by some message builder
         auto size = 1;
         auto dev_address = 0x41;  // TODO: Fix
-        auto ret = policy.i2c_read(dev_address, Reg::address, size);
-        if (!ret.has_value()) {
-            return RT();
-        }
+        
+        static_cast<void>(size);
+        static_cast<void>(dev_address);
+        return RT();
+        //auto ret = policy.i2c_read(dev_address, Reg::address, size);
+        //if (!ret.has_value()) {
+        //    return RT();
+        //}
         // Ignore the typical linter warning because we're only using
         // this on __packed structures that mimic hardware registers
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-        return RT(*reinterpret_cast<Reg*>(&ret.value()));
+        //return RT(*reinterpret_cast<Reg*>(&ret.value()));
     }
+
+    bool _initialized = false;
 };
 
 }  // namespace tmf8821

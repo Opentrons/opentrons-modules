@@ -121,25 +121,34 @@ class TOFDriverTask {
     auto visit_message(const messages::GetTOFRegisterMessage& m) -> void {
         messages::HostCommsMessage response;
 
-        // TODO: This should be done by some message builder
-        auto reg = static_cast<uint16_t>(m.reg);
-        auto size = 1;
+        // TODO: This needs to be set based on the mode
+        auto type = RegisterType::BASE;
+        auto reg = static_cast<uint32_t>(BaseRegisters::ENABLE);
+        auto data = _tmf8821.read(type, reg, m.sensor_id);
+        //auto data = _tmf8821.write(reg, value, m.sensor_id);
 
-        auto [res, data] = _policy->i2c_read(TOF_DEFAULT_ADDR, reg, size);
-        if (res != 0) {
-            response = messages::ErrorMessage{
-                .code = errors::ErrorCode::TMC2160_READ_ERROR};
-        } else {
-            auto value = static_cast<uint32_t>(*data.data());
-            response = messages::GetTOFRegisterResponse{
-                .responding_to_id = m.id,
-                .sensor_id = m.sensor_id,
-                .reg = res,
-                .data = value,
-            };
-        }
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
+        static_cast<void>(data);
+        return;
+
+
+        //auto reg = static_cast<uint16_t>(m.reg);
+        //auto size = 1;
+
+        //auto [res, data] = _policy->i2c_read(TOF_DEFAULT_ADDR, reg, size);
+        //if (res != 0) {
+        //    response = messages::ErrorMessage{
+        //        .code = errors::ErrorCode::TMC2160_READ_ERROR};
+        //} else {
+        //    auto value = static_cast<uint32_t>(*data.data());
+        //    response = messages::GetTOFRegisterResponse{
+        //        .responding_to_id = m.id,
+        //        .sensor_id = m.sensor_id,
+        //        .reg = res,
+        //        .data = value,
+        //    };
+        //}
+        //static_cast<void>(_task_registry->send_to_address(
+        //    response, Queues::HostCommsAddress));
     }
 
     auto visit_message(const messages::SetTOFRegisterMessage& m) -> void {

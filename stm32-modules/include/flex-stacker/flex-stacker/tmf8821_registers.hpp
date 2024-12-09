@@ -237,6 +237,8 @@ inline auto is_valid_address(RegisterType type, const uint16_t reg) -> bool {
     return false;
 }
 
+//auto value_to_register(RegisterType type, uint32_t reg) -> 
+
 /** Template concept to constrain what structures encapsulate registers.*/
 template <typename Reg>
 // Struct has a valid register address
@@ -297,4 +299,9 @@ struct TMF8821RegisterMap {
     Enable enable = {};
 };
 
+
+// Registers are all 32 bits
+using RegisterSerializedType = uint32_t;
+// Type definition to allow type aliasing for pointer dereferencing
+using RegisterSerializedTypeA = __attribute__((__may_alias__)) uint32_t;
 }  // namespace tmf8821
