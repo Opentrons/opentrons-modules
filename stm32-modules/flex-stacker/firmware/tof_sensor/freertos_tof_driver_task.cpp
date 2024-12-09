@@ -1,4 +1,5 @@
 #include "FreeRTOS.h"
+
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
 #include "firmware/tof_driver_policy.hpp"
@@ -21,22 +22,15 @@ static auto _top_task =
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
-         i2c::hardware::I2C* i2c_comms) -> void {
+         i2c::hardware::I2C* i2c_comm) -> void {
     auto* handle = xTaskGetCurrentTaskHandle();
     _queue.provide_handle(handle);
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
-    _top_task.set_i2c_comms(i2c_comms);
 
-    // Maybe initialize sensors here?
-    // 0. disable both sensors (TOF_EN == RESET)
-    // 1. enable the Z sensor, set the i2c address 0x39, disable Z sensor
-    // 2. enable the X sensor, set the i2c address 0x40, disable X sensor
-    // 3. get the current status over i2c
-    //_top_task.initialize_sensors()
-
+    auto policy = TOFDriverPolicy(i2c_comm);
     while (true) {
-        _top_task.run_once();
+        _top_task.run_once(&policy);
     }
 }
 

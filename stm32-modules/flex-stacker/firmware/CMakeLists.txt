@@ -29,6 +29,7 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${MOTOR_CONTROL_DIR}/motor_policy.cpp
     ${TOF_SENSOR_DIR}/freertos_tof_driver_task.cpp
     ${TOF_SENSOR_DIR}/freertos_tof_sensor_task.cpp
+    ${TOF_SENSOR_DIR}/tof_driver_policy.cpp
     ${TOF_SENSOR_DIR}/i2c_comms.cpp
     )
 

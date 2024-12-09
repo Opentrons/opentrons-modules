@@ -1,17 +1,32 @@
 #pragma once
 
+#include <stdint.h>
+#include <algorithm>
+#include <cstdint>
 #include <optional>
 
-#include "flex-stacker/tmc2160_interface.hpp"
+#include "firmware/hardware_iface.hpp"
 #include "systemwide.h"
 
-namespace tof_driver_policy {
-
+namespace tof {
+namespace hardware {
+using namespace i2c::hardware;
 class TOFDriverPolicy {
   public:
-    using RxTxReturn = std::optional<tmc2160::MessageT>;
-    auto tmc2160_transmit_receive(MotorID motor_id, tmc2160::MessageT& data)
-        -> RxTxReturn;
-};
+    explicit TOFDriverPolicy(I2CBase *i2c) :
+        i2c_comms(i2c) {}
+    TOFDriverPolicy(const TOFDriverPolicy &) = delete;
+    TOFDriverPolicy(const TOFDriverPolicy &&) = delete;
+    auto operator=(const TOFDriverPolicy &) = delete;
+    auto operator=(const TOFDriverPolicy &&) = delete;
 
-}  // namespace tof_driver_policy
+    auto i2c_read(uint16_t dev_addr, uint16_t reg, uint16_t size) -> RxTxReturn;
+    auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t *data,
+                   uint16_t size) -> RxTxReturn;
+    auto enable_tof_sensor(TOFSensorID sensor_id, bool enable) -> void;
+
+  private:
+    I2CBase *i2c_comms{nullptr};
+};
+};  // namespace hardware
+};  // namespace tof

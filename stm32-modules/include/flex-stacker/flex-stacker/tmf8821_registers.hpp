@@ -21,11 +21,10 @@
  *
  * */
 #include <sys/types.h>
-
 #include <cstdint>
-namespace sensors {
+
 namespace tmf8821 {
-constexpr uint16_t ADDRESS = 0x44 << 1;
+constexpr uint16_t DEFAULT_ADDRESS = 0x41 << 1;
 
 // Any appid, any cid_rid – Registers always available
 enum class BaseRegisters : uint8_t {
@@ -182,7 +181,7 @@ enum class RegisterType : uint8_t {
     BOOTLOADER = 0x07,
 };
 
-union Registers {
+typedef struct Registers {
     BaseRegisters base;
     AppRegisters app;
     MeasurementResultsRegisters measurement;
@@ -191,7 +190,8 @@ union Registers {
     FactoryCalibrationRegisters calibration;
     RawDataHistRegisters histogram;
     BootloaderRegisters bootloader;
-};
+
+} Registers;
 
 inline auto is_valid_address(RegisterType type, const uint16_t reg) -> bool {
     switch (type) {
@@ -242,13 +242,16 @@ template <typename Reg>
 // Struct has a valid register address
 // Struct has an integer with the total number of bits in a register.
 // This is used to mask the value before writing it to the sensor.
-concept TMF8821CommandRegister =
+concept TMF8821Register =
     std::same_as<std::remove_cvref_t<decltype(Reg::address)>,
                  std::remove_cvref_t<Registers&>> &&
     std::integral<decltype(Reg::value_mask)> &&
     std::is_array_v<decltype(Reg::mode_map)>;
 
-concept WritableRegister = requires() { {Reg::writable}; };
+template <typename Reg>
+concept WritableRegister = requires() {
+    {Reg::writable};
+};
 
 template <typename Reg>
 concept ReadableRegister = requires() {
@@ -256,23 +259,42 @@ concept ReadableRegister = requires() {
 };
 
 struct __attribute__((packed, __may_alias__)) AppID {
-    static constexpr Registers address = BaseRegisters::APPID;
+    // TODO: We might want to change this to uint32_t
+    static constexpr BaseRegisters address = BaseRegisters::APPID;
     static constexpr bool readable = true;
     static constexpr bool writable = false;
     static constexpr uint32_t value_mask = (1 << 8) - 1;
 
-    uint8_t C7 : 1 = 0;
+    uint32_t C7 : 8 = 0;
 };
 
-enum class BaseRegisters : uint8_t {
-    APPID = 0x00,
-    MINOR = 0x01,
-    ENABLE = 0xE0,
-    INT_STATUS = 0xE1,
-    INT_ENAB = 0xE2,
-    ID_REGISTER = 0xE3,
-    REVID = 0xE4,
+
+struct __attribute__((packed, __may_alias__)) Minor {
+    // TODO: We might want to change this to uint32_t
+    static constexpr BaseRegisters address = BaseRegisters::MINOR;
+    static constexpr bool readable = true;
+    static constexpr bool writable = false;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint32_t minor : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) Enable {
+    // TODO: We might want to change this to uint32_t
+    static constexpr BaseRegisters address = BaseRegisters::ENABLE;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    // Do these need to be uint32_t?
+    uint32_t pon : 1 = 1;
+    uint32_t padding_1 : 4 = 0;
+    uint32_t powerup_select : 2 = 0;
+    uint32_t cpu_ready : 1 = 0;
+};
+
+struct TMF8821RegisterMap {
+    Enable enable = {};
 };
 
 }  // namespace tmf8821
-}  // namespace sensors

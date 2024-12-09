@@ -11,10 +11,13 @@
 #include "flex-stacker/errors.hpp"
 #include "flex-stacker/messages.hpp"
 #include "flex-stacker/tasks.hpp"
+#include "flex-stacker/tmf8821.hpp"
+#include "flex-stacker/tmf8821_registers.hpp"
 #include "hal/message_queue.hpp"
-#include "i2c_comms.hpp"
+#include "hardware_iface.hpp"
 #include "messages.hpp"
 #include "systemwide.h"
+#include "tof_driver_policy.hpp"
 #include "tof_sensor_hardware.h"
 
 /*
@@ -51,8 +54,15 @@ static constexpr const uint8_t TOF_DEFAULT_ADDR = (0x41)
                                                   << 1;  // 0x41 DEFAULT address
 
 namespace tof_driver_task {
-using namespace tof_driver_policy;
+using namespace tof::hardware;
+using namespace tmf8821;
 using Message = messages::TOFDriverMessage;
+
+
+static constexpr tmf8821::TMF8821RegisterMap tof_x_config{
+    // TODO: Change these defaults once available
+    .enable = {.pon = 1, .powerup_select = 0}
+};
 
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
@@ -64,7 +74,7 @@ class TOFDriverTask {
 
   public:
     explicit TOFDriverTask(Queue& q, Aggregator* aggregator,
-                           i2c::hardware::I2C* policy)
+                           TOFDriverPolicy* policy)
         : _message_queue(q),
           _task_registry(aggregator),
           _policy(policy),
@@ -79,14 +89,18 @@ class TOFDriverTask {
         _task_registry = aggregator;
     }
 
-    auto set_i2c_comms(i2c::hardware::I2C* policy) -> void { _policy = policy; }
-
-    auto run_once() -> void {
+    template <tmf8821::TMF8821Policy Policy>
+    auto run_once(Policy* policy) -> void {
         if (!_task_registry) {
             return;
         }
 
         if (!_initialized) {
+            _policy = policy;
+            auto s1 = _tmf8821.initialize_sensor(_tof_x_config, _policy, TOF_X);
+            static_cast<void>(s1);
+            //auto s2 = _tmf8821.initialize(_policy, TOF_Z);
+            // sensor_status = SensorStatus(ret1, ret2)
             _initialized = true;
         }
 
@@ -156,7 +170,10 @@ class TOFDriverTask {
 
     Queue& _message_queue;
     Aggregator* _task_registry;
-    i2c::hardware::I2C* _policy;
+    TOFDriverPolicy* _policy;
     bool _initialized = false;
+
+    tmf8821::TMF8821 _tmf8821{};
+    tmf8821::TMF8821RegisterMap _tof_x_config = tof_x_config;
 };
 };  // namespace tof_driver_task
