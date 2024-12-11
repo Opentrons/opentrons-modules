@@ -49,10 +49,6 @@ App Mode
     - add mechanism to set/get factory calibration
 */
 
-// This is the default address, this will be changed in sw.
-static constexpr const uint8_t TOF_DEFAULT_ADDR = (0x41)
-                                                  << 1;  // 0x41 DEFAULT address
-
 namespace tof_driver_task {
 using namespace tof::hardware;
 using namespace tmf8821;
@@ -61,7 +57,13 @@ using Message = messages::TOFDriverMessage;
 
 static constexpr tmf8821::TMF8821RegisterMap tof_x_config{
     // TODO: Change these defaults once available
-    .enable = {.pon = 1, .powerup_select = 0}
+    .enable = {.pon = 0, .powerup_select = 0}
+};
+
+
+static constexpr tmf8821::TMF8821RegisterMap tof_z_config{
+    // TODO: Change these defaults once available
+    .enable = {.pon = 0, .powerup_select = 0}
 };
 
 template <template <class> class QueueImpl>
@@ -97,10 +99,8 @@ class TOFDriverTask {
 
         if (!_initialized) {
             _policy = policy;
-            auto s1 = _tmf8821.initialize_sensor(_tof_x_config, _policy, TOF_X);
-            static_cast<void>(s1);
-            //auto s2 = _tmf8821.initialize(_policy, TOF_Z);
-            // sensor_status = SensorStatus(ret1, ret2)
+            _tmf8821.initialize_sensor(_tof_x_config, _policy, TOF_X);
+            _tmf8821.initialize_sensor(_tof_z_config, _policy, TOF_Z);
             _initialized = true;
         }
 
@@ -120,49 +120,39 @@ class TOFDriverTask {
 
     auto visit_message(const messages::GetTOFRegisterMessage& m) -> void {
         messages::HostCommsMessage response;
-
-        // TODO: This needs to be set based on the mode
+        // TODO: Validate type, reg, and value
+        // TODO: type needs to be set based on the mode
         auto type = RegisterType::BASE;
-        auto reg = static_cast<uint32_t>(BaseRegisters::ENABLE);
-        auto data = _tmf8821.read(type, reg, m.sensor_id);
-        //auto data = _tmf8821.write(reg, value, m.sensor_id);
+        //auto data = _tmf8821.read(type, m.reg, m.sensor_id);
 
-        static_cast<void>(data);
-        return;
+        // FOR TESTING i2c write
+        auto value = static_cast<uint32_t>(0x51);  // 81d
+        auto data = _tmf8821.write(type, m.reg, &value, m.sensor_id);
+        // FOR TESTING
 
-
-        //auto reg = static_cast<uint16_t>(m.reg);
-        //auto size = 1;
-
-        //auto [res, data] = _policy->i2c_read(TOF_DEFAULT_ADDR, reg, size);
-        //if (res != 0) {
-        //    response = messages::ErrorMessage{
-        //        .code = errors::ErrorCode::TMC2160_READ_ERROR};
-        //} else {
-        //    auto value = static_cast<uint32_t>(*data.data());
-        //    response = messages::GetTOFRegisterResponse{
-        //        .responding_to_id = m.id,
-        //        .sensor_id = m.sensor_id,
-        //        .reg = res,
-        //        .data = value,
-        //    };
-        //}
-        //static_cast<void>(_task_registry->send_to_address(
-        //    response, Queues::HostCommsAddress));
+        if (!data.has_value()) {
+          response = messages::ErrorMessage{
+                .code = errors::ErrorCode::TMC2160_READ_ERROR};
+        } else {
+            response = messages::GetTOFRegisterResponse{
+                .responding_to_id = m.id,
+                .sensor_id = m.sensor_id,
+                .reg = m.reg,
+                .data = data.value(),
+            };
+        }
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
     }
 
     auto visit_message(const messages::SetTOFRegisterMessage& m) -> void {
-        // TODO: This should be done by some message builder
-        auto reg = static_cast<uint16_t>(m.reg);
-        auto value = static_cast<uint8_t>(m.data);
-        auto size = 1;
-
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
-        // TODO: Validate register and value
-
-        auto [res, data] =
-            _policy->i2c_write(TOF_DEFAULT_ADDR, reg, &value, size);
-        if (res != 0) {
+        // TODO: Validate type, reg, and value
+        auto type = RegisterType::BASE;
+        auto reg = static_cast<uint16_t>(m.reg);
+        auto value = static_cast<uint32_t>(m.data);
+        auto data = _tmf8821.write(type, reg, &value, m.sensor_id);
+        if (!data.has_value()) {
             response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
         }
         static_cast<void>(_task_registry->send_to_address(
@@ -182,7 +172,8 @@ class TOFDriverTask {
     TOFDriverPolicy* _policy;
     bool _initialized = false;
 
-    tmf8821::TMF8821 _tmf8821{};
+    tmf8821::TMF8821 _tmf8821{nullptr};
     tmf8821::TMF8821RegisterMap _tof_x_config = tof_x_config;
+    tmf8821::TMF8821RegisterMap _tof_z_config = tof_z_config;
 };
 };  // namespace tof_driver_task

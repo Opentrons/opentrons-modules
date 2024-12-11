@@ -24,7 +24,6 @@
 #include <cstdint>
 
 namespace tmf8821 {
-constexpr uint16_t DEFAULT_ADDRESS = 0x41 << 1;
 
 // Any appid, any cid_rid – Registers always available
 enum class BaseRegisters : uint8_t {
@@ -237,18 +236,16 @@ inline auto is_valid_address(RegisterType type, const uint16_t reg) -> bool {
     return false;
 }
 
-//auto value_to_register(RegisterType type, uint32_t reg) -> 
-
 /** Template concept to constrain what structures encapsulate registers.*/
 template <typename Reg>
 // Struct has a valid register address
 // Struct has an integer with the total number of bits in a register.
 // This is used to mask the value before writing it to the sensor.
 concept TMF8821Register =
-    std::same_as<std::remove_cvref_t<decltype(Reg::address)>,
-                 std::remove_cvref_t<Registers&>> &&
-    std::integral<decltype(Reg::value_mask)> &&
-    std::is_array_v<decltype(Reg::mode_map)>;
+    std::same_as<std::remove_cvref_t<decltype(Reg::mode)>,
+                 std::remove_cvref_t<RegisterType&>> &&
+    std::integral<decltype(Reg::address)> &&
+    std::integral<decltype(Reg::value_mask)>;
 
 template <typename Reg>
 concept WritableRegister = requires() {
@@ -261,44 +258,43 @@ concept ReadableRegister = requires() {
 };
 
 struct __attribute__((packed, __may_alias__)) AppID {
-    // TODO: We might want to change this to uint32_t
-    static constexpr BaseRegisters address = BaseRegisters::APPID;
+    static constexpr auto mode = RegisterType::BASE;
+    static constexpr auto address = (uint16_t) BaseRegisters::APPID;
     static constexpr bool readable = true;
     static constexpr bool writable = false;
     static constexpr uint32_t value_mask = (1 << 8) - 1;
 
-    uint32_t C7 : 8 = 0;
+    uint8_t C7 : 8 = 0;
 };
 
-
 struct __attribute__((packed, __may_alias__)) Minor {
-    // TODO: We might want to change this to uint32_t
-    static constexpr BaseRegisters address = BaseRegisters::MINOR;
+    static constexpr auto mode = RegisterType::BASE;
+    static constexpr auto address = (uint16_t) BaseRegisters::MINOR;
     static constexpr bool readable = true;
     static constexpr bool writable = false;
     static constexpr uint32_t value_mask = (1 << 8) - 1;
 
-    uint32_t minor : 8 = 0;
+    uint8_t minor : 8 = 0;
 };
 
 struct __attribute__((packed, __may_alias__)) Enable {
-    // TODO: We might want to change this to uint32_t
-    static constexpr BaseRegisters address = BaseRegisters::ENABLE;
+    static constexpr auto mode = RegisterType::BASE;
+    static constexpr auto address = (uint16_t) BaseRegisters::ENABLE;
     static constexpr bool readable = true;
     static constexpr bool writable = true;
     static constexpr uint32_t value_mask = (1 << 8) - 1;
+    // TODO: Do we need the size of the register?
 
     // Do these need to be uint32_t?
-    uint32_t pon : 1 = 1;
-    uint32_t padding_1 : 4 = 0;
-    uint32_t powerup_select : 2 = 0;
-    uint32_t cpu_ready : 1 = 0;
+    uint8_t pon : 1 = 1;
+    uint8_t padding_1 : 4 = 0;
+    uint8_t powerup_select : 2 = 0;
+    uint8_t cpu_ready : 1 = 0;
 };
 
 struct TMF8821RegisterMap {
     Enable enable = {};
 };
-
 
 // Registers are all 32 bits
 using RegisterSerializedType = uint32_t;
