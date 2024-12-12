@@ -69,7 +69,7 @@ struct Defaults {
         static constexpr float SPEED_DISCONT = 5.0;
 
         static constexpr float MM_PER_REV =
-            lms::GearBoxConfig::mm_per_rev(30, 30.0/16.0);
+            lms::GearBoxConfig::mm_per_rev(30, 30.0 / 16.0);
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
     };
