@@ -69,7 +69,7 @@ struct Defaults {
         static constexpr float SPEED_DISCONT = 5.0;
 
         static constexpr float MM_PER_REV =
-            lms::GearBoxConfig::mm_per_rev(16.0, 16.0 / 30.0);
+            lms::GearBoxConfig::mm_per_rev(16.0, 30.0 / 16.0);
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
     };
@@ -422,6 +422,15 @@ class MotorTask {
         _z_controller.stop_movement(0, true);
         _x_controller.stop_movement(0, false);
         _l_controller.stop_movement(0, false);
+
+        // Set status bars to RED
+        auto message = messages::SetStatusBarColorMessage{
+            .bar_id = StatusBarID::Internal, .color = StatusBarColor::Red};
+        static_cast<void>(
+            _task_registry->send_to_address(message, Queues::UIAddress));
+        message.bar_id = StatusBarID::External;
+        static_cast<void>(
+            _task_registry->send_to_address(message, Queues::UIAddress));
     }
 
     /**

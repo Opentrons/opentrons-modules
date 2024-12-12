@@ -51,14 +51,13 @@ class IS31FL {
     // Send updated values to the driver
     template <IS31FL_Policy Policy>
     auto send_update(Policy& policy) -> bool {
-        if (!policy.i2c_write(Address, PWM_REGISTER_BASE, _pwm_settings)) {
-            return false;
-        }
-        if (!policy.i2c_write(Address, LED_CONTROL_REGISTER_BASE,
-                              _current_settings)) {
-            return false;
-        }
-        return write_single_reg(UPDATE_REGISTER, TRIGGER_UPDATE_VALUE, policy);
+        auto res1 = policy.i2c_write(Address, PWM_REGISTER_BASE, _pwm_settings);
+        //policy.sleep_ms(1);
+        auto res2 = policy.i2c_write(Address, LED_CONTROL_REGISTER_BASE, _current_settings);
+        //policy.sleep_ms(1);
+        auto res3 = write_single_reg(UPDATE_REGISTER, TRIGGER_UPDATE_VALUE, policy);
+        //policy.sleep_ms(1);
+        return res1 && res2 && res3;
     }
 
     // Update current setting for a channel

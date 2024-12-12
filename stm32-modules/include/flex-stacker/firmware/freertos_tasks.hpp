@@ -3,6 +3,7 @@
 #include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_message_queue.hpp"
+#include "firmware/i2c_comms.hpp"
 #include "task.h"
 
 namespace motor_driver_task {
@@ -22,7 +23,8 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
 namespace ui_control_task {
 
 // Actual function that runs in the task
-auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
+auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
+         i2c::hardware::I2C* i2c_comms) -> void;
 }  // namespace ui_control_task
 
 namespace host_comms_control_task {
