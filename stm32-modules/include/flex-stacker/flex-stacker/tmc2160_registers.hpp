@@ -261,11 +261,11 @@ struct __attribute__((packed, __may_alias__)) PowerDownDelay {
     static constexpr uint32_t max_val = 0xFF;
     static constexpr uint32_t reset = 10;
 
-    [[nodiscard]] static auto reg_to_seconds(uint8_t reg) -> double {
+    [[nodiscard]] static constexpr auto reg_to_seconds(uint8_t reg) -> double {
         return (static_cast<double>(reg) / static_cast<double>(max_val)) *
                max_time;
     }
-    static auto seconds_to_reg(double seconds) -> uint8_t {
+    static constexpr auto seconds_to_reg(double seconds) -> uint8_t {
         if (seconds > max_time) {
             return max_val;
         }
