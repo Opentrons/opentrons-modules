@@ -206,7 +206,7 @@ class UITask {
         if (bar == Internal) {
             _led_driver0.set_pwm(power);
             return _led_driver0.send_update(*_policy);
-        } 
+        }
         if (bar == External) {
             _led_driver1.set_pwm(power);
             return _led_driver1.send_update(*_policy);
