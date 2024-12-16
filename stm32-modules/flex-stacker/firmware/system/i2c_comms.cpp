@@ -1,6 +1,6 @@
 #include "firmware/i2c_comms.hpp"
 
-#include <stdint.h>
+#include <cstdint>
 
 #include "firmware/i2c_hardware.h"
 #include "systemwide.h"

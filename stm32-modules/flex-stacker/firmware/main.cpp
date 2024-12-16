@@ -20,48 +20,35 @@ using EntryPoint = std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
 using EntryPointUI = std::function<void(tasks::FirmwareTasks::QueueAggregator *,
                                         i2c::hardware::I2C *)>;
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
 static auto motor_driver_task_entry = EntryPoint(motor_driver_task::run);
-
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto motor_task_entry = EntryPoint(motor_control_task::run);
-
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto ui_task_entry = EntryPointUI(ui_control_task::run);
-
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto host_comms_entry = EntryPoint(host_comms_control_task::run);
-
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto system_task_entry = EntryPoint(system_control_task::run);
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
-
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto driver_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_DRIVER_STACK_SIZE,
                                           EntryPoint>(motor_driver_task_entry);
-
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto motor_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_STACK_SIZE, EntryPoint>(
         motor_task_entry);
-
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto host_comms_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::COMMS_STACK_SIZE, EntryPoint>(
         host_comms_entry);
-
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto ui_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::UI_STACK_SIZE, EntryPointUI>(
         ui_task_entry);
-
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto system_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::SYSTEM_STACK_SIZE, EntryPoint>(
         system_task_entry);
+
+static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
+
+static auto i2c2_comms = i2c::hardware::I2C();
+static auto i2c3_comms = i2c::hardware::I2C();
+static auto i2c_handles = I2CHandlerStruct{};
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     switch (GPIO_Pin) {
@@ -74,10 +61,6 @@ extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             break;
     }
 }
-
-static auto i2c2_comms = i2c::hardware::I2C();
-static auto i2c3_comms = i2c::hardware::I2C();
-static auto i2c_handles = I2CHandlerStruct{};
 
 auto main() -> int {
     HardwareInit();

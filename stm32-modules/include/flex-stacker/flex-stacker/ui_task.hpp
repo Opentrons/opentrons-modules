@@ -52,11 +52,11 @@ static constexpr uint8_t LED_DRIVER1_I2C_ADDRESS = 0x6F << 1;  // External
 static constexpr auto DEFAULT_COLOR = StatusBarColor::Green;
 static constexpr auto DEFAULT_POWER = 0.5F;
 
-typedef struct StatusBarState {
+struct StatusBarState {
     StatusBarID kind;
     StatusBarColor color;
     float power;
-} StatusBarState;
+};
 
 const StatusBarState led_bar_internal = {
     .kind = StatusBarID::Internal,
@@ -166,13 +166,21 @@ class UITask {
         const auto& channels = color_to_channels(color);
 
         // clear the current leds
-        if (bar == Internal) _led_driver0.set_current(0);
-        if (bar == External) _led_driver1.set_current(0);
+        if (bar == Internal) {
+            _led_driver0.set_current(0);
+        }
+        if (bar == External) {
+            _led_driver1.set_current(0);
+        }
 
         return std::ranges::all_of(
             channels.cbegin(), channels.cend(), [bar, power, this](size_t c) {
-                if (bar == Internal) return _led_driver0.set_current(c, power);
-                if (bar == External) return _led_driver1.set_current(c, power);
+                if (bar == Internal) {
+                    return _led_driver0.set_current(c, power);
+                }
+                if (bar == External) {
+                    return _led_driver1.set_current(c, power);
+                }
                 return false;
             });
     }
