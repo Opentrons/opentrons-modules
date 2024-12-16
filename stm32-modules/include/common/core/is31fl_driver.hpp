@@ -52,11 +52,8 @@ class IS31FL {
     template <IS31FL_Policy Policy>
     auto send_update(Policy& policy) -> bool {
         auto res1 = policy.i2c_write(Address, PWM_REGISTER_BASE, _pwm_settings);
-        //policy.sleep_ms(1);
         auto res2 = policy.i2c_write(Address, LED_CONTROL_REGISTER_BASE, _current_settings);
-        //policy.sleep_ms(1);
         auto res3 = write_single_reg(UPDATE_REGISTER, TRIGGER_UPDATE_VALUE, policy);
-        //policy.sleep_ms(1);
         return res1 && res2 && res3;
     }
 

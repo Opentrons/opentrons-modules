@@ -424,13 +424,9 @@ class MotorTask {
         _l_controller.stop_movement(0, false);
 
         // Set status bars to RED
-        auto message = messages::SetStatusBarColorMessage{
-            .bar_id = StatusBarID::Internal, .color = StatusBarColor::Red};
-        static_cast<void>(
-            _task_registry->send_to_address(message, Queues::UIAddress));
-        message.bar_id = StatusBarID::External;
-        static_cast<void>(
-            _task_registry->send_to_address(message, Queues::UIAddress));
+        auto message = messages::SetStatusBarColorMessage{.color = StatusBarColor::Red};
+        static_cast<void>(_task_registry->send_to_address(
+            message, Queues::UIAddress));
     }
 
     /**
