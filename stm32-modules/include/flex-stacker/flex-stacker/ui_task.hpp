@@ -140,7 +140,9 @@ class UITask {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
 
         for (auto bar_id : {StatusBarID::Internal, StatusBarID::External}) {
-            if (m.bar_id.has_value()) bar_id = m.bar_id.value();
+            if (m.bar_id.has_value()) {
+                bar_id = m.bar_id.value();
+            }
             StatusBarState bar = get_statusbar_state(bar_id);
             StatusBarColor color =
                 (m.color.has_value()) ? m.color.value() : bar.color;
@@ -150,7 +152,9 @@ class UITask {
                     errors::ErrorCode::SYSTEM_SET_STATUSBAR_COLOR_ERROR;
             }
             // Only set one status bar if one was given.
-            if (m.bar_id.has_value()) break;
+            if (m.bar_id.has_value()) {
+                break;
+            }
         }
 
         static_cast<void>(_task_registry->send_to_address(
