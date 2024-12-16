@@ -15,6 +15,8 @@ class UIPolicy {
     UIPolicy(const UIPolicy &&) = delete;
     auto operator=(const UIPolicy &) = delete;
     auto operator=(const UIPolicy &&) = delete;
+    // TODO: need destructor
+    //~UIPolicy() = delete;
 
     auto set_heartbeat_led(bool value) -> void;
     template <size_t Len>

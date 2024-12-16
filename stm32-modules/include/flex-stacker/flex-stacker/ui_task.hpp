@@ -45,28 +45,30 @@ static auto color_to_channels(StatusBarColor color) -> const ChannelMapping& {
     }
 }
 
+// The timer driving LED update frequency should run at this period
+static constexpr uint32_t UPDATE_PERIOD_MS = 1000;
+static constexpr uint8_t LED_DRIVER0_I2C_ADDRESS = 0x6C << 1;  // Internal
+static constexpr uint8_t LED_DRIVER1_I2C_ADDRESS = 0x6F << 1;  // External
+static constexpr auto DEFAULT_COLOR = StatusBarColor::Green;
+static constexpr auto DEFAULT_POWER = 0.5F;
+
 typedef struct StatusBarState {
     StatusBarID kind;
     StatusBarColor color;
     float power;
 } StatusBarState;
 
-StatusBarState led_bar_internal = {
+const StatusBarState led_bar_internal = {
     .kind = StatusBarID::Internal,
-    .color = StatusBarColor::Blue,
-    .power = 0.5F,
+    .color = DEFAULT_COLOR,
+    .power = DEFAULT_POWER,
 };
 
-StatusBarState led_bar_external = {
+const StatusBarState led_bar_external = {
     .kind = StatusBarID::External,
-    .color = StatusBarColor::Blue,
-    .power = 0.5F,
+    .color = DEFAULT_COLOR,
+    .power = DEFAULT_POWER,
 };
-
-// The timer driving LED update frequency should run at this period
-static constexpr uint32_t UPDATE_PERIOD_MS = 1000;
-static constexpr uint8_t LED_DRIVER0_I2C_ADDRESS = 0x6C << 1;  // Internal
-static constexpr uint8_t LED_DRIVER1_I2C_ADDRESS = 0x6F << 1;  // External
 
 using Message = messages::UIMessage;
 
@@ -82,8 +84,6 @@ class UITask {
         : _message_queue(q),
           _task_registry(aggregator),
           _policy(policy),
-          _led_driver0(),
-          _led_driver1(),
           _ui_timer(
               "UI Timer", [ThisPtr = this] { ThisPtr->heartbeat_led(); },
               UPDATE_PERIOD_MS) {
@@ -206,7 +206,8 @@ class UITask {
         if (bar == Internal) {
             _led_driver0.set_pwm(power);
             return _led_driver0.send_update(*_policy);
-        } else if (bar == External) {
+        } 
+        if (bar == External) {
             _led_driver1.set_pwm(power);
             return _led_driver1.send_update(*_policy);
         }
@@ -216,8 +217,8 @@ class UITask {
     Queue& _message_queue;
     Aggregator* _task_registry;
     UIPolicy* _policy;
-    is31fl::IS31FL<LED_DRIVER0_I2C_ADDRESS> _led_driver0;
-    is31fl::IS31FL<LED_DRIVER1_I2C_ADDRESS> _led_driver1;
+    is31fl::IS31FL<LED_DRIVER0_I2C_ADDRESS> _led_driver0{};
+    is31fl::IS31FL<LED_DRIVER1_I2C_ADDRESS> _led_driver1{};
     FreeRTOSTimer _ui_timer;
 
     StatusBarState _led_bar_internal = led_bar_internal;
