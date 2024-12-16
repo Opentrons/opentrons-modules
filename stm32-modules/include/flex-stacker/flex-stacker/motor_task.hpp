@@ -37,7 +37,7 @@ using Error = errors::ErrorCode;
 struct Defaults {
     struct X {
         static constexpr float SPEED = 200.0;
-        static constexpr float ACCELERATION = 50.0;
+        static constexpr float ACCELERATION = 1500.0;
         static constexpr float SPEED_DISCONT = 5.0;
 
         static constexpr float MM_PER_REV =
@@ -45,13 +45,13 @@ struct Defaults {
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
 
-        // switch-to-switch: 202.0 mm - 5.0 mm offset
-        static constexpr float FAST_HOME_DISTANCE = 197.0;
+        // switch-to-switch: 192.5 mm - 5.0 mm offset
+        static constexpr float FAST_HOME_DISTANCE = 187.5;
     };
 
     struct Z {
         static constexpr float SPEED = 200.0;
-        static constexpr float ACCELERATION = 50.0;
+        static constexpr float ACCELERATION = 80.0;
         static constexpr float SPEED_DISCONT = 5.0;
 
         static constexpr float MM_PER_REV =
@@ -59,17 +59,17 @@ struct Defaults {
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
 
-        // switch-to-switch: 113.75 mm - 5.0 mm offset
-        static constexpr float FAST_HOME_DISTANCE = 108.75;
+        // switch-to-switch: 136.0 mm - 5.0 mm offset
+        static constexpr float FAST_HOME_DISTANCE = 131.0;
     };
 
     struct L {
-        static constexpr float SPEED = 200.0;
-        static constexpr float ACCELERATION = 50.0;
+        static constexpr float SPEED = 100.0;
+        static constexpr float ACCELERATION = 100.0;
         static constexpr float SPEED_DISCONT = 5.0;
 
         static constexpr float MM_PER_REV =
-            lms::GearBoxConfig::mm_per_rev(16.0, 30.0 / 16.0);
+            lms::GearBoxConfig::mm_per_rev(30, 30.0 / 16.0);
         static constexpr float STEPS_PER_REV = 200;
         static constexpr float MICROSTEP = 16;
     };
@@ -165,6 +165,13 @@ class MotorTask {
             return Error::L_MOTOR_BUSY;
         }
         return Error::NO_ERROR;
+    }
+
+    auto stop_motors(uint32_t id = 0) -> void {
+        _z_controller.stop_movement(id, true);
+        _x_controller.stop_movement(id, false);
+        _l_controller.stop_movement(id, false);
+        _move_queue.reset();
     }
 
     auto make_move(uint32_t id, MotorID motor_id, bool direction,
@@ -312,9 +319,9 @@ class MotorTask {
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::StopMotorMessage& m, Policy& policy)
         -> void {
-        static_cast<void>(m);
         static_cast<void>(policy);
-        controller_from_id(m.motor_id).stop_movement(m.id, true);
+        stop_motors(m.id);
+        send_ack_message(m.id);
     }
 
     template <MotorControlPolicy Policy>
@@ -419,9 +426,7 @@ class MotorTask {
             // don't care about other interrupts
             return;
         }
-        _z_controller.stop_movement(0, true);
-        _x_controller.stop_movement(0, false);
-        _l_controller.stop_movement(0, false);
+        stop_motors();
 
         // Set status bars to RED
         auto message = messages::SetStatusBarColorMessage{.color = StatusBarColor::Red};
