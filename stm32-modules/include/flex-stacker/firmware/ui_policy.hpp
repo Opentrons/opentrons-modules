@@ -11,13 +11,6 @@ using namespace i2c::hardware;
 class UIPolicy {
   public:
     UIPolicy(I2C *i2c) : i2c_comms{i2c} {}
-    UIPolicy(const UIPolicy &) = delete;
-    UIPolicy(const UIPolicy &&) = delete;
-    auto operator=(const UIPolicy &) = delete;
-    auto operator=(const UIPolicy &&) = delete;
-    // TODO: need destructor
-    //~UIPolicy() = delete;
-
     auto set_heartbeat_led(bool value) -> void;
     template <size_t Len>
     auto i2c_write(uint8_t device_address, uint8_t register_address,
