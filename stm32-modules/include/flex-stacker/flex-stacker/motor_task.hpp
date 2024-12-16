@@ -430,9 +430,9 @@ class MotorTask {
 
         // Set status bars to RED
         // TODO: Enable this after SLAS
-        //auto message =
+        // auto message =
         //    messages::SetStatusBarColorMessage{.color = StatusBarColor::Red};
-        //static_cast<void>(
+        // static_cast<void>(
         //    _task_registry->send_to_address(message, Queues::UIAddress));
     }
 
