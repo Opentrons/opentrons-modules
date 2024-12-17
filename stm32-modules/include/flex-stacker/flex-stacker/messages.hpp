@@ -281,6 +281,13 @@ struct GetEstopResponse {
     bool triggered;
 };
 
+struct SetStatusBarColorMessage {
+    uint32_t id = 0;
+    std::optional<StatusBarID> bar_id = std::nullopt;
+    std::optional<float> power = std::nullopt;
+    std::optional<StatusBarColor> color = std::nullopt;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -293,6 +300,8 @@ using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage,
                    GetDoorClosedMessage, GetResetReasonMessage>;
+
+using UIMessage = ::std::variant<std::monostate, SetStatusBarColorMessage>;
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,

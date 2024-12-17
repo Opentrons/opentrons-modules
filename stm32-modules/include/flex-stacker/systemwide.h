@@ -7,6 +7,18 @@ typedef enum MotorID {
     MOTOR_L,
 } MotorID;
 
+typedef enum StatusBarID {
+    Internal = 0,
+    External,
+} StatusBarID;
+
+typedef enum StatusBarColor {
+    White = 0,
+    Red,
+    Green,
+    Blue,
+} StatusBarColor;
+
 enum MotorSelection { Z, X, L, ALL };
 
 /* size of array for setting serial number */

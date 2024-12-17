@@ -249,4 +249,55 @@ struct GetDoorClosed {
     }
 };
 
+struct SetStatusBarColor {
+    std::optional<StatusBarID> bar_id;
+    std::optional<StatusBarColor> color;
+    float power;
+
+    using ParseResult = std::optional<SetStatusBarColor>;
+    static constexpr auto prefix = std::array{'M', '2', '0', '0', ' '};
+    static constexpr const char* response = "M200 OK\n";
+
+    using PowerArg = Arg<float, 'P'>;
+    using ColorArg = Arg<uint8_t, 'C'>;
+    using KArg = Arg<uint8_t, 'K'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<PowerArg, ColorArg, KArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = SetStatusBarColor{
+            .bar_id = std::nullopt, .color = std::nullopt, .power = 0};
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.power = static_cast<float>(std::get<0>(arguments).value);
+        }
+
+        if (std::get<1>(arguments).present) {
+            ret.color =
+                static_cast<StatusBarColor>(std::get<1>(arguments).value);
+        }
+
+        if (std::get<2>(arguments).present) {
+            ret.bar_id = static_cast<StatusBarID>(std::get<2>(arguments).value);
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 }  // namespace gcode

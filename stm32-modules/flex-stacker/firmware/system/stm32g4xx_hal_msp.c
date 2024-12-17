@@ -73,18 +73,8 @@ void HAL_MspDeInit(void)
 void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
-    RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
     if(hi2c->Instance==I2C2)
     {
-        /** Initializes the peripherals clocks
-         */
-        PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_I2C2;
-        PeriphClkInit.I2c2ClockSelection = RCC_I2C2CLKSOURCE_PCLK1;
-        if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-        {
-            Error_Handler();
-        }
-
         __HAL_RCC_GPIOA_CLK_ENABLE();
         /**I2C2 GPIO Configuration
         PA8     ------> I2C2_SDA
@@ -93,24 +83,20 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
         GPIO_InitStruct.Pin = EEPROM_I2C2_SDA_Pin|EEPOM_I2C2_SCL_Pin;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
         GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
         HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
         /* Peripheral clock enable */
         __HAL_RCC_I2C2_CLK_ENABLE();
+
+        HAL_NVIC_SetPriority(I2C2_EV_IRQn, 7, 0);
+        HAL_NVIC_SetPriority(I2C2_ER_IRQn, 7, 0);
+        HAL_NVIC_EnableIRQ(I2C2_EV_IRQn);
+        HAL_NVIC_EnableIRQ(I2C2_ER_IRQn);
     }
     else if(hi2c->Instance==I2C3)
     {
-        /** Initializes the peripherals clocks
-         */
-        PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_I2C3;
-        PeriphClkInit.I2c3ClockSelection = RCC_I2C3CLKSOURCE_PCLK1;
-        if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-        {
-            Error_Handler();
-        }
-
         __HAL_RCC_GPIOC_CLK_ENABLE();
         /**I2C3 GPIO Configuration
         PC8     ------> I2C3_SCL
@@ -119,14 +105,18 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
         GPIO_InitStruct.Pin = TOF_I2C3_SCL_Pin|TOF_I2C3_SDA_Pin;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
         GPIO_InitStruct.Alternate = GPIO_AF8_I2C3;
         HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
         /* Peripheral clock enable */
         __HAL_RCC_I2C3_CLK_ENABLE();
-    }
 
+        HAL_NVIC_SetPriority(I2C3_EV_IRQn, 7, 0);
+        HAL_NVIC_SetPriority(I2C3_ER_IRQn, 7, 0);
+        HAL_NVIC_EnableIRQ(I2C3_EV_IRQn);
+        HAL_NVIC_EnableIRQ(I2C3_ER_IRQn);
+    }
 }
 
 /**
