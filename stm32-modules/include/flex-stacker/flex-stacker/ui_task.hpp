@@ -23,12 +23,12 @@ concept UIPolicyIface = requires(Policy& p) {
 &&is31fl::IS31FL_Policy<Policy>;
 
 // There are 3 channels per color
-using ChannelMapping = std::array<size_t, 3>;
+using ChannelMapping = std::array<size_t, 4>;
 
-static constexpr ChannelMapping white_channels{3, 4, 5};
-static constexpr ChannelMapping red_channels{6, 9, 12};
-static constexpr ChannelMapping green_channels{7, 10, 13};
-static constexpr ChannelMapping blue_channels{8, 11, 14};
+static constexpr ChannelMapping white_channels{2, 3, 4, 5};
+static constexpr ChannelMapping red_channels{6, 9, 12, 15};
+static constexpr ChannelMapping green_channels{7, 10, 13, 16};
+static constexpr ChannelMapping blue_channels{8, 11, 14, 17};
 
 static auto color_to_channels(StatusBarColor color) -> const ChannelMapping& {
     switch (color) {
