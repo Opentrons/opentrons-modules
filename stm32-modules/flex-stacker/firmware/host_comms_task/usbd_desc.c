@@ -233,18 +233,18 @@ uint8_t *USBD_Class_InterfaceStrDescriptor(USBD_SpeedTypeDef speed, uint16_t *le
   */
 static void Get_SerialNum(void)
 {
-  uint32_t deviceserial0, deviceserial1, deviceserial2;
+  uint32_t sg_0, sg_1;
+  uint32_t pointer = USB_STRING_SERIAL_BASE;
+  // Serial number is stored in 6 32-bit words
+  for (uint8_t idx = 0; idx < 4; idx++) {
+      sg_0 = *(uint32_t *)(pointer + 4);
+      sg_1 = *(uint32_t *)(pointer);
 
-  deviceserial0 = *(uint32_t *)(UID_BASE+4);
-  deviceserial1 = *(uint32_t *)(UID_BASE+8);
-  deviceserial2 = *(uint32_t *)(UID_BASE+12);
+      if (sg_0 == 0U) break;
 
-  deviceserial0 += deviceserial2;
-
-  if (deviceserial0 != 0U)
-  {
-    IntToUnicode(deviceserial0, &USBD_StringSerial[2], 8U);
-    IntToUnicode(deviceserial1, &USBD_StringSerial[18], 4U);
+      IntToUnicode(sg_0, &USBD_StringSerial[2 + 16*idx], 4U);
+      IntToUnicode(sg_1, &USBD_StringSerial[10 + 16*idx], 4U);
+      pointer += 8;
   }
 }
 
@@ -259,20 +259,15 @@ static void IntToUnicode(uint32_t value, uint8_t *pbuf, uint8_t len)
 {
   uint8_t idx = 0U;
 
-  for (idx = 0U ; idx < len ; idx ++)
+  for (idx = 0U; idx < len; idx++)
   {
-    if (((value >> 28)) < 0xAU)
-    {
-      pbuf[ 2U * idx] = (value >> 28) + '0';
-    }
-    else
-    {
-      pbuf[2U * idx] = (value >> 28) + 'A' - 10U;
-    }
-
-    value = value << 4;
-
+    // Extract the most significant byte
+    pbuf[2U * idx] = (value >> 24) & 0xFF;
+    // Add a null byte for Unicode (UTF-16)
     pbuf[2U * idx + 1] = 0U;
+
+    // Shift the value to process the next byte
+    value = value << 8;
   }
 }
 
