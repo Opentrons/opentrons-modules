@@ -157,8 +157,7 @@ struct GetResetReason {
         -> InputIt {
         int res = 0;
         // print a hexadecimal representation of the reset flags
-        res = snprintf(&*buf, (limit - buf), "M114 Last Reset Reason: %X OK\n",
-                       reason);
+        res = snprintf(&*buf, (limit - buf), "M114 R:%X OK\n", reason);
         if (res <= 0) {
             return buf;
         }
@@ -241,7 +240,7 @@ struct GetDoorClosed {
     static auto write_response_into(InputIt buf, InLimit limit, int door_closed)
         -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M122 %i OK\n", door_closed);
+        res = snprintf(&*buf, (limit - buf), "M122 D:%i OK\n", door_closed);
         if (res <= 0) {
             return buf;
         }
