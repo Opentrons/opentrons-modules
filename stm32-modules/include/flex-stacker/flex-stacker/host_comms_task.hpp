@@ -49,6 +49,7 @@ class HostCommsTask {
         gcode::GetLimitSwitches, gcode::SetMicrosteps, gcode::GetMoveParams,
         gcode::SetMotorStallGuard, gcode::GetMotorStallGuard, gcode::HomeMotor,
         gcode::GetPlatformSensors, gcode::GetDoorClosed, gcode::GetEstopStatus,
+        gcode::StopMotor, gcode::GetResetReason, gcode::SetStatusBarColor,
         gcode::GetTOFSensorStatus, gcode::GetTOFRegister, gcode::SetTOFRegister,
         gcode::EnableTOFSensor>;
     using AckOnlyCache = AckCache<
@@ -57,8 +58,7 @@ class HostCommsTask {
         gcode::EnableMotor, gcode::DisableMotor, gcode::MoveMotorInSteps,
         gcode::MoveToLimitSwitch, gcode::MoveMotorInMm, gcode::SetMicrosteps,
         gcode::SetMotorStallGuard, gcode::HomeMotor, gcode::StopMotor,
-        gcode::GetResetReason, gcode::SetStatusBarColor, gcode::SetTOFRegister,
-        gcode::EnableTOFSensor>;
+        gcode::SetStatusBarColor, gcode::SetTOFRegister, gcode::EnableTOFSensor>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetTMCRegisterCache = AckCache<8, gcode::GetTMCRegister>;
     using GetLimitSwitchesCache = AckCache<8, gcode::GetLimitSwitches>;
@@ -1166,6 +1166,13 @@ class HostCommsTask {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::SetTOFRegister& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
         auto message =
             messages::SetTOFRegisterMessage{.id = id,
                                             .sensor_id = gcode.sensor_id,

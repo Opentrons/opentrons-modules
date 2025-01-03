@@ -32,7 +32,6 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${TOF_SENSOR_DIR}/freertos_tof_driver_task.cpp
     ${TOF_SENSOR_DIR}/freertos_tof_sensor_task.cpp
     ${TOF_SENSOR_DIR}/tof_driver_policy.cpp
-    ${TOF_SENSOR_DIR}/i2c_comms.cpp
     )
 
 # Add source files that should NOT be checked by clang-tidy here
@@ -51,7 +50,6 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${MOTOR_CONTROL_DIR}/motor_hardware.c
     ${MOTOR_CONTROL_DIR}/motor_spi_hardware.c
     ${TOF_SENSOR_DIR}/tof_sensor_hardware.c
-    ${TOF_SENSOR_DIR}/i2c_hardware.c
     )
 
 add_executable(${TARGET_MODULE_NAME}
