@@ -1,9 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-
 #include <cstdint>
-#include <optional>
 #include <tuple>
 
 using std::size_t;

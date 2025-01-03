@@ -13,6 +13,106 @@
 // address 4 in the bootable region is the address of the first instruction that
 // should run, aka the data that should be loaded into $pc.
 const uint32_t *const sysmem_boot_loc = (uint32_t*)SYSMEM_BOOT;
+uint16_t reset_reason;
+
+enum RCC_FLAGS {
+    _NONE,
+    // high speed internal clock ready
+    HSIRDY, // = 1
+    // high speed external clock ready
+    HSERDY, // = 2
+    // main phase-locked loop clock ready
+    PLLRDY, // = 3
+    // hsi48 clock ready
+    HSI48RDY, // = 4
+    // low-speed external clock ready
+    LSERDY, // = 5
+    // lse clock security system failure
+    LSECSSD, // = 6
+    // low-speed internal clock ready
+    LSIRDY, // = 7
+    // brown out
+    BORRST, // = 8
+    // option byte-loader reset
+    OBLRST, // = 9
+    // pin reset
+    PINRST, // = 10
+    // software reset
+    SFTRST, // = 11
+    // independent watchdog
+    IWDGRST, // = 12
+    // window watchdog
+    WWDGRST, // = 13
+    // low power reset
+    LPWRRST, // = 14
+};
+
+static void save_reset_reason() {
+    // check various reset flags to see if the HAL RCC
+    // reset flag matches any of them
+    reset_reason = 0;
+
+    // high speed internal clock ready
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSIRDY)) {
+        reset_reason |= HSIRDY;
+    }
+    // high speed external clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSERDY)) {
+        reset_reason |= HSERDY;
+    }
+    // main phase-locked loop clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PLLRDY)) {
+        reset_reason |= PLLRDY;
+    }
+    // hsi48 clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSIRDY)) {
+        reset_reason |= HSI48RDY;
+    }
+    // low-speed external clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY)) {
+        reset_reason |= LSERDY;
+    }
+    // lse clock security system failure
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY)) {
+        reset_reason |= LSECSSD;
+    }
+    // low-speed internal clock ready
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSIRDY)) {
+        reset_reason |= LSIRDY;
+    }
+    // brown out
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_BORRST)) {
+        reset_reason |= BORRST;
+    }
+    // option byte-loader reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_OBLRST)) {
+        reset_reason |= OBLRST;
+    }
+    // pin reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PINRST)) {
+        reset_reason |= PINRST;
+    }
+    // software reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
+        reset_reason |= SFTRST;
+    }
+    // independent watchdog
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
+        reset_reason |= IWDGRST;
+    }
+    // window watchdog
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_WWDGRST)) {
+        reset_reason |= WWDGRST;
+    }
+    // low power reset
+    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LPWRRST)) {
+        reset_reason |= LPWRRST;
+    }
+}
+
+uint16_t system_hardware_reset_reason() {
+    return reset_reason;
+}
 
 /** PUBLIC FUNCTION IMPLEMENTATION */
 
@@ -60,6 +160,7 @@ void system_hardware_enter_bootloader(void) {
 }
 
 void system_hardware_gpio_init(void) {
+    save_reset_reason();
     GPIO_InitTypeDef init = {0};
 
     /* GPIO Ports Clock Enable */

@@ -22,7 +22,9 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
     ${SYSTEM_DIR}/freertos_system_task.cpp
     ${SYSTEM_DIR}/system_policy.cpp
+    ${SYSTEM_DIR}/i2c_comms.cpp
     ${UI_DIR}/freertos_ui_task.cpp
+    ${UI_DIR}/ui_policy.cpp
     ${MOTOR_CONTROL_DIR}/freertos_motor_task.cpp
     ${MOTOR_CONTROL_DIR}/freertos_motor_driver_task.cpp
     ${MOTOR_CONTROL_DIR}/motor_driver_policy.cpp
@@ -41,6 +43,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${SYSTEM_DIR}/hal_tick.c
     ${SYSTEM_DIR}/system_serial_number.c
     ${SYSTEM_DIR}/system_hardware.c
+    ${SYSTEM_DIR}/i2c_hardware.c
     ${UI_DIR}/ui_hardware.c
     ${COMMS_DIR}/usbd_conf.c
     ${COMMS_DIR}/usbd_desc.c

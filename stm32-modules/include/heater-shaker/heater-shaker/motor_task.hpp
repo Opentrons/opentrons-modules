@@ -531,6 +531,17 @@ class MotorTask {
         static_cast<void>(get_message_queue().try_send(check_state_message));
     }
 
+    template <MotorExecutionPolicy Policy>
+    auto visit_message(const messages::GetResetReasonMessage& msg,
+                       Policy& policy) -> void {
+        auto reason = policy.last_reset_reason();
+
+        auto response = messages::GetResetReasonResponse{
+            .responding_to_id = msg.id, .reason = reason};
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response)));
+    }
+
     template <typename Policy>
     auto visit_message(const messages::CheckPlateLockStatusMessage& msg,
                        Policy& policy) -> void {

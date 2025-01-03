@@ -23,10 +23,6 @@
 
 namespace gcode {
 
-auto inline sensor_id_to_char(TOFSensorID sensor_id) -> char {
-    return static_cast<char>(sensor_id == TOFSensorID::TOF_X ? 'X' : 'Z');
-}
-
 struct EnterBootloader {
     /**
      * EnterBootloader uses the command string "dfu" instead of a gcode to be
@@ -146,6 +142,43 @@ struct GetSystemInfo {
     }
 };
 
+struct GetResetReason {
+    /*
+     * M114- GetResetReason retrieves the value of the RCC reset flag
+     * that was captured at the beginning of the hardware setup
+     * */
+    using ParseResult = std::optional<GetResetReason>;
+    static constexpr auto prefix = std::array{'M', '1', '1', '4'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit, uint16_t reason)
+        -> InputIt {
+        int res = 0;
+        // print a hexadecimal representation of the reset flags
+        res = snprintf(&*buf, (limit - buf), "M114 R:%X OK\n", reason);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetResetReason()), working);
+    }
+};
+
 struct SetSerialNumber {
     using ParseResult = std::optional<SetSerialNumber>;
     static constexpr auto prefix = std::array{'M', '9', '9', '6'};
@@ -207,11 +240,62 @@ struct GetDoorClosed {
     static auto write_response_into(InputIt buf, InLimit limit, int door_closed)
         -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M122 %i OK\n", door_closed);
+        res = snprintf(&*buf, (limit - buf), "M122 D:%i OK\n", door_closed);
         if (res <= 0) {
             return buf;
         }
         return buf + res;
+    }
+};
+
+struct SetStatusBarColor {
+    std::optional<StatusBarID> bar_id;
+    std::optional<StatusBarColor> color;
+    float power;
+
+    using ParseResult = std::optional<SetStatusBarColor>;
+    static constexpr auto prefix = std::array{'M', '2', '0', '0', ' '};
+    static constexpr const char* response = "M200 OK\n";
+
+    using PowerArg = Arg<float, 'P'>;
+    using ColorArg = Arg<uint8_t, 'C'>;
+    using KArg = Arg<uint8_t, 'K'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<PowerArg, ColorArg, KArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = SetStatusBarColor{
+            .bar_id = std::nullopt, .color = std::nullopt, .power = 0};
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.power = static_cast<float>(std::get<0>(arguments).value);
+        }
+
+        if (std::get<1>(arguments).present) {
+            ret.color =
+                static_cast<StatusBarColor>(std::get<1>(arguments).value);
+        }
+
+        if (std::get<2>(arguments).present) {
+            ret.bar_id = static_cast<StatusBarID>(std::get<2>(arguments).value);
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
     }
 };
 

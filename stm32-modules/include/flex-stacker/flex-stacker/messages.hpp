@@ -74,6 +74,15 @@ struct GetSystemInfoResponse {
     const char* hw_version;
 };
 
+struct GetResetReasonMessage {
+    uint32_t id;
+};
+
+struct GetResetReasonResponse {
+    uint32_t responding_to_id;
+    uint16_t reason;
+};
+
 struct SetSerialNumberMessage {
     uint32_t id;
     static constexpr std::size_t SERIAL_NUMBER_LENGTH =
@@ -272,6 +281,13 @@ struct GetEstopResponse {
     bool triggered;
 };
 
+struct SetStatusBarColorMessage {
+    uint32_t id = 0;
+    std::optional<StatusBarID> bar_id = std::nullopt;
+    std::optional<float> power = std::nullopt;
+    std::optional<StatusBarColor> color = std::nullopt;
+};
+
 struct GetTOFSensorStatusMessage {
     uint32_t id;
     TOFSensorID sensor_id;
@@ -318,13 +334,15 @@ using HostCommsMessage =
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
                    GetMoveParamsResponse, GetMotorStallGuardResponse,
                    GetDoorClosedResponse, GetPlatformSensorsResponse,
-                   GetEstopResponse, GetTOFSensorStatusResponse,
+                   GetEstopResponse, GetResetReasonResponse, GetTOFSensorStatusResponse,
                    GetTOFRegisterResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage,
-                   GetDoorClosedMessage>;
+                   GetDoorClosedMessage, GetResetReasonMessage>;
+
+using UIMessage = ::std::variant<std::monostate, SetStatusBarColorMessage>;
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,

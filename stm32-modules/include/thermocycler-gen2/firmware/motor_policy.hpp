@@ -187,6 +187,13 @@ class MotorPolicy {
     [[nodiscard]] auto seal_switches_are_shared() const -> bool;
 
     /**
+     * @brief Returns the reason saved upon startup for the last
+     * reset of the software.
+     * @return a string describing the reason for reset.
+     * */
+    [[nodiscard]] auto last_reset_reason() const -> uint16_t;
+
+    /**
      * @brief Call the seal callback function
      *
      */

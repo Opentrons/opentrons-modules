@@ -52,7 +52,7 @@ class HostCommsTask {
         gcode::GetOffsetConstants, gcode::OpenLid, gcode::CloseLid,
         gcode::LiftPlate, gcode::DeactivateAll, gcode::GetBoardRevision,
         gcode::GetLidSwitches, gcode::GetFrontButton, gcode::SetLidFans,
-        gcode::SetLightsDebug>;
+        gcode::SetLightsDebug, gcode::GetResetReason>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
@@ -72,6 +72,7 @@ class HostCommsTask {
     using GetLidStatusCache = AckCache<8, gcode::GetLidStatus>;
     using GetOffsetConstantsCache = AckCache<8, gcode::GetOffsetConstants>;
     using SealStepperDebugCache = AckCache<8, gcode::ActuateSealStepperDebug>;
+    using GetResetReasonCache = AckCache<8, gcode::GetResetReason>;
     // This is a two-stage message since both the Plate and Lid tasks have
     // to respond.
     using GetThermalPowerCache = AckCache<8, gcode::GetThermalPowerDebug,
@@ -114,6 +115,8 @@ class HostCommsTask {
           get_thermal_power_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           deactivate_all_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_reset_reason_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_switch_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
@@ -455,6 +458,28 @@ class HostCommsTask {
                 } else {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.lid, response.seal);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetResetReasonResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            get_reset_reason_cache.remove_if_present(response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(tx_into, tx_limit,
+                                                             response.reason);
                 }
             },
             cache_entry);
@@ -1235,6 +1260,28 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetResetReason& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_reset_reason_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetResetReasonMessage{.id = id};
+        if (!task_registry->motor->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_reset_reason_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::GetThermalPowerDebug& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = get_thermal_power_cache.add(gcode);
@@ -1524,6 +1571,7 @@ class HostCommsTask {
     SealStepperDebugCache seal_stepper_debug_cache;
     GetThermalPowerCache get_thermal_power_cache;
     DeactivateAllCache deactivate_all_cache;
+    GetResetReasonCache get_reset_reason_cache;
     GetSwitchCache get_switch_cache;
     bool may_connect_latch = true;
 };

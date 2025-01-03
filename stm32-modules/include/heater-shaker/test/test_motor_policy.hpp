@@ -61,6 +61,12 @@ class TestMotorPolicy {
     auto get_serial_number(void)
         -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
 
+    auto last_reset_reason() const -> uint16_t { return _reset_reason; }
+
+    auto set_last_reset_reason(uint16_t sim_reason) -> void {
+        _reset_reason = sim_reason;
+    }
+
   private:
     int16_t target_rpm;
     int16_t current_rpm;
@@ -76,4 +82,5 @@ class TestMotorPolicy {
     double overridden_kp = 0.0;
     double overridden_kd = 0.0;
     bool plate_lock_braked = false;
+    uint16_t _reset_reason = 0;
 };

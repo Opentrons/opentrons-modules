@@ -97,7 +97,7 @@ struct GetTMCRegister {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     MotorID motor_id, uint8_t reg,
                                     uint32_t data) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M920 %s%u %lu OK\n",
+        auto res = snprintf(&*buf, (limit - buf), "M920 %s:%u V:%lu OK\n",
                             motor_id_to_char(motor_id), reg, data);
         if (res <= 0) {
             return buf;
@@ -817,9 +817,9 @@ struct GetMoveParams {
                           : motor_id == MotorID::MOTOR_Z ? 'Z'
                                                          : 'L';
         int res = 0;
-        res =
-            snprintf(&*buf, (limit - buf), "M120 %c V:%.3f A:%.3f D:%.3f OK\n",
-                     motor_char, velocity, accel, velocity_discont);
+        res = snprintf(&*buf, (limit - buf),
+                       "M120 M:%c V:%.3f A:%.3f D:%.3f OK\n", motor_char,
+                       velocity, accel, velocity_discont);
         if (res <= 0) {
             return buf;
         }
@@ -931,7 +931,7 @@ struct GetMotorStallGuard {
                           : motor_id == MotorID::MOTOR_Z ? 'Z'
                                                          : 'L';
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M911 %c%d T:%d OK\n", motor_char,
+        res = snprintf(&*buf, (limit - buf), "M911 %c:%d T:%d OK\n", motor_char,
                        int(enabled), threshold);
         if (res <= 0) {
             return buf;
@@ -994,7 +994,7 @@ struct GetEstopStatus {
     static auto write_response_into(InputIt buf, InLimit limit, int triggered)
         -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M112 %i OK\n", triggered);
+        res = snprintf(&*buf, (limit - buf), "M112 E:%i OK\n", triggered);
         if (res <= 0) {
             return buf;
         }

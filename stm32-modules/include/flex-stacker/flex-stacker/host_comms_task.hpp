@@ -15,6 +15,7 @@
 #include "flex-stacker/errors.hpp"
 #include "flex-stacker/gcodes.hpp"
 #include "flex-stacker/messages.hpp"
+#include "gcodes.hpp"
 #include "gcodes_motor.hpp"
 #include "hal/message_queue.hpp"
 #include "messages.hpp"
@@ -55,8 +56,9 @@ class HostCommsTask {
         gcode::SetTMCRegister, gcode::SetRunCurrent, gcode::SetHoldCurrent,
         gcode::EnableMotor, gcode::DisableMotor, gcode::MoveMotorInSteps,
         gcode::MoveToLimitSwitch, gcode::MoveMotorInMm, gcode::SetMicrosteps,
-        gcode::SetMotorStallGuard, gcode::HomeMotor, gcode::SetTOFRegister,
-        gcode::StopMotor, gcode::EnableTOFSensor>;
+        gcode::SetMotorStallGuard, gcode::HomeMotor, gcode::StopMotor,
+        gcode::GetResetReason, gcode::SetStatusBarColor, gcode::SetTOFRegister,
+        gcode::EnableTOFSensor>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetTMCRegisterCache = AckCache<8, gcode::GetTMCRegister>;
     using GetLimitSwitchesCache = AckCache<8, gcode::GetLimitSwitches>;
@@ -65,6 +67,7 @@ class HostCommsTask {
     using GetDoorClosedCache = AckCache<8, gcode::GetDoorClosed>;
     using GetPlatformSensorsCache = AckCache<8, gcode::GetPlatformSensors>;
     using GetEstopCache = AckCache<8, gcode::GetEstopStatus>;
+    using GetResetReasonCache = AckCache<8, gcode::GetResetReason>;
     using GetTOFSensorStatusCache = AckCache<8, gcode::GetTOFSensorStatus>;
     using GetTOFRegisterCache = AckCache<8, gcode::GetTOFRegister>;
 
@@ -86,6 +89,7 @@ class HostCommsTask {
           get_door_closed_cache(),
           get_platform_sensors_cache(),
           get_estop_cache(),
+          get_reset_reason_cache(),
           get_tof_sensor_status_cache(),
           get_tof_register_cache() {}
     // NOLINTEND(readability-redundant-member-init)
@@ -291,6 +295,50 @@ class HostCommsTask {
                 }
             },
             cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetResetReasonResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            get_reset_reason_cache.remove_if_present(response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(tx_into, tx_limit,
+                                                             response.reason);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetResetReason& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_reset_reason_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetResetReasonMessage{.id = id};
+
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_reset_reason_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
     }
 
     template <typename InputIt, typename InputLimit>
@@ -1000,6 +1048,32 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetStatusBarColor& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::SetStatusBarColorMessage{
+            .id = id,
+            .bar_id = gcode.bar_id,
+            .power = gcode.power,
+            .color = gcode.color,
+        };
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::GetTOFSensorStatus& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = get_tof_sensor_status_cache.add(gcode);
@@ -1092,13 +1166,6 @@ class HostCommsTask {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::SetTOFRegister& gcode, InputIt tx_into,
-                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
-        auto id = ack_only_cache.add(gcode);
-        if (id == 0) {
-            return std::make_pair(
-                false, errors::write_into(tx_into, tx_limit,
-                                          errors::ErrorCode::GCODE_CACHE_FULL));
-        }
         auto message =
             messages::SetTOFRegisterMessage{.id = id,
                                             .sensor_id = gcode.sensor_id,
@@ -1158,6 +1225,7 @@ class HostCommsTask {
     GetDoorClosedCache get_door_closed_cache;
     GetPlatformSensorsCache get_platform_sensors_cache;
     GetEstopCache get_estop_cache;
+    GetResetReasonCache get_reset_reason_cache;
     GetTOFSensorStatusCache get_tof_sensor_status_cache;
     GetTOFRegisterCache get_tof_register_cache;
     bool may_connect_latch = true;

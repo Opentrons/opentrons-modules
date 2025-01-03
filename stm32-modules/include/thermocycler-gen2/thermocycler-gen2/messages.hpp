@@ -353,6 +353,15 @@ struct GetLidStatusResponse {
     motor_util::SealStepper::Status seal;
 };
 
+struct GetResetReasonMessage {
+    uint32_t id;
+};
+
+struct GetResetReasonResponse {
+    uint32_t responding_to_id;
+    uint16_t reason;
+};
+
 struct OpenLidMessage {
     uint32_t id;
 };
@@ -421,9 +430,9 @@ using HostCommsMessage = ::std::variant<
     ForceUSBDisconnectMessage, GetSystemInfoResponse,
     GetLidTemperatureDebugResponse, GetPlateTemperatureDebugResponse,
     GetPlateTempResponse, GetLidTempResponse, GetSealDriveStatusResponse,
-    GetLidStatusResponse, GetPlatePowerResponse, GetLidPowerResponse,
-    GetOffsetConstantsResponse, SealStepperDebugResponse, DeactivateAllResponse,
-    GetLidSwitchesResponse, GetFrontButtonResponse>;
+    GetLidStatusResponse, GetResetReasonResponse, GetPlatePowerResponse,
+    GetLidPowerResponse, GetOffsetConstantsResponse, SealStepperDebugResponse,
+    DeactivateAllResponse, GetLidSwitchesResponse, GetFrontButtonResponse>;
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
@@ -441,6 +450,6 @@ using MotorMessage = ::std::variant<
     std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
     LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,
     GetSealDriveStatusMessage, SetSealParameterMessage, GetLidStatusMessage,
-    OpenLidMessage, CloseLidMessage, PlateLiftMessage, FrontButtonPressMessage,
-    GetLidSwitchesMessage>;
+    GetResetReasonMessage, OpenLidMessage, CloseLidMessage, PlateLiftMessage,
+    FrontButtonPressMessage, GetLidSwitchesMessage>;
 };  // namespace messages

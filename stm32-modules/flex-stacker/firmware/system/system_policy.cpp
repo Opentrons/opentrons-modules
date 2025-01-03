@@ -65,3 +65,8 @@ auto SystemPolicy::initialize() -> void { system_hardware_gpio_init(); }
 auto SystemPolicy::get_door_closed() -> bool {
     return system_hardware_read_door_closed();
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto SystemPolicy::last_reset_reason() const -> uint16_t {
+    return system_hardware_reset_reason();
+}
