@@ -12,6 +12,7 @@
 #include "core/ack_cache.hpp"
 #include "core/gcode_parser.hpp"
 #include "core/version.hpp"
+#include "errors.hpp"
 #include "flex-stacker/errors.hpp"
 #include "flex-stacker/gcodes.hpp"
 #include "flex-stacker/messages.hpp"
@@ -1202,7 +1203,7 @@ class HostCommsTask {
             .id = id, .sensor_id = gcode.sensor_id, .enable = gcode.enable};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
-                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+                tx_into, tx_limit, errors::ErrorCode::GCODE_CACHE_FULL);
             ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }

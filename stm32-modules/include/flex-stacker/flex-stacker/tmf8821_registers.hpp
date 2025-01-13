@@ -264,7 +264,7 @@ struct __attribute__((packed, __may_alias__)) AppID {
     static constexpr bool writable = false;
     static constexpr uint32_t value_mask = (1 << 8) - 1;
 
-    uint8_t C7 : 8 = 0;
+    uint8_t appid : 8 = 0;
 };
 
 struct __attribute__((packed, __may_alias__)) Minor {

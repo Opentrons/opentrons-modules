@@ -99,9 +99,12 @@ class TOFDriverTask {
 
         if (!_initialized) {
             _policy = policy;
-            _tmf8821.initialize_sensor(_tof_x_config, _policy, TOF_X);
-            _tmf8821.initialize_sensor(_tof_z_config, _policy, TOF_Z);
-            _initialized = true;
+            auto ret_x = _tmf8821_x.initialize_sensor(_tof_x_config, _policy, TOF_X);
+            if (!ret_x) _policy->enable_tof_sensor(TOF_X, false);
+
+            auto ret_z = _tmf8821_z.initialize_sensor(_tof_z_config, _policy, TOF_Z);
+            if (!ret_z) _policy->enable_tof_sensor(TOF_Z, false);
+            _initialized = ret_x && ret_z;
         }
 
         auto message = Message(std::monostate());
@@ -120,16 +123,8 @@ class TOFDriverTask {
 
     auto visit_message(const messages::GetTOFRegisterMessage& m) -> void {
         messages::HostCommsMessage response;
-        // TODO: Validate type, reg, and value
-        // TODO: type needs to be set based on the mode
-        auto type = RegisterType::BASE;
-        //auto data = _tmf8821.read(type, m.reg, m.sensor_id);
-
-        // FOR TESTING i2c write
-        auto value = static_cast<uint32_t>(0x51);  // 81d
-        auto data = _tmf8821.write(type, m.reg, &value, m.sensor_id);
-        // FOR TESTING
-
+        auto tmf8821 = get_driver(m.sensor_id);
+        auto data = tmf8821.read(m.reg, m.sensor_id);
         if (!data.has_value()) {
           response = messages::ErrorMessage{
                 .code = errors::ErrorCode::TMC2160_READ_ERROR};
@@ -147,11 +142,10 @@ class TOFDriverTask {
 
     auto visit_message(const messages::SetTOFRegisterMessage& m) -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
-        // TODO: Validate type, reg, and value
-        auto type = RegisterType::BASE;
         auto reg = static_cast<uint16_t>(m.reg);
         auto value = static_cast<uint32_t>(m.data);
-        auto data = _tmf8821.write(type, reg, &value, m.sensor_id);
+        auto tmf8821 = get_driver(m.sensor_id);
+        auto data = tmf8821.write(reg, &value, m.sensor_id);
         if (!data.has_value()) {
             response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
         }
@@ -167,12 +161,19 @@ class TOFDriverTask {
             response, Queues::HostCommsAddress));
     }
 
+    auto get_driver(TOFSensorID sensor_id) -> tmf8821::TMF8821 {
+        if (sensor_id == TOF_X) return _tmf8821_x;
+        if (sensor_id == TOF_Z) return _tmf8821_z;
+        return _tmf8821_x;
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     TOFDriverPolicy* _policy;
     bool _initialized = false;
 
-    tmf8821::TMF8821 _tmf8821{nullptr};
+    tmf8821::TMF8821 _tmf8821_x{nullptr};
+    tmf8821::TMF8821 _tmf8821_z{nullptr};
     tmf8821::TMF8821RegisterMap _tof_x_config = tof_x_config;
     tmf8821::TMF8821RegisterMap _tof_z_config = tof_z_config;
 };

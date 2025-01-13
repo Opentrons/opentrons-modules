@@ -24,6 +24,7 @@ class TOFDriverPolicy {
     auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t *data,
                    uint16_t size) -> RxTxReturn;
     auto enable_tof_sensor(TOFSensorID sensor_id, bool enable) -> void;
+    auto sleep_ms(uint32_t ms) -> void;
 
   private:
     I2CBase *i2c_comms{nullptr};
