@@ -56,7 +56,13 @@ class TOFSensorTask {
     }
 
     auto visit_message(const messages::GetTOFSensorStatusMessage& m) -> void {
-        static_cast<void>(m);
+        auto response = messages::GetTOFSensorStatusResponse{
+            .responding_to_id = m.id,
+            .sensor_id = m.sensor_id,
+            .initialized = _initialized,
+        };
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
     }
 
     Queue& _message_queue;

@@ -31,11 +31,12 @@ class TMF8821 {
     auto initialize_sensor(const TMF8821RegisterMap& registers,
                            TOFDriverPolicy* policy, TOFSensorID sensor_id) -> bool {
 
+        if (_initialized) return true;
+        if (!_policy) _policy = policy;
+
         // FOR TESTING
         return true;
 
-        if (_initialized) return true;
-        if (!_policy) _policy = policy;
         _registers = registers;
         _sensor_id = sensor_id;
 

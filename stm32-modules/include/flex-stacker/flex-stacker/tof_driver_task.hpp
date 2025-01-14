@@ -100,10 +100,11 @@ class TOFDriverTask {
         if (!_initialized) {
             _policy = policy;
             auto ret_x = _tmf8821_x.initialize_sensor(_tof_x_config, _policy, TOF_X);
-            if (!ret_x) _policy->enable_tof_sensor(TOF_X, false);
+            //if (!ret_x) _policy->enable_tof_sensor(TOF_X, false);
 
             auto ret_z = _tmf8821_z.initialize_sensor(_tof_z_config, _policy, TOF_Z);
-            if (!ret_z) _policy->enable_tof_sensor(TOF_Z, false);
+            //if (!ret_z) _policy->enable_tof_sensor(TOF_Z, false);
+            //_initialized = true;
             _initialized = ret_x && ret_z;
         }
 
@@ -123,8 +124,7 @@ class TOFDriverTask {
 
     auto visit_message(const messages::GetTOFRegisterMessage& m) -> void {
         messages::HostCommsMessage response;
-        auto tmf8821 = get_driver(m.sensor_id);
-        auto data = tmf8821.read(m.reg, m.sensor_id);
+        auto data = get_driver(m.sensor_id).read(m.reg, m.sensor_id);
         if (!data.has_value()) {
           response = messages::ErrorMessage{
                 .code = errors::ErrorCode::TMC2160_READ_ERROR};
