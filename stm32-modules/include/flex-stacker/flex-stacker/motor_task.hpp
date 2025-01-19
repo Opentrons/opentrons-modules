@@ -19,9 +19,11 @@
 #include "flex-stacker/tasks.hpp"
 #include "flex-stacker/tmc2160_registers.hpp"
 #include "hal/message_queue.hpp"
+#include "ot_utils/freertos/freertos_timer.hpp"
 #include "messages.hpp"
 
 namespace motor_task {
+using namespace ot_utils::freertos_timer;
 
 template <typename P>
 concept MotorControlPolicy = requires(P p, MotorID motor_id) {
@@ -33,6 +35,9 @@ using Message = messages::MotorMessage;
 using Controller = motor_interrupt_controller::MotorInterruptController;
 using Move = motor_interrupt_controller::Move;
 using Error = errors::ErrorCode;
+
+// Gpio irq debounce time
+static constexpr uint32_t DEBOUNCE_MS = 1000;
 
 struct Defaults {
     struct X {
@@ -94,7 +99,8 @@ class MotorTask {
           _x_controller(x_ctrl),
           _z_controller(z_ctrl),
           _l_controller(l_ctrl),
-          _initialized(false) {}
+          _initialized(false),
+          _debounce_timer("DB Timer", [ThisPtr = this] { ThisPtr->reset_debounce(); }, DEBOUNCE_MS) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -414,26 +420,34 @@ class MotorTask {
         _x_controller.set_diag0_irq(m.enable);
     }
 
+    auto reset_debounce() -> void {
+        _debounce_timer.stop();
+    }
+
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::GPIOInterruptMessage& m, Policy& policy)
         -> void {
-        static_cast<void>(m);
+        // Debounce
+        if (_debounce_timer.is_running()) return;
+        _debounce_timer.start();
+
+        auto error = Error::NO_ERROR;
         if (policy.is_diag0_pin(m.pin)) {
-            send_error_message(Error::MOTOR_STALL_DETECTED);
+            error = Error::MOTOR_STALL_DETECTED;
         } else if (policy.is_estop_pin(m.pin)) {
-            send_error_message(Error::ESTOP_TRIGGERED);
+            error = Error::ESTOP_TRIGGERED;
         } else {
             // don't care about other interrupts
             return;
         }
-        stop_motors();
 
+        stop_motors();
+        send_error_message(error);
         // Set status bars to RED
-        // TODO: Enable this after SLAS
-        // auto message =
-        //    messages::SetStatusBarColorMessage{.color = StatusBarColor::Red};
-        // static_cast<void>(
-        //    _task_registry->send_to_address(message, Queues::UIAddress));
+         auto message =
+            messages::SetStatusBarColorMessage{.color = StatusBarColor::Red};
+         static_cast<void>(
+            _task_registry->send_to_address(message, Queues::UIAddress));
     }
 
     /**
@@ -477,6 +491,8 @@ class MotorTask {
     Controller& _z_controller;
     Controller& _l_controller;
     bool _initialized;
+    FreeRTOSTimer _debounce_timer;
+
     MotorState _x_state{
         .lms_config = {.mm_per_rev = Defaults::X::MM_PER_REV,
                        .steps_per_rev = Defaults::X::STEPS_PER_REV,

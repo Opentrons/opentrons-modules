@@ -26,7 +26,7 @@ namespace motor_driver_task {
 using Message = messages::MotorDriverMessage;
 
 static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
-    .gconfig = {.diag0_error = 0, .diag0_stall = 0},
+    .gconfig = {.diag0_error = 1, .diag0_stall = 1},
     .short_conf = {.s2vs_level = 0x6,
                    .s2g_level = 0x6,
                    .shortfilter = 1,
