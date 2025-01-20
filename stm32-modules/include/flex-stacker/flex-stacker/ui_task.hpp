@@ -52,7 +52,7 @@ static auto color_to_channels(StatusBarColor color) -> const ChannelMapping& {
 }
 
 // The timer driving LED update frequency should run at this period
-static constexpr uint32_t UPDATE_PERIOD_MS = 5;
+static constexpr uint32_t UPDATE_PERIOD_MS = 1;
 static constexpr uint8_t LED_DRIVER0_I2C_ADDRESS = 0x6C << 1;  // Internal
 static constexpr uint8_t LED_DRIVER1_I2C_ADDRESS = 0x6F << 1;  // External
 static constexpr auto DEFAULT_COLOR = StatusBarColor::Green;
@@ -76,7 +76,7 @@ struct StatusBarState {
     StatusBarColor old_color;
     StatusBarPattern pattern = StatusBarPattern::Static;
     float power;
-    float old_power;
+    float power_dt;
     float duration = 0;
     int reps = 0;
     uint32_t counter = 0;
@@ -89,7 +89,7 @@ const StatusBarState led_bar_internal = {
     .color = DEFAULT_COLOR,
     .old_color = DEFAULT_COLOR,
     .power = DEFAULT_POWER,
-    .old_power = DEFAULT_POWER,
+    .power_dt = 0,
 };
 
 const StatusBarState led_bar_external = {
@@ -97,7 +97,7 @@ const StatusBarState led_bar_external = {
     .color = DEFAULT_COLOR,
     .old_color = DEFAULT_COLOR,
     .power = DEFAULT_POWER,
-    .old_power = DEFAULT_POWER,
+    .power_dt = 0,
 };
 
 using Message = messages::UIMessage;
@@ -189,19 +189,16 @@ class UITask {
         for (auto bar_id : {StatusBarID::Internal, StatusBarID::External}) {
             _led_update_pending = false;
             auto led_bar = &get_statusbar_state(bar_id);
-            // Skip if driver not initialized
+            // Skip if driver not initialized or reps reached 0
             if (!led_bar->driver_ok) continue;
             if (led_bar->reps != FOREVER && led_bar->reps < 1) continue;
 
-            // TODO: fix power=0, it does NOT turn off the statusbar
-            // Turn off status if power is 0
-            //if (led_bar->power == 0) {
-            //    led_bar->reps = 0;
-            //    led_bar->old_power = 0;
-            //    led_bar->old_color = led_bar->color;
-            //    set_status_bar(bar_id);
-            //    continue;
-            //}
+            // Turn off LEDs when power = 0
+            if (led_bar->reps != FOREVER && led_bar->power == 0) {
+                led_bar->reps = 0;
+                set_status_bar(bar_id);
+                continue;
+            }
 
             led_bar->counter += LED_UPDATE_PERIOD_MS;
             if (led_bar->counter > led_bar->period) {
@@ -210,6 +207,7 @@ class UITask {
 
             switch (led_bar->pattern) {
                 case StatusBarPattern::Static: {
+                    // Fade from current color to new color
                     float power = led_bar->power;
                     if (led_bar->counter < led_bar->period) {
                         power = static_cast<float>(led_bar->counter) /
@@ -221,16 +219,16 @@ class UITask {
                         auto inv_power = static_cast<float>(inverse_count) /
                                          (static_cast<float>(led_bar->period));
 
-                        power = std::clamp(power, 0.0F, led_bar->old_power);
-                        inv_power = std::clamp(inv_power, 0.0F, led_bar->old_power);
-                        led_bar->power = power;
-                        set_status_bar(bar_id, led_bar->old_color, inv_power, true);
+                        power = std::clamp(power, 0.0F, led_bar->power);
+                        inv_power = std::clamp(inv_power, 0.0F, led_bar->power);
+                        led_bar->power_dt = power;
+                        set_status_bar(bar_id, led_bar->old_color, inv_power,
+                                       true);
                         set_status_bar(bar_id, led_bar->color, power, true);
                     } else {
                         // Static only happens once
                         led_bar->reps = 0;
-                        led_bar->old_color = led_bar->color;
-                        led_bar->power = led_bar->old_power;
+                        led_bar->power_dt = 0;
                         return;
                     }
                     break;
@@ -249,8 +247,8 @@ class UITask {
                                 (static_cast<float>(led_bar->period) / TWO);
                     }
 
-                    led_bar->power = std::clamp(power, 0.0F, led_bar->old_power);
-                    set_status_bar(bar_id);
+                    led_bar->power_dt = std::clamp(power, 0.0F, led_bar->power);
+                    set_status_bar(bar_id, led_bar->color, power);
                     break;
                 }
                 case StatusBarPattern::Flash: {
@@ -296,7 +294,8 @@ class UITask {
     }
 
     /**
-
+     * @brief Set the power (separate from PWM) for a color. Each color has
+     * 3 channels, so this helper will set all of the channels.
      */
     auto set_color_power(StatusBarID bar, StatusBarColor color, float power,
                          bool wipe = true) -> bool {
@@ -376,8 +375,9 @@ class UITask {
         std::optional<int> period = std::nullopt,
         std::optional<int> reps = std::nullopt) -> void {
         auto status_bar = &get_statusbar_state(bar);
-        status_bar->old_color = status_bar->color;
-        status_bar->old_power = status_bar->power;
+        // If the old power was 0, set the old color to the new color
+        status_bar->old_color =
+            status_bar->power == 0 ? color : status_bar->color;
         status_bar->color = color;
         status_bar->power = std::clamp(power, 0.0F, 1.0F);
         status_bar->duration =
