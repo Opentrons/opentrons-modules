@@ -19,8 +19,8 @@
 #include "flex-stacker/tasks.hpp"
 #include "flex-stacker/tmc2160_registers.hpp"
 #include "hal/message_queue.hpp"
-#include "ot_utils/freertos/freertos_timer.hpp"
 #include "messages.hpp"
+#include "ot_utils/freertos/freertos_timer.hpp"
 
 namespace motor_task {
 using namespace ot_utils::freertos_timer;
@@ -100,7 +100,9 @@ class MotorTask {
           _z_controller(z_ctrl),
           _l_controller(l_ctrl),
           _initialized(false),
-          _debounce_timer("DB Timer", [ThisPtr = this] { ThisPtr->reset_debounce(); }, DEBOUNCE_MS) {}
+          _debounce_timer(
+              "DB Timer", [ThisPtr = this] { ThisPtr->reset_debounce(); },
+              DEBOUNCE_MS) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -420,9 +422,7 @@ class MotorTask {
         _x_controller.set_diag0_irq(m.enable);
     }
 
-    auto reset_debounce() -> void {
-        _debounce_timer.stop();
-    }
+    auto reset_debounce() -> void { _debounce_timer.stop(); }
 
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::GPIOInterruptMessage& m, Policy& policy)
@@ -444,9 +444,9 @@ class MotorTask {
         stop_motors();
         send_error_message(error);
         // Set status bars to RED
-         auto message =
-            messages::SetStatusBarColorMessage{.color = StatusBarColor::Red};
-         static_cast<void>(
+        auto message =
+            messages::SetStatusBarStateMessage{.color = StatusBarColor::Red};
+        static_cast<void>(
             _task_registry->send_to_address(message, Queues::UIAddress));
     }
 

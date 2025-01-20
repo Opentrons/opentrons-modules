@@ -49,14 +49,14 @@ class HostCommsTask {
         gcode::GetLimitSwitches, gcode::SetMicrosteps, gcode::GetMoveParams,
         gcode::SetMotorStallGuard, gcode::GetMotorStallGuard, gcode::HomeMotor,
         gcode::GetPlatformSensors, gcode::GetDoorClosed, gcode::GetEstopStatus,
-        gcode::StopMotor, gcode::GetResetReason, gcode::SetStatusBarColor>;
+        gcode::StopMotor, gcode::GetResetReason, gcode::SetStatusBarState>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::SetTMCRegister, gcode::SetRunCurrent,
                  gcode::SetHoldCurrent, gcode::EnableMotor, gcode::DisableMotor,
                  gcode::MoveMotorInSteps, gcode::MoveToLimitSwitch,
                  gcode::MoveMotorInMm, gcode::SetMicrosteps,
-                 gcode::SetStatusBarColor, gcode::SetMotorStallGuard,
+                 gcode::SetStatusBarState, gcode::SetMotorStallGuard,
                  gcode::HomeMotor, gcode::StopMotor>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetTMCRegisterCache = AckCache<8, gcode::GetTMCRegister>;
@@ -1049,7 +1049,7 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_gcode(const gcode::SetStatusBarColor& gcode, InputIt tx_into,
+    auto visit_gcode(const gcode::SetStatusBarState& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
@@ -1057,11 +1057,14 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message = messages::SetStatusBarColorMessage{
+        auto message = messages::SetStatusBarStateMessage{
             .id = id,
             .bar_id = gcode.bar_id,
-            .power = gcode.power,
             .color = gcode.color,
+            .fade = gcode.fade,
+            .pattern = gcode.pattern,
+            .duration = gcode.duration,
+            .power = gcode.power,
         };
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(

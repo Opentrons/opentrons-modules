@@ -17,7 +17,15 @@ typedef enum StatusBarColor {
     Red,
     Green,
     Blue,
+    Yellow,
 } StatusBarColor;
+
+typedef enum StatusBarPattern {
+    Static = 0,
+    Flash,
+    Pulse,
+    Fade,
+} StatusBarPattern;
 
 enum MotorSelection { Z, X, L, ALL };
 
