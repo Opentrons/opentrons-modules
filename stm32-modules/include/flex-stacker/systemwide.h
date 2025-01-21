@@ -24,7 +24,7 @@ typedef enum StatusBarPattern {
     Static = 0,
     Flash,
     Pulse,
-    Fade,
+    Confirm,
 } StatusBarPattern;
 
 enum MotorSelection { Z, X, L, ALL };

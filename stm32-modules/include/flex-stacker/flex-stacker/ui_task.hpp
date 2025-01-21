@@ -60,14 +60,20 @@ static constexpr auto DEFAULT_POWER = 0.5F;
 static constexpr auto SYSTEM_LED_COUNT = 16;
 
 // Time between each write to the LED strip
-static constexpr uint32_t LED_UPDATE_PERIOD_MS = 5;
+static constexpr uint32_t LED_UPDATE_PERIOD_MS = 5U;
 // Time to fade from one color to the next
-static constexpr uint32_t LED_FADE_PERIOD_MS = 500;
+static constexpr uint32_t LED_FADE_PERIOD_MS = 500U;
 // Time that each full "pulse" action should take (sine wave)
-static constexpr uint32_t LED_PULSE_PERIOD_MS = 1000;
+static constexpr uint32_t LED_PULSE_PERIOD_MS = 1000U;
+// Time that it takes to fade from confirm color to original color
+static constexpr uint32_t LED_CONFIRM_FADE_PERIOD_MS = 5000U;
+// Time that it takes for the confirm color to flash
+static constexpr uint32_t LED_CONFIRM_PERIOD_MS = 300U;
 // Time to blink heartbeat LED
-static constexpr uint32_t HB_UPDATE_PERIOD_MS = 500;
-// Period to signify runnning forever
+static constexpr uint32_t HB_UPDATE_PERIOD_MS = 500U;
+// Max duration of the animation in ms (30 seconds)
+static constexpr uint32_t MAX_UPDATE_PERIOD_MS = 30000U;
+// Reps to signify runnning forever
 static constexpr int FOREVER = -1;
 
 struct StatusBarState {
@@ -77,10 +83,9 @@ struct StatusBarState {
     StatusBarPattern pattern = StatusBarPattern::Static;
     float power;
     float power_dt;
-    float duration = 0;
+    uint32_t duration = LED_FADE_PERIOD_MS;
     int reps = 0;
     uint32_t counter = 0;
-    uint32_t period = LED_FADE_PERIOD_MS;
     bool driver_ok = false;
 };
 
@@ -194,14 +199,14 @@ class UITask {
             if (led_bar->reps != FOREVER && led_bar->reps < 1) continue;
 
             // Turn off LEDs when power = 0
-            if (led_bar->reps != FOREVER && led_bar->power == 0) {
+            if (led_bar->power == 0) {
                 led_bar->reps = 0;
                 set_status_bar(bar_id);
                 continue;
             }
 
             led_bar->counter += LED_UPDATE_PERIOD_MS;
-            if (led_bar->counter > led_bar->period) {
+            if (led_bar->counter > led_bar->duration) {
                 led_bar->counter = 0;
             }
 
@@ -209,15 +214,16 @@ class UITask {
                 case StatusBarPattern::Static: {
                     // Fade from current color to new color
                     float power = led_bar->power;
-                    if (led_bar->counter < led_bar->period) {
+                    if (led_bar->counter < led_bar->duration) {
                         power = static_cast<float>(led_bar->counter) /
-                                (static_cast<float>(led_bar->period));
+                                (static_cast<float>(led_bar->duration));
 
                         auto inverse_count =
-                            std::abs(static_cast<int>(led_bar->period) -
+                            std::abs(static_cast<int>(led_bar->duration) -
                                      static_cast<int>(led_bar->counter));
-                        auto inv_power = static_cast<float>(inverse_count) /
-                                         (static_cast<float>(led_bar->period));
+                        auto inv_power =
+                            static_cast<float>(inverse_count) /
+                            (static_cast<float>(led_bar->duration));
 
                         power = std::clamp(power, 0.0F, led_bar->power);
                         inv_power = std::clamp(inv_power, 0.0F, led_bar->power);
@@ -236,15 +242,15 @@ class UITask {
                 case StatusBarPattern::Pulse: {
                     // Set color as a triangle wave
                     float power = led_bar->power;
-                    if (led_bar->counter < (led_bar->period / 2)) {
+                    if (led_bar->counter < (led_bar->duration / 2)) {
                         power = static_cast<float>(led_bar->counter) /
-                                (static_cast<float>(led_bar->period) / TWO);
+                                (static_cast<float>(led_bar->duration) / TWO);
                     } else {
                         auto inverse_count =
-                            std::abs(static_cast<int>(led_bar->period) -
+                            std::abs(static_cast<int>(led_bar->duration) -
                                      static_cast<int>(led_bar->counter));
                         power = static_cast<float>(inverse_count) /
-                                (static_cast<float>(led_bar->period) / TWO);
+                                (static_cast<float>(led_bar->duration) / TWO);
                     }
 
                     led_bar->power_dt = std::clamp(power, 0.0F, led_bar->power);
@@ -252,18 +258,47 @@ class UITask {
                     break;
                 }
                 case StatusBarPattern::Flash: {
-                    // Blink the statusbar by turning on/off by half the period.
-                    auto power = (led_bar->counter < (led_bar->period / 2))
-                                     ? led_bar->power
-                                     : 0;
+                    // Blink the statusbar by turning on/off by half the
+                    // duration.
+                    auto power = (led_bar->counter < (led_bar->duration / 2))
+                                     ? 0
+                                     : led_bar->power;
                     set_status_bar(bar_id, led_bar->color, power);
                     break;
                 }
-                case StatusBarPattern::Fade:
+                case StatusBarPattern::Confirm: {
+                    // turn on then off led to new color
+                    if (led_bar->counter < LED_CONFIRM_PERIOD_MS) {
+                        auto power =
+                            (led_bar->counter < LED_CONFIRM_PERIOD_MS / 2)
+                                ? led_bar->power
+                                : 0;
+                        set_status_bar(bar_id, led_bar->color, power);
+                        // turn on led to new color
+                    } else if (led_bar->counter < LED_CONFIRM_PERIOD_MS + 100) {
+                        set_status_bar(bar_id, led_bar->color, led_bar->power);
+                        // fade to old color
+                    } else {
+                        float power = led_bar->power;
+                        if (led_bar->counter < led_bar->duration) {
+                            power = static_cast<float>(led_bar->counter) /
+                                    (static_cast<float>(led_bar->duration));
+                            power = std::clamp(power, 0.0F, led_bar->power);
+                            led_bar->power_dt = power;
+                            set_status_bar(bar_id, led_bar->old_color, power,
+                                           true);
+                        } else {
+                            led_bar->reps = 0;
+                            led_bar->power_dt = 0;
+                            led_bar->color = led_bar->old_color;
+                            return;
+                        }
+                    }
                     break;
+                }
             }
 
-            if (led_bar->counter >= led_bar->period) {
+            if (led_bar->counter >= led_bar->duration) {
                 if (led_bar->reps != FOREVER) {
                     led_bar->reps -= 1;
                 }
@@ -280,10 +315,9 @@ class UITask {
             bar_id = m.bar_id.value_or(bar_id);
             StatusBarState bar = get_statusbar_state(bar_id);
             StatusBarColor color = m.color.value_or(bar.color);
-            StatusBarPattern pattern = m.pattern.value_or(bar.pattern);
             float power = m.power.value_or(bar.power);
-            float duration = m.duration.value_or(bar.duration);
-            update_statusbar_state(bar_id, color, power, pattern, duration);
+            update_statusbar_state(bar_id, color, power, m.pattern, m.duration,
+                                   m.reps);
             // Only set one status bar if one was given.
             if (m.bar_id.has_value()) {
                 break;
@@ -340,25 +374,25 @@ class UITask {
         }
     }
 
-    auto get_default_period(StatusBarPattern pattern) -> int64_t {
+    auto get_default_period(StatusBarPattern pattern) -> uint32_t {
         switch (pattern) {
-            case Fade:
-                return LED_FADE_PERIOD_MS;
             case Flash:
                 return LED_FADE_PERIOD_MS;
             case Static:
                 return LED_FADE_PERIOD_MS;
             case Pulse:
                 return LED_PULSE_PERIOD_MS;
+            case Confirm:
+                return LED_CONFIRM_FADE_PERIOD_MS;
             default:
-                return FOREVER;
+                return MAX_UPDATE_PERIOD_MS;
         }
     }
 
     auto get_default_reps(StatusBarPattern pattern) -> int {
         switch (pattern) {
-            case Fade:
             case Static:
+            case Confirm:
                 return 1;
             case Flash:
             case Pulse:
@@ -371,20 +405,19 @@ class UITask {
     auto update_statusbar_state(
         StatusBarID bar, StatusBarColor color, float power,
         std::optional<StatusBarPattern> pattern = std::nullopt,
-        std::optional<float> duration = std::nullopt,
-        std::optional<int> period = std::nullopt,
-        std::optional<int> reps = std::nullopt) -> void {
+        std::optional<uint32_t> duration = std::nullopt,
+        std::optional<int8_t> reps = std::nullopt) -> void {
         auto status_bar = &get_statusbar_state(bar);
         // If the old power was 0, set the old color to the new color
         status_bar->old_color =
             status_bar->power == 0 ? color : status_bar->color;
         status_bar->color = color;
         status_bar->power = std::clamp(power, 0.0F, 1.0F);
-        status_bar->duration =
-            std::clamp(duration.value_or(status_bar->duration), 0.0F, 30.0F);
         status_bar->pattern = pattern.value_or(status_bar->pattern);
-        status_bar->period =
-            period.value_or(get_default_period(status_bar->pattern));
+        auto duration_ =
+            duration.value_or(get_default_period(status_bar->pattern));
+        status_bar->duration =
+            std::clamp((uint32_t)duration_, (uint32_t)1, MAX_UPDATE_PERIOD_MS);
         status_bar->reps = reps.value_or(get_default_reps(status_bar->pattern));
         status_bar->counter = 0;
     }

@@ -251,9 +251,9 @@ struct GetDoorClosed {
 struct SetStatusBarState {
     std::optional<StatusBarID> bar_id;
     std::optional<StatusBarColor> color;
-    std::optional<StatusBarColor> fade;
     std::optional<StatusBarPattern> pattern;
-    std::optional<float> duration;
+    std::optional<uint32_t> duration;
+    std::optional<int8_t> reps;
     float power;
 
     using ParseResult = std::optional<SetStatusBarState>;
@@ -264,8 +264,8 @@ struct SetStatusBarState {
     using ColorArg = Arg<uint8_t, 'C'>;
     using KindArg = Arg<uint8_t, 'K'>;
     using PatternArg = Arg<uint8_t, 'A'>;
-    using DurationArg = Arg<float, 'D'>;
-    using FadeArg = Arg<uint8_t, 'F'>;
+    using DurationArg = Arg<uint32_t, 'D'>;
+    using RepsArg = Arg<int8_t, 'R'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -274,7 +274,7 @@ struct SetStatusBarState {
         -> std::pair<ParseResult, InputIt> {
         auto res =
             gcode::SingleParser<PowerArg, ColorArg, KindArg, PatternArg,
-                                DurationArg, FadeArg>::parse_gcode(input, limit,
+                                DurationArg, RepsArg>::parse_gcode(input, limit,
                                                                    prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
@@ -282,9 +282,9 @@ struct SetStatusBarState {
 
         auto ret = SetStatusBarState{.bar_id = std::nullopt,
                                      .color = std::nullopt,
-                                     .fade = std::nullopt,
                                      .pattern = std::nullopt,
-                                     .duration = 0,
+                                     .duration = std::nullopt,
+                                     .reps = std::nullopt,
                                      .power = 0};
 
         auto arguments = res.first.value();
@@ -306,8 +306,7 @@ struct SetStatusBarState {
             ret.duration = static_cast<float>(std::get<4>(arguments).value);
         }
         if (std::get<5>(arguments).present) {
-            ret.fade =
-                static_cast<StatusBarColor>(std::get<5>(arguments).value);
+            ret.reps = static_cast<int8_t>(std::get<5>(arguments).value);
         }
         return std::make_pair(ret, res.second);
     }

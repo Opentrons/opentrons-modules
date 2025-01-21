@@ -1061,9 +1061,9 @@ class HostCommsTask {
             .id = id,
             .bar_id = gcode.bar_id,
             .color = gcode.color,
-            .fade = gcode.fade,
             .pattern = gcode.pattern,
             .duration = gcode.duration,
+            .reps = gcode.reps,
             .power = gcode.power,
         };
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {

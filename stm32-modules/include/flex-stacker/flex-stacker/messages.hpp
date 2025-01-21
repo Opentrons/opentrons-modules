@@ -289,9 +289,9 @@ struct SetStatusBarStateMessage {
     uint32_t id = 0;
     std::optional<StatusBarID> bar_id = std::nullopt;
     std::optional<StatusBarColor> color = std::nullopt;
-    std::optional<StatusBarColor> fade = std::nullopt;
     std::optional<StatusBarPattern> pattern = std::nullopt;
-    std::optional<float> duration = std::nullopt;
+    std::optional<uint32_t> duration = std::nullopt;
+    std::optional<int8_t> reps = std::nullopt;
     std::optional<float> power = std::nullopt;
 };
 
