@@ -443,9 +443,9 @@ class MotorTask {
 
         stop_motors();
         send_error_message(error);
-        // Set status bars to RED
-        auto message =
-            messages::SetStatusBarStateMessage{.color = StatusBarColor::Red};
+        // Set status bars to flashing RED
+        auto message = messages::SetStatusBarStateMessage{
+            .color = StatusBarColor::Red, .pattern = StatusBarPattern::Flash};
         static_cast<void>(
             _task_registry->send_to_address(message, Queues::UIAddress));
     }

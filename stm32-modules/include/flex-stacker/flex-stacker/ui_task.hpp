@@ -32,7 +32,7 @@ static constexpr ChannelMapping white_channels{2, 3, 4, 5};
 static constexpr ChannelMapping red_channels{6, 9, 12, 15};
 static constexpr ChannelMapping green_channels{7, 10, 13, 16};
 static constexpr ChannelMapping blue_channels{8, 11, 14, 17};
-static constexpr ChannelMapping yellow_channels{6, 7, 9, 10};
+static constexpr ChannelMapping yellow_channels{6, 7, 12, 13};
 
 static auto color_to_channels(StatusBarColor color) -> const ChannelMapping& {
     switch (color) {
@@ -71,8 +71,10 @@ static constexpr uint32_t LED_CONFIRM_FADE_PERIOD_MS = 5000U;
 static constexpr uint32_t LED_CONFIRM_PERIOD_MS = 300U;
 // Time to blink heartbeat LED
 static constexpr uint32_t HB_UPDATE_PERIOD_MS = 500U;
-// Max duration of the animation in ms (30 seconds)
-static constexpr uint32_t MAX_UPDATE_PERIOD_MS = 30000U;
+// Max duration of the animation in ms (10 seconds)
+static constexpr uint32_t MAX_UPDATE_PERIOD_MS = 10000U;
+// Min duration of the animation in ms (25 ms)
+static constexpr uint32_t MIN_UPDATE_PERIOD_MS = 25U;
 // Reps to signify runnning forever
 static constexpr int FOREVER = -1;
 
@@ -148,7 +150,7 @@ class UITask {
             }
             if (!_led_driver1.initialized()) {
                 _led_driver1.initialize(policy);
-                _led_bar_internal.driver_ok = true;
+                _led_bar_external.driver_ok = true;
                 set_status_bar(External);
             }
             _initialized = true;
@@ -217,19 +219,8 @@ class UITask {
                     if (led_bar->counter < led_bar->duration) {
                         power = static_cast<float>(led_bar->counter) /
                                 (static_cast<float>(led_bar->duration));
-
-                        auto inverse_count =
-                            std::abs(static_cast<int>(led_bar->duration) -
-                                     static_cast<int>(led_bar->counter));
-                        auto inv_power =
-                            static_cast<float>(inverse_count) /
-                            (static_cast<float>(led_bar->duration));
-
                         power = std::clamp(power, 0.0F, led_bar->power);
-                        inv_power = std::clamp(inv_power, 0.0F, led_bar->power);
                         led_bar->power_dt = power;
-                        set_status_bar(bar_id, led_bar->old_color, inv_power,
-                                       true);
                         set_status_bar(bar_id, led_bar->color, power, true);
                     } else {
                         // Static only happens once
@@ -263,6 +254,7 @@ class UITask {
                     auto power = (led_bar->counter < (led_bar->duration / 2))
                                      ? 0
                                      : led_bar->power;
+                    led_bar->power_dt = power;
                     set_status_bar(bar_id, led_bar->color, power);
                     break;
                 }
@@ -337,7 +329,7 @@ class UITask {
 
         // clear the LEDs not being set
         if (wipe) {
-            for (int i = 2; i < 17; i++) {
+            for (int i = 2; i <= 17; i++) {
                 if (std::find(std::begin(channels), std::end(channels), i) !=
                     std::end(channels))
                     continue;
@@ -416,8 +408,8 @@ class UITask {
         status_bar->pattern = pattern.value_or(status_bar->pattern);
         auto duration_ =
             duration.value_or(get_default_period(status_bar->pattern));
-        status_bar->duration =
-            std::clamp((uint32_t)duration_, (uint32_t)1, MAX_UPDATE_PERIOD_MS);
+        status_bar->duration = std::clamp(
+            (uint32_t)duration_, MIN_UPDATE_PERIOD_MS, MAX_UPDATE_PERIOD_MS);
         status_bar->reps = reps.value_or(get_default_reps(status_bar->pattern));
         status_bar->counter = 0;
     }
