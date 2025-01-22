@@ -2,6 +2,9 @@
 
 #include "firmware/motor_hardware.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 using namespace motor_policy;
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
@@ -48,7 +51,13 @@ auto MotorPolicy::set_diag0_irq(bool enable) -> void {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::check_estop() -> bool { return hw_read_estop(); }
+auto MotorPolicy::check_estop() -> bool {
+    debouncer.debounce_update(hw_read_estop());
+    return debouncer.debounce_state();
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::check_diag0() -> bool { return hw_read_diag0(); }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::is_diag0_pin(uint16_t pin) -> bool {
@@ -59,3 +68,9 @@ auto MotorPolicy::is_diag0_pin(uint16_t pin) -> bool {
 auto MotorPolicy::is_estop_pin(uint16_t pin) -> bool {
     return hw_is_estop_pin(pin);
 }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto MotorPolicy::sleep_ms(uint32_t ms) -> void {
+    vTaskDelay(pdMS_TO_TICKS(ms));
+}
+
