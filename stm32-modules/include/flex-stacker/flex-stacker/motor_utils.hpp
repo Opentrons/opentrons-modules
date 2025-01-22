@@ -132,7 +132,8 @@ class MovementProfile {
 
     // When incrementing position tracker, if this bit changes then
     // a step should take place.
-    static constexpr q31_31 _tick_flag = (1 << radix);
+    static constexpr q31_31 _tick_flag =
+        (static_cast<uint64_t>(1) << radix) - 1;
 };
 
 }  // namespace motor_util
