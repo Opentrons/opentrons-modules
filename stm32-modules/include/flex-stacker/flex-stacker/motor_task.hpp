@@ -423,38 +423,22 @@ class MotorTask {
     }
 
     auto reset_debounce() -> void { _debounce_timer.stop(); }
-    //auto reset_debounce(bool triggered) -> void {
-    //    if (triggered) {
-    //        // Set status bars to flashing RED
-    //        auto message = messages::SetStatusBarStateMessage{
-    //            .color = StatusBarColor::Red,
-    //            .pattern = StatusBarPattern::Flash,
-    //            .duration = 1000,
-    //            .reps = 3};
-    //        static_cast<void>(
-    //            _task_registry->send_to_address(message, Queues::UIAddress));
-    //    }
-    //    _debounce_timer.stop();
-    //}
 
     template <MotorControlPolicy Policy>
     auto visit_message(const messages::GPIOInterruptMessage& m, Policy& policy)
         -> void {
         // Debounce
         if (_debounce_timer.is_running()) return;
-        //_debounce_timer.update_callback(
-        //    [ThisPtr = this, &policy] { ThisPtr->reset_debounce(policy.check_estop()); }
-        //);
         _debounce_timer.start();
 
         auto triggered = false;
         auto error = Error::NO_ERROR;
         if (policy.is_diag0_pin(m.pin)) {
-            policy.sleep_ms(100);
+            policy.sleep_ms(200);
             triggered = policy.check_diag0();
             error = Error::MOTOR_STALL_DETECTED;
         } else if (policy.is_estop_pin(m.pin)) {
-            //policy.sleep_ms(800);
+            policy.sleep_ms(200);
             triggered = policy.check_estop();
             error = Error::ESTOP_TRIGGERED;
         } else {
@@ -465,15 +449,16 @@ class MotorTask {
         if (triggered) {
             stop_motors();
             send_error_message(error);
-            // Set status bars to flashing RED
-            auto message = messages::SetStatusBarStateMessage{
-                .color = StatusBarColor::Red,
-                .pattern = StatusBarPattern::Flash,
-                .duration = 1000,
-                .reps = 3};
-            static_cast<void>(
-                _task_registry->send_to_address(message, Queues::UIAddress));
         }
+
+        // Set status bars
+        auto color = triggered ? StatusBarColor::Red : StatusBarColor::Green;
+        auto pattern =
+            triggered ? StatusBarPattern::Flash : StatusBarPattern::Static;
+        auto message = messages::SetStatusBarStateMessage{
+            .color = color, .pattern = pattern, .duration = 1000, .reps = 3};
+        static_cast<void>(
+            _task_registry->send_to_address(message, Queues::UIAddress));
     }
 
     /**

@@ -2,9 +2,9 @@
 
 #include <cstdint>
 
-#include "systemwide.h"
 #include "core/debounce.hpp"
-//stm32-modules/include//common/core/debounce.hpp
+#include "systemwide.h"
+// stm32-modules/include//common/core/debounce.hpp
 
 namespace motor_policy {
 
@@ -24,6 +24,5 @@ class MotorPolicy {
     auto is_diag0_pin(uint16_t pin) -> bool;
     auto is_estop_pin(uint16_t pin) -> bool;
     auto sleep_ms(uint32_t ms) -> void;
-    debouncer::Debouncer debouncer = debouncer::Debouncer{};
 };
 }  // namespace motor_policy

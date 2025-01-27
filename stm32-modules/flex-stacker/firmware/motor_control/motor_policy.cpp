@@ -1,8 +1,7 @@
 #include "firmware/motor_policy.hpp"
 
-#include "firmware/motor_hardware.h"
-
 #include "FreeRTOS.h"
+#include "firmware/motor_hardware.h"
 #include "task.h"
 
 using namespace motor_policy;
@@ -51,10 +50,7 @@ auto MotorPolicy::set_diag0_irq(bool enable) -> void {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::check_estop() -> bool {
-    debouncer.debounce_update(hw_read_estop());
-    return debouncer.debounce_state();
-}
+auto MotorPolicy::check_estop() -> bool { return hw_read_estop(); }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::check_diag0() -> bool { return hw_read_diag0(); }
@@ -73,4 +69,3 @@ auto MotorPolicy::is_estop_pin(uint16_t pin) -> bool {
 auto MotorPolicy::sleep_ms(uint32_t ms) -> void {
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
-
