@@ -52,7 +52,7 @@ static auto color_to_channels(StatusBarColor color) -> const ChannelMapping& {
 }
 
 // The timer driving LED update frequency should run at this period
-static constexpr uint32_t UPDATE_PERIOD_MS = 1;
+static constexpr uint32_t UPDATE_PERIOD_MS = 10;
 static constexpr uint8_t LED_DRIVER0_I2C_ADDRESS = 0x6C << 1;  // Internal
 static constexpr uint8_t LED_DRIVER1_I2C_ADDRESS = 0x6F << 1;  // External
 static constexpr auto DEFAULT_COLOR = StatusBarColor::Green;
@@ -60,7 +60,7 @@ static constexpr auto DEFAULT_POWER = 0.5F;
 static constexpr auto SYSTEM_LED_COUNT = 16;
 
 // Time between each write to the LED strip
-static constexpr uint32_t LED_UPDATE_PERIOD_MS = 5U;
+static constexpr uint32_t LED_UPDATE_PERIOD_MS = 1U * UPDATE_PERIOD_MS;
 // Time to fade from one color to the next
 static constexpr uint32_t LED_FADE_PERIOD_MS = 500U;
 // Time that each full "pulse" action should take (sine wave)
@@ -70,7 +70,7 @@ static constexpr uint32_t LED_CONFIRM_FADE_PERIOD_MS = 5000U;
 // Time that it takes for the confirm color to flash
 static constexpr uint32_t LED_CONFIRM_PERIOD_MS = 300U;
 // Time to blink heartbeat LED
-static constexpr uint32_t HB_UPDATE_PERIOD_MS = 500U;
+static constexpr uint32_t HB_UPDATE_PERIOD_MS = 500U / UPDATE_PERIOD_MS;
 // Max duration of the animation in ms (10 seconds)
 static constexpr uint32_t MAX_UPDATE_PERIOD_MS = 10000U;
 // Min duration of the animation in ms (25 ms)
@@ -421,7 +421,9 @@ class UITask {
                         std::optional<bool> wipe = std::nullopt) -> bool {
         // Skip if driver not initialized
         auto status_bar = get_statusbar_state(bar);
-        if (!status_bar.driver_ok) return false;
+        if (!status_bar.driver_ok) {
+            return false;
+        }
 
         // Skip if there is no state change
         if (power.has_value() and power.has_value()) {

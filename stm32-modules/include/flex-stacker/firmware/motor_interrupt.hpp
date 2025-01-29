@@ -109,8 +109,12 @@ class MotorInterruptController {
         if (_stop) {
             return true;
         }
-        if (_policy->check_estop()) return true;
-        if (!_policy->check_diag0()) return true;
+        if (_policy->check_estop()) {
+            return true;
+        }
+        if (!_policy->check_diag0()) {
+            return true;
+        }
         if (_profile.movement_type() == motor_util::MovementType::OpenLoop) {
             return limit_switch_triggered();
         }
