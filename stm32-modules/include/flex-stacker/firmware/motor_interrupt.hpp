@@ -101,11 +101,18 @@ class MotorInterruptController {
     auto limit_switch_triggered() -> bool {
         return _policy->check_limit_switch(_id, _direction);
     }
+
     [[nodiscard]] auto get_response_id() const -> uint32_t {
         return _response_id;
     }
     auto stop_condition_met() -> bool {
         if (_stop) {
+            return true;
+        }
+        if (_policy->check_estop()) {
+            return true;
+        }
+        if (!_policy->check_diag0()) {
             return true;
         }
         if (_profile.movement_type() == motor_util::MovementType::OpenLoop) {

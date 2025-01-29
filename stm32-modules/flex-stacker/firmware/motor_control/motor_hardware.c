@@ -127,9 +127,6 @@ void motor_hardware_gpio_init(void){
     init.Pin = Z_STEP_PIN;
     HAL_GPIO_Init(Z_STEP_PORT, &init);
 
-    init.Pin = MOTOR_DIAG0_PIN;
-    HAL_GPIO_Init(MOTOR_DIAG0_PORT, &init);
-
     // X MOTOR
     init.Pin = X_EN_PIN;
     HAL_GPIO_Init(X_EN_PORT, &init);
@@ -408,6 +405,11 @@ bool hw_read_platform_sensor(bool direction) {
 bool hw_read_estop(void) {
     return HAL_GPIO_ReadPin(_motor_hardware.estop.port, _motor_hardware.estop.pin) ==
            _motor_hardware.estop.active_setting;
+}
+
+bool hw_read_diag0(void) {
+    // diag0 is shared by all motors
+    return HAL_GPIO_ReadPin(MOTOR_DIAG0_PORT, MOTOR_DIAG0_PIN) == GPIO_PIN_SET;
 }
 
 void hw_set_diag0_irq(bool enable) {
