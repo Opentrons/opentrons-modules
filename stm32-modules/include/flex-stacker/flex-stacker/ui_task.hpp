@@ -197,9 +197,8 @@ class UITask {
     }
 
     template <UIPolicyIface Policy>
-    auto visit_message(
-        const messages::UpdateUIMessage& m,
-        Policy& policy)  // NOLINT[readability-function-cognitive-complexity]
+    // NOLINTNEXTLINE[readability-function-cognitive-complexity]
+    auto visit_message(const messages::UpdateUIMessage& m, Policy& policy)
         -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
