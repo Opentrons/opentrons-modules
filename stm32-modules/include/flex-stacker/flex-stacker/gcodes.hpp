@@ -305,7 +305,9 @@ struct SetStatusBarState {
         if (std::get<4>(arguments).present) {
             ret.duration = static_cast<float>(std::get<4>(arguments).value);
         }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (std::get<5>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
             ret.reps = static_cast<int8_t>(std::get<5>(arguments).value);
         }
         return std::make_pair(ret, res.second);
