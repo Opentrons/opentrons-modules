@@ -33,6 +33,8 @@ static constexpr ChannelMapping red_channels{6, 9, 12, 15};
 static constexpr ChannelMapping green_channels{7, 10, 13, 16};
 static constexpr ChannelMapping blue_channels{8, 11, 14, 17};
 static constexpr ChannelMapping yellow_channels{6, 7, 12, 13};
+static constexpr int LED_CHANNEL_START = 2;
+static constexpr int LED_CHANNEL_END = 17;
 
 static auto color_to_channels(StatusBarColor color) -> const ChannelMapping& {
     switch (color) {
@@ -63,12 +65,17 @@ static constexpr auto SYSTEM_LED_COUNT = 16;
 static constexpr uint32_t LED_UPDATE_PERIOD_MS = 1U * UPDATE_PERIOD_MS;
 // Time to fade from one color to the next
 static constexpr uint32_t LED_FADE_PERIOD_MS = 500U;
+// Time to flash the color on and off
+static constexpr uint32_t LED_FLASH_PERIOD_MS = 500U;
 // Time that each full "pulse" action should take (sine wave)
 static constexpr uint32_t LED_PULSE_PERIOD_MS = 1000U;
 // Time that it takes to fade from confirm color to original color
 static constexpr uint32_t LED_CONFIRM_FADE_PERIOD_MS = 5000U;
 // Time that it takes for the confirm color to flash
 static constexpr uint32_t LED_CONFIRM_PERIOD_MS = 300U;
+// Time that it takes for the confirm pattern to turn on the led
+static constexpr uint32_t LED_CONFIRM_ON_PERIOD_MS =
+    LED_CONFIRM_PERIOD_MS + 100;
 // Time to blink heartbeat LED
 static constexpr uint32_t HB_UPDATE_PERIOD_MS = 500U / UPDATE_PERIOD_MS;
 // Max duration of the animation in ms (10 seconds)
@@ -76,7 +83,7 @@ static constexpr uint32_t MAX_UPDATE_PERIOD_MS = 10000U;
 // Min duration of the animation in ms (25 ms)
 static constexpr uint32_t MIN_UPDATE_PERIOD_MS = 25U;
 // Reps to signify runnning forever
-static constexpr int FOREVER = -1;
+static constexpr int8_t FOREVER = -1;
 
 struct StatusBarState {
     StatusBarID kind;
@@ -86,7 +93,7 @@ struct StatusBarState {
     float power;
     float power_dt;
     uint32_t duration = LED_FADE_PERIOD_MS;
-    int reps = 0;
+    int8_t reps = 0;
     uint32_t counter = 0;
     bool driver_ok = false;
 };
@@ -192,13 +199,19 @@ class UITask {
     template <UIPolicyIface Policy>
     auto visit_message(const messages::UpdateUIMessage& m, Policy& policy)
         -> void {
+        static_cast<void>(m);
+        static_cast<void>(policy);
         static constexpr double TWO = 2.0F;
         for (auto bar_id : {StatusBarID::Internal, StatusBarID::External}) {
             _led_update_pending = false;
             auto led_bar = &get_statusbar_state(bar_id);
             // Skip if driver not initialized or reps reached 0
-            if (!led_bar->driver_ok) continue;
-            if (led_bar->reps != FOREVER && led_bar->reps < 1) continue;
+            if (!led_bar->driver_ok) {
+                continue;
+            }
+            if (led_bar->reps != FOREVER && led_bar->reps < 1) {
+                continue;
+            }
 
             // Turn off LEDs when power = 0
             if (led_bar->power == 0) {
@@ -233,7 +246,7 @@ class UITask {
                 case StatusBarPattern::Pulse: {
                     // Set color as a triangle wave
                     float power = led_bar->power;
-                    if (led_bar->counter < (led_bar->duration / 2)) {
+                    if (led_bar->counter < (led_bar->duration / TWO)) {
                         power = static_cast<float>(led_bar->counter) /
                                 (static_cast<float>(led_bar->duration) / TWO);
                     } else {
@@ -251,7 +264,7 @@ class UITask {
                 case StatusBarPattern::Flash: {
                     // Blink the statusbar by turning on/off by half the
                     // duration.
-                    auto power = (led_bar->counter < (led_bar->duration / 2))
+                    auto power = (led_bar->counter < (led_bar->duration / TWO))
                                      ? 0
                                      : led_bar->power;
                     set_status_bar(bar_id, led_bar->color, power);
@@ -262,13 +275,13 @@ class UITask {
                     // turn on then off led to new color
                     if (led_bar->counter < LED_CONFIRM_PERIOD_MS) {
                         auto power =
-                            (led_bar->counter < LED_CONFIRM_PERIOD_MS / 2)
+                            (led_bar->counter < LED_CONFIRM_PERIOD_MS / TWO)
                                 ? led_bar->power
                                 : 0;
                         set_status_bar(bar_id, led_bar->color, power);
                         led_bar->power_dt = power;
                         // turn on led to new color
-                    } else if (led_bar->counter < LED_CONFIRM_PERIOD_MS + 100) {
+                    } else if (led_bar->counter < LED_CONFIRM_ON_PERIOD_MS) {
                         set_status_bar(bar_id, led_bar->color, led_bar->power);
                         // fade to old color
                     } else {
@@ -330,10 +343,11 @@ class UITask {
 
         // clear the LEDs not being set
         if (wipe) {
-            for (int i = 2; i <= 17; i++) {
+            for (int i = LED_CHANNEL_START; i <= LED_CHANNEL_END; i++) {
                 if (std::find(std::begin(channels), std::end(channels), i) !=
-                    std::end(channels))
+                    std::end(channels)) {
                     continue;
+                }
                 if (bar == Internal) {
                     _led_driver0.set_current(i, 0);
                 }
@@ -370,7 +384,7 @@ class UITask {
     auto get_default_period(StatusBarPattern pattern) -> uint32_t {
         switch (pattern) {
             case Flash:
-                return LED_FADE_PERIOD_MS;
+                return LED_FLASH_PERIOD_MS;
             case Static:
                 return LED_FADE_PERIOD_MS;
             case Pulse:
@@ -382,7 +396,7 @@ class UITask {
         }
     }
 
-    auto get_default_reps(StatusBarPattern pattern) -> int {
+    auto get_default_reps(StatusBarPattern pattern) -> int8_t {
         switch (pattern) {
             case Static:
             case Confirm:

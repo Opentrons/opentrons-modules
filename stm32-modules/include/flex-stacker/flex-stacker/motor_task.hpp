@@ -5,6 +5,7 @@
  */
 #pragma once
 #include <cmath>
+#include <cstdint>
 
 #include "core/ack_cache.hpp"
 #include "core/circular_buffer.hpp"
@@ -38,6 +39,9 @@ using Error = errors::ErrorCode;
 
 // Gpio irq debounce time
 static constexpr uint32_t DEBOUNCE_MS = 1000;
+static constexpr uint32_t DEBOUNCE_SLEEP_MS = 200;
+static constexpr uint32_t LED_ERROR_DURATION_MS = 1000;
+static constexpr uint32_t LED_ERROR_REPS = 3;
 
 struct Defaults {
     struct X {
@@ -428,17 +432,19 @@ class MotorTask {
     auto visit_message(const messages::GPIOInterruptMessage& m, Policy& policy)
         -> void {
         // Debounce
-        if (_debounce_timer.is_running()) return;
+        if (_debounce_timer.is_running()) {
+            return;
+        }
         _debounce_timer.start();
 
         auto triggered = false;
         auto error = Error::NO_ERROR;
         if (policy.is_diag0_pin(m.pin)) {
-            policy.sleep_ms(200);
+            policy.sleep_ms(DEBOUNCE_SLEEP_MS);
             triggered = policy.check_diag0();
             error = Error::MOTOR_STALL_DETECTED;
         } else if (policy.is_estop_pin(m.pin)) {
-            policy.sleep_ms(200);
+            policy.sleep_ms(DEBOUNCE_SLEEP_MS);
             triggered = policy.check_estop();
             error = Error::ESTOP_TRIGGERED;
         } else {
@@ -456,7 +462,10 @@ class MotorTask {
         auto pattern =
             triggered ? StatusBarPattern::Flash : StatusBarPattern::Static;
         auto message = messages::SetStatusBarStateMessage{
-            .color = color, .pattern = pattern, .duration = 1000, .reps = 3};
+            .color = color,
+            .pattern = pattern,
+            .duration = LED_ERROR_DURATION_MS,
+            .reps = LED_ERROR_REPS};
         static_cast<void>(
             _task_registry->send_to_address(message, Queues::UIAddress));
     }
