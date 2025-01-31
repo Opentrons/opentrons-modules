@@ -41,7 +41,7 @@ jobs:
       - name: 'Prep for install'
         run: cmake --install ./build-stm32-cross --component flex-stacker
       - name: 'Save firmware artifacts'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: flex-stacker-build
           path: dist/flex-stacker/*.zip

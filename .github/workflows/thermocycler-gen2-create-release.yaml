@@ -41,7 +41,7 @@ jobs:
       - name: 'Prep for install'
         run: cmake --install ./build-stm32-cross --component thermocycler-gen2
       - name: 'Save firmware artifacts'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: thermocycler-gen2-build
           path: dist/thermocycler-gen2/*.zip
