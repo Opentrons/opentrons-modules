@@ -8,16 +8,24 @@ typedef enum MotorID {
 } MotorID;
 
 typedef enum TOFSensorID {
-    NONE,
+    TOF_NONE,
     TOF_Z,
     TOF_X,
 } TOFSensorID;
 
 typedef enum TOFSensorMode {
-    UNKNOWN    = 0x00,
-    MEASURE    = 0x03,
+    UNKNOWN = 0x00,
+    MEASURE = 0x03,
     BOOTLOADER = 0x80,
 } TOFSensorMode;
+
+typedef enum TOFSensorState {
+    DISABLED = 0,
+    INITIALIZING,
+    IDLE,
+    MEASURING,
+    TOF_ERROR,
+} TOFSensorState;
 
 typedef enum StatusBarID {
     Internal = 0,

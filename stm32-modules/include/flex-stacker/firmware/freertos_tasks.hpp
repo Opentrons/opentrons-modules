@@ -1,7 +1,6 @@
 #pragma once
 
 #include "FreeRTOS.h"
-
 #include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_message_queue.hpp"
 #include "firmware/i2c_comms.hpp"
@@ -38,13 +37,8 @@ namespace system_control_task {
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
 }  // namespace system_control_task
 
-namespace tof_driver_task {
+namespace tof_sensor_task {
 // Actual function that runs in the task
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
          i2c::hardware::I2C* i2c_comm) -> void;
 }  // namespace tof_driver_task
-
-namespace tof_sensor_task {
-// Actual function that runs in the task
-auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
-}  // namespace tof_sensor_task

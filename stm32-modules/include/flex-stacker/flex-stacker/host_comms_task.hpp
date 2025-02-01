@@ -53,15 +53,13 @@ class HostCommsTask {
         gcode::StopMotor, gcode::GetResetReason, gcode::SetStatusBarState,
         gcode::GetTOFSensorStatus, gcode::GetTOFRegister, gcode::SetTOFRegister,
         gcode::EnableTOFSensor>;
-    using AckOnlyCache =
-        AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
-                 gcode::SetTMCRegister, gcode::SetRunCurrent,
-                 gcode::SetHoldCurrent, gcode::EnableMotor, gcode::DisableMotor,
-                 gcode::MoveMotorInSteps, gcode::MoveToLimitSwitch,
-                 gcode::MoveMotorInMm, gcode::SetMicrosteps,
-                 gcode::SetStatusBarState, gcode::SetMotorStallGuard,
-                 gcode::HomeMotor, gcode::StopMotor, gcode::SetTOFRegister,
-                 gcode::EnableTOFSensor>;
+    using AckOnlyCache = AckCache<
+        8, gcode::EnterBootloader, gcode::SetSerialNumber,
+        gcode::SetTMCRegister, gcode::SetRunCurrent, gcode::SetHoldCurrent,
+        gcode::EnableMotor, gcode::DisableMotor, gcode::MoveMotorInSteps,
+        gcode::MoveToLimitSwitch, gcode::MoveMotorInMm, gcode::SetMicrosteps,
+        gcode::SetStatusBarState, gcode::SetMotorStallGuard, gcode::HomeMotor,
+        gcode::StopMotor, gcode::SetTOFRegister, gcode::EnableTOFSensor>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetTMCRegisterCache = AckCache<8, gcode::GetTMCRegister>;
     using GetLimitSwitchesCache = AckCache<8, gcode::GetLimitSwitches>;
@@ -1115,8 +1113,8 @@ class HostCommsTask {
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
                 } else {
                     return cache_element.write_response_into(
-                        tx_into, tx_limit, response.sensor_id,
-                        response.initialized);
+                        tx_into, tx_limit, response.sensor_id, response.ok,
+                        response.state, response.mode);
                 }
             },
             cache_entry);

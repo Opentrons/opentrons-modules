@@ -1,37 +1,33 @@
 #pragma once
 
-#include <utility>
+#include <stdint.h>
 
-#include "firmware/tof_sensor_hardware.h"
+#include <algorithm>
+#include <cstdint>
+#include <optional>
+
+#include "firmware/hardware_iface.hpp"
 #include "systemwide.h"
 
-namespace tof_sensor_policy {
-
-template <typename Iter>
-concept ByteIterator = requires {
-    {std::forward_iterator<Iter>};
-    {std::is_same_v<std::iter_value_t<Iter>, uint8_t>};
-};
-
+namespace tof {
+namespace hardware {
+using namespace i2c::hardware;
 class TOFSensorPolicy {
   public:
-    TOFSensorPolicy() = default;
+    explicit TOFSensorPolicy(I2CBase *i2c) : i2c_comms(i2c) {}
+    TOFSensorPolicy(const TOFSensorPolicy &) = delete;
+    TOFSensorPolicy(const TOFSensorPolicy &&) = delete;
+    auto operator=(const TOFSensorPolicy &) = delete;
+    auto operator=(const TOFSensorPolicy &&) = delete;
 
-    auto set_enabled(TOFSensorID sensor_id, bool enabled) -> void;
+    auto i2c_read(uint16_t dev_addr, uint16_t reg, uint16_t size) -> RxTxReturn;
+    auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t *data,
+                   uint16_t size) -> RxTxReturn;
+    auto enable_tof_sensor(TOFSensorID sensor_id, bool enable) -> void;
+    auto sleep_ms(uint32_t ms) -> void;
 
-    auto set_write_protect(TOFSensorID sensor_id, bool write_protect) -> void;
-
-    auto i2c_write(uint8_t addr, uint8_t data) -> bool;
-
-    template <ByteIterator Input>
-    auto i2c_write(uint8_t addr, Input data, size_t length) -> bool {
-        return thermal_i2c_write_data(addr, &(*data), length);
-    }
-
-    template <ByteIterator Output>
-    auto i2c_read(uint8_t addr, Output data, size_t length) -> bool {
-        return thermal_i2c_read_data(addr, &(*data), length);
-    }
+  private:
+    I2CBase *i2c_comms{nullptr};
 };
-
-}  // namespace tof_sensor_policy
+};  // namespace hardware
+};  // namespace tof

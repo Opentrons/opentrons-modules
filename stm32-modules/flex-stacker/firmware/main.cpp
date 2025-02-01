@@ -19,8 +19,8 @@
 using EntryPoint = std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
 using EntryPointUI = std::function<void(tasks::FirmwareTasks::QueueAggregator *,
                                         i2c::hardware::I2C *)>;
-using EntryPointTOF = std::function<void(tasks::FirmwareTasks::QueueAggregator *,
-                                        i2c::hardware::I2C *)>;
+using EntryPointTOF = std::function<void(
+    tasks::FirmwareTasks::QueueAggregator *, i2c::hardware::I2C *)>;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto motor_driver_task_entry = EntryPoint(motor_driver_task::run);
@@ -33,7 +33,7 @@ static auto host_comms_entry = EntryPoint(host_comms_control_task::run);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto system_task_entry = EntryPoint(system_control_task::run);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static auto tof_driver_entry = EntryPointTOF(tof_driver_task::run);
+static auto tof_sensor_entry = EntryPointTOF(tof_sensor_task::run);
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto driver_task =
@@ -57,8 +57,8 @@ static auto system_task =
         system_task_entry);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto tof_task =
-    ot_utils::freertos_task::FreeRTOSTask<tasks::TOF_DRIVER_STACK_SIZE, EntryPointTOF>(
-        tof_driver_entry);
+    ot_utils::freertos_task::FreeRTOSTask<tasks::TOF_SENSOR_STACK_SIZE,
+                                          EntryPointTOF>(tof_sensor_entry);
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
@@ -91,8 +91,10 @@ auto main() -> int {
     i2c3_comms.set_handle(i2c_handles.i2c3, I2C_BUS_3);
 
     system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
-    driver_task.start(tasks::MOTOR_DRIVER_TASK_PRIORITY, "Motor Driver", &aggregator);
-    tof_task.start(tasks::TOF_DRIVER_TASK_PRIORITY, "TOF Driver", &aggregator, &i2c3_comms);
+    driver_task.start(tasks::MOTOR_DRIVER_TASK_PRIORITY, "Motor Driver",
+                      &aggregator);
+    tof_task.start(tasks::TOF_SENSOR_TASK_PRIORITY, "TOF Sensor", &aggregator,
+                   &i2c3_comms);
     motor_task.start(tasks::MOTOR_TASK_PRIORITY, "Motor", &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);
     ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator, &i2c2_comms);

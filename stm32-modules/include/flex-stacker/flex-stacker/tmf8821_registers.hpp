@@ -21,6 +21,7 @@
  *
  * */
 #include <sys/types.h>
+
 #include <cstdint>
 
 namespace tmf8821 {
@@ -241,9 +242,8 @@ template <typename Reg>
 // Struct has a valid register address
 // Struct has an integer with the total number of bits in a register.
 // This is used to mask the value before writing it to the sensor.
-concept TMF8821Register =
-    std::same_as<std::remove_cvref_t<decltype(Reg::mode)>,
-                 std::remove_cvref_t<RegisterType&>> &&
+concept TMF8821Register = std::same_as<std::remove_cvref_t<decltype(Reg::mode)>,
+                                       std::remove_cvref_t<RegisterType&>> &&
     std::integral<decltype(Reg::address)> &&
     std::integral<decltype(Reg::value_mask)>;
 
@@ -259,7 +259,7 @@ concept ReadableRegister = requires() {
 
 struct __attribute__((packed, __may_alias__)) AppID {
     static constexpr auto mode = RegisterType::BASE;
-    static constexpr auto address = (uint16_t) BaseRegisters::APPID;
+    static constexpr auto address = (uint16_t)BaseRegisters::APPID;
     static constexpr bool readable = true;
     static constexpr bool writable = false;
     static constexpr uint32_t value_mask = (1 << 8) - 1;
@@ -269,7 +269,7 @@ struct __attribute__((packed, __may_alias__)) AppID {
 
 struct __attribute__((packed, __may_alias__)) Minor {
     static constexpr auto mode = RegisterType::BASE;
-    static constexpr auto address = (uint16_t) BaseRegisters::MINOR;
+    static constexpr auto address = (uint16_t)BaseRegisters::MINOR;
     static constexpr bool readable = true;
     static constexpr bool writable = false;
     static constexpr uint32_t value_mask = (1 << 8) - 1;
@@ -279,21 +279,112 @@ struct __attribute__((packed, __may_alias__)) Minor {
 
 struct __attribute__((packed, __may_alias__)) Enable {
     static constexpr auto mode = RegisterType::BASE;
-    static constexpr auto address = (uint16_t) BaseRegisters::ENABLE;
+    static constexpr auto address = (uint16_t)BaseRegisters::ENABLE;
     static constexpr bool readable = true;
     static constexpr bool writable = true;
-    static constexpr uint32_t value_mask = (1 << 8) - 1;
-    // TODO: Do we need the size of the register?
+    static constexpr uint32_t value_mask = (1 << 7) - 1;
 
-    // Do these need to be uint32_t?
-    uint8_t pon : 1 = 1;
-    uint8_t padding_1 : 4 = 0;
+    uint8_t pon : 1 = 0;
+    uint8_t padding_1 : 3 = 0;
     uint8_t powerup_select : 2 = 0;
     uint8_t cpu_ready : 1 = 0;
 };
 
+struct __attribute__((packed, __may_alias__)) BLStat {
+    static constexpr auto mode = RegisterType::BOOTLOADER;
+    static constexpr auto address = (uint16_t)BootloaderRegisters::BL_CMD_STAT;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t bl_cmd_state : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) BLSize {
+    static constexpr auto mode = RegisterType::BOOTLOADER;
+    static constexpr auto address = (uint16_t)BootloaderRegisters::BL_SIZE;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 7) - 1;
+
+    uint8_t bl_size : 7 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) BLData {
+    static constexpr auto mode = RegisterType::BOOTLOADER;
+    static constexpr auto address = (uint16_t)BootloaderRegisters::BL_DATA;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t bl_data : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) BLCSum {
+    static constexpr auto mode = RegisterType::BOOTLOADER;
+    static constexpr auto address = (uint16_t)BootloaderRegisters::BL_CSUM;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t bl_csum : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) CMDStat {
+    static constexpr auto mode = RegisterType::MAIN_APP;
+    static constexpr auto address = (uint16_t)AppRegisters::CMD_STAT;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t cmd_stat : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) ConfigResult {
+    static constexpr auto mode = RegisterType::MAIN_APP;
+    static constexpr auto address = (uint16_t)AppRegisters::CONFIG_RESULT;
+    static constexpr bool readable = true;
+    static constexpr bool writable = false;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t cid_rid : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) I2CSlaveAddress {
+    static constexpr auto mode = RegisterType::CONFIG;
+    static constexpr auto address =
+        (uint16_t)ConfigurationRegisters::I2C_SLAVE_ADDRESS;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t reserved : 1 = 0;
+    uint8_t slave_address : 7 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) I2CAddrChange {
+    static constexpr auto mode = RegisterType::CONFIG;
+    static constexpr auto address =
+        (uint16_t)ConfigurationRegisters::I2C_ADDR_CHANGE;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 4) - 1;
+
+    uint8_t gpio_change_value : 2 = 0;
+    uint8_t gpio_change_mask : 2 = 0;
+};
+
 struct TMF8821RegisterMap {
+    AppID app_id = {};
     Enable enable = {};
+    BLStat bl_stat = {};
+    BLSize bl_size = {};
+    BLData bl_data = {};
+    BLCSum bl_csum = {};
+    CMDStat cmd_stat = {};
+    ConfigResult cfg_result = {};
+    I2CSlaveAddress i2c_address = {};
+    I2CAddrChange i2c_addr_change = {0};
 };
 
 // Registers are all 32 bits

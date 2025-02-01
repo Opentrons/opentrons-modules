@@ -358,12 +358,13 @@ struct GetTOFSensorStatus {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit,
-                                    TOFSensorID sensor_id, bool initialized)
+                                    TOFSensorID sensor_id, bool ok,
+                                    TOFSensorState state, TOFSensorMode mode)
         -> InputIt {
         char sensor_char = sensor_id == TOFSensorID::TOF_X ? 'X' : 'Z';
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M215 %c I:%d OK\n", sensor_char,
-                       initialized);
+        res = snprintf(&*buf, (limit - buf), "M215 %c:%d T:%d M:%d OK\n",
+                       sensor_char, ok, state, mode);
         if (res <= 0) {
             return buf;
         }
@@ -415,7 +416,7 @@ struct GetTOFRegister {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     TOFSensorID sensor_id, uint8_t reg,
                                     uint32_t data) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M222 %c: %u %lu OK\n",
+        auto res = snprintf(&*buf, (limit - buf), "M222 %c:%u V:%lu OK\n",
                             sensor_id_to_char(sensor_id), reg, data);
         if (res <= 0) {
             return buf;

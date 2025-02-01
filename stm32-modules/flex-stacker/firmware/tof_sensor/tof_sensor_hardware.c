@@ -60,3 +60,13 @@ void enable_tof_sensor_write(TOFSensorID sensor_id, bool enable) {
         HAL_GPIO_WritePin(TOF_EN_Z_PORT, TOF_EN_Z_PIN, enable ? GPIO_PIN_SET : GPIO_PIN_RESET);
     }
 }
+
+// Initialize the eeprom and tof enable pins
+void tof_hardware_init(void) {
+    eeprom_write_protect_init();
+    tof_write_protect_init();
+    // Disable eeprom and tof sensor writes
+    enable_eeprom_write(false);
+    enable_tof_sensor_write(TOF_X, false);
+    enable_tof_sensor_write(TOF_Z, false);
+}

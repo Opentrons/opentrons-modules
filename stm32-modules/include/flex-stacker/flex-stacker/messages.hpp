@@ -303,10 +303,9 @@ struct GetTOFSensorStatusMessage {
 struct GetTOFSensorStatusResponse {
     uint32_t responding_to_id;
     TOFSensorID sensor_id;
-    bool initialized;
-    // TODO: What else do we need
-    // sensor version
-    // configured ?
+    TOFSensorState state;
+    TOFSensorMode mode;
+    bool ok;
 };
 
 struct EnableTOFSensorMessage {
@@ -341,8 +340,8 @@ using HostCommsMessage =
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
                    GetMoveParamsResponse, GetMotorStallGuardResponse,
                    GetDoorClosedResponse, GetPlatformSensorsResponse,
-                   GetEstopResponse, GetResetReasonResponse, GetTOFSensorStatusResponse,
-                   GetTOFRegisterResponse>;
+                   GetEstopResponse, GetResetReasonResponse,
+                   GetTOFSensorStatusResponse, GetTOFRegisterResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -365,11 +364,8 @@ using MotorMessage = ::std::variant<
     GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
     HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage>;
 
-using TOFDriverMessage =
-    ::std::variant<std::monostate, SetTOFRegisterMessage, GetTOFRegisterMessage,
-                   EnableTOFSensorMessage>;
-
 using TOFSensorMessage =
-    ::std::variant<std::monostate, GetTOFSensorStatusMessage>;
+    ::std::variant<std::monostate, SetTOFRegisterMessage, GetTOFRegisterMessage,
+                   EnableTOFSensorMessage, GetTOFSensorStatusMessage>;
 
 };  // namespace messages
