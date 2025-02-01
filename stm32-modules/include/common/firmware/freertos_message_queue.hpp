@@ -45,9 +45,12 @@ class FreeRTOSMessageQueue {
         -> FreeRTOSMessageQueue = delete;
     ~FreeRTOSMessageQueue() = default;
     [[nodiscard]] auto try_send(const Message& message,
-                                const uint32_t timeout_ticks = 0) -> bool {
-        auto sent = xQueueSendToBack(queue, &message, timeout_ticks) == pdTRUE;
-        return sent;
+                                const uint32_t timeout_ticks = 0,
+                                const bool to_front = false) -> bool {
+        auto sent = (to_front)
+                        ? xQueueSendToFront(queue, &message, timeout_ticks)
+                        : xQueueSendToBack(queue, &message, timeout_ticks);
+        return sent == pdTRUE;
     }
 
     [[nodiscard]] auto try_send_from_isr(const Message& message) -> bool {

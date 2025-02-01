@@ -252,45 +252,67 @@ struct GetDoorClosed {
     }
 };
 
-struct SetStatusBarColor {
+struct SetStatusBarState {
     std::optional<StatusBarID> bar_id;
     std::optional<StatusBarColor> color;
+    std::optional<StatusBarPattern> pattern;
+    std::optional<uint32_t> duration;
+    std::optional<int8_t> reps;
     float power;
 
-    using ParseResult = std::optional<SetStatusBarColor>;
+    using ParseResult = std::optional<SetStatusBarState>;
     static constexpr auto prefix = std::array{'M', '2', '0', '0', ' '};
     static constexpr const char* response = "M200 OK\n";
 
     using PowerArg = Arg<float, 'P'>;
     using ColorArg = Arg<uint8_t, 'C'>;
-    using KArg = Arg<uint8_t, 'K'>;
+    using KindArg = Arg<uint8_t, 'K'>;
+    using PatternArg = Arg<uint8_t, 'A'>;
+    using DurationArg = Arg<uint32_t, 'D'>;
+    using RepsArg = Arg<int8_t, 'R'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        auto res = gcode::SingleParser<PowerArg, ColorArg, KArg>::parse_gcode(
-            input, limit, prefix);
+        auto res =
+            gcode::SingleParser<PowerArg, ColorArg, KindArg, PatternArg,
+                                DurationArg, RepsArg>::parse_gcode(input, limit,
+                                                                   prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
 
-        auto ret = SetStatusBarColor{
-            .bar_id = std::nullopt, .color = std::nullopt, .power = 0};
+        auto ret = SetStatusBarState{.bar_id = std::nullopt,
+                                     .color = std::nullopt,
+                                     .pattern = std::nullopt,
+                                     .duration = std::nullopt,
+                                     .reps = std::nullopt,
+                                     .power = 0};
 
         auto arguments = res.first.value();
         if (std::get<0>(arguments).present) {
             ret.power = static_cast<float>(std::get<0>(arguments).value);
         }
-
         if (std::get<1>(arguments).present) {
             ret.color =
                 static_cast<StatusBarColor>(std::get<1>(arguments).value);
         }
-
         if (std::get<2>(arguments).present) {
             ret.bar_id = static_cast<StatusBarID>(std::get<2>(arguments).value);
+        }
+        if (std::get<3>(arguments).present) {
+            ret.pattern =
+                static_cast<StatusBarPattern>(std::get<3>(arguments).value);
+        }
+        if (std::get<4>(arguments).present) {
+            ret.duration = static_cast<float>(std::get<4>(arguments).value);
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (std::get<5>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            ret.reps = static_cast<int8_t>(std::get<5>(arguments).value);
         }
         return std::make_pair(ret, res.second);
     }

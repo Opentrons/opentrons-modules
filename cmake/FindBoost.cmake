@@ -55,7 +55,7 @@ Cache Variables
 include(FetchContent)
 string(REPLACE "." "_" "_boost_archive_version_component" "${Boost_FIND_VERSION}")
 set(boost_localinstall_root ${CMAKE_SOURCE_DIR}/stm32-tools/boost-${_boost_archive_version_component})
-set(boost_archive_root "https://boostorg.jfrog.io/artifactory/main/release")
+set(boost_archive_root "https://archives.boost.io/release")
 set(boost_archive_url "${boost_archive_root}/${Boost_FIND_VERSION}/source/boost_${_boost_archive_version_component}.zip")
 FetchContent_Declare(Boost
   PREFIX "${boost_localinstall_root}"
