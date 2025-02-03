@@ -32,6 +32,11 @@ case $TRAVIS_TAG in
     export RELEASE_UPLOAD_DIR="thermocycler-gen2/${RELEASE_VERSION}"
     ;;
 
+  flex-stacker@v*)
+    export RELEASE_LOCAL_DIR="${DIST_DIR}/flex-stacker"
+    export RELEASE_UPLOAD_DIR="flex-stacker/${RELEASE_VERSION}"
+    ;;
+
   *)
     export RELEASE_LOCAL_DIR=$DIST_DIR
     export RELEASE_UPLOAD_DIR="modules-${THIS_BUILD_TAG}-${TRAVIS_BRANCH}"
