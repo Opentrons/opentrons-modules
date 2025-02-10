@@ -52,8 +52,7 @@ enum BL_CMD_STATUS {
 constexpr uint8_t BL_DATA_LEN = 128;  // chunk len
 constexpr uint8_t BL_HEADER_LEN = 2;  // cmd + len
 constexpr uint8_t BL_FOOTER_LEN = 1;  // checksum
-constexpr uint8_t BL_BUFFER_LEN = BL_HEADER_LEN + BL_DATA_LEN + BL_FOOTER_LEN;
-uint8_t BUFFER[BL_BUFFER_LEN] = {0};
+constexpr uint8_t BUFFER_LEN = 255;
 
 // CMD_STAT Commands
 constexpr uint8_t CMD_WRITE_CONFIG_PAGE = 0x15;
@@ -84,8 +83,6 @@ constexpr uint8_t STAT_ERR_UNKNOWN_MODE = 0x0E;
 
 class TMF8821 {
   public:
-    TMF8821(TOFSensorPolicy* policy) : _policy(policy) {}
-
     auto initialize(const TMF8821RegisterMap& registers,
                     TOFSensorPolicy* policy, TOFSensorID sensor_id) -> bool {
         if (!_policy) {
@@ -113,7 +110,7 @@ class TMF8821 {
         }
 
         // Get the custom address this device should have
-        auto address = get_sensor_i2c_address(sensor_id, false);
+        auto address = get_custom_i2c_address(sensor_id);
         if (!set_sensor_i2c_address(sensor_id, address)) {
             return false;
         }
@@ -133,22 +130,26 @@ class TMF8821 {
         return set_register(reg, sensor_id).has_value();
     }
 
-    auto write(TOFSensorID sensor_id, uint16_t reg, uint32_t* data,
+    auto write(TOFSensorID sensor_id, uint16_t reg, uint8_t* data,
                int size = 1) -> std::optional<RegisterSerializedType> {
         using RT = std::optional<RegisterSerializedType>;
         auto dev_address = get_sensor_i2c_address(sensor_id);
         auto [res, _] =
-            _policy->i2c_write(dev_address << 1, reg, (uint8_t*)data, size);
-        if (res != 0) return RT();
+            _policy->i2c_write(dev_address << 1, reg, data, size);
+        if (res != 0) {
+            return RT();
+        }
         return RT(res);
     }
 
-    auto read(TOFSensorID sensor_id, uint32_t reg, int size = 1)
+    auto read(TOFSensorID sensor_id, uint16_t reg, int size = 1)
         -> std::optional<RegisterSerializedType> {
         using RT = std::optional<RegisterSerializedType>;
         auto dev_address = get_sensor_i2c_address(sensor_id);
         auto [res, data] = _policy->i2c_read(dev_address << 1, reg, size);
-        if (res != 0) return RT();
+        if (res != 0) {
+            return RT();
+        }
         auto value = static_cast<uint32_t>(*data.data());
         return RT(value);
     }
@@ -166,12 +167,11 @@ class TMF8821 {
     auto reset_custom_address() -> void { _custom_address = false; }
 
     // Gets the sensor i2c address
-    auto get_sensor_i2c_address(TOFSensorID sensor_id, bool default_addr = true)
-        -> uint16_t {
-        if (default_addr && !_custom_address) return TOF_DEFAULT_ADDRESS;
-        if (sensor_id == TOF_X) return TOF_X_ADDRESS;
-        if (sensor_id == TOF_Z) return TOF_Z_ADDRESS;
-        return TOF_DEFAULT_ADDRESS;
+    auto get_sensor_i2c_address(TOFSensorID sensor_id) -> uint16_t {
+        if (!_custom_address) {
+            return TOF_DEFAULT_ADDRESS;
+        }
+        return get_custom_i2c_address(sensor_id);
     }
 
     auto set_sensor_i2c_address(TOFSensorID sensor_id, uint8_t address)
@@ -200,8 +200,7 @@ class TMF8821 {
 
         // Write the config page
         auto len = prepare_cmd_frame(CMD_WRITE_CONFIG_PAGE, 0, 0);
-        if (!write(sensor_id, _registers.cmd_stat.address, (uint32_t*)BUFFER,
-                   len)
+        if (!write(sensor_id, _registers.cmd_stat.address, BUFFER, len)
                  .has_value()) {
             return false;
         }
@@ -210,8 +209,7 @@ class TMF8821 {
         // reg. Need to wait for registers to change.
         _policy->sleep_ms(DEFAULT_SLEEP_MS * 2);
         len = prepare_cmd_frame(CMD_I2C_SLAVE_ADDRESS, 0, 0);
-        if (!write(sensor_id, _registers.cmd_stat.address, (uint32_t*)BUFFER,
-                   len)
+        if (!write(sensor_id, _registers.cmd_stat.address, BUFFER, len)
                  .has_value()) {
             return false;
         }
@@ -222,6 +220,17 @@ class TMF8821 {
     }
 
   private:
+    auto get_custom_i2c_address(TOFSensorID sensor_id) -> uint16_t {
+        switch (sensor_id) {
+            case TOF_X:
+                return TOF_X_ADDRESS;
+            case TOF_Z:
+                return TOF_Z_ADDRESS;
+            default:
+                return TOF_DEFAULT_ADDRESS;
+        }
+    }
+
     template <tmf8821::TMF8821Register Reg>
     requires WritableRegister<Reg>
     auto get_register_value(Reg reg) -> RegisterSerializedTypeA {
@@ -236,7 +245,9 @@ class TMF8821 {
     auto read_register(TOFSensorID sensor_id) -> std::optional<Reg> {
         using RT = std::optional<Reg>;
         auto ret = read(sensor_id, Reg::address, 1);
-        if (!ret.has_value()) return RT();
+        if (!ret.has_value()) {
+            return RT();
+        }
         auto value = *reinterpret_cast<Reg*>(&ret.value());
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         return RT(value);
@@ -248,8 +259,10 @@ class TMF8821 {
         using RT = std::optional<Reg>;
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         auto value = get_register_value(reg);
-        auto ret = write(sensor_id, Reg::address, &value, 1);
-        if (!ret.has_value()) return RT();
+        auto ret = write(sensor_id, Reg::address, (uint8_t*)&value, 1);
+        if (!ret.has_value()) {
+            return RT();
+        }
         return RT(reg);
     }
 
@@ -305,7 +318,7 @@ class TMF8821 {
                              ? BL_DATA_LEN
                              : (tmf8820_image_length - i);
             // send chunk
-            if (!bl_send_image_chunk(sensor_id, (uint8_t*)&tmf8820_image[i],
+            if (!bl_send_image_chunk(sensor_id, (uint8_t*)tmf8820_image + i,
                                      chunk_size)) {
                 return false;
             }
@@ -330,7 +343,7 @@ class TMF8821 {
 
     // Formulate a bootloader frame in the BUFFER, returns the frame length.
     uint8_t bl_prepare_cmd_frame(uint8_t cmd, uint8_t* data, uint8_t len) {
-        if (len > BL_BUFFER_LEN) {
+        if (len > BUFFER_LEN) {
             return 0;
         }
         auto data_len = BL_HEADER_LEN + len;
@@ -342,7 +355,7 @@ class TMF8821 {
             BUFFER[i] = data[i - BL_HEADER_LEN];
         }
         // Add the checksum
-        BUFFER[data_len] = bl_create_checksum((uint8_t*)BUFFER, data_len);
+        BUFFER[data_len] = bl_create_checksum(BUFFER, data_len);
         return data_len + BL_FOOTER_LEN;
     }
 
@@ -350,8 +363,7 @@ class TMF8821 {
     auto bl_send_download_init(TOFSensorID sensor_id) -> bool {
         uint8_t data[] = {tmf8820_image[0]};
         auto f_len = bl_prepare_cmd_frame(BL_DOWNLOAD_INIT, data, 1);
-        if (!write(sensor_id, _registers.bl_stat.address, (uint32_t*)BUFFER,
-                   f_len)
+        if (!write(sensor_id, _registers.bl_stat.address, BUFFER, f_len)
                  .has_value()) {
             return false;
         }
@@ -363,8 +375,7 @@ class TMF8821 {
     auto bl_send_set_address(TOFSensorID sensor_id, uint16_t address) -> bool {
         int data[] = {address & 0xFF, (address & 0xFF00) >> 8};  // lsb, msb
         auto f_len = bl_prepare_cmd_frame(BL_ADDR_RAM, (uint8_t*)data, 2);
-        if (!write(sensor_id, _registers.bl_stat.address, (uint32_t*)BUFFER,
-                   f_len)
+        if (!write(sensor_id, _registers.bl_stat.address, BUFFER, f_len)
                  .has_value()) {
             return false;
         }
@@ -376,8 +387,7 @@ class TMF8821 {
     auto bl_send_image_chunk(TOFSensorID sensor_id, uint8_t* data, uint8_t len)
         -> bool {
         auto f_len = bl_prepare_cmd_frame(BL_W_RAM, data, len);
-        if (!write(sensor_id, _registers.bl_stat.address, (uint32_t*)BUFFER,
-                   f_len)
+        if (!write(sensor_id, _registers.bl_stat.address, BUFFER, f_len)
                  .has_value()) {
             return false;
         }
@@ -388,8 +398,7 @@ class TMF8821 {
     // Send RAMREMAP_RESET (0x11) command to jump to the application.
     auto bl_send_ram_remap_reset(TOFSensorID sensor_id) -> bool {
         auto f_len = bl_prepare_cmd_frame(BL_RAMREMAP_RESET, 0, 0);
-        if (!write(sensor_id, _registers.bl_stat.address, (uint32_t*)BUFFER,
-                   f_len)) {
+        if (!write(sensor_id, _registers.bl_stat.address, BUFFER, f_len)) {
             return false;
         }
 
@@ -402,7 +411,7 @@ class TMF8821 {
 
     // Formulate a CMD frame
     uint8_t prepare_cmd_frame(uint8_t cmd, uint8_t* data, uint8_t len) {
-        if (len > BL_BUFFER_LEN) {
+        if (len > BUFFER_LEN) {
             return 0;
         }
         // Add the header
@@ -417,7 +426,7 @@ class TMF8821 {
     // Changes the i2c page for commands.
     auto change_config_page(TOFSensorID sensor_id, uint8_t page) -> bool {
         BUFFER[0] = page;
-        if (!write(sensor_id, _registers.cmd_stat.address, (uint32_t*)BUFFER, 1)
+        if (!write(sensor_id, _registers.cmd_stat.address, BUFFER, 1)
                  .has_value()) {
             return false;
         }
@@ -452,6 +461,7 @@ class TMF8821 {
     TOFSensorPolicy* _policy{nullptr};
     tmf8821::TMF8821RegisterMap _registers = {};
     bool _custom_address = false;
+    uint8_t BUFFER[BUFFER_LEN] = {0};
 };
 
 }  // namespace tmf8821

@@ -14,9 +14,8 @@
 #include "hardware_iface.hpp"
 #include "systemwide.h"
 #include "tmf8821.hpp"
-#include "tof_sensor_policy.hpp"
 #include "tof_sensor_hardware.h"
-
+#include "tof_sensor_policy.hpp"
 
 namespace tof_sensor_task {
 using namespace tof::hardware;
@@ -35,20 +34,20 @@ struct TOFSensor {
     TOFSensorID kind = TOF_NONE;
     TOFSensorMode mode = UNKNOWN;
     TOFSensorState state = DISABLED;
-    tmf8821::TMF8821 driver{nullptr};
+    tmf8821::TMF8821 driver;
     tmf8821::TMF8821RegisterMap config;
     bool ok = false;
 };
 
 const TOFSensor tof_sensor_x = {
     .kind = TOF_X,
-    .driver = tmf8821::TMF8821{nullptr},
+    .driver = tmf8821::TMF8821(),
     .config = tof_x_config,
 };
 
 const TOFSensor tof_sensor_z = {
     .kind = TOF_Z,
-    .driver = tmf8821::TMF8821{nullptr},
+    .driver = tmf8821::TMF8821(),
     .config = tof_z_config,
 };
 
@@ -87,8 +86,12 @@ class TOFSensorTask {
             _policy = policy;
 
             // Disable both sensors before initializing
-            if (!_tof_sensor_x.ok) _policy->enable_tof_sensor(TOF_X, false);
-            if (!_tof_sensor_z.ok) _policy->enable_tof_sensor(TOF_Z, false);
+            if (!_tof_sensor_x.ok) {
+                _policy->enable_tof_sensor(TOF_X, false);
+            }
+            if (!_tof_sensor_z.ok) {
+                _policy->enable_tof_sensor(TOF_Z, false);
+            }
 
             for (auto sensor_id : {TOF_X, TOF_Z}) {
                 auto sensor = &get_sensor(sensor_id);
@@ -146,7 +149,7 @@ class TOFSensorTask {
                 .responding_to_id = m.id,
                 .sensor_id = m.sensor_id,
                 .reg = m.reg,
-                .data = data.value(),
+                .data = static_cast<uint8_t>(data.value()),
             };
         }
         static_cast<void>(_task_registry->send_to_address(
@@ -155,10 +158,8 @@ class TOFSensorTask {
 
     auto visit_message(const messages::SetTOFRegisterMessage& m) -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
-        auto reg = static_cast<uint16_t>(m.reg);
-        auto value = static_cast<uint32_t>(m.data);
         auto driver = get_sensor(m.sensor_id).driver;
-        auto data = driver.write(m.sensor_id, reg, &value, 1);
+        auto data = driver.write(m.sensor_id, m.reg, (uint8_t*)(&m.data), 1);
         if (!data.has_value()) {
             response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
         }

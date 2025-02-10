@@ -78,7 +78,7 @@ class HostCommsTask {
         : message_queue(q),
           task_registry(aggregator),
           // These nolints are because if you don't have these inits, host
-          // builds conplain
+          // builds complain
 
           // NOLINTBEGIN(readability-redundant-member-init)
           ack_only_cache(),

@@ -428,7 +428,7 @@ struct GetTOFRegister {
 struct SetTOFRegister {
     TOFSensorID sensor_id;
     uint8_t reg;
-    uint32_t data;
+    uint8_t data;
 
     using ParseResult = std::optional<SetTOFRegister>;
     static constexpr auto prefix = std::array{'M', '2', '2', '3', ' '};

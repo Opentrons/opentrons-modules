@@ -41,4 +41,4 @@ namespace tof_sensor_task {
 // Actual function that runs in the task
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
          i2c::hardware::I2C* i2c_comm) -> void;
-}  // namespace tof_driver_task
+}  // namespace tof_sensor_task

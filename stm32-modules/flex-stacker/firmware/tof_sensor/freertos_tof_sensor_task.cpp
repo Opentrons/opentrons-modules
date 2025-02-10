@@ -1,8 +1,8 @@
 #include "FreeRTOS.h"
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
-#include "firmware/tof_sensor_policy.hpp"
 #include "firmware/tof_sensor_hardware.h"
+#include "firmware/tof_sensor_policy.hpp"
 #include "flex-stacker/tof_sensor_task.hpp"
 #include "ot_utils/freertos/freertos_timer.hpp"
 

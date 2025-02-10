@@ -1,9 +1,5 @@
 #include <stdint.h>
 
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
-
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_conf.h"
 #include "stm32g4xx_hal_gpio.h"
@@ -277,4 +273,3 @@ void I2C3_ER_IRQHandler(void)
 {
     HAL_I2C_ER_IRQHandler(&hi2c3);
 }
-#pragma GCC pop_options

@@ -318,7 +318,7 @@ struct SetTOFRegisterMessage {
     uint32_t id;
     TOFSensorID sensor_id;
     uint8_t reg;
-    uint32_t data;
+    uint8_t data;
 };
 
 struct GetTOFRegisterMessage {
@@ -331,7 +331,7 @@ struct GetTOFRegisterResponse {
     uint32_t responding_to_id;
     TOFSensorID sensor_id;
     uint8_t reg;
-    uint32_t data;
+    uint8_t data;
 };
 
 using HostCommsMessage =
