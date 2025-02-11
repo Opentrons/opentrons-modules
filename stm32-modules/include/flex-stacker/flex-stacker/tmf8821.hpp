@@ -130,12 +130,11 @@ class TMF8821 {
         return set_register(reg, sensor_id).has_value();
     }
 
-    auto write(TOFSensorID sensor_id, uint16_t reg, uint8_t* data,
-               int size = 1) -> std::optional<RegisterSerializedType> {
+    auto write(TOFSensorID sensor_id, uint16_t reg, uint8_t* data, int size = 1)
+        -> std::optional<RegisterSerializedType> {
         using RT = std::optional<RegisterSerializedType>;
         auto dev_address = get_sensor_i2c_address(sensor_id);
-        auto [res, _] =
-            _policy->i2c_write(dev_address << 1, reg, data, size);
+        auto [res, _] = _policy->i2c_write(dev_address << 1, reg, data, size);
         if (res != 0) {
             return RT();
         }
