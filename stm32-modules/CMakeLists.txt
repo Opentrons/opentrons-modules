@@ -31,6 +31,19 @@ endif()
 
 find_package(Clang)
 find_package(MpalandPrintf)
+find_package(Python COMPONENTS Interpreter REQUIRED)
+
+# detect virtualenv and set Pip args accordingly
+if(DEFINED ENV{VIRTUAL_ENV})
+  set(_pip_args)
+else()
+  set(_pip_args "--user")
+endif()
+# install script/requirements.txt dependencies
+execute_process(COMMAND
+    ${Python_EXECUTABLE} -m pip install ${_pip_args} -r
+    ${CMAKE_SOURCE_DIR}/scripts/requirements.txt
+    )
 
 add_subdirectory(common)
 add_subdirectory(heater-shaker)

@@ -57,7 +57,7 @@ static auto color_to_channels(StatusBarColor color) -> const ChannelMapping& {
 static constexpr uint32_t UPDATE_PERIOD_MS = 10;
 static constexpr uint8_t LED_DRIVER0_I2C_ADDRESS = 0x6C << 1;  // Internal
 static constexpr uint8_t LED_DRIVER1_I2C_ADDRESS = 0x6F << 1;  // External
-static constexpr auto DEFAULT_COLOR = StatusBarColor::Green;
+static constexpr auto DEFAULT_COLOR = StatusBarColor::White;
 static constexpr auto DEFAULT_POWER = 0.5F;
 static constexpr auto SYSTEM_LED_COUNT = 16;
 
@@ -89,10 +89,10 @@ struct StatusBarState {
     StatusBarID kind;
     StatusBarColor color;
     StatusBarColor old_color;
-    StatusBarPattern pattern = StatusBarPattern::Static;
+    StatusBarPattern pattern = StatusBarPattern::Pulse;
     float power;
     float power_dt;
-    uint32_t duration = LED_FADE_PERIOD_MS;
+    uint32_t duration = LED_PULSE_PERIOD_MS;
     int8_t reps = 0;
     uint32_t counter = 0;
     bool driver_ok = false;

@@ -1,8 +1,10 @@
-#include "firmware/system_hardware.h"
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_rcc.h"
 #include "stm32g4xx_hal_cortex.h"
 #include "stm32g4xx_hal_tim.h"
+
+#include "firmware/system_hardware.h"
+#include "main.h"
 
 /** Local defines */
 // This is the start of the sys memory region for the STM32G491 
@@ -159,8 +161,23 @@ void system_hardware_enter_bootloader(void) {
         : "memory"  );
 }
 
-void system_hardware_gpio_init(void) {
-    save_reset_reason();
+/**
+ * @brief enable the eeprom write protect pin.
+ */
+void eeprom_write_protect_init(void) {
+    /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    /*Configure GPIO pin : PA10 */
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = EEPROM_WP_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(EEPROM_WP_PORT, &GPIO_InitStruct);
+}
+
+void door_closed_pin_init(void) {
     GPIO_InitTypeDef init = {0};
 
     /* GPIO Ports Clock Enable */
@@ -169,11 +186,25 @@ void system_hardware_gpio_init(void) {
     init.Mode = GPIO_MODE_INPUT;
     init.Pull = GPIO_NOPULL;
     init.Speed = GPIO_SPEED_FREQ_LOW;
-    init.Pin = HOPPER_DOR_CLOSED_PIN;
-    HAL_GPIO_Init(HOPPER_DOR_CLOSED_GPIO_PORT, &init);
+    init.Pin = HOPPER_DOOR_CLOSED_PIN;
+    HAL_GPIO_Init(HOPPER_DOOR_CLOSED_GPIO_PORT, &init);
 }
 
+/**
+ * enable/disable writing to the eeprom.
+ */
+void enable_eeprom_write(bool enable) {
+    HAL_GPIO_WritePin(EEPROM_WP_PORT, EEPROM_WP_PIN, enable ? GPIO_PIN_RESET : GPIO_PIN_SET);
+}
+
+void system_hardware_gpio_init(void) {
+    save_reset_reason();
+    door_closed_pin_init();
+    eeprom_write_protect_init();
+    // Disable eeprom write
+    enable_eeprom_write(false);
+}
 
 bool system_hardware_read_door_closed(void) {
-    return HAL_GPIO_ReadPin(HOPPER_DOR_CLOSED_GPIO_PORT, HOPPER_DOR_CLOSED_PIN) == GPIO_PIN_SET;
+    return HAL_GPIO_ReadPin(HOPPER_DOOR_CLOSED_GPIO_PORT, HOPPER_DOOR_CLOSED_PIN) == GPIO_PIN_SET;
 }
