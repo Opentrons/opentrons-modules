@@ -241,7 +241,7 @@ struct GetMotorStallGuardMessage {
 };
 
 struct GetMotorStallGuardResponse {
-    uint32_t id;
+    uint32_t responding_to_id;
     MotorID motor_id;
     bool enabled;
     int sgt;
@@ -295,13 +295,53 @@ struct SetStatusBarStateMessage {
     std::optional<float> power = std::nullopt;
 };
 
+struct GetTOFSensorStatusMessage {
+    uint32_t id;
+    TOFSensorID sensor_id;
+};
+
+struct GetTOFSensorStatusResponse {
+    uint32_t responding_to_id;
+    TOFSensorID sensor_id;
+    TOFSensorState state;
+    TOFSensorMode mode;
+    bool ok;
+};
+
+struct EnableTOFSensorMessage {
+    uint32_t id;
+    TOFSensorID sensor_id;
+    bool enable;
+};
+
+struct SetTOFRegisterMessage {
+    uint32_t id;
+    TOFSensorID sensor_id;
+    uint8_t reg;
+    uint8_t data;
+};
+
+struct GetTOFRegisterMessage {
+    uint32_t id;
+    TOFSensorID sensor_id;
+    uint8_t reg;
+};
+
+struct GetTOFRegisterResponse {
+    uint32_t responding_to_id;
+    TOFSensorID sensor_id;
+    uint8_t reg;
+    uint8_t data;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetTMCRegisterResponse, GetLimitSwitchesResponses,
                    GetMoveParamsResponse, GetMotorStallGuardResponse,
                    GetDoorClosedResponse, GetPlatformSensorsResponse,
-                   GetEstopResponse, GetResetReasonResponse>;
+                   GetEstopResponse, GetResetReasonResponse,
+                   GetTOFSensorStatusResponse, GetTOFRegisterResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -323,5 +363,9 @@ using MotorMessage = ::std::variant<
     GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
     GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
     HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage>;
+
+using TOFSensorMessage =
+    ::std::variant<std::monostate, SetTOFRegisterMessage, GetTOFRegisterMessage,
+                   EnableTOFSensorMessage, GetTOFSensorStatusMessage>;
 
 };  // namespace messages

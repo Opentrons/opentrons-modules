@@ -505,6 +505,14 @@ class MotorTask {
         controller_from_id(m.motor_id).start_move(move);
     }
 
+    // TODO: FOR TESTING, this will move to tof_sensor_task
+    template <MotorControlPolicy Policy>
+    auto visit_message(const messages::GetTOFSensorStatusMessage& m,
+                       Policy& policy) -> void {
+        static_cast<void>(m);
+        static_cast<void>(policy);
+    }
+
     Queue& _message_queue;
     Aggregator* _task_registry;
     Controller& _x_controller;
