@@ -49,12 +49,31 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${MOTOR_CONTROL_DIR}/motor_hardware.c
     ${MOTOR_CONTROL_DIR}/motor_spi_hardware.c
     ${TOF_SENSOR_DIR}/tof_sensor_hardware.c
-    ${TOF_SENSOR_DIR}/tmf8820_image.c
     )
+
+# Generate the TOF sensor tmf8820_image.c file from hex image.
+set(TOF_IMAGE "${TOF_SENSOR_DIR}/tmf8820_image.hex")
+set(TOF_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/tmf8820_image.c")
+add_custom_command(
+    OUTPUT ${TOF_OUTPUT}
+    COMMAND ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/hex_to_c.py
+    ${TOF_IMAGE} ${TOF_OUTPUT} -n tmf8820_image
+    DEPENDS ${CMAKE_SOURCE_DIR}/scripts/hex_to_c.py ${TOF_IMAGE}
+    COMMENT "Generating ${TOF_OUTPUT} file."
+)
+add_custom_target(
+    ${TARGET_MODULE_NAME}_tmf8820_image DEPENDS ${TOF_OUTPUT}
+    )
+# add generated file to sources
+set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
+    ${${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS}
+    ${TOF_OUTPUT})
 
 add_executable(${TARGET_MODULE_NAME}
         ${${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS}
         ${${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS})
+
+add_dependencies(${TARGET_MODULE_NAME} ${TARGET_MODULE_NAME}_tmf8820_image)
 
 # Incurs at least a relink when you change the linker file (and a recompile of main
 # but hopefully that's quick)

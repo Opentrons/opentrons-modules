@@ -6,7 +6,6 @@ extern "C" {
 
 extern const unsigned char tmf8820_image[];
 extern const unsigned int tmf8820_image_start;
-extern const unsigned int tmf8820_image_finish;
 extern const unsigned int tmf8820_image_length;
 
 #ifdef __cplusplus
