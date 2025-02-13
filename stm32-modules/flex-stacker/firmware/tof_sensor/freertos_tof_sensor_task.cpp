@@ -12,13 +12,13 @@ enum class Notifications : uint8_t {
     INCOMING_MESSAGE = 1,
 };
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static tasks::FirmwareTasks::TOFSensorQueue _queue(
     static_cast<uint8_t>(Notifications::INCOMING_MESSAGE), "TOF Sensor Queue");
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _top_task =
     tof_sensor_task::TOFSensorTask(_queue, nullptr, nullptr);
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
          i2c::hardware::I2C* i2c_comm) -> void {

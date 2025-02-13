@@ -75,25 +75,7 @@ class HostCommsTask {
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
     explicit HostCommsTask(Queue& q, Aggregator* aggregator)
-        : message_queue(q),
-          task_registry(aggregator),
-          // These nolints are because if you don't have these inits, host
-          // builds complain
-
-          // NOLINTBEGIN(readability-redundant-member-init)
-          ack_only_cache(),
-          get_system_info_cache(),
-          get_tmc_register_cache(),
-          get_limit_switches_cache(),
-          get_move_params_cache(),
-          get_motor_stall_guard_cache(),
-          get_door_closed_cache(),
-          get_platform_sensors_cache(),
-          get_estop_cache(),
-          get_reset_reason_cache(),
-          get_tof_sensor_status_cache(),
-          get_tof_register_cache() {}
-    // NOLINTEND(readability-redundant-member-init)
+        : message_queue(q), task_registry(aggregator) {}
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -1227,18 +1209,18 @@ class HostCommsTask {
 
     Queue& message_queue;
     Aggregator* task_registry;
-    AckOnlyCache ack_only_cache;
-    GetSystemInfoCache get_system_info_cache;
-    GetTMCRegisterCache get_tmc_register_cache;
-    GetLimitSwitchesCache get_limit_switches_cache;
-    GetMoveParamsCache get_move_params_cache;
-    GetMotorStallGuardCache get_motor_stall_guard_cache;
-    GetDoorClosedCache get_door_closed_cache;
-    GetPlatformSensorsCache get_platform_sensors_cache;
-    GetEstopCache get_estop_cache;
-    GetResetReasonCache get_reset_reason_cache;
-    GetTOFSensorStatusCache get_tof_sensor_status_cache;
-    GetTOFRegisterCache get_tof_register_cache;
+    AckOnlyCache ack_only_cache{};
+    GetSystemInfoCache get_system_info_cache{};
+    GetTMCRegisterCache get_tmc_register_cache{};
+    GetLimitSwitchesCache get_limit_switches_cache{};
+    GetMoveParamsCache get_move_params_cache{};
+    GetMotorStallGuardCache get_motor_stall_guard_cache{};
+    GetDoorClosedCache get_door_closed_cache{};
+    GetPlatformSensorsCache get_platform_sensors_cache{};
+    GetEstopCache get_estop_cache{};
+    GetResetReasonCache get_reset_reason_cache{};
+    GetTOFSensorStatusCache get_tof_sensor_status_cache{};
+    GetTOFRegisterCache get_tof_register_cache{};
     bool may_connect_latch = true;
 };
 

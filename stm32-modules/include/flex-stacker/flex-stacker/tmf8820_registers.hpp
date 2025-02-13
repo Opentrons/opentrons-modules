@@ -1,6 +1,6 @@
 #pragma once
 /*
- * TMF8821
+ * TMF8820
  *
  * Datasheet:
  * https://look.ams-osram.com/m/52236c476132a095/original/TMF8820-21-28-Multizone-Time-of-Flight-Sensor.pdf
@@ -24,7 +24,7 @@
 
 #include <cstdint>
 
-namespace tmf8821 {
+namespace tmf8820 {
 
 // Any appid, any cid_rid – Registers always available
 enum class BaseRegisters : uint8_t {
@@ -181,7 +181,7 @@ enum class RegisterType : uint8_t {
     BOOTLOADER = 0x07,
 };
 
-typedef struct Registers {
+struct Registers {
     BaseRegisters base;
     AppRegisters app;
     MeasurementResultsRegisters measurement;
@@ -190,8 +190,7 @@ typedef struct Registers {
     FactoryCalibrationRegisters calibration;
     RawDataHistRegisters histogram;
     BootloaderRegisters bootloader;
-
-} Registers;
+};
 
 inline auto is_valid_address(RegisterType type, const uint16_t reg) -> bool {
     switch (type) {
@@ -242,7 +241,7 @@ template <typename Reg>
 // Struct has a valid register address
 // Struct has an integer with the total number of bits in a register.
 // This is used to mask the value before writing it to the sensor.
-concept TMF8821Register = std::same_as<std::remove_cvref_t<decltype(Reg::mode)>,
+concept TMF8820Register = std::same_as<std::remove_cvref_t<decltype(Reg::mode)>,
                                        std::remove_cvref_t<RegisterType&>> &&
     std::integral<decltype(Reg::address)> &&
     std::integral<decltype(Reg::value_mask)>;
@@ -374,7 +373,7 @@ struct __attribute__((packed, __may_alias__)) I2CAddrChange {
     uint8_t gpio_change_mask : 2 = 0;
 };
 
-struct TMF8821RegisterMap {
+struct TMF8820RegisterMap {
     AppID app_id = {};
     Enable enable = {};
     BLStat bl_stat = {};
@@ -391,4 +390,4 @@ struct TMF8821RegisterMap {
 using RegisterSerializedType = uint32_t;
 // Type definition to allow type aliasing for pointer dereferencing
 using RegisterSerializedTypeA = __attribute__((__may_alias__)) uint32_t;
-}  // namespace tmf8821
+}  // namespace tmf8820

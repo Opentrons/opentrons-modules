@@ -293,7 +293,7 @@ class MotorDriverTask {
             .responding_to_id = m.id,
             .with_error = errors::ErrorCode::NO_ERROR};
 
-        if (_tmc2160.verify_sgt_value(m.sgt)) {
+        if (tmc2160::TMC2160::verify_sgt_value(m.sgt)) {
             driver_conf_from_id(m.motor_id).coolconf.sgt = m.sgt.value();
             driver_conf_from_id(m.motor_id).gconfig.diag0_stall =
                 static_cast<int>(m.enable);

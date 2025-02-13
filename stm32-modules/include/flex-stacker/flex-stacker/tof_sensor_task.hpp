@@ -1,6 +1,5 @@
-#include <stdio.h>
-
 #include <cstdint>
+#include <cstdio>
 
 #include "core/ack_cache.hpp"
 #include "core/fixed_point.hpp"
@@ -8,25 +7,25 @@
 #include "flex-stacker/errors.hpp"
 #include "flex-stacker/messages.hpp"
 #include "flex-stacker/tasks.hpp"
-#include "flex-stacker/tmf8821.hpp"
-#include "flex-stacker/tmf8821_registers.hpp"
+#include "flex-stacker/tmf8820.hpp"
+#include "flex-stacker/tmf8820_registers.hpp"
 #include "hal/message_queue.hpp"
 #include "hardware_iface.hpp"
 #include "systemwide.h"
-#include "tmf8821.hpp"
+#include "tmf8820.hpp"
 #include "tof_sensor_hardware.h"
 #include "tof_sensor_policy.hpp"
 
 namespace tof_sensor_task {
 using namespace tof::hardware;
-using namespace tmf8821;
+using namespace tmf8820;
 using Message = messages::TOFSensorMessage;
 
-static constexpr tmf8821::TMF8821RegisterMap tof_x_config{
+static constexpr tmf8820::TMF8820RegisterMap tof_x_config{
     // TODO: Change these defaults once available
     .enable = {.pon = 0, .powerup_select = 0}};
 
-static constexpr tmf8821::TMF8821RegisterMap tof_z_config{
+static constexpr tmf8820::TMF8820RegisterMap tof_z_config{
     // TODO: Change these defaults once available
     .enable = {.pon = 0, .powerup_select = 0}};
 
@@ -34,20 +33,20 @@ struct TOFSensor {
     TOFSensorID kind = TOF_NONE;
     TOFSensorMode mode = UNKNOWN;
     TOFSensorState state = DISABLED;
-    tmf8821::TMF8821 driver;
-    tmf8821::TMF8821RegisterMap config;
+    tmf8820::TMF8820 driver;
+    tmf8820::TMF8820RegisterMap config;
     bool ok = false;
 };
 
 const TOFSensor tof_sensor_x = {
     .kind = TOF_X,
-    .driver = tmf8821::TMF8821(),
+    .driver = tmf8820::TMF8820(),
     .config = tof_x_config,
 };
 
 const TOFSensor tof_sensor_z = {
     .kind = TOF_Z,
-    .driver = tmf8821::TMF8821(),
+    .driver = tmf8820::TMF8820(),
     .config = tof_z_config,
 };
 
@@ -62,10 +61,7 @@ class TOFSensorTask {
   public:
     explicit TOFSensorTask(Queue& q, Aggregator* aggregator,
                            TOFSensorPolicy* policy)
-        : _message_queue(q),
-          _task_registry(aggregator),
-          _policy(policy),
-          _initialized(false) {}
+        : _message_queue(q), _task_registry(aggregator), _policy(policy) {}
     TOFSensorTask(const TOFSensorTask& other) = delete;
     auto operator=(const TOFSensorTask& other) -> TOFSensorTask& = delete;
     TOFSensorTask(TOFSensorTask&& other) noexcept = delete;
@@ -76,7 +72,7 @@ class TOFSensorTask {
         _task_registry = aggregator;
     }
 
-    template <tmf8821::TMF8821Policy Policy>
+    template <tmf8820::TMF8820Policy Policy>
     auto run_once(Policy* policy) -> void {
         if (!_task_registry) {
             return;
@@ -87,10 +83,10 @@ class TOFSensorTask {
 
             // Disable both sensors before initializing
             if (!_tof_sensor_x.ok) {
-                _policy->enable_tof_sensor(TOF_X, false);
+                TOFSensorPolicy::enable_tof_sensor(TOF_X, false);
             }
             if (!_tof_sensor_z.ok) {
-                _policy->enable_tof_sensor(TOF_Z, false);
+                TOFSensorPolicy::enable_tof_sensor(TOF_Z, false);
             }
 
             for (auto sensor_id : {TOF_X, TOF_Z}) {
@@ -159,7 +155,9 @@ class TOFSensorTask {
     auto visit_message(const messages::SetTOFRegisterMessage& m) -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         auto driver = get_sensor(m.sensor_id).driver;
-        auto data = driver.write(m.sensor_id, m.reg, (uint8_t*)(&m.data), 1);
+        auto data =
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
+            driver.write(m.sensor_id, m.reg, const_cast<uint8_t*>(&m.data), 1);
         if (!data.has_value()) {
             response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
         }
@@ -170,7 +168,7 @@ class TOFSensorTask {
     auto visit_message(const messages::EnableTOFSensorMessage& m) -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         auto sensor = &get_sensor(m.sensor_id);
-        _policy->enable_tof_sensor(m.sensor_id, m.enable);
+        TOFSensorPolicy::enable_tof_sensor(m.sensor_id, m.enable);
         sensor->driver.reset_custom_address();
         sensor->state = DISABLED;
         sensor->ok = false;
@@ -187,9 +185,14 @@ class TOFSensorTask {
     }
 
     auto get_sensor(TOFSensorID sensor_id) -> TOFSensor& {
-        if (sensor_id == TOF_X) return _tof_sensor_x;
-        if (sensor_id == TOF_Z) return _tof_sensor_z;
-        return _tof_sensor_x;
+        switch (sensor_id) {
+            case TOF_X:
+                return _tof_sensor_x;
+            case TOF_Z:
+                return _tof_sensor_z;
+            default:
+                return _tof_sensor_x;
+        }
     }
 
     Queue& _message_queue;
