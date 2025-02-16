@@ -1,7 +1,12 @@
+
+#include "tmf8820_spadmaps.hpp"
+#pragma GCC push_options
+#pragma GCC optimize("O0")
+
+#include <array>
 #include <cstdint>
 #include <cstdio>
 
-#include "core/ack_cache.hpp"
 #include "core/fixed_point.hpp"
 #include "core/queue_aggregator.hpp"
 #include "flex-stacker/errors.hpp"
@@ -9,23 +14,25 @@
 #include "flex-stacker/tasks.hpp"
 #include "flex-stacker/tmf8820.hpp"
 #include "flex-stacker/tmf8820_registers.hpp"
+#include "flex-stacker/tmf8820_spadmaps.hpp"
 #include "hal/message_queue.hpp"
 #include "hardware_iface.hpp"
 #include "systemwide.h"
 #include "tmf8820.hpp"
+#include "tmf8820_registers.hpp"
 #include "tof_sensor_hardware.h"
 #include "tof_sensor_policy.hpp"
 
 namespace tof_sensor_task {
-using namespace tof::hardware;
 using namespace tmf8820;
+using namespace tof::hardware;
 using Message = messages::TOFSensorMessage;
 
-static constexpr tmf8820::TMF8820RegisterMap tof_x_config{
+tmf8820::TMF8820RegisterMap tof_x_config{
     // TODO: Change these defaults once available
     .enable = {.pon = 0, .powerup_select = 0}};
 
-static constexpr tmf8820::TMF8820RegisterMap tof_z_config{
+tmf8820::TMF8820RegisterMap tof_z_config{
     // TODO: Change these defaults once available
     .enable = {.pon = 0, .powerup_select = 0}};
 
@@ -34,21 +41,19 @@ struct TOFSensor {
     TOFSensorMode mode = UNKNOWN;
     TOFSensorState state = DISABLED;
     tmf8820::TMF8820 driver;
-    tmf8820::TMF8820RegisterMap config;
+    tmf8820::TMF8820Config config;
     bool ok = false;
 };
 
 const TOFSensor tof_sensor_x = {
     .kind = TOF_X,
     .driver = tmf8820::TMF8820(),
-    .config = tof_x_config,
-};
+    .config = {.registers = &tof_x_config, .spad_config = &SPADConfigX}};
 
 const TOFSensor tof_sensor_z = {
     .kind = TOF_Z,
     .driver = tmf8820::TMF8820(),
-    .config = tof_z_config,
-};
+    .config = {.registers = &tof_z_config, .spad_config = &SPADConfigZ}};
 
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
@@ -204,3 +209,4 @@ class TOFSensorTask {
     bool _initialized = false;
 };
 };  // namespace tof_sensor_task
+#pragma GCC pop_options
