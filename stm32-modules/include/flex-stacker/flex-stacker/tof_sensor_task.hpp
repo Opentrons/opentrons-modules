@@ -194,6 +194,31 @@ class TOFSensorTask {
             response, Queues::HostCommsAddress));
     }
 
+    auto visit_message(const messages::GetTOFHistogramMessage& m) -> void {
+        messages::HostCommsMessage response;
+        auto sensor = &get_sensor(m.sensor_id);
+        auto [ret, data] = sensor->driver.get_histogram_chunk(m.sensor_id);
+        if (ret != HIST_OK) {
+            response = messages::ErrorMessage{
+                // TODO: add unique error
+                .code = errors::ErrorCode::TMC2160_READ_ERROR};
+            static_cast<void>(_task_registry->send_to_address(
+                response, Queues::HostCommsAddress));
+            return;
+        }
+
+        // Send the data
+        response = messages::GetTOFHistogramResponse{
+            .responding_to_id = m.id,
+            .sensor_id = m.sensor_id,
+            .len = 10,
+            .end = true,
+            .data = data.value().data(),
+        };
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
     auto get_sensor(TOFSensorID sensor_id) -> TOFSensor& {
         switch (sensor_id) {
             case TOF_X:

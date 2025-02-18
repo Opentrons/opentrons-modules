@@ -289,6 +289,23 @@ struct __attribute__((packed, __may_alias__)) Enable {
     uint8_t cpu_ready : 1 = 0;
 };
 
+struct __attribute__((packed, __may_alias__)) INTStatus {
+    static constexpr auto mode = RegisterType::BASE;
+    static constexpr auto address = (uint16_t)BaseRegisters::INT_STATUS;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t reserved0 : 1 = 0;
+    uint8_t int2 : 1 = 0;
+    uint8_t reserved2 : 1 = 0;
+    uint8_t int4 : 1 = 0;
+    uint8_t reserved4 : 1 = 0;
+    uint8_t int6 : 1 = 0;
+    uint8_t int7 : 1 = 0;
+    uint8_t reserved7 : 1 = 0;
+};
+
 struct __attribute__((packed, __may_alias__)) BLStat {
     static constexpr auto mode = RegisterType::BOOTLOADER;
     static constexpr auto address = (uint16_t)BootloaderRegisters::BL_CMD_STAT;
@@ -478,6 +495,7 @@ struct __attribute__((packed, __may_alias__)) SPADSize {
 struct TMF8820RegisterMap {
     AppID app_id = {};
     Enable enable = {};
+    INTStatus int_status = {};
     BLStat bl_stat = {};
     BLSize bl_size = {};
     BLData bl_data = {};

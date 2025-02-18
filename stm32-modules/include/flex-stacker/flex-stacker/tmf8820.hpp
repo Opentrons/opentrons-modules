@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #pragma GCC push_options
 #pragma GCC optimize("O0")
 
@@ -69,6 +70,7 @@ constexpr uint8_t BL_FOOTER_LEN = 1;  // checksum
 constexpr uint8_t BUFFER_LEN = 255;
 
 // CMD_STAT Commands
+constexpr uint8_t CMD_MEASURE = 0x10;
 constexpr uint8_t CMD_WRITE_CONFIG_PAGE = 0x15;
 constexpr uint8_t CMD_LOAD_CONFIG_PAGE_COMMON = 0x16;
 constexpr uint8_t CMD_LOAD_CONFIG_PAGE_SPAD_1 = 0x17;
@@ -112,6 +114,15 @@ constexpr uint8_t SPAD_MAP_ID_12 = 12;
 // User defined mode, single measurement mode
 // using config_page_spad1 only
 constexpr uint8_t SPAD_MAP_ID_14 = 14;
+
+// Histogram measurement
+constexpr uint8_t HIST_MSG_LEN = 5;
+using HistMessageT = std::array<uint8_t, HIST_MSG_LEN>;
+using HistogramData = std::tuple<uint8_t, std::optional<HistMessageT>>;
+
+constexpr uint8_t HIST_OK = 0;
+constexpr uint8_t HIST_NOT_READY = 1;
+constexpr uint8_t HIST_ERROR = 2;
 
 // Active range
 enum TOFActiveRange {
@@ -168,9 +179,9 @@ class TMF8820 {
         // TODO: maybe wrap these in `configure_sensor` function?
         set_sensor_report_period(sensor_id, _config->report_period_ms);
         set_sensor_kilo_iterations(sensor_id, _config->kilo_iterations);
-        set_sensor_histogram_dump(sensor_id, _config->histogram_dump);
         set_sensor_active_range(sensor_id, _config->active_range);
         set_sensor_spad_map(sensor_id, _config->spad_map_id);
+        set_sensor_histogram_dump(sensor_id, _config->histogram_dump);
 
         // TODO: Load calibration
         return true;
@@ -432,6 +443,45 @@ class TMF8820 {
         }
         // Write the config page
         return send_write_config_page(sensor_id);
+    }
+
+    auto start_measurement(TOFSensorID sensor_id) -> bool {
+        // Start a cyclic measurement according to the configuration
+        auto len = prepare_cmd_frame(CMD_MEASURE, nullptr, 0);
+        return write(sensor_id, CMDStat::address, BUFFER.data(), len)
+            .has_value();
+    }
+
+    auto get_histogram_chunk(TOFSensorID sensor_id) -> HistogramData {
+        // returns the next chunk of the histogram
+        auto ret = read_register<tmf8820::INTStatus>(sensor_id);
+        if (!ret.has_value()) {
+            return HistogramData(HIST_ERROR, std::nullopt);
+        }
+        auto reg = static_cast<tmf8820::INTStatus>(ret.value());
+        if (!reg.int4) {
+            return HistogramData(HIST_NOT_READY, std::nullopt);
+        }
+
+        // hist ready, clear the int4 bit by writing `1` to it
+        _config->registers->int_status.int4 = 1;
+        if (!set_register(_config->registers->int_status, sensor_id)
+                 .has_value()) {
+            return HistogramData(HIST_ERROR, std::nullopt);
+        }
+
+        // read out histogram chunk
+        // TODO: what register is 0x20?
+        // TODO: add defines for packer format
+        auto dev_address = get_sensor_i2c_address(sensor_id);
+        auto [res, data] = _policy->i2c_read(dev_address << 1, 0x20, 135);
+        if (res != 0) {
+            return HistogramData(HIST_ERROR, std::nullopt);
+        }
+
+        // TODO: parse and validate packet.
+        std::optional<HistMessageT> optionalData = data;
+        return HistogramData(HIST_OK, optionalData);
     }
 
   private:

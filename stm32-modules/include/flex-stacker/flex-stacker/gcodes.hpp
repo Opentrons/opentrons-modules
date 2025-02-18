@@ -529,4 +529,55 @@ struct EnableTOFSensor {
     }
 };
 
+struct GetTOFHistogram {
+    TOFSensorID sensor_id;
+
+    using ParseResult = std::optional<GetTOFHistogram>;
+    static constexpr auto prefix = std::array{'M', '2', '2', '5', ' '};
+
+    using XArg = Arg<uint8_t, 'X'>;
+    using ZArg = Arg<uint8_t, 'Z'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res =
+            gcode::SingleParser<XArg, ZArg>::parse_gcode(input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = GetTOFHistogram{
+            .sensor_id = TOFSensorID::TOF_X,
+        };
+
+        auto arguments = res.first.value();
+        if (std::get<1>(arguments).present) {
+            ret.sensor_id = TOFSensorID::TOF_Z;
+        } else if (!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    TOFSensorID sensor_id, uint8_t len,
+                                    bool end, uint8_t* data) -> InputIt {
+
+        // TODO: need to iterate through the data until `end == true`
+        auto end_string = end ? "OK \n" : "";
+        auto res = snprintf(&*buf, (limit - buf), "M225 %c D:%hhn %s",
+                            sensor_id_to_char(sensor_id), data, end_string);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
 }  // namespace gcode
