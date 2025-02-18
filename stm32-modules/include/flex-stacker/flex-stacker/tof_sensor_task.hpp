@@ -28,14 +28,6 @@ using namespace tmf8820;
 using namespace tof::hardware;
 using Message = messages::TOFSensorMessage;
 
-tmf8820::TMF8820RegisterMap tof_x_config{
-    // TODO: Change these defaults once available
-    .enable = {.pon = 0, .powerup_select = 0}};
-
-tmf8820::TMF8820RegisterMap tof_z_config{
-    // TODO: Change these defaults once available
-    .enable = {.pon = 0, .powerup_select = 0}};
-
 struct TOFSensor {
     TOFSensorID kind = TOF_NONE;
     TOFSensorMode mode = UNKNOWN;
@@ -45,15 +37,28 @@ struct TOFSensor {
     bool ok = false;
 };
 
+tmf8820::TMF8820RegisterMap tof_x_config{};
+tmf8820::TMF8820RegisterMap tof_z_config{};
+
 const TOFSensor tof_sensor_x = {
     .kind = TOF_X,
     .driver = tmf8820::TMF8820(),
-    .config = {.registers = &tof_x_config, .spad_config = &SPADConfigX}};
+    .config =
+        {
+            .registers = &tof_x_config,
+            .spad_config = &SPADConfigX,
+        },
+};
 
 const TOFSensor tof_sensor_z = {
     .kind = TOF_Z,
     .driver = tmf8820::TMF8820(),
-    .config = {.registers = &tof_z_config, .spad_config = &SPADConfigZ}};
+    .config =
+        {
+            .registers = &tof_z_config,
+            .spad_config = &SPADConfigZ,
+        },
+};
 
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
@@ -98,7 +103,7 @@ class TOFSensorTask {
                 auto sensor = &get_sensor(sensor_id);
                 sensor->state = INITIALIZING;
                 if (!sensor->ok) {
-                    sensor->ok = sensor->driver.initialize(sensor->config,
+                    sensor->ok = sensor->driver.initialize(&sensor->config,
                                                            _policy, sensor_id);
                     sensor->state = sensor->ok ? IDLE : TOF_ERROR;
                 }
@@ -180,7 +185,7 @@ class TOFSensorTask {
         if (m.enable) {
             // Initialize takes 10s of seconds.
             sensor->state = INITIALIZING;
-            sensor->ok = sensor->driver.initialize(sensor->config, _policy,
+            sensor->ok = sensor->driver.initialize(&sensor->config, _policy,
                                                    sensor->kind);
             sensor->state = sensor->ok ? IDLE : TOF_ERROR;
         }

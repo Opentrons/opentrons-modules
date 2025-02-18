@@ -32,6 +32,12 @@ constexpr uint16_t TOF_Z_ADDRESS = 0x40;
 constexpr uint8_t DEFAULT_RETRIES = 5;
 constexpr uint32_t DEFAULT_SLEEP_MS = 250;
 
+// Default config
+constexpr uint8_t DEFAULT_SPAD_MAP_ID = 14;
+constexpr uint16_t DEFAULT_REPORT_PERIOD_MS = 500;
+constexpr uint16_t DEFAULT_KILO_ITERATIONS = 4000;
+constexpr bool DEFAULT_HISTOGRAM_DUMP = true;
+
 // Bootloader commands (bl_cmd_stat)
 
 // Remap RAM to Address 0 and Reset
@@ -89,7 +95,7 @@ constexpr uint8_t STAT_WARNING_OSC_TRIM_NOT_ACCEPTED = 0x0C;
 constexpr uint8_t STAT_WARNING_I2C_ADDRESS_NOT_ACCEPTED = 0x0D;
 constexpr uint8_t STAT_ERR_UNKNOWN_MODE = 0x0E;
 
-// SPAD Map IDs
+// SPAD Map Config
 
 // 3x3 normal mode 33°x32° FoV
 constexpr uint8_t SPAD_MAP_ID_1 = 1;
@@ -107,22 +113,32 @@ constexpr uint8_t SPAD_MAP_ID_12 = 12;
 // using config_page_spad1 only
 constexpr uint8_t SPAD_MAP_ID_14 = 14;
 
+// Active range
+enum TOFActiveRange {
+    NOT_SUPPORTED = 0,
+    SHORT_RANGE = 0x6E,
+    LONG_RANGE = 0x6F,
+};
+
 struct TMF8820Config {
     tmf8820::TMF8820RegisterMap* registers;
     const tmf8820_spad::TMF8820SPADConfig* spad_config;
+    TOFActiveRange active_range = SHORT_RANGE;
+    uint16_t report_period_ms = DEFAULT_REPORT_PERIOD_MS;
+    uint16_t kilo_iterations = DEFAULT_KILO_ITERATIONS;
+    bool histogram_dump = DEFAULT_HISTOGRAM_DUMP;
+    uint8_t spad_map_id = DEFAULT_SPAD_MAP_ID;
 };
 
 class TMF8820 {
   public:
-    auto initialize(const TMF8820Config& config, TOFSensorPolicy* policy,
+    auto initialize(TMF8820Config* config, TOFSensorPolicy* policy,
                     TOFSensorID sensor_id) -> bool {
         if (_policy == nullptr) {
             _policy = policy;
         }
 
-        _registers = config.registers;
-        _spad_config = config.spad_config;
-
+        _config = config;
         // Need to wait when you toggle the init pin.
         TOFSensorPolicy::sleep_ms(DEFAULT_SLEEP_MS);
         TOFSensorPolicy::enable_tof_sensor(sensor_id, true);
@@ -148,16 +164,20 @@ class TMF8820 {
             return false;
         }
 
-        // Configure the custom spad maps
-        if (!set_sensor_spad_map(sensor_id, SPAD_MAP_ID_14)) {
-            return false;
-        }
+        // Set sensor configuration
+        // TODO: maybe wrap these in `configure_sensor` function?
+        set_sensor_report_period(sensor_id, _config->report_period_ms);
+        set_sensor_kilo_iterations(sensor_id, _config->kilo_iterations);
+        set_sensor_histogram_dump(sensor_id, _config->histogram_dump);
+        set_sensor_active_range(sensor_id, _config->active_range);
+        set_sensor_spad_map(sensor_id, _config->spad_map_id);
 
+        // TODO: Load calibration
         return true;
     }
 
     auto update_enable(TOFSensorID sensor_id) -> bool {
-        auto reg = _registers->enable;
+        auto reg = _config->registers->enable;
         reg.padding_1 = 0;
         return set_register(reg, sensor_id).has_value();
     }
@@ -195,6 +215,16 @@ class TMF8820 {
         return static_cast<TOFSensorMode>(appid);
     }
 
+    /* Check what active range mode is running. */
+    auto get_sensor_active_range(TOFSensorID sensor_id) -> TOFActiveRange {
+        auto ret = read_register<tmf8820::ActiveRange>(sensor_id);
+        if (!ret.has_value()) {
+            return TOFActiveRange::NOT_SUPPORTED;
+        }
+        auto mode = static_cast<tmf8820::ActiveRange>(ret.value()).active_range;
+        return static_cast<TOFActiveRange>(mode);
+    }
+
     auto reset_custom_address() -> void { _custom_address = false; }
 
     // Gets the sensor i2c address
@@ -214,28 +244,28 @@ class TMF8820 {
         }
 
         // Set the new address in the I2C_SLAVE_ADDRESS (0x3B) register.
-        _registers->i2c_address.slave_address = address;
-        if (!set_register(_registers->i2c_address, sensor_id).has_value()) {
+        _config->registers->i2c_address.slave_address = address;
+        if (!set_register(_config->registers->i2c_address, sensor_id)
+                 .has_value()) {
             return false;
         }
 
         // Set change address I2C_ADDR_CHANGE (0x3E) to 0
-        _registers->i2c_addr_change = {0};
-        if (!set_register(_registers->i2c_addr_change, sensor_id).has_value()) {
+        _config->registers->i2c_addr_change = {0};
+        if (!set_register(_config->registers->i2c_addr_change, sensor_id)
+                 .has_value()) {
             return false;
         }
 
         // Write the config page
-        auto len = prepare_cmd_frame(CMD_WRITE_CONFIG_PAGE, nullptr, 0);
-        if (!write(sensor_id, CMDStat::address, BUFFER.data(), len)
-                 .has_value()) {
+        if (!send_write_config_page(sensor_id)) {
             return false;
         }
 
         // Apply the new address with CMD_I2C_SLAVE_ADDRESS to CMD_STAT (0x08)
         // reg. Need to wait for registers to change.
         TOFSensorPolicy::sleep_ms(DEFAULT_SLEEP_MS * 2);
-        len = prepare_cmd_frame(CMD_I2C_SLAVE_ADDRESS, nullptr, 0);
+        auto len = prepare_cmd_frame(CMD_I2C_SLAVE_ADDRESS, nullptr, 0);
         if (!write(sensor_id, CMDStat::address, BUFFER.data(), len)
                  .has_value()) {
             return false;
@@ -258,15 +288,14 @@ class TMF8820 {
         }
 
         // Set the SPAD_MAP_ID Register (0x34)
-        _registers->spad_map_id.spad_map_id = spad_map_id;
-        if (!set_register(_registers->spad_map_id, sensor_id).has_value()) {
+        _config->registers->spad_map_id.spad_map_id = spad_map_id;
+        if (!set_register(_config->registers->spad_map_id, sensor_id)
+                 .has_value()) {
             return false;
         }
 
         // Write the config page
-        auto len = prepare_cmd_frame(CMD_WRITE_CONFIG_PAGE, nullptr, 0);
-        if (!write(sensor_id, CMDStat::address, BUFFER.data(), len)
-                 .has_value()) {
+        if (!send_write_config_page(sensor_id)) {
             return false;
         }
 
@@ -307,20 +336,21 @@ class TMF8820 {
             }
 
             // configure spad offset (0x8D, 0x8E)
-            _registers->spad_offset = {_spad_config->xoff_q1,
-                                       _spad_config->yoff_q1};
-            if (!set_register(_registers->spad_offset, sensor_id).has_value()) {
+            _config->registers->spad_offset = {_config->spad_config->xoff_q1,
+                                               _config->spad_config->yoff_q1};
+            if (!set_register(_config->registers->spad_offset, sensor_id)
+                     .has_value()) {
                 return false;
             }
             // configure spad size (0x8F, 0x90)
-            _registers->spad_size = {_spad_config->xsize, _spad_config->ysize};
-            if (!set_register(_registers->spad_size, sensor_id).has_value()) {
+            _config->registers->spad_size = {_config->spad_config->xsize,
+                                             _config->spad_config->ysize};
+            if (!set_register(_config->registers->spad_size, sensor_id)
+                     .has_value()) {
                 return false;
             }
             // Write the config page
-            auto len = prepare_cmd_frame(CMD_WRITE_CONFIG_PAGE, nullptr, 0);
-            if (!write(sensor_id, CMDStat::address, BUFFER.data(), len)
-                     .has_value()) {
+            if (!send_write_config_page(sensor_id)) {
                 return false;
             }
         }
@@ -340,6 +370,68 @@ class TMF8820 {
             default:
                 return false;
         }
+    }
+
+    auto set_sensor_active_range(TOFSensorID sensor_id,
+                                 TOFActiveRange active_range) -> bool {
+        if (get_sensor_active_range(sensor_id) == NOT_SUPPORTED) {
+            return false;
+        }
+        _config->registers->active_range.active_range = {active_range};
+        return set_register(_config->registers->active_range, sensor_id)
+            .has_value();
+    }
+
+    auto set_sensor_histogram_dump(TOFSensorID sensor_id, bool enable) -> bool {
+        _config->registers->hist_dump.histogram = static_cast<uint8_t>(enable);
+        return set_register(_config->registers->hist_dump, sensor_id)
+            .has_value();
+    }
+
+    auto set_sensor_report_period(TOFSensorID sensor_id, uint16_t period_ms = 0)
+        -> bool {
+        // switch to the appid=0x03, cid_rid=0x16 – Configuration Page
+        if (!change_config_page(sensor_id, CMD_LOAD_CONFIG_PAGE_COMMON)) {
+            return false;
+        }
+
+        // update the period if given
+        if (period_ms > 0) {
+            _config->registers->report_period_ms = {
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                static_cast<uint8_t>(period_ms & 0xFF),  // lsb
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                static_cast<uint8_t>((period_ms & 0xFF00) >> 8)};  // msb
+        }
+        if (!set_register(_config->registers->report_period_ms, sensor_id)
+                 .has_value()) {
+            return false;
+        }
+        // Write the config page
+        return send_write_config_page(sensor_id);
+    }
+
+    auto set_sensor_kilo_iterations(TOFSensorID sensor_id,
+                                    uint16_t iterations = 0) -> bool {
+        // switch to the appid=0x03, cid_rid=0x16 – Configuration Page
+        if (!change_config_page(sensor_id, CMD_LOAD_CONFIG_PAGE_COMMON)) {
+            return false;
+        }
+
+        // update iterations if given
+        if (iterations > 0) {
+            _config->registers->kilo_iterations = {
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                static_cast<uint8_t>(iterations & 0xFF),  // lsb
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                static_cast<uint8_t>((iterations & 0xFF00) >> 8)};  // msb
+        }
+        if (!set_register(_config->registers->kilo_iterations, sensor_id)
+                 .has_value()) {
+            return false;
+        }
+        // Write the config page
+        return send_write_config_page(sensor_id);
     }
 
   private:
@@ -397,8 +489,8 @@ class TMF8820 {
         }
         auto reg = static_cast<tmf8820::Enable>(ret.value());
         if (!reg.pon || !reg.cpu_ready) {
-            _registers->enable.pon = 1;
-            _registers->enable.powerup_select = reg.powerup_select;
+            _config->registers->enable.pon = 1;
+            _config->registers->enable.powerup_select = reg.powerup_select;
             update_enable(sensor_id);
             // Check if device is ready for comms
             for (uint8_t i = 0; i < DEFAULT_RETRIES; i++) {
@@ -556,6 +648,13 @@ class TMF8820 {
         return len + 1;
     }
 
+    auto send_write_config_page(TOFSensorID sensor_id) -> bool {
+        // Write the config page
+        auto len = prepare_cmd_frame(CMD_WRITE_CONFIG_PAGE, nullptr, 0);
+        return write(sensor_id, CMDStat::address, BUFFER.data(), len)
+            .has_value();
+    }
+
     // Changes the i2c page for commands.
     auto change_config_page(TOFSensorID sensor_id, uint8_t page) -> bool {
         if (_config_page == page) {
@@ -601,8 +700,7 @@ class TMF8820 {
     }
 
     TOFSensorPolicy* _policy{nullptr};
-    tmf8820::TMF8820RegisterMap* _registers{nullptr};
-    const tmf8820_spad::TMF8820SPADConfig* _spad_config{nullptr};
+    TMF8820Config* _config{nullptr};
     std::array<uint8_t, BUFFER_LEN> BUFFER{};
     bool _custom_address{false};
     uint8_t _config_page{0};

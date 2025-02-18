@@ -349,6 +349,40 @@ struct __attribute__((packed, __may_alias__)) ConfigResult {
     uint8_t cid_rid : 8 = 0;
 };
 
+struct __attribute__((packed, __may_alias__)) ActiveRange {
+    static constexpr auto mode = RegisterType::MAIN_APP;
+    static constexpr auto address = (uint16_t)AppRegisters::ACTIVE_RANGE;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t active_range : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) ReportPeriodMS {
+    static constexpr auto mode = RegisterType::CONFIG;
+    static constexpr auto address =
+        (uint16_t)ConfigurationRegisters::PERIOD_MS_LSB;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 16) - 1;
+
+    uint8_t period_lsb : 8 = 0;
+    uint8_t period_msb : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) KiloIterations {
+    static constexpr auto mode = RegisterType::CONFIG;
+    static constexpr auto address =
+        (uint16_t)ConfigurationRegisters::KILO_ITERATIONS_LSB;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 16) - 1;
+
+    uint8_t iterations_lsb : 8 = 0;
+    uint8_t iterations_msb : 8 = 0;
+};
+
 struct __attribute__((packed, __may_alias__)) I2CSlaveAddress {
     static constexpr auto mode = RegisterType::CONFIG;
     static constexpr auto address =
@@ -382,6 +416,17 @@ struct __attribute__((packed, __may_alias__)) SPADMapID {
     static constexpr uint32_t value_mask = (1 << 4) - 1;
 
     uint8_t spad_map_id : 4 = 1;
+};
+
+struct __attribute__((packed, __may_alias__)) HistDump {
+    static constexpr auto mode = RegisterType::CONFIG;
+    static constexpr auto address = (uint16_t)ConfigurationRegisters::HIST_DUMP;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t histogram : 1 = 0;
+    uint8_t reserved : 7 = 0;
 };
 
 struct __attribute__((packed, __may_alias__)) SPADEnable {
@@ -438,9 +483,13 @@ struct TMF8820RegisterMap {
     BLData bl_data = {};
     BLCSum bl_csum = {};
     CMDStat cmd_stat = {};
+    ActiveRange active_range = {};
     ConfigResult cfg_result = {};
+    ReportPeriodMS report_period_ms = {};
+    KiloIterations kilo_iterations = {};
     I2CSlaveAddress i2c_address = {};
     I2CAddrChange i2c_addr_change = {0};
+    HistDump hist_dump = {};
     SPADMapID spad_map_id = {};
     SPADEnable spad_mask = {};
     SPADTDCChannel spad_map = {};
