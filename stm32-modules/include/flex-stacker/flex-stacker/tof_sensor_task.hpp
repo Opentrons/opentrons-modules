@@ -1,8 +1,3 @@
-
-#include "tmf8820_spadmaps.hpp"
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -257,4 +252,3 @@ class TOFSensorTask {
     bool _initialized = false;
 };
 };  // namespace tof_sensor_task
-#pragma GCC pop_options

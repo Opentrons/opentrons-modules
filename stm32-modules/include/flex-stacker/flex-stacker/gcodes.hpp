@@ -5,9 +5,6 @@
 
 #pragma once
 
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -582,5 +579,3 @@ struct GetTOFHistogram {
 };
 
 }  // namespace gcode
-
-#pragma GCC pop_options

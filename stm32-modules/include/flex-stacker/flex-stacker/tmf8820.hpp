@@ -1,9 +1,6 @@
 #pragma once
 
 #include <optional>
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -788,4 +785,3 @@ class TMF8820 {
 };
 
 }  // namespace tmf8820
-#pragma GCC pop_options

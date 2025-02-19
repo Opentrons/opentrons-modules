@@ -3,9 +3,6 @@
  */
 #pragma once
 
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 #include <array>
 #include <cstring>
 #include <optional>
@@ -1275,5 +1272,3 @@ class HostCommsTask {
 };
 
 };  // namespace host_comms_task
-
-#pragma GCC pop_options
