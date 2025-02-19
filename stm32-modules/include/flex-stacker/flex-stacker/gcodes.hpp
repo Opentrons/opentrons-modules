@@ -5,6 +5,9 @@
 
 #pragma once
 
+#pragma GCC push_options
+#pragma GCC optimize("O0")
+
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -535,8 +538,8 @@ struct GetTOFHistogram {
     using ParseResult = std::optional<GetTOFHistogram>;
     static constexpr auto prefix = std::array{'M', '2', '2', '5', ' '};
 
-    using XArg = Arg<uint8_t, 'X'>;
-    using ZArg = Arg<uint8_t, 'Z'>;
+    using XArg = ArgNoVal<'X'>;
+    using ZArg = ArgNoVal<'Z'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -552,7 +555,6 @@ struct GetTOFHistogram {
         auto ret = GetTOFHistogram{
             .sensor_id = TOFSensorID::TOF_X,
         };
-
         auto arguments = res.first.value();
         if (std::get<1>(arguments).present) {
             ret.sensor_id = TOFSensorID::TOF_Z;
@@ -568,7 +570,6 @@ struct GetTOFHistogram {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     TOFSensorID sensor_id, uint8_t len,
                                     bool end, uint8_t* data) -> InputIt {
-
         // TODO: need to iterate through the data until `end == true`
         auto end_string = end ? "OK \n" : "";
         auto res = snprintf(&*buf, (limit - buf), "M225 %c D:%hhn %s",
@@ -581,3 +582,5 @@ struct GetTOFHistogram {
 };
 
 }  // namespace gcode
+
+#pragma GCC pop_options

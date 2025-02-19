@@ -197,8 +197,7 @@ class TOFSensorTask {
     auto visit_message(const messages::GetTOFHistogramMessage& m) -> void {
         messages::HostCommsMessage response;
         auto sensor = &get_sensor(m.sensor_id);
-        auto [ret, data] = sensor->driver.get_histogram_chunk(m.sensor_id);
-        if (ret != HIST_OK) {
+        if (!sensor->ok) {
             response = messages::ErrorMessage{
                 // TODO: add unique error
                 .code = errors::ErrorCode::TMC2160_READ_ERROR};
@@ -206,17 +205,36 @@ class TOFSensorTask {
                 response, Queues::HostCommsAddress));
             return;
         }
+        // TODO: start measurement, need poller to call `get_histogram_chunk`
+        sensor->driver.start_measurement(m.sensor_id);
 
-        // Send the data
-        response = messages::GetTOFHistogramResponse{
-            .responding_to_id = m.id,
-            .sensor_id = m.sensor_id,
-            .len = 10,
-            .end = true,
-            .data = data.value().data(),
-        };
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
+        // TODO: add poller instead of loop
+
+        auto ret = HIST_NOT_READY;
+        do {
+            auto [ret, data] = sensor->driver.get_histogram_chunk(m.sensor_id);
+            // Send the data
+            if (ret == HIST_OK) {
+                response = messages::GetTOFHistogramResponse{
+                    .responding_to_id = m.id,
+                    .sensor_id = m.sensor_id,
+                    .len = 10,
+                    .end = true,
+                    .data = data.value().data(),
+                };
+                static_cast<void>(_task_registry->send_to_address(
+                    response, Queues::HostCommsAddress));
+            }
+        } while (ret != HIST_OK);
+
+        // if (ret != HIST_OK) {
+        //    response = messages::ErrorMessage{
+        //        // TODO: add unique error
+        //        .code = errors::ErrorCode::TMC2160_READ_ERROR};
+        //    static_cast<void>(_task_registry->send_to_address(
+        //        response, Queues::HostCommsAddress));
+        //    return;
+        //}
     }
 
     auto get_sensor(TOFSensorID sensor_id) -> TOFSensor& {

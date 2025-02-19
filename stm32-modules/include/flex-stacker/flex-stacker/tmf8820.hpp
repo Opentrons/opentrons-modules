@@ -385,18 +385,33 @@ class TMF8820 {
 
     auto set_sensor_active_range(TOFSensorID sensor_id,
                                  TOFActiveRange active_range) -> bool {
-        if (get_sensor_active_range(sensor_id) == NOT_SUPPORTED) {
+        // switch to the appid=0x03, cid_rid=0x16 – Configuration Page
+        if (!change_config_page(sensor_id, CMD_LOAD_CONFIG_PAGE_COMMON)) {
             return false;
         }
-        _config->registers->active_range.active_range = {active_range};
+        if (active_range == NOT_SUPPORTED ||
+            get_sensor_active_range(sensor_id) == NOT_SUPPORTED) {
+            return false;
+        }
+        _config->registers->active_range.active_range = active_range;
         return set_register(_config->registers->active_range, sensor_id)
             .has_value();
+        // Write the config page
+        return send_write_config_page(sensor_id);
     }
 
     auto set_sensor_histogram_dump(TOFSensorID sensor_id, bool enable) -> bool {
+        // switch to the appid=0x03, cid_rid=0x16 – Configuration Page
+        if (!change_config_page(sensor_id, CMD_LOAD_CONFIG_PAGE_COMMON)) {
+            return false;
+        }
         _config->registers->hist_dump.histogram = static_cast<uint8_t>(enable);
-        return set_register(_config->registers->hist_dump, sensor_id)
-            .has_value();
+        if (!set_register(_config->registers->hist_dump, sensor_id)
+                 .has_value()) {
+            return false;
+        }
+        // Write the config page
+        return send_write_config_page(sensor_id);
     }
 
     auto set_sensor_report_period(TOFSensorID sensor_id, uint16_t period_ms = 0)
@@ -405,7 +420,6 @@ class TMF8820 {
         if (!change_config_page(sensor_id, CMD_LOAD_CONFIG_PAGE_COMMON)) {
             return false;
         }
-
         // update the period if given
         if (period_ms > 0) {
             _config->registers->report_period_ms = {
@@ -428,7 +442,6 @@ class TMF8820 {
         if (!change_config_page(sensor_id, CMD_LOAD_CONFIG_PAGE_COMMON)) {
             return false;
         }
-
         // update iterations if given
         if (iterations > 0) {
             _config->registers->kilo_iterations = {
@@ -446,10 +459,26 @@ class TMF8820 {
     }
 
     auto start_measurement(TOFSensorID sensor_id) -> bool {
+        // Clear all interupts by writing 0xFF to INT_STATUS (0xE1)
+        if (!write(sensor_id, INTStatus::address, (uint8_t*)0xFF, 1)
+                 .has_value()) {
+            return false;
+        }
+
+        // Enable interrupts for histogram measurements
+        _config->registers->int_enable.int4_enab = 1;
+        if (!set_register(_config->registers->int_enable, sensor_id)
+                 .has_value()) {
+            return false;
+        }
+
         // Start a cyclic measurement according to the configuration
         auto len = prepare_cmd_frame(CMD_MEASURE, nullptr, 0);
-        return write(sensor_id, CMDStat::address, BUFFER.data(), len)
-            .has_value();
+        if (!write(sensor_id, CMDStat::address, BUFFER.data(), len)
+                 .has_value()) {
+            return false;
+        }
+        return wait_for_state(sensor_id, CMDStat::address, STAT_ACCEPTED);
     }
 
     auto get_histogram_chunk(TOFSensorID sensor_id) -> HistogramData {
@@ -472,9 +501,11 @@ class TMF8820 {
 
         // read out histogram chunk
         // TODO: what register is 0x20?
-        // TODO: add defines for packer format
+        // TODO: add defines for packet format
+        // 3 header + 4 sub header + 128bytes = 135btes
         auto dev_address = get_sensor_i2c_address(sensor_id);
-        auto [res, data] = _policy->i2c_read(dev_address << 1, 0x20, 135);
+        // TODO: use _policy->i2c_read
+        auto [res, data] = _policy->i2c_read(dev_address << 1, 0x20, 5);
         if (res != 0) {
             return HistogramData(HIST_ERROR, std::nullopt);
         }
