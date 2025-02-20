@@ -23,6 +23,10 @@ using namespace tmf8820;
 using namespace tof::hardware;
 using Message = messages::TOFSensorMessage;
 
+// Delay before initializing the TOF sensors, to allow host
+// To get basic information on the device.
+constexpr uint32_t TOF_INIT_DELAY_MS = 1000;
+
 struct TOFSensor {
     TOFSensorID kind = TOF_NONE;
     TOFSensorMode mode = UNKNOWN;
@@ -84,6 +88,13 @@ class TOFSensorTask {
         }
 
         if (!_initialized) {
+            // NOTE: Initializing the TOF sensors can take ~10 seconds,
+            // so if the system is just starting up, it wont be able to
+            // respond to host messages that are used to create an instance
+            // of the module on the Flex. So lets delay the initialization
+            // of the sensors to give the system time to start.
+            _policy->sleep_ms(TOF_INIT_DELAY_MS);
+
             _policy = policy;
 
             // Disable both sensors before initializing
