@@ -1,6 +1,5 @@
-#include <array>
 #include <cstdint>
-#include <cstdio>
+#include <optional>
 
 #include "core/fixed_point.hpp"
 #include "core/queue_aggregator.hpp"
@@ -13,8 +12,6 @@
 #include "hal/message_queue.hpp"
 #include "hardware_iface.hpp"
 #include "systemwide.h"
-#include "tmf8820.hpp"
-#include "tmf8820_registers.hpp"
 #include "tof_sensor_hardware.h"
 #include "tof_sensor_policy.hpp"
 
@@ -23,20 +20,20 @@ using namespace tmf8820;
 using namespace tof::hardware;
 using Message = messages::TOFSensorMessage;
 
-// Delay before initializing the TOF sensors, to allow host
-// To get basic information on the device.
-constexpr uint32_t TOF_INIT_DELAY_MS = 1000;
-
 struct TOFSensor {
     TOFSensorID kind = TOF_NONE;
     TOFSensorMode mode = UNKNOWN;
     TOFSensorState state = DISABLED;
     tmf8820::TMF8820 driver;
     tmf8820::TMF8820Config config;
+    uint8_t message_id = 0;
+    std::optional<std::string> current_frame;
     bool ok = false;
 };
 
+// NOLINTNEXTLINE
 tmf8820::TMF8820RegisterMap tof_x_config{};
+// NOLINTNEXTLINE
 tmf8820::TMF8820RegisterMap tof_z_config{};
 
 const TOFSensor tof_sensor_x = {
@@ -88,15 +85,7 @@ class TOFSensorTask {
         }
 
         if (!_initialized) {
-            // NOTE: Initializing the TOF sensors can take ~10 seconds,
-            // so if the system is just starting up, it wont be able to
-            // respond to host messages that are used to create an instance
-            // of the module on the Flex. So lets delay the initialization
-            // of the sensors to give the system time to start.
-            _policy->sleep_ms(TOF_INIT_DELAY_MS);
-
             _policy = policy;
-
             // Disable both sensors before initializing
             if (!_tof_sensor_x.ok) {
                 TOFSensorPolicy::enable_tof_sensor(TOF_X, false);
@@ -189,7 +178,6 @@ class TOFSensorTask {
         sensor->state = DISABLED;
         sensor->ok = false;
         if (m.enable) {
-            // Initialize takes 10s of seconds.
             sensor->state = INITIALIZING;
             sensor->ok = sensor->driver.initialize(&sensor->config, _policy,
                                                    sensor->kind);
@@ -200,47 +188,112 @@ class TOFSensorTask {
             response, Queues::HostCommsAddress));
     }
 
-    auto visit_message(const messages::GetTOFHistogramMessage& m) -> void {
+    auto visit_message(const messages::StartTOFMeasurementMessage& m) -> void {
         messages::HostCommsMessage response;
         auto sensor = &get_sensor(m.sensor_id);
-        if (!sensor->ok) {
-            response = messages::ErrorMessage{
-                // TODO: add unique error
-                .code = errors::ErrorCode::TMC2160_READ_ERROR};
-            static_cast<void>(_task_registry->send_to_address(
-                response, Queues::HostCommsAddress));
-            return;
+        if (m.cancel) {
+            sensor->driver.stop_measurement(m.sensor_id);
+            reset_measurement_state(m.sensor_id);
+            response = messages::StartTOFMeasurementResponse{
+                .responding_to_id = m.id,
+                .sensor_id = m.sensor_id,
+                .cancelled = true,
+                .len = 0,
+            };
+            return send_response(response);
         }
-        // TODO: start measurement, need poller to call `get_histogram_chunk`
-        sensor->driver.start_measurement(m.sensor_id);
 
-        // TODO: add poller instead of loop
+        if (!sensor->ok || sensor->state == MEASURING) {
+            // TODO: send specific error code when already measuring
+            response = messages::ErrorMessage{
+                .code = errors::ErrorCode::TMC2160_INVALID_ADDRESS};
+            return send_response(response);
+        }
 
-        auto ret = HIST_NOT_READY;
-        do {
-            auto [ret, data] = sensor->driver.get_histogram_chunk(m.sensor_id);
-            // Send the data
-            if (ret == HIST_OK) {
-                response = messages::GetTOFHistogramResponse{
-                    .responding_to_id = m.id,
-                    .sensor_id = m.sensor_id,
-                    .len = 10,
-                    .end = true,
-                    .data = data.value().data(),
-                };
-                static_cast<void>(_task_registry->send_to_address(
-                    response, Queues::HostCommsAddress));
+        // Start measurement
+        auto len = sensor->driver.start_measurement(m.sensor_id, m.kind);
+        if (len < 0) {
+            reset_measurement_state(m.sensor_id);
+            // TODO: send specific error code when fail
+            response = messages::ErrorMessage{
+                .code = errors::ErrorCode::TMC2160_INVALID_ADDRESS};
+            return send_response(response);
+        }
+
+        // Success, Set state and send response
+        sensor->state = MEASURING;
+        sensor->message_id = 0;
+        response = messages::StartTOFMeasurementResponse{
+            .responding_to_id = m.id,
+            .sensor_id = m.sensor_id,
+            .kind = m.kind,
+            .len = (uint16_t)len,
+        };
+        send_response(response);
+    }
+
+    auto visit_message(const messages::GetTOFMeasurementMessage& m) -> void {
+        messages::HostCommsMessage response;
+        auto sensor = &get_sensor(m.sensor_id);
+        if (!sensor->ok || sensor->state != MEASURING) {
+            reset_measurement_state(m.sensor_id);
+            // TODO: send specific error code when NOT measuring
+            response = messages::ErrorMessage{
+                .code = errors::ErrorCode::TMC2160_WRITE_ERROR};
+            return send_response(response);
+        }
+
+        // Resend previous chunk
+        if (m.resend && sensor->current_frame.has_value()) {
+            auto c_string = sensor->current_frame.value().c_str();
+            response = messages::GetTOFMeasurementResponse{
+                .responding_to_id = m.id,
+                .sensor_id = m.sensor_id,
+                .id = sensor->message_id,
+                .data = c_string,
+            };
+            return send_response(response);
+        }
+
+        // Get the next histogram chunk
+        auto [ret, data] = sensor->driver.get_histogram_chunk(m.sensor_id);
+        if (ret == HIST_ERROR) {
+            reset_measurement_state(m.sensor_id);
+            // TODO: send specific error code
+            response = messages::ErrorMessage{
+                .code = errors::ErrorCode::TMC2160_INVALID_ADDRESS};
+            return send_response(response);
+        }
+
+        // Send histogram chunk
+        if (ret == HIST_OK || ret == HIST_DONE) {
+            sensor->message_id += 1;
+            sensor->current_frame = data;
+            response = messages::GetTOFMeasurementResponse{
+                .responding_to_id = m.id,
+                .sensor_id = m.sensor_id,
+                .id = sensor->message_id,
+                .data = data.value().c_str(),
+            };
+            // This is the last packet, stop measurement and reset state
+            if (ret == HIST_DONE) {
+                reset_measurement_state(m.sensor_id);
             }
-        } while (ret != HIST_OK);
+            return send_response(response);
+        }
+    }
 
-        // if (ret != HIST_OK) {
-        //    response = messages::ErrorMessage{
-        //        // TODO: add unique error
-        //        .code = errors::ErrorCode::TMC2160_READ_ERROR};
-        //    static_cast<void>(_task_registry->send_to_address(
-        //        response, Queues::HostCommsAddress));
-        //    return;
-        //}
+    auto send_response(messages::HostCommsMessage response) -> void {
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
+    auto reset_measurement_state(TOFSensorID sensor_id) -> void {
+        auto sensor = &get_sensor(sensor_id);
+        sensor->driver.stop_measurement(sensor_id);
+        sensor->current_frame = std::nullopt;
+        sensor->message_id = 0;
+        sensor->state = IDLE;
     }
 
     auto get_sensor(TOFSensorID sensor_id) -> TOFSensor& {

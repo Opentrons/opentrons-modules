@@ -10,16 +10,12 @@ constexpr uint8_t MAX_SPAD_YSIZE = 10;
 constexpr uint8_t MAX_SPAD_SIZE = (MAX_SPAD_XSIZE * MAX_SPAD_YSIZE);
 
 struct TMF8820SPADConfig {
-    // TODO: WE ARE NOT SETTING THE xoffset, yoffset, etc
-    // NEED TO DEBUG!
-    int8_t xoff_q1 = 1;
-    int8_t yoff_q1 = 2;
+    int8_t xoff_q1 = 0;
+    int8_t yoff_q1 = 0;
     uint8_t xsize = MAX_SPAD_XSIZE;
     uint8_t ysize = MAX_SPAD_YSIZE;
-    std::array<uint8_t, MAX_SPAD_SIZE> spad_mask;
-    std::array<uint8_t, MAX_SPAD_SIZE> spad_map;
-    std::array<uint8_t, MAX_SPAD_XSIZE> spad_mask_data;
-    std::array<uint8_t, MAX_SPAD_YSIZE> spad_map_data;
+    std::array<uint8_t, MAX_SPAD_SIZE> spad_mask = {0};
+    std::array<uint8_t, MAX_SPAD_SIZE> spad_map = {0};
 };
 
 static constexpr TMF8820SPADConfig SPADConfigX{

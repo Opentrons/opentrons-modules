@@ -27,6 +27,11 @@ typedef enum TOFSensorState {
     TOF_ERROR,
 } TOFSensorState;
 
+typedef enum TOFMeasurementKind {
+    HISTOGRAM = 0,
+    MEASUREMENT = 1,
+} TOFMeasurementKind;
+
 typedef enum StatusBarID {
     Internal = 0,
     External,

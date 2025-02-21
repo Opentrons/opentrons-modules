@@ -3,6 +3,7 @@
 #include <concepts>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <variant>
 
 #include "flex-stacker/errors.hpp"
@@ -334,17 +335,32 @@ struct GetTOFRegisterResponse {
     uint8_t data;
 };
 
-struct GetTOFHistogramMessage {
+struct StartTOFMeasurementMessage {
     uint32_t id;
     TOFSensorID sensor_id;
+    TOFMeasurementKind kind;
+    bool cancel;
 };
 
-struct GetTOFHistogramResponse {
+struct StartTOFMeasurementResponse {
     uint32_t responding_to_id;
     TOFSensorID sensor_id;
-    uint8_t len;
-    bool end;
-    uint8_t* data;
+    TOFMeasurementKind kind;
+    bool cancelled;
+    uint16_t len;
+};
+
+struct GetTOFMeasurementMessage {
+    uint32_t id;
+    TOFSensorID sensor_id;
+    bool resend;
+};
+
+struct GetTOFMeasurementResponse {
+    uint32_t responding_to_id;
+    TOFSensorID sensor_id;
+    uint8_t id;
+    const char* data;
 };
 
 using HostCommsMessage =
@@ -355,7 +371,7 @@ using HostCommsMessage =
                    GetDoorClosedResponse, GetPlatformSensorsResponse,
                    GetEstopResponse, GetResetReasonResponse,
                    GetTOFSensorStatusResponse, GetTOFRegisterResponse,
-                   GetTOFHistogramResponse>;
+                   StartTOFMeasurementResponse, GetTOFMeasurementResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -381,6 +397,6 @@ using MotorMessage = ::std::variant<
 using TOFSensorMessage =
     ::std::variant<std::monostate, SetTOFRegisterMessage, GetTOFRegisterMessage,
                    EnableTOFSensorMessage, GetTOFSensorStatusMessage,
-                   GetTOFHistogramMessage>;
+                   StartTOFMeasurementMessage, GetTOFMeasurementMessage>;
 
 };  // namespace messages

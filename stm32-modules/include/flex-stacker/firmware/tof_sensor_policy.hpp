@@ -19,7 +19,8 @@ class TOFSensorPolicy {
     auto operator=(const TOFSensorPolicy &&) = delete;
     ~TOFSensorPolicy() = default;
 
-    auto i2c_read(uint16_t dev_addr, uint16_t reg, uint16_t size) -> RxTxReturn;
+    auto i2c_read(uint16_t dev_addr, uint16_t reg, uint8_t *data, uint16_t size)
+        -> RxTxReturn;
     auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t *data,
                    uint16_t size) -> RxTxReturn;
     auto static enable_tof_sensor(TOFSensorID sensor_id, bool enable) -> void;

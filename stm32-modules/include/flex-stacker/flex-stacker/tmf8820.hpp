@@ -1,15 +1,16 @@
 #pragma once
 
-#include <optional>
 #include <array>
-#include <cstddef>
 #include <cstdint>
+#include <optional>
+#include <string>
 
 #include "firmware/tmf8820_image.h"
 #include "firmware/tmf8820_spadmap.h"
 #include "systemwide.h"
 #include "tmf8820_registers.hpp"
 #include "tmf8820_spadmaps.hpp"
+#include "tof_utils.hpp"
 
 namespace tmf8820 {
 using namespace tof::hardware;
@@ -18,7 +19,7 @@ using namespace tmf8820_spad;
 template <typename P>
 concept TMF8820Policy = requires(P p, uint16_t dev_addr, uint16_t reg,
                                  uint16_t size, uint8_t* data) {
-    { p.i2c_read(dev_addr, reg, size) } -> std::same_as<RxTxReturn>;
+    { p.i2c_read(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
     { p.i2c_write(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
 };
 
@@ -64,7 +65,7 @@ enum BL_CMD_STATUS {
 constexpr uint8_t BL_DATA_LEN = 128;  // chunk len
 constexpr uint8_t BL_HEADER_LEN = 2;  // cmd + len
 constexpr uint8_t BL_FOOTER_LEN = 1;  // checksum
-constexpr uint8_t BUFFER_LEN = 255;
+constexpr uint8_t BUFFER_LEN = 150;
 
 // CMD_STAT Commands
 constexpr uint8_t CMD_MEASURE = 0x10;
@@ -113,13 +114,25 @@ constexpr uint8_t SPAD_MAP_ID_12 = 12;
 constexpr uint8_t SPAD_MAP_ID_14 = 14;
 
 // Histogram measurement
-constexpr uint8_t HIST_MSG_LEN = 5;
-using HistMessageT = std::array<uint8_t, HIST_MSG_LEN>;
-using HistogramData = std::tuple<uint8_t, std::optional<HistMessageT>>;
+// 3 header + 4 sub header + 128bytes = 135bytes
+constexpr uint8_t HIST_FRAME_LEN = 135;
+constexpr uint8_t HIST_DATA_LEN = HIST_FRAME_LEN - 3 - 4;
+// Number of histogram frames
+constexpr uint8_t HIST_DATA_COUNT = 30;
+using HistMessageT = std::array<uint8_t, HIST_FRAME_LEN>;
+using HistogramData = std::tuple<uint8_t, std::optional<std::string>>;
 
+constexpr uint8_t HISTOGRAM_REG = 0x20;
+constexpr uint8_t HISTOGRAM_DELIM = 0x81;
+constexpr uint8_t HIST_LAST_COUNT = 0x1D;  // 0..29, 30 packets
+constexpr uint8_t HIST_DATA_START = 7;     // byte where histogram data starts
+constexpr uint8_t HIST_CLEAR_IRQ = 0xFF;
+
+// Measurement status
 constexpr uint8_t HIST_OK = 0;
 constexpr uint8_t HIST_NOT_READY = 1;
-constexpr uint8_t HIST_ERROR = 2;
+constexpr uint8_t HIST_DONE = 2;
+constexpr uint8_t HIST_ERROR = 3;
 
 // Active range
 enum TOFActiveRange {
@@ -173,7 +186,6 @@ class TMF8820 {
         }
 
         // Set sensor configuration
-        // TODO: maybe wrap these in `configure_sensor` function?
         set_sensor_report_period(sensor_id, _config->report_period_ms);
         set_sensor_kilo_iterations(sensor_id, _config->kilo_iterations);
         set_sensor_active_range(sensor_id, _config->active_range);
@@ -190,11 +202,11 @@ class TMF8820 {
         return set_register(reg, sensor_id).has_value();
     }
 
-    auto write(TOFSensorID sensor_id, uint16_t reg, uint8_t* data, int size = 1)
-        -> std::optional<RegisterSerializedType> {
+    auto write(TOFSensorID sensor_id, uint16_t reg, uint8_t* data,
+               uint size = 1) -> std::optional<RegisterSerializedType> {
         using RT = std::optional<RegisterSerializedType>;
         auto dev_address = get_sensor_i2c_address(sensor_id);
-        auto [res, _] = _policy->i2c_write(dev_address << 1, reg, data, size);
+        auto res = _policy->i2c_write(dev_address << 1, reg, data, size);
         if (res != 0) {
             return RT();
         }
@@ -203,12 +215,15 @@ class TMF8820 {
 
     auto read(TOFSensorID sensor_id, uint16_t reg, int size = 1)
         -> std::optional<RegisterSerializedType> {
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        std::array<uint8_t, 5> data = {0};
         using RT = std::optional<RegisterSerializedType>;
         auto dev_address = get_sensor_i2c_address(sensor_id);
-        auto [res, data] = _policy->i2c_read(dev_address << 1, reg, size);
+        auto res = _policy->i2c_read(dev_address << 1, reg, data.data(), size);
         if (res != 0) {
             return RT();
         }
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
         auto value = static_cast<uint32_t>(*data.data());
         return RT(value);
     }
@@ -309,58 +324,66 @@ class TMF8820 {
 
         // Set custom spad map if spad map id is 14
         if (spad_map_id == SPAD_MAP_ID_14) {
-            // Switch to the appid=0x03, cid_rid=0x17 – SPAD configuration
-            if (!change_config_page(sensor_id, CMD_LOAD_CONFIG_PAGE_SPAD_1)) {
+            if (!set_custom_spad_map(sensor_id, spad_map_id)) {
                 return false;
             }
+        }
+        return true;
+    }
 
-            // Load the custom SPAD mask
-            auto spad_mask = sensor_id == TOF_X ? spad_mask_x : spad_mask_z;
-            auto spad_mask_len =
-                sensor_id == TOF_X ? spad_mask_x_length : spad_mask_z_length;
-            for (uint8_t i = 0; i < spad_mask_len; i++) {
-                BUFFER[i] = spad_mask[i];
-            }
+    auto set_custom_spad_map(TOFSensorID sensor_id, uint8_t spad_map_id)
+        -> bool {
+        if (spad_map_id != SPAD_MAP_ID_14) {
+            return false;
+        }
+        // Switch to the appid=0x03, cid_rid=0x17 – SPAD configuration
+        if (!change_config_page(sensor_id, CMD_LOAD_CONFIG_PAGE_SPAD_1)) {
+            return false;
+        }
 
-            // Write the packed SPAD mask to SPAD_ENABLE_FIRST (0x24) Register
-            if (!write(sensor_id, SPADEnable::address, BUFFER.data(),
-                       spad_mask_len)
-                     .has_value()) {
-                return false;
-            }
+        // Load the custom SPAD mask
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+        const auto* spad_mask = sensor_id == TOF_X ? spad_mask_x : spad_mask_z;
+        auto spad_mask_len =
+            sensor_id == TOF_X ? spad_mask_x_length : spad_mask_z_length;
+        std::memcpy(BUFFER.data(), spad_mask, spad_mask_len);
 
-            // Load the custom SPAD map
-            auto spad_map = sensor_id == TOF_X ? spad_map_x : spad_map_z;
-            auto spad_map_len =
-                sensor_id == TOF_X ? spad_map_x_length : spad_map_z_length;
-            for (uint8_t i = 0; i < spad_map_len; i++) {
-                BUFFER[i] = spad_map[i];
-            }
-            // Write the packed SPAD map to SPAD_TDC_FIRST (0x42) Register
-            if (!write(sensor_id, SPADTDCChannel::address, BUFFER.data(),
-                       spad_map_len)
-                     .has_value()) {
-                return false;
-            }
+        // Write the packed SPAD mask to SPAD_ENABLE_FIRST (0x24) Register
+        if (!write(sensor_id, SPADEnable::address, BUFFER.data(), spad_mask_len)
+                 .has_value()) {
+            return false;
+        }
 
-            // configure spad offset (0x8D, 0x8E)
-            _config->registers->spad_offset = {_config->spad_config->xoff_q1,
-                                               _config->spad_config->yoff_q1};
-            if (!set_register(_config->registers->spad_offset, sensor_id)
-                     .has_value()) {
-                return false;
-            }
-            // configure spad size (0x8F, 0x90)
-            _config->registers->spad_size = {_config->spad_config->xsize,
-                                             _config->spad_config->ysize};
-            if (!set_register(_config->registers->spad_size, sensor_id)
-                     .has_value()) {
-                return false;
-            }
-            // Write the config page
-            if (!send_write_config_page(sensor_id)) {
-                return false;
-            }
+        // Load the custom SPAD map
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+        const auto* spad_map = sensor_id == TOF_X ? spad_map_x : spad_map_z;
+        const uint spad_map_len =
+            sensor_id == TOF_X ? spad_map_x_length : spad_map_z_length;
+        std::memcpy(BUFFER.data(), spad_map, spad_map_len);
+        // Write the packed SPAD map to SPAD_TDC_FIRST (0x42) Register
+        if (!write(sensor_id, SPADTDCChannel::address, BUFFER.data(),
+                   spad_map_len)
+                 .has_value()) {
+            return false;
+        }
+
+        // configure spad offset (0x8D, 0x8E)
+        _config->registers->spad_offset = {_config->spad_config->xoff_q1,
+                                           _config->spad_config->yoff_q1};
+        if (!set_register(_config->registers->spad_offset, sensor_id)
+                 .has_value()) {
+            return false;
+        }
+        // configure spad size (0x8F, 0x90)
+        _config->registers->spad_size = {_config->spad_config->xsize,
+                                         _config->spad_config->ysize};
+        if (!set_register(_config->registers->spad_size, sensor_id)
+                 .has_value()) {
+            return false;
+        }
+        // Write the config page
+        if (!send_write_config_page(sensor_id)) {
+            return false;
         }
         return true;
     }
@@ -455,27 +478,59 @@ class TMF8820 {
         return send_write_config_page(sensor_id);
     }
 
-    auto start_measurement(TOFSensorID sensor_id) -> bool {
+    auto start_measurement(TOFSensorID sensor_id,
+                           TOFMeasurementKind kind = HISTOGRAM) -> int16_t {
         // Clear all interupts by writing 0xFF to INT_STATUS (0xE1)
-        if (!write(sensor_id, INTStatus::address, (uint8_t*)0xFF, 1)
+        BUFFER[0] = HIST_CLEAR_IRQ;
+        if (!write(sensor_id, INTStatus::address, BUFFER.data(), 1)
                  .has_value()) {
-            return false;
+            return -1;
         }
 
         // Enable interrupts for histogram measurements
         _config->registers->int_enable.int4_enab = 1;
         if (!set_register(_config->registers->int_enable, sensor_id)
                  .has_value()) {
-            return false;
+            return -1;
         }
 
         // Start a cyclic measurement according to the configuration
         auto len = prepare_cmd_frame(CMD_MEASURE, nullptr, 0);
         if (!write(sensor_id, CMDStat::address, BUFFER.data(), len)
                  .has_value()) {
+            return -1;
+        }
+        if (!wait_for_state(sensor_id, CMDStat::address, STAT_ACCEPTED)) {
+            return -1;
+        }
+        return get_total_measurement_length(kind);
+    }
+
+    auto stop_measurement(TOFSensorID sensor_id) -> bool {
+        // Clear all interupts by writing 0xFF to INT_STATUS (0xE1)
+        BUFFER[0] = HIST_CLEAR_IRQ;
+        if (!write(sensor_id, INTStatus::address, BUFFER.data(), 1)
+                 .has_value()) {
             return false;
         }
-        return wait_for_state(sensor_id, CMDStat::address, STAT_ACCEPTED);
+
+        // Disable interrupts
+        _config->registers->int_enable.int2_enab = 0;
+        _config->registers->int_enable.int4_enab = 0;
+        _config->registers->int_enable.int6_enab = 0;
+        _config->registers->int_enable.int7_enab = 0;
+        if (!set_register(_config->registers->int_enable, sensor_id)
+                 .has_value()) {
+            return false;
+        }
+
+        // Send CMD_STOP (0xFF) to stop any ongoing measurements
+        auto len = prepare_cmd_frame(CMD_STOP, nullptr, 0);
+        if (!write(sensor_id, CMDStat::address, BUFFER.data(), len)
+                 .has_value()) {
+            return false;
+        }
+        return wait_for_state(sensor_id, CMDStat::address, STAT_OK);
     }
 
     auto get_histogram_chunk(TOFSensorID sensor_id) -> HistogramData {
@@ -496,20 +551,23 @@ class TMF8820 {
             return HistogramData(HIST_ERROR, std::nullopt);
         }
 
-        // read out histogram chunk
-        // TODO: what register is 0x20?
-        // TODO: add defines for packet format
-        // 3 header + 4 sub header + 128bytes = 135btes
+        // read the next histogram chunk
+        HistMessageT data;
         auto dev_address = get_sensor_i2c_address(sensor_id);
-        // TODO: use _policy->i2c_read
-        auto [res, data] = _policy->i2c_read(dev_address << 1, 0x20, 5);
+        auto res = _policy->i2c_read(dev_address << 1, HISTOGRAM_REG,
+                                     data.data(), data.size());
         if (res != 0) {
             return HistogramData(HIST_ERROR, std::nullopt);
         }
+        if (data[0] != HISTOGRAM_DELIM) {
+            return HistogramData(HIST_ERROR, std::nullopt);
+        }
 
-        // TODO: parse and validate packet.
-        std::optional<HistMessageT> optionalData = data;
-        return HistogramData(HIST_OK, optionalData);
+        // check if this is the last chunk
+        uint8_t stat = (data[4] == HIST_LAST_COUNT) ? HIST_DONE : HIST_OK;
+        // encode the chunk as base64
+        auto base64_string = base64_encode(data);
+        return HistogramData(stat, base64_string);
     }
 
   private:
@@ -768,8 +826,20 @@ class TMF8820 {
         return false;
     }
 
-    auto configure_sensor(const TMF8820RegisterMap& registers,
-                          TOFSensorID sensor_id) -> bool {
+    auto static get_total_measurement_length(TOFMeasurementKind kind)
+        -> int16_t {
+        switch (kind) {
+            case HISTOGRAM:
+                // Total bytes (128b * 30) for full histogram
+                return HIST_DATA_LEN * HIST_DATA_COUNT;
+            // Not implemented
+            case MEASUREMENT:
+            default:
+                return -1;
+        }
+    }
+
+    auto configure_sensor(TOFSensorID sensor_id) -> bool {
         if (!update_enable(sensor_id)) {
             // NOLINTNEXTLINE(readability-simplify-boolean-expr)
             return false;
