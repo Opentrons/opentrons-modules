@@ -46,7 +46,7 @@ class HostCommsTask {
         gcode::GetPlatformSensors, gcode::GetDoorClosed, gcode::GetEstopStatus,
         gcode::StopMotor, gcode::GetResetReason, gcode::SetStatusBarState,
         gcode::GetTOFSensorStatus, gcode::GetTOFRegister, gcode::SetTOFRegister,
-        gcode::StartTOFMeasurement, gcode::GetTOFMeasurement,
+        gcode::ManageTOFMeasurement, gcode::GetTOFMeasurement,
         gcode::EnableTOFSensor>;
     using AckOnlyCache = AckCache<
         8, gcode::EnterBootloader, gcode::SetSerialNumber,
@@ -66,7 +66,7 @@ class HostCommsTask {
     using GetResetReasonCache = AckCache<8, gcode::GetResetReason>;
     using GetTOFSensorStatusCache = AckCache<8, gcode::GetTOFSensorStatus>;
     using GetTOFRegisterCache = AckCache<8, gcode::GetTOFRegister>;
-    using StartTOFMeasurementCache = AckCache<8, gcode::StartTOFMeasurement>;
+    using ManageTOFMeasurementCache = AckCache<8, gcode::ManageTOFMeasurement>;
     using GetTOFMeasurementCache = AckCache<8, gcode::GetTOFMeasurement>;
 
   public:
@@ -1195,23 +1195,23 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_gcode(const gcode::StartTOFMeasurement& gcode, InputIt tx_into,
+    auto visit_gcode(const gcode::ManageTOFMeasurement& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
-        auto id = start_tof_measurement_cache.add(gcode);
+        auto id = manage_tof_measurement_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
         auto message =
-            messages::StartTOFMeasurementMessage{.id = id,
-                                                 .sensor_id = gcode.sensor_id,
-                                                 .kind = gcode.kind,
-                                                 .cancel = gcode.cancel};
+            messages::ManageTOFMeasurementMessage{.id = id,
+                                                  .sensor_id = gcode.sensor_id,
+                                                  .kind = gcode.kind,
+                                                  .cancel = gcode.cancel};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            start_tof_measurement_cache.remove_if_present(id);
+            manage_tof_measurement_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
@@ -1220,9 +1220,9 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_message(const messages::StartTOFMeasurementResponse& response,
+    auto visit_message(const messages::ManageTOFMeasurementResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        auto cache_entry = start_tof_measurement_cache.remove_if_present(
+        auto cache_entry = manage_tof_measurement_cache.remove_if_present(
             response.responding_to_id);
         return std::visit(
             [tx_into, tx_limit, response](auto cache_element) {
@@ -1311,7 +1311,7 @@ class HostCommsTask {
     GetResetReasonCache get_reset_reason_cache{};
     GetTOFSensorStatusCache get_tof_sensor_status_cache{};
     GetTOFRegisterCache get_tof_register_cache{};
-    StartTOFMeasurementCache start_tof_measurement_cache{};
+    ManageTOFMeasurementCache manage_tof_measurement_cache{};
     GetTOFMeasurementCache get_tof_measurement_cache{};
     bool may_connect_latch = true;
 };

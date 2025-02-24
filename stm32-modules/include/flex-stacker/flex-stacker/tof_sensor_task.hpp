@@ -188,13 +188,13 @@ class TOFSensorTask {
             response, Queues::HostCommsAddress));
     }
 
-    auto visit_message(const messages::StartTOFMeasurementMessage& m) -> void {
+    auto visit_message(const messages::ManageTOFMeasurementMessage& m) -> void {
         messages::HostCommsMessage response;
         auto sensor = &get_sensor(m.sensor_id);
         if (m.cancel) {
             sensor->driver.stop_measurement(m.sensor_id);
             reset_measurement_state(m.sensor_id);
-            response = messages::StartTOFMeasurementResponse{
+            response = messages::ManageTOFMeasurementResponse{
                 .responding_to_id = m.id,
                 .sensor_id = m.sensor_id,
                 .cancelled = true,
@@ -223,7 +223,7 @@ class TOFSensorTask {
         // Success, Set state and send response
         sensor->state = MEASURING;
         sensor->message_id = 0;
-        response = messages::StartTOFMeasurementResponse{
+        response = messages::ManageTOFMeasurementResponse{
             .responding_to_id = m.id,
             .sensor_id = m.sensor_id,
             .kind = m.kind,

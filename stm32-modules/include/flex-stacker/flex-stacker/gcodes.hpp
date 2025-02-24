@@ -525,12 +525,12 @@ struct EnableTOFSensor {
     }
 };
 
-struct StartTOFMeasurement {
+struct ManageTOFMeasurement {
     TOFSensorID sensor_id;
     TOFMeasurementKind kind;
     bool cancel;
 
-    using ParseResult = std::optional<StartTOFMeasurement>;
+    using ParseResult = std::optional<ManageTOFMeasurement>;
     static constexpr auto prefix = std::array{'M', '2', '2', '5', ' '};
 
     using XArg = ArgNoVal<'X'>;
@@ -550,7 +550,7 @@ struct StartTOFMeasurement {
             return std::make_pair(ParseResult(), input);
         }
 
-        auto ret = StartTOFMeasurement{
+        auto ret = ManageTOFMeasurement{
             .sensor_id = TOFSensorID::TOF_X,
             .kind = TOFMeasurementKind::HISTOGRAM,
             .cancel = false,
