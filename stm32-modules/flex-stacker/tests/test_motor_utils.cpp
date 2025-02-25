@@ -18,8 +18,8 @@ static auto acceleration_to_steps_per_tick_sq(double vel) -> sq0_31 {
 
 TEST_CASE("Fixed Distance MovementProfile without acceleration") {
     GIVEN("a movement profile with constant velocity") {
-        constexpr int velocity = 100;    // steps per second == 1 step / tick
-        constexpr int acceleration = 0;  // steps per ticks^2
+        constexpr double velocity = 100.0001; // steps per second == 1 step / tick
+        constexpr double acceleration = 0;  // steps per ticks^2
         constexpr int distance = 10;     // total steps
 
         auto profile =
