@@ -6,6 +6,7 @@ include(AddBuildAndTestTarget)
 
 add_executable(${TARGET_MODULE_NAME}
         test_main.cpp
+        test_motor_utils.cpp
     )
 
 target_include_directories(${TARGET_MODULE_NAME}
