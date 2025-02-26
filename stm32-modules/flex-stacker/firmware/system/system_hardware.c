@@ -190,6 +190,19 @@ void door_closed_pin_init(void) {
     HAL_GPIO_Init(HOPPER_DOOR_CLOSED_GPIO_PORT, &init);
 }
 
+void install_detection_pin_init(void) {
+    GPIO_InitTypeDef init = {0};
+
+    /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+
+    init.Mode = GPIO_MODE_INPUT;
+    init.Pull = GPIO_NOPULL;
+    init.Speed = GPIO_SPEED_FREQ_LOW;
+    init.Pin = INSTALL_DETECTION_PIN;
+    HAL_GPIO_Init(INSTALL_DETECTION_PORT, &init);
+}
+
 /**
  * enable/disable writing to the eeprom.
  */
@@ -200,6 +213,7 @@ void enable_eeprom_write(bool enable) {
 void system_hardware_gpio_init(void) {
     save_reset_reason();
     door_closed_pin_init();
+    install_detection_pin_init();
     eeprom_write_protect_init();
     // Disable eeprom write
     enable_eeprom_write(false);
@@ -207,4 +221,12 @@ void system_hardware_gpio_init(void) {
 
 bool system_hardware_read_door_closed(void) {
     return HAL_GPIO_ReadPin(HOPPER_DOOR_CLOSED_GPIO_PORT, HOPPER_DOOR_CLOSED_PIN) == GPIO_PIN_SET;
+}
+
+bool system_hardware_read_install_detected(void) {
+#if flex-stacker_BOARD_REVISION != 'b'
+    return false;
+#elif
+    return HAL_GPIO_ReadPin(INSTALL_DETECTION_PORT, INSTALL_DETECTION_PIN) == GPIO_PIN_SET;
+#endif
 }
