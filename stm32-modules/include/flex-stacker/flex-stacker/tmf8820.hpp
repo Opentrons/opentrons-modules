@@ -535,22 +535,24 @@ class TMF8820 {
         return wait_for_state(sensor_id, CMDStat::address, STAT_OK);
     }
 
-    auto get_histogram_chunk(TOFSensorID sensor_id, std::array<char, BASE64_ENCODED_LEN<HIST_FRAME_LEN>>& encoded) -> HistogramData {
+    template <std::size_t N>
+    auto get_histogram_chunk(TOFSensorID sensor_id,
+                             std::array<char, N>& encoded) -> uint8_t {
         // returns the next chunk of the histogram
         auto ret = read_register<tmf8820::INTStatus>(sensor_id);
         if (!ret.has_value()) {
-            return HistogramData(HIST_ERROR, std::nullopt);
+            return HIST_ERROR;
         }
         auto reg = static_cast<tmf8820::INTStatus>(ret.value());
         if (!reg.int4) {
-            return HistogramData(HIST_NOT_READY, std::nullopt);
+            return HIST_NOT_READY;
         }
 
         // hist ready, clear the int4 bit by writing `1` to it
         _config->registers->int_status.int4 = 1;
         if (!set_register(_config->registers->int_status, sensor_id)
                  .has_value()) {
-            return HistogramData(HIST_ERROR, std::nullopt);
+            return HIST_ERROR;
         }
 
         // read the next histogram chunk
@@ -558,19 +560,18 @@ class TMF8820 {
         auto res = _policy->i2c_read(dev_address << 1, HISTOGRAM_REG,
                                      hist_buffer.data(), hist_buffer.size());
         if (res != 0) {
-            return HistogramData(HIST_ERROR, std::nullopt);
+            return HIST_ERROR;
         }
         if (hist_buffer[0] != HISTOGRAM_DELIM) {
-            return HistogramData(HIST_ERROR, std::nullopt);
+            return HIST_ERROR;
         }
 
-        // check if this is the last chunk
-        uint8_t stat = (hist_buffer[4] == HIST_LAST_COUNT) ? HIST_DONE : HIST_OK;
         // encode the chunk as base64
-        bool success = base64_encode(hist_buffer, encoded);
-        static_cast<void>(success);
-        //std::memcpy(BUFFER.data(), spad_mask, spad_mask_len);
-        return HistogramData(stat, std::nullopt);
+        if (!base64_encode(hist_buffer, encoded)) {
+            return HIST_ERROR;
+        }
+        // check if this is the last chunk
+        return (hist_buffer[4] == HIST_LAST_COUNT) ? HIST_DONE : HIST_OK;
     }
 
   private:

@@ -1,8 +1,6 @@
 #pragma GCC push_options
 #pragma GCC optimize("O0")
 
-
-
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -37,8 +35,6 @@ struct TOFSensor {
     std::array<char, BASE64_ENCODED_LEN<HIST_FRAME_LEN>> current_frame = {0};
     bool ok = false;
 };
-
-
 
 // NOLINTNEXTLINE
 tmf8820::TMF8820RegisterMap tof_x_config{};
@@ -253,7 +249,7 @@ class TOFSensorTask {
         }
 
         // Resend previous chunk
-        //if (m.resend && sensor->current_frame.has_value()) {
+        // if (m.resend && sensor->current_frame.has_value()) {
         //    auto c_string = sensor->current_frame.value().c_str();
         //    response = messages::GetTOFMeasurementResponse{
         //        .responding_to_id = m.id,
@@ -265,7 +261,8 @@ class TOFSensorTask {
         //}
 
         // Get the next histogram chunk
-        auto [ret, _] = sensor->driver.get_histogram_chunk(m.sensor_id, sensor->current_frame);
+        auto ret = sensor->driver.get_histogram_chunk(
+            m.sensor_id, sensor->current_frame);
         if (ret == HIST_ERROR) {
             reset_measurement_state(m.sensor_id);
             // TODO: send specific error code
@@ -299,7 +296,7 @@ class TOFSensorTask {
     auto reset_measurement_state(TOFSensorID sensor_id) -> void {
         auto sensor = &get_sensor(sensor_id);
         sensor->driver.stop_measurement(sensor_id);
-        //sensor->current_frame = std::nullopt;
+        // sensor->current_frame = std::nullopt;
         sensor->message_id = 0;
         sensor->state = IDLE;
     }

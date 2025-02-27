@@ -1,9 +1,8 @@
 #pragma GCC push_options
 #pragma GCC optimize("O0")
 #include <array>
-#include <string>
 #include <cstdint>
-
+#include <string>
 
 // start at -6 so that the first byte will add 8 bits to it.
 constexpr int PROCESSED_BITS = -6;
@@ -17,15 +16,15 @@ constexpr int BASE64_CHAR_MASK = 0x3F;
 // in the form '=' characters. We also add one extra byte for the null
 // terminator '\0' to denote the fixed char array as a string.
 template <std::size_t N>
-constexpr uint8_t BASE64_ENCODED_LEN =
-    ((N * 4) / 3 + 3) + 1;
+constexpr uint8_t BASE64_ENCODED_LEN = ((N * 4) / 3 + 3) + 1;
 
 // Base64 encoding characters
 static const char BASE64_ALPHABET[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 template <std::size_t N>
-inline auto base64_encode(const std::array<uint8_t, N>& data, std::array<char, BASE64_ENCODED_LEN<N>>& encoded)
+inline auto base64_encode(const std::array<uint8_t, N>& data,
+                          std::array<char, BASE64_ENCODED_LEN<N>>& encoded)
     -> bool {
     int idx = 0;
     int val = 0;
@@ -42,8 +41,9 @@ inline auto base64_encode(const std::array<uint8_t, N>& data, std::array<char, B
         }
     }
     if (valb > PROCESSED_BITS) {
-        encoded[idx] = BASE64_ALPHABET[((val << ONE_BYTE) >> (valb + ONE_BYTE)) &
-                                     BASE64_CHAR_MASK];
+        encoded[idx] =
+            BASE64_ALPHABET[((val << ONE_BYTE) >> (valb + ONE_BYTE)) &
+                            BASE64_CHAR_MASK];
         idx += 1;
     }
     // Base64 encoding always produces a multiple of 4 characters.
