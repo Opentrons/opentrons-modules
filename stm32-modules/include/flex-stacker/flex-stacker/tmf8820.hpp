@@ -122,6 +122,8 @@ constexpr uint8_t HIST_DATA_COUNT = 30;
 using HistMessageT = std::array<uint8_t, HIST_FRAME_LEN>;
 using HistogramData = std::tuple<uint8_t, std::optional<std::string>>;
 
+HistMessageT hist_buffer;
+
 constexpr uint8_t HISTOGRAM_REG = 0x20;
 constexpr uint8_t HISTOGRAM_DELIM = 0x81;
 constexpr uint8_t HIST_LAST_COUNT = 0x1D;  // 0..29, 30 packets
@@ -533,7 +535,7 @@ class TMF8820 {
         return wait_for_state(sensor_id, CMDStat::address, STAT_OK);
     }
 
-    auto get_histogram_chunk(TOFSensorID sensor_id) -> HistogramData {
+    auto get_histogram_chunk(TOFSensorID sensor_id, std::array<char, BASE64_ENCODED_LEN<HIST_FRAME_LEN>>& encoded) -> HistogramData {
         // returns the next chunk of the histogram
         auto ret = read_register<tmf8820::INTStatus>(sensor_id);
         if (!ret.has_value()) {
@@ -552,22 +554,23 @@ class TMF8820 {
         }
 
         // read the next histogram chunk
-        HistMessageT data;
         auto dev_address = get_sensor_i2c_address(sensor_id);
         auto res = _policy->i2c_read(dev_address << 1, HISTOGRAM_REG,
-                                     data.data(), data.size());
+                                     hist_buffer.data(), hist_buffer.size());
         if (res != 0) {
             return HistogramData(HIST_ERROR, std::nullopt);
         }
-        if (data[0] != HISTOGRAM_DELIM) {
+        if (hist_buffer[0] != HISTOGRAM_DELIM) {
             return HistogramData(HIST_ERROR, std::nullopt);
         }
 
         // check if this is the last chunk
-        uint8_t stat = (data[4] == HIST_LAST_COUNT) ? HIST_DONE : HIST_OK;
+        uint8_t stat = (hist_buffer[4] == HIST_LAST_COUNT) ? HIST_DONE : HIST_OK;
         // encode the chunk as base64
-        auto base64_string = base64_encode(data);
-        return HistogramData(stat, base64_string);
+        bool success = base64_encode(hist_buffer, encoded);
+        static_cast<void>(success);
+        //std::memcpy(BUFFER.data(), spad_mask, spad_mask_len);
+        return HistogramData(stat, std::nullopt);
     }
 
   private:
