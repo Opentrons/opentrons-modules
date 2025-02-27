@@ -18,6 +18,10 @@ const char* const SYSTEM_EEPROM_ERROR =
     "ERR303:system:EEPROM communication error\n";
 const char* const SYSTEM_SET_STATUSBAR_COLOR_ERROR =
     "ERR304:system:STATUSBAR communication error\n";
+
+const char* const TMF8820_COMM_ERROR = "ERR801:TMF8820 Comm error\n";
+const char* const TMF8820_MEASURE_ERROR = "ERR802:TMF8820 Measure error\n";
+
 const char* const TMC2160_READ_ERROR = "ERR901:TMC2160 driver read error\n";
 const char* const TMC2160_WRITE_ERROR = "ERR902:TMC2160 driver write error\n";
 const char* const TMC2160_INVALID_ADDRESS = "ERR903:TMC2160 invalid address\n";
@@ -52,6 +56,8 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
         HANDLE_CASE(SYSTEM_EEPROM_ERROR);
         HANDLE_CASE(SYSTEM_SET_STATUSBAR_COLOR_ERROR);
+        HANDLE_CASE(TMF8820_COMM_ERROR);
+        HANDLE_CASE(TMF8820_MEASURE_ERROR);
         HANDLE_CASE(TMC2160_READ_ERROR);
         HANDLE_CASE(TMC2160_WRITE_ERROR);
         HANDLE_CASE(TMC2160_INVALID_ADDRESS);

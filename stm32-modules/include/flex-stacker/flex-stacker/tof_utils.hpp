@@ -1,8 +1,5 @@
-#pragma GCC push_options
-#pragma GCC optimize("O0")
 #include <array>
 #include <cstdint>
-#include <string>
 
 // start at -6 so that the first byte will add 8 bits to it.
 constexpr int PROCESSED_BITS = -6;
@@ -57,4 +54,3 @@ inline auto base64_encode(const std::array<uint8_t, N>& data,
     encoded[idx] = '\0';
     return true;
 }
-#pragma GCC pop_options

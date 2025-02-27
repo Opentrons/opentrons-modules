@@ -1,9 +1,5 @@
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 #include <array>
 #include <cstdint>
-#include <optional>
 
 #include "core/fixed_point.hpp"
 #include "core/queue_aggregator.hpp"
@@ -149,7 +145,7 @@ class TOFSensorTask {
         auto data = driver.read(m.sensor_id, m.reg, 1);
         if (!data.has_value()) {
             response = messages::ErrorMessage{
-                .code = errors::ErrorCode::TMC2160_READ_ERROR};
+                .code = errors::ErrorCode::TMF8820_COMM_ERROR};
         } else {
             response = messages::GetTOFRegisterResponse{
                 .responding_to_id = m.id,
@@ -169,10 +165,9 @@ class TOFSensorTask {
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
             driver.write(m.sensor_id, m.reg, const_cast<uint8_t*>(&m.data), 1);
         if (!data.has_value()) {
-            response.with_error = errors::ErrorCode::TMC2160_WRITE_ERROR;
+            response.with_error = errors::ErrorCode::TMF8820_COMM_ERROR;
         }
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
+        send_response(response);
     }
 
     auto visit_message(const messages::EnableTOFSensorMessage& m) -> void {
@@ -189,8 +184,7 @@ class TOFSensorTask {
             sensor->state = sensor->ok ? IDLE : TOF_ERROR;
         }
         sensor->mode = sensor->driver.get_sensor_mode(sensor->kind);
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
+        send_response(response);
     }
 
     auto visit_message(const messages::ManageTOFMeasurementMessage& m) -> void {
@@ -209,9 +203,9 @@ class TOFSensorTask {
         }
 
         if (!sensor->ok || sensor->state == MEASURING) {
-            // TODO: send specific error code when already measuring
-            response = messages::ErrorMessage{
-                .code = errors::ErrorCode::TMC2160_INVALID_ADDRESS};
+            response = messages::AcknowledgePrevious{
+                .responding_to_id = m.id,
+                .with_error = errors::ErrorCode::TMF8820_MEASURE_ERROR};
             return send_response(response);
         }
 
@@ -219,9 +213,9 @@ class TOFSensorTask {
         auto len = sensor->driver.start_measurement(m.sensor_id, m.kind);
         if (len < 0) {
             reset_measurement_state(m.sensor_id);
-            // TODO: send specific error code when fail
-            response = messages::ErrorMessage{
-                .code = errors::ErrorCode::TMC2160_INVALID_ADDRESS};
+            response = messages::AcknowledgePrevious{
+                .responding_to_id = m.id,
+                .with_error = errors::ErrorCode::TMF8820_MEASURE_ERROR};
             return send_response(response);
         }
 
@@ -242,32 +236,31 @@ class TOFSensorTask {
         auto sensor = &get_sensor(m.sensor_id);
         if (!sensor->ok || sensor->state != MEASURING) {
             reset_measurement_state(m.sensor_id);
-            // TODO: send specific error code when NOT measuring
-            response = messages::ErrorMessage{
-                .code = errors::ErrorCode::TMC2160_WRITE_ERROR};
+            response = messages::AcknowledgePrevious{
+                .responding_to_id = m.id,
+                .with_error = errors::ErrorCode::TMF8820_MEASURE_ERROR};
             return send_response(response);
         }
 
-        // Resend previous chunk
-        // if (m.resend && sensor->current_frame.has_value()) {
-        //    auto c_string = sensor->current_frame.value().c_str();
-        //    response = messages::GetTOFMeasurementResponse{
-        //        .responding_to_id = m.id,
-        //        .sensor_id = m.sensor_id,
-        //        .id = sensor->message_id,
-        //        .data = c_string,
-        //    };
-        //    return send_response(response);
-        //}
+        // Resend previous chunk if requested and there is one
+        if (m.resend && sensor->message_id > 0) {
+            response = messages::GetTOFMeasurementResponse{
+                .responding_to_id = m.id,
+                .sensor_id = m.sensor_id,
+                .id = sensor->message_id,
+                .data = sensor->current_frame.data(),
+            };
+            return send_response(response);
+        }
 
         // Get the next histogram chunk
-        auto ret = sensor->driver.get_histogram_chunk(
-            m.sensor_id, sensor->current_frame);
+        auto ret = sensor->driver.get_histogram_chunk(m.sensor_id,
+                                                      sensor->current_frame);
         if (ret == HIST_ERROR) {
             reset_measurement_state(m.sensor_id);
-            // TODO: send specific error code
-            response = messages::ErrorMessage{
-                .code = errors::ErrorCode::TMC2160_INVALID_ADDRESS};
+            response = messages::AcknowledgePrevious{
+                .responding_to_id = m.id,
+                .with_error = errors::ErrorCode::TMF8820_MEASURE_ERROR};
             return send_response(response);
         }
 
@@ -321,4 +314,3 @@ class TOFSensorTask {
     bool _initialized = false;
 };
 };  // namespace tof_sensor_task
-#pragma GCC pop_options

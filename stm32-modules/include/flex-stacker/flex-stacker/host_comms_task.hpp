@@ -8,6 +8,7 @@
 #include "core/ack_cache.hpp"
 #include "core/gcode_parser.hpp"
 #include "core/version.hpp"
+#include "errors.hpp"
 #include "flex-stacker/errors.hpp"
 #include "flex-stacker/gcodes.hpp"
 #include "flex-stacker/gcodes_motor.hpp"

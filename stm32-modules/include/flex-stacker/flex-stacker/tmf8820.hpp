@@ -3,7 +3,6 @@
 #include <array>
 #include <cstdint>
 #include <optional>
-#include <string>
 
 #include "firmware/tmf8820_image.h"
 #include "firmware/tmf8820_spadmap.h"
@@ -119,10 +118,7 @@ constexpr uint8_t HIST_FRAME_LEN = 135;
 constexpr uint8_t HIST_DATA_LEN = HIST_FRAME_LEN - 3 - 4;
 // Number of histogram frames
 constexpr uint8_t HIST_DATA_COUNT = 30;
-using HistMessageT = std::array<uint8_t, HIST_FRAME_LEN>;
-using HistogramData = std::tuple<uint8_t, std::optional<std::string>>;
-
-HistMessageT hist_buffer;
+std::array<uint8_t, HIST_FRAME_LEN> hist_buffer = {0};
 
 constexpr uint8_t HISTOGRAM_REG = 0x20;
 constexpr uint8_t HISTOGRAM_DELIM = 0x81;
