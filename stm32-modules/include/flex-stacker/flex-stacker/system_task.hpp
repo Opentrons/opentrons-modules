@@ -155,6 +155,16 @@ class SystemTask {
     }
 
     template <SystemExecutionPolicy Policy>
+    auto visit_message(const messages::GetInstalledMessage& m, Policy& policy)
+        -> void {
+        auto response = messages::GetInstalledResponse{
+            .responding_to_id = m.id,
+            .installed = policy.get_install_detected()};
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+    }
+
+    template <SystemExecutionPolicy Policy>
     auto visit_message(const std::monostate& message, Policy& policy) -> void {
         static_cast<void>(message);
         static_cast<void>(policy);

@@ -52,7 +52,7 @@ class HostCommsTask {
         gcode::GetPlatformSensors, gcode::GetDoorClosed, gcode::GetEstopStatus,
         gcode::StopMotor, gcode::GetResetReason, gcode::SetStatusBarState,
         gcode::GetTOFSensorStatus, gcode::GetTOFRegister, gcode::SetTOFRegister,
-        gcode::EnableTOFSensor>;
+        gcode::EnableTOFSensor, gcode::GetInstalledStatus>;
     using AckOnlyCache = AckCache<
         8, gcode::EnterBootloader, gcode::SetSerialNumber,
         gcode::SetTMCRegister, gcode::SetRunCurrent, gcode::SetHoldCurrent,
@@ -68,6 +68,7 @@ class HostCommsTask {
     using GetDoorClosedCache = AckCache<8, gcode::GetDoorClosed>;
     using GetPlatformSensorsCache = AckCache<8, gcode::GetPlatformSensors>;
     using GetEstopCache = AckCache<8, gcode::GetEstopStatus>;
+    using GetInstalledCache = AckCache<8, gcode::GetInstalledStatus>;
     using GetResetReasonCache = AckCache<8, gcode::GetResetReason>;
     using GetTOFSensorStatusCache = AckCache<8, gcode::GetTOFSensorStatus>;
     using GetTOFRegisterCache = AckCache<8, gcode::GetTOFRegister>;
@@ -322,6 +323,50 @@ class HostCommsTask {
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetInstalledStatus& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_installed_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetInstalledMessage{.id = id};
+
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_installed_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetInstalledResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            get_installed_cache.remove_if_present(response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.installed);
+                }
+            },
+            cache_entry);
     }
 
     template <typename InputIt, typename InputLimit>
@@ -1218,6 +1263,7 @@ class HostCommsTask {
     GetDoorClosedCache get_door_closed_cache{};
     GetPlatformSensorsCache get_platform_sensors_cache{};
     GetEstopCache get_estop_cache{};
+    GetInstalledCache get_installed_cache{};
     GetResetReasonCache get_reset_reason_cache{};
     GetTOFSensorStatusCache get_tof_sensor_status_cache{};
     GetTOFRegisterCache get_tof_register_cache{};

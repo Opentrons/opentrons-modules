@@ -256,6 +256,15 @@ struct GetDoorClosedResponse {
     bool door_closed;
 };
 
+struct GetInstalledMessage {
+    uint32_t id;
+};
+
+struct GetInstalledResponse {
+    uint32_t responding_to_id;
+    bool installed;
+};
+
 struct GetPlatformSensorsMessage {
     uint32_t id;
 };
@@ -334,19 +343,19 @@ struct GetTOFRegisterResponse {
     uint8_t data;
 };
 
-using HostCommsMessage =
-    ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
-                   ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetTMCRegisterResponse, GetLimitSwitchesResponses,
-                   GetMoveParamsResponse, GetMotorStallGuardResponse,
-                   GetDoorClosedResponse, GetPlatformSensorsResponse,
-                   GetEstopResponse, GetResetReasonResponse,
-                   GetTOFSensorStatusResponse, GetTOFRegisterResponse>;
+using HostCommsMessage = ::std::variant<
+    std::monostate, IncomingMessageFromHost, ForceUSBDisconnect, ErrorMessage,
+    AcknowledgePrevious, GetSystemInfoResponse, GetTMCRegisterResponse,
+    GetLimitSwitchesResponses, GetMoveParamsResponse,
+    GetMotorStallGuardResponse, GetDoorClosedResponse,
+    GetPlatformSensorsResponse, GetEstopResponse, GetResetReasonResponse,
+    GetTOFSensorStatusResponse, GetTOFRegisterResponse, GetInstalledResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage,
-                   GetDoorClosedMessage, GetResetReasonMessage>;
+                   GetDoorClosedMessage, GetResetReasonMessage,
+                   GetInstalledMessage>;
 
 using UIMessage =
     ::std::variant<std::monostate, UpdateUIMessage, SetStatusBarStateMessage>;
