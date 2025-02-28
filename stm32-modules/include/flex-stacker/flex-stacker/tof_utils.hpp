@@ -16,8 +16,8 @@ template <std::size_t N>
 constexpr uint8_t BASE64_ENCODED_LEN = ((N * 4) / 3 + 3) + 1;
 
 // Base64 encoding characters
-static const char BASE64_ALPHABET[] =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const std::array<char, 65> BASE64_ALPHABET = {
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"};
 
 template <std::size_t N>
 inline auto base64_encode(const std::array<uint8_t, N>& data,
@@ -32,25 +32,25 @@ inline auto base64_encode(const std::array<uint8_t, N>& data,
         while (valb >= 0) {
             // Mask & 0x3F (b111111) to extract the lowest 6 bits,
             // which correspond to a single Base64 character.
-            encoded[idx] = BASE64_ALPHABET[(val >> valb) & BASE64_CHAR_MASK];
+            encoded.at(idx) =
+                BASE64_ALPHABET.at((val >> valb) & BASE64_CHAR_MASK);
             valb += PROCESSED_BITS;
             idx += 1;
         }
     }
     if (valb > PROCESSED_BITS) {
-        encoded[idx] =
-            BASE64_ALPHABET[((val << ONE_BYTE) >> (valb + ONE_BYTE)) &
-                            BASE64_CHAR_MASK];
+        encoded.at(idx) = BASE64_ALPHABET.at(
+            ((val << ONE_BYTE) >> (valb + ONE_BYTE)) & BASE64_CHAR_MASK);
         idx += 1;
     }
     // Base64 encoding always produces a multiple of 4 characters.
     // If the encoded string is not a multiple of 4, it pads the string
     // with '=' characters if there is enough space in the buffer.
-    while (idx < BASE64_ENCODED_LEN<N> - 1 && encoded[idx] != '=') {
-        encoded[idx] = '=';
+    while (idx < BASE64_ENCODED_LEN<N> - 1 && encoded.at(idx) != '=') {
+        encoded.at(idx) = '=';
         idx += 1;
     }
     // Add null terminator
-    encoded[idx] = '\0';
+    encoded.at(idx) = '\0';
     return true;
 }

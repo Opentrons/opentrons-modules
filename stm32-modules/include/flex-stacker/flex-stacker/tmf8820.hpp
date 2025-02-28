@@ -118,6 +118,7 @@ constexpr uint8_t HIST_FRAME_LEN = 135;
 constexpr uint8_t HIST_DATA_LEN = HIST_FRAME_LEN - 3 - 4;
 // Number of histogram frames
 constexpr uint8_t HIST_DATA_COUNT = 30;
+// NOLINTNEXTLINE
 std::array<uint8_t, HIST_FRAME_LEN> hist_buffer = {0};
 
 constexpr uint8_t HISTOGRAM_REG = 0x20;
