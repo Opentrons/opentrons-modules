@@ -89,7 +89,8 @@ TEST_CASE("Base64 encoding", "[base64_encode]") {
             0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B,
             0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45};
         std::string expected =
-            "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERQ==";
+            "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMD"
+            "EyMzQ1Njc4OTo7PD0+P0BBQkNERQ==";
         check_base64_encoding(input, expected);
     }
 }
