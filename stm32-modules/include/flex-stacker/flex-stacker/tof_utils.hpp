@@ -13,7 +13,7 @@ constexpr int BASE64_CHAR_MASK = 0x3F;
 // in the form '=' characters. We also add one extra byte for the null
 // terminator '\0' to denote the fixed char array as a string.
 template <std::size_t N>
-constexpr uint8_t BASE64_ENCODED_LEN = ((N * 4) / 3 + 3) + 1;
+constexpr uint8_t BASE64_ENCODED_LEN = ((N + 2) / 3 * 4) + 1;
 
 // Base64 encoding characters
 static const std::array<char, 65> BASE64_ALPHABET = {
@@ -46,7 +46,7 @@ inline auto base64_encode(const std::array<uint8_t, N>& data,
     // Base64 encoding always produces a multiple of 4 characters.
     // If the encoded string is not a multiple of 4, it pads the string
     // with '=' characters if there is enough space in the buffer.
-    while (idx < BASE64_ENCODED_LEN<N> - 1 && encoded.at(idx) != '=') {
+    while (idx < BASE64_ENCODED_LEN<N> - 1) {
         encoded.at(idx) = '=';
         idx += 1;
     }

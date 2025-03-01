@@ -23,7 +23,7 @@ TEST_CASE("Base64 encoding", "[base64_encode]") {
 
     SECTION("Single byte input") {
         std::array<uint8_t, 1> input = {0x41};  // 'A'
-        std::string expected = "Q==";
+        std::string expected = "QQ==";
         check_base64_encoding(input, expected);
     }
 
@@ -43,7 +43,7 @@ TEST_CASE("Base64 encoding", "[base64_encode]") {
         std::array<uint8_t, 6> input = {
             0x41, 0x42, 0x43,
             0x44, 0x45, 0x46};  // 'A', 'B', 'C', 'D', 'E', 'F'
-        std::string expected = "QUJDREVGPQ==";
+        std::string expected = "QUJDREVG";
         check_base64_encoding(input, expected);
     }
 
@@ -68,7 +68,9 @@ TEST_CASE("Base64 encoding", "[base64_encode]") {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00};
+            0x00, 0x00, 0x00,
+
+        };
         std::string expected =
             "gR+AARuAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -87,7 +89,7 @@ TEST_CASE("Base64 encoding", "[base64_encode]") {
             0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B,
             0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45};
         std::string expected =
-            "AAECAwQFBgcICQ4ODdRUGGgHcIHRjK0TCkJk3Znpt5tbfjxWmhzUhWL2N5XrMC02";
+            "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERQ==";
         check_base64_encoding(input, expected);
     }
 }
