@@ -82,10 +82,10 @@ jobs:
       - run: |
           sudo apt update
           sudo apt install gcc-10 g++-10
-      - uses: 'actions/checkout@v2'
+      - uses: 'actions/checkout@v4'
         with:
           fetch-depth: 0
-      - uses: 'actions/cache@v2'
+      - uses: 'actions/cache@v4'
         with:
           path: './stm32-tools'
           key: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
