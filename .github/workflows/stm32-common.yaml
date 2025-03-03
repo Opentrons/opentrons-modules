@@ -33,10 +33,10 @@ jobs:
     runs-on: 'ubuntu-20.04'
     timeout-minutes: 10
     steps:
-      - uses: 'actions/checkout@v2'
+      - uses: 'actions/checkout@v4'
         with:
           fetch-depth: 0
-      - uses: 'actions/cache@v2'
+      - uses: 'actions/cache@v4'
         with:
           key: stm32-cross-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
           restore-keys: stm32-cross-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
