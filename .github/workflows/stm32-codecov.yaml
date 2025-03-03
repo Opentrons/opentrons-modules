@@ -28,10 +28,10 @@ jobs:
           python-version: '3.10' 
       - name: 'Install lcov_cobertura module'
         run: pip install lcov_cobertura
-      - uses: 'actions/checkout@v2'
+      - uses: 'actions/checkout@v4'
         with:
           fetch-depth: 0
-      - uses: 'actions/cache@v2'
+      - uses: 'actions/cache@v4'
         with:
           path: './stm32-tools'
           key: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
