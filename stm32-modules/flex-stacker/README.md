@@ -17,8 +17,8 @@ When cross-compiling the firmware (using the `stm32-cross` cmake preset, running
 - Build the startup app, which is also packaged into the image files: `cmake --build ./build-stm32-cross --target flex-stacker-startup`
 - Delete all of the contents on a flex-stacker MCU, and wipe any memory protection: `cmake --build ./build-stm32-cross --target flex-stacker-clear`
 
-The default board revision is currently a1 (EVT). You can change the revision to the NFF board by running cmake `stm32-cross` preset again with
-`cmake --preset stm32-cross -DSTACKER_REVISION=nff .`
+The default board revision is currently b1 (DVT). You can change the revision to the NFF board by running cmake `stm32-cross` preset again with
+`cmake --preset stm32-cross -DSTACKER_REVISION=nff .`; or change to EVT using `-DSTACKER_REVISION=a1`.
 before re-building the firmware.
 
 ### Debugging
