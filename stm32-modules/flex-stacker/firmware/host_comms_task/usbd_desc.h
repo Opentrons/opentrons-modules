@@ -26,8 +26,8 @@
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
-#define USB_SIZ_STRING_SERIAL 0x32
-#define USB_STRING_SERIAL_BASE 0x0807F800
+
+#define USB_SIZ_STRING_SERIAL 0x1A
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
