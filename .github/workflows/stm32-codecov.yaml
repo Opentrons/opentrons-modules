@@ -17,12 +17,12 @@ jobs:
     runs-on: 'ubuntu-24.04'
     timeout-minutes: 10
     env:
-      CC: gcc-10
-      CXX: g++-10
+      CC: gcc-13
+      CXX: g++-13
     steps:
       - run: |
           sudo apt update
-          sudo apt install gcc-10 g++-10 lcov
+          sudo apt install gcc-13 g++-13 lcov
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10' 
