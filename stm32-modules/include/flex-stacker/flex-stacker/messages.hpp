@@ -3,7 +3,6 @@
 #include <concepts>
 #include <cstdint>
 #include <optional>
-#include <string>
 #include <variant>
 
 #include "flex-stacker/errors.hpp"

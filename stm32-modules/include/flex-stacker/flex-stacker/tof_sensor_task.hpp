@@ -96,14 +96,14 @@ class TOFSensorTask {
             }
 
             for (auto sensor_id : {TOF_X, TOF_Z}) {
-                auto sensor = &get_sensor(sensor_id);
-                sensor->state = INITIALIZING;
-                if (!sensor->ok) {
-                    sensor->ok = sensor->driver.initialize(&sensor->config,
-                                                           _policy, sensor_id);
-                    sensor->state = sensor->ok ? IDLE : TOF_ERROR;
+                auto& sensor = get_sensor(sensor_id);
+                sensor.state = INITIALIZING;
+                if (!sensor.ok) {
+                    sensor.ok = sensor.driver.initialize(&sensor.config,
+                                                         _policy, sensor_id);
+                    sensor.state = sensor.ok ? IDLE : TOF_ERROR;
                 }
-                sensor->mode = sensor->driver.get_sensor_mode(sensor_id);
+                sensor.mode = sensor.driver.get_sensor_mode(sensor_id);
             }
             _initialized = _tof_sensor_x.ok && _tof_sensor_z.ok;
             auto message = messages::SetStatusBarStateMessage{
@@ -141,8 +141,8 @@ class TOFSensorTask {
 
     auto visit_message(const messages::GetTOFRegisterMessage& m) -> void {
         messages::HostCommsMessage response;
-        auto driver = get_sensor(m.sensor_id).driver;
-        auto data = driver.read(m.sensor_id, m.reg, 1);
+        auto sensor = get_sensor(m.sensor_id);
+        auto data = sensor.driver.read(m.sensor_id, m.reg, 1);
         if (!data.has_value()) {
             response = messages::ErrorMessage{
                 .code = errors::ErrorCode::TMF8820_COMM_ERROR};
@@ -160,10 +160,11 @@ class TOFSensorTask {
 
     auto visit_message(const messages::SetTOFRegisterMessage& m) -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
-        auto driver = get_sensor(m.sensor_id).driver;
+        auto sensor = get_sensor(m.sensor_id);
         auto data =
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-            driver.write(m.sensor_id, m.reg, const_cast<uint8_t*>(&m.data), 1);
+            sensor.driver.write(m.sensor_id, m.reg,
+                                const_cast<uint8_t*>(&m.data), 1);
         if (!data.has_value()) {
             response.with_error = errors::ErrorCode::TMF8820_COMM_ERROR;
         }
@@ -172,26 +173,26 @@ class TOFSensorTask {
 
     auto visit_message(const messages::EnableTOFSensorMessage& m) -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
-        auto sensor = &get_sensor(m.sensor_id);
+        auto& sensor = get_sensor(m.sensor_id);
         TOFSensorPolicy::enable_tof_sensor(m.sensor_id, m.enable);
-        sensor->driver.reset_custom_address();
-        sensor->state = DISABLED;
-        sensor->ok = false;
+        sensor.driver.reset_custom_address();
+        sensor.state = DISABLED;
+        sensor.ok = false;
         if (m.enable) {
-            sensor->state = INITIALIZING;
-            sensor->ok = sensor->driver.initialize(&sensor->config, _policy,
-                                                   sensor->kind);
-            sensor->state = sensor->ok ? IDLE : TOF_ERROR;
+            sensor.state = INITIALIZING;
+            sensor.ok =
+                sensor.driver.initialize(&sensor.config, _policy, sensor.kind);
+            sensor.state = sensor.ok ? IDLE : TOF_ERROR;
         }
-        sensor->mode = sensor->driver.get_sensor_mode(sensor->kind);
+        sensor.mode = sensor.driver.get_sensor_mode(sensor.kind);
         send_response(response);
     }
 
     auto visit_message(const messages::ManageTOFMeasurementMessage& m) -> void {
         messages::HostCommsMessage response;
-        auto sensor = &get_sensor(m.sensor_id);
+        auto& sensor = get_sensor(m.sensor_id);
         if (m.cancel) {
-            sensor->driver.stop_measurement(m.sensor_id);
+            sensor.driver.stop_measurement(m.sensor_id);
             reset_measurement_state(m.sensor_id);
             response = messages::ManageTOFMeasurementResponse{
                 .responding_to_id = m.id,
@@ -202,7 +203,7 @@ class TOFSensorTask {
             return send_response(response);
         }
 
-        if (!sensor->ok || sensor->state == MEASURING) {
+        if (!sensor.ok || sensor.state == MEASURING) {
             response = messages::AcknowledgePrevious{
                 .responding_to_id = m.id,
                 .with_error = errors::ErrorCode::TMF8820_MEASURE_ERROR};
@@ -210,7 +211,7 @@ class TOFSensorTask {
         }
 
         // Start measurement
-        auto len = sensor->driver.start_measurement(m.sensor_id, m.kind);
+        auto len = sensor.driver.start_measurement(m.sensor_id, m.kind);
         if (len < 0) {
             reset_measurement_state(m.sensor_id);
             response = messages::AcknowledgePrevious{
@@ -220,8 +221,8 @@ class TOFSensorTask {
         }
 
         // Success, Set state and send response
-        sensor->state = MEASURING;
-        sensor->message_id = 0;
+        sensor.state = MEASURING;
+        sensor.message_id = 0;
         response = messages::ManageTOFMeasurementResponse{
             .responding_to_id = m.id,
             .sensor_id = m.sensor_id,
@@ -233,8 +234,8 @@ class TOFSensorTask {
 
     auto visit_message(const messages::GetTOFMeasurementMessage& m) -> void {
         messages::HostCommsMessage response;
-        auto sensor = &get_sensor(m.sensor_id);
-        if (!sensor->ok || sensor->state != MEASURING) {
+        auto& sensor = get_sensor(m.sensor_id);
+        if (!sensor.ok || sensor.state != MEASURING) {
             reset_measurement_state(m.sensor_id);
             response = messages::AcknowledgePrevious{
                 .responding_to_id = m.id,
@@ -243,19 +244,19 @@ class TOFSensorTask {
         }
 
         // Resend previous chunk if requested and there is one
-        if (m.resend && sensor->message_id > 0) {
+        if (m.resend && sensor.message_id > 0) {
             response = messages::GetTOFMeasurementResponse{
                 .responding_to_id = m.id,
                 .sensor_id = m.sensor_id,
-                .id = sensor->message_id,
-                .data = sensor->current_frame.data(),
+                .id = sensor.message_id,
+                .data = sensor.current_frame.data(),
             };
             return send_response(response);
         }
 
         // Get the next histogram chunk
-        auto ret = sensor->driver.get_histogram_chunk(m.sensor_id,
-                                                      sensor->current_frame);
+        auto ret = sensor.driver.get_histogram_chunk(m.sensor_id,
+                                                     sensor.current_frame);
         if (ret == HIST_ERROR) {
             reset_measurement_state(m.sensor_id);
             response = messages::AcknowledgePrevious{
@@ -266,12 +267,12 @@ class TOFSensorTask {
 
         // Send histogram chunk
         if (ret == HIST_OK || ret == HIST_DONE) {
-            sensor->message_id += 1;
+            sensor.message_id += 1;
             response = messages::GetTOFMeasurementResponse{
                 .responding_to_id = m.id,
                 .sensor_id = m.sensor_id,
-                .id = sensor->message_id,
-                .data = sensor->current_frame.data(),
+                .id = sensor.message_id,
+                .data = sensor.current_frame.data(),
             };
             // This is the last packet, stop measurement and reset state
             if (ret == HIST_DONE) {
@@ -287,11 +288,10 @@ class TOFSensorTask {
     }
 
     auto reset_measurement_state(TOFSensorID sensor_id) -> void {
-        auto sensor = &get_sensor(sensor_id);
-        sensor->driver.stop_measurement(sensor_id);
-        // sensor->current_frame = std::nullopt;
-        sensor->message_id = 0;
-        sensor->state = IDLE;
+        auto& sensor = get_sensor(sensor_id);
+        sensor.driver.stop_measurement(sensor_id);
+        sensor.message_id = 0;
+        sensor.state = IDLE;
     }
 
     auto get_sensor(TOFSensorID sensor_id) -> TOFSensor& {
