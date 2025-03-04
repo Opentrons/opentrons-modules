@@ -46,7 +46,7 @@ defaults:
 jobs:
   cross-compile-check:
     name: 'Cross-Compile/Check'
-    runs-on: 'ubuntu-20.04'
+    runs-on: 'ubuntu-24.04'
     timeout-minutes: 10
     steps:
       - uses: 'actions/checkout@v4'
@@ -73,7 +73,7 @@ jobs:
         run: cmake --build --preset cross --target thermocycler-gen2-image-bin
   host-compile-test:
     name: 'Host-Compile/Test'
-    runs-on: 'ubuntu-20.04'
+    runs-on: 'ubuntu-24.04'
     timeout-minutes: 10
     env:
       CC: gcc-10
