@@ -289,6 +289,40 @@ struct __attribute__((packed, __may_alias__)) Enable {
     uint8_t cpu_ready : 1 = 0;
 };
 
+struct __attribute__((packed, __may_alias__)) INTStatus {
+    static constexpr auto mode = RegisterType::BASE;
+    static constexpr auto address = (uint16_t)BaseRegisters::INT_STATUS;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t reserved0 : 1 = 0;
+    uint8_t int2 : 1 = 0;
+    uint8_t reserved2 : 1 = 0;
+    uint8_t int4 : 1 = 0;
+    uint8_t reserved4 : 1 = 0;
+    uint8_t int6 : 1 = 0;
+    uint8_t int7 : 1 = 0;
+    uint8_t reserved7 : 1 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) INTEnable {
+    static constexpr auto mode = RegisterType::BASE;
+    static constexpr auto address = (uint16_t)BaseRegisters::INT_ENAB;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t reserved0 : 1 = 0;
+    uint8_t int2_enab : 1 = 0;
+    uint8_t reserved2 : 1 = 0;
+    uint8_t int4_enab : 1 = 0;
+    uint8_t reserved4 : 1 = 0;
+    uint8_t int6_enab : 1 = 0;
+    uint8_t int7_enab : 1 = 0;
+    uint8_t reserved7 : 1 = 0;
+};
+
 struct __attribute__((packed, __may_alias__)) BLStat {
     static constexpr auto mode = RegisterType::BOOTLOADER;
     static constexpr auto address = (uint16_t)BootloaderRegisters::BL_CMD_STAT;
@@ -349,6 +383,40 @@ struct __attribute__((packed, __may_alias__)) ConfigResult {
     uint8_t cid_rid : 8 = 0;
 };
 
+struct __attribute__((packed, __may_alias__)) ActiveRange {
+    static constexpr auto mode = RegisterType::MAIN_APP;
+    static constexpr auto address = (uint16_t)AppRegisters::ACTIVE_RANGE;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t active_range : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) ReportPeriodMS {
+    static constexpr auto mode = RegisterType::CONFIG;
+    static constexpr auto address =
+        (uint16_t)ConfigurationRegisters::PERIOD_MS_LSB;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 16) - 1;
+
+    uint8_t period_lsb : 8 = 0;
+    uint8_t period_msb : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) KiloIterations {
+    static constexpr auto mode = RegisterType::CONFIG;
+    static constexpr auto address =
+        (uint16_t)ConfigurationRegisters::KILO_ITERATIONS_LSB;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 16) - 1;
+
+    uint8_t iterations_lsb : 8 = 0;
+    uint8_t iterations_msb : 8 = 0;
+};
+
 struct __attribute__((packed, __may_alias__)) I2CSlaveAddress {
     static constexpr auto mode = RegisterType::CONFIG;
     static constexpr auto address =
@@ -373,17 +441,96 @@ struct __attribute__((packed, __may_alias__)) I2CAddrChange {
     uint8_t gpio_change_mask : 2 = 0;
 };
 
+struct __attribute__((packed, __may_alias__)) SPADMapID {
+    static constexpr auto mode = RegisterType::CONFIG;
+    static constexpr auto address =
+        (uint16_t)ConfigurationRegisters::SPAD_MAP_ID;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 4) - 1;
+
+    uint8_t spad_map_id : 4 = 1;
+};
+
+struct __attribute__((packed, __may_alias__)) HistDump {
+    static constexpr auto mode = RegisterType::CONFIG;
+    static constexpr auto address = (uint16_t)ConfigurationRegisters::HIST_DUMP;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t histogram : 1 = 0;
+    uint8_t reserved : 7 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) SPADEnable {
+    static constexpr auto mode = RegisterType::USER_SPAD_CONFIG;
+    static constexpr auto address =
+        (uint16_t)UserSPADConfigRegisters::SPAD_ENABLE_FIRST;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t spad_enable_first : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) SPADTDCChannel {
+    static constexpr auto mode = RegisterType::USER_SPAD_CONFIG;
+    static constexpr auto address =
+        (uint16_t)UserSPADConfigRegisters::SPAD_TDC_FIRST;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
+    uint8_t spad_tdc_first : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) SPADOffset {
+    static constexpr auto mode = RegisterType::USER_SPAD_CONFIG;
+    static constexpr auto address =
+        (uint16_t)UserSPADConfigRegisters::SPAD_X_OFFSET_2;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr int32_t value_mask = (1 << 16) - 1;
+
+    int8_t x_offset_2 : 8 = 0;
+    int8_t y_offset_2 : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) SPADSize {
+    static constexpr auto mode = RegisterType::USER_SPAD_CONFIG;
+    static constexpr auto address =
+        (uint16_t)UserSPADConfigRegisters::SPAD_X_SIZE;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 16) - 1;
+
+    uint8_t x_size : 8 = 0;
+    uint8_t y_size : 8 = 0;
+};
+
 struct TMF8820RegisterMap {
     AppID app_id = {};
     Enable enable = {};
+    INTStatus int_status = {};
+    INTEnable int_enable = {};
     BLStat bl_stat = {};
     BLSize bl_size = {};
     BLData bl_data = {};
     BLCSum bl_csum = {};
     CMDStat cmd_stat = {};
+    ActiveRange active_range = {};
     ConfigResult cfg_result = {};
+    ReportPeriodMS report_period_ms = {};
+    KiloIterations kilo_iterations = {};
     I2CSlaveAddress i2c_address = {};
     I2CAddrChange i2c_addr_change = {0};
+    HistDump hist_dump = {};
+    SPADMapID spad_map_id = {};
+    SPADEnable spad_mask = {};
+    SPADTDCChannel spad_map = {};
+    SPADOffset spad_offset = {};
+    SPADSize spad_size = {};
 };
 
 // Registers are all 32 bits

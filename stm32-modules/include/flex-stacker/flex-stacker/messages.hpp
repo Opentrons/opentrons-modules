@@ -334,6 +334,34 @@ struct GetTOFRegisterResponse {
     uint8_t data;
 };
 
+struct ManageTOFMeasurementMessage {
+    uint32_t id;
+    TOFSensorID sensor_id;
+    TOFMeasurementKind kind;
+    bool cancel;
+};
+
+struct ManageTOFMeasurementResponse {
+    uint32_t responding_to_id;
+    TOFSensorID sensor_id;
+    TOFMeasurementKind kind;
+    bool cancelled;
+    uint16_t len;
+};
+
+struct GetTOFMeasurementMessage {
+    uint32_t id;
+    TOFSensorID sensor_id;
+    bool resend;
+};
+
+struct GetTOFMeasurementResponse {
+    uint32_t responding_to_id;
+    TOFSensorID sensor_id;
+    uint8_t id;
+    const char* data;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -341,7 +369,8 @@ using HostCommsMessage =
                    GetMoveParamsResponse, GetMotorStallGuardResponse,
                    GetDoorClosedResponse, GetPlatformSensorsResponse,
                    GetEstopResponse, GetResetReasonResponse,
-                   GetTOFSensorStatusResponse, GetTOFRegisterResponse>;
+                   GetTOFSensorStatusResponse, GetTOFRegisterResponse,
+                   ManageTOFMeasurementResponse, GetTOFMeasurementResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -366,6 +395,7 @@ using MotorMessage = ::std::variant<
 
 using TOFSensorMessage =
     ::std::variant<std::monostate, SetTOFRegisterMessage, GetTOFRegisterMessage,
-                   EnableTOFSensorMessage, GetTOFSensorStatusMessage>;
+                   EnableTOFSensorMessage, GetTOFSensorStatusMessage,
+                   ManageTOFMeasurementMessage, GetTOFMeasurementMessage>;
 
 };  // namespace messages

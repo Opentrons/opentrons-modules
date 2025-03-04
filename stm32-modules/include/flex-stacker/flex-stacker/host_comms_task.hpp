@@ -3,11 +3,7 @@
  */
 #pragma once
 
-#include <array>
 #include <cstring>
-#include <optional>
-#include <utility>
-#include <variant>
 
 #include "core/ack_cache.hpp"
 #include "core/gcode_parser.hpp"
@@ -15,9 +11,8 @@
 #include "errors.hpp"
 #include "flex-stacker/errors.hpp"
 #include "flex-stacker/gcodes.hpp"
+#include "flex-stacker/gcodes_motor.hpp"
 #include "flex-stacker/messages.hpp"
-#include "gcodes.hpp"
-#include "gcodes_motor.hpp"
 #include "hal/message_queue.hpp"
 #include "messages.hpp"
 
@@ -52,6 +47,7 @@ class HostCommsTask {
         gcode::GetPlatformSensors, gcode::GetDoorClosed, gcode::GetEstopStatus,
         gcode::StopMotor, gcode::GetResetReason, gcode::SetStatusBarState,
         gcode::GetTOFSensorStatus, gcode::GetTOFRegister, gcode::SetTOFRegister,
+        gcode::ManageTOFMeasurement, gcode::GetTOFMeasurement,
         gcode::EnableTOFSensor>;
     using AckOnlyCache = AckCache<
         8, gcode::EnterBootloader, gcode::SetSerialNumber,
@@ -71,6 +67,8 @@ class HostCommsTask {
     using GetResetReasonCache = AckCache<8, gcode::GetResetReason>;
     using GetTOFSensorStatusCache = AckCache<8, gcode::GetTOFSensorStatus>;
     using GetTOFRegisterCache = AckCache<8, gcode::GetTOFRegister>;
+    using ManageTOFMeasurementCache = AckCache<8, gcode::ManageTOFMeasurement>;
+    using GetTOFMeasurementCache = AckCache<8, gcode::GetTOFMeasurement>;
 
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
@@ -1195,6 +1193,99 @@ class HostCommsTask {
         return std::make_pair(true, tx_into);
     }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::ManageTOFMeasurement& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = manage_tof_measurement_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message =
+            messages::ManageTOFMeasurementMessage{.id = id,
+                                                  .sensor_id = gcode.sensor_id,
+                                                  .kind = gcode.kind,
+                                                  .cancel = gcode.cancel};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            manage_tof_measurement_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::ManageTOFMeasurementResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry = manage_tof_measurement_cache.remove_if_present(
+            response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.sensor_id, response.kind,
+                        response.cancelled, response.len);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetTOFMeasurement& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_tof_measurement_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetTOFMeasurementMessage{
+            .id = id, .sensor_id = gcode.sensor_id, .resend = gcode.resend};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_tof_measurement_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetTOFMeasurementResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry = get_tof_measurement_cache.remove_if_present(
+            response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.sensor_id, response.id,
+                        response.data);
+                }
+            },
+            cache_entry);
+    }
+
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -1221,6 +1312,8 @@ class HostCommsTask {
     GetResetReasonCache get_reset_reason_cache{};
     GetTOFSensorStatusCache get_tof_sensor_status_cache{};
     GetTOFRegisterCache get_tof_register_cache{};
+    ManageTOFMeasurementCache manage_tof_measurement_cache{};
+    GetTOFMeasurementCache get_tof_measurement_cache{};
     bool may_connect_latch = true;
 };
 

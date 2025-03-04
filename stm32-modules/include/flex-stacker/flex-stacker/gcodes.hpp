@@ -5,15 +5,11 @@
 
 #pragma once
 
-#include <algorithm>
 #include <array>
-#include <charconv>
-#include <concepts>
 #include <cstdint>
 #include <cstring>
 #include <iterator>
 #include <optional>
-#include <utility>
 
 #include "core/gcode_parser.hpp"
 #include "core/utility.hpp"
@@ -526,6 +522,122 @@ struct EnableTOFSensor {
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct ManageTOFMeasurement {
+    TOFSensorID sensor_id;
+    TOFMeasurementKind kind;
+    bool cancel;
+
+    using ParseResult = std::optional<ManageTOFMeasurement>;
+    static constexpr auto prefix = std::array{'M', '2', '2', '5', ' '};
+
+    using XArg = ArgNoVal<'X'>;
+    using ZArg = ArgNoVal<'Z'>;
+    using KindArg = Arg<uint8_t, 'K'>;
+    using CancelArg = ArgNoVal<'C'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res =
+            gcode::SingleParser<XArg, ZArg, KindArg, CancelArg>::parse_gcode(
+                input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = ManageTOFMeasurement{
+            .sensor_id = TOFSensorID::TOF_X,
+            .kind = TOFMeasurementKind::HISTOGRAM,
+            .cancel = false,
+        };
+        auto arguments = res.first.value();
+        if (std::get<1>(arguments).present) {
+            ret.sensor_id = TOFSensorID::TOF_Z;
+        } else if (!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (std::get<2>(arguments).present) {
+            ret.kind =
+                static_cast<TOFMeasurementKind>(std::get<2>(arguments).value);
+        }
+        if (std::get<3>(arguments).present) {
+            ret.cancel = true;
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    TOFSensorID sensor_id,
+                                    TOFMeasurementKind kind, bool cancelled,
+                                    uint16_t len) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf), "M225 %c K:%d C:%d L:%d OK\n",
+                            sensor_id_to_char(sensor_id), kind, cancelled, len);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
+struct GetTOFMeasurement {
+    TOFSensorID sensor_id;
+    bool resend;
+
+    using ParseResult = std::optional<GetTOFMeasurement>;
+    static constexpr auto prefix = std::array{'M', '2', '2', '6', ' '};
+
+    using XArg = ArgNoVal<'X'>;
+    using ZArg = ArgNoVal<'Z'>;
+    using ResendArg = ArgNoVal<'R'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<XArg, ZArg, ResendArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = GetTOFMeasurement{
+            .sensor_id = TOFSensorID::TOF_X,
+            .resend = false,
+        };
+        auto arguments = res.first.value();
+        if (std::get<1>(arguments).present) {
+            ret.sensor_id = TOFSensorID::TOF_Z;
+        } else if (!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        if (std::get<2>(arguments).present) {
+            ret.resend = true;
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    TOFSensorID sensor_id, uint8_t id,
+                                    const char* data) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf), "M226 %c I:%d D:%s OK\n",
+                            sensor_id_to_char(sensor_id), id, data);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
     }
 };
 

@@ -49,6 +49,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${MOTOR_CONTROL_DIR}/motor_hardware.c
     ${MOTOR_CONTROL_DIR}/motor_spi_hardware.c
     ${TOF_SENSOR_DIR}/tof_sensor_hardware.c
+    ${TOF_SENSOR_DIR}/tmf8820_spadmap.c
     )
 
 # Generate the TOF sensor tmf8820_image.c file from hex image.
