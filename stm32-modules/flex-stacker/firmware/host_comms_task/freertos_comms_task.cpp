@@ -3,6 +3,8 @@
  */
 #include <array>
 #include <functional>
+#include <stdint.h>
+#include <stddef.h>
 #include <utility>
 
 #include "FreeRTOS.h"

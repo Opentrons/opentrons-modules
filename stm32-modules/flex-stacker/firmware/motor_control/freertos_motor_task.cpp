@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "FreeRTOS.h"
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/motor_hardware.h"

@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "firmware/motor_policy.hpp"
 
 #include "FreeRTOS.h"

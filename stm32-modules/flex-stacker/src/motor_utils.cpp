@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cstdint>
 #include "flex-stacker/motor_utils.hpp"
 
 using namespace motor_util;
