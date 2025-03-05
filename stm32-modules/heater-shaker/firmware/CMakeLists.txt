@@ -210,6 +210,7 @@ list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
 # This helps with clang accepting what GCC accepts around the implementations of the message queue
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Werror=implicit-fallthrough")
+list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Wno-error=unused-command-line-argument")
 add_custom_target(heater-shaker-lint
   COMMENT "Linting"
   ALL
