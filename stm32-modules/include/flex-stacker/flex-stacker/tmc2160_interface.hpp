@@ -50,7 +50,6 @@ class TMC2160Interface {
     static auto build_message(Registers addr, WriteFlag mode,
                               RegisterSerializedType val)
         -> std::optional<MessageT> {
-        using RT = std::optional<MessageT>;
         MessageT buffer = {0};
         auto* iter = buffer.begin();
         auto addr_byte = static_cast<uint8_t>(addr);
@@ -93,7 +92,6 @@ class TMC2160Interface {
      */
     auto read(Registers addr, MotorID motor_id)
         -> std::optional<RegisterSerializedType> {
-        using RT = std::optional<RegisterSerializedType>;
         auto buffer = build_message(addr, WriteFlag::READ, 0);
         if (!buffer.has_value()) {
             return {};

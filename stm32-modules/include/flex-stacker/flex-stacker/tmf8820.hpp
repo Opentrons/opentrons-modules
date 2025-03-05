@@ -203,7 +203,6 @@ class TMF8820 {
 
     auto write(TOFSensorID sensor_id, uint16_t reg, uint8_t* data,
                uint size = 1) -> std::optional<RegisterSerializedType> {
-        using RT = std::optional<RegisterSerializedType>;
         auto dev_address = get_sensor_i2c_address(sensor_id);
         auto res = _policy->i2c_write(dev_address << 1, reg, data, size);
         if (res != 0) {
@@ -216,7 +215,6 @@ class TMF8820 {
         -> std::optional<RegisterSerializedType> {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         std::array<uint8_t, 5> data = {0};
-        using RT = std::optional<RegisterSerializedType>;
         auto dev_address = get_sensor_i2c_address(sensor_id);
         auto res = _policy->i2c_read(dev_address << 1, reg, data.data(), size);
         if (res != 0) {
@@ -595,27 +593,25 @@ class TMF8820 {
     template <tmf8820::TMF8820Register Reg>
     requires ReadableRegister<Reg>
     auto read_register(TOFSensorID sensor_id) -> std::optional<Reg> {
-        using RT = std::optional<Reg>;
         auto ret = read(sensor_id, Reg::address, 1);
         if (!ret.has_value()) {
-            return RT();
+            return {};
         }
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         auto value = *reinterpret_cast<Reg*>(&ret.value());
-        return RT(value);
+        return {value};
     }
 
     template <tmf8820::TMF8820Register Reg>
     requires WritableRegister<Reg>
     auto set_register(Reg reg, TOFSensorID sensor_id) -> std::optional<Reg> {
-        using RT = std::optional<Reg>;
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         auto value = get_register_value(reg);
         auto ret = write(sensor_id, Reg::address, (uint8_t*)&value, 1);
         if (!ret.has_value()) {
-            return RT();
+            return {};
         }
-        return RT(reg);
+        return {reg};
     }
 
     /* Makes sure the sensor is ready for communication */
