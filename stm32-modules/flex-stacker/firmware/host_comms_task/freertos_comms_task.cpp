@@ -140,7 +140,7 @@ static auto cdc_rx_handler(uint8_t *Buf, uint32_t *Len) -> uint8_t * {
                       [](auto ch) { return ch == '\n' || ch == '\r'; }) !=
          (Buf +  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
           *Len)) ||
-        remaining_buffer_count < static_cast<ssize_t>(CDC_BUFFER_SIZE)) {
+        remaining_buffer_count < CDC_BUFFER_SIZE) {
         // there was a newline in this message, can pass on
         auto message =
             messages::HostCommsMessage(messages::IncomingMessageFromHost{

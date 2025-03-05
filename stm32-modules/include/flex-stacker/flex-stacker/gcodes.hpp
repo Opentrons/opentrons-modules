@@ -20,7 +20,7 @@
 namespace gcode {
 
 auto inline sensor_id_to_char(TOFSensorID sensor_id) -> char {
-    return static_cast<char>(sensor_id == TOFSensorID::TOF_X ? 'X' : 'Z');
+    return sensor_id == TOFSensorID::TOF_X ? 'X' : 'Z';
 }
 
 struct EnterBootloader {
