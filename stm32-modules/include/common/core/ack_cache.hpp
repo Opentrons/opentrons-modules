@@ -67,7 +67,7 @@ struct AckCache {
 
   private:
     // Present only for testing; do not use
-    //NOLINTNEXTLINE(bugprone-reserved-identifier)
+    // NOLINTNEXTLINE(bugprone-reserved-identifier)
     friend class _AckCacheTestHook;
     struct CacheWrapper {
         uint32_t id;
