@@ -441,7 +441,7 @@ class UITask {
         }
 
         // Skip if there is no state change
-        if (power.has_value() and power.has_value()) {
+        if (power.has_value() and color.has_value()) {
             if (power.value() == status_bar.power_dt &&
                 color.value() == status_bar.color) {
                 return true;
