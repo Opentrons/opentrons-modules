@@ -58,9 +58,9 @@ class TMC2160Interface {
         iter = bit_utils::int_to_bytes(addr_byte, iter, buffer.end());
         iter = bit_utils::int_to_bytes(val, iter, buffer.end());
         if (iter != buffer.end()) {
-            return RT();
+            return {};
         }
-        return RT(buffer);
+        return {buffer};
     }
 
     /**
@@ -96,22 +96,22 @@ class TMC2160Interface {
         using RT = std::optional<RegisterSerializedType>;
         auto buffer = build_message(addr, WriteFlag::READ, 0);
         if (!buffer.has_value()) {
-            return RT();
+            return {};
         }
         auto ret = _policy.tmc2160_transmit_receive(motor_id, buffer.value());
         if (!ret.has_value()) {
-            return RT();
+            return {};
         }
         ret = _policy.tmc2160_transmit_receive(motor_id, buffer.value());
         if (!ret.has_value()) {
-            return RT();
+            return {};
         }
         auto* iter = ret.value().begin();
         std::advance(iter, 1);
 
         RegisterSerializedType retval = 0;
         iter = bit_utils::bytes_to_int(iter, ret.value().end(), retval);
-        return RT(retval);
+        return {retval};
     }
 
   private:

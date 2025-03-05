@@ -207,9 +207,9 @@ class TMF8820 {
         auto dev_address = get_sensor_i2c_address(sensor_id);
         auto res = _policy->i2c_write(dev_address << 1, reg, data, size);
         if (res != 0) {
-            return RT();
+            return {};
         }
-        return RT(res);
+        return {res};
     }
 
     auto read(TOFSensorID sensor_id, uint16_t reg, int size = 1)
@@ -220,11 +220,11 @@ class TMF8820 {
         auto dev_address = get_sensor_i2c_address(sensor_id);
         auto res = _policy->i2c_read(dev_address << 1, reg, data.data(), size);
         if (res != 0) {
-            return RT();
+            return {};
         }
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
         auto value = static_cast<uint32_t>(*data.data());
-        return RT(value);
+        return {value};
     }
 
     /* Check which app (bootloader or measurement ) is running. */
