@@ -3,7 +3,7 @@
  */
 #include <array>
 #include <functional>
-#include <stdint.h>
+#include <cstdint>
 #include <stddef.h>
 #include <utility>
 

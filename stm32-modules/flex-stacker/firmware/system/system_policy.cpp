@@ -3,7 +3,7 @@
 #include <array>
 #include <iterator>
 #include <ranges>
-#include <stdint.h>
+#include <cstdint>
 
 #include "firmware/system_hardware.h"
 #include "firmware/system_serial_number.h"

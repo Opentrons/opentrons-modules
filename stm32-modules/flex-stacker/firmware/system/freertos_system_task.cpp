@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include <cstdint>
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/system_policy.hpp"
 #include "flex-stacker/system_task.hpp"

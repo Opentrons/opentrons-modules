@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include <cstdint>
 #include "FreeRTOS.h"
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
