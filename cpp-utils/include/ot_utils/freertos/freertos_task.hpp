@@ -8,8 +8,7 @@
 #include "ot_utils/core/logging.h"
 #include "task.h"
 
-namespace ot_utils {
-namespace freertos_task {
+namespace ot_utils::freertos_task {
 
 /**
  * A FreeRTOS task.
@@ -74,5 +73,4 @@ class FreeRTOSTask {
     std::function<void()> starter{};
 };
 
-}  // namespace freertos_task
-}  // namespace ot_utils
+}  // namespace ot_utils::freertos_task

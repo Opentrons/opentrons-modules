@@ -6,8 +6,7 @@
 #include "task.h"
 #include "timers.h"
 
-namespace ot_utils {
-namespace freertos_timer {
+namespace ot_utils::freertos_timer {
 
 class FreeRTOSTimer {
   public:
@@ -86,5 +85,4 @@ class FreeRTOSTimer {
     }
 };
 
-}  // namespace freertos_timer
-}  // namespace ot_utils
+}  // namespace ot_utils::freertos_timer
