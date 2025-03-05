@@ -16,7 +16,9 @@ class FreeRTOSTimer {
      * same priority or higher priority than 6 for execution.
      */
     using Callback = std::function<void()>;
+	//NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
     FreeRTOSTimer(const char* name, Callback&& callback, uint32_t period_ms)
+		//NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
         : FreeRTOSTimer(name, std::forward<Callback>(callback), true,
                         period_ms) {}
 
