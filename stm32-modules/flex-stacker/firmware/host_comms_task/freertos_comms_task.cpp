@@ -128,7 +128,7 @@ static auto cdc_deinit_handler() -> void {
 // NOLINTNEXTLINE(readability-non-const-parameter)
 static auto cdc_rx_handler(uint8_t *Buf, uint32_t *Len) -> uint8_t * {
     using namespace host_comms_control_task;
-    ssize_t remaining_buffer_count =
+    const size_t remaining_buffer_count =
         (_local_task.rx_buf.committed()->data()
          // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
          + _local_task.rx_buf.committed()->size()) -

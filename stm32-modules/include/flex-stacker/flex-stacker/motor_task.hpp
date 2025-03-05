@@ -405,7 +405,7 @@ class MotorTask {
     auto visit_message(const messages::GetMoveParamsMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        MotorState& state = motor_state(m.motor_id);
+        const MotorState& state = motor_state(m.motor_id);
         auto response = messages::GetMoveParamsResponse{
             .responding_to_id = m.id,
             .motor_id = m.motor_id,

@@ -45,7 +45,7 @@ class FreeRTOSTimer {
         // that if the timer is currently stopped, changing its period activates
         // it.
         auto is_active = is_running();
-        TickType_t blocking_ticks = is_active ? 1 : 0;
+        const TickType_t blocking_ticks = is_active ? 1 : 0;
         xTimerChangePeriod(timer, pdMS_TO_TICKS(period_ms), blocking_ticks);
         if (!is_active) {
             stop();

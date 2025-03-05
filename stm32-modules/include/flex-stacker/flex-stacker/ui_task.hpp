@@ -320,9 +320,9 @@ class UITask {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         for (auto bar_id : {StatusBarID::Internal, StatusBarID::External}) {
             bar_id = m.bar_id.value_or(bar_id);
-            StatusBarState bar = get_statusbar_state(bar_id);
-            StatusBarColor color = m.color.value_or(bar.color);
-            float power = m.power.value_or(bar.power);
+            const StatusBarState bar = get_statusbar_state(bar_id);
+            const StatusBarColor color = m.color.value_or(bar.color);
+            const float power = m.power.value_or(bar.power);
             update_statusbar_state(bar_id, color, power, m.pattern, m.duration,
                                    m.reps);
             // Only set one status bar if one was given.

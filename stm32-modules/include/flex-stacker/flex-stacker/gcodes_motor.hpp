@@ -813,9 +813,7 @@ struct GetMoveParams {
                                     MotorID motor_id, float velocity,
                                     float accel, float velocity_discont)
         -> InputIt {
-        char motor_char = motor_id == MotorID::MOTOR_X   ? 'X'
-                          : motor_id == MotorID::MOTOR_Z ? 'Z'
-                                                         : 'L';
+        const char motor_char = motor_id_to_char(motor_id);
         int res = 0;
         res = snprintf(&*buf, (limit - buf),
                        "M120 M:%c V:%.3f A:%.3f D:%.3f OK\n", motor_char,
@@ -927,9 +925,7 @@ struct GetMotorStallGuard {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     MotorID motor_id, bool enabled,
                                     int threshold) -> InputIt {
-        char motor_char = motor_id == MotorID::MOTOR_X   ? 'X'
-                          : motor_id == MotorID::MOTOR_Z ? 'Z'
-                                                         : 'L';
+		const char motor_char = motor_id_to_char(motor_id);
         int res = 0;
         res = snprintf(&*buf, (limit - buf), "M911 %c:%d T:%d OK\n", motor_char,
                        int(enabled), threshold);

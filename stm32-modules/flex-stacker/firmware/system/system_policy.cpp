@@ -46,7 +46,7 @@ auto SystemPolicy::get_serial_number()
     std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> serial_number_array = {
         "EMPTYSN"};
     for (uint8_t address = 0; address < ADDRESSES; address++) {
-        uint64_t written_serial_number = system_get_serial_number(address);
+        const uint64_t written_serial_number = system_get_serial_number(address);
         // int to bytes
         auto *output =
             std::next(serial_number_array.begin(), address * ADDRESS_LENGTH);

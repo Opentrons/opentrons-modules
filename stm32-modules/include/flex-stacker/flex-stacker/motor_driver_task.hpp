@@ -323,9 +323,9 @@ class MotorDriverTask {
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
         static_cast<void>(tmc2160_interface);
-        bool enabled = static_cast<bool>(
+        const bool enabled = static_cast<bool>(
             driver_conf_from_id(m.motor_id).gconfig.diag0_stall);
-        int sgt = driver_conf_from_id(m.motor_id).coolconf.sgt;
+        const int sgt = driver_conf_from_id(m.motor_id).coolconf.sgt;
         auto response = messages::GetMotorStallGuardResponse{
             .responding_to_id = m.id,
             .motor_id = m.motor_id,

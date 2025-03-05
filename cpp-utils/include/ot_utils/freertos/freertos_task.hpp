@@ -39,7 +39,7 @@ class FreeRTOSTask {
                TaskArgs*... task_args) {
         using InstanceDataType = std::pair<void*, std::tuple<TaskArgs*...>>;
 
-        InstanceDataType instance_data{this, std::make_tuple(task_args...)};
+        const InstanceDataType instance_data{this, std::make_tuple(task_args...)};
         starter = [instance_data]() -> void {
             auto instance = static_cast<FreeRTOSTask<StackDepth, EntryPoint>*>(
                 instance_data.first);

@@ -26,7 +26,7 @@ inline auto base64_encode(const std::array<uint8_t, N>& data,
     int idx = 0;
     int val = 0;
     int valb = PROCESSED_BITS;
-    for (uint8_t c : data) {
+    for (const uint8_t c : data) {
         val = (val << ONE_BYTE) + c;
         valb += ONE_BYTE;
         while (valb >= 0) {
