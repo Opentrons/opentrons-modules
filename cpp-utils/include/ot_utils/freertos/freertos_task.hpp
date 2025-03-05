@@ -70,7 +70,7 @@ class FreeRTOSTask {
     std::array<StackType_t, StackDepth> backing{};
     EntryPoint& entry_point;
 
-    std::function<void()> starter{};
+    std::function<void()> starter;
 };
 
 }  // namespace ot_utils::freertos_task

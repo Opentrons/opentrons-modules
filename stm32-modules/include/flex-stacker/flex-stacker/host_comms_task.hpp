@@ -1300,20 +1300,20 @@ class HostCommsTask {
 
     Queue& message_queue;
     Aggregator* task_registry;
-    AckOnlyCache ack_only_cache{};
-    GetSystemInfoCache get_system_info_cache{};
-    GetTMCRegisterCache get_tmc_register_cache{};
-    GetLimitSwitchesCache get_limit_switches_cache{};
-    GetMoveParamsCache get_move_params_cache{};
-    GetMotorStallGuardCache get_motor_stall_guard_cache{};
-    GetDoorClosedCache get_door_closed_cache{};
-    GetPlatformSensorsCache get_platform_sensors_cache{};
-    GetEstopCache get_estop_cache{};
-    GetResetReasonCache get_reset_reason_cache{};
-    GetTOFSensorStatusCache get_tof_sensor_status_cache{};
-    GetTOFRegisterCache get_tof_register_cache{};
-    ManageTOFMeasurementCache manage_tof_measurement_cache{};
-    GetTOFMeasurementCache get_tof_measurement_cache{};
+    AckOnlyCache ack_only_cache;
+    GetSystemInfoCache get_system_info_cache;
+    GetTMCRegisterCache get_tmc_register_cache;
+    GetLimitSwitchesCache get_limit_switches_cache;
+    GetMoveParamsCache get_move_params_cache;
+    GetMotorStallGuardCache get_motor_stall_guard_cache;
+    GetDoorClosedCache get_door_closed_cache;
+    GetPlatformSensorsCache get_platform_sensors_cache;
+    GetEstopCache get_estop_cache;
+    GetResetReasonCache get_reset_reason_cache;
+    GetTOFSensorStatusCache get_tof_sensor_status_cache;
+    GetTOFRegisterCache get_tof_register_cache;
+    ManageTOFMeasurementCache manage_tof_measurement_cache;
+    GetTOFMeasurementCache get_tof_measurement_cache;
     bool may_connect_latch = true;
 };
 

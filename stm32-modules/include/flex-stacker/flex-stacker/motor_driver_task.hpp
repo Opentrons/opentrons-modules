@@ -122,7 +122,7 @@ class MotorDriverTask {
 
   public:
     explicit MotorDriverTask(Queue& q, Aggregator* aggregator)
-        : _message_queue(q), _task_registry(aggregator), _initialized(false) {}
+        : _message_queue(q), _task_registry(aggregator) {}
     MotorDriverTask(const MotorDriverTask& other) = delete;
     auto operator=(const MotorDriverTask& other) -> MotorDriverTask& = delete;
     MotorDriverTask(MotorDriverTask&& other) noexcept = delete;
@@ -344,7 +344,7 @@ class MotorDriverTask {
 
     Queue& _message_queue;
     Aggregator* _task_registry;
-    bool _initialized;
+    bool _initialized{false};
 
     tmc2160::TMC2160 _tmc2160{};
     // same motor current config for all three motors
