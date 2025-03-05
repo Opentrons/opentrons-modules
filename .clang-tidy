@@ -1,5 +1,5 @@
 ---
-Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,misc-*,modernize-*,-modernize-avoid-c-arrays,readability-*,-readability-magic-numbers,performance-*'
+Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,misc-*,-misc-use-anonymous-namespace,modernize-*,-modernize-avoid-c-arrays,readability-*,-readability-magic-numbers,performance-*,-clang-diagnostic-unused-command-line-argument'
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*/stm32-modules/.*hpp'
 FormatStyle:     none
@@ -31,7 +31,7 @@ CheckOptions:
   - key:             bugprone-dynamic-static-initializers.HeaderFileExtensions
     value:           ',h,hh,hpp,hxx'
   - key:             bugprone-easily-swappable-parameters.IgnoredParameterTypeSuffixes
-    value:           ';double;uint32_t;uint16_t;uint8_t'
+    value:           ';double;uint32_t;uint16_t;uint8_t;float;bool;long'
   - key:             bugprone-exception-escape.FunctionsThatShouldNotThrow
     value:           ''
   - key:             bugprone-exception-escape.IgnoredExceptions
@@ -132,6 +132,8 @@ CheckOptions:
     value:           ',h,hh,hpp,hxx'
   - key:             misc-definitions-in-headers.UseHeaderFileExtension
     value:           '1'
+  - key:             misc-include-cleaner.IgnoreHeaders
+    value:           'task.h;FreeRTOS.h;systemwide.h;stm32g4xx_hal.h'
   - key:             misc-throw-by-value-catch-by-reference.CheckThrowTemporaries
     value:           '1'
   - key:             misc-unused-parameters.StrictMode
@@ -253,6 +255,8 @@ CheckOptions:
   - key:             readability-identifier-length.MinimumParameterNameLength
     value:           '0'
   - key:             readability-identifier-length.MinimumVariableNameLength
+    value:           '0'
+  - key:             readability-identifier-length.MinimumLoopCounterNameLength
     value:           '0'
   - key:             readability-identifier-naming.IgnoreFailedSplit
     value:           '0'

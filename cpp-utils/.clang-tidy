@@ -31,7 +31,7 @@ CheckOptions:
   - key:             bugprone-dynamic-static-initializers.HeaderFileExtensions
     value:           ',h,hh,hpp,hxx'
   - key:             bugprone-easily-swappable-parameters.IgnoredParameterTypeSuffixes
-    value:           ';double;uint32_t;uint16_t;uint8_t'
+    value:           ';double;uint32_t;uint16_t;uint8_t;bool;float;long'
   - key:             bugprone-exception-escape.FunctionsThatShouldNotThrow
     value:           ''
   - key:             bugprone-exception-escape.IgnoredExceptions
