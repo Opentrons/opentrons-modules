@@ -29,6 +29,8 @@ auto inline motor_id_to_char(MotorID motor_id) -> char {
             return 'Z';
         case MotorID::MOTOR_L:
             return 'L';
+        default:
+			return '?';
     }
 }
 
