@@ -1,11 +1,9 @@
 /*
  * firmware-specific functions, data, and hooks for host comms control
  */
-#include <array>
-#include <functional>
+#include <algorithm>
 #include <cstdint>
-#include <stddef.h>
-#include <utility>
+#include <cstddef>
 
 #include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"

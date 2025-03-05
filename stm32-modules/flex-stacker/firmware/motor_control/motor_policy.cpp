@@ -1,9 +1,11 @@
 #include <cstdint>
-#include "firmware/motor_policy.hpp"
 
 #include "FreeRTOS.h"
-#include "firmware/motor_hardware.h"
 #include "task.h"
+#include "projdefs.h"
+
+#include "firmware/motor_hardware.h"
+#include "firmware/motor_policy.hpp"
 
 using namespace motor_policy;
 

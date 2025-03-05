@@ -1,8 +1,10 @@
 #include <cstdint>
 #include "FreeRTOS.h"
+#include "task.h"
+
 #include "firmware/freertos_tasks.hpp"
+#include "firmware/firmware_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
-#include "firmware/ui_hardware.h"
 #include "firmware/ui_policy.hpp"
 #include "flex-stacker/ui_task.hpp"
 

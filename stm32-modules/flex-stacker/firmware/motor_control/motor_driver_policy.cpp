@@ -1,6 +1,7 @@
 #include "firmware/motor_driver_policy.hpp"
 
 #include "firmware/motor_hardware.h"
+#include "flex-stacker/tmc2160_interface.hpp"
 
 using namespace motor_driver_policy;
 

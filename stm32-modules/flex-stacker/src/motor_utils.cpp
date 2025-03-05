@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstdint>
+#include "core/fixed_point.hpp"
 #include "flex-stacker/motor_utils.hpp"
 
 using namespace motor_util;

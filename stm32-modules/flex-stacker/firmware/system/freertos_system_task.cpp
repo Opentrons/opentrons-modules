@@ -1,5 +1,9 @@
 #include <cstdint>
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "firmware/freertos_tasks.hpp"
+#include "firmware/firmware_tasks.hpp"
 #include "firmware/system_policy.hpp"
 #include "flex-stacker/system_task.hpp"
 

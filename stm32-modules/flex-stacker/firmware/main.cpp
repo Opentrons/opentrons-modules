@@ -1,4 +1,10 @@
+#include <cstdint>
+#include <functional>
+
 #include "FreeRTOS.h"
+#include "task.h"
+
+#include "systemwide.h"
 #include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
@@ -7,8 +13,6 @@
 #include "firmware/system_stm32g4xx.h"
 #include "flex-stacker/messages.hpp"
 #include "ot_utils/freertos/freertos_task.hpp"
-#include "systemwide.h"
-#include "task.h"
 
 #pragma GCC diagnostic push
 // NOLINTNEXTLINE(clang-diagnostic-unknown-warning-option)

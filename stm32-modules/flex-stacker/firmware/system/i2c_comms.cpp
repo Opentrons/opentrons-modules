@@ -1,9 +1,9 @@
-#include "firmware/i2c_comms.hpp"
-
 #include <cstdint>
 
-#include "firmware/i2c_hardware.h"
 #include "systemwide.h"
+#include "firmware/i2c_hardware.h"
+#include "firmware/hardware_iface.hpp"
+#include "firmware/i2c_comms.hpp"
 
 using namespace i2c::hardware;
 

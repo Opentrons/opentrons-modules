@@ -2,8 +2,8 @@
 
 #include <array>
 #include <iterator>
-#include <ranges>
 #include <cstdint>
+#include <cstddef>
 
 #include "firmware/system_hardware.h"
 #include "firmware/system_serial_number.h"

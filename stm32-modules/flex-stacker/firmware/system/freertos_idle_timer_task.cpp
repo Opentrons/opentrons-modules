@@ -6,9 +6,13 @@
  */
 
 #include <array>
+#include <cstdint>
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "portmacro.h"
+
+#include "FreeRTOSConfig.h"
 
 StaticTask_t
     idle_task_tcb;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
