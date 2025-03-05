@@ -6,7 +6,7 @@
 
 namespace errors {
 
-enum class ErrorCode {
+enum class ErrorCode : uint16_t {
     // 0xx - General && comms
     NO_ERROR = 0,
     USB_TX_OVERRUN = 1,

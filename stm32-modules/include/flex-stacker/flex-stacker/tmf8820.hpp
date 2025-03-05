@@ -52,7 +52,7 @@ constexpr uint8_t BL_W_RAM = 0x41;
 constexpr uint8_t BL_ADDR_RAM = 0x43;
 
 // Bootloader cmd status
-enum BL_CMD_STATUS {
+enum BL_CMD_STATUS :uint8_t {
     STAT_READY = 0,
     STAT_ERR_SIZE,
     STAT_ERR_CSUM,
@@ -134,7 +134,7 @@ constexpr uint8_t HIST_DONE = 2;
 constexpr uint8_t HIST_ERROR = 3;
 
 // Active range
-enum TOFActiveRange {
+enum TOFActiveRange: uint8_t {
     NOT_SUPPORTED = 0,
     SHORT_RANGE = 0x6E,
     LONG_RANGE = 0x6F,
