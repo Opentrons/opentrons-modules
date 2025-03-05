@@ -1,13 +1,13 @@
 #include <cstdint>
-#include "FreeRTOS.h"
-#include "task.h"
 
-#include "firmware/freertos_tasks.hpp"
+#include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"
+#include "firmware/freertos_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
 #include "firmware/tof_sensor_hardware.h"
 #include "firmware/tof_sensor_policy.hpp"
 #include "flex-stacker/tof_sensor_task.hpp"
+#include "task.h"
 
 namespace tof_sensor_task {
 

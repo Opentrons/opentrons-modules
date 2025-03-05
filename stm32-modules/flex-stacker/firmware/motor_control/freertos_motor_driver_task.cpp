@@ -1,11 +1,12 @@
 #include <cstdint>
+
 #include "FreeRTOS.h"
-#include "task.h"
-#include "firmware/freertos_tasks.hpp"
 #include "firmware/firmware_tasks.hpp"
+#include "firmware/freertos_tasks.hpp"
 #include "firmware/motor_driver_policy.hpp"
 #include "firmware/motor_hardware.h"
 #include "flex-stacker/motor_driver_task.hpp"
+#include "task.h"
 
 namespace motor_driver_task {
 

@@ -1,15 +1,13 @@
+#include "firmware/tof_sensor_policy.hpp"
+
 #include <cstdint>
 
 #include "FreeRTOS.h"
-#include "projdefs.h"
-#include "task.h"
-
-
-#include "systemwide.h"
 #include "firmware/hardware_iface.hpp"
 #include "firmware/tof_sensor_hardware.h"
-#include "firmware/tof_sensor_policy.hpp"
-
+#include "projdefs.h"
+#include "systemwide.h"
+#include "task.h"
 
 using namespace tof::hardware;
 

@@ -22,14 +22,14 @@
 namespace gcode {
 
 auto inline motor_id_to_char(MotorID motor_id) -> char {
-	switch (motor_id) {
-		case MotorID::MOTOR_X:
-			return 'X';
-		case MotorID::MOTOR_Z:
-			return 'Z';
-		case MotorID::MOTOR_L:
-			return 'L';
-	}
+    switch (motor_id) {
+        case MotorID::MOTOR_X:
+            return 'X';
+        case MotorID::MOTOR_Z:
+            return 'Z';
+        case MotorID::MOTOR_L:
+            return 'L';
+    }
 }
 
 template <typename ValueType, char... Chars>
@@ -930,7 +930,7 @@ struct GetMotorStallGuard {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     MotorID motor_id, bool enabled,
                                     int threshold) -> InputIt {
-		const char motor_char = motor_id_to_char(motor_id);
+        const char motor_char = motor_id_to_char(motor_id);
         int res = 0;
         res = snprintf(&*buf, (limit - buf), "M911 %c:%d T:%d OK\n", motor_char,
                        int(enabled), threshold);

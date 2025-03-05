@@ -14,7 +14,7 @@ static constexpr size_t MESSAGE_LEN = 5;
 using MessageT = std::array<uint8_t, MESSAGE_LEN>;
 
 // Flag for whether this is a read or write
-enum class WriteFlag :uint8_t { READ = 0x00, WRITE = 0x80 };
+enum class WriteFlag : uint8_t { READ = 0x00, WRITE = 0x80 };
 
 template <typename P>
 concept TMC2160InterfacePolicy = requires(P p, MotorID motor_id,

@@ -1,11 +1,11 @@
 #include <cstdint>
-#include "FreeRTOS.h"
-#include "task.h"
 
-#include "firmware/freertos_tasks.hpp"
+#include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"
+#include "firmware/freertos_tasks.hpp"
 #include "firmware/system_policy.hpp"
 #include "flex-stacker/system_task.hpp"
+#include "task.h"
 
 namespace system_control_task {
 
