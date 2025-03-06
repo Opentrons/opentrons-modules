@@ -1,5 +1,5 @@
 #pragma once
-
+#include <cstdint>
 /**
  * @brief Implements a starndard PID controller.
  */
@@ -59,7 +59,7 @@ class PID {
     auto arm_integrator_reset(double error, double threshold = 0.0F) -> void;
 
   private:
-    enum IntegratorResetTrigger { RISING, FALLING, NONE };
+    enum IntegratorResetTrigger : uint8_t { RISING, FALLING, NONE };
     double _kp;
     double _ki;
     double _kd;

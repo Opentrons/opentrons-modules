@@ -1,5 +1,5 @@
 ---
-Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,misc-*,-misc-use-anonymous-namespace,modernize-*,-modernize-avoid-c-arrays,readability-*,-readability-magic-numbers,performance-*,-clang-diagnostic-unused-command-line-argument'
+Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,misc-*,-misc-use-anonymous-namespace,modernize-*,-modernize-avoid-c-arrays,readability-*,-readability-magic-numbers,performance-*'
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*/stm32-modules/.*hpp'
 FormatStyle:     none
