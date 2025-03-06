@@ -55,7 +55,6 @@ target_compile_options(${TARGET_MODULE_NAME}-core
   PRIVATE
   -Wall
   -Werror
-  -Weffc++
   -Wreorder
   -Wsign-promo
   -Wextra-semi

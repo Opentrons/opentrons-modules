@@ -73,7 +73,6 @@ target_compile_options(heater-shaker-core
   PRIVATE
   -Wall
   -Werror
-  $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
   $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
   $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
   $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>
