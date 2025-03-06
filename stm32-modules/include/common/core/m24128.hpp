@@ -77,7 +77,7 @@ class M24128 {
         }
 
         // Must write the address before reading everything else
-        //NOLINTNEXTLINE(readability-suspicious-call-argument)
+        // NOLINTNEXTLINE(readability-suspicious-call-argument)
         if (!policy.i2c_write(_address, _buffer.begin(), ADDRESS_BYTES)) {
             return std::nullopt;
         }

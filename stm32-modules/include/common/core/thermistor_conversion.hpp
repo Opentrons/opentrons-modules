@@ -116,7 +116,7 @@ struct Conversion {
             return {Error::OUT_OF_RANGE_HIGH};
         }
         return {_bias_resistance_kohm /
-                      ((_adc_max / static_cast<double>(adc_count)) - 1.0)};
+                ((_adc_max / static_cast<double>(adc_count)) - 1.0)};
     }
 
     [[nodiscard]] auto temperature_from_resistance(double resistance) const
@@ -136,8 +136,8 @@ struct Conversion {
         auto before_res = entry_pair.second.first;
 
         return {(after_temp - before_temp) / (after_res - before_res) *
-                          (resistance - before_res) +
-                      before_temp};
+                    (resistance - before_res) +
+                before_temp};
     }
     /**
      * Looks for the first table entry with a resistance GREATER than the

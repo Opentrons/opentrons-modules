@@ -1,4 +1,5 @@
 #include "core/fixed_point.hpp"
+
 #include <cstdint>
 
 /*
