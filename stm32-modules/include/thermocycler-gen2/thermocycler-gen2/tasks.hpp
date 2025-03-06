@@ -9,8 +9,8 @@
 #include "host_comms_task.hpp"
 #include "lid_heater_task.hpp"
 #include "messages.hpp"
-#include "motor_task.hpp"
-#include "system_task.hpp"
+#include "motor_task.hpp"//NOLINT(misc-header-include-cycle)
+#include "system_task.hpp"//NOLINT(misc-header-include-cycle)
 #include "thermal_plate_task.hpp"
 
 namespace host_comms_task {
