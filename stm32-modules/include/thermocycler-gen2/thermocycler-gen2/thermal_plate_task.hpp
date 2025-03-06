@@ -18,7 +18,7 @@
 #include "thermocycler-gen2/errors.hpp"
 #include "thermocycler-gen2/messages.hpp"
 #include "thermocycler-gen2/plate_control.hpp"
-#include "thermocycler-gen2/tasks.hpp"//NOLINT(misc-header-include-cycle)
+#include "thermocycler-gen2/tasks.hpp"  //NOLINT(misc-header-include-cycle)
 #include "thermocycler-gen2/thermal_general.hpp"
 
 /* Need a forward declaration for this because of recursive includes */

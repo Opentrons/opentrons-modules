@@ -13,7 +13,7 @@
 #include "hal/message_queue.hpp"
 #include "thermocycler-gen2/messages.hpp"
 #include "thermocycler-gen2/motor_utils.hpp"
-#include "thermocycler-gen2/tasks.hpp"//NOLINT(misc-header-include-cycle)
+#include "thermocycler-gen2/tasks.hpp"  //NOLINT(misc-header-include-cycle)
 #include "thermocycler-gen2/tmc2130.hpp"
 
 namespace tasks {

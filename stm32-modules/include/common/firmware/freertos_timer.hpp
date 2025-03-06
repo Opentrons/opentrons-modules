@@ -20,8 +20,8 @@ class FreeRTOSTimer {
         : _callback(std::move(callback)),
           // pdMS_TO_TICKS converts milliseconds to ticks. This can only be used
           // for FreeRTOS tick rates less than 1000 Hz.
-		  _timer_period(pdMS_TO_TICKS(time_ms)),
-		  _auto_reload((autoreload) ? pdTRUE : pdFALSE) {
+          _timer_period(pdMS_TO_TICKS(time_ms)),
+          _auto_reload((autoreload) ? pdTRUE : pdFALSE) {
         ;
         _timer = xTimerCreateStatic(name, _timer_period, _auto_reload, this,
                                     timer_callback, &_timer_buffer);
