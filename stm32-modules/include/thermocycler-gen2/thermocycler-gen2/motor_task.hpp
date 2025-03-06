@@ -133,7 +133,7 @@ struct LidStepperState {
     // Velocity for all lid movements other than plate lift
     constexpr static double LID_DEFAULT_VELOCITY_RPM = 125.0F;
     // States for lid stepper
-    enum Status {
+    enum Status : uint8_t {
         IDLE,                    /**< Not moving.*/
         SIMPLE_MOVEMENT,         /**< Single stage movement.*/
         LATCH_RELEASE_OVERDRIVE, /**< Close lid to ease off latch.*/
@@ -192,7 +192,7 @@ struct SealStepperState {
     // as a tstep value
     constexpr static uint32_t DISABLED_SG_MIN_VELOCITY = 0;
     // Enumeration of legal stepper actions
-    enum class Status { IDLE, MOVING };
+    enum class Status : uint8_t { IDLE, MOVING };
     // Current status of the seal stepper. Declared atomic because
     // this flag is set & cleared by both the actual task context
     // and an interrupt context when the motor interrupt fires.
@@ -209,7 +209,7 @@ struct SealStepperState {
 struct LidState {
     // Lid action state machine. Individual hinge/seal motor actions are
     // handled in their sub-state machines
-    enum class Status {
+    enum class Status : uint8_t {
         IDLE,                         /**< No lid action.*/
         OPENING_RETRACT_SEAL,         /**< Retracting seal before opening lid.*/
         OPENING_RETRACT_SEAL_BACKOFF, /**< Extend seal to ease off of the
@@ -263,7 +263,6 @@ class MotorTask {
 
     explicit MotorTask(Queue& q)
         : _message_queue(q),
-          _initialized(false),
           _task_registry(nullptr),
           _state{.status = LidState::Status::IDLE, .response_id = INVALID_ID},
           _lid_stepper_state{
@@ -280,9 +279,7 @@ class MotorTask {
                         SealStepperState::DEFAULT_ACCEL,
                         motor_util::MovementType::OpenLoop, 0),
           _seal_velocity(SealStepperState::DEFAULT_VELOCITY),
-          _seal_acceleration(SealStepperState::DEFAULT_ACCEL),
-          _nudge_degrees(0),
-          _seal_position(motor_util::SealStepper::Status::UNKNOWN) {}
+          _seal_acceleration(SealStepperState::DEFAULT_ACCEL) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -372,7 +369,8 @@ class MotorTask {
     auto visit_message(const messages::LidStepperComplete& msg, Policy& policy)
         -> void {
         static_cast<void>(msg);  // No contents in message
-        LidStepperState::Status old_state = _lid_stepper_state.status.load();
+        const LidStepperState::Status old_state =
+            _lid_stepper_state.status.load();
         auto error = handle_hinge_state_end(policy);
         if ((_lid_stepper_state.status == LidStepperState::Status::IDLE &&
              old_state != _lid_stepper_state.status &&
@@ -528,8 +526,7 @@ class MotorTask {
                     motor_util::SealStepper::velocity_to_tstep(msg.value);
                 static constexpr const uint32_t min_tstep = 0;
                 static constexpr const uint32_t max_tstep = (1 << 20) - 1;
-                value = std::clamp(static_cast<uint32_t>(value), min_tstep,
-                                   max_tstep);
+                value = std::clamp(value, min_tstep, max_tstep);
                 _tmc2130.get_register_map().tcoolthrs.threshold = value;
                 ret = _tmc2130.write_config(policy);
                 break;
@@ -1396,7 +1393,7 @@ class MotorTask {
     }
 
     Queue& _message_queue;
-    bool _initialized;
+    bool _initialized{false};
     tasks::Tasks<QueueImpl>* _task_registry;
     LidState _state;
     LidStepperState _lid_stepper_state;
@@ -1411,7 +1408,7 @@ class MotorTask {
      * amplitude over multiple iterations; this variable tracks the current
      * distance being set.
      */
-    double _nudge_degrees;
+    double _nudge_degrees{0};
     /**
      * @brief  We need to cache the position of the seal motor in addition to
      * the state in _seal_stepper_state due to the lack of limit switches.
@@ -1419,6 +1416,7 @@ class MotorTask {
      * The lid stepper has switches to tell where it is, so we don't
      * need a similar variable for that motor.
      */
-    motor_util::SealStepper::Status _seal_position;
+    motor_util::SealStepper::Status _seal_position{
+        motor_util::SealStepper::Status::UNKNOWN};
 };
 };  // namespace motor_task

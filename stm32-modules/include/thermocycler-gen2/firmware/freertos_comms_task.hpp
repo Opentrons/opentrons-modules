@@ -8,7 +8,6 @@
 #include "task.h"
 #include "thermocycler-gen2/host_comms_task.hpp"
 #include "thermocycler-gen2/tasks.hpp"
-
 namespace host_comms_control_task {
 // Function that starts the task
 auto start()

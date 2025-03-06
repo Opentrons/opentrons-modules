@@ -19,7 +19,7 @@ namespace thermal_general {
  * thermistors before the Lid, so mapping from the thermistors here
  * to the values in the Thermal Plate Process can be 1:1 indexing
  */
-enum ThermistorID {
+enum ThermistorID : uint8_t {
     THERM_FRONT_RIGHT,
     THERM_FRONT_LEFT,
     THERM_FRONT_CENTER,

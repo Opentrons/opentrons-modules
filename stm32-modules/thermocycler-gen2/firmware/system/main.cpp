@@ -1,13 +1,13 @@
 
 
 #include "FreeRTOS.h"
+#include "FreeRTOSConfig.h"
 #include "firmware/freertos_comms_task.hpp"
 #include "firmware/freertos_lid_heater_task.hpp"
 #include "firmware/freertos_message_queue.hpp"
 #include "firmware/freertos_motor_task.hpp"
 #include "firmware/freertos_system_task.hpp"
 #include "firmware/freertos_thermal_plate_task.hpp"
-#include "firmware/system_hardware.h"
 #include "system_stm32g4xx.h"
 #include "thermocycler-gen2/board_revision.hpp"
 #include "thermocycler-gen2/tasks.hpp"

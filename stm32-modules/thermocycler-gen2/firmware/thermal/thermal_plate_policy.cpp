@@ -1,8 +1,15 @@
 #include "firmware/thermal_plate_policy.hpp"
 
+#include <algorithm>
+#include <cstdint>
+#include <utility>
+
 #include "FreeRTOS.h"
 #include "firmware/thermal_fan_hardware.h"
+#include "firmware/thermal_hardware.h"
 #include "firmware/thermal_peltier_hardware.h"
+#include "portmacro.h"
+#include "projdefs.h"
 #include "systemwide.h"
 #include "task.h"
 
@@ -26,18 +33,17 @@ auto ThermalPlatePolicy::set_peltier(PeltierID peltier, double power,
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto ThermalPlatePolicy::get_peltier(PeltierID peltier)
     -> std::pair<PeltierDirection, double> {
-    using RT = std::pair<PeltierDirection, double>;
     if (peltier == PELTIER_NUMBER) {
-        return RT(PeltierDirection::PELTIER_HEATING, 0.0F);
+        return {PeltierDirection::PELTIER_HEATING, 0.0F};
     }
 
     PeltierDirection dir = PeltierDirection::PELTIER_COOLING;
     double pwr = 0.0F;
     if (thermal_peltier_get_power(peltier, &pwr, &dir)) {
-        return RT(dir, pwr);
+        return {dir, pwr};
     }
 
-    return RT(PeltierDirection::PELTIER_HEATING, 0.0F);
+    return {PeltierDirection::PELTIER_HEATING, 0.0F};
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

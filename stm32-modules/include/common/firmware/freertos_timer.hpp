@@ -17,11 +17,12 @@ class FreeRTOSTimer {
     using Callback = std::function<void()>;
     FreeRTOSTimer(const char* name, uint32_t time_ms, bool autoreload,
                   Callback callback)
-        : _callback{std::move(callback)} {
-        // pdMS_TO_TICKS converts milliseconds to ticks. This can only be used
-        // for FreeRTOS tick rates less than 1000 Hz.
-        _timer_period = pdMS_TO_TICKS(time_ms);
-        _auto_reload = (autoreload) ? pdTRUE : pdFALSE;
+        : _callback(std::move(callback)),
+          // pdMS_TO_TICKS converts milliseconds to ticks. This can only be used
+          // for FreeRTOS tick rates less than 1000 Hz.
+		  _timer_period(pdMS_TO_TICKS(time_ms)),
+		  _auto_reload((autoreload) ? pdTRUE : pdFALSE) {
+        ;
         _timer = xTimerCreateStatic(name, _timer_period, _auto_reload, this,
                                     timer_callback, &_timer_buffer);
     }
@@ -59,8 +60,8 @@ class FreeRTOSTimer {
     TimerHandle_t _timer{};
     Callback _callback;
     StaticTimer_t _timer_buffer{};
-    UBaseType_t _auto_reload = pdTRUE;
-    TickType_t _timer_period = 0;
+    TickType_t _timer_period;
+    UBaseType_t _auto_reload;
 
     static void timer_callback(TimerHandle_t xTimer) {
         auto* timer_id = pvTimerGetTimerID(xTimer);

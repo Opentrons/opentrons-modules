@@ -1,10 +1,12 @@
 /*
  * firmware-specific functions and data for ui control task
  */
+
 #include "firmware/freertos_system_task.hpp"
 
 #include <array>
 #include <atomic>
+#include <cstdint>
 
 #include "FreeRTOS.h"
 #include "core/timer.hpp"
@@ -13,6 +15,8 @@
 #include "firmware/system_hardware.h"
 #include "firmware/system_led_hardware.h"
 #include "firmware/system_policy.hpp"
+#include "portmacro.h"
+#include "projdefs.h"
 #include "task.h"
 #include "thermocycler-gen2/board_revision.hpp"
 #include "thermocycler-gen2/system_task.hpp"
@@ -101,12 +105,12 @@ static void run_button_task(void *param) {
         // Check button status after debouncing. If it's been released,
         // ignore this press event (maybe an ESD event?)
         if (system_front_button_pressed()) {
-            do {
+            while (system_front_button_pressed()) {
                 // Sleep 50ms and see if the button is released
                 vTaskDelayUntil(&last_wake_time, FRONT_BUTTON_QUERY_RATE_MS);
                 button.update_held(last_wake_time - button_press_start);
                 button_press_start = xTaskGetTickCount();
-            } while (system_front_button_pressed());
+            }
 
             button.released(0);
 

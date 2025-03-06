@@ -66,7 +66,7 @@ constexpr auto thermistorErrorBit(const ThermistorID id) -> uint16_t {
 }
 
 struct State {
-    enum Status {
+    enum Status : uint8_t {
         IDLE,        /**< Not doing anything.*/
         ERROR,       /**< Experiencing an error*/
         CONTROLLING, /**< Controlling temperature (PID)*/
@@ -550,7 +550,8 @@ class ThermalPlateTask {
             }
         }
 
-        double volume_ul = (msg.volume < 0.0F) ? DEFAULT_VOLUME_UL : msg.volume;
+        const double volume_ul =
+            (msg.volume < 0.0F) ? DEFAULT_VOLUME_UL : msg.volume;
 
         if (msg.setpoint <= 0.0F) {
             _state.system_status = State::IDLE;

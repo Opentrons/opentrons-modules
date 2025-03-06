@@ -1,15 +1,25 @@
 /*
  * firmware-specific internals and hooks for the lid-heater task
  */
-
 #include "firmware/freertos_lid_heater_task.hpp"
 
+#include <array>
+#include <cstdint>
+#include <variant>
+
 #include "FreeRTOS.h"
+#include "FreeRTOSConfig.h"
 #include "core/ads1115.hpp"
+#include "firmware/freertos_message_queue.hpp"
 #include "firmware/lid_heater_policy.hpp"
 #include "firmware/thermal_adc_policy.hpp"
 #include "firmware/thermal_hardware.h"
+#include "portmacro.h"
+#include "projdefs.h"
+#include "task.h"
 #include "thermocycler-gen2/lid_heater_task.hpp"
+#include "thermocycler-gen2/messages.hpp"
+#include "thermocycler-gen2/tasks.hpp"
 
 namespace lid_heater_control_task {
 
