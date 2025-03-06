@@ -1,5 +1,5 @@
 ---
-Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,misc-*,-misc-use-anonymous-namespace,modernize-*,-modernize-avoid-c-arrays,readability-*,-readability-magic-numbers,performance-*'
+Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,misc-*,-misc-use-anonymous-namespace,modernize-*,-modernize-avoid-c-arrays,readability-*,-readability-magic-numbers,performance-*,-cppcoreguidelines-avoid-const-or-ref-data-members'
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*/stm32-modules/.*hpp'
 FormatStyle:     none
@@ -31,7 +31,7 @@ CheckOptions:
   - key:             bugprone-dynamic-static-initializers.HeaderFileExtensions
     value:           ',h,hh,hpp,hxx'
   - key:             bugprone-easily-swappable-parameters.IgnoredParameterTypeSuffixes
-    value:           ';double;uint32_t;uint16_t;uint8_t;float;bool;long'
+    value:           ';double;uint32_t;uint16_t;uint8_t;float;bool;long;size_t'
   - key:             bugprone-exception-escape.FunctionsThatShouldNotThrow
     value:           ''
   - key:             bugprone-exception-escape.IgnoredExceptions

@@ -1,11 +1,15 @@
 #include "firmware/freertos_ui_task.hpp"
 
+#include <cstdint>
+
+#include "FreeRTOS.h"
+#include "firmware/firmware_tasks.hpp"
 #include "firmware/i2c_hardware.h"
 #include "firmware/ui_hardware.h"
 #include "firmware/ui_policy.hpp"
 #include "ot_utils/freertos/freertos_timer.hpp"
+#include "task.h"
 #include "tempdeck-gen3/ui_task.hpp"
-
 namespace ui_control_task {
 
 enum class Notifications : uint8_t {

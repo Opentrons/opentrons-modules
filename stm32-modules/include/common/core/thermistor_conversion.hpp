@@ -24,9 +24,9 @@
 
 namespace thermistor_conversion {
 
-enum class Error { OUT_OF_RANGE_LOW, OUT_OF_RANGE_HIGH };
+enum class Error : uint8_t { OUT_OF_RANGE_LOW, OUT_OF_RANGE_HIGH };
 
-enum class TableError { TABLE_END, TABLE_CBEGIN };
+enum class TableError : uint8_t { TABLE_END, TABLE_CBEGIN };
 
 // Conversion can be templatized, and that template type needs to
 // be able to return the thermistor table
@@ -95,7 +95,7 @@ struct Conversion {
         auto after_res = static_cast<double>(entry_pair.first.first);
         auto before_temp = static_cast<double>(entry_pair.second.second);
         auto before_res = static_cast<double>(entry_pair.second.first);
-        double resistance =
+        const double resistance =
             ((after_res - before_res) / (after_temp - before_temp)) *
                 (temperature - before_temp) +
             before_res;
@@ -110,13 +110,13 @@ struct Conversion {
 
     [[nodiscard]] auto resistance_from_adc(uint16_t adc_count) const -> Result {
         if (adc_count >= _adc_max_result) {
-            return Result(Error::OUT_OF_RANGE_LOW);
+            return {Error::OUT_OF_RANGE_LOW};
         }
         if (adc_count == 0) {
-            return Result(Error::OUT_OF_RANGE_HIGH);
+            return {Error::OUT_OF_RANGE_HIGH};
         }
-        return Result(_bias_resistance_kohm /
-                      ((_adc_max / static_cast<double>(adc_count)) - 1.0));
+        return {_bias_resistance_kohm /
+                      ((_adc_max / static_cast<double>(adc_count)) - 1.0)};
     }
 
     [[nodiscard]] auto temperature_from_resistance(double resistance) const
@@ -124,9 +124,9 @@ struct Conversion {
         auto entries = resistance_table_lookup(resistance);
         if (std::holds_alternative<TableError>(entries)) {
             if (std::get<TableError>(entries) == TableError::TABLE_END) {
-                return Result(Error::OUT_OF_RANGE_HIGH);
+                return {Error::OUT_OF_RANGE_HIGH};
             }
-            return Result(Error::OUT_OF_RANGE_LOW);
+            return {Error::OUT_OF_RANGE_LOW};
         }
         auto entry_pair = std::get<TableEntryPair>(entries);
 
@@ -135,9 +135,9 @@ struct Conversion {
         auto before_temp = static_cast<double>(entry_pair.second.second);
         auto before_res = entry_pair.second.first;
 
-        return Result((after_temp - before_temp) / (after_res - before_res) *
+        return {(after_temp - before_temp) / (after_res - before_res) *
                           (resistance - before_res) +
-                      before_temp);
+                      before_temp};
     }
     /**
      * Looks for the first table entry with a resistance GREATER than the
@@ -152,13 +152,12 @@ struct Conversion {
         auto first_less =
             std::find_if(GetTable()().cbegin(), GetTable()().end(), compare);
         if (first_less == GetTable()().cbegin()) {
-            return TableResult(TableError::TABLE_CBEGIN);
+            return {TableError::TABLE_CBEGIN};
         }
         if (first_less == GetTable()().end()) {
-            return TableResult(TableError::TABLE_END);
+            return {TableError::TABLE_END};
         }
-        return TableResult(
-            TableEntryPair(*first_less, *std::prev(first_less, 1)));
+        return {TableEntryPair(*first_less, *std::prev(first_less, 1))};
     }
 
     /**
@@ -174,13 +173,12 @@ struct Conversion {
         auto first_more =
             std::find_if(GetTable()().cbegin(), GetTable()().end(), compare);
         if (first_more == GetTable()().cbegin()) {
-            return TableResult(TableError::TABLE_CBEGIN);
+            return {TableError::TABLE_CBEGIN};
         }
         if (first_more == GetTable()().end()) {
-            return TableResult(TableError::TABLE_END);
+            return {TableError::TABLE_END};
         }
-        return TableResult(
-            TableEntryPair(*first_more, *std::prev(first_more, 1)));
+        return {TableEntryPair(*first_more, *std::prev(first_more, 1))};
     }
 };
 };  // namespace thermistor_conversion

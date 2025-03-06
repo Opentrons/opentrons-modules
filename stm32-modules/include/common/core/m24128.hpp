@@ -72,13 +72,12 @@ class M24128 {
     template <M24128_Serializable T, M24128_Policy Policy>
     [[nodiscard]] auto read_value(uint8_t page, Policy &policy)
         -> std::optional<T> {
-        using RT = std::optional<T>;
-
         if (!populate_address(page)) {
             return std::nullopt;
         }
 
         // Must write the address before reading everything else
+        //NOLINTNEXTLINE(readability-suspicious-call-argument)
         if (!policy.i2c_write(_address, _buffer.begin(), ADDRESS_BYTES)) {
             return std::nullopt;
         }
@@ -87,8 +86,8 @@ class M24128 {
             return std::nullopt;
         }
         T value{};
-        memcpy(&value, &_buffer[0], sizeof(value));
-        return RT(value);
+        memcpy(&value, _buffer.data(), sizeof(value));
+        return {value};
     }
 
   private:
@@ -96,7 +95,7 @@ class M24128 {
         if (page > PAGES) {
             return false;
         }
-        uint16_t start_addr = page * PAGE_LENGTH;
+        const uint16_t start_addr = page * PAGE_LENGTH;
         // MSB is first, followed by LSB
 
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)

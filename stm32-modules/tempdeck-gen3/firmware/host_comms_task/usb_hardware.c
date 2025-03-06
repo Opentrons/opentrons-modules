@@ -14,6 +14,8 @@
 // System headers
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
+#include "FreeRTOSConfig.h"
 
 // HAL headers
 #include "FreeRTOS.h"
@@ -24,7 +26,7 @@
 #include "usbd_desc.h"
 
 /** Local define */
-#define USB_BITRATE 115200
+static const uint32_t USB_BITRATE = 115200;
 
 /** Local typedef */
 

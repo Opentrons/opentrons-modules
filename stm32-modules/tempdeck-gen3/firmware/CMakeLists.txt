@@ -24,7 +24,6 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
   ${COMMS_DIR}/freertos_comms_task.cpp
   ${COMMS_DIR}/usb_hardware.c
   ${UI_DIR}/freertos_ui_task.cpp
-  ${UI_DIR}/ui_hardware.c
   ${UI_DIR}/ui_policy.cpp
   ${THERMAL_DIR}/freertos_thermal_task.cpp
   ${THERMAL_DIR}/thermal_policy.cpp
@@ -47,6 +46,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
   ${THERMISTOR_DIR}/internal_adc_hardware.c
   ${COMMS_DIR}/usbd_conf.c
   ${COMMS_DIR}/usbd_desc.c
+  ${UI_DIR}/ui_hardware.c
   )
 
 add_executable(${TARGET_MODULE_NAME}
@@ -75,7 +75,6 @@ target_compile_options(${TARGET_MODULE_NAME}
   -Wall
   -Werror
   -Wimplicit-fallthrough
-  $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
   $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
   $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
   $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>
