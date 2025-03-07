@@ -118,7 +118,7 @@ class MotorInterruptController {
     auto stop_condition_met() -> bool {
         // this will only error if the limit switch in the move direction
         // is triggered
-        if !(_id == MotorID::MOTOR_L && _direction == true) {
+        if (!(_id == MotorID::MOTOR_L && _direction == true)) {
             if (limit_switch_triggered()) {
                 if (_profile.movement_type() ==
                     motor_util::MovementType::FixedDistance) {
