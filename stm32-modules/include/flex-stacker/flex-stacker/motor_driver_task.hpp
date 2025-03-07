@@ -62,7 +62,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
                    .shortdelay = 0},
     .drvconf = {.bbmclks = 4},
     .glob_scale = {.global_scaler = 0x0},
-    .ihold_irun = {.hold_current = 10,
+    .ihold_irun = {.hold_current = 16,
                    .run_current = 31,
                    .hold_current_delay = 1},
     .tpowerdown = {.time = tmc2160::PowerDownDelay::seconds_to_reg(0.1)},
