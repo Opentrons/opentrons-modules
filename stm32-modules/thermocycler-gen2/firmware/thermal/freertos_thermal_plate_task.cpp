@@ -4,16 +4,24 @@
 
 #include "firmware/freertos_thermal_plate_task.hpp"
 
+#include <array>
+#include <cstdint>
 #include <variant>
 
 #include "FreeRTOS.h"
+#include "FreeRTOSConfig.h"
 #include "core/ads1115.hpp"
+#include "firmware/freertos_message_queue.hpp"
 #include "firmware/thermal_adc_policy.hpp"
 #include "firmware/thermal_hardware.h"
 #include "firmware/thermal_plate_policy.hpp"
+#include "portmacro.h"
+#include "projdefs.h"
+#include "task.h"
+#include "thermocycler-gen2/messages.hpp"
+#include "thermocycler-gen2/tasks.hpp"
 #include "thermocycler-gen2/thermal_general.hpp"
 #include "thermocycler-gen2/thermal_plate_task.hpp"
-
 namespace thermal_plate_control_task {
 
 using ADC_t = ADS1115::ADC<thermal_adc_policy::AdcPolicy>;

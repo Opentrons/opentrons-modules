@@ -1,9 +1,14 @@
 #include "firmware/freertos_thermal_task.hpp"
 
+#include <cstdint>
+
+#include "FreeRTOS.h"
+#include "firmware/firmware_tasks.hpp"
 #include "firmware/i2c_hardware.h"
 #include "firmware/tachometer_hardware.h"
 #include "firmware/thermal_hardware.h"
 #include "firmware/thermal_policy.hpp"
+#include "task.h"
 #include "tempdeck-gen3/thermal_task.hpp"
 
 namespace thermal_control_task {

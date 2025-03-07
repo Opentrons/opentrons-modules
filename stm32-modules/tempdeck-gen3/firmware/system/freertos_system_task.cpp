@@ -1,6 +1,11 @@
 #include "firmware/freertos_system_task.hpp"
 
+#include <cstdint>
+
+#include "FreeRTOS.h"
+#include "firmware/firmware_tasks.hpp"
 #include "firmware/system_policy.hpp"
+#include "task.h"
 #include "tempdeck-gen3/system_task.hpp"
 
 namespace system_control_task {

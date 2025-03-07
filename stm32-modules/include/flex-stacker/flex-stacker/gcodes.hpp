@@ -20,7 +20,7 @@
 namespace gcode {
 
 auto inline sensor_id_to_char(TOFSensorID sensor_id) -> char {
-    return static_cast<char>(sensor_id == TOFSensorID::TOF_X ? 'X' : 'Z');
+    return sensor_id == TOFSensorID::TOF_X ? 'X' : 'Z';
 }
 
 struct EnterBootloader {
@@ -357,7 +357,7 @@ struct GetTOFSensorStatus {
                                     TOFSensorID sensor_id, bool ok,
                                     TOFSensorState state, TOFSensorMode mode)
         -> InputIt {
-        char sensor_char = sensor_id == TOFSensorID::TOF_X ? 'X' : 'Z';
+        const char sensor_char = sensor_id_to_char(sensor_id);
         int res = 0;
         res = snprintf(&*buf, (limit - buf), "M215 %c:%d T:%d M:%d OK\n",
                        sensor_char, ok, state, mode);

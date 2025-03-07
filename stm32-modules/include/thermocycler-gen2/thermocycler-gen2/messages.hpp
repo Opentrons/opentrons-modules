@@ -167,7 +167,7 @@ struct SealStepperDebugResponse {
 };
 
 struct SealStepperComplete {
-    enum class CompletionReason {
+    enum class CompletionReason : uint8_t {
         ERROR,  // There was an error flag
         STALL,  // There was a stall
         LIMIT,  // Limit switch was triggered

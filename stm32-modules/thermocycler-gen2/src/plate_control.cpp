@@ -11,6 +11,9 @@
 
 #include "thermocycler-gen2/plate_control.hpp"
 
+#include <algorithm>
+#include <array>
+#include <cstdlib>
 #include <utility>
 
 #include "thermocycler-gen2/thermal_general.hpp"
@@ -22,10 +25,10 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
     switch (_status) {
         case PlateStatus::INITIAL_HEAT:
         case PlateStatus::INITIAL_COOL: {
-            bool heating = _status == PlateStatus::INITIAL_HEAT;
+            const bool heating = _status == PlateStatus::INITIAL_HEAT;
             // We need to wait for EVERY channel to independently reach its
             // target
-            bool at_target =
+            const bool at_target =
                 channel_at_target(_left, _current_setpoint,
                                   OVERSHOOT_TARGET_SWITCH_DIFFERENCE) &&
                 channel_at_target(_right, _current_setpoint,
@@ -84,7 +87,7 @@ auto PlateControl::update_control(Seconds time) -> UpdateRet {
         values.fan_power = update_fan(time);
     }
 
-    return UpdateRet(values);
+    return {values};
 }
 
 auto PlateControl::set_new_target(double setpoint, double volume_ul,

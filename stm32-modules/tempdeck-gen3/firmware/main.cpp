@@ -1,3 +1,4 @@
+#include <functional>
 
 #include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"

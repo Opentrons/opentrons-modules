@@ -103,7 +103,6 @@ class MotorTask {
           _x_controller(x_ctrl),
           _z_controller(z_ctrl),
           _l_controller(l_ctrl),
-          _initialized(false),
           _debounce_timer(
               "DB Timer", [ThisPtr = this] { ThisPtr->reset_debounce(); },
               DEBOUNCE_MS) {}
@@ -406,7 +405,7 @@ class MotorTask {
     auto visit_message(const messages::GetMoveParamsMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        MotorState& state = motor_state(m.motor_id);
+        const MotorState& state = motor_state(m.motor_id);
         auto response = messages::GetMoveParamsResponse{
             .responding_to_id = m.id,
             .motor_id = m.motor_id,
@@ -518,7 +517,7 @@ class MotorTask {
     Controller& _x_controller;
     Controller& _z_controller;
     Controller& _l_controller;
-    bool _initialized;
+    bool _initialized{false};
     FreeRTOSTimer _debounce_timer;
 
     MotorState _x_state{
@@ -545,7 +544,7 @@ class MotorTask {
         .accel_mm_per_sec_sq = Defaults::L::ACCELERATION,
         .speed_mm_per_sec_discont = Defaults::L::SPEED_DISCONT,
     };
-    MoveBuffer _move_queue{};
+    MoveBuffer _move_queue;
 };
 
 };  // namespace motor_task

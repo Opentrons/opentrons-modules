@@ -55,7 +55,6 @@ target_compile_options(${TARGET_MODULE_NAME}-core
   PRIVATE
   -Wall
   -Werror
-  -Weffc++
   -Wreorder
   -Wsign-promo
   -Wextra-semi
@@ -84,6 +83,7 @@ if (${CMAKE_CROSSCOMPILING})
   # This helps with clang accepting what GCC accepts around the implementations of the message queue
   list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
   list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Werror=implicit-fallthrough")
+  list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Wno-error=unused-command-line-argument")
   add_custom_target(${TARGET_MODULE_NAME}-lint
     COMMENT "Linting"
     ALL

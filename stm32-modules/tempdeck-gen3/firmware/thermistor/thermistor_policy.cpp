@@ -1,10 +1,13 @@
-
 #include "firmware/thermistor_policy.hpp"
+
+#include <cstdint>
+#include <optional>
 
 #include "FreeRTOS.h"
 #include "firmware/i2c_hardware.h"
 #include "firmware/internal_adc_hardware.h"
 #include "firmware/thermistor_hardware.h"
+#include "projdefs.h"
 #include "semphr.h"
 #include "task.h"
 
@@ -46,7 +49,7 @@ auto ThermistorPolicy::ads1115_i2c_read_16(uint8_t reg)
     -> std::optional<uint16_t> {
     uint16_t data = 0;
     if (i2c_hardware_read_16(I2C_BUS_THERMAL, ADC_ADDRESS, reg, &data)) {
-        return std::optional<uint16_t>(data);
+        return {data};
     }
     return std::nullopt;
 }

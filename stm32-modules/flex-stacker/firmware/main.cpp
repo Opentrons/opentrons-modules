@@ -1,3 +1,6 @@
+#include <cstdint>
+#include <functional>
+
 #include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_tasks.hpp"

@@ -71,7 +71,7 @@ struct XT1511 {
 
 auto operator==(const XT1511& l, const XT1511& r) -> bool;
 
-enum class Speed {
+enum class Speed : uint8_t {
     FULL, /**< 800kHz.*/
     HALF, /**< 400kHz.*/
 };
@@ -158,14 +158,14 @@ class XT1511String {
         }
     }
 
-    [[nodiscard]] auto inline pwm_on_percentage() const -> double {
+    [[nodiscard]] auto pwm_on_percentage() const -> double {
         if (_speed == Speed::FULL) {
             return PWM_ON_FULL_SPEED;
         }
         return PWM_ON_HALF_SPEED;
     }
 
-    [[nodiscard]] auto inline pwm_off_percentage() const -> double {
+    [[nodiscard]] auto pwm_off_percentage() const -> double {
         if (_speed == Speed::FULL) {
             return PWM_OFF_FULL_SPEED;
         }

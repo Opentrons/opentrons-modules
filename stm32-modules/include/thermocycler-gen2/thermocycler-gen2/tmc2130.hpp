@@ -142,8 +142,8 @@ class TMC2130 {
      */
     template <TMC2130Policy Policy>
     auto set_power_down_delay(double time, Policy& policy) -> bool {
-        PowerDownDelay temp_reg = {.time =
-                                       PowerDownDelay::seconds_to_reg(time)};
+        const PowerDownDelay temp_reg = {
+            .time = PowerDownDelay::seconds_to_reg(time)};
         if (set_register(policy, temp_reg)) {
             _registers.tpowerdown = temp_reg;
             return true;

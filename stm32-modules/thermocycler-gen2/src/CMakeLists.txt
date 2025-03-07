@@ -88,7 +88,6 @@ target_compile_options(${TARGET_MODULE_NAME}-core
   -Wall
   -Werror
   -Wimplicit-fallthrough
-  $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
   $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
   $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
   $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>

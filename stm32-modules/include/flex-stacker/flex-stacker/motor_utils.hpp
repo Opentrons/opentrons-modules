@@ -34,7 +34,7 @@ struct MotorState {
     }
 };
 
-enum class MovementType {
+enum class MovementType : uint8_t {
     FixedDistance,  // This movement goes for a fixed number of steps.
     OpenLoop,       // This movement goes until a stop switch is hit
 };

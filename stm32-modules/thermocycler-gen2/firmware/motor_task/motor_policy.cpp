@@ -1,15 +1,16 @@
+
 #include "firmware/motor_policy.hpp"
 
-#include <algorithm>
+#include <cstdint>
 #include <cstdlib>
+#include <functional>
+#include <utility>
 
 #include "FreeRTOS.h"
 #include "firmware/motor_hardware.h"
 #include "firmware/motor_spi_hardware.h"
 #include "task.h"
-#include "thermocycler-gen2/board_revision.hpp"
-#include "thermocycler-gen2/errors.hpp"
-
+#include "thermocycler-gen2/tmc2130_interface.hpp"
 using namespace errors;
 
 MotorPolicy::MotorPolicy(bool shared_seal_switch_lines)
@@ -77,8 +78,9 @@ auto MotorPolicy::lid_read_open_switch() -> bool {
     return motor_hardware_lid_read_open();
 }
 
-auto MotorPolicy::seal_stepper_start(std::function<void()> callback) -> bool {
-    _seal_callback = std::move(callback);
+auto MotorPolicy::seal_stepper_start(const std::function<void()>& callback)
+    -> bool {
+    _seal_callback = callback;
     return motor_hardware_start_seal_movement();
 }
 
@@ -92,9 +94,9 @@ auto MotorPolicy::tmc2130_transmit_receive(tmc2130::MessageT& data)
     -> RxTxReturn {
     tmc2130::MessageT retBuf = {0};
     if (motor_spi_sendreceive(data.data(), retBuf.data(), data.size())) {
-        return RxTxReturn(retBuf);
+        return {retBuf};
     }
-    return RxTxReturn();
+    return {};
 }
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::tmc2130_set_enable(bool enable) -> bool {

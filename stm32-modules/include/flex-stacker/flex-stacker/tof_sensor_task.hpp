@@ -161,10 +161,10 @@ class TOFSensorTask {
     auto visit_message(const messages::SetTOFRegisterMessage& m) -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         auto sensor = get_sensor(m.sensor_id);
+        uint8_t d = m.data;
         auto data =
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-            sensor.driver.write(m.sensor_id, m.reg,
-                                const_cast<uint8_t*>(&m.data), 1);
+            sensor.driver.write(m.sensor_id, m.reg, &d);
         if (!data.has_value()) {
             response.with_error = errors::ErrorCode::TMF8820_COMM_ERROR;
         }

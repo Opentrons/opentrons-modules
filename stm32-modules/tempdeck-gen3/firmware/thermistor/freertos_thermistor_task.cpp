@@ -1,12 +1,16 @@
 #include "firmware/freertos_thermistor_task.hpp"
 
+#include <cstdint>
+
 #include "FreeRTOS.h"
+#include "FreeRTOSConfig.h"
+#include "firmware/firmware_tasks.hpp"
+#include "firmware/freertos_message_queue.hpp"
 #include "firmware/i2c_hardware.h"
 #include "firmware/internal_adc_hardware.h"
 #include "firmware/thermistor_hardware.h"
 #include "firmware/thermistor_policy.hpp"
 #include "task.h"
-#include "tempdeck-gen3/thermal_task.hpp"
 #include "tempdeck-gen3/thermistor_task.hpp"
 
 namespace thermistor_control_task {

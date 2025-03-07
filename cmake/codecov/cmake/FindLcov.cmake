@@ -108,7 +108,7 @@ function (lcov_merge_files OUTFILE ...)
 	add_custom_command(OUTPUT "${OUTFILE}"
 		COMMAND ${LCOV_BIN} --quiet -a ${OUTFILE}.raw --output-file ${OUTFILE}
 			--base-directory ${PROJECT_SOURCE_DIR} ${LCOV_EXTRA_FLAGS}
-		COMMAND ${LCOV_BIN} --quiet -r ${OUTFILE} ${LCOV_REMOVE_PATTERNS}
+		COMMAND ${LCOV_BIN} --quiet --ignore-errors unused -r ${OUTFILE} ${LCOV_REMOVE_PATTERNS}
 			--output-file ${OUTFILE} ${LCOV_EXTRA_FLAGS}
 		DEPENDS ${OUTFILE}.raw
 		COMMENT "Post-processing ${FILE_REL}"
@@ -169,7 +169,7 @@ function (lcov_capture_initial_tgt TNAME)
 		list(APPEND GENINFO_FILES ${OUTFILE})
 
 		add_custom_command(OUTPUT ${OUTFILE} COMMAND ${GCOV_ENV} ${GENINFO_BIN}
-				--quiet --base-directory ${PROJECT_SOURCE_DIR} --initial
+				--quiet --ignore-errors mismatch --base-directory ${PROJECT_SOURCE_DIR} --initial
 				--gcov-tool ${GCOV_BIN} --output-filename ${OUTFILE}
 				${GENINFO_EXTERN_FLAG} ${TDIR}/${FILE}.gcno
 			DEPENDS ${TNAME}

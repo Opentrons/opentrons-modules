@@ -6,13 +6,14 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 
 #include "systemwide.h"
 
 namespace board_revision {
 
 // Enumeration of possible board revisions
-enum BoardRevision {
+enum BoardRevision : uint8_t {
     BOARD_REV_1 = 1,
     BOARD_REV_2 = 2,
     BOARD_REV_3 = 3,

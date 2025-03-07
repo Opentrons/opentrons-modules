@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "firmware/hardware_iface.hpp"
 #include "firmware/i2c_hardware.h"
 #include "systemwide.h"
 

@@ -99,7 +99,6 @@ target_compile_options(${TARGET_MODULE_NAME}
         -Wall
         -Werror
         -Wimplicit-fallthrough
-        $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
         $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
         $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
         $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>
@@ -213,6 +212,7 @@ list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
 # This helps with clang accepting what GCC accepts around the implementations of the message queue
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Werror=implicit-fallthrough")
+list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Wno-error=unused-command-line-argument")
 add_custom_target(${TARGET_MODULE_NAME}-lint
         ALL
         COMMENT "Linting"
