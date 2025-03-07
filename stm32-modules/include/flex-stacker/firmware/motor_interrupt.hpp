@@ -118,19 +118,16 @@ class MotorInterruptController {
     auto stop_condition_met() -> bool {
         // this will only error if the limit switch in the move direction
         // is triggered
-        if (!(_id == MotorID::MOTOR_L && _direction == true)) {
-            if (limit_switch_triggered()) {
-                if (_profile.movement_type() ==
-                    motor_util::MovementType::FixedDistance) {
-                    _error = Error::UNEXPECTED_LIMIT_SWITCH;
-                }
-                return true;
+        // Stop if moving left motor in an allowed direction
+        if (!(_id == MotorID::MOTOR_L && _direction) &&
+            limit_switch_triggered()) {
+            if (_profile.movement_type() ==
+                motor_util::MovementType::FixedDistance) {
+                _error = Error::UNEXPECTED_LIMIT_SWITCH;
             }
-        }
-        if (_stop) {
             return true;
         }
-        return false;
+        return _stop;
     }
 
     auto set_diag0_irq(bool enable) -> void { _policy->set_diag0_irq(enable); }
