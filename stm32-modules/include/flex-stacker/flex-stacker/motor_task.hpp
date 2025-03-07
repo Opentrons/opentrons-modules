@@ -455,9 +455,6 @@ class MotorTask {
 
         if (triggered) {
             stop_motors(error);
-            // we shouldn't need to do this because move complete
-            // message already should contain the correct error code
-            send_error_message(error);
         }
 
         // Set status bars
