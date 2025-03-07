@@ -116,16 +116,16 @@ class MotorInterruptController {
     }
     [[nodiscard]] auto get_error_code() const -> Error { return _error; }
     auto stop_condition_met() -> bool {
-        if (_stop) {
-            return true;
-        }
         // this will only error if the limit switch in the move direction
         // is triggered
         if (limit_switch_triggered()) {
-            if (_profile.movement_type() !=
-                motor_util::MovementType::OpenLoop) {
+            if (_profile.movement_type() ==
+                motor_util::MovementType::FixedDistance) {
                 _error = Error::UNEXPECTED_LIMIT_SWITCH;
             }
+            return true;
+        }
+        if (_stop) {
             return true;
         }
         return false;
