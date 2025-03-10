@@ -45,4 +45,4 @@ struct Tasks {
         QueueAggregator::template get_queue_idx<TOFSensorQueue>();
 };
 
-}  // namespace tasks
+};  // namespace tasks

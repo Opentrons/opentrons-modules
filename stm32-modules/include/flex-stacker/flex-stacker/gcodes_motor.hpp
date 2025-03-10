@@ -104,7 +104,7 @@ struct GetTMCRegister {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     MotorID motor_id, uint8_t reg,
                                     uint32_t data) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M920 %s:%u V:%lu OK\n",
+        auto res = snprintf(&*buf, (limit - buf), "M920 %c:%u V:%lu OK\n",
                             motor_id_to_char(motor_id), reg, data);
         if (res <= 0) {
             return buf;
