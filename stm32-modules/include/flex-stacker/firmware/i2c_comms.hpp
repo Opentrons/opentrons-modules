@@ -8,8 +8,7 @@
 #include "firmware/i2c_hardware.h"
 #include "systemwide.h"
 
-namespace i2c {
-namespace hardware {
+namespace i2c::hardware {
 class I2C : public I2CBase {
   public:
     explicit I2C() = default;
@@ -29,5 +28,4 @@ class I2C : public I2CBase {
     I2C_BUS bus = NO_BUS;
     HAL_I2C_HANDLE handle = nullptr;
 };
-}  // namespace hardware
-}  // namespace i2c
+}  // namespace i2c::hardware
