@@ -37,4 +37,4 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     }
 }
 
-};  // namespace motor_driver_task
+}  // namespace motor_driver_task

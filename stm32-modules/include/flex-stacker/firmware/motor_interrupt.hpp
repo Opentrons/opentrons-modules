@@ -4,12 +4,14 @@
 
 #include "firmware/motor_hardware.h"
 #include "firmware/motor_policy.hpp"
+#include "flex-stacker/errors.hpp"
 #include "flex-stacker/motor_utils.hpp"
 #include "systemwide.h"
 
 namespace motor_interrupt_controller {
 
 using MotorPolicy = motor_policy::MotorPolicy;
+using Error = errors::ErrorCode;
 
 static constexpr int TIMER_FREQ = 100000;
 
@@ -56,11 +58,17 @@ class MotorInterruptController {
         _policy = policy;
         _initialized = true;
     }
+
+    auto reset() -> void {
+        _stop = false;
+        _error = Error::NO_ERROR;
+    }
+
     auto start_fixed_movement(uint32_t move_id, bool direction, long steps,
                               uint32_t steps_per_sec_discont,
                               uint32_t steps_per_sec, uint32_t step_per_sec_sq)
         -> void {
-        _stop = false;
+        reset();
         set_direction(direction);
         _profile = motor_util::MovementProfile(
             TIMER_FREQ, steps_per_sec_discont, steps_per_sec, step_per_sec_sq,
@@ -71,7 +79,7 @@ class MotorInterruptController {
     }
     auto start_move(Move move) -> void {
         motor_util::MotorState* state = move.motor_state;
-        _stop = false;
+        reset();
         _policy->enable_motor(_id);
         set_direction(move.direction);
         _profile = motor_util::MovementProfile(
@@ -85,13 +93,14 @@ class MotorInterruptController {
         _response_id = move.move_id;
         _policy->start_motor_timer(_id);
     }
-    auto stop_movement(uint32_t move_id, bool disable_motor) -> void {
+
+    auto stop_movement(Error error, bool disable_motor) -> void {
         _stop = true;
+        _error = error;
         _policy->stop_motor(_id);
         if (disable_motor) {
             _policy->disable_motor(_id);
         }
-        _response_id = move_id;
     }
 
     auto set_direction(bool direction) -> void {
@@ -105,20 +114,20 @@ class MotorInterruptController {
     [[nodiscard]] auto get_response_id() const -> uint32_t {
         return _response_id;
     }
+    [[nodiscard]] auto get_error_code() const -> Error { return _error; }
     auto stop_condition_met() -> bool {
-        if (_stop) {
+        // this will only error if the limit switch in the move direction
+        // is triggered
+        // Stop if moving left motor in an allowed direction
+        if ((_id != MotorID::MOTOR_L || !_direction) &&
+            limit_switch_triggered()) {
+            if (_profile.movement_type() ==
+                motor_util::MovementType::FixedDistance) {
+                _error = Error::UNEXPECTED_LIMIT_SWITCH;
+            }
             return true;
         }
-        if (_policy->check_estop()) {
-            return true;
-        }
-        if (!_policy->check_diag0()) {
-            return true;
-        }
-        if (_profile.movement_type() == motor_util::MovementType::OpenLoop) {
-            return limit_switch_triggered();
-        }
-        return false;
+        return _stop;
     }
 
     auto set_diag0_irq(bool enable) -> void { _policy->set_diag0_irq(enable); }
@@ -131,6 +140,7 @@ class MotorInterruptController {
     std::atomic_bool _initialized;
     motor_util::MovementProfile _profile;
     uint32_t _response_id = 0;
+    Error _error = Error::NO_ERROR;
     bool _direction = false;
     bool _stop = true;
 };

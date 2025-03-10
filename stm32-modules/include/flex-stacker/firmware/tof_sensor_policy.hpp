@@ -7,8 +7,7 @@
 #include "firmware/hardware_iface.hpp"
 #include "systemwide.h"
 
-namespace tof {
-namespace hardware {
+namespace tof::hardware {
 using namespace i2c::hardware;
 class TOFSensorPolicy {
   public:
@@ -29,5 +28,4 @@ class TOFSensorPolicy {
   private:
     I2CBase *i2c_comms{nullptr};
 };
-};  // namespace hardware
-};  // namespace tof
+}  // namespace tof::hardware

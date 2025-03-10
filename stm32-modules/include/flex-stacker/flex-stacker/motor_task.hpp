@@ -178,10 +178,10 @@ class MotorTask {
         return Error::NO_ERROR;
     }
 
-    auto stop_motors(uint32_t id = 0) -> void {
-        _z_controller.stop_movement(id, true);
-        _x_controller.stop_movement(id, false);
-        _l_controller.stop_movement(id, false);
+    auto stop_motors(Error error) -> void {
+        _z_controller.stop_movement(error, true);
+        _x_controller.stop_movement(error, false);
+        _l_controller.stop_movement(error, false);
         _move_queue.reset();
     }
 
@@ -331,7 +331,7 @@ class MotorTask {
     auto visit_message(const messages::StopMotorMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        stop_motors(m.id);
+        stop_motors(Error::STOP_REQUESTED);
         send_ack_message(m.id);
     }
 
@@ -386,7 +386,8 @@ class MotorTask {
             if (m.motor_id == MotorID::MOTOR_Z) {
                 policy.disable_motor(m.motor_id);
             }
-            send_ack_message(controller_from_id(m.motor_id).get_response_id());
+            send_ack_message(controller_from_id(m.motor_id).get_response_id(),
+                             controller_from_id(m.motor_id).get_error_code());
         }
     }
 
@@ -452,8 +453,7 @@ class MotorTask {
         }
 
         if (triggered) {
-            stop_motors();
-            send_error_message(error);
+            stop_motors(error);
         }
 
         // Set status bars
@@ -547,4 +547,4 @@ class MotorTask {
     MoveBuffer _move_queue;
 };
 
-};  // namespace motor_task
+}  // namespace motor_task

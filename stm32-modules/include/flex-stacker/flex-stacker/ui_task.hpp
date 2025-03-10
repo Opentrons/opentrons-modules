@@ -477,4 +477,4 @@ class UITask {
     uint32_t hb_counter = 0;
     bool _led_update_pending = false;
 };
-};  // namespace ui_task
+}  // namespace ui_task

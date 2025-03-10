@@ -36,4 +36,4 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
     }
 }
 
-};  // namespace ui_control_task
+}  // namespace ui_control_task
