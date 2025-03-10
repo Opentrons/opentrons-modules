@@ -412,7 +412,7 @@ struct GetTOFRegister {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     TOFSensorID sensor_id, uint8_t reg,
                                     uint32_t data) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M222 %c:%u V:%u OK\n",
+        auto res = snprintf(&*buf, (limit - buf), "M222 %c:%u V:%lu OK\n",
                             sensor_id_to_char(sensor_id), reg, data);
         if (res <= 0) {
             return buf;
