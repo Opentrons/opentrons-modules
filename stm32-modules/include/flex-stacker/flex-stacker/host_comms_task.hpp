@@ -47,9 +47,9 @@ class HostCommsTask {
         gcode::GetPlatformSensors, gcode::GetDoorClosed, gcode::GetEstopStatus,
         gcode::StopMotor, gcode::GetResetReason, gcode::SetStatusBarState,
         gcode::GetTOFSensorStatus, gcode::GetTOFRegister, gcode::SetTOFRegister,
-        gcode::EnableTOFSensor, 
-        gcode::ManageTOFMeasurement, gcode::GetTOFMeasurement,
-        gcode::EnableTOFSensor, gcode::GetInstalledStatus>;
+        gcode::EnableTOFSensor, gcode::ManageTOFMeasurement,
+        gcode::GetTOFMeasurement, gcode::EnableTOFSensor,
+        gcode::GetInstalledStatus>;
 
     using AckOnlyCache = AckCache<
         8, gcode::EnterBootloader, gcode::SetSerialNumber,
