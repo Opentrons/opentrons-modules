@@ -29,4 +29,4 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     }
 }
 
-};  // namespace system_control_task
+}  // namespace system_control_task

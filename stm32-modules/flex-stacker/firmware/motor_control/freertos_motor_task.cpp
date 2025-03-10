@@ -72,4 +72,4 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     }
 }
 
-};  // namespace motor_control_task
+}  // namespace motor_control_task

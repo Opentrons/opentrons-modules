@@ -34,4 +34,4 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
     }
 }
 
-};  // namespace tof_sensor_task
+}  // namespace tof_sensor_task
