@@ -119,7 +119,7 @@ class MotorInterruptController {
         // this will only error if the limit switch in the move direction
         // is triggered
         // Stop if moving left motor in an allowed direction
-        if (!(_id == MotorID::MOTOR_L && _direction) &&
+        if ((_id != MotorID::MOTOR_L || !_direction) &&
             limit_switch_triggered()) {
             if (_profile.movement_type() ==
                 motor_util::MovementType::FixedDistance) {
