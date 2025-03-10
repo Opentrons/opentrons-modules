@@ -8,8 +8,7 @@ using std::size_t;
 static constexpr size_t MESSAGE_LEN = 5;
 using MessageT = std::array<uint8_t, MESSAGE_LEN>;
 
-namespace i2c {
-namespace hardware {
+namespace i2c::hardware {
 using RxTxReturn = uint8_t;
 class I2CBase {
   public:
@@ -26,6 +25,4 @@ class I2CBase {
                            uint16_t size) -> RxTxReturn;
 };
 
-}  // namespace hardware
-
-}  // namespace i2c
+}  // namespace i2c::hardware
