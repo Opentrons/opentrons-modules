@@ -26,6 +26,6 @@ class I2CBase {
                            uint16_t size) -> RxTxReturn;
 };
 
-};  // namespace hardware
+}  // namespace hardware
 
-};  // namespace i2c
+}  // namespace i2c

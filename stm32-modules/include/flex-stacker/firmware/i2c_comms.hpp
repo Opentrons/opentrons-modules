@@ -29,5 +29,5 @@ class I2C : public I2CBase {
     I2C_BUS bus = NO_BUS;
     HAL_I2C_HANDLE handle = nullptr;
 };
-};  // namespace hardware
-};  // namespace i2c
+}  // namespace hardware
+}  // namespace i2c

@@ -313,4 +313,4 @@ class TOFSensorTask {
     TOFSensor _tof_sensor_z = tof_sensor_z;
     bool _initialized = false;
 };
-};  // namespace tof_sensor_task
+}  // namespace tof_sensor_task

@@ -166,4 +166,4 @@ class SystemTask {
     bool _initialized;
 };
 
-};  // namespace system_task
+}  // namespace system_task

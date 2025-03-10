@@ -29,5 +29,5 @@ class TOFSensorPolicy {
   private:
     I2CBase *i2c_comms{nullptr};
 };
-};  // namespace hardware
-};  // namespace tof
+}  // namespace hardware
+}  // namespace tof

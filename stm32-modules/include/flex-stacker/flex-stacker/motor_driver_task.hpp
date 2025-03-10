@@ -356,4 +356,4 @@ class MotorDriverTask {
     tmc2160::TMC2160RegisterMap _z_config = motor_z_config;
     tmc2160::TMC2160RegisterMap _l_config = motor_l_config;
 };
-};  // namespace motor_driver_task
+}  // namespace motor_driver_task

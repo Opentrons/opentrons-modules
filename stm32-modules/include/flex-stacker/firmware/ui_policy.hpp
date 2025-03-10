@@ -23,4 +23,4 @@ class UIPolicy {
   private:
     I2C *i2c_comms;
 };
-};  // namespace ui_policy
+}  // namespace ui_policy

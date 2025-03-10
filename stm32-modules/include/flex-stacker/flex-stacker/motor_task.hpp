@@ -548,4 +548,4 @@ class MotorTask {
     MoveBuffer _move_queue{};
 };
 
-};  // namespace motor_task
+}  // namespace motor_task
