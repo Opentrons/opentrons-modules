@@ -52,7 +52,7 @@ constexpr uint8_t BL_W_RAM = 0x41;
 constexpr uint8_t BL_ADDR_RAM = 0x43;
 
 // Bootloader cmd status
-enum BL_CMD_STATUS {
+enum BL_CMD_STATUS : uint8_t {
     STAT_READY = 0,
     STAT_ERR_SIZE,
     STAT_ERR_CSUM,
@@ -134,7 +134,7 @@ constexpr uint8_t HIST_DONE = 2;
 constexpr uint8_t HIST_ERROR = 3;
 
 // Active range
-enum TOFActiveRange {
+enum TOFActiveRange : uint8_t {
     NOT_SUPPORTED = 0,
     SHORT_RANGE = 0x6E,
     LONG_RANGE = 0x6F,
@@ -203,28 +203,26 @@ class TMF8820 {
 
     auto write(TOFSensorID sensor_id, uint16_t reg, uint8_t* data,
                uint size = 1) -> std::optional<RegisterSerializedType> {
-        using RT = std::optional<RegisterSerializedType>;
         auto dev_address = get_sensor_i2c_address(sensor_id);
         auto res = _policy->i2c_write(dev_address << 1, reg, data, size);
         if (res != 0) {
-            return RT();
+            return {};
         }
-        return RT(res);
+        return {res};
     }
 
     auto read(TOFSensorID sensor_id, uint16_t reg, int size = 1)
         -> std::optional<RegisterSerializedType> {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         std::array<uint8_t, 5> data = {0};
-        using RT = std::optional<RegisterSerializedType>;
         auto dev_address = get_sensor_i2c_address(sensor_id);
         auto res = _policy->i2c_read(dev_address << 1, reg, data.data(), size);
         if (res != 0) {
-            return RT();
+            return {};
         }
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
         auto value = static_cast<uint32_t>(*data.data());
-        return RT(value);
+        return {value};
     }
 
     /* Check which app (bootloader or measurement ) is running. */
@@ -595,27 +593,25 @@ class TMF8820 {
     template <tmf8820::TMF8820Register Reg>
     requires ReadableRegister<Reg>
     auto read_register(TOFSensorID sensor_id) -> std::optional<Reg> {
-        using RT = std::optional<Reg>;
         auto ret = read(sensor_id, Reg::address, 1);
         if (!ret.has_value()) {
-            return RT();
+            return {};
         }
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         auto value = *reinterpret_cast<Reg*>(&ret.value());
-        return RT(value);
+        return {value};
     }
 
     template <tmf8820::TMF8820Register Reg>
     requires WritableRegister<Reg>
     auto set_register(Reg reg, TOFSensorID sensor_id) -> std::optional<Reg> {
-        using RT = std::optional<Reg>;
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         auto value = get_register_value(reg);
         auto ret = write(sensor_id, Reg::address, (uint8_t*)&value, 1);
         if (!ret.has_value()) {
-            return RT();
+            return {};
         }
-        return RT(reg);
+        return {reg};
     }
 
     /* Makes sure the sensor is ready for communication */

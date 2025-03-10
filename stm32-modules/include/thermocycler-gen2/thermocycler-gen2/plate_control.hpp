@@ -15,9 +15,14 @@
 namespace plate_control {
 
 /** Enumeration of the control statuses the plate may be in*/
-enum class PlateStatus { INITIAL_HEAT, INITIAL_COOL, OVERSHOOT, STEADY_STATE };
+enum class PlateStatus : uint8_t {
+    INITIAL_HEAT,
+    INITIAL_COOL,
+    OVERSHOOT,
+    STEADY_STATE
+};
 
-enum class TemperatureZone { COLD = 23, WARM = 31, HOT };
+enum class TemperatureZone : uint8_t { COLD = 23, WARM = 31, HOT };
 
 struct PlateControlVals {
     double left_power, right_power, center_power, fan_power;

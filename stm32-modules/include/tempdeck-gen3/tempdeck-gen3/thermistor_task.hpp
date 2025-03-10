@@ -55,7 +55,7 @@ class ThermistorTask {
             adc.initialize();
         }
 
-        messages::ThermistorReadings msg = {
+        const messages::ThermistorReadings msg = {
             .timestamp = policy.get_time_ms(),
             .plate_1 = read_pin(adc, 0, policy),
             .plate_2 = read_pin(adc, 1, policy),

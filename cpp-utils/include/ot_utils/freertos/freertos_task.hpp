@@ -8,8 +8,7 @@
 #include "ot_utils/core/logging.h"
 #include "task.h"
 
-namespace ot_utils {
-namespace freertos_task {
+namespace ot_utils::freertos_task {
 
 /**
  * A FreeRTOS task.
@@ -40,7 +39,7 @@ class FreeRTOSTask {
                TaskArgs*... task_args) {
         using InstanceDataType = std::pair<void*, std::tuple<TaskArgs*...>>;
 
-        InstanceDataType instance_data{this, std::make_tuple(task_args...)};
+        const InstanceDataType instance_data{this, std::make_tuple(task_args...)};
         starter = [instance_data]() -> void {
             auto instance = static_cast<FreeRTOSTask<StackDepth, EntryPoint>*>(
                 instance_data.first);
@@ -71,8 +70,7 @@ class FreeRTOSTask {
     std::array<StackType_t, StackDepth> backing{};
     EntryPoint& entry_point;
 
-    std::function<void()> starter{};
+    std::function<void()> starter;
 };
 
-}  // namespace freertos_task
-}  // namespace ot_utils
+}  // namespace ot_utils::freertos_task

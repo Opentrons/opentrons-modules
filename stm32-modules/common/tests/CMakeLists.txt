@@ -37,7 +37,6 @@ target_compile_options(${TARGET_MODULE_NAME}
     PUBLIC
     -Wall
     -Werror
-    -Weffc++
     -Wreorder
     -Wsign-promo
     -Wextra-semi

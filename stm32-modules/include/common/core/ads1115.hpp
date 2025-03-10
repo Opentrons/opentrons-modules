@@ -43,7 +43,7 @@ concept ADS1115Policy = requires(Policy& p, uint8_t u8, uint16_t u16,
     { p.ads1115_wait_for_pulse(u32) } -> std::same_as<bool>;
 };
 
-enum class Error {
+enum class Error : uint8_t {
     ADCTimeout = 1, /**< Timed out waiting for ADC.*/
     I2CTimeout = 2, /**< Timed out waiting for I2C.*/
     DoubleArm = 3,  /**< ADC already armed.*/
@@ -95,30 +95,30 @@ class ADC {
      */
     auto read(uint16_t pin) -> ReadVal {
         if (!initialized()) {
-            return ReadVal(Error::ADCInit);
+            return {Error::ADCInit};
         }
         if (!(pin < pin_count)) {
-            return ReadVal(Error::ADCPin);
+            return {Error::ADCPin};
         }
         get_lock();
 
         auto ret = _policy.ads1115_arm_for_read();
         if (!ret) {
             release_lock();
-            return ReadVal(Error::DoubleArm);
+            return {Error::DoubleArm};
         }
         ret =
             reg_write(config_addr, config_default | (pin << config_mux_shift) |
                                        config_start_read);
         if (!ret) {
             release_lock();
-            return ReadVal(Error::I2CTimeout);
+            return {Error::I2CTimeout};
         }
 
         ret = _policy.ads1115_wait_for_pulse(max_pulse_wait_ms);
         if (!ret) {
             release_lock();
-            return ReadVal(Error::ADCTimeout);
+            return {Error::ADCTimeout};
         }
 
         auto result = reg_read(conversion_addr);
@@ -126,7 +126,7 @@ class ADC {
         if (result.has_value()) {
             return ReadVal(result.value());
         }
-        return ReadVal(Error::I2CTimeout);
+        return {Error::I2CTimeout};
     }
 
     /**
@@ -138,14 +138,14 @@ class ADC {
   private:
     Policy& _policy;
 
-    auto inline get_lock() -> void { _policy.ads1115_get_lock(); }
-    auto inline release_lock() -> void { _policy.ads1115_release_lock(); }
+    auto get_lock() -> void { _policy.ads1115_get_lock(); }
+    auto release_lock() -> void { _policy.ads1115_release_lock(); }
 
-    auto inline reg_write(uint8_t reg, uint16_t data) -> bool {
+    auto reg_write(uint8_t reg, uint16_t data) -> bool {
         return _policy.ads1115_i2c_write_16(reg, data);
     }
 
-    auto inline reg_read(uint8_t reg) -> std::optional<uint16_t> {
+    auto reg_read(uint8_t reg) -> std::optional<uint16_t> {
         return _policy.ads1115_i2c_read_16(reg);
     }
 

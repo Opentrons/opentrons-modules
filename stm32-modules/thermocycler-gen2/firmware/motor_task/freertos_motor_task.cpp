@@ -1,18 +1,20 @@
 /*
  * firmware-specific internals and hooks for motor control
  */
-#include "firmware/freertos_motor_task.hpp"
 
 #include <array>
+#include <cstdint>
 
 #include "FreeRTOS.h"
 #include "firmware/freertos_message_queue.hpp"
 #include "firmware/motor_hardware.h"
 #include "firmware/motor_policy.hpp"
+#include "portmacro.h"
 #include "task.h"
+#include "thermocycler-gen2/board_revision.hpp"
+#include "thermocycler-gen2/messages.hpp"
 #include "thermocycler-gen2/motor_task.hpp"
 #include "thermocycler-gen2/tasks.hpp"
-
 namespace motor_control_task {
 
 enum class Notifications : uint8_t {
@@ -102,7 +104,7 @@ void run(void *param) {
 
     _policy = MotorPolicy(shared_seal_switches);
 
-    motor_hardware_callbacks callbacks = {
+    const motor_hardware_callbacks callbacks = {
         .lid_stepper_complete = handle_lid_stepper,
         .seal_stepper_tick = handle_seal_interrupt,
         .seal_stepper_error = handle_seal_error,

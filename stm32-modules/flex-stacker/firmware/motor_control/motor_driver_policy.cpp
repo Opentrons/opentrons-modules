@@ -1,6 +1,7 @@
 #include "firmware/motor_driver_policy.hpp"
 
 #include "firmware/motor_hardware.h"
+#include "flex-stacker/tmc2160_interface.hpp"
 
 using namespace motor_driver_policy;
 
@@ -11,7 +12,7 @@ auto MotorDriverPolicy::tmc2160_transmit_receive(MotorID motor_id,
     tmc2160::MessageT retBuf = {0};
     if (motor_spi_sendreceive(motor_id, data.data(), retBuf.data(),
                               data.size())) {
-        return RxTxReturn(retBuf);
+        return {retBuf};
     }
-    return RxTxReturn();
+    return {};
 }

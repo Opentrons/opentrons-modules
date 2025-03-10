@@ -129,7 +129,7 @@ class AT24C0xC {
             return std::nullopt;
         }
         T value;
-        memcpy(&value, &buffer[0], sizeof(value));
+        memcpy(&value, buffer.data(), sizeof(value));
         return RT(value);
     }
 

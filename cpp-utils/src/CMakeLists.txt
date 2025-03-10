@@ -31,7 +31,6 @@ target_compile_options(core
     PUBLIC
     -Wall
     -Werror
-    -Weffc++
     -Wreorder
     -Wsign-promo
     -Wextra-semi

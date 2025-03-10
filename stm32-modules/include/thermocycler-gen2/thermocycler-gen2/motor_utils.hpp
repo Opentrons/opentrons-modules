@@ -40,7 +40,7 @@ class LidStepper {
 
   public:
     /** Possible states of the lid stepper.*/
-    enum class Position { BETWEEN, CLOSED, OPEN, UNKNOWN };
+    enum class Position : uint8_t { BETWEEN, CLOSED, OPEN, UNKNOWN };
 
     [[nodiscard]] constexpr static auto status_to_string(Position status)
         -> const char* {
@@ -113,7 +113,7 @@ class SealStepper {
     };
 
     /** Possible status of the seal stepper.*/
-    enum class Status { BETWEEN, ENGAGED, RETRACTED, UNKNOWN };
+    enum class Status : uint8_t { BETWEEN, ENGAGED, RETRACTED, UNKNOWN };
 
     // 16MHz external oscillator
     static constexpr const double tmc_external_clock = 16000000;
@@ -149,7 +149,7 @@ class SealStepper {
      * @return uint32_t containing the number of \c clock ticks per each motor
      * step
      */
-    [[nodiscard]] constexpr static auto inline velocity_to_tstep(
+    [[nodiscard]] constexpr static auto velocity_to_tstep(
         double velocity, double clock = tmc_external_clock) -> uint32_t {
         return static_cast<uint32_t>(clock / velocity);
     }
@@ -163,26 +163,25 @@ class SealStepper {
      * tmc_external_clock
      * @return double containing the velocity in steps/second
      */
-    [[nodiscard]] constexpr static auto inline tstep_to_velocity(
+    [[nodiscard]] constexpr static auto tstep_to_velocity(
         uint32_t tstep, double clock = tmc_external_clock) -> double {
         // Avoid divide-by-zero issues, bound tstep to at least 1
         tstep = std::max(tstep, static_cast<uint32_t>(1));
         return clock / static_cast<double>(tstep);
     }
 
-    [[nodiscard]] constexpr static auto inline mm_to_steps(double mm)
-        -> signed long {
+    [[nodiscard]] constexpr static auto mm_to_steps(double mm) -> signed long {
         return static_cast<signed long>(microsteps_per_mm * mm);
     }
 
-    [[nodiscard]] constexpr static auto inline steps_to_mm(signed int steps)
+    [[nodiscard]] constexpr static auto steps_to_mm(signed int steps)
         -> double {
         return static_cast<double>(steps) * mm_per_microstep;
     }
 };
 
 /** The end condition for this movement.*/
-enum class MovementType {
+enum class MovementType : uint8_t {
     FixedDistance,  // This movement goes for a fixed number of steps.
     OpenLoop,       // This movement goes until a stop switch is hit
 };

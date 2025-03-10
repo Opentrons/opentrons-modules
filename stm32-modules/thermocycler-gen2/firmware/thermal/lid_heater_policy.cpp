@@ -18,5 +18,5 @@ auto LidHeaterPolicy::set_heater_power(double power) -> bool {
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto LidHeaterPolicy::set_lid_fans(bool enable) -> void {
-    return thermal_heater_set_lid_fans(enable);
+    thermal_heater_set_lid_fans(enable);
 }

@@ -2,7 +2,6 @@
 Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,misc-*,modernize-*,-modernize-avoid-c-arrays,readability-*,-readability-magic-numbers,performance-*'
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*/stm32-modules/.*hpp'
-AnalyzeTemporaryDtors: false
 FormatStyle:     none
 CheckOptions:
   - key:             bugprone-argument-comment.CommentBoolLiterals
@@ -31,6 +30,8 @@ CheckOptions:
     value:           'std::basic_string_view;std::experimental::basic_string_view'
   - key:             bugprone-dynamic-static-initializers.HeaderFileExtensions
     value:           ',h,hh,hpp,hxx'
+  - key:             bugprone-easily-swappable-parameters.IgnoredParameterTypeSuffixes
+    value:           ';double;uint32_t;uint16_t;uint8_t;bool;float;long'
   - key:             bugprone-exception-escape.FunctionsThatShouldNotThrow
     value:           ''
   - key:             bugprone-exception-escape.IgnoredExceptions
@@ -249,6 +250,10 @@ CheckOptions:
     value:           '800'
   - key:             readability-function-size.VariableThreshold
     value:           '4294967295'
+  - key:             readability-identifier-length.MinimumParameterNameLength
+    value:           '0'
+  - key:             readability-identifier-length.MinimumVariableNameLength
+    value:           '0'
   - key:             readability-identifier-naming.IgnoreFailedSplit
     value:           '0'
   - key:             readability-implicit-bool-conversion.AllowIntegerConditions

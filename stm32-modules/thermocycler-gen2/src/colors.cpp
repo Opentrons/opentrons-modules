@@ -5,6 +5,8 @@
 
 #include "thermocycler-gen2/colors.hpp"
 
+#include "core/xt1511.hpp"
+
 using namespace colors;
 
 namespace color_values {

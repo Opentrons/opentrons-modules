@@ -4,8 +4,8 @@
 
 #include "FreeRTOS.h"
 #include "firmware/hardware_iface.hpp"
-#include "firmware/tmf8820_image.h"
 #include "firmware/tof_sensor_hardware.h"
+#include "projdefs.h"
 #include "systemwide.h"
 #include "task.h"
 

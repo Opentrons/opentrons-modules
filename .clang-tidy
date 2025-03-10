@@ -1,8 +1,7 @@
 ---
-Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,misc-*,modernize-*,-modernize-avoid-c-arrays,readability-*,-readability-magic-numbers,performance-*'
+Checks:          '-*,clang-analyzer-*,bugprone-*,cppcoreguidelines-*,-cppcoreguidelines-pro-type-vararg,misc-*,-misc-use-anonymous-namespace,modernize-*,-modernize-avoid-c-arrays,readability-*,-readability-magic-numbers,performance-*,-cppcoreguidelines-avoid-const-or-ref-data-members,-bugprone-easily-swappable-parameters'
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*/stm32-modules/.*hpp'
-AnalyzeTemporaryDtors: false
 FormatStyle:     none
 CheckOptions:
   - key:             bugprone-argument-comment.CommentBoolLiterals
@@ -131,6 +130,8 @@ CheckOptions:
     value:           ',h,hh,hpp,hxx'
   - key:             misc-definitions-in-headers.UseHeaderFileExtension
     value:           '1'
+  - key:             misc-include-cleaner.IgnoreHeaders
+    value:           'task.h;FreeRTOS.h;systemwide.h;stm32g4xx_hal.h'
   - key:             misc-throw-by-value-catch-by-reference.CheckThrowTemporaries
     value:           '1'
   - key:             misc-unused-parameters.StrictMode
@@ -249,6 +250,12 @@ CheckOptions:
     value:           '800'
   - key:             readability-function-size.VariableThreshold
     value:           '4294967295'
+  - key:             readability-identifier-length.MinimumParameterNameLength
+    value:           '0'
+  - key:             readability-identifier-length.MinimumVariableNameLength
+    value:           '0'
+  - key:             readability-identifier-length.MinimumLoopCounterNameLength
+    value:           '0'
   - key:             readability-identifier-naming.IgnoreFailedSplit
     value:           '0'
   - key:             readability-implicit-bool-conversion.AllowIntegerConditions
