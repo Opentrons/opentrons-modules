@@ -774,7 +774,7 @@ struct ActuateSolenoid {
         if (!engage_parse.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        bool tempEngage = static_cast<bool>(engage_parse.first.value());
+        const bool tempEngage = static_cast<bool>(engage_parse.first.value());
         return std::make_pair(
             ParseResult(ActuateSolenoid{.engage = tempEngage}),
             engage_parse.second);
@@ -826,7 +826,7 @@ struct ActuateLidStepperDebug {
 
         working = prefix_matches(value_res.second, limit, overdrive_flag);
         // If the flag is present, working was incremented
-        bool overdrive_set = (working != value_res.second);
+        const bool overdrive_set = (working != value_res.second);
 
         return std::make_pair(
             ParseResult(ActuateLidStepperDebug{.angle = value_res.first.value(),
@@ -1003,7 +1003,7 @@ struct SetSealParameter {
     int32_t value;
 
     template <typename Input>
-    static auto inline is_legal_parameter(const Input parameter_char) -> bool {
+    static auto is_legal_parameter(const Input parameter_char) -> bool {
         return std::find(_parameters.begin(), _parameters.end(),
                          parameter_char) != _parameters.end();
     }
@@ -1389,7 +1389,7 @@ struct SetOffsetConstants {
         bool defined;
         double value;
     };
-    enum class Channel { ALL, LEFT, CENTER, RIGHT };
+    enum class Channel : uint8_t { ALL, LEFT, CENTER, RIGHT };
 
     OffsetConstant const_a = {.defined = false, .value = 0.0F};
     OffsetConstant const_b = {.defined = false, .value = 0.0F};

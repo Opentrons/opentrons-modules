@@ -46,13 +46,13 @@ defaults:
 jobs:
   cross-compile-check:
     name: 'Cross-Compile/Check'
-    runs-on: 'ubuntu-20.04'
+    runs-on: 'ubuntu-24.04'
     timeout-minutes: 10
     steps:
-      - uses: 'actions/checkout@v2'
+      - uses: 'actions/checkout@v4'
         with:
           fetch-depth: 0
-      - uses: 'actions/cache@v2'
+      - uses: 'actions/cache@v4'
         with:
           key: stm32-cross-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}
           restore-keys: stm32-cross-${{ secrets.MODULES_STM32_CACHE_VERSION }}-
@@ -73,19 +73,19 @@ jobs:
         run: cmake --build --preset cross --target heater-shaker-image-bin
   host-compile-test:
     name: 'Host-Compile/Test'
-    runs-on: 'ubuntu-20.04'
+    runs-on: 'ubuntu-24.04'
     timeout-minutes: 10
     env:
-      CC: gcc-10
-      CXX: g++-10
+      CC: gcc-13
+      CXX: g++-13
     steps:
       - run: |
           sudo apt update
-          sudo apt install gcc-10 g++-10
-      - uses: 'actions/checkout@v2'
+          sudo apt install gcc-13 g++-13
+      - uses: 'actions/checkout@v4'
         with:
           fetch-depth: 0
-      - uses: 'actions/cache@v2'
+      - uses: 'actions/cache@v4'
         with:
           path: './stm32-tools'
           key: stm32-host-${{ secrets.MODULES_STM32_CACHE_VERSION }}-${{ hashFiles('cmake/*') }}

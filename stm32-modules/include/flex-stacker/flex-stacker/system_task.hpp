@@ -46,8 +46,7 @@ class SystemTask {
         : _message_queue(q),
           _task_registry(aggregator),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          _prep_cache(),
-          _initialized(false) {}
+          _prep_cache() {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
     SystemTask(SystemTask&& other) noexcept = delete;
@@ -173,7 +172,7 @@ class SystemTask {
     Queue& _message_queue;
     Aggregator* _task_registry;
     BootloaderPrepCache _prep_cache;
-    bool _initialized;
+    bool _initialized{false};
 };
 
-};  // namespace system_task
+}  // namespace system_task

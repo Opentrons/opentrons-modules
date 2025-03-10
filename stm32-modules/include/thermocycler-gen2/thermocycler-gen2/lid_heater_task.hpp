@@ -15,7 +15,7 @@
 #include "thermistor_lookups.hpp"
 #include "thermocycler-gen2/errors.hpp"
 #include "thermocycler-gen2/messages.hpp"
-#include "thermocycler-gen2/tasks.hpp"
+#include "thermocycler-gen2/tasks.hpp"  //NOLINT(misc-header-include-cycle)
 #include "thermocycler-gen2/thermal_general.hpp"
 
 /* Need a forward declaration for this because of recursive includes */
@@ -43,7 +43,7 @@ concept LidHeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
 };
 
 struct State {
-    enum Status {
+    enum Status : uint8_t {
         IDLE,        /**< Not doing anything.*/
         ERROR,       /**< Experiencing an error.*/
         CONTROLLING, /**< Controlling temperature (PID).*/
@@ -99,7 +99,6 @@ class LidHeaterTask {
           _state{.system_status = State::IDLE, .error_bitmap = 0},
           _pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS, 1.0,
                -1.0),
-          _setpoint_c(0.0F),
           _last_update(0) {}
     LidHeaterTask(const LidHeaterTask& other) = delete;
     auto operator=(const LidHeaterTask& other) -> LidHeaterTask& = delete;
@@ -481,7 +480,7 @@ class LidHeaterTask {
     thermistor_conversion::Conversion<lookups::KS103J2G> _converter;
     State _state;
     PID _pid;
-    double _setpoint_c;
+    double _setpoint_c{0.0F};
     Milliseconds _last_update;
 };
 

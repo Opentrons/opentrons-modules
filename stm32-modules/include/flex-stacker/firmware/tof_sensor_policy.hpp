@@ -7,8 +7,7 @@
 #include "firmware/hardware_iface.hpp"
 #include "systemwide.h"
 
-namespace tof {
-namespace hardware {
+namespace tof::hardware {
 using namespace i2c::hardware;
 class TOFSensorPolicy {
   public:
@@ -19,7 +18,8 @@ class TOFSensorPolicy {
     auto operator=(const TOFSensorPolicy &&) = delete;
     ~TOFSensorPolicy() = default;
 
-    auto i2c_read(uint16_t dev_addr, uint16_t reg, uint16_t size) -> RxTxReturn;
+    auto i2c_read(uint16_t dev_addr, uint16_t reg, uint8_t *data, uint16_t size)
+        -> RxTxReturn;
     auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t *data,
                    uint16_t size) -> RxTxReturn;
     auto static enable_tof_sensor(TOFSensorID sensor_id, bool enable) -> void;
@@ -28,5 +28,4 @@ class TOFSensorPolicy {
   private:
     I2CBase *i2c_comms{nullptr};
 };
-};  // namespace hardware
-};  // namespace tof
+}  // namespace tof::hardware

@@ -5,7 +5,6 @@
 #include "thermocycler-gen2/board_revision_hardware.h"
 // Library headers
 #include <array>
-#include <optional>
 
 namespace board_revision {
 

@@ -3,8 +3,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-namespace ot_utils {
-namespace freertos_synchronization {
+namespace ot_utils::freertos_synchronization {
 
 class FreeRTOSMutex {
   public:
@@ -84,5 +83,4 @@ class FreeRTOSCriticalSection {
     void release() { taskEXIT_CRITICAL(); }
 };
 
-}  // namespace freertos_synchronization
-}  // namespace ot_utils
+}  // namespace ot_utils::freertos_synchronization 

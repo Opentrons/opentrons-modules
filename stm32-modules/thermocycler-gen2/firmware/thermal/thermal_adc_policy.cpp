@@ -1,5 +1,12 @@
-
 #include "firmware/thermal_adc_policy.hpp"
+
+#include <cstdint>
+#include <optional>
+
+#include "FreeRTOS.h"
+#include "firmware/thermal_hardware.h"
+#include "projdefs.h"
+#include "task.h"
 
 using namespace thermal_adc_policy;
 
@@ -23,9 +30,9 @@ auto AdcPolicy::ads1115_mark_initialized() -> void { _initialized = true; }
 
 auto AdcPolicy::ads1115_check_initialized() -> bool { return _initialized; }
 
-auto AdcPolicy::ads1115_get_lock() -> void { return _mutex.acquire(); }
+auto AdcPolicy::ads1115_get_lock() -> void { _mutex.acquire(); }
 
-auto AdcPolicy::ads1115_release_lock() -> void { return _mutex.release(); }
+auto AdcPolicy::ads1115_release_lock() -> void { _mutex.release(); }
 
 auto AdcPolicy::ads1115_arm_for_read() -> bool {
     return thermal_arm_adc_for_read(_id);
@@ -46,7 +53,7 @@ auto AdcPolicy::ads1115_i2c_write_16(uint8_t reg, uint16_t value) -> bool {
 auto AdcPolicy::ads1115_i2c_read_16(uint8_t reg) -> std::optional<uint16_t> {
     uint16_t ret = 0;
     if (thermal_i2c_read_16(_i2c_address, reg, &ret)) {
-        return std::optional<uint16_t>(ret);
+        return {ret};
     }
     return std::nullopt;
 }

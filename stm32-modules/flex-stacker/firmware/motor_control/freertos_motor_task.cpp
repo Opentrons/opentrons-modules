@@ -1,12 +1,16 @@
+#include <cstdint>
+
 #include "FreeRTOS.h"
+#include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/motor_hardware.h"
 #include "firmware/motor_policy.hpp"
+#include "flex-stacker/messages.hpp"
 #include "flex-stacker/motor_task.hpp"
 #include "motor_interrupt.hpp"
-#include "ot_utils/freertos/freertos_timer.hpp"
 #include "stm32g4xx_it.h"
 #include "systemwide.h"
+#include "task.h"
 
 namespace motor_control_task {
 
@@ -72,4 +76,4 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     }
 }
 
-};  // namespace motor_control_task
+}  // namespace motor_control_task

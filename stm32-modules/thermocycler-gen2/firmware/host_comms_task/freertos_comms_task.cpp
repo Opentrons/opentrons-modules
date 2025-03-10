@@ -1,21 +1,24 @@
 /*
  * firmware-specific functions, data, and hooks for host comms control
  */
+
 #include "firmware/freertos_comms_task.hpp"
 
+#include <algorithm>
 #include <array>
-#include <functional>
+#include <cstddef>
+#include <cstdint>
 #include <utility>
 
 #include "FreeRTOS.h"
 #include "firmware/freertos_message_queue.hpp"
 #include "firmware/usb_hardware.h"
 #include "hal/double_buffer.hpp"
+#include "portmacro.h"
 #include "task.h"
 #include "thermocycler-gen2/host_comms_task.hpp"
 #include "thermocycler-gen2/messages.hpp"
 #include "thermocycler-gen2/tasks.hpp"
-
 /** Sadly this must be manually duplicated from usbd_cdc.h */
 constexpr size_t CDC_BUFFER_SIZE = 512U;
 
@@ -145,7 +148,7 @@ static auto cdc_deinit_handler() -> void {
 // NOLINTNEXTLINE(readability-non-const-parameter)
 static auto cdc_rx_handler(uint8_t *Buf, uint32_t *Len) -> uint8_t * {
     using namespace host_comms_control_task;
-    ssize_t remaining_buffer_count =
+    const size_t remaining_buffer_count =
         (_local_task.rx_buf.committed()->data()
          // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
          + _local_task.rx_buf.committed()->size()) -
@@ -157,7 +160,7 @@ static auto cdc_rx_handler(uint8_t *Buf, uint32_t *Len) -> uint8_t * {
                       [](auto ch) { return ch == '\n' || ch == '\r'; }) !=
          (Buf +  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
           *Len)) ||
-        remaining_buffer_count < static_cast<ssize_t>(CDC_BUFFER_SIZE)) {
+        remaining_buffer_count < CDC_BUFFER_SIZE) {
         // there was a newline in this message, can pass on
         auto message =
             messages::HostCommsMessage(messages::IncomingMessageFromHost{

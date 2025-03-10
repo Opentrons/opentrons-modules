@@ -49,6 +49,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${MOTOR_CONTROL_DIR}/motor_hardware.c
     ${MOTOR_CONTROL_DIR}/motor_spi_hardware.c
     ${TOF_SENSOR_DIR}/tof_sensor_hardware.c
+    ${TOF_SENSOR_DIR}/tmf8820_spadmap.c
     )
 
 # Generate the TOF sensor tmf8820_image.c file from hex image.
@@ -98,7 +99,6 @@ target_compile_options(${TARGET_MODULE_NAME}
         -Wall
         -Werror
         -Wimplicit-fallthrough
-        $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
         $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
         $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
         $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>
@@ -212,6 +212,7 @@ list(TRANSFORM CLANG_EXTRA_ARGS PREPEND --extra-arg=-I)
 # This helps with clang accepting what GCC accepts around the implementations of the message queue
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-frelaxed-template-template-args")
 list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Werror=implicit-fallthrough")
+list(APPEND CLANG_EXTRA_ARGS "--extra-arg=-Wno-error=unused-command-line-argument")
 add_custom_target(${TARGET_MODULE_NAME}-lint
         ALL
         COMMENT "Linting"

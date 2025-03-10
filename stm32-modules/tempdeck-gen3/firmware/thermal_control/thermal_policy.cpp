@@ -1,5 +1,7 @@
 #include "firmware/thermal_policy.hpp"
 
+#include <cstdint>
+
 #include "firmware/i2c_hardware.h"
 #include "firmware/tachometer_hardware.h"
 #include "firmware/thermal_hardware.h"

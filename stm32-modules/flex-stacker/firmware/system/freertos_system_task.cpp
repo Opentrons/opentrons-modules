@@ -1,6 +1,11 @@
+#include <cstdint>
+
+#include "FreeRTOS.h"
+#include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/system_policy.hpp"
 #include "flex-stacker/system_task.hpp"
+#include "task.h"
 
 namespace system_control_task {
 
@@ -29,4 +34,4 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     }
 }
 
-};  // namespace system_control_task
+}  // namespace system_control_task

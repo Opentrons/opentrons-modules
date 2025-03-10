@@ -1,9 +1,12 @@
+#include <cstdint>
+
 #include "FreeRTOS.h"
+#include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
-#include "firmware/ui_hardware.h"
 #include "firmware/ui_policy.hpp"
 #include "flex-stacker/ui_task.hpp"
+#include "task.h"
 
 namespace ui_control_task {
 using namespace ui_policy;
@@ -33,4 +36,4 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
     }
 }
 
-};  // namespace ui_control_task
+}  // namespace ui_control_task

@@ -1,8 +1,9 @@
 #include "firmware/system_policy.hpp"
 
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <iterator>
-#include <ranges>
 
 #include "firmware/system_hardware.h"
 #include "firmware/system_led_hardware.h"
@@ -26,7 +27,7 @@ auto SystemPolicy::set_serial_number(
             std::next(system_serial_number.begin(), address * ADDRESS_LENGTH);
         auto *limit = std::next(input, ADDRESS_LENGTH);
         uint64_t to_write = 0;
-        for (ssize_t byte_index = sizeof(to_write) - 1;
+        for (size_t byte_index = sizeof(to_write) - 1;
              input != limit && byte_index >= 0;
              std::advance(input, 1), byte_index--) {
             to_write |= (static_cast<uint64_t>(*input) << (byte_index * 8));
@@ -46,12 +47,13 @@ auto SystemPolicy::get_serial_number()
     std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> serial_number_array = {
         "EMPTYSN"};
     for (uint8_t address = 0; address < ADDRESSES; address++) {
-        uint64_t written_serial_number = system_get_serial_number(address);
+        const uint64_t written_serial_number =
+            system_get_serial_number(address);
         // int to bytes
         auto *output =
             std::next(serial_number_array.begin(), address * ADDRESS_LENGTH);
         auto *limit = std::next(output, ADDRESS_LENGTH);
-        for (ssize_t iter = sizeof(written_serial_number) - 1;
+        for (size_t iter = sizeof(written_serial_number) - 1;
              iter >= 0 && output != limit; iter--, std::advance(output, 1)) {
             *output = (written_serial_number >> (iter * 8));
         }
@@ -66,7 +68,7 @@ auto SystemPolicy::get_serial_number()
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto SystemPolicy::set_front_button_led(bool set) -> void {
-    return system_front_button_led_set(set);
+    system_front_button_led_set(set);
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

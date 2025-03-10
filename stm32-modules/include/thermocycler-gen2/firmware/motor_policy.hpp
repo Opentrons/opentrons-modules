@@ -110,7 +110,7 @@ class MotorPolicy {
      * @param callback Function to call on every tick
      * @return True if seal stepper could be started, false otherwise
      */
-    auto seal_stepper_start(std::function<void()> callback) -> bool;
+    auto seal_stepper_start(const std::function<void()>& callback) -> bool;
     /**
      * @brief Stop any active seal stepper movement
      */

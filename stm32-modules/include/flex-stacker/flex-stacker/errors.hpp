@@ -6,7 +6,7 @@
 
 namespace errors {
 
-enum class ErrorCode {
+enum class ErrorCode : uint16_t {
     // 0xx - General && comms
     NO_ERROR = 0,
     USB_TX_OVERRUN = 1,
@@ -20,6 +20,9 @@ enum class ErrorCode {
     SYSTEM_SERIAL_NUMBER_HAL_ERROR = 302,
     SYSTEM_EEPROM_ERROR = 303,
     SYSTEM_SET_STATUSBAR_COLOR_ERROR = 304,
+    // 8xx - TMF8820
+    TMF8820_COMM_ERROR = 801,
+    TMF8820_MEASURE_ERROR = 802,
     // 9xx - TMC2160
     TMC2160_READ_ERROR = 901,
     TMC2160_WRITE_ERROR = 902,
@@ -30,9 +33,11 @@ enum class ErrorCode {
     MOTOR_DISABLE_FAILED = 402,
     MOTOR_STALL_DETECTED = 403,
     MOTOR_QUEUE_FULL = 404,
+    UNEXPECTED_LIMIT_SWITCH = 405,
     X_MOTOR_BUSY = 501,
     Z_MOTOR_BUSY = 502,
     L_MOTOR_BUSY = 503,
+    STOP_REQUESTED = 504
 };
 
 auto errorstring(ErrorCode code) -> const char*;
@@ -41,7 +46,10 @@ template <typename Input, typename Limit>
 requires std::forward_iterator<Input> && std::sized_sentinel_for<Limit, Input>
 constexpr auto write_into(Input start, Limit end, ErrorCode code) -> Input {
     const char* str = errorstring(code);
-    return write_string_to_iterpair(start, end, str);
+    auto next = write_string_to_iterpair(start, end, str);
+
+    constexpr const char* suffix = " OK\n";
+    return write_string_to_iterpair(next, end, suffix);
 }
 
 template <typename Input, typename Limit>
@@ -52,6 +60,9 @@ constexpr auto write_into_async(Input start, Limit end, ErrorCode code)
     auto next = write_string_to_iterpair(start, end, prefix);
 
     const char* error_str = errorstring(code);
-    return write_string_to_iterpair(next, end, error_str);
+    next = write_string_to_iterpair(next, end, error_str);
+
+    constexpr const char* suffix = "\n";
+    return write_string_to_iterpair(next, end, suffix);
 }
 };  // namespace errors

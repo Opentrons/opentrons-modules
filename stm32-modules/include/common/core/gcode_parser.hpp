@@ -111,7 +111,7 @@ auto parse_value(const Input& start_from, Limit stop_at)
                     static_cast<size_t>(stop_at - start_from))) = 0;
     int distance = 0;
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-    int worked = sscanf(&(*start_from), "%f%n", &value, &distance);
+    const int worked = sscanf(&(*start_from), "%f%n", &value, &distance);
     if (worked != 1) {
         return std::make_pair(std::optional<ValueType>(), start_from);
     }

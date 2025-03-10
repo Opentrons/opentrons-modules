@@ -1,5 +1,10 @@
 #include "flex-stacker/motor_utils.hpp"
 
+#include <algorithm>
+#include <cstdint>
+
+#include "core/fixed_point.hpp"
+
 using namespace motor_util;
 
 MovementProfile::MovementProfile(uint32_t ticks_per_second,

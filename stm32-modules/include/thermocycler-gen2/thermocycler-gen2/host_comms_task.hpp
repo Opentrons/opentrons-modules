@@ -17,7 +17,6 @@
 #include "thermocycler-gen2/errors.hpp"
 #include "thermocycler-gen2/gcodes.hpp"
 #include "thermocycler-gen2/messages.hpp"
-#include "thermocycler-gen2/tasks.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>

@@ -13,7 +13,7 @@
 #include "systemwide.h"
 #include "thermocycler-gen2/colors.hpp"
 #include "thermocycler-gen2/messages.hpp"
-#include "thermocycler-gen2/tasks.hpp"
+#include "thermocycler-gen2/tasks.hpp"  //NOLINT(misc-header-include-cycle)
 
 namespace tasks {
 template <template <class> class QueueImpl>
@@ -219,28 +219,7 @@ class SystemTask {
     // Number of milliseconds to consider a button press "long" is 3 seconds
     static constexpr uint32_t LONG_PRESS_TIME_MS = 3000;
 
-    explicit SystemTask(Queue& q)
-        : _message_queue(q),
-          _task_registry(nullptr),
-          // NOLINTNEXTLINE(readability-redundant-member-init)
-          _prep_cache(),
-          // NOLINTNEXTLINE(readability-redundant-member-init)
-          _leds(xt1511::Speed::HALF),
-          _led_state{.color = colors::get_color(colors::Colors::WHITE),
-                     .mode = colors::Mode::SOLID,
-                     .counter = 0,
-                     .period = LED_PULSE_PERIOD_MS},
-          _led_update_pending(false),
-          _plate_error(errors::ErrorCode::NO_ERROR),
-          _lid_error(errors::ErrorCode::NO_ERROR),
-          _motor_error(errors::ErrorCode::NO_ERROR),
-          _plate_state(PlateState::IDLE),
-          _motor_state(MotorState::IDLE),
-          _front_button_pulse(FRONT_BUTTON_MAX_PULSE),
-          // NOLINTNEXTLINE(readability-redundant-member-init)
-          _front_button_blink(),
-          _front_button_last_state(false),
-          _light_debug_mode(false) {}
+    explicit SystemTask(Queue& q) : _message_queue(q) {}
     SystemTask(const SystemTask& other) = delete;
     auto operator=(const SystemTask& other) -> SystemTask& = delete;
     SystemTask(SystemTask&& other) noexcept = delete;
@@ -599,24 +578,27 @@ class SystemTask {
     }
 
     Queue& _message_queue;
-    tasks::Tasks<QueueImpl>* _task_registry;
+    tasks::Tasks<QueueImpl>* _task_registry{nullptr};
     BootloaderPrepAckCache _prep_cache;
-    xt1511::XT1511String<PWM_T, SYSTEM_LED_COUNT> _leds;
-    LedState _led_state;
-    std::atomic<bool> _led_update_pending;
+    xt1511::XT1511String<PWM_T, SYSTEM_LED_COUNT> _leds{xt1511::Speed::HALF};
+    LedState _led_state{.color = colors::get_color(colors::Colors::WHITE),
+                        .mode = colors::Mode::SOLID,
+                        .counter = 0,
+                        .period = LED_PULSE_PERIOD_MS};
+    std::atomic<bool> _led_update_pending{false};
     // Tracks error state of different tasks
-    errors::ErrorCode _plate_error;
-    errors::ErrorCode _lid_error;
-    errors::ErrorCode _motor_error;
-    PlateState _plate_state;
+    errors::ErrorCode _plate_error{errors::ErrorCode::NO_ERROR};
+    errors::ErrorCode _lid_error{errors::ErrorCode::NO_ERROR};
+    errors::ErrorCode _motor_error{errors::ErrorCode::NO_ERROR};
+    PlateState _plate_state{PlateState::IDLE};
     // Must be atomic because it is used directly in a callback
     // that executes in a different task context
-    std::atomic<MotorState> _motor_state;
-    Pulse _front_button_pulse;
-    FrontButtonBlink _front_button_blink;
-    std::atomic<bool> _front_button_last_state;
+    std::atomic<MotorState> _motor_state{MotorState::IDLE};
+    Pulse _front_button_pulse{FRONT_BUTTON_MAX_PULSE};
+    FrontButtonBlink _front_button_blink{};
+    std::atomic<bool> _front_button_last_state{false};
     // If this is true, set the LED's to all-white no matter what.
-    bool _light_debug_mode;
+    bool _light_debug_mode{false};
 };
 
 };  // namespace system_task

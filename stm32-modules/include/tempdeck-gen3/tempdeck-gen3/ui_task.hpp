@@ -60,7 +60,7 @@ class Heartbeat {
     [[nodiscard]] auto pwm() const -> uint8_t { return _pwm; }
 };
 
-enum Color { W, R, G, B };
+enum Color : uint8_t { W, R, G, B };
 
 // There are 3 channels per color
 using ChannelMapping = std::array<size_t, 3>;

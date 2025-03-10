@@ -1,9 +1,9 @@
 /*
  * firmware-specific functions, data, and hooks for host comms control
  */
-#include <array>
-#include <functional>
-#include <utility>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
 
 #include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"
@@ -128,7 +128,7 @@ static auto cdc_deinit_handler() -> void {
 // NOLINTNEXTLINE(readability-non-const-parameter)
 static auto cdc_rx_handler(uint8_t *Buf, uint32_t *Len) -> uint8_t * {
     using namespace host_comms_control_task;
-    ssize_t remaining_buffer_count =
+    const size_t remaining_buffer_count =
         (_local_task.rx_buf.committed()->data()
          // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
          + _local_task.rx_buf.committed()->size()) -
@@ -140,7 +140,7 @@ static auto cdc_rx_handler(uint8_t *Buf, uint32_t *Len) -> uint8_t * {
                       [](auto ch) { return ch == '\n' || ch == '\r'; }) !=
          (Buf +  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
           *Len)) ||
-        remaining_buffer_count < static_cast<ssize_t>(CDC_BUFFER_SIZE)) {
+        remaining_buffer_count < CDC_BUFFER_SIZE) {
         // there was a newline in this message, can pass on
         auto message =
             messages::HostCommsMessage(messages::IncomingMessageFromHost{

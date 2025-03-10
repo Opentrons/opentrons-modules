@@ -1,6 +1,7 @@
 #include "core/pid.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <limits>
 
 PID::PID(double kp, double ki, double kd, double sampletime)

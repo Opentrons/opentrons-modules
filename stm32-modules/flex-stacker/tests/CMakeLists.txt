@@ -6,6 +6,8 @@ include(AddBuildAndTestTarget)
 
 add_executable(${TARGET_MODULE_NAME}
         test_main.cpp
+        test_tof_utils.cpp
+        test_errors.cpp
     )
 
 target_include_directories(${TARGET_MODULE_NAME}
@@ -20,7 +22,6 @@ target_compile_options(${TARGET_MODULE_NAME}
         PUBLIC
         -Wall
         -Werror
-        $<$<COMPILE_LANGUAGE:CXX>:-Weffc++>
         $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
         $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
         $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>

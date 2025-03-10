@@ -11,10 +11,8 @@ requires std::forward_iterator<Input> && std::forward_iterator<Output> &&
 constexpr auto copy_min_range(Input dest_start, InLimit dest_limit,
                               Output source_start, OutLimit source_end)
     -> Input {
-    return std::copy(
-        source_start,
-        std::min(source_end, source_start + (dest_limit - dest_start)),
-        dest_start);
+    auto limit = std::min(source_end - source_start, dest_limit - dest_start);
+    return std::copy_n(source_start, limit, dest_start);
 }
 
 template <typename Input, typename InLimit>

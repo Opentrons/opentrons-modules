@@ -10,10 +10,18 @@
 namespace colors {
 
 // Enumerated colors to simplify controlling the system UI
-enum class Colors { SOFT_WHITE, WHITE, RED, GREEN, BLUE, ORANGE, NONE };
+enum class Colors : uint8_t {
+    SOFT_WHITE,
+    WHITE,
+    RED,
+    GREEN,
+    BLUE,
+    ORANGE,
+    NONE
+};
 
 // Enumerated actions for the system UI
-enum class Mode {
+enum class Mode : uint8_t {
     SOLID,    /**< Standard mode - just hold color steady.*/
     PULSING,  /**< Pulse the selected color from 0 to 100% brightness.*/
     BLINKING, /**< Blink the light on and off.*/

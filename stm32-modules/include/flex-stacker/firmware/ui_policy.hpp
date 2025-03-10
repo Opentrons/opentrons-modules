@@ -15,12 +15,12 @@ class UIPolicy {
     template <size_t Len>
     auto i2c_write(uint8_t device_address, uint8_t register_address,
                    std::array<uint8_t, Len> &data) -> bool {
-        auto [ret, _] = i2c_comms->i2c_write(device_address, register_address,
-                                             data.data(), Len);
+        auto ret = i2c_comms->i2c_write(device_address, register_address,
+                                        data.data(), Len);
         return ret == 0;
     }
 
   private:
     I2C *i2c_comms;
 };
-};  // namespace ui_policy
+}  // namespace ui_policy

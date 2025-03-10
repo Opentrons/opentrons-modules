@@ -103,7 +103,6 @@ class MotorTask {
           _x_controller(x_ctrl),
           _z_controller(z_ctrl),
           _l_controller(l_ctrl),
-          _initialized(false),
           _debounce_timer(
               "DB Timer", [ThisPtr = this] { ThisPtr->reset_debounce(); },
               DEBOUNCE_MS) {}
@@ -179,10 +178,10 @@ class MotorTask {
         return Error::NO_ERROR;
     }
 
-    auto stop_motors(uint32_t id = 0) -> void {
-        _z_controller.stop_movement(id, true);
-        _x_controller.stop_movement(id, false);
-        _l_controller.stop_movement(id, false);
+    auto stop_motors(Error error) -> void {
+        _z_controller.stop_movement(error, true);
+        _x_controller.stop_movement(error, false);
+        _l_controller.stop_movement(error, false);
         _move_queue.reset();
     }
 
@@ -332,7 +331,7 @@ class MotorTask {
     auto visit_message(const messages::StopMotorMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        stop_motors(m.id);
+        stop_motors(Error::STOP_REQUESTED);
         send_ack_message(m.id);
     }
 
@@ -387,7 +386,8 @@ class MotorTask {
             if (m.motor_id == MotorID::MOTOR_Z) {
                 policy.disable_motor(m.motor_id);
             }
-            send_ack_message(controller_from_id(m.motor_id).get_response_id());
+            send_ack_message(controller_from_id(m.motor_id).get_response_id(),
+                             controller_from_id(m.motor_id).get_error_code());
         }
     }
 
@@ -406,7 +406,7 @@ class MotorTask {
     auto visit_message(const messages::GetMoveParamsMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        MotorState& state = motor_state(m.motor_id);
+        const MotorState& state = motor_state(m.motor_id);
         auto response = messages::GetMoveParamsResponse{
             .responding_to_id = m.id,
             .motor_id = m.motor_id,
@@ -453,8 +453,7 @@ class MotorTask {
         }
 
         if (triggered) {
-            stop_motors();
-            send_error_message(error);
+            stop_motors(error);
         }
 
         // Set status bars
@@ -518,7 +517,7 @@ class MotorTask {
     Controller& _x_controller;
     Controller& _z_controller;
     Controller& _l_controller;
-    bool _initialized;
+    bool _initialized{false};
     FreeRTOSTimer _debounce_timer;
 
     MotorState _x_state{
@@ -545,7 +544,7 @@ class MotorTask {
         .accel_mm_per_sec_sq = Defaults::L::ACCELERATION,
         .speed_mm_per_sec_discont = Defaults::L::SPEED_DISCONT,
     };
-    MoveBuffer _move_queue{};
+    MoveBuffer _move_queue;
 };
 
-};  // namespace motor_task
+}  // namespace motor_task

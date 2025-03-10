@@ -161,7 +161,7 @@ class Eeprom {
     };
 
     // Enumeration of the EEPROM_CONST_FLAG values
-    enum class EEPROMFlag {
+    enum class EEPROMFlag : uint8_t {
         CONSTANTS_WRITTEN = 3,  // Values of all constants are written (7 total)
         INVALID = 0xFF          // No values are written
     };

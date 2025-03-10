@@ -122,7 +122,7 @@ class MotorDriverTask {
 
   public:
     explicit MotorDriverTask(Queue& q, Aggregator* aggregator)
-        : _message_queue(q), _task_registry(aggregator), _initialized(false) {}
+        : _message_queue(q), _task_registry(aggregator) {}
     MotorDriverTask(const MotorDriverTask& other) = delete;
     auto operator=(const MotorDriverTask& other) -> MotorDriverTask& = delete;
     MotorDriverTask(MotorDriverTask&& other) noexcept = delete;
@@ -293,7 +293,7 @@ class MotorDriverTask {
             .responding_to_id = m.id,
             .with_error = errors::ErrorCode::NO_ERROR};
 
-        if (tmc2160::TMC2160::verify_sgt_value(m.sgt)) {
+        if (m.sgt.has_value() && tmc2160::TMC2160::verify_sgt_value(m.sgt)) {
             driver_conf_from_id(m.motor_id).coolconf.sgt = m.sgt.value();
             driver_conf_from_id(m.motor_id).gconfig.diag0_stall =
                 static_cast<int>(m.enable);
@@ -323,9 +323,9 @@ class MotorDriverTask {
                        tmc2160::TMC2160Interface<Policy>& tmc2160_interface)
         -> void {
         static_cast<void>(tmc2160_interface);
-        bool enabled = static_cast<bool>(
+        const bool enabled = static_cast<bool>(
             driver_conf_from_id(m.motor_id).gconfig.diag0_stall);
-        int sgt = driver_conf_from_id(m.motor_id).coolconf.sgt;
+        const int sgt = driver_conf_from_id(m.motor_id).coolconf.sgt;
         auto response = messages::GetMotorStallGuardResponse{
             .responding_to_id = m.id,
             .motor_id = m.motor_id,
@@ -344,7 +344,7 @@ class MotorDriverTask {
 
     Queue& _message_queue;
     Aggregator* _task_registry;
-    bool _initialized;
+    bool _initialized{false};
 
     tmc2160::TMC2160 _tmc2160{};
     // same motor current config for all three motors
@@ -356,4 +356,4 @@ class MotorDriverTask {
     tmc2160::TMC2160RegisterMap _z_config = motor_z_config;
     tmc2160::TMC2160RegisterMap _l_config = motor_l_config;
 };
-};  // namespace motor_driver_task
+}  // namespace motor_driver_task

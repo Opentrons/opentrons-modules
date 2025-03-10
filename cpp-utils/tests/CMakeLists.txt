@@ -25,7 +25,6 @@ target_compile_options(tests
     PUBLIC
     -Wall
     -Werror
-    -Weffc++
     -Wreorder
     -Wsign-promo
     -Wextra-semi

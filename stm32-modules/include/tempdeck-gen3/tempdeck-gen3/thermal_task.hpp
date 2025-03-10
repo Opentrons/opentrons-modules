@@ -281,23 +281,25 @@ class ThermalTask {
         _peltier.manual = false;
         _peltier.target_set = true;
         _peltier.target = message.target;
-        if (_readings.plate_temp_1.value() < _peltier.target) {
-            _pid = ot_utils::pid::PID(
-                PELTIER_KP_HEATING_DEFAULT, PELTIER_KI_HEATING_DEFAULT,
-                PELTIER_KD_DEFAULT, 1.0, PELTIER_WINDUP_LIMIT,
-                -PELTIER_WINDUP_LIMIT);
-        } else {
-            _pid = ot_utils::pid::PID(
-                PELTIER_KP_COOLING_DEFAULT, PELTIER_KI_COOLING_DEFAULT,
-                PELTIER_KD_DEFAULT, 1.0, PELTIER_WINDUP_LIMIT,
-                -PELTIER_WINDUP_LIMIT);
-        }
-        _pid.reset();
+        if (_readings.plate_temp_1.has_value()) {
+            if (_readings.plate_temp_1.value() < _peltier.target) {
+                _pid = ot_utils::pid::PID(
+                    PELTIER_KP_HEATING_DEFAULT, PELTIER_KI_HEATING_DEFAULT,
+                    PELTIER_KD_DEFAULT, 1.0, PELTIER_WINDUP_LIMIT,
+                    -PELTIER_WINDUP_LIMIT);
+            } else {
+                _pid = ot_utils::pid::PID(
+                    PELTIER_KP_COOLING_DEFAULT, PELTIER_KI_COOLING_DEFAULT,
+                    PELTIER_KD_DEFAULT, 1.0, PELTIER_WINDUP_LIMIT,
+                    -PELTIER_WINDUP_LIMIT);
+            }
+            _pid.reset();
 
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = message.id};
-        static_cast<void>(
-            _task_registry->send_to_address(response, Queues::HostAddress));
+            auto response =
+                messages::AcknowledgePrevious{.responding_to_id = message.id};
+            static_cast<void>(
+                _task_registry->send_to_address(response, Queues::HostAddress));
+        }
     }
 
     template <ThermalPolicy Policy>
@@ -529,9 +531,9 @@ class ThermalTask {
         }
         double reading = std::get<double>(res);
         if (add_offsets) {
-            double offset = (_offset_constants.a * heatsink_temp) +
-                            (_offset_constants.b * reading) +
-                            (_offset_constants.c);
+            const double offset = (_offset_constants.a * heatsink_temp) +
+                                  (_offset_constants.b * reading) +
+                                  (_offset_constants.c);
             reading += offset;
         }
         return reading;

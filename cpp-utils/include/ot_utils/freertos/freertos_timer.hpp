@@ -6,8 +6,7 @@
 #include "task.h"
 #include "timers.h"
 
-namespace ot_utils {
-namespace freertos_timer {
+namespace ot_utils::freertos_timer {
 
 class FreeRTOSTimer {
   public:
@@ -17,7 +16,9 @@ class FreeRTOSTimer {
      * same priority or higher priority than 6 for execution.
      */
     using Callback = std::function<void()>;
+	//NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
     FreeRTOSTimer(const char* name, Callback&& callback, uint32_t period_ms)
+		//NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
         : FreeRTOSTimer(name, std::forward<Callback>(callback), true,
                         period_ms) {}
 
@@ -46,7 +47,7 @@ class FreeRTOSTimer {
         // that if the timer is currently stopped, changing its period activates
         // it.
         auto is_active = is_running();
-        TickType_t blocking_ticks = is_active ? 1 : 0;
+        const TickType_t blocking_ticks = is_active ? 1 : 0;
         xTimerChangePeriod(timer, pdMS_TO_TICKS(period_ms), blocking_ticks);
         if (!is_active) {
             stop();
@@ -86,5 +87,4 @@ class FreeRTOSTimer {
     }
 };
 
-}  // namespace freertos_timer
-}  // namespace ot_utils
+}  // namespace ot_utils::freertos_timer
