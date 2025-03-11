@@ -47,7 +47,7 @@ struct Defaults {
     struct X {
         static constexpr float SPEED = 200.0;
         static constexpr float ACCELERATION = 1500.0;
-        static constexpr float SPEED_DISCONT = 5.0;
+        static constexpr float SPEED_DISCONT = 40.0;
 
         static constexpr float MM_PER_REV =
             lms::LeadScrewConfig::mm_per_rev(9.7536, 1.0);
@@ -59,9 +59,9 @@ struct Defaults {
     };
 
     struct Z {
-        static constexpr float SPEED = 200.0;
-        static constexpr float ACCELERATION = 80.0;
-        static constexpr float SPEED_DISCONT = 5.0;
+        static constexpr float SPEED = 150.0;
+        static constexpr float ACCELERATION = 500.0;
+        static constexpr float SPEED_DISCONT = 25.0;
 
         static constexpr float MM_PER_REV =
             lms::LeadScrewConfig::mm_per_rev(9.7536, 1.0);
@@ -74,8 +74,8 @@ struct Defaults {
 
     struct L {
         static constexpr float SPEED = 100.0;
-        static constexpr float ACCELERATION = 100.0;
-        static constexpr float SPEED_DISCONT = 5.0;
+        static constexpr float ACCELERATION = 500.0;
+        static constexpr float SPEED_DISCONT = 100.0;
 
         static constexpr float MM_PER_REV =
             lms::GearBoxConfig::mm_per_rev(30, 30.0 / 16.0);
