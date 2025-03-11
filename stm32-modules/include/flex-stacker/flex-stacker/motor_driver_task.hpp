@@ -84,7 +84,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
 };
 
 static constexpr tmc2160::TMC2160RegisterMap motor_l_config{
-    .gconfig = {.diag0_error = 0, .diag0_stall = 1},
+    .gconfig = {.diag0_error = 0, .diag0_stall = 0},
     .short_conf = {.s2vs_level = 0x6,
                    .s2g_level = 0x6,
                    .shortfilter = 1,
@@ -103,7 +103,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_l_config{
                  .hend = 0b1001,
                  .tbl = 0b1,
                  .mres = 0b100},
-    .coolconf = {.semin = 0b11, .semax = 0b100, .sgt = 2},
+    .coolconf = {.semin = 0b11, .semax = 0b100, .sgt = 0},
     .pwmconf = {.pwm_ofs = 0x1F,
                 .pwm_grad = 0x18,
                 .pwm_autoscale = 1,
