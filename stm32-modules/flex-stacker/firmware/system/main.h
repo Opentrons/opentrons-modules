@@ -66,8 +66,6 @@ void Error_Handler(void);
 
 #define n48V_FAULT_Pin GPIO_PIN_6
 #define n48V_FAULT_GPIO_Port GPIOC
-#define nGP_INT_Pin GPIO_PIN_7
-#define nGP_INT_GPIO_Port GPIOC
 #define TOF_I2C3_SCL_Pin GPIO_PIN_8
 #define TOF_I2C3_SCL_GPIO_Port GPIOC
 #define TOF_I2C3_SDA_Pin GPIO_PIN_9
@@ -101,6 +99,9 @@ void Error_Handler(void);
 #define nBRAKE_Z_GPIO_Port GPIOB
 #define nBRAKE_X_Pin GPIO_PIN_9
 #define nBRAKE_X_GPIO_Port GPIOB
+
+#define INSTALL_DETECTION_PIN GPIO_PIN_7
+#define INSTALL_DETECTION_PORT GPIOC
 
 #ifdef __cplusplus
 }

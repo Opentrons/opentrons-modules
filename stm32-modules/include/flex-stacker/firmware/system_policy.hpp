@@ -23,5 +23,6 @@ class SystemPolicy {
         -> errors::ErrorCode;
     auto get_serial_number() -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
     auto get_door_closed() -> bool;
+    auto get_install_detected() -> bool;
     [[nodiscard]] auto last_reset_reason() const -> uint16_t;
 };

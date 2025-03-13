@@ -256,6 +256,15 @@ struct GetDoorClosedResponse {
     bool door_closed;
 };
 
+struct GetInstalledMessage {
+    uint32_t id;
+};
+
+struct GetInstalledResponse {
+    uint32_t responding_to_id;
+    bool installed;
+};
+
 struct GetPlatformSensorsMessage {
     uint32_t id;
 };
@@ -370,12 +379,14 @@ using HostCommsMessage =
                    GetDoorClosedResponse, GetPlatformSensorsResponse,
                    GetEstopResponse, GetResetReasonResponse,
                    GetTOFSensorStatusResponse, GetTOFRegisterResponse,
-                   ManageTOFMeasurementResponse, GetTOFMeasurementResponse>;
+                   ManageTOFMeasurementResponse, GetTOFMeasurementResponse,
+                   GetInstalledResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage,
-                   GetDoorClosedMessage, GetResetReasonMessage>;
+                   GetDoorClosedMessage, GetResetReasonMessage,
+                   GetInstalledMessage>;
 
 using UIMessage =
     ::std::variant<std::monostate, UpdateUIMessage, SetStatusBarStateMessage>;

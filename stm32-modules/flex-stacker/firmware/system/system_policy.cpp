@@ -69,6 +69,11 @@ auto SystemPolicy::get_door_closed() -> bool {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto SystemPolicy::get_install_detected() -> bool {
+    return system_hardware_read_install_detected();
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto SystemPolicy::last_reset_reason() const -> uint16_t {
     return system_hardware_reset_reason();
 }
