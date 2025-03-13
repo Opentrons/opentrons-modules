@@ -1355,7 +1355,7 @@ class HostCommsTask {
     GetDoorClosedCache get_door_closed_cache;
     GetPlatformSensorsCache get_platform_sensors_cache;
     GetEstopCache get_estop_cache;
-    GetInstalledCache get_installed_cache{};
+    GetInstalledCache get_installed_cache;
     GetResetReasonCache get_reset_reason_cache;
     GetTOFSensorStatusCache get_tof_sensor_status_cache;
     GetTOFRegisterCache get_tof_register_cache;
