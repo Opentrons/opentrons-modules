@@ -140,7 +140,7 @@ class MotorInterruptController {
                 // don't error if moving to limit switch
                 return false;
             }
-            error = Error::UNEXPECTED_LIMIT_SWITCH;
+            _error = Error::UNEXPECTED_LIMIT_SWITCH;
             return true;
         }
         return false;
