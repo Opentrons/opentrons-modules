@@ -411,8 +411,10 @@ class TMF8820 {
             return false;
         }
         _config->registers->active_range.active_range = active_range;
-        return set_register(_config->registers->active_range, sensor_id)
-            .has_value();
+        if (!set_register(_config->registers->active_range, sensor_id)
+                 .has_value()) {
+            return false;
+        }
         // Write the config page
         return send_write_config_page(sensor_id);
     }
