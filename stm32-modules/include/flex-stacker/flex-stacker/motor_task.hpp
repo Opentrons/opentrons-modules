@@ -438,22 +438,15 @@ class MotorTask {
         _debounce_timer.start();
 
         auto triggered = false;
-        auto error = Error::NO_ERROR;
         if (policy.is_diag0_pin(m.pin)) {
             policy.sleep_ms(DEBOUNCE_SLEEP_MS);
             triggered = policy.check_diag0();
-            error = Error::MOTOR_STALL_DETECTED;
         } else if (policy.is_estop_pin(m.pin)) {
             policy.sleep_ms(DEBOUNCE_SLEEP_MS);
             triggered = policy.check_estop();
-            error = Error::ESTOP_TRIGGERED;
         } else {
             // don't care about other interrupts
             return;
-        }
-
-        if (triggered) {
-            stop_motors(error);
         }
 
         // Set status bars
