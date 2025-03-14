@@ -14,6 +14,8 @@ class MotorPolicy {
     auto stop_motor(MotorID motor_id) -> bool;
     auto step(MotorID motor_id) -> void;
     auto set_direction(MotorID motor_id, bool direction) -> void;
+    auto set_limit_switch_irq(MotorID motor_id, bool direction, bool enable)
+        -> void;
     auto check_limit_switch(MotorID motor_id, bool direction) -> bool;
     auto set_diag0_irq(bool enable) -> void;
     auto check_platform_sensor(bool direction) -> bool;

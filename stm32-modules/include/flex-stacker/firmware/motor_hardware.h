@@ -20,6 +20,8 @@ void hw_start_motor_timer(MotorID motor_id);
 bool hw_disable_motor(MotorID motor_id);
 bool hw_stop_motor(MotorID motor_id);
 void hw_set_direction(MotorID, bool direction);
+void hw_enable_lim_switch_irq(MotorID motor_id, bool direction);
+void hw_disable_lim_switch_irq(MotorID motor_id, bool direction);
 bool hw_read_limit_switch(MotorID motor_id, bool direction);
 void hw_set_diag0_irq(bool enable);
 bool hw_read_platform_sensor(bool direction);
