@@ -84,8 +84,8 @@ static motor_hardware_t _motor_hardware = {
         .limit_switch_plus = {Z_PLUS_LIMIT_PORT, Z_PLUS_LIMIT_PIN, GPIO_PIN_SET},
         .diag0 = {MOTOR_DIAG0_PORT, MOTOR_DIAG0_PIN, GPIO_PIN_SET},
         .ebrake = {Z_N_BRAKE_PORT, Z_N_BRAKE_PIN, GPIO_PIN_RESET},
-        .limit_switch_minus_it = EXTI0_IRQn,
-        .limit_switch_plus_it = EXTI3_IRQn,
+        .limit_switch_minus_it = EXTI3_IRQn,
+        .limit_switch_plus_it = EXTI0_IRQn,
     },
     .motor_l = {
         .timer = {0},

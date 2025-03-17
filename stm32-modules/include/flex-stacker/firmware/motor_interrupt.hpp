@@ -122,6 +122,14 @@ class MotorInterruptController {
         if (_stop) {
             return true;
         }
+        if (_switch_detected) {
+            if (_profile.movement_type() ==
+                motor_util::MovementType::OpenLoop) {
+                return true;
+            }
+            _error = Error::UNEXPECTED_LIMIT_SWITCH;
+            return true;
+        }
         // this will only error if the limit switch in the move direction
         // is triggered
         // Stop if moving left motor in an allowed direction
@@ -134,14 +142,6 @@ class MotorInterruptController {
             return true;
         }
 
-        if (_switch_detected) {
-            if (_profile.movement_type() ==
-                motor_util::MovementType::OpenLoop) {
-                return true;
-            }
-            _error = Error::UNEXPECTED_LIMIT_SWITCH;
-            return true;
-        }
         return false;
     }
 
