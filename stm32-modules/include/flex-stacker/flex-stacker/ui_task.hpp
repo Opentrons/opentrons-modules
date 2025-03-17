@@ -317,7 +317,6 @@ class UITask {
     auto visit_message(const messages::SetStatusBarStateMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
-        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         for (auto bar_id : {StatusBarID::Internal, StatusBarID::External}) {
             bar_id = m.bar_id.value_or(bar_id);
             const StatusBarState bar = get_statusbar_state(bar_id);
@@ -330,8 +329,12 @@ class UITask {
                 break;
             }
         }
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
+        if (m.from_host) {
+            // Only send ack if this was requested by the host
+            static_cast<void>(_task_registry->send_to_address(
+                messages::AcknowledgePrevious{.responding_to_id = m.id},
+                Queues::HostCommsAddress));
+        }
     }
 
     /**
