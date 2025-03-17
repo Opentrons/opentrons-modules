@@ -107,9 +107,7 @@ class TOFSensorTask {
             }
             _initialized = _tof_sensor_x.ok && _tof_sensor_z.ok;
             auto message = messages::SetStatusBarStateMessage{
-                .from_host = false,
-                .color = _initialized ? Green : Red,
-                .pattern = Static};
+                .color = _initialized ? Green : Red, .pattern = Static};
             static_cast<void>(
                 _task_registry->send_to_address(message, Queues::UIAddress));
         }
