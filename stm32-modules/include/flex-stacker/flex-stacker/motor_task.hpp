@@ -454,6 +454,7 @@ class MotorTask {
         auto pattern =
             triggered ? StatusBarPattern::Flash : StatusBarPattern::Static;
         auto message = messages::SetStatusBarStateMessage{
+            .from_host = false,
             .color = color,
             .pattern = pattern,
             .duration = LED_ERROR_DURATION_MS,
