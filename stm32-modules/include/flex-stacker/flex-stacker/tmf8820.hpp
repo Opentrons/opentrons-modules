@@ -609,7 +609,7 @@ class TMF8820 {
     auto read_register(TOFSensorID sensor_id) -> std::optional<Reg> {
         // Use the value_mask to compute the size in bytes to read.
         auto size = ((sizeof(Reg::value_mask) * ONE_BYTE) -
-                     __builtin_clz(Reg::value_mask) + 7) /
+                     __builtin_clz(Reg::value_mask) + (ONE_BYTE - 1)) /
                     ONE_BYTE;
         auto ret = read(sensor_id, Reg::address, size);
         if (!ret.has_value()) {
@@ -627,7 +627,7 @@ class TMF8820 {
         auto value = get_register_value(reg);
         // Use the value_mask to compute the size in bytes to write.
         auto size = ((sizeof(Reg::value_mask) * ONE_BYTE) -
-                     __builtin_clz(Reg::value_mask) + 7) /
+                     __builtin_clz(Reg::value_mask) + (ONE_BYTE - 1)) /
                     ONE_BYTE;
         auto ret = write(sensor_id, Reg::address, (uint8_t*)&value, size);
         if (!ret.has_value()) {
