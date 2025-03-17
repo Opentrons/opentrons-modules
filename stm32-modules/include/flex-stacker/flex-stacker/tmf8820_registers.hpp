@@ -497,15 +497,25 @@ struct __attribute__((packed, __may_alias__)) SPADOffset {
     int8_t y_offset_2 : 8 = 0;
 };
 
-struct __attribute__((packed, __may_alias__)) SPADSize {
+struct __attribute__((packed, __may_alias__)) SPADSizeX {
     static constexpr auto mode = RegisterType::USER_SPAD_CONFIG;
     static constexpr auto address =
         (uint16_t)UserSPADConfigRegisters::SPAD_X_SIZE;
     static constexpr bool readable = true;
     static constexpr bool writable = true;
-    static constexpr uint32_t value_mask = (1 << 16) - 1;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
 
     uint8_t x_size : 8 = 0;
+};
+
+struct __attribute__((packed, __may_alias__)) SPADSizeY {
+    static constexpr auto mode = RegisterType::USER_SPAD_CONFIG;
+    static constexpr auto address =
+        (uint16_t)UserSPADConfigRegisters::SPAD_Y_SIZE;
+    static constexpr bool readable = true;
+    static constexpr bool writable = true;
+    static constexpr uint32_t value_mask = (1 << 8) - 1;
+
     uint8_t y_size : 8 = 0;
 };
 
@@ -530,7 +540,8 @@ struct TMF8820RegisterMap {
     SPADEnable spad_mask = {};
     SPADTDCChannel spad_map = {};
     SPADOffset spad_offset = {};
-    SPADSize spad_size = {};
+    SPADSizeX spad_size_x = {};
+    SPADSizeY spad_size_y = {};
 };
 
 // Registers are all 32 bits
