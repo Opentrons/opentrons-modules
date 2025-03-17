@@ -49,6 +49,7 @@ class MotorInterruptController {
         }
         if (ret.done || stop_condition_met()) {
             _policy->stop_motor(_id);
+            _policy->set_limit_switch_irq(_id, _direction, false);
             _stop = true;
             return true;
         }
@@ -62,6 +63,9 @@ class MotorInterruptController {
     auto reset() -> void {
         _stop = false;
         _error = Error::NO_ERROR;
+        _switch_detected = false;
+        _policy->set_limit_switch_irq(_id, _direction, false);
+        _policy->set_limit_switch_irq(_id, !_direction, false);
     }
 
     auto start_fixed_movement(uint32_t move_id, bool direction, long steps,
@@ -101,14 +105,13 @@ class MotorInterruptController {
         if (disable_motor) {
             _policy->disable_motor(_id);
         }
+        _policy->set_limit_switch_irq(_id, _direction, false);
     }
 
     auto set_direction(bool direction) -> void {
-        _policy->set_direction(_id, direction);
         _direction = direction;
-    }
-    auto limit_switch_triggered() -> bool {
-        return _policy->check_limit_switch(_id, _direction);
+        _policy->set_direction(_id, direction);
+        _policy->set_limit_switch_irq(_id, direction, true);
     }
 
     [[nodiscard]] auto get_response_id() const -> uint32_t {
@@ -116,6 +119,17 @@ class MotorInterruptController {
     }
     [[nodiscard]] auto get_error_code() const -> Error { return _error; }
     auto stop_condition_met() -> bool {
+        if (_stop) {
+            return true;
+        }
+        if (_switch_detected) {
+            if (_profile.movement_type() ==
+                motor_util::MovementType::OpenLoop) {
+                return true;
+            }
+            _error = Error::UNEXPECTED_LIMIT_SWITCH;
+            return true;
+        }
         // this will only error if the limit switch in the move direction
         // is triggered
         // Stop if moving left motor in an allowed direction
@@ -127,16 +141,11 @@ class MotorInterruptController {
             _error = Error::MOTOR_STALL_DETECTED;
             return true;
         }
-        if ((_id != MotorID::MOTOR_L || !_direction) &&
-            limit_switch_triggered()) {
-            if (_profile.movement_type() ==
-                motor_util::MovementType::FixedDistance) {
-                _error = Error::UNEXPECTED_LIMIT_SWITCH;
-            }
-            return true;
-        }
-        return _stop;
+
+        return false;
     }
+
+    auto limit_switch_detected() -> void { _switch_detected = true; }
 
     auto set_diag0_irq(bool enable) -> void { _policy->set_diag0_irq(enable); }
 
@@ -151,6 +160,7 @@ class MotorInterruptController {
     Error _error = Error::NO_ERROR;
     bool _direction = false;
     bool _stop = true;
+    bool _switch_detected = false;
 };
 
 }  // namespace motor_interrupt_controller

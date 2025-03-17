@@ -62,6 +62,22 @@ static auto _top_task = motor_task::MotorTask(
     }
 }
 
+[[nodiscard]] static auto lim_sw_callback_glue(MotorID motor_id) {
+    switch (motor_id) {
+        case MotorID::MOTOR_L:
+            l_motor_interrupt.limit_switch_detected();
+            break;
+        case MotorID::MOTOR_X:
+            x_motor_interrupt.limit_switch_detected();
+            break;
+        case MotorID::MOTOR_Z:
+            z_motor_interrupt.limit_switch_detected();
+            break;
+        default:
+            break;
+    }
+}
+
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     auto* handle = xTaskGetCurrentTaskHandle();
     _queue.provide_handle(handle);
@@ -70,6 +86,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
 
     motor_hardware_init();
     initialize_callbacks(callback_glue);
+    initialize_limit_switch_callbacks(lim_sw_callback_glue);
     auto policy = motor_policy::MotorPolicy();
     while (true) {
         _top_task.run_once(policy);

@@ -34,6 +34,10 @@ void UsageFault_Handler(void);
 void DebugMon_Handler(void);
 // void SysTick_Handler(void);
 void RCC_IRQHandler(void);
+void EXTI0_IRQHandler(void);
+void EXTI1_IRQHandler(void);
+void EXTI2_IRQHandler(void);
+void EXTI3_IRQHandler(void);
 void EXTI15_10_IRQHandler(void);
 void EXTI9_5_IRQHandler(void);
 // void DMA1_Channel1_IRQHandler(void);
@@ -41,6 +45,9 @@ void EXTI9_5_IRQHandler(void);
 
 typedef void (*motor_interrupt_callback)(MotorID motor_id);
 void initialize_callbacks(motor_interrupt_callback callback_glue);
+
+typedef void (*limit_switch_callback)(MotorID motor_id);
+void initialize_limit_switch_callbacks(limit_switch_callback callback_glue);
 #ifdef __cplusplus
 }
 #endif

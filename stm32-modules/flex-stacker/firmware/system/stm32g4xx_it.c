@@ -31,6 +31,7 @@ extern SPI_HandleTypeDef hspi2;
 
 
 motor_interrupt_callback interrupt_callback = NULL;
+limit_switch_callback lim_switch_callback = NULL;
 /******************************************************************************/
 /*           Cortex-M4 Processor Interruption and Exception Handlers          */
 /******************************************************************************/
@@ -122,6 +123,10 @@ void initialize_callbacks(motor_interrupt_callback callback_glue) {
     interrupt_callback = callback_glue;
 }
 
+void initialize_limit_switch_callbacks(limit_switch_callback callback_glue) {
+    lim_switch_callback = callback_glue;
+}
+
 // MOTOR_DIAG0_PIN interrupt
 void EXTI15_10_IRQHandler(void) {
     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_12)) {
@@ -129,10 +134,64 @@ void EXTI15_10_IRQHandler(void) {
     }
 }
 
-// Estop interrupt
 void EXTI9_5_IRQHandler(void)
 {
+    // Estop interrupt
     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_6)) {
         HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_6);
     }
+    // Latch held limit switch interrupt
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_5)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5);
+        if (lim_switch_callback) {
+            lim_switch_callback(MOTOR_L);
+        }
+
+    }
 }
+
+// Z+ limit switch interrupt
+void EXTI0_IRQHandler(void)
+{
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_0)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
+        if (lim_switch_callback) {
+            lim_switch_callback(MOTOR_Z);
+        }
+    }
+}
+
+// X- limit switch interrupt
+void EXTI1_IRQHandler(void)
+{
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_1)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
+        if (lim_switch_callback) {
+            lim_switch_callback(MOTOR_X);
+        }
+    }
+}
+
+// X+ limit switch interrupt
+void EXTI2_IRQHandler(void)
+{
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_2)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
+        if (lim_switch_callback) {
+            lim_switch_callback(MOTOR_X);
+        }
+    }
+}
+
+// Z- limit switch interrupt
+void EXTI3_IRQHandler(void)
+{
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_3)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3);
+        if (lim_switch_callback) {
+            lim_switch_callback(MOTOR_Z);
+        }
+    }
+}
+
+

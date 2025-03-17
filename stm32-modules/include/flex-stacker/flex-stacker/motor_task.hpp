@@ -312,6 +312,11 @@ class MotorTask {
             send_ack_message(m.id, error);
             return;
         }
+        if (policy.check_limit_switch(m.motor_id, m.direction)) {
+            // motor is already homed
+            send_ack_message(m.id);
+            return;
+        }
         Controller& controller = controller_from_id(m.motor_id);
         MotorState& state = motor_state(m.motor_id);
         if (m.mm_per_second.has_value()) {

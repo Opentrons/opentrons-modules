@@ -42,6 +42,8 @@ typedef struct stepper_hardware_struct {
     PinConfig limit_switch_plus;
     PinConfig ebrake;
     PinConfig diag0;
+    IRQn_Type limit_switch_minus_it;
+    IRQn_Type limit_switch_plus_it;
 } stepper_hardware_t;
 
 typedef struct platform_sensor_struct {
@@ -70,6 +72,8 @@ static motor_hardware_t _motor_hardware = {
         .limit_switch_plus = {X_PLUS_LIMIT_PORT, X_PLUS_LIMIT_PIN, GPIO_PIN_SET},
         .diag0 = {MOTOR_DIAG0_PORT, MOTOR_DIAG0_PIN, GPIO_PIN_SET},
         .ebrake = {0},
+        .limit_switch_minus_it = EXTI1_IRQn,
+        .limit_switch_plus_it = EXTI2_IRQn,
     },
     .motor_z = {
         .timer = {0},
@@ -80,6 +84,8 @@ static motor_hardware_t _motor_hardware = {
         .limit_switch_plus = {Z_PLUS_LIMIT_PORT, Z_PLUS_LIMIT_PIN, GPIO_PIN_SET},
         .diag0 = {MOTOR_DIAG0_PORT, MOTOR_DIAG0_PIN, GPIO_PIN_SET},
         .ebrake = {Z_N_BRAKE_PORT, Z_N_BRAKE_PIN, GPIO_PIN_RESET},
+        .limit_switch_minus_it = EXTI3_IRQn,
+        .limit_switch_plus_it = EXTI0_IRQn,
     },
     .motor_l = {
         .timer = {0},
@@ -90,6 +96,8 @@ static motor_hardware_t _motor_hardware = {
         .limit_switch_plus = {0},
         .diag0 = {MOTOR_DIAG0_PORT, MOTOR_DIAG0_PIN, GPIO_PIN_SET},
         .ebrake = {0},
+        .limit_switch_minus_it = EXTI9_5_IRQn,
+        .limit_switch_plus_it = 0,
     },
     .platform_sensors = {
         .x_minus = {PLAT_SENSE_MINUS_PORT, PLAT_SENSE_MINUS_PIN, GPIO_PIN_SET},
@@ -152,30 +160,12 @@ void motor_hardware_gpio_init(void){
     init.Pull = GPIO_NOPULL;
     init.Speed = GPIO_SPEED_FREQ_LOW;
 
-    // Z MOTOR
-    init.Pin = Z_MINUS_LIMIT_PIN;
-    HAL_GPIO_Init(Z_MINUS_LIMIT_PORT, &init);
-
-    init.Pin = Z_PLUS_LIMIT_PIN;
-    HAL_GPIO_Init(Z_PLUS_LIMIT_PORT, &init);
-
-    // X MOTOR
-    init.Pin = X_MINUS_LIMIT_PIN;
-    HAL_GPIO_Init(X_MINUS_LIMIT_PORT, &init);
-
-    init.Pin = X_PLUS_LIMIT_PIN;
-    HAL_GPIO_Init(X_PLUS_LIMIT_PORT, &init);
-
     // Platform sensors
     init.Pin = PLAT_SENSE_PLUS_PIN;
     HAL_GPIO_Init(PLAT_SENSE_PLUS_PORT, &init);
 
     init.Pin = PLAT_SENSE_MINUS_PIN;
     HAL_GPIO_Init(PLAT_SENSE_MINUS_PORT, &init);
-
-    // L MOTOR
-    init.Pin = L_N_HELD_PIN;
-    HAL_GPIO_Init(L_N_HELD_PORT, &init);
 
     /*Configure GPIO pins : INPUTs IRQ */
     init.Mode = GPIO_MODE_IT_FALLING;
@@ -190,6 +180,46 @@ void motor_hardware_gpio_init(void){
     HAL_GPIO_Init(N_ESTOP_PORT, &init);
     HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+    init.Mode = GPIO_MODE_IT_RISING;
+    init.Pull = GPIO_NOPULL;
+
+    // Z MOTOR
+    init.Pin = Z_MINUS_LIMIT_PIN;
+    HAL_GPIO_Init(Z_MINUS_LIMIT_PORT, &init);
+
+
+    init.Pin = Z_PLUS_LIMIT_PIN;
+    HAL_GPIO_Init(Z_PLUS_LIMIT_PORT, &init);
+
+    // X MOTOR
+    init.Pin = X_MINUS_LIMIT_PIN;
+    HAL_GPIO_Init(X_MINUS_LIMIT_PORT, &init);
+
+    init.Pin = X_PLUS_LIMIT_PIN;
+    HAL_GPIO_Init(X_PLUS_LIMIT_PORT, &init);
+
+    // L MOTOR
+    init.Mode = GPIO_MODE_IT_FALLING;
+
+    init.Pin = L_N_HELD_PIN;
+    HAL_GPIO_Init(L_N_HELD_PORT, &init);
+
+    HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
+//    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+    HAL_NVIC_SetPriority(EXTI1_IRQn, 5, 0);
+//    HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+    HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
+//    HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
+    HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
+//    HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+
+    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
+//    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
 }
 
 // X motor timer
@@ -377,6 +407,24 @@ void hw_step_motor(MotorID motor_id) {
 void hw_set_direction(MotorID motor_id, bool direction) {
     stepper_hardware_t motor = get_motor(motor_id);
     direction ? set_pin(motor.direction) : reset_pin(motor.direction);
+}
+
+void hw_enable_lim_switch_irq(MotorID motor_id, bool direction) {
+    if (motor_id == MOTOR_L && direction) {
+        // L motor only has one limit switch on the minus direction, so ignore the direction
+        return;
+    }
+    stepper_hardware_t motor = get_motor(motor_id);
+    direction ? HAL_NVIC_EnableIRQ(motor.limit_switch_plus_it) : HAL_NVIC_EnableIRQ(motor.limit_switch_minus_it);
+}
+
+void hw_disable_lim_switch_irq(MotorID motor_id, bool direction) {
+    if (motor_id == MOTOR_L && direction) {
+        // L motor only has one limit switch on the minus direction, so ignore the direction
+        return;
+    }
+    stepper_hardware_t motor = get_motor(motor_id);
+    direction ? HAL_NVIC_DisableIRQ(motor.limit_switch_plus_it) : HAL_NVIC_DisableIRQ(motor.limit_switch_minus_it);
 }
 
 bool hw_read_limit_switch(MotorID motor_id, bool direction) {
