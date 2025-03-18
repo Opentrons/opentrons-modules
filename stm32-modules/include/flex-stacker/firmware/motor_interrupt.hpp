@@ -147,6 +147,7 @@ class MotorInterruptController {
 
     auto limit_switch_detected() -> void {
         if (_id == MotorID::MOTOR_L) {
+            // NOLINTNEXTLINE(readability-simplify-boolean-expr)
             _switch_detected = _direction ? false : true;
         } else {
             _switch_detected = true;
