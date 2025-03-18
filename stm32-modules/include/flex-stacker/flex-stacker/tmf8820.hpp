@@ -185,11 +185,9 @@ class TMF8820 {
         }
 
         // Set sensor configuration
-        set_sensor_report_period(sensor_id, _config->report_period_ms);
-        set_sensor_kilo_iterations(sensor_id, _config->kilo_iterations);
-        set_sensor_active_range(sensor_id, _config->active_range);
-        set_sensor_spad_map(sensor_id, _config->spad_map_id);
-        set_sensor_histogram_dump(sensor_id, _config->histogram_dump);
+        if (!configure_sensor(sensor_id, config)) {
+            return false;
+        }
 
         // TODO: Load calibration
         return true;
@@ -313,7 +311,6 @@ class TMF8820 {
                  .has_value()) {
             return false;
         }
-
         // Write the config page
         if (!send_write_config_page(sensor_id)) {
             return false;
@@ -371,10 +368,15 @@ class TMF8820 {
                  .has_value()) {
             return false;
         }
-        // configure spad size (0x8F, 0x90)
-        _config->registers->spad_size = {_config->spad_config->xsize,
-                                         _config->spad_config->ysize};
-        if (!set_register(_config->registers->spad_size, sensor_id)
+        // configure spad size x (0x8F)
+        _config->registers->spad_size_x.x_size = _config->spad_config->xsize;
+        if (!set_register(_config->registers->spad_size_x, sensor_id)
+                 .has_value()) {
+            return false;
+        }
+        // configure spad size y (0x90)
+        _config->registers->spad_size_y.y_size = _config->spad_config->ysize;
+        if (!set_register(_config->registers->spad_size_y, sensor_id)
                  .has_value()) {
             return false;
         }
@@ -415,8 +417,18 @@ class TMF8820 {
                  .has_value()) {
             return false;
         }
-        // Write the config page
-        return send_write_config_page(sensor_id);
+        // NOTE:
+        // To change a register value you have to first change to the relevant
+        // config page, write the value to that register, then issue a cmd write
+        // 0x15 on the cmd_stat register (0x08) for that value to be applied.
+        // Annoyingly, for the active range register you have write the active
+        // range value (0x6E or 0x6F) to the cmd_stat register (0x08) instead
+        // of issuing a write config 0x15 command to the 0x08 register.
+        BUFFER[0] = active_range;
+        if (!write(sensor_id, CMDStat::address, BUFFER.data(), 1).has_value()) {
+            return false;
+        }
+        return wait_for_state(sensor_id, CMDStat::address, STAT_OK);
     }
 
     auto set_sensor_histogram_dump(TOFSensorID sensor_id, bool enable) -> bool {
@@ -595,7 +607,11 @@ class TMF8820 {
     template <tmf8820::TMF8820Register Reg>
     requires ReadableRegister<Reg>
     auto read_register(TOFSensorID sensor_id) -> std::optional<Reg> {
-        auto ret = read(sensor_id, Reg::address, 1);
+        // Use the value_mask to compute the size in bytes to read.
+        auto size = ((sizeof(Reg::value_mask) * ONE_BYTE) -
+                     __builtin_clz(Reg::value_mask) + (ONE_BYTE - 1)) /
+                    ONE_BYTE;
+        auto ret = read(sensor_id, Reg::address, size);
         if (!ret.has_value()) {
             return {};
         }
@@ -609,7 +625,11 @@ class TMF8820 {
     auto set_register(Reg reg, TOFSensorID sensor_id) -> std::optional<Reg> {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         auto value = get_register_value(reg);
-        auto ret = write(sensor_id, Reg::address, (uint8_t*)&value, 1);
+        // Use the value_mask to compute the size in bytes to write.
+        auto size = ((sizeof(Reg::value_mask) * ONE_BYTE) -
+                     __builtin_clz(Reg::value_mask) + (ONE_BYTE - 1)) /
+                    ONE_BYTE;
+        auto ret = write(sensor_id, Reg::address, (uint8_t*)&value, size);
         if (!ret.has_value()) {
             return {};
         }
@@ -786,15 +806,15 @@ class TMF8820 {
     auto send_write_config_page(TOFSensorID sensor_id) -> bool {
         // Write the config page
         auto len = prepare_cmd_frame(CMD_WRITE_CONFIG_PAGE, nullptr, 0);
-        return write(sensor_id, CMDStat::address, BUFFER.data(), len)
-            .has_value();
+        if (!write(sensor_id, CMDStat::address, BUFFER.data(), len)
+                 .has_value()) {
+            return false;
+        }
+        return wait_for_state(sensor_id, CMDStat::address, STAT_OK);
     }
 
     // Changes the i2c page for commands.
     auto change_config_page(TOFSensorID sensor_id, uint8_t page) -> bool {
-        if (_config_page == page) {
-            return true;
-        }
         BUFFER[0] = page;
         if (!write(sensor_id, CMDStat::address, BUFFER.data(), 1).has_value()) {
             return false;
@@ -838,9 +858,21 @@ class TMF8820 {
         }
     }
 
-    auto configure_sensor(TOFSensorID sensor_id) -> bool {
-        if (!update_enable(sensor_id)) {
-            // NOLINTNEXTLINE(readability-simplify-boolean-expr)
+    auto configure_sensor(TOFSensorID sensor_id, TMF8820Config* config)
+        -> bool {
+        if (!set_sensor_report_period(sensor_id, config->report_period_ms)) {
+            return false;
+        }
+        if (!set_sensor_kilo_iterations(sensor_id, config->kilo_iterations)) {
+            return false;
+        }
+        if (!set_sensor_active_range(sensor_id, config->active_range)) {
+            return false;
+        }
+        if (!set_sensor_histogram_dump(sensor_id, config->histogram_dump)) {
+            return false;
+        }
+        if (!set_sensor_spad_map(sensor_id, config->spad_map_id)) {
             return false;
         }
         return true;
