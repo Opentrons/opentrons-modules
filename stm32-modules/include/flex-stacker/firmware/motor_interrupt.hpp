@@ -145,7 +145,14 @@ class MotorInterruptController {
         return false;
     }
 
-    auto limit_switch_detected() -> void { _switch_detected = true; }
+    auto limit_switch_detected() -> void {
+        if (_id == MotorID::MOTOR_L) {
+            // NOLINTNEXTLINE(readability-simplify-boolean-expr)
+            _switch_detected = _direction ? false : true;
+        } else {
+            _switch_detected = true;
+        };
+    }
 
     auto set_diag0_irq(bool enable) -> void { _policy->set_diag0_irq(enable); }
 
