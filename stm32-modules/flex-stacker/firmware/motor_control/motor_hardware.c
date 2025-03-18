@@ -217,7 +217,7 @@ void motor_hardware_gpio_init(void){
     HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
 //    HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
-    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
+//    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
 //    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 }
@@ -410,7 +410,7 @@ void hw_set_direction(MotorID motor_id, bool direction) {
 }
 
 void hw_enable_lim_switch_irq(MotorID motor_id, bool direction) {
-    if (motor_id == MOTOR_L && direction) {
+    if (motor_id == MOTOR_L) {
         // L motor only has one limit switch on the minus direction, so ignore the direction
         return;
     }
@@ -419,7 +419,7 @@ void hw_enable_lim_switch_irq(MotorID motor_id, bool direction) {
 }
 
 void hw_disable_lim_switch_irq(MotorID motor_id, bool direction) {
-    if (motor_id == MOTOR_L && direction) {
+    if (motor_id == MOTOR_L) {
         // L motor only has one limit switch on the minus direction, so ignore the direction
         return;
     }
