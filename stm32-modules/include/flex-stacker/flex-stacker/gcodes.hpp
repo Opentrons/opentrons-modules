@@ -671,4 +671,79 @@ struct GetTOFMeasurement {
     }
 };
 
+struct ConfigureTOFSensor {
+    TOFSensorID sensor_id;
+    TOFSpadMapID spad_map_id;
+    std::optional<TOFActiveRange> active_range;
+    std::optional<uint16_t> kilo_iterations;
+    std::optional<uint16_t> report_period_ms;
+    std::optional<bool> histogram_dump;
+
+    using ParseResult = std::optional<ConfigureTOFSensor>;
+    static constexpr auto prefix = std::array{'M', '2', '2', '7', ' '};
+
+    using XArg = ArgNoVal<'X'>;
+    using ZArg = ArgNoVal<'Z'>;
+    using IArg = Arg<uint8_t, 'I'>;
+    using AArg = Arg<uint8_t, 'A'>;
+    using KArg = Arg<uint8_t, 'K'>;
+    using PArg = Arg<uint8_t, 'P'>;
+    using HArg = Arg<uint8_t, 'H'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<XArg, ZArg, IArg, AArg, KArg, PArg,
+                                       HArg>::parse_gcode(input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = ConfigureTOFSensor{
+            .sensor_id = TOFSensorID::TOF_X,
+            .spad_map_id = TOFSpadMapID::SPAD_MAP_ID_14,
+        };
+        auto arguments = res.first.value();
+        if (std::get<1>(arguments).present) {
+            ret.sensor_id = TOFSensorID::TOF_Z;
+        } else if (!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (std::get<2>(arguments).present) {
+            ret.spad_map_id =
+                static_cast<TOFSpadMapID>(std::get<2>(arguments).value);
+        }
+        if (std::get<3>(arguments).present) {
+            ret.active_range =
+                static_cast<TOFActiveRange>(std::get<3>(arguments).value);
+        }
+        if (std::get<4>(arguments).present) {
+            ret.kilo_iterations =
+                static_cast<uint16_t>(std::get<4>(arguments).value);
+        }
+        if (std::get<5>(arguments).present) {
+            ret.report_period_ms =
+                static_cast<uint16_t>(std::get<5>(arguments).value);
+        }
+        if (std::get<6>(arguments).present) {
+            ret.histogram_dump =
+                static_cast<bool>(std::get<6>(arguments).value);
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf), "M227 OK\n");
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
 }  // namespace gcode
