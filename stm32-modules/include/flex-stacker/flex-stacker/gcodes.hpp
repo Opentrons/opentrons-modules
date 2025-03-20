@@ -681,6 +681,7 @@ struct ConfigureTOFSensor {
 
     using ParseResult = std::optional<ConfigureTOFSensor>;
     static constexpr auto prefix = std::array{'M', '2', '2', '7', ' '};
+    static constexpr const char* response = "M227 OK\n";
 
     using XArg = ArgNoVal<'X'>;
     using ZArg = ArgNoVal<'Z'>;
@@ -738,11 +739,7 @@ struct ConfigureTOFSensor {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
-        auto res = snprintf(&*buf, (limit - buf), "M227 OK\n");
-        if (res <= 0) {
-            return buf;
-        }
-        return buf + res;
+        return write_string_to_iterpair(buf, limit, response);
     }
 };
 
