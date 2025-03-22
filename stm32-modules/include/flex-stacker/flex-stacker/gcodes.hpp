@@ -671,7 +671,7 @@ struct GetTOFMeasurement {
     }
 };
 
-struct ConfigureTOFSensor {
+struct SetTOFConfiguration {
     TOFSensorID sensor_id;
     TOFSpadMapID spad_map_id;
     std::optional<TOFActiveRange> active_range;
@@ -679,7 +679,7 @@ struct ConfigureTOFSensor {
     std::optional<uint16_t> report_period_ms;
     std::optional<bool> histogram_dump;
 
-    using ParseResult = std::optional<ConfigureTOFSensor>;
+    using ParseResult = std::optional<SetTOFConfiguration>;
     static constexpr auto prefix = std::array{'M', '2', '2', '7', ' '};
     static constexpr const char* response = "M227 OK\n";
 
@@ -702,7 +702,7 @@ struct ConfigureTOFSensor {
             return std::make_pair(ParseResult(), input);
         }
 
-        auto ret = ConfigureTOFSensor{
+        auto ret = SetTOFConfiguration{
             .sensor_id = TOFSensorID::TOF_X,
             .spad_map_id = TOFSpadMapID::SPAD_MAP_ID_14,
         };
@@ -724,12 +724,16 @@ struct ConfigureTOFSensor {
             ret.kilo_iterations =
                 static_cast<uint16_t>(std::get<4>(arguments).value);
         }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (std::get<5>(arguments).present) {
             ret.report_period_ms =
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
                 static_cast<uint16_t>(std::get<5>(arguments).value);
         }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (std::get<6>(arguments).present) {
             ret.histogram_dump =
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
                 static_cast<bool>(std::get<6>(arguments).value);
         }
         return std::make_pair(ret, res.second);
@@ -740,6 +744,59 @@ struct ConfigureTOFSensor {
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
         return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct GetTOFConfiguration {
+    TOFSensorID sensor_id;
+
+    using ParseResult = std::optional<GetTOFConfiguration>;
+    static constexpr auto prefix = std::array{'M', '2', '2', '8', ' '};
+
+    using XArg = ArgNoVal<'X'>;
+    using ZArg = ArgNoVal<'Z'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res =
+            gcode::SingleParser<XArg, ZArg>::parse_gcode(input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = GetTOFConfiguration{
+            .sensor_id = TOFSensorID::TOF_X,
+        };
+        auto arguments = res.first.value();
+        if (std::get<1>(arguments).present) {
+            ret.sensor_id = TOFSensorID::TOF_Z;
+        } else if (!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    TOFSensorID sensor_id,
+                                    TOFSpadMapID spad_map_id,
+                                    TOFActiveRange active_range,
+                                    uint16_t kilo_iterations,
+                                    uint16_t report_period_ms,
+                                    bool histogram_dump) -> InputIt {
+        auto res = snprintf(
+            &*buf, (limit - buf), "M228 %c I:%d A:%d K:%d P:%d H:%d OK\n",
+            sensor_id_to_char(sensor_id), spad_map_id, active_range,
+            kilo_iterations, report_period_ms, histogram_dump);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
     }
 };
 

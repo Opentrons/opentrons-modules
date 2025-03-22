@@ -282,7 +282,7 @@ class TOFSensorTask {
         }
     }
 
-    auto visit_message(const messages::ConfigureTOFSensorMessage& m) -> void {
+    auto visit_message(const messages::SetTOFConfigurationMessage& m) -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         auto& sensor = get_sensor(m.sensor_id);
         if (!sensor.ok) {
@@ -307,6 +307,20 @@ class TOFSensorTask {
         if (!sensor.driver.configure_sensor(m.sensor_id, &config)) {
             response.with_error = errors::ErrorCode::TMF8820_COMM_ERROR;
         }
+        send_response(response);
+    }
+
+    auto visit_message(const messages::GetTOFConfigurationMessage& m) -> void {
+        messages::HostCommsMessage response;
+        auto sensor = get_sensor(m.sensor_id);
+        response = messages::GetTOFConfigurationResponse{
+            .responding_to_id = m.id,
+            .sensor_id = m.sensor_id,
+            .spad_map_id = sensor.config.spad_map_id,
+            .active_range = sensor.config.active_range,
+            .kilo_iterations = sensor.config.kilo_iterations,
+            .report_period_ms = sensor.config.report_period_ms,
+            .histogram_dump = sensor.config.histogram_dump};
         send_response(response);
     }
 

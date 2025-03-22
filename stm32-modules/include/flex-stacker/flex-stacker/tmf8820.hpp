@@ -460,6 +460,9 @@ class TMF8820 {
 
     auto configure_sensor(TOFSensorID sensor_id, TMF8820Config* config)
         -> bool {
+        if (!set_sensor_histogram_dump(sensor_id, config->histogram_dump)) {
+            return false;
+        }
         if (!set_sensor_report_period(sensor_id, config->report_period_ms)) {
             return false;
         }
@@ -467,9 +470,6 @@ class TMF8820 {
             return false;
         }
         if (!set_sensor_active_range(sensor_id, config->active_range)) {
-            return false;
-        }
-        if (!set_sensor_histogram_dump(sensor_id, config->histogram_dump)) {
             return false;
         }
         if (!set_sensor_spad_map(sensor_id, config->spad_map_id)) {
