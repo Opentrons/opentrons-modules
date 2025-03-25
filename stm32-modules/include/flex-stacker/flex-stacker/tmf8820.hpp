@@ -30,12 +30,6 @@ constexpr uint16_t TOF_Z_ADDRESS = 0x40;
 constexpr uint8_t DEFAULT_RETRIES = 5;
 constexpr uint32_t DEFAULT_SLEEP_MS = 250;
 
-// Default config
-constexpr uint8_t DEFAULT_SPAD_MAP_ID = 14;
-constexpr uint16_t DEFAULT_REPORT_PERIOD_MS = 500;
-constexpr uint16_t DEFAULT_KILO_ITERATIONS = 4000;
-constexpr bool DEFAULT_HISTOGRAM_DUMP = true;
-
 // Bootloader commands (bl_cmd_stat)
 
 // Remap RAM to Address 0 and Reset
@@ -94,24 +88,6 @@ constexpr uint8_t STAT_WARNING_OSC_TRIM_NOT_ACCEPTED = 0x0C;
 constexpr uint8_t STAT_WARNING_I2C_ADDRESS_NOT_ACCEPTED = 0x0D;
 constexpr uint8_t STAT_ERR_UNKNOWN_MODE = 0x0E;
 
-// SPAD Map Config
-
-// 3x3 normal mode 33°x32° FoV
-constexpr uint8_t SPAD_MAP_ID_1 = 1;
-// 3x3 macro 1 mode 33°x47° FoV off center
-constexpr uint8_t SPAD_MAP_ID_2 = 2;
-// 3x3 macro 2 mode 33°x47° FoV
-constexpr uint8_t SPAD_MAP_ID_3 = 3;
-// 3x3 wide mode 41°x52° FoV
-constexpr uint8_t SPAD_MAP_ID_6 = 6;
-// 3x3 mode 33°x32° FoV, checkerboard
-constexpr uint8_t SPAD_MAP_ID_11 = 11;
-// 3x3 mode 33°x32° FoV, inverted checkerboard
-constexpr uint8_t SPAD_MAP_ID_12 = 12;
-// User defined mode, single measurement mode
-// using config_page_spad1 only
-constexpr uint8_t SPAD_MAP_ID_14 = 14;
-
 // Histogram measurement
 // 3 header + 4 sub header + 128bytes = 135bytes
 constexpr uint8_t HIST_FRAME_LEN = 135;
@@ -133,21 +109,14 @@ constexpr uint8_t HIST_NOT_READY = 1;
 constexpr uint8_t HIST_DONE = 2;
 constexpr uint8_t HIST_ERROR = 3;
 
-// Active range
-enum TOFActiveRange : uint8_t {
-    NOT_SUPPORTED = 0,
-    SHORT_RANGE = 0x6E,
-    LONG_RANGE = 0x6F,
-};
-
 struct TMF8820Config {
     tmf8820::TMF8820RegisterMap* registers;
     const tmf8820_spad::TMF8820SPADConfig* spad_config;
+    TOFSpadMapID spad_map_id = SPAD_MAP_ID_14;
     TOFActiveRange active_range = SHORT_RANGE;
-    uint16_t report_period_ms = DEFAULT_REPORT_PERIOD_MS;
-    uint16_t kilo_iterations = DEFAULT_KILO_ITERATIONS;
-    bool histogram_dump = DEFAULT_HISTOGRAM_DUMP;
-    uint8_t spad_map_id = DEFAULT_SPAD_MAP_ID;
+    uint16_t report_period_ms = 500;
+    uint16_t kilo_iterations = 4000;
+    bool histogram_dump = true;
 };
 
 class TMF8820 {
@@ -487,6 +456,26 @@ class TMF8820 {
         }
         // Write the config page
         return send_write_config_page(sensor_id);
+    }
+
+    auto configure_sensor(TOFSensorID sensor_id, TMF8820Config* config)
+        -> bool {
+        if (!set_sensor_histogram_dump(sensor_id, config->histogram_dump)) {
+            return false;
+        }
+        if (!set_sensor_report_period(sensor_id, config->report_period_ms)) {
+            return false;
+        }
+        if (!set_sensor_kilo_iterations(sensor_id, config->kilo_iterations)) {
+            return false;
+        }
+        if (!set_sensor_active_range(sensor_id, config->active_range)) {
+            return false;
+        }
+        if (!set_sensor_spad_map(sensor_id, config->spad_map_id)) {
+            return false;
+        }
+        return true;
     }
 
     auto start_measurement(TOFSensorID sensor_id,
@@ -856,26 +845,6 @@ class TMF8820 {
             default:
                 return -1;
         }
-    }
-
-    auto configure_sensor(TOFSensorID sensor_id, TMF8820Config* config)
-        -> bool {
-        if (!set_sensor_report_period(sensor_id, config->report_period_ms)) {
-            return false;
-        }
-        if (!set_sensor_kilo_iterations(sensor_id, config->kilo_iterations)) {
-            return false;
-        }
-        if (!set_sensor_active_range(sensor_id, config->active_range)) {
-            return false;
-        }
-        if (!set_sensor_histogram_dump(sensor_id, config->histogram_dump)) {
-            return false;
-        }
-        if (!set_sensor_spad_map(sensor_id, config->spad_map_id)) {
-            return false;
-        }
-        return true;
     }
 
     TOFSensorPolicy* _policy{nullptr};

@@ -372,6 +372,31 @@ struct GetTOFMeasurementResponse {
     const char* data;
 };
 
+struct SetTOFConfigurationMessage {
+    uint32_t id = 0;
+    TOFSensorID sensor_id = TOF_X;
+    TOFSpadMapID spad_map_id = SPAD_MAP_ID_14;
+    std::optional<TOFActiveRange> active_range;
+    std::optional<uint16_t> kilo_iterations;
+    std::optional<uint16_t> report_period_ms;
+    std::optional<bool> histogram_dump;
+};
+
+struct GetTOFConfigurationMessage {
+    uint32_t id;
+    TOFSensorID sensor_id;
+};
+
+struct GetTOFConfigurationResponse {
+    uint32_t responding_to_id;
+    TOFSensorID sensor_id;
+    TOFSpadMapID spad_map_id;
+    TOFActiveRange active_range;
+    uint16_t kilo_iterations;
+    uint16_t report_period_ms;
+    bool histogram_dump;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -381,7 +406,7 @@ using HostCommsMessage =
                    GetEstopResponse, GetResetReasonResponse,
                    GetTOFSensorStatusResponse, GetTOFRegisterResponse,
                    ManageTOFMeasurementResponse, GetTOFMeasurementResponse,
-                   GetInstalledResponse>;
+                   GetInstalledResponse, GetTOFConfigurationResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -408,6 +433,7 @@ using MotorMessage = ::std::variant<
 using TOFSensorMessage =
     ::std::variant<std::monostate, SetTOFRegisterMessage, GetTOFRegisterMessage,
                    EnableTOFSensorMessage, GetTOFSensorStatusMessage,
-                   ManageTOFMeasurementMessage, GetTOFMeasurementMessage>;
+                   ManageTOFMeasurementMessage, GetTOFMeasurementMessage,
+                   SetTOFConfigurationMessage, GetTOFConfigurationMessage>;
 
 };  // namespace messages

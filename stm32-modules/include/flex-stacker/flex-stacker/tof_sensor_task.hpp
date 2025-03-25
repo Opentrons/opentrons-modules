@@ -282,6 +282,48 @@ class TOFSensorTask {
         }
     }
 
+    auto visit_message(const messages::SetTOFConfigurationMessage& m) -> void {
+        auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
+        auto& sensor = get_sensor(m.sensor_id);
+        if (!sensor.ok) {
+            response = messages::AcknowledgePrevious{
+                .responding_to_id = m.id,
+                .with_error = errors::ErrorCode::TMF8820_COMM_ERROR};
+            return send_response(response);
+        }
+
+        // Update sensor config state
+        auto& config = sensor.config;
+        config.spad_map_id = m.spad_map_id;
+        config.active_range = m.active_range.value_or(config.active_range);
+        config.report_period_ms =
+            m.report_period_ms.value_or(config.report_period_ms);
+        config.kilo_iterations =
+            m.kilo_iterations.value_or(config.kilo_iterations);
+        config.histogram_dump =
+            m.histogram_dump.value_or(config.histogram_dump);
+
+        // Configure the sensor
+        if (!sensor.driver.configure_sensor(m.sensor_id, &config)) {
+            response.with_error = errors::ErrorCode::TMF8820_COMM_ERROR;
+        }
+        send_response(response);
+    }
+
+    auto visit_message(const messages::GetTOFConfigurationMessage& m) -> void {
+        messages::HostCommsMessage response;
+        auto sensor = get_sensor(m.sensor_id);
+        response = messages::GetTOFConfigurationResponse{
+            .responding_to_id = m.id,
+            .sensor_id = m.sensor_id,
+            .spad_map_id = sensor.config.spad_map_id,
+            .active_range = sensor.config.active_range,
+            .kilo_iterations = sensor.config.kilo_iterations,
+            .report_period_ms = sensor.config.report_period_ms,
+            .histogram_dump = sensor.config.histogram_dump};
+        send_response(response);
+    }
+
     auto send_response(messages::HostCommsMessage response) -> void {
         static_cast<void>(_task_registry->send_to_address(
             response, Queues::HostCommsAddress));

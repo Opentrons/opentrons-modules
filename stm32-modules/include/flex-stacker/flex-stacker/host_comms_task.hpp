@@ -48,15 +48,18 @@ class HostCommsTask {
         gcode::StopMotor, gcode::GetResetReason, gcode::SetStatusBarState,
         gcode::GetTOFSensorStatus, gcode::GetTOFRegister, gcode::SetTOFRegister,
         gcode::EnableTOFSensor, gcode::ManageTOFMeasurement,
-        gcode::GetTOFMeasurement, gcode::GetInstalledStatus>;
+        gcode::GetTOFMeasurement, gcode::GetInstalledStatus,
+        gcode::SetTOFConfiguration, gcode::GetTOFConfiguration>;
 
-    using AckOnlyCache = AckCache<
-        8, gcode::EnterBootloader, gcode::SetSerialNumber,
-        gcode::SetTMCRegister, gcode::SetRunCurrent, gcode::SetHoldCurrent,
-        gcode::EnableMotor, gcode::DisableMotor, gcode::MoveMotorInSteps,
-        gcode::MoveToLimitSwitch, gcode::MoveMotorInMm, gcode::SetMicrosteps,
-        gcode::SetStatusBarState, gcode::SetMotorStallGuard, gcode::HomeMotor,
-        gcode::StopMotor, gcode::SetTOFRegister, gcode::EnableTOFSensor>;
+    using AckOnlyCache =
+        AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
+                 gcode::SetTMCRegister, gcode::SetRunCurrent,
+                 gcode::SetHoldCurrent, gcode::EnableMotor, gcode::DisableMotor,
+                 gcode::MoveMotorInSteps, gcode::MoveToLimitSwitch,
+                 gcode::MoveMotorInMm, gcode::SetMicrosteps,
+                 gcode::SetStatusBarState, gcode::SetMotorStallGuard,
+                 gcode::HomeMotor, gcode::StopMotor, gcode::SetTOFRegister,
+                 gcode::EnableTOFSensor, gcode::SetTOFConfiguration>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetTMCRegisterCache = AckCache<8, gcode::GetTMCRegister>;
     using GetLimitSwitchesCache = AckCache<8, gcode::GetLimitSwitches>;
@@ -71,6 +74,7 @@ class HostCommsTask {
     using GetTOFRegisterCache = AckCache<8, gcode::GetTOFRegister>;
     using ManageTOFMeasurementCache = AckCache<8, gcode::ManageTOFMeasurement>;
     using GetTOFMeasurementCache = AckCache<8, gcode::GetTOFMeasurement>;
+    using GetTOFConfigurationCache = AckCache<8, gcode::GetTOFConfiguration>;
 
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
@@ -1333,6 +1337,81 @@ class HostCommsTask {
             cache_entry);
     }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetTOFConfiguration& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::SetTOFConfigurationMessage{
+            .id = id,
+            .sensor_id = gcode.sensor_id,
+            .spad_map_id = gcode.spad_map_id,
+            .active_range = gcode.active_range,
+            .kilo_iterations = gcode.kilo_iterations,
+            .report_period_ms = gcode.report_period_ms,
+            .histogram_dump = gcode.histogram_dump};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetTOFConfiguration& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_tof_configuration_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetTOFConfigurationMessage{
+            .id = id, .sensor_id = gcode.sensor_id};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_tof_configuration_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetTOFConfigurationResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry = get_tof_configuration_cache.remove_if_present(
+            response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.sensor_id,
+                        response.spad_map_id, response.active_range,
+                        response.kilo_iterations, response.report_period_ms,
+                        response.histogram_dump);
+                }
+            },
+            cache_entry);
+    }
+
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -1362,6 +1441,7 @@ class HostCommsTask {
     GetTOFRegisterCache get_tof_register_cache;
     ManageTOFMeasurementCache manage_tof_measurement_cache;
     GetTOFMeasurementCache get_tof_measurement_cache;
+    GetTOFConfigurationCache get_tof_configuration_cache;
     bool may_connect_latch = true;
 };
 
