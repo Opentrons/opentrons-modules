@@ -38,6 +38,8 @@ endif()
 
 set(${TARGET_MODULE_NAME}_VERSION "${VERSION}" CACHE STRING "${TARGET_MODULE_NAME} fw version" FORCE)
 set(${TARGET_MODULE_NAME}_BOARD_REVISION "${TARGET_MODULE_NAME}-${STACKER_REVISION}" CACHE STRING "${TARGET_MODULE_NAME} board revision" FORCE)
+string(SUBSTRING ${STACKER_REVISION} 0 1 PRIMARY_REVISION)
+string(SUBSTRING ${STACKER_REVISION} 1 1 SECONDARY_REVISION)
 message(STATUS "Building ${TARGET_MODULE_NAME} version: ${${TARGET_MODULE_NAME}_VERSION} for board revision: ${${TARGET_MODULE_NAME}_BOARD_REVISION}")
 
 configure_file(./version.cpp.in ./version.cpp)
@@ -72,6 +74,11 @@ set_target_properties(${TARGET_MODULE_NAME}-core
         C_STANDARD_REQUIRED TRUE)
 
 target_link_libraries(${TARGET_MODULE_NAME}-core PUBLIC common-core)
+
+target_compile_definitions(${TARGET_MODULE_NAME}-core PUBLIC
+        PRIMARY_REVISION='${PRIMARY_REVISION}'
+        SECONDARY_REVISION='${SECONDARY_REVISION}'
+    )
 
 target_include_directories(${TARGET_MODULE_NAME}-core
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../include/${TARGET_MODULE_NAME}

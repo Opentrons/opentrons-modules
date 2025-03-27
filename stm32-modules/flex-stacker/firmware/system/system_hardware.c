@@ -224,9 +224,9 @@ bool system_hardware_read_door_closed(void) {
 }
 
 bool system_hardware_read_install_detected(void) {
-#if flex-stacker_BOARD_REVISION != 'b'
+#if PRIMARY_REVISION == 'a'
     return false;
-#elif
+#else
     return HAL_GPIO_ReadPin(INSTALL_DETECTION_PORT, INSTALL_DETECTION_PIN) == GPIO_PIN_SET;
 #endif
 }
