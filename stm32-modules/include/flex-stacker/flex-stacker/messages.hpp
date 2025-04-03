@@ -427,8 +427,8 @@ using MotorMessage = ::std::variant<
     std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
     MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
     GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
-    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
-    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage>;
+    GetMoveParamsMessage, SetDiag0IRQMessage, HomeMotorMessage,
+    GetPlatformSensorsMessage, GetEstopMessage>;
 
 using TOFSensorMessage =
     ::std::variant<std::monostate, SetTOFRegisterMessage, GetTOFRegisterMessage,

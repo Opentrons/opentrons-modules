@@ -73,18 +73,6 @@ static auto i2c3_comms = i2c::hardware::I2C();
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto i2c_handles = I2CHandlerStruct{};
 
-extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    switch (GPIO_Pin) {
-        case MOTOR_DIAG0_PIN:
-        case N_ESTOP_PIN:
-            static_cast<void>(aggregator.send_from_isr(
-                messages::GPIOInterruptMessage{.pin = GPIO_Pin}));
-            break;
-        default:
-            break;
-    }
-}
-
 auto main() -> int {
     HardwareInit();
 
