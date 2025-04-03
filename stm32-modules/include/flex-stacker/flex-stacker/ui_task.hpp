@@ -329,12 +329,9 @@ class UITask {
                 break;
             }
         }
-        if (m.from_host) {
-            // Only send ack if this was requested by the host
-            static_cast<void>(_task_registry->send_to_address(
-                messages::AcknowledgePrevious{.responding_to_id = m.id},
-                Queues::HostCommsAddress));
-        }
+        static_cast<void>(_task_registry->send_to_address(
+            messages::AcknowledgePrevious{.responding_to_id = m.id},
+            Queues::HostCommsAddress));
     }
 
     /**
