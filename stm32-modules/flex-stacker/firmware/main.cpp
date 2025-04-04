@@ -1,4 +1,3 @@
-#include <cstdint>
 #include <functional>
 
 #include "FreeRTOS.h"
@@ -8,7 +7,6 @@
 #include "firmware/i2c_hardware.h"
 #include "firmware/motor_hardware.h"
 #include "firmware/system_stm32g4xx.h"
-#include "flex-stacker/messages.hpp"
 #include "ot_utils/freertos/freertos_task.hpp"
 #include "systemwide.h"
 #include "task.h"
