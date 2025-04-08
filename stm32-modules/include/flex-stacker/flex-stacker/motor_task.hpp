@@ -102,10 +102,7 @@ class MotorTask {
           _task_registry(aggregator),
           _x_controller(x_ctrl),
           _z_controller(z_ctrl),
-          _l_controller(l_ctrl),
-          _debounce_timer(
-              "DB Timer", [ThisPtr = this] { ThisPtr->reset_debounce(); },
-              DEBOUNCE_MS) {}
+          _l_controller(l_ctrl) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -431,42 +428,6 @@ class MotorTask {
         _x_controller.set_diag0_irq(m.enable);
     }
 
-    auto reset_debounce() -> void { _debounce_timer.stop(); }
-
-    template <MotorControlPolicy Policy>
-    auto visit_message(const messages::GPIOInterruptMessage& m, Policy& policy)
-        -> void {
-        // Debounce
-        if (_debounce_timer.is_running()) {
-            return;
-        }
-        _debounce_timer.start();
-
-        auto triggered = false;
-        if (policy.is_diag0_pin(m.pin)) {
-            policy.sleep_ms(DEBOUNCE_SLEEP_MS);
-            triggered = policy.check_diag0();
-        } else if (policy.is_estop_pin(m.pin)) {
-            policy.sleep_ms(DEBOUNCE_SLEEP_MS);
-            triggered = policy.check_estop();
-        } else {
-            // don't care about other interrupts
-            return;
-        }
-
-        // Set status bars
-        auto color = triggered ? StatusBarColor::Red : StatusBarColor::Green;
-        auto pattern =
-            triggered ? StatusBarPattern::Flash : StatusBarPattern::Static;
-        auto message = messages::SetStatusBarStateMessage{
-            .color = color,
-            .pattern = pattern,
-            .duration = LED_ERROR_DURATION_MS,
-            .reps = LED_ERROR_REPS};
-        static_cast<void>(
-            _task_registry->send_to_address(message, Queues::UIAddress));
-    }
-
     /**
      * @brief Move the motor to the limit switch; apply fast moves to XZ motors
      * whenever possible.
@@ -516,7 +477,6 @@ class MotorTask {
     Controller& _z_controller;
     Controller& _l_controller;
     bool _initialized{false};
-    FreeRTOSTimer _debounce_timer;
 
     MotorState _x_state{
         .lms_config = {.mm_per_rev = Defaults::X::MM_PER_REV,

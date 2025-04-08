@@ -296,7 +296,6 @@ struct UpdateUIMessage {
 
 struct SetStatusBarStateMessage {
     uint32_t id = 0;
-    bool from_host = false;
     std::optional<StatusBarID> bar_id = std::nullopt;
     std::optional<StatusBarColor> color = std::nullopt;
     std::optional<StatusBarPattern> pattern = std::nullopt;
@@ -423,12 +422,13 @@ using MotorDriverMessage =
                    SetMotorCurrentMessage, SetMicrostepsMessage,
                    SetMotorStallGuardMessage, GetMotorStallGuardMessage>;
 
-using MotorMessage = ::std::variant<
-    std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
-    MoveToLimitSwitchMessage, StopMotorMessage, MoveCompleteMessage,
-    GetLimitSwitchesMessage, MoveMotorInMmMessage, SetMicrostepsMessage,
-    GetMoveParamsMessage, SetDiag0IRQMessage, GPIOInterruptMessage,
-    HomeMotorMessage, GetPlatformSensorsMessage, GetEstopMessage>;
+using MotorMessage =
+    ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
+                   MoveToLimitSwitchMessage, StopMotorMessage,
+                   MoveCompleteMessage, GetLimitSwitchesMessage,
+                   MoveMotorInMmMessage, SetMicrostepsMessage,
+                   GetMoveParamsMessage, SetDiag0IRQMessage, HomeMotorMessage,
+                   GetPlatformSensorsMessage, GetEstopMessage>;
 
 using TOFSensorMessage =
     ::std::variant<std::monostate, SetTOFRegisterMessage, GetTOFRegisterMessage,

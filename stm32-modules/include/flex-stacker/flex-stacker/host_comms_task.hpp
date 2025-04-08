@@ -1089,7 +1089,6 @@ class HostCommsTask {
         }
         auto message = messages::SetStatusBarStateMessage{
             .id = id,
-            .from_host = true,
             .bar_id = gcode.bar_id,
             .color = gcode.color,
             .pattern = gcode.pattern,
