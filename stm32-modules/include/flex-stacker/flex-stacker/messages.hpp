@@ -290,10 +290,6 @@ struct GetEstopResponse {
     bool triggered;
 };
 
-struct UpdateUIMessage {
-    // Empty struct
-};
-
 struct SetStatusBarStateMessage {
     uint32_t id = 0;
     std::optional<StatusBarID> bar_id = std::nullopt;
@@ -414,7 +410,7 @@ using SystemMessage =
                    GetInstalledMessage>;
 
 using UIMessage =
-    ::std::variant<std::monostate, UpdateUIMessage, SetStatusBarStateMessage>;
+    ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,

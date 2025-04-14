@@ -193,15 +193,6 @@ class UITask {
     }
 
     template <UIPolicyIface Policy>
-    // NOLINTNEXTLINE[readability-function-cognitive-complexity]
-    auto visit_message(const messages::UpdateUIMessage& m, Policy& policy)
-        -> void {
-        static_cast<void>(m);
-        static_cast<void>(policy);
-        update_ui();
-    }
-
-    template <UIPolicyIface Policy>
     auto visit_message(const messages::SetStatusBarStateMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
