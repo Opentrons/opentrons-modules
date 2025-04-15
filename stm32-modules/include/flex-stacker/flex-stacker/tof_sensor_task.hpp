@@ -170,17 +170,19 @@ class TOFSensorTask {
     auto visit_message(const messages::EnableTOFSensorMessage& m) -> void {
         auto response = messages::AcknowledgePrevious{.responding_to_id = m.id};
         auto& sensor = get_sensor(m.sensor_id);
-        TOFSensorPolicy::enable_tof_sensor(m.sensor_id, m.enable);
-        sensor.driver.reset_custom_address();
-        sensor.state = DISABLED;
-        sensor.ok = false;
-        if (m.enable) {
-            sensor.state = INITIALIZING;
-            sensor.ok =
-                sensor.driver.initialize(&sensor.config, _policy, sensor.kind);
-            sensor.state = sensor.ok ? IDLE : TOF_ERROR;
+        if (m.enable != sensor.ok) {
+            TOFSensorPolicy::enable_tof_sensor(m.sensor_id, m.enable);
+            sensor.driver.reset_custom_address();
+            sensor.state = DISABLED;
+            sensor.ok = false;
+            if (m.enable) {
+                sensor.state = INITIALIZING;
+                sensor.ok =
+                    sensor.driver.initialize(&sensor.config, _policy, sensor.kind);
+                sensor.state = sensor.ok ? IDLE : TOF_ERROR;
+            }
+            sensor.mode = sensor.driver.get_sensor_mode(sensor.kind);
         }
-        sensor.mode = sensor.driver.get_sensor_mode(sensor.kind);
         send_response(response);
     }
 
