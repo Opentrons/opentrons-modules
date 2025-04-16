@@ -106,6 +106,10 @@ class TOFSensorTask {
                 sensor.mode = sensor.driver.get_sensor_mode(sensor_id);
             }
             _initialized = _tof_sensor_x.ok && _tof_sensor_z.ok;
+            auto message = messages::SetStatusBarStateMessage{
+                .color = White, .pattern = Static};
+            static_cast<void>(
+                _task_registry->send_to_address(message, Queues::UIAddress));
         }
 
         auto message = Message(std::monostate());

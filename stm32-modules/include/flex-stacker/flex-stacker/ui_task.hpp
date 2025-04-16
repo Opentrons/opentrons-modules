@@ -88,11 +88,11 @@ struct StatusBarState {
     StatusBarID kind;
     StatusBarColor color;
     StatusBarColor old_color;
-    StatusBarPattern pattern = StatusBarPattern::Static;
+    StatusBarPattern pattern = StatusBarPattern::Pulse;
     float power;
     float power_dt;
     uint32_t duration = LED_PULSE_PERIOD_MS;
-    int8_t reps = 0;
+    int8_t reps = FOREVER;
     uint32_t counter = 0;
     bool driver_ok = false;
 };
@@ -208,9 +208,12 @@ class UITask {
                 break;
             }
         }
-        static_cast<void>(_task_registry->send_to_address(
-            messages::AcknowledgePrevious{.responding_to_id = m.id},
-            Queues::HostCommsAddress));
+        if (m.from_host) {
+            // Only send ack if this was requested by the host
+            static_cast<void>(_task_registry->send_to_address(
+                messages::AcknowledgePrevious{.responding_to_id = m.id},
+                Queues::HostCommsAddress));
+        }
     }
 
     /*

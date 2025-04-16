@@ -292,6 +292,7 @@ struct GetEstopResponse {
 
 struct SetStatusBarStateMessage {
     uint32_t id = 0;
+    bool from_host = false;
     std::optional<StatusBarID> bar_id = std::nullopt;
     std::optional<StatusBarColor> color = std::nullopt;
     std::optional<StatusBarPattern> pattern = std::nullopt;
