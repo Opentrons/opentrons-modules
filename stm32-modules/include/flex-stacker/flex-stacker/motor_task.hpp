@@ -142,6 +142,7 @@ class MotorTask {
             _x_controller.initialize(&policy);
             _z_controller.initialize(&policy);
             _l_controller.initialize(&policy);
+            _message_queue.set_ready();
             _initialized = true;
         }
 

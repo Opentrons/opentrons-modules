@@ -226,6 +226,18 @@ class QueueAggregator {
         return send_from_isr_to<idx>(msg);
     }
 
+    /**
+     * @brief Check if the task is ready to process incoming messages.
+     *
+     * @param idx The index of the queue to check, as returned by get_queue_idx
+     * @return true if the task is ready to process messages, false otherwise.
+     */
+    auto task_ready(size_t idx) -> bool {
+        return dispatch_at_index(_handles, idx, [](auto& queue) {
+            return queue._handle->task_ready();
+        });
+    }
+
   private:
     /**
      * @brief Wrapper class for holding a pointer to a queue with
@@ -313,6 +325,25 @@ class QueueAggregator {
     template <typename Queue>
     [[nodiscard]] auto check_initialized() const -> bool {
         return std::get<get_queue_idx<Queue>()>(_handles)._handle != nullptr;
+    }
+
+    /**
+     * @brief Executes a function on a QueueHandle with the given index.
+     *
+     * @tparam Tuple The tuple to iterate through, the QueueHandles in this
+     * case.
+     * @return true if the index matches the queue index.
+     */
+    template <std::size_t I = 0, typename Tuple, typename Func>
+    auto dispatch_at_index(Tuple&& tpl, std::size_t index, Func&& f) -> bool {
+        if constexpr (I < std::tuple_size_v<std::decay_t<Tuple>>) {
+            if (I == index) {
+                return f(std::get<I>(std::forward<Tuple>(tpl)));
+            }
+            return dispatch_at_index<I + 1>(std::forward<Tuple>(tpl), index,
+                                            std::forward<Func>(f));
+        }
+        return false;
     }
 
     // SendHelper uses the internal send_to function...

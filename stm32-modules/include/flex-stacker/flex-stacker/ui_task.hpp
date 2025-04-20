@@ -160,6 +160,7 @@ class UITask {
                 _led_bar_external.driver_ok = true;
                 set_status_bar(External);
             }
+            _message_queue.set_ready();
             _initialized = true;
         }
 
@@ -219,6 +220,7 @@ class UITask {
     /*
     Tics the statusbar leds to the next state.
     */
+    // NOLINTNEXTLINE[readability-function-cognitive-complexity]
     auto update_ui() -> void {
         static constexpr double TWO = 2.0F;
         for (auto bar_id : {StatusBarID::Internal, StatusBarID::External}) {

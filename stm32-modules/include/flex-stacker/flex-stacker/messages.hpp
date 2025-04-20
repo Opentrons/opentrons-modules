@@ -410,8 +410,7 @@ using SystemMessage =
                    GetDoorClosedMessage, GetResetReasonMessage,
                    GetInstalledMessage>;
 
-using UIMessage =
-    ::std::variant<std::monostate, SetStatusBarStateMessage>;
+using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,

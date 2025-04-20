@@ -61,6 +61,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator *aggregator) -> void {
     usb_hw_init(&cdc_rx_handler, &cdc_init_handler, &cdc_deinit_handler);
     usb_hw_start();
     local_task->committed_rx_buf_ptr = local_task->rx_buf.committed()->data();
+    _comms_queue.set_ready();
     while (true) {
         char *tx_end =
             top_task->run_once(local_task->tx_buf.accessible()->begin(),

@@ -110,6 +110,9 @@ class TOFSensorTask {
                 .color = White, .pattern = Static};
             static_cast<void>(
                 _task_registry->send_to_address(message, Queues::UIAddress));
+
+            // The task is ready to process messages.
+            _message_queue.set_ready();
         }
 
         auto message = Message(std::monostate());
@@ -181,8 +184,8 @@ class TOFSensorTask {
             sensor.ok = false;
             if (m.enable) {
                 sensor.state = INITIALIZING;
-                sensor.ok =
-                    sensor.driver.initialize(&sensor.config, _policy, sensor.kind);
+                sensor.ok = sensor.driver.initialize(&sensor.config, _policy,
+                                                     sensor.kind);
                 sensor.state = sensor.ok ? IDLE : TOF_ERROR;
             }
             sensor.mode = sensor.driver.get_sensor_mode(sensor.kind);

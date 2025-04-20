@@ -166,6 +166,7 @@ class MotorDriverTask {
                                             MotorID::MOTOR_L)) {
                 return;
             }
+            _message_queue.set_ready();
             _initialized = true;
         }
 
