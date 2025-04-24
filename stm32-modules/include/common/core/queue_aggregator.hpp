@@ -6,9 +6,7 @@
 
 #pragma once
 
-#include <atomic>
 #include <memory>
-#include <optional>
 #include <tuple>
 #include <variant>
 
@@ -233,9 +231,11 @@ class QueueAggregator {
      * @return true if the task is ready to process messages, false otherwise.
      */
     auto task_ready(size_t idx) -> bool {
-        return dispatch_at_index(_handles, idx, [](auto& queue) {
-            return queue._handle->task_ready();
+        auto ready = false;
+        dispatch_at_index(_handles, idx, [&ready](auto& queue) {
+            ready = queue._handle->task_ready();
         });
+        return ready;
     }
 
   private:
@@ -328,22 +328,23 @@ class QueueAggregator {
     }
 
     /**
-     * @brief Executes a function on a QueueHandle with the given index.
+     * @brief Iterates through a tuple and executes a function if item at index is found.
      *
-     * @tparam Tuple The tuple to iterate through, the QueueHandles in this
-     * case.
-     * @return true if the index matches the queue index.
+     * @tparam I The current item index in the tuple.
+     * @tparam Tuple The tuple to iterate through.
+     * @tparam Func The function to execute if the item is found.
+     * @return void
      */
     template <std::size_t I = 0, typename Tuple, typename Func>
-    auto dispatch_at_index(Tuple&& tpl, std::size_t index, Func&& f) -> bool {
+    auto dispatch_at_index(Tuple&& tpl, std::size_t index, Func&& f) -> void {
         if constexpr (I < std::tuple_size_v<std::decay_t<Tuple>>) {
             if (I == index) {
-                return f(std::get<I>(std::forward<Tuple>(tpl)));
+                f(std::get<I>(std::forward<Tuple>(tpl)));
+                return;
             }
             return dispatch_at_index<I + 1>(std::forward<Tuple>(tpl), index,
                                             std::forward<Func>(f));
         }
-        return false;
     }
 
     // SendHelper uses the internal send_to function...

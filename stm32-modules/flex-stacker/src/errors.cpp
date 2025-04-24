@@ -10,7 +10,7 @@ const char* const GCODE_CACHE_FULL = "ERR004:gcode cache full";
 const char* const BAD_MESSAGE_ACKNOWLEDGEMENT =
     "ERR005:bad message acknowledgement";
 const char* const ESTOP_TRIGGERED = "ERR006:estop triggered";
-const char* const TASK_INITIALIZING = "ERR007:task initializing";
+const char* const TASK_NOT_READY = "ERR007:task not ready";
 
 const char* const SYSTEM_SERIAL_NUMBER_INVALID =
     "ERR301:system:serial number invalid format";
@@ -57,7 +57,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(GCODE_CACHE_FULL);
         HANDLE_CASE(BAD_MESSAGE_ACKNOWLEDGEMENT);
         HANDLE_CASE(ESTOP_TRIGGERED);
-        HANDLE_CASE(TASK_INITIALIZING);
+        HANDLE_CASE(TASK_NOT_READY);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_INVALID);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
         HANDLE_CASE(SYSTEM_EEPROM_ERROR);

@@ -1113,9 +1113,8 @@ class HostCommsTask {
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
             return std::make_pair(
-                false,
-                errors::write_into(tx_into, tx_limit,
-                                   errors::ErrorCode::TASK_INITIALIZING));
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
         }
         auto id = get_tof_sensor_status_cache.add(gcode);
         if (id == 0) {
@@ -1164,9 +1163,8 @@ class HostCommsTask {
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
             return std::make_pair(
-                false,
-                errors::write_into(tx_into, tx_limit,
-                                   errors::ErrorCode::TASK_INITIALIZING));
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
         }
         auto id = get_tof_register_cache.add(gcode);
         if (id == 0) {
@@ -1216,9 +1214,8 @@ class HostCommsTask {
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
             return std::make_pair(
-                false,
-                errors::write_into(tx_into, tx_limit,
-                                   errors::ErrorCode::TASK_INITIALIZING));
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
         }
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
@@ -1247,9 +1244,8 @@ class HostCommsTask {
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
             return std::make_pair(
-                false,
-                errors::write_into(tx_into, tx_limit,
-                                   errors::ErrorCode::TASK_INITIALIZING));
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
         }
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
@@ -1275,9 +1271,8 @@ class HostCommsTask {
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
             return std::make_pair(
-                false,
-                errors::write_into(tx_into, tx_limit,
-                                   errors::ErrorCode::TASK_INITIALIZING));
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
         }
         auto id = manage_tof_measurement_cache.add(gcode);
         if (id == 0) {
@@ -1329,9 +1324,8 @@ class HostCommsTask {
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
             return std::make_pair(
-                false,
-                errors::write_into(tx_into, tx_limit,
-                                   errors::ErrorCode::TASK_INITIALIZING));
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
         }
         auto id = get_tof_measurement_cache.add(gcode);
         if (id == 0) {
@@ -1380,9 +1374,8 @@ class HostCommsTask {
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
             return std::make_pair(
-                false,
-                errors::write_into(tx_into, tx_limit,
-                                   errors::ErrorCode::TASK_INITIALIZING));
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
         }
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
@@ -1414,9 +1407,8 @@ class HostCommsTask {
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
             return std::make_pair(
-                false,
-                errors::write_into(tx_into, tx_limit,
-                                   errors::ErrorCode::TASK_INITIALIZING));
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
         }
         auto id = get_tof_configuration_cache.add(gcode);
         if (id == 0) {
