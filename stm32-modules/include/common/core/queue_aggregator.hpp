@@ -328,7 +328,8 @@ class QueueAggregator {
     }
 
     /**
-     * @brief Iterates through a tuple and executes a function if item at index is found.
+     * @brief Iterates through a tuple and executes a function if item at index
+     * is found.
      *
      * @tparam I The current item index in the tuple.
      * @tparam Tuple The tuple to iterate through.
