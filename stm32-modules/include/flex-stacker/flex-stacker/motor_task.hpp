@@ -21,11 +21,8 @@
 #include "flex-stacker/tmc2160_registers.hpp"
 #include "hal/message_queue.hpp"
 #include "messages.hpp"
-#include "ot_utils/freertos/freertos_timer.hpp"
 
 namespace motor_task {
-using namespace ot_utils::freertos_timer;
-
 template <typename P>
 concept MotorControlPolicy = requires(P p, MotorID motor_id) {
     { p.enable_motor(motor_id) } -> std::same_as<bool>;
@@ -36,12 +33,6 @@ using Message = messages::MotorMessage;
 using Controller = motor_interrupt_controller::MotorInterruptController;
 using Move = motor_interrupt_controller::Move;
 using Error = errors::ErrorCode;
-
-// Gpio irq debounce time
-static constexpr uint32_t DEBOUNCE_MS = 1000;
-static constexpr uint32_t DEBOUNCE_SLEEP_MS = 200;
-static constexpr uint32_t LED_ERROR_DURATION_MS = 1000;
-static constexpr uint32_t LED_ERROR_REPS = 3;
 
 struct Defaults {
     struct X {
@@ -151,6 +142,7 @@ class MotorTask {
             _x_controller.initialize(&policy);
             _z_controller.initialize(&policy);
             _l_controller.initialize(&policy);
+            _message_queue.set_ready();
             _initialized = true;
         }
 

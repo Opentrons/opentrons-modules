@@ -290,12 +290,9 @@ struct GetEstopResponse {
     bool triggered;
 };
 
-struct UpdateUIMessage {
-    // Empty struct
-};
-
 struct SetStatusBarStateMessage {
     uint32_t id = 0;
+    bool from_host = false;
     std::optional<StatusBarID> bar_id = std::nullopt;
     std::optional<StatusBarColor> color = std::nullopt;
     std::optional<StatusBarPattern> pattern = std::nullopt;
@@ -413,8 +410,7 @@ using SystemMessage =
                    GetDoorClosedMessage, GetResetReasonMessage,
                    GetInstalledMessage>;
 
-using UIMessage =
-    ::std::variant<std::monostate, UpdateUIMessage, SetStatusBarStateMessage>;
+using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,

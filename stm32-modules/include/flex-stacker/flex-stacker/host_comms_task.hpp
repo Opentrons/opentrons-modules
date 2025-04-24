@@ -1089,6 +1089,7 @@ class HostCommsTask {
         }
         auto message = messages::SetStatusBarStateMessage{
             .id = id,
+            .from_host = true,
             .bar_id = gcode.bar_id,
             .color = gcode.color,
             .pattern = gcode.pattern,
@@ -1110,6 +1111,11 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::GetTOFSensorStatus& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
+        }
         auto id = get_tof_sensor_status_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -1155,6 +1161,11 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::GetTOFRegister& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
+        }
         auto id = get_tof_register_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -1201,6 +1212,11 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::SetTOFRegister& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
+        }
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -1226,6 +1242,11 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::EnableTOFSensor& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
+        }
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -1248,6 +1269,11 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::ManageTOFMeasurement& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
+        }
         auto id = manage_tof_measurement_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -1296,6 +1322,11 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::GetTOFMeasurement& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
+        }
         auto id = get_tof_measurement_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -1341,6 +1372,11 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::SetTOFConfiguration& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
+        }
         auto id = ack_only_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(
@@ -1369,6 +1405,11 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::GetTOFConfiguration& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        if (!task_registry->task_ready(Queues::TOFSensorAddress)) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::TASK_NOT_READY));
+        }
         auto id = get_tof_configuration_cache.add(gcode);
         if (id == 0) {
             return std::make_pair(

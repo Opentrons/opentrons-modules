@@ -5,6 +5,7 @@
 
 #pragma once
 #include <array>
+#include <atomic>
 
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -75,10 +76,14 @@ class FreeRTOSMessageQueue {
     }
     void provide_handle(TaskHandle_t handle) { receiver_handle = handle; }
 
+    auto set_ready() -> void { ready.store(true); }
+    [[nodiscard]] auto task_ready() -> bool { return ready.load(); }
+
   private:
     StaticQueue_t queue_control_structure;
     std::array<uint8_t, queue_size * sizeof(Message)> backing;
     QueueHandle_t queue;
     TaskHandle_t receiver_handle;
     uint8_t sent_bit;
+    std::atomic<bool> ready = false;
 };

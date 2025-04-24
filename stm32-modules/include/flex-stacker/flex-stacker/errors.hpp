@@ -15,6 +15,7 @@ enum class ErrorCode : uint16_t {
     GCODE_CACHE_FULL = 4,
     BAD_MESSAGE_ACKNOWLEDGEMENT = 5,
     ESTOP_TRIGGERED = 6,
+    TASK_NOT_READY = 7,
     // 3xx - System General
     SYSTEM_SERIAL_NUMBER_INVALID = 301,
     SYSTEM_SERIAL_NUMBER_HAL_ERROR = 302,
