@@ -1483,7 +1483,6 @@ class HostCommsTask {
     GetTOFMeasurementCache get_tof_measurement_cache;
     GetTOFConfigurationCache get_tof_configuration_cache;
     bool may_connect_latch = true;
-    bool initialized = false;
 };
 
 };  // namespace host_comms_task
