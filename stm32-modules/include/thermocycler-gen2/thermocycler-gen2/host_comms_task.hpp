@@ -268,11 +268,7 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::ErrorMessage& msg, InputIt tx_into,
                        InputLimit tx_limit) -> InputIt {
-        // stall detected, clear the message cache.
-        if ((msg.code == errors::ErrorCode::MOTOR_STALL_DETECTED) ||
-            (msg.code == errors::ErrorCode::ESTOP_TRIGGERED)) {
-            ack_only_cache.clear();
-        }
+        ack_only_cache.clear();
         return errors::write_into_async(tx_into, tx_limit, msg.code);
     }
 
