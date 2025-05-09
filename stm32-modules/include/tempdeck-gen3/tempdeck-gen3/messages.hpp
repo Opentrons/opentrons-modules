@@ -88,6 +88,15 @@ struct EnterBootloaderMessage {
     uint32_t id;
 };
 
+struct GetResetReasonMessage {
+    uint32_t id;
+};
+
+struct GetResetReasonResponse {
+    uint32_t responding_to_id;
+    uint16_t reason;
+};
+
 struct ForceUSBDisconnect {
     uint32_t id;
     size_t return_address;
@@ -173,7 +182,7 @@ using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
                    GetTempDebugResponse, GetOffsetConstantsResponse,
-                   GetThermalPowerDebugResponse>;
+                   GetThermalPowerDebugResponse, GetResetReasonResponse>;
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
                    SetSerialNumberMessage, EnterBootloaderMessage>;
@@ -184,5 +193,5 @@ using ThermalMessage =
                    SetFanAutomaticMessage, DeactivateAllMessage,
                    SetTemperatureMessage, SetPIDConstantsMessage,
                    GetOffsetConstantsMessage, SetOffsetConstantsMessage,
-                   GetThermalPowerDebugMessage>;
+                   GetThermalPowerDebugMessage, GetResetReasonMessage>;
 };  // namespace messages

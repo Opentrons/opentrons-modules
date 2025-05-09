@@ -31,12 +31,14 @@ class HostCommsTask {
     using Aggregator = typename tasks::Tasks<QueueImpl>::QueueAggregator;
 
   private:
-    using GCodeParser = gcode::GroupParser<
-        gcode::GetSystemInfo, gcode::EnterBootloader, gcode::SetSerialNumber,
-        gcode::GetTemperatureDebug, gcode::SetTemperature, gcode::DeactivateAll,
-        gcode::SetPeltierDebug, gcode::SetFanManual, gcode::SetFanAutomatic,
-        gcode::SetPIDConstants, gcode::SetOffsetConstants,
-        gcode::GetOffsetConstants, gcode::GetThermalPowerDebug>;
+    using GCodeParser =
+        gcode::GroupParser<gcode::GetSystemInfo, gcode::EnterBootloader,
+                           gcode::SetSerialNumber, gcode::GetTemperatureDebug,
+                           gcode::SetTemperature, gcode::DeactivateAll,
+                           gcode::SetPeltierDebug, gcode::SetFanManual,
+                           gcode::SetFanAutomatic, gcode::SetPIDConstants,
+                           gcode::SetOffsetConstants, gcode::GetOffsetConstants,
+                           gcode::GetThermalPowerDebug, gcode::GetResetReason>;
     using AckOnlyCache =
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         AckCache<10, gcode::EnterBootloader, gcode::SetSerialNumber,
@@ -48,6 +50,7 @@ class HostCommsTask {
     using GetTempDebugCache = AckCache<4, gcode::GetTemperatureDebug>;
     using GetOffsetConstantsCache = AckCache<4, gcode::GetOffsetConstants>;
     using GetThermalPowerDebugCache = AckCache<4, gcode::GetThermalPowerDebug>;
+    using GetResetReasonCache = AckCache<8, gcode::GetResetReason>;
 
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
@@ -64,7 +67,9 @@ class HostCommsTask {
           // NOLINTNEXTLINE(readability-redundant-member-init)
           get_offset_constants_cache(),
           // NOLINTNEXTLINE(readability-redundant-member-init)
-          get_thermal_power_debug_cache() {}
+          get_thermal_power_debug_cache(),
+          // NOLINTNEXTLINE(readability-redundant-member-init)
+          get_reset_reason_cache() {}
     HostCommsTask(const HostCommsTask& other) = delete;
     auto operator=(const HostCommsTask& other) -> HostCommsTask& = delete;
     HostCommsTask(HostCommsTask&& other) noexcept = delete;
@@ -269,6 +274,28 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetResetReasonResponse& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            get_reset_reason_cache.remove_if_present(response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(tx_into, tx_limit,
+                                                             response.reason);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::GetTempDebugResponse& response,
                        InputIt tx_into, InputLimit tx_limit) -> InputIt {
         auto cache_entry =
@@ -393,6 +420,27 @@ class HostCommsTask {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
             get_system_info_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetResetReason& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_reset_reason_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetResetReasonMessage{.id = id};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_reset_reason_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
@@ -657,6 +705,7 @@ class HostCommsTask {
     GetTempDebugCache get_temp_debug_cache;
     GetOffsetConstantsCache get_offset_constants_cache;
     GetThermalPowerDebugCache get_thermal_power_debug_cache;
+    GetResetReasonCache get_reset_reason_cache;
     bool may_connect_latch = true;
 };
 

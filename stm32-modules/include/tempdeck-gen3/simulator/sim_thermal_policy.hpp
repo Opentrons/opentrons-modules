@@ -37,8 +37,15 @@ struct SimThermalPolicy : public m24128_test_policy::TestM24128Policy {
         return _fan * MAX_RPM;
     }
 
+    auto last_reset_reason() -> uint16_t { return _reset_reason; }
+
+    auto set_reset_reason(uint16_t sim_reason) -> void {
+        _reset_reason = sim_reason;
+    }
+
   private:
     bool _enabled = false;
     double _power = 0.0F;  // Positive for heat, negative for cool
     double _fan = 0.0F;
+    uint16_t _reset_reason = 0;
 };
