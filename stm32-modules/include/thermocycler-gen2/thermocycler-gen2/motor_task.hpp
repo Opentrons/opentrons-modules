@@ -1149,7 +1149,7 @@ class MotorTask {
                 if (!policy.lid_read_closed_switch()) {
                     // if error is none, overwrite it, otherwise leave the
                     // original error
-                    if (error == errors : ErrorCode::NO_ERROR) {
+                    if (error == errors::ErrorCode::NO_ERROR) {
                         error = errors::ErrorCode::UNEXPECTED_LID_STATE;
                     }
                 }
