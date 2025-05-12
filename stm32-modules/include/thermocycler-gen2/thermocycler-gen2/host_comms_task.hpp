@@ -268,6 +268,7 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const messages::ErrorMessage& msg, InputIt tx_into,
                        InputLimit tx_limit) -> InputIt {
+        ack_only_cache.clear();
         return errors::write_into_async(tx_into, tx_limit, msg.code);
     }
 
