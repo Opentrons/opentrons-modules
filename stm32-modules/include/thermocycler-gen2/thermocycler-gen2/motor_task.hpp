@@ -1144,6 +1144,11 @@ class MotorTask {
                 error = start_seal_movement(
                     SealStepperState::SWITCH_BACKOFF_MICROSTEPS_RETRACT, false,
                     policy);
+                // if the lid has been opened by extending the seal, overwrite
+                // the error status
+                if (!policy.lid_read_closed_switch()) {
+                    error |= errors::ErrorCode::UNEXPECTED_LID_STATE;
+                }
                 state_for_system_task =
                     messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
