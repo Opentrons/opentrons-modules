@@ -1147,8 +1147,9 @@ class MotorTask {
                 // if the lid has been opened by extending the seal, overwrite
                 // the error status
                 if (!policy.lid_read_closed_switch()) {
-                    // if error is none, overwrite it, otherwise leave the original error
-                    if (error == errors:ErrorCode::NO_ERROR) {
+                    // if error is none, overwrite it, otherwise leave the
+                    // original error
+                    if (error == errors : ErrorCode::NO_ERROR) {
                         error = errors::ErrorCode::UNEXPECTED_LID_STATE;
                     }
                 }
