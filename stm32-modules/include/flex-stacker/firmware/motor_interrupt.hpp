@@ -30,7 +30,6 @@ class MotorInterruptController {
     explicit MotorInterruptController(MotorID id, MotorPolicy* policy)
         : _id(id),
           _policy(policy),
-          _initialized(false),
           _profile(TIMER_FREQ, 0, 0, 0, motor_util::MovementType::OpenLoop, 0) {
     }
     MotorInterruptController(MotorInterruptController const&) = delete;
@@ -40,7 +39,7 @@ class MotorInterruptController {
     ~MotorInterruptController() = default;
 
     auto tick() -> bool {
-        if (!_initialized) {
+        if (!_initialized.load()) {
             return false;
         }
         auto ret = _profile.tick();
@@ -50,22 +49,22 @@ class MotorInterruptController {
         if (ret.done || stop_condition_met()) {
             _policy->stop_motor(_id);
             _policy->set_limit_switch_irq(_id, _direction, false);
-            _stop = true;
+            _stop.store(true);
             return true;
         }
         return ret.done;
     }
     auto initialize(MotorPolicy* policy) -> void {
         _policy = policy;
-        _initialized = true;
+        _initialized.store(true);
     }
 
     auto reset() -> void {
-        _stop = false;
-        _error = Error::NO_ERROR;
-        _switch_detected = false;
+        _stop.store(false);
         _policy->set_limit_switch_irq(_id, _direction, false);
         _policy->set_limit_switch_irq(_id, !_direction, false);
+        _switch_detected.store(false);
+        _error = Error::NO_ERROR;
     }
 
     auto start_fixed_movement(uint32_t move_id, bool direction, long steps,
@@ -99,13 +98,13 @@ class MotorInterruptController {
     }
 
     auto stop_movement(Error error, bool disable_motor) -> void {
-        _stop = true;
-        _error = error;
+        _stop.store(true);
         _policy->stop_motor(_id);
         if (disable_motor) {
             _policy->disable_motor(_id);
         }
         _policy->set_limit_switch_irq(_id, _direction, false);
+        _error = error;
     }
 
     auto set_direction(bool direction) -> void {
@@ -119,15 +118,17 @@ class MotorInterruptController {
     }
     [[nodiscard]] auto get_error_code() const -> Error { return _error; }
     auto stop_condition_met() -> bool {
-        if (_stop) {
+        if (_stop.load()) {
             return true;
         }
-        if (_switch_detected) {
+        if (_switch_detected.load()) {
             if (_profile.movement_type() ==
                 motor_util::MovementType::OpenLoop) {
                 return true;
             }
-            _error = Error::UNEXPECTED_LIMIT_SWITCH;
+            // TODO(ba, 2025-05-14): Enable this error once we understand why
+            // the limit switch is triggered during a Fixed movement.
+            //_error = Error::UNEXPECTED_LIMIT_SWITCH;
             return true;
         }
         // this will only error if the limit switch in the move direction
@@ -148,9 +149,9 @@ class MotorInterruptController {
     auto limit_switch_detected() -> void {
         if (_id == MotorID::MOTOR_L) {
             // NOLINTNEXTLINE(readability-simplify-boolean-expr)
-            _switch_detected = _direction ? false : true;
+            _switch_detected.store(!_direction);
         } else {
-            _switch_detected = true;
+            _switch_detected.store(true);
         };
     }
 
@@ -161,13 +162,14 @@ class MotorInterruptController {
   private:
     MotorID _id;
     MotorPolicy* _policy;
-    std::atomic_bool _initialized;
     motor_util::MovementProfile _profile;
     uint32_t _response_id = 0;
     Error _error = Error::NO_ERROR;
     bool _direction = false;
-    bool _stop = true;
-    bool _switch_detected = false;
+    std::atomic_bool _stop = true;
+    std::atomic_bool _initialized = false;
+    ;
+    std::atomic_bool _switch_detected = false;
 };
 
 }  // namespace motor_interrupt_controller
