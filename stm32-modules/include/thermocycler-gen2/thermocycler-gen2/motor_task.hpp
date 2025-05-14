@@ -224,6 +224,7 @@ struct LidState {
         CLOSING_EXTEND_SEAL_BACKOFF,  /**< Retract seal to ease off of the
                                            limit switch.*/
         PLATE_LIFTING, /**< Lid is walking through its state machine.*/
+        LID_CLOSED_SEQUENCE_FINISHED, /**< Lid is closed and plate is extended.*/
     };
     // Current status of the lid. Declared atomic because
     // this flag is set & cleared by both the actual task context
@@ -606,6 +607,7 @@ class MotorTask {
     auto visit_message(const messages::CloseLidMessage& msg, Policy& policy)
         -> void {
         auto error = start_lid_close(msg.id, policy);
+
 
         if (error != errors::ErrorCode::NO_ERROR) {
             auto response = messages::AcknowledgePrevious{
@@ -1088,6 +1090,13 @@ class MotorTask {
                 state_for_system_task =
                     messages::UpdateMotorState::MotorState::IDLE;
                 break;
+            case LidState::Status::LID_CLOSED_SEQUENCE_FINISHED:
+                if (!policy.lid_read_closed_switch()) {
+                    error = errors::ErrorCode::UNEXPECTED_LID_STATE;
+                }
+                else {
+                    handle_lid_state_enter(LidState::Status::IDLE, policy);
+                }
             case LidState::Status::OPENING_RETRACT_SEAL:
                 // The seal stepper is retracted to the limit switch
                 error = start_seal_movement(
@@ -1144,15 +1153,6 @@ class MotorTask {
                 error = start_seal_movement(
                     SealStepperState::SWITCH_BACKOFF_MICROSTEPS_RETRACT, false,
                     policy);
-                // if the lid has been opened by extending the seal, overwrite
-                // the error status
-                if (!policy.lid_read_closed_switch()) {
-                    // if error is none, overwrite it, otherwise leave the
-                    // original error
-                    if (error == errors::ErrorCode::NO_ERROR) {
-                        error = errors::ErrorCode::UNEXPECTED_LID_STATE;
-                    }
-                }
                 state_for_system_task =
                     messages::UpdateMotorState::MotorState::OPENING_OR_CLOSING;
                 break;
@@ -1258,13 +1258,15 @@ class MotorTask {
             }
             case LidState::Status::CLOSING_EXTEND_SEAL_BACKOFF: {
                 _seal_position = motor_util::SealStepper::Status::ENGAGED;
-                error = handle_lid_state_enter(LidState::Status::IDLE, policy);
+                error = handle_lid_state_enter(LidState::Status::LID_CLOSED_SEQUENCE_FINISHED, policy);
                 break;
             }
             case LidState::Status::PLATE_LIFTING: {
                 error = handle_lid_state_enter(LidState::Status::IDLE, policy);
                 break;
             }
+            default:
+                break;
         }
         if (error != errors::ErrorCode::NO_ERROR) {
             // Clear the lid status no matter what
@@ -1328,10 +1330,6 @@ class MotorTask {
                     motor_util::LidStepper::Position::CLOSED;
                 // The overall lid state machine can advance now
                 error = handle_lid_state_end(policy);
-                // if the lid isn't actually closed, overwrite error status
-                if (!policy.lid_read_closed_switch()) {
-                    error = errors::ErrorCode::UNEXPECTED_LID_STATE;
-                }
                 break;
             case LidStepperState::Status::LIFT_NUDGE:
                 policy.lid_stepper_start(

@@ -1200,7 +1200,8 @@ SCENARIO("motor task lid state machine") {
                  .lid_angle_decreased = true,
                  .lid_overdrive = false,
                  .lid_rpm =
-                     motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM}};
+                     motor_task::LidStepperState::LID_DEFAULT_VELOCITY_RPM}
+            };
             test_motor_state_machine(tasks, steps);
             steps.clear();
             AND_WHEN("the closed switch is triggered") {
