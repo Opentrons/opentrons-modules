@@ -346,7 +346,7 @@ void hw_enable_ebrake(MotorID motor_id, bool enable) {
         vTaskDelay(1);
     }
     HAL_GPIO_WritePin(Z_N_BRAKE_PORT, Z_N_BRAKE_PIN, enable ? GPIO_PIN_RESET : GPIO_PIN_SET);
-    vTaskDelay(70);
+    vTaskDelay(100);
     return;
 }
 
