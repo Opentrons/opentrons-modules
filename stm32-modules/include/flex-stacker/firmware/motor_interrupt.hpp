@@ -168,7 +168,6 @@ class MotorInterruptController {
     bool _direction = false;
     std::atomic_bool _stop = true;
     std::atomic_bool _initialized = false;
-    ;
     std::atomic_bool _switch_detected = false;
 };
 
