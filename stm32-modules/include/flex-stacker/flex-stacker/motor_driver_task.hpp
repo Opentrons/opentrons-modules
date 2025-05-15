@@ -113,7 +113,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_l_config{
 };
 
 template <template <class> class QueueImpl>
-    requires MessageQueue<QueueImpl<Message>, Message>
+requires MessageQueue<QueueImpl<Message>, Message>
 class MotorDriverTask {
   private:
     using Queue = QueueImpl<Message>;
