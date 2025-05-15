@@ -33,7 +33,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_z_config{
                    .shortdelay = 0},
     .drvconf = {.bbmclks = 4},
     .glob_scale = {.global_scaler = 0x0},
-    .ihold_irun = {.hold_current = 7,
+    .ihold_irun = {.hold_current = 31,
                    .run_current = 31,
                    .hold_current_delay = 1},
     .tpowerdown = {.time = tmc2160::PowerDownDelay::seconds_to_reg(0.1)},
@@ -62,7 +62,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_x_config{
                    .shortdelay = 0},
     .drvconf = {.bbmclks = 4},
     .glob_scale = {.global_scaler = 0x0},
-    .ihold_irun = {.hold_current = 16,
+    .ihold_irun = {.hold_current = 10,
                    .run_current = 31,
                    .hold_current_delay = 1},
     .tpowerdown = {.time = tmc2160::PowerDownDelay::seconds_to_reg(0.1)},
@@ -91,8 +91,8 @@ static constexpr tmc2160::TMC2160RegisterMap motor_l_config{
                    .shortdelay = 0},
     .drvconf = {.bbmclks = 4},
     .glob_scale = {.global_scaler = 0x0},
-    .ihold_irun = {.hold_current = 2,
-                   .run_current = 8,
+    .ihold_irun = {.hold_current = 7,
+                   .run_current = 24,
                    .hold_current_delay = 1},
     .tpowerdown = {.time = tmc2160::PowerDownDelay::seconds_to_reg(0.1)},
     .tpwmthrs = {.threshold = 0x80000},
@@ -113,7 +113,7 @@ static constexpr tmc2160::TMC2160RegisterMap motor_l_config{
 };
 
 template <template <class> class QueueImpl>
-requires MessageQueue<QueueImpl<Message>, Message>
+    requires MessageQueue<QueueImpl<Message>, Message>
 class MotorDriverTask {
   private:
     using Queue = QueueImpl<Message>;
