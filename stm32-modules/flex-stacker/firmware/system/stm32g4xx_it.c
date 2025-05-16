@@ -134,11 +134,6 @@ void EXTI15_10_IRQHandler(void) {
     }
 }
 
-//    // Check that the pin is actually set - the interrupt doesn't do this for us,
-//    // and other pins trigger the same interrupt vector.
-//    if(__HAL_GPIO_EXTI_GET_IT(ADC_ALERT_PIN) != 0x00u) {
-
-
 void EXTI9_5_IRQHandler(void)
 {
     // Estop interrupt
