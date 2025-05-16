@@ -138,11 +138,12 @@ void EXTI9_5_IRQHandler(void)
 {
     // Estop interrupt
     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_6)) {
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_6);
         HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_6);
     }
     // Latch held limit switch interrupt
     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_5)) {
-        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5);
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_5);
         if (lim_switch_callback) {
             lim_switch_callback(MOTOR_L);
         }
@@ -154,7 +155,7 @@ void EXTI9_5_IRQHandler(void)
 void EXTI0_IRQHandler(void)
 {
     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_0)) {
-        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
         if (lim_switch_callback) {
             lim_switch_callback(MOTOR_Z);
         }
@@ -165,7 +166,7 @@ void EXTI0_IRQHandler(void)
 void EXTI1_IRQHandler(void)
 {
     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_1)) {
-        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_1);
         if (lim_switch_callback) {
             lim_switch_callback(MOTOR_X);
         }
@@ -176,7 +177,7 @@ void EXTI1_IRQHandler(void)
 void EXTI2_IRQHandler(void)
 {
     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_2)) {
-        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_2);
         if (lim_switch_callback) {
             lim_switch_callback(MOTOR_X);
         }
@@ -187,7 +188,7 @@ void EXTI2_IRQHandler(void)
 void EXTI3_IRQHandler(void)
 {
     if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_3)) {
-        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3);
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_3);
         if (lim_switch_callback) {
             lim_switch_callback(MOTOR_Z);
         }

@@ -415,7 +415,9 @@ void hw_enable_lim_switch_irq(MotorID motor_id, bool direction) {
         return;
     }
     stepper_hardware_t motor = get_motor(motor_id);
-    direction ? HAL_NVIC_EnableIRQ(motor.limit_switch_plus_it) : HAL_NVIC_EnableIRQ(motor.limit_switch_minus_it);
+    IRQn_Type limit_switch_it = direction ? motor.limit_switch_plus_it : motor.limit_switch_minus_it;
+    NVIC_ClearPendingIRQ(limit_switch_it);
+    HAL_NVIC_EnableIRQ(limit_switch_it);
 }
 
 void hw_disable_lim_switch_irq(MotorID motor_id, bool direction) {
@@ -424,7 +426,9 @@ void hw_disable_lim_switch_irq(MotorID motor_id, bool direction) {
         return;
     }
     stepper_hardware_t motor = get_motor(motor_id);
-    direction ? HAL_NVIC_DisableIRQ(motor.limit_switch_plus_it) : HAL_NVIC_DisableIRQ(motor.limit_switch_minus_it);
+    IRQn_Type limit_switch_it = direction ? motor.limit_switch_plus_it : motor.limit_switch_minus_it;
+    HAL_NVIC_DisableIRQ(limit_switch_it);
+    NVIC_ClearPendingIRQ(limit_switch_it);
 }
 
 bool hw_read_limit_switch(MotorID motor_id, bool direction) {
@@ -461,9 +465,12 @@ bool hw_read_diag0(void) {
 }
 
 void hw_set_diag0_irq(bool enable) {
-    enable ?
-        HAL_NVIC_EnableIRQ(EXTI15_10_IRQn) :
+    if (enable) {
+        HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+    } else {
         HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+        NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
+    }
 }
 
 bool hw_is_diag0_pin(uint16_t pin) {
