@@ -1244,7 +1244,12 @@ class MotorTask {
                     shared_switches
                         ? LidState::Status::CLOSING_EXTEND_SEAL_BACKOFF
                         : LidState::Status::IDLE;
-                error = handle_lid_state_enter(next_state, policy);
+                if (!policy.lid_read_closed_switch()) {
+                    error = errors::ErrorCode::UNEXPECTED_LID_STATE;
+                } else {
+                    error = handle_lid_state_enter(next_state, policy);
+                }
+
                 break;
             }
             case LidState::Status::CLOSING_EXTEND_SEAL_BACKOFF: {
@@ -1319,10 +1324,6 @@ class MotorTask {
                     motor_util::LidStepper::Position::CLOSED;
                 // The overall lid state machine can advance now
                 error = handle_lid_state_end(policy);
-                // if the lid isn't actually closed, overwrite error status
-                if (!policy.lid_read_closed_switch()) {
-                    error = errors::ErrorCode::UNEXPECTED_LID_STATE;
-                }
                 break;
             case LidStepperState::Status::LIFT_NUDGE:
                 policy.lid_stepper_start(

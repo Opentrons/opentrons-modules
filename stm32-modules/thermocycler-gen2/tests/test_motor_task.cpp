@@ -899,22 +899,23 @@ SCENARIO("motor task lid state machine") {
                 {.msg = messages::LidStepperComplete(),
                  .lid_angle_decreased = true,
                  .lid_overdrive = true},
-                // Now extend seal to switch
-                {.msg = messages::LidStepperComplete(),
-                 .seal_on = true,
-                 .seal_direction = false,
-                 .seal_switch_armed = true},
-                // Retract seal from switch
-                {.msg =
-                     messages::SealStepperComplete{
-                         .reason = messages::SealStepperComplete::
-                             CompletionReason::LIMIT},
-                 .seal_on = true,
-                 .seal_direction = true,
-                 .seal_switch_armed = false},
             };
             AND_WHEN("the closed switch is triggered") {
                 motor_policy.set_lid_closed_switch(true);
+                // Now extend seal to switch
+                steps.push_back(MotorStep{.msg = messages::LidStepperComplete(),
+                                          .seal_on = true,
+                                          .seal_direction = false,
+                                          .seal_switch_armed = true});
+                // Retract seal from switch
+                steps.push_back(
+                    MotorStep{.msg =
+                                  messages::SealStepperComplete{
+                                      .reason = messages::SealStepperComplete::
+                                          CompletionReason::LIMIT},
+                              .seal_on = true,
+                              .seal_direction = true,
+                              .seal_switch_armed = false});
                 steps.push_back(
                     // an ack with error code NO_ERROR should follow
                     MotorStep{.msg =
@@ -929,18 +930,24 @@ SCENARIO("motor task lid state machine") {
             }
             AND_WHEN("the closed switch is not triggered") {
                 motor_policy.set_lid_closed_switch(false);
-                steps.push_back(
-                    // an ack with error code UNEXPECTED_LID_STATE should follow
-                    MotorStep{
-                        .msg =
-                            messages::SealStepperComplete{
-                                .reason = messages::SealStepperComplete::
-                                    CompletionReason::DONE},
-                        .motor_state = MotorStep::MotorState::IDLE,
-                        .ack = messages::AcknowledgePrevious{
-                            .responding_to_id = 0,
-                            .with_error =
-                                errors::ErrorCode::UNEXPECTED_LID_STATE}});
+                // Now extend seal to switch
+                steps.push_back(MotorStep{
+                    .msg = messages::LidStepperComplete(),
+                    .seal_on = true,
+                    .seal_direction = false,
+                    .seal_switch_armed = true,
+                });
+                // Retract seal from switch
+                steps.push_back(MotorStep{
+                    .msg =
+                        messages::SealStepperComplete{
+                            .reason = messages::SealStepperComplete::
+                                CompletionReason::DONE},
+                    .motor_state = MotorStep::MotorState::IDLE,
+                    .ack = messages::AcknowledgePrevious{
+                        .responding_to_id = 123,
+                        .with_error =
+                            errors::ErrorCode::UNEXPECTED_LID_STATE}});
                 test_motor_state_machine(tasks, steps);
             }
         }
@@ -1028,18 +1035,19 @@ SCENARIO("motor task lid state machine") {
                     {.msg = messages::LidStepperComplete(),
                      .seal_on = true,
                      .seal_direction = false,
-                     .seal_switch_armed = true},
-                    // Retract seal from switch
-                    {.msg =
-                         messages::SealStepperComplete{
-                             .reason = messages::SealStepperComplete::
-                                 CompletionReason::LIMIT},
-                     .seal_on = true,
-                     .seal_direction = true,
-                     .seal_switch_armed = false},
-                };
+                     .seal_switch_armed = true}};
                 AND_WHEN("the closed switch is triggered") {
                     motor_policy.set_lid_closed_switch(true);
+                    steps.push_back(
+                        // Retract seal from switch
+                        MotorStep{
+                            .msg =
+                                messages::SealStepperComplete{
+                                    .reason = messages::SealStepperComplete::
+                                        CompletionReason::LIMIT},
+                            .seal_on = true,
+                            .seal_direction = true,
+                            .seal_switch_armed = false});
                     steps.push_back(
                         // an ack with error code NO_ERROR should follow
                         MotorStep{
@@ -1056,16 +1064,14 @@ SCENARIO("motor task lid state machine") {
                 AND_WHEN("the closed switch is not triggered") {
                     motor_policy.set_lid_closed_switch(false);
                     steps.push_back(
-                        // an ack with error code UNEXPECTED_LID_STATE should
-                        // follow
+                        // Retract seal from switch
                         MotorStep{
                             .msg =
                                 messages::SealStepperComplete{
                                     .reason = messages::SealStepperComplete::
-                                        CompletionReason::DONE},
-                            .motor_state = MotorStep::MotorState::IDLE,
+                                        CompletionReason::LIMIT},
                             .ack = messages::AcknowledgePrevious{
-                                .responding_to_id = 0,
+                                .responding_to_id = 123,
                                 .with_error =
                                     errors::ErrorCode::UNEXPECTED_LID_STATE}});
                     test_motor_state_machine(tasks, steps);
@@ -1129,7 +1135,7 @@ SCENARIO("motor task lid state machine") {
                                         CompletionReason::DONE},
                             .motor_state = MotorStep::MotorState::IDLE,
                             .ack = messages::AcknowledgePrevious{
-                                .responding_to_id = 0,
+                                .responding_to_id = 123,
                                 .with_error =
                                     errors::ErrorCode::UNEXPECTED_LID_STATE}});
                     test_motor_state_machine(tasks, steps);
@@ -1246,25 +1252,15 @@ SCENARIO("motor task lid state machine") {
                                           .seal_direction = false,
                                           .seal_switch_armed = true});
                 // Retract seal from switch
-                steps.push_back(
-                    MotorStep{.msg =
-                                  messages::SealStepperComplete{
-                                      .reason = messages::SealStepperComplete::
-                                          CompletionReason::LIMIT},
-                              .seal_on = true,
-                              .seal_direction = true,
-                              .seal_switch_armed = false});
-                steps.push_back(
-                    // an ack with error code UNEXPECTED_LID_STATE should follow
-                    MotorStep{
-                        .msg =
-                            messages::SealStepperComplete{
-                                .reason = messages::SealStepperComplete::
-                                    CompletionReason::DONE},
-                        .ack = messages::AcknowledgePrevious{
-                            .responding_to_id = 0,
-                            .with_error =
-                                errors::ErrorCode::UNEXPECTED_LID_STATE}});
+                steps.push_back(MotorStep{
+                    .msg =
+                        messages::SealStepperComplete{
+                            .reason = messages::SealStepperComplete::
+                                CompletionReason::LIMIT},
+                    .ack = messages::AcknowledgePrevious{
+                        .responding_to_id = 123,
+                        .with_error =
+                            errors::ErrorCode::UNEXPECTED_LID_STATE}});
                 test_motor_state_machine(tasks, steps);
             }
         }
