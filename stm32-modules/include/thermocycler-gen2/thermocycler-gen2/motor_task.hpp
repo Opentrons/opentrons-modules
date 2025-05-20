@@ -982,7 +982,6 @@ class MotorTask {
         if (policy.lid_read_closed_switch()) {
             return start_latch_release_overdrive(response_id, policy);
         }
-
         // Update velocity for this movement
         std::ignore = policy.lid_stepper_set_rpm(
             LidStepperState::LID_DEFAULT_VELOCITY_RPM);
