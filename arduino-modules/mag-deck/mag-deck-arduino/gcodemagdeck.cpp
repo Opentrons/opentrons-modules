@@ -126,7 +126,7 @@ void GcodeMagDeck::setup(int baudrate) {
   COMMAND_CODES[GCODE_GET_PROBED_DISTANCE] = "M836";
   COMMAND_CODES[GCODE_GET_POSITION] =        "M114.2";
   COMMAND_CODES[GCODE_DEVICE_INFO] =         "M115";
-  COMMAND_CODES[GCODE_RESET_REASON] =         "M114";
+  COMMAND_CODES[GCODE_RESET_REASON] =        "M114";
   COMMAND_CODES[GCODE_DFU] =                 "dfu";
   Serial.begin(baudrate);
   Serial.setTimeout(3);
