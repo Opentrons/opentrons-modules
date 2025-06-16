@@ -16,8 +16,9 @@
 #define GCODE_GET_PROBED_DISTANCE   3
 #define GCODE_GET_POSITION          4
 #define GCODE_DEVICE_INFO           5
-#define GCODE_DFU                   6
-#define TOTAL_GCODE_COMMAND_CODES   7
+#define GCODE_RESET_REASON          6
+#define GCODE_DFU                   7
+#define TOTAL_GCODE_COMMAND_CODES   8
 
 class GcodeMagDeck{
 
@@ -35,6 +36,7 @@ class GcodeMagDeck{
         void print_probed_distance(float mm);
         bool read_number(char key);
         void print_warning(String msg);
+        void print_generic_response(String msg);
 
     private:
 
