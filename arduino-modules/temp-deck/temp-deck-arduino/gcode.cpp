@@ -110,7 +110,7 @@ void Gcode::print_stablizing_temperature(float current_temp) {
 
 void Gcode::print_generic_response(String message) {
     String response = "generic response: " + message;
-    Serial.print(F(response));
+    Serial.println(response);
 }
 
 void Gcode::print_warning(String msg) {
