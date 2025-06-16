@@ -387,7 +387,7 @@ void read_gcode(){
           activate_bootloader();
           break;
         default:
-            gcode.print_generic_response("");
+            gcode.print_generic_response(gcode.code);
           break;
       }
     }
