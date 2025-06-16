@@ -264,15 +264,13 @@ void loop() {
         case GCODE_DEVICE_INFO:
           gcode.print_device_info(device_serial, device_model, FW_VERSION);
           break;
-        case GCODE_RESET_REASON:
-            gcode.print_generic_response("");
-            break;
         case GCODE_DFU:
           gcode.send_ack(); // Send ack here since we not reaching the end of the loop
           gcode.print_warning(F("Restarting and entering bootloader..."));
           activate_bootloader();
           break;
         default:
+            gcode.print_generic_response("");
           break;
       }
     }
