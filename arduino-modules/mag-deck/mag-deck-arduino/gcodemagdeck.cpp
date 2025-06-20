@@ -116,7 +116,7 @@ void GcodeMagDeck::print_warning(String msg) {
 
 void GcodeMagDeck::print_generic_response(String msg) {
     String response = "generic response: " + msg;
-    Serial.println(response);
+    Serial.println("generic response: %u");
 }
 
 void GcodeMagDeck::setup(int baudrate) {
