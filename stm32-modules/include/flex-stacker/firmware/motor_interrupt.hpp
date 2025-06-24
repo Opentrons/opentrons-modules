@@ -64,6 +64,7 @@ class MotorInterruptController {
         _policy->set_limit_switch_irq(_id, _direction, false);
         _policy->set_limit_switch_irq(_id, !_direction, false);
         _switch_detected.store(false);
+        _stall_detected.store(false);
         _error = Error::NO_ERROR;
     }
 
@@ -138,7 +139,7 @@ class MotorInterruptController {
             _error = Error::ESTOP_TRIGGERED;
             return true;
         }
-        if (!_policy->check_diag0()) {
+        if (_stall_detected.load()) {
             _error = Error::MOTOR_STALL_DETECTED;
             return true;
         }
@@ -155,6 +156,12 @@ class MotorInterruptController {
         };
     }
 
+    auto stall_detected() -> void {
+        if (!_stop) {
+            _stall_detected.store(true);
+        }
+    }
+
     auto set_diag0_irq(bool enable) -> void { _policy->set_diag0_irq(enable); }
 
     [[nodiscard]] auto is_moving() const -> bool { return !_stop; }
@@ -169,6 +176,7 @@ class MotorInterruptController {
     std::atomic_bool _stop = true;
     std::atomic_bool _initialized = false;
     std::atomic_bool _switch_detected = false;
+    std::atomic_bool _stall_detected = false;
 };
 
 }  // namespace motor_interrupt_controller

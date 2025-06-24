@@ -78,6 +78,12 @@ static auto _top_task = motor_task::MotorTask(
     }
 }
 
+[[nodiscard]] static auto stall_callback_glue() {
+    // L motor does not have a stall detection mechanism
+    x_motor_interrupt.stall_detected();
+    z_motor_interrupt.stall_detected();
+}
+
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     auto* handle = xTaskGetCurrentTaskHandle();
     _queue.provide_handle(handle);
@@ -87,6 +93,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     motor_hardware_init();
     initialize_callbacks(callback_glue);
     initialize_limit_switch_callbacks(lim_sw_callback_glue);
+    initialize_shared_stall_callback(stall_callback_glue);
     auto policy = motor_policy::MotorPolicy();
     while (true) {
         _top_task.run_once(policy);

@@ -48,6 +48,10 @@ void initialize_callbacks(motor_interrupt_callback callback_glue);
 
 typedef void (*limit_switch_callback)(MotorID motor_id);
 void initialize_limit_switch_callbacks(limit_switch_callback callback_glue);
+
+typedef void (*shared_interrupt_callback)();
+void initialize_shared_stall_callback(shared_interrupt_callback callback_glue);
+
 #ifdef __cplusplus
 }
 #endif
