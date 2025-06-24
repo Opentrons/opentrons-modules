@@ -15,7 +15,8 @@
 #define GCODE_DISENGAGE             2
 #define GCODE_DEVICE_INFO           3
 #define GCODE_DFU                   4
-#define TOTAL_GCODE_COMMAND_CODES   5
+#define GCODE_RESET_REASON          5
+#define TOTAL_GCODE_COMMAND_CODES   6
 
 class Gcode{
 
@@ -33,6 +34,7 @@ class Gcode{
         void print_stablizing_temperature(float current_temp);
         bool read_number(char key);
         void print_warning(String msg);
+        void print_generic_response(String msg);
 
     private:
 

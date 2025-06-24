@@ -121,7 +121,7 @@ node_modules
 
 releases
 
-CMakeFiles
+cmake-build-debug/
 
 cmake_install.cmake
 

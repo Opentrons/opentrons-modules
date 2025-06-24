@@ -108,6 +108,11 @@ void Gcode::print_stablizing_temperature(float current_temp) {
   Serial.println(current_temp, SERIAL_DIGITS_IN_RESPONSE);
 }
 
+void Gcode::print_generic_response(String message) {
+    String response = "generic response: " + message;
+    Serial.println(response);
+}
+
 void Gcode::print_warning(String msg) {
   Serial.println(msg);
 }
@@ -116,6 +121,7 @@ void Gcode::setup(int baudrate) {
   COMMAND_CODES[GCODE_GET_TEMP] =     "M105";
   COMMAND_CODES[GCODE_SET_TEMP] =     "M104";
   COMMAND_CODES[GCODE_DEVICE_INFO] =  "M115";
+  COMMAND_CODES[GCODE_RESET_REASON] =  "M114";
   COMMAND_CODES[GCODE_DISENGAGE] =    "M18";
   COMMAND_CODES[GCODE_DFU] =          "dfu";
   Serial.begin(baudrate);
