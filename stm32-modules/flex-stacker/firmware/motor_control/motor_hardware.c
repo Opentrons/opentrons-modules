@@ -187,39 +187,32 @@ void motor_hardware_gpio_init(void){
     // Z MOTOR
     init.Pin = Z_MINUS_LIMIT_PIN;
     HAL_GPIO_Init(Z_MINUS_LIMIT_PORT, &init);
-
+    HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
     init.Pin = Z_PLUS_LIMIT_PIN;
     HAL_GPIO_Init(Z_PLUS_LIMIT_PORT, &init);
+    HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
     // X MOTOR
     init.Pin = X_MINUS_LIMIT_PIN;
     HAL_GPIO_Init(X_MINUS_LIMIT_PORT, &init);
+    HAL_NVIC_SetPriority(EXTI1_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(EXTI1_IRQn);
 
     init.Pin = X_PLUS_LIMIT_PIN;
     HAL_GPIO_Init(X_PLUS_LIMIT_PORT, &init);
+    HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
     // L MOTOR
     init.Mode = GPIO_MODE_IT_FALLING;
 
     init.Pin = L_N_HELD_PIN;
     HAL_GPIO_Init(L_N_HELD_PORT, &init);
-
-    HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
-//    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-
-    HAL_NVIC_SetPriority(EXTI1_IRQn, 5, 0);
-//    HAL_NVIC_EnableIRQ(EXTI1_IRQn);
-
-    HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
-//    HAL_NVIC_EnableIRQ(EXTI2_IRQn);
-
-    HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
-//    HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-
-//    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
-//    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-
+    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 }
 
 // X motor timer
