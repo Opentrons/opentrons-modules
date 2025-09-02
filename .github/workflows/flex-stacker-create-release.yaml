@@ -54,4 +54,6 @@ jobs:
           TRAVIS_TAG: ${{ github.ref_name }}
         run: |
           . ./scripts/set_build_vars.sh
-          aws s3 sync --acl=public-read ${RELEASE_LOCAL_DIR} s3://opentrons-modules-builds/${RELEASE_UPLOAD_DIR}
+          echo ${RELEASE_LOCAL_DIR}
+          echo ${RELEASE_UPLOAD_DIR}
+          # aws s3 sync --acl=public-read ${RELEASE_LOCAL_DIR} s3://opentrons-modules-builds/${RELEASE_UPLOAD_DIR}
