@@ -9,7 +9,8 @@ TestMotorPolicy::TestMotorPolicy(int16_t initial_rpm,
                                  int32_t initial_ramp_rate)
     : target_rpm(initial_target_rpm),
       current_rpm(initial_rpm),
-      ramp_rate(initial_ramp_rate) {}
+      ramp_rate(initial_ramp_rate)
+{}
 
 auto TestMotorPolicy::set_rpm(int16_t rpm) -> errors::ErrorCode {
     target_rpm = rpm;
@@ -157,4 +158,22 @@ auto TestMotorPolicy::get_serial_number(void)
             "EMPTYSN"};
         return empty_serial_number;
     }
+}
+
+auto TestMotorPolicy::set_manual_error(uint16_t motor_error_bitmap, uint32_t delay_seconds) -> void {
+    manual_error_was_set = true;
+    manual_error = motor_error_bitmap;
+    manual_error_timeout = delay_seconds;
+}
+
+auto TestMotorPolicy::test_get_manual_error_was_set() const -> bool {
+    return manual_error_was_set;
+}
+
+auto TestMotorPolicy::test_get_manual_error() const -> uint16_t {
+    return manual_error;
+}
+
+auto TestMotorPolicy::test_get_manual_error_timeout() const -> uint32_t {
+    return manual_error_timeout;
 }

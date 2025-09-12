@@ -79,7 +79,7 @@ TEMPLATE_TEST_CASE("gcode responses without parameters generate",
                    gcode::SetSerialNumber, gcode::OpenPlateLock,
                    gcode::ClosePlateLock, gcode::SetLEDDebug,
                    gcode::IdentifyModuleStartLED, gcode::IdentifyModuleStopLED,
-                   gcode::DeactivateHeater) {
+                   gcode::DeactivateHeater, gcode::SetErrorStateDebug) {
     SECTION("responses won't write into zero-size buffers") {
         std::string buffer(10, 'c');
         auto res =

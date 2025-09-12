@@ -158,6 +158,7 @@ struct CheckHomingStatusMessage {
 
 struct ErrorMessage {
     errors::ErrorCode code;
+    uint32_t responding_to_id = 0;
 };
 
 struct ActuateSolenoidMessage {
@@ -292,19 +293,35 @@ struct IncomingMessageFromHost {
     const char* limit;
 };
 
+struct GetErrorStateMessage {
+    uint32_t id;
+};
+
+struct ClearErrorStateMessage {
+    uint32_t id;
+};
+
+struct SetErrorStateMessage {
+    uint32_t id;
+    errors::ErrorCode error_to_set;
+    uint32_t delay_s;
+};
+
 using HeaterMessage =
     ::std::variant<std::monostate, SetTemperatureMessage, GetTemperatureMessage,
                    TemperatureConversionComplete, GetTemperatureDebugMessage,
                    SetPIDConstantsMessage, SetPowerTestMessage,
                    HandleNTCSetupError, SetOffsetConstantsMessage,
-                   GetOffsetConstantsMessage, DeactivateHeaterMessage>;
+                   GetOffsetConstantsMessage, DeactivateHeaterMessage,
+                   GetErrorStateMessage, ClearErrorStateMessage, SetErrorStateMessage
+                   >;
 using MotorMessage = ::std::variant<
     std::monostate, MotorSystemErrorMessage, SetRPMMessage, GetRPMMessage,
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,
     ActuateSolenoidMessage, SetPlateLockPowerMessage, OpenPlateLockMessage,
     ClosePlateLockMessage, SetPIDConstantsMessage, PlateLockComplete,
     GetPlateLockStateMessage, GetPlateLockStateDebugMessage,
-    CheckPlateLockStatusMessage, GetResetReasonMessage>;
+    CheckPlateLockStatusMessage, GetResetReasonMessage, GetErrorStateMessage, ClearErrorStateMessage, SetErrorStateMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage, SetLEDMessage,

@@ -479,6 +479,26 @@ SCENARIO("motor task error handling", "[motor]") {
                 }
             }
         }
+        WHEN("sending a set error status command") {
+            auto error_message = messages::SetErrorStateMessage{
+                .id=1231,
+                .error_to_set = errors::ErrorCode::MOTOR_BLDC_DRIVER_FAULT,
+                .delay_s = 41};
+            tasks->get_motor_queue().backing_deque.push_back(error_message);
+            tasks->get_motor_task().run_once(tasks->get_motor_policy());
+            THEN("the task should respond") {
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto response = tasks->get_host_comms_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(response));
+                auto response_payload = std::get<messages::AcknowledgePrevious>(response);
+                REQUIRE(response_payload.responding_to_id == 1231);
+            }
+            THEN("the task should forward error details to the policy") {
+                REQUIRE(tasks->get_motor_policy().test_get_manual_error_was_set());
+                REQUIRE(tasks->get_motor_policy().test_get_manual_error() == (1<<errors::MotorErrorOffset::OVERCURRENT));
+                REQUIRE(tasks->get_motor_policy().test_get_manual_error_timeout() == 41);
+            }
+        }
     }
 }
 

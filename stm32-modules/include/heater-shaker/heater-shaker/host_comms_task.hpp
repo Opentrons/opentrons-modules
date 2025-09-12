@@ -12,11 +12,13 @@
 #include "core/ack_cache.hpp"
 #include "core/gcode_parser.hpp"
 #include "core/version.hpp"
+#include "gcodes.hpp"
 #include "hal/message_queue.hpp"
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/gcodes.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "messages.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>
@@ -48,7 +50,9 @@ class HostCommsTask {
         gcode::GetPlateLockStateDebug, gcode::SetLEDDebug,
         gcode::IdentifyModuleStartLED, gcode::IdentifyModuleStopLED,
         gcode::SetOffsetConstants, gcode::GetOffsetConstants,
-        gcode::DeactivateHeater, gcode::GetResetReason>;
+        gcode::DeactivateHeater, gcode::GetResetReason,
+        gcode::GetErrorState, gcode::SetErrorStateDebug, gcode::ClearErrorState
+        >;
     using AckOnlyCache =
         AckCache<8, gcode::SetRPM, gcode::SetTemperature,
                  gcode::SetAcceleration, gcode::SetPIDConstants,
@@ -57,7 +61,8 @@ class HostCommsTask {
                  gcode::OpenPlateLock, gcode::ClosePlateLock,
                  gcode::SetSerialNumber, gcode::SetLEDDebug,
                  gcode::IdentifyModuleStartLED, gcode::IdentifyModuleStopLED,
-                 gcode::SetOffsetConstants, gcode::DeactivateHeater>;
+                 gcode::SetOffsetConstants, gcode::DeactivateHeater,
+                 gcode::ClearErrorState, gcode::SetErrorStateDebug, gcode::GetErrorState>;
     using GetTempCache = AckCache<8, gcode::GetTemperature>;
     using GetTempDebugCache = AckCache<8, gcode::GetTemperatureDebug>;
     using GetRPMCache = AckCache<8, gcode::GetRPM>;
@@ -1089,6 +1094,95 @@ class HostCommsTask {
         }
         return std::make_pair(true, tx_into);
     }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+    std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetErrorState& gcode,
+                     InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode, 2);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetErrorStateMessage{.id = id};
+        if (!task_registry->heater->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        if (!task_registry->heater->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+    std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetErrorStateDebug& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode, 2);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::SetErrorStateMessage{.id = id, .error_to_set = gcode.error, .delay_s = gcode.delay_s};
+        if (!task_registry->heater->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        if (!task_registry->motor->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+    std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::ClearErrorState& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode, 2);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::ClearErrorStateMessage{.id = id};
+        if (!task_registry->heater->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        if (!task_registry->heater->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
 
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;

@@ -84,9 +84,16 @@ void run(void *param) {
     // ensure plate lock closed via message at startup (needed for homing)
     auto message1 = messages::ClosePlateLockMessage{.from_startup = true};
     static_cast<void>(queue.try_send(message1, 10));
-
+    auto last_tick_count = xTaskGetTickCount();
     while (true) {
         _task.run_once(policy);
+        auto now = xTaskGetTickCount();
+        auto manual_error = policy.tick_manual_error(now - last_tick_count);
+        last_tick_count = now;
+        if (manual_error != 0) {
+            static_cast<void>(queue.try_send(messages::MotorMessage(
+                messages::MotorSystemErrorMessage{.errors = manual_error})));
+        }
     }
 }
 

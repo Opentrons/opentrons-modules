@@ -29,6 +29,7 @@ add_executable(heater-shaker
   test_m241d.cpp
   test_m242.cpp
   test_m243.cpp
+  test_m412d.cpp
   test_m994d.cpp
   test_m994.cpp
   test_m995.cpp
@@ -55,8 +56,7 @@ target_compile_options(heater-shaker
   $<$<COMPILE_LANGUAGE:CXX>:-Wreorder>
   $<$<COMPILE_LANGUAGE:CXX>:-Wsign-promo>
   $<$<COMPILE_LANGUAGE:CXX>:-Wextra-semi>
-  $<$<COMPILE_LANGUAGE:CXX>:-Wctor-dtor-privacy>
-  $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>)
+  $<$<COMPILE_LANGUAGE:CXX>:-Wctor-dtor-privacy>)
 target_link_libraries(heater-shaker 
   heater-shaker-core 
   common-core

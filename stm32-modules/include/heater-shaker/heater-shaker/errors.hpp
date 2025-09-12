@@ -73,6 +73,7 @@ enum class ErrorCode {
 
 auto from_motor_error(uint16_t error_bitmap, MotorErrorOffset which)
     -> ErrorCode;
+auto to_motor_error(ErrorCode error_code) -> uint16_t;
 auto errorstring(ErrorCode code) -> const char*;
 
 template <typename Input, typename Limit>

@@ -753,6 +753,38 @@ SCENARIO("heater task error handling") {
                 CHECK(tasks->get_host_comms_queue().backing_deque.empty());
             }
         }
+        WHEN("setting a custom error with no wait time") {
+            auto message = messages::SetErrorStateMessage{
+                .id=1231,
+                .error_to_set = errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT,
+                .delay_s = 0};
+
+            tasks->get_heater_queue().backing_deque.push_back(message);
+            tasks->run_heater_task();
+
+            THEN("the task should acknowledge") {
+                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
+                auto ack = tasks->get_host_comms_queue().backing_deque.front();
+                tasks->get_host_comms_queue().backing_deque.pop_front();
+                CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+                REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(ack));
+                auto ack_payload = std::get<messages::AcknowledgePrevious>(ack);
+                REQUIRE(ack_payload.responding_to_id == 1231);
+            }
+            THEN("after one more spin the task should be in error state") {
+                auto valid_adc = _converter.backconvert(_valid_temp);
+                auto read_message = messages::TemperatureConversionComplete{
+                    .pad_a = valid_adc, .pad_b = valid_adc, .board = valid_adc};
+                tasks->get_heater_queue().backing_deque.push_back(read_message);
+                tasks->run_heater_task();
+                THEN("after one spin the task should be in error state") {
+                    REQUIRE(tasks->get_heater_task().most_relevant_error()
+                            == errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT);
+                }
+            }
+
+
+        }
     }
     GIVEN("a heater task with a thermistor reading something bad") {
         auto tasks = TaskBuilder::build();

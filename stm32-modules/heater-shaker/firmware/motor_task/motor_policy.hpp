@@ -20,6 +20,8 @@ class MotorPolicy {
     static constexpr std::size_t SYSTEM_SERIAL_NUMBER_LENGTH =
         SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
     Serial _serial{};
+    uint32_t _ticks_before_manual_error;
+    uint16_t _manual_error;
 
   public:
     static constexpr int32_t DEFAULT_RAMP_RATE_RPM_PER_S = 1000;
@@ -47,6 +49,8 @@ class MotorPolicy {
     auto get_serial_number(void)
         -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
     auto last_reset_reason() const -> uint16_t;
+    auto tick_manual_error(uint32_t since_last) -> uint16_t;
+    auto set_manual_error(uint16_t error, uint32_t seconds_before_error) -> void;
 
   private:
     static constexpr uint16_t MAX_SOLENOID_CURRENT_MA = 330;
