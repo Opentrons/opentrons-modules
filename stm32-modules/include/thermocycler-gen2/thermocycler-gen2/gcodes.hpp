@@ -1103,6 +1103,60 @@ struct SetLidTemperature {
     }
 };
 
+struct SetRampRate {
+    /**
+     * SetRampRate uses M566. Only parameter is optional and it is
+     * the ramp rate to use in C°/s. If not defined, the temperature ramp rate
+     * will be infinite
+     *
+     * M566 S44\n
+     */
+    using ParseResult = std::optional<SetRampRate>;
+    static constexpr auto prefix = std::array{'M', '5', '6', '6'};
+    static constexpr auto prefix_with_temp =
+        std::array{'M', '5', '6', '6', ' ', 'S'};
+    static constexpr const char* response = "M566 OK\n";
+
+    static constexpr double default_ramp_rate = 0.0F;
+
+    double ramp_rate;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix_with_temp);
+        if (working == input) {
+            // NO RampRate SETTING but it might just be a bare command
+            working = prefix_matches(input, limit, prefix);
+            if (working == input) {
+                return std::make_pair(ParseResult(), input);
+            }
+            // Return a struct with default temperature
+            return std::make_pair(
+                ParseResult(SetRampRate{.ramp_rate = default_ramp_rate}),
+                working);
+        }
+        // We are expecting a temperature setting
+        auto ramp_rate = parse_value<float>(working, limit);
+        if (!ramp_rate.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto ramp_rate_val = ramp_rate.first.value();
+        return std::make_pair(
+            ParseResult(SetRampRate{.ramp_rate = ramp_rate_val}),
+            ramp_rate.second);
+    }
+};
+
 struct DeactivateLidHeating {
     /**
      * DeactivateLidHeating uses M108. It has no parameters and just

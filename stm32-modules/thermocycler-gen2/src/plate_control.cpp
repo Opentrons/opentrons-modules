@@ -136,6 +136,12 @@ auto PlateControl::set_new_target(double setpoint, double volume_ul,
     return true;
 }
 
+auto PlateControl::set_new_ramp_rate(double ramp_rate) -> bool {
+    _ramp_rate = ramp_rate;
+
+    return true;
+}
+
 [[nodiscard]] auto PlateControl::fan_idle_power() const -> double {
     auto temp = _fan.current_temp();
     if (temp < IDLE_FAN_INACTIVE_THRESHOLD) {

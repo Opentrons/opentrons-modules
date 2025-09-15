@@ -158,7 +158,14 @@ class PlateControl {
     auto set_new_target(double setpoint, double volume_ul,
                         double hold_time = HOLD_INFINITE,
                         double ramp_rate = RAMP_INFINITE) -> bool;
-
+    /**
+     * @brief Set a new target ramp rate.
+     *
+     * @param[in] ramp_rate The rate to drive the peltiers at, in degrees
+     * celsius per second.
+     * @return True if the temperature target could be updated
+     */
+    auto set_new_ramp_rate(double ramp_rate) -> bool;
     /**
      * @brief This function will return the correct fan PWM to be set if
      * the fan is in idle mode, as a percentage from 0 to 1.0.
