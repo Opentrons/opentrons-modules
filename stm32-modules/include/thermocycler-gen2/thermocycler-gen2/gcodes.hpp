@@ -1191,6 +1191,8 @@ struct SetPlateTemperature {
      * SetPlateTemperature uses M104. Parameters:
      * - S - setpoint temperature
      * - H - hold time (optional)
+     * - V - liquid volume (optional)
+     * - R - ramp rate (optional)
      *
      * M104 S44\n
      */
@@ -1198,10 +1200,13 @@ struct SetPlateTemperature {
     static constexpr auto prefix = std::array{'M', '1', '0', '4', ' ', 'S'};
     static constexpr auto hold_prefix = std::array{' ', 'H'};
     static constexpr auto volume_prefix = std::array{' ', 'V'};
+    static constexpr auto ramp_prefix = std::array{' ', 'R'};
     static constexpr const char* response = "M104 OK\n";
 
     // 0 seconds means infinite hold time
     constexpr static double infinite_hold = 0.0F;
+    // 0 means infinite ramp rate
+    constexpr static double infinite_ramp = 0.0F;
     // If no volume is specified, set to a negative number and let
     // the rest of the firmware decide a default value
     constexpr static double default_volume = -1.0F;
@@ -1209,6 +1214,7 @@ struct SetPlateTemperature {
     double setpoint;
     double hold_time;
     double volume;
+    double ramp_rate;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -1258,10 +1264,24 @@ struct SetPlateTemperature {
             working = vol.second;
         }
 
+        auto ramp_rate_val = infinite_ramp;
+        auto working_ramp = working;
+        working = prefix_matches(working_ramp, limit, ramp_prefix);
+        if (working != working_ramp) {
+            // This command specified a ramp rate
+            auto ramp = parse_value<float>(working, limit);
+            if (!ramp.first.has_value()) {
+                return std::make_pair(ParseResult(), input);
+            }
+            ramp_rate_val = ramp.first.value();
+            working = ramp.second;
+        }
+
         return std::make_pair(
             ParseResult(SetPlateTemperature{.setpoint = temperature_val,
                                             .hold_time = hold_val,
-                                            .volume = volume_val}),
+                                            .volume = volume_val,
+                                            .ramp_rate = ramp_rate_val}),
             working);
     }
 };
