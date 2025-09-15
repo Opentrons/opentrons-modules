@@ -40,6 +40,8 @@ SCENARIO("SetPlateTemperature (M104) parser works", "[gcode][parse][m104]") {
                         gcode::SetPlateTemperature::infinite_hold);
                 REQUIRE(val.value().volume ==
                         gcode::SetPlateTemperature::default_volume);
+                REQUIRE(val.value().ramp_rate ==
+                        gcode::SetPlateTemperature::infinite_ramp);
             }
         }
         WHEN("Setting target to 0.0") {
@@ -55,6 +57,8 @@ SCENARIO("SetPlateTemperature (M104) parser works", "[gcode][parse][m104]") {
                         gcode::SetPlateTemperature::infinite_hold);
                 REQUIRE(val.value().volume ==
                         gcode::SetPlateTemperature::default_volume);
+                REQUIRE(val.value().ramp_rate ==
+                        gcode::SetPlateTemperature::infinite_ramp);
             }
         }
         WHEN("Setting target to 50C with a hold time of 40 seconds") {
@@ -69,6 +73,8 @@ SCENARIO("SetPlateTemperature (M104) parser works", "[gcode][parse][m104]") {
                 REQUIRE(val.value().hold_time == 40.0F);
                 REQUIRE(val.value().volume ==
                         gcode::SetPlateTemperature::default_volume);
+                REQUIRE(val.value().ramp_rate ==
+                        gcode::SetPlateTemperature::infinite_ramp);
             }
         }
         WHEN("Setting target to 50C with a volume of 40.5") {
@@ -84,6 +90,8 @@ SCENARIO("SetPlateTemperature (M104) parser works", "[gcode][parse][m104]") {
                         gcode::SetPlateTemperature::infinite_hold);
                 REQUIRE_THAT(val.value().volume,
                              Catch::Matchers::WithinAbs(40.5, 0.01));
+                REQUIRE(val.value().ramp_rate ==
+                        gcode::SetPlateTemperature::infinite_ramp);
             }
         }
         WHEN(
@@ -100,6 +108,24 @@ SCENARIO("SetPlateTemperature (M104) parser works", "[gcode][parse][m104]") {
                 REQUIRE(val.value().hold_time == 10.0F);
                 REQUIRE_THAT(val.value().volume,
                              Catch::Matchers::WithinAbs(40.5, 0.01));
+                REQUIRE(val.value().ramp_rate ==
+                        gcode::SetPlateTemperature::infinite_ramp);
+            }
+        }
+        WHEN("Setting target to 50 with a ramp rate of 2.0") {
+            std::string buffer = "M104 S50.0 R2.0\n";
+            auto parsed =
+                gcode::SetPlateTemperature::parse(buffer.begin(), buffer.end());
+            THEN("the target should be 50") {
+                auto &val = parsed.first;
+                REQUIRE(parsed.second != buffer.begin());
+                REQUIRE(val.has_value());
+                REQUIRE(val.value().setpoint == 50.0F);
+                REQUIRE(val.value().ramp_rate == 2.0F);
+                REQUIRE(val.value().hold_time ==
+                        gcode::SetPlateTemperature::infinite_hold);
+                REQUIRE(val.value().volume ==
+                        gcode::SetPlateTemperature::default_volume);
             }
         }
     }
