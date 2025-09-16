@@ -258,6 +258,12 @@ struct SetPlateTemperatureMessage {
     double setpoint;
     double hold_time;
     double volume = 0.0F;
+    double ramp_rate = 0.0F;
+};
+
+struct SetRampRateMessage {
+    uint32_t id;
+    double ramp_rate;
 };
 
 struct SetFanAutomaticMessage {
@@ -436,7 +442,7 @@ using HostCommsMessage = ::std::variant<
 using ThermalPlateMessage =
     ::std::variant<std::monostate, ThermalPlateTempReadComplete,
                    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
-                   SetFanManualMessage, GetPlateTempMessage,
+                   SetFanManualMessage, GetPlateTempMessage, SetRampRateMessage,
                    SetPlateTemperatureMessage, DeactivatePlateMessage,
                    SetPIDConstantsMessage, SetFanAutomaticMessage,
                    GetThermalPowerMessage, SetOffsetConstantsMessage,

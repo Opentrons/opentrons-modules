@@ -1128,7 +1128,33 @@ class HostCommsTask {
             messages::SetPlateTemperatureMessage{.id = id,
                                                  .setpoint = gcode.setpoint,
                                                  .hold_time = gcode.hold_time,
-                                                 .volume = gcode.volume};
+                                                 .volume = gcode.volume,
+                                                 .ramp_rate = gcode.ramp_rate};
+        if (!task_registry->thermal_plate->get_message_queue().try_send(
+                message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetRampRate& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+
+        auto message = messages::SetRampRateMessage{
+            .id = id, .ramp_rate = gcode.ramp_rate};
         if (!task_registry->thermal_plate->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(

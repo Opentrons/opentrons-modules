@@ -1103,6 +1103,60 @@ struct SetLidTemperature {
     }
 };
 
+struct SetRampRate {
+    /**
+     * SetRampRate uses M566. Only parameter is optional and it is
+     * the ramp rate to use in C°/s. If not defined, the temperature ramp rate
+     * will be infinite
+     *
+     * M566 S44\n
+     */
+    using ParseResult = std::optional<SetRampRate>;
+    static constexpr auto prefix = std::array{'M', '5', '6', '6'};
+    static constexpr auto prefix_with_temp =
+        std::array{'M', '5', '6', '6', ' ', 'S'};
+    static constexpr const char* response = "M566 OK\n";
+
+    static constexpr double default_ramp_rate = 0.0F;
+
+    double ramp_rate;
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix_with_temp);
+        if (working == input) {
+            // NO RampRate SETTING but it might just be a bare command
+            working = prefix_matches(input, limit, prefix);
+            if (working == input) {
+                return std::make_pair(ParseResult(), input);
+            }
+            // Return a struct with default temperature
+            return std::make_pair(
+                ParseResult(SetRampRate{.ramp_rate = default_ramp_rate}),
+                working);
+        }
+        // We are expecting a temperature setting
+        auto ramp_rate = parse_value<float>(working, limit);
+        if (!ramp_rate.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto ramp_rate_val = ramp_rate.first.value();
+        return std::make_pair(
+            ParseResult(SetRampRate{.ramp_rate = ramp_rate_val}),
+            ramp_rate.second);
+    }
+};
+
 struct DeactivateLidHeating {
     /**
      * DeactivateLidHeating uses M108. It has no parameters and just
@@ -1137,6 +1191,8 @@ struct SetPlateTemperature {
      * SetPlateTemperature uses M104. Parameters:
      * - S - setpoint temperature
      * - H - hold time (optional)
+     * - V - liquid volume (optional)
+     * - R - ramp rate (optional)
      *
      * M104 S44\n
      */
@@ -1144,10 +1200,13 @@ struct SetPlateTemperature {
     static constexpr auto prefix = std::array{'M', '1', '0', '4', ' ', 'S'};
     static constexpr auto hold_prefix = std::array{' ', 'H'};
     static constexpr auto volume_prefix = std::array{' ', 'V'};
+    static constexpr auto ramp_prefix = std::array{' ', 'R'};
     static constexpr const char* response = "M104 OK\n";
 
     // 0 seconds means infinite hold time
     constexpr static double infinite_hold = 0.0F;
+    // 0 means infinite ramp rate
+    constexpr static double infinite_ramp = 0.0F;
     // If no volume is specified, set to a negative number and let
     // the rest of the firmware decide a default value
     constexpr static double default_volume = -1.0F;
@@ -1155,6 +1214,7 @@ struct SetPlateTemperature {
     double setpoint;
     double hold_time;
     double volume;
+    double ramp_rate;
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -1204,10 +1264,24 @@ struct SetPlateTemperature {
             working = vol.second;
         }
 
+        auto ramp_rate_val = infinite_ramp;
+        auto working_ramp = working;
+        working = prefix_matches(working_ramp, limit, ramp_prefix);
+        if (working != working_ramp) {
+            // This command specified a ramp rate
+            auto ramp = parse_value<float>(working, limit);
+            if (!ramp.first.has_value()) {
+                return std::make_pair(ParseResult(), input);
+            }
+            ramp_rate_val = ramp.first.value();
+            working = ramp.second;
+        }
+
         return std::make_pair(
             ParseResult(SetPlateTemperature{.setpoint = temperature_val,
                                             .hold_time = hold_val,
-                                            .volume = volume_val}),
+                                            .volume = volume_val,
+                                            .ramp_rate = ramp_rate_val}),
             working);
     }
 };

@@ -515,6 +515,20 @@ class ThermalPlateTask {
     }
 
     template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::SetRampRateMessage& msg, Policy& policy)
+        -> void {
+        std::ignore = policy;
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+        }
+        _plate_control.set_new_ramp_rate(msg.ramp_rate);
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
     auto visit_message(const messages::SetPlateTemperatureMessage& msg,
                        Policy& policy) -> void {
         auto response =
@@ -559,7 +573,7 @@ class ThermalPlateTask {
             reset_peltier_filters();
         } else {
             if (_plate_control.set_new_target(msg.setpoint, volume_ul,
-                                              msg.hold_time)) {
+                                              msg.hold_time, msg.ramp_rate)) {
                 _state.system_status = State::CONTROLLING;
             } else {
                 response.with_error = errors::ErrorCode::THERMAL_TARGET_BAD;
