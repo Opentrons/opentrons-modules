@@ -41,25 +41,31 @@ namespace motor_task {
  */
 template <typename Policy>
 concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
-    { p.set_rpm(static_cast<int16_t>(16)) } -> std::same_as<errors::ErrorCode>;
-    { cp.get_current_rpm() } -> std::same_as<int16_t>;
-    { cp.get_target_rpm() } -> std::same_as<int16_t>;
-    {p.stop()};
-    {
-        p.set_ramp_rate(static_cast<int32_t>(8))
-        } -> std::same_as<errors::ErrorCode>;
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-    {p.set_pid_constants(1.0, 2.0, 3.0)};
-    {p.homing_solenoid_disengage()};
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-    {p.homing_solenoid_engage(122)};
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-    {p.delay_ticks(10)};
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-    {p.plate_lock_set_power(0.1)};
-    {p.plate_lock_disable()};
-    {p.set_manual_error(15535, 2500)};
-};
+                                   {
+                                       p.set_rpm(static_cast<int16_t>(16))
+                                       } -> std::same_as<errors::ErrorCode>;
+                                   {
+                                       cp.get_current_rpm()
+                                       } -> std::same_as<int16_t>;
+                                   {
+                                       cp.get_target_rpm()
+                                       } -> std::same_as<int16_t>;
+                                   { p.stop() };
+                                   {
+                                       p.set_ramp_rate(static_cast<int32_t>(8))
+                                       } -> std::same_as<errors::ErrorCode>;
+                                   // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                                   { p.set_pid_constants(1.0, 2.0, 3.0) };
+                                   { p.homing_solenoid_disengage() };
+                                   // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                                   { p.homing_solenoid_engage(122) };
+                                   // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                                   { p.delay_ticks(10) };
+                                   // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                                   { p.plate_lock_set_power(0.1) };
+                                   { p.plate_lock_disable() };
+                                   { p.set_manual_error(15535, 2500) };
+                               };
 
 struct State {
     enum TaskStatus {
@@ -93,7 +99,7 @@ struct PlateLockState {
 constexpr size_t RESPONSE_LENGTH = 128;
 using Message = ::messages::MotorMessage;
 template <template <class> class QueueImpl>
-requires MessageQueue<QueueImpl<Message>, Message>
+    requires MessageQueue<QueueImpl<Message>, Message>
 class MotorTask {
     static constexpr const uint32_t HOMING_INTERSTATE_WAIT_TICKS = 100;
     static constexpr const uint16_t PLATE_LOCK_WAIT_TICKS = 100;
@@ -157,7 +163,7 @@ class MotorTask {
     }
 
     template <typename Policy>
-    requires MotorExecutionPolicy<Policy>
+        requires MotorExecutionPolicy<Policy>
     auto run_once(Policy& policy) -> void {
         auto message = Message(std::monostate());
 
@@ -311,28 +317,36 @@ class MotorTask {
     }
 
     template <typename Policy>
-    auto visit_message(const messages::GetErrorStateMessage& msg, Policy& policy) -> void {
+    auto visit_message(const messages::GetErrorStateMessage& msg,
+                       Policy& policy) -> void {
         static_cast<void>(policy);
-        auto response = messages::AcknowledgePrevious{.responding_to_id=msg.id, .with_error = current_error};
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(
-            response
-        ));
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id = msg.id, .with_error = current_error};
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
     }
 
     template <typename Policy>
-    auto visit_message(const messages::ClearErrorStateMessage& msg, Policy& policy) -> void {
+    auto visit_message(const messages::ClearErrorStateMessage& msg,
+                       Policy& policy) -> void {
         static_cast<void>(policy);
         current_error = errors::ErrorCode::NO_ERROR;
         state.status = State::STOPPED_UNKNOWN;
-        auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(response));
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
     }
 
     template <typename Policy>
-    auto visit_message(const messages::SetErrorStateMessage& msg, Policy& policy) -> void {
-        policy.set_manual_error(errors::to_motor_error(msg.error_to_set), msg.delay_s);
-        auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(response));
+    auto visit_message(const messages::SetErrorStateMessage& msg,
+                       Policy& policy) -> void {
+        policy.set_manual_error(errors::to_motor_error(msg.error_to_set),
+                                msg.delay_s);
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
     }
 
     /**

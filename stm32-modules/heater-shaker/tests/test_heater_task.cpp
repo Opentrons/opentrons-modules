@@ -387,6 +387,16 @@ SCENARIO("heater task error handling") {
                 REQUIRE(error.code ==
                         errors::ErrorCode::HEATER_THERMISTOR_A_SHORT);
             }
+            AND_WHEN("a get error message is received") {
+                tasks->get_host_comms_queue().backing_deque.clear();
+                auto get_error = messages::GetErrorStateMessage{.id = 1233};
+                tasks->consume_heater_message(get_error);
+                THEN("it should get the error state") {
+                    tasks->require_has_ack_for(
+                        get_error,
+                        errors::ErrorCode::HEATER_THERMISTOR_A_SHORT);
+                }
+            }
         }
         WHEN("setting thermistor b to an error state and setting the latch") {
             auto one_error_message = messages::TemperatureConversionComplete{
@@ -404,6 +414,16 @@ SCENARIO("heater task error handling") {
                 auto error = std::get<messages::ErrorMessage>(error_update);
                 REQUIRE(error.code ==
                         errors::ErrorCode::HEATER_THERMISTOR_B_SHORT);
+            }
+            AND_WHEN("a get error message is received") {
+                tasks->get_host_comms_queue().backing_deque.clear();
+                auto get_error = messages::GetErrorStateMessage{.id = 1233};
+                tasks->consume_heater_message(get_error);
+                THEN("it should get the error state") {
+                    tasks->require_has_ack_for(
+                        get_error,
+                        errors::ErrorCode::HEATER_THERMISTOR_B_SHORT);
+                }
             }
         }
         WHEN(
@@ -429,6 +449,16 @@ SCENARIO("heater task error handling") {
                 REQUIRE(error.code ==
                         errors::ErrorCode::HEATER_THERMISTOR_B_DISCONNECTED);
                 REQUIRE(tasks->get_host_comms_queue().backing_deque.empty());
+            }
+            AND_WHEN("a get error message is received") {
+                tasks->get_host_comms_queue().backing_deque.clear();
+                auto get_error = messages::GetErrorStateMessage{.id = 1233};
+                tasks->consume_heater_message(get_error);
+                THEN("it should get the error state") {
+                    tasks->require_has_ack_for(
+                        get_error,
+                        errors::ErrorCode::HEATER_THERMISTOR_A_SHORT);
+                }
             }
         }
         WHEN(
@@ -475,6 +505,16 @@ SCENARIO("heater task error handling") {
                             tasks->get_heater_policy().try_reset_call_count() ==
                             1);
                         REQUIRE(tasks->get_heater_policy().power_good());
+                    }
+                }
+                AND_WHEN("a get error message is received") {
+                    tasks->get_host_comms_queue().backing_deque.clear();
+                    auto get_error = messages::GetErrorStateMessage{.id = 1233};
+                    tasks->consume_heater_message(get_error);
+                    THEN("it should get the error state") {
+                        tasks->require_has_ack_for(
+                            get_error, errors::ErrorCode::
+                                           HEATER_THERMISTOR_A_DISCONNECTED);
                     }
                 }
             }

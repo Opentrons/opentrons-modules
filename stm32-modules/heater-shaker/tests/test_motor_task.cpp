@@ -312,6 +312,17 @@ SCENARIO("motor task error handling", "[motor]") {
                     REQUIRE(tasks->get_motor_task().get_state() ==
                             motor_task::State::ERROR);
                 }
+                AND_WHEN("subsequently queried for its error state") {
+                    tasks->get_host_comms_queue().backing_deque.clear();
+                    auto query_message =
+                        messages::GetErrorStateMessage{.id = 1231};
+                    tasks->consume_motor_message(query_message);
+                    THEN("the response should carry the error message") {
+                        tasks->require_has_ack_for(
+                            query_message,
+                            errors::ErrorCode::MOTOR_BLDC_DRIVER_FAULT);
+                    }
+                }
             }
         }
 
@@ -320,7 +331,8 @@ SCENARIO("motor task error handling", "[motor]") {
             tasks->consume_motor_message(message);
             THEN("the task should get the message") {
                 AND_THEN(
-                    "the task should send a spurious-error message upstream") {
+                    "the task should send a spurious-error message "
+                    "upstream") {
                     REQUIRE(
                         tasks->get_host_comms_queue().backing_deque.size() ==
                         1);
@@ -332,6 +344,15 @@ SCENARIO("motor task error handling", "[motor]") {
                 AND_THEN("the task should not enter error state") {
                     REQUIRE(tasks->get_motor_task().get_state() ==
                             motor_task::State::STOPPED_UNKNOWN);
+                }
+                AND_WHEN("subsequently queried for its error state") {
+                    tasks->get_host_comms_queue().backing_deque.clear();
+                    auto query_message =
+                        messages::GetErrorStateMessage{.id = 1231};
+                    tasks->consume_motor_message(query_message);
+                    THEN("the response should not carry the error message") {
+                        tasks->require_has_ack_for(query_message);
+                    }
                 }
             }
         }
@@ -396,7 +417,8 @@ SCENARIO("motor task input error handling", "[motor]") {
             }
         }
         WHEN(
-            "a command requests an invalid speed but the motor controller is "
+            "a command requests an invalid speed but the motor controller "
+            "is "
             "already in error state") {
             auto message = messages::MotorSystemErrorMessage{
                 .errors = static_cast<uint16_t>(
@@ -431,7 +453,8 @@ SCENARIO("motor task homing", "[motor][homing]") {
             auto home_message = messages::BeginHomingMessage{.id = 123};
             tasks->consume_motor_message(home_message);
             THEN(
-                "the motor task should enter error state and send a response") {
+                "the motor task should enter error state and send a "
+                "response") {
                 REQUIRE(tasks->get_motor_task().get_state() ==
                         motor_task::State::ERROR);
                 REQUIRE(tasks->get_motor_policy().get_target_rpm() == 0);
@@ -617,7 +640,8 @@ SCENARIO("motor task homing", "[motor][homing]") {
         CHECK(std::holds_alternative<messages::CheckHomingStatusMessage>(
             tasks->get_motor_queue().backing_deque.front()));
         WHEN(
-            "checking the homing status while in the appropriate speed range") {
+            "checking the homing status while in the appropriate speed "
+            "range") {
             tasks->get_motor_policy().test_set_current_rpm(
                 (std::remove_cvref_t<decltype(tasks->get_motor_task())>::
                      HOMING_ROTATION_LIMIT_HIGH_OLD_RPM +
@@ -642,7 +666,9 @@ SCENARIO("motor task homing", "[motor][homing]") {
                     HOMING_ROTATION_LIMIT_HIGH_OLD_RPM *
                 1.1);
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
-            THEN("the task remains in moving-to-speed and waits for the rpm") {
+            THEN(
+                "the task remains in moving-to-speed and waits for the "
+                "rpm") {
                 REQUIRE(tasks->get_motor_task().get_state() ==
                         motor_task::State::HOMING_MOVING_TO_HOME_SPEED);
                 REQUIRE(!tasks->get_motor_policy().test_solenoid_engaged());
@@ -677,11 +703,13 @@ SCENARIO("motor task homing", "[motor][homing]") {
         WHEN("receiving an error") {
             tasks->get_motor_queue().backing_deque.push_back(
                 messages::MotorSystemErrorMessage{.errors = 0x2});
-            // This must run twice to handle the check-status message from the
-            // timeout mechanism before the error message
+            // This must run twice to handle the check-status message from
+            // the timeout mechanism before the error message
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
             tasks->get_motor_task().run_once(tasks->get_motor_policy());
-            THEN("the task goes to homed state and lowers solenoid current") {
+            THEN(
+                "the task goes to homed state and lowers solenoid "
+                "current") {
                 REQUIRE(tasks->get_motor_task().get_state() ==
                         motor_task::State::STOPPED_HOMED);
                 REQUIRE(tasks->get_motor_policy().test_solenoid_engaged());
@@ -878,7 +906,9 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
             WHEN("sending an open plate lock message") {
                 auto open_message = messages::OpenPlateLockMessage{.id = 123};
                 tasks->consume_motor_message(open_message);
-                THEN("motor should be enabled with correct power and state") {
+                THEN(
+                    "motor should be enabled with correct power and "
+                    "state") {
                     REQUIRE(
                         tasks->get_motor_policy().test_plate_lock_enabled());
                     REQUIRE(
@@ -890,7 +920,8 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                             messages::CheckPlateLockStatusMessage>(
                         tasks->get_motor_queue().backing_deque.front()));
                     AND_WHEN(
-                        "opening plate lock and not receiving a plate complete "
+                        "opening plate lock and not receiving a plate "
+                        "complete "
                         "event for too long") {
                         for (size_t i = 0;
                              i < std::remove_cvref_t<
@@ -1012,11 +1043,13 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                     .id = 123};  // placing plate lock in not-closed state
                 tasks->consume_motor_message(open_message);
                 tasks->get_motor_queue()
-                    .backing_deque
-                    .pop_front();  // pulling out CheckPlateLockStatusMessage
+                    .backing_deque.pop_front();  // pulling out
+                                                 // CheckPlateLockStatusMessage
                 auto close_message = messages::ClosePlateLockMessage{.id = 123};
                 tasks->consume_motor_message(close_message);
-                THEN("motor should be enabled with correct power and state") {
+                THEN(
+                    "motor should be enabled with correct power and "
+                    "state") {
                     REQUIRE(
                         tasks->get_motor_policy().test_plate_lock_enabled());
                     REQUIRE(
@@ -1028,7 +1061,8 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                             messages::CheckPlateLockStatusMessage>(
                         tasks->get_motor_queue().backing_deque.front()));
                     AND_WHEN(
-                        "closing plate lock and not receiving a plate complete "
+                        "closing plate lock and not receiving a plate "
+                        "complete "
                         "event for too long") {
                         for (size_t i = 0;
                              i < std::remove_cvref_t<
@@ -1070,7 +1104,9 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                         auto stop_message = messages::PlateLockComplete{
                             .open = false, .closed = true};
                         tasks->consume_motor_message(stop_message);
-                        THEN("state should update and send acknowledgement") {
+                        THEN(
+                            "state should update and send "
+                            "acknowledgement") {
                             REQUIRE(tasks->get_motor_policy()
                                         .test_plate_lock_braked());
                             REQUIRE(tasks->get_motor_task()
@@ -1142,12 +1178,14 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                     .id = 123};  // placing plate lock in not-closed state
                 tasks->consume_motor_message(open_message);
                 tasks->get_motor_queue()
-                    .backing_deque
-                    .pop_front();  // pulling out CheckPlateLockStatusMessage
+                    .backing_deque.pop_front();  // pulling out
+                                                 // CheckPlateLockStatusMessage
                 auto close_message = messages::ClosePlateLockMessage{
                     .id = 123, .from_startup = true};
                 tasks->consume_motor_message(close_message);
-                THEN("motor should be enabled with correct power and state") {
+                THEN(
+                    "motor should be enabled with correct power and "
+                    "state") {
                     REQUIRE(
                         tasks->get_motor_policy().test_plate_lock_enabled());
                     REQUIRE(
@@ -1159,7 +1197,8 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                             messages::CheckPlateLockStatusMessage>(
                         tasks->get_motor_queue().backing_deque.front()));
                     AND_WHEN(
-                        "closing plate lock and not receiving a plate complete "
+                        "closing plate lock and not receiving a plate "
+                        "complete "
                         "event for too long") {
                         for (size_t i = 0;
                              i < std::remove_cvref_t<
@@ -1204,7 +1243,9 @@ SCENARIO("motor task debug plate lock handling", "[motor][debug]") {
                         auto response =
                             tasks->get_motor_queue().backing_deque.front();
                         tasks->get_motor_queue().backing_deque.pop_front();
-                        THEN("state should update and send acknowledgement") {
+                        THEN(
+                            "state should update and send "
+                            "acknowledgement") {
                             REQUIRE(tasks->get_motor_policy()
                                         .test_plate_lock_braked());
                             REQUIRE(tasks->get_motor_task()
