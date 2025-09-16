@@ -50,9 +50,8 @@ class HostCommsTask {
         gcode::GetPlateLockStateDebug, gcode::SetLEDDebug,
         gcode::IdentifyModuleStartLED, gcode::IdentifyModuleStopLED,
         gcode::SetOffsetConstants, gcode::GetOffsetConstants,
-        gcode::DeactivateHeater, gcode::GetResetReason,
-        gcode::GetErrorState, gcode::SetErrorStateDebug, gcode::ClearErrorState
-        >;
+        gcode::DeactivateHeater, gcode::GetResetReason, gcode::GetErrorState,
+        gcode::SetErrorStateDebug, gcode::ClearErrorState>;
     using AckOnlyCache =
         AckCache<8, gcode::SetRPM, gcode::SetTemperature,
                  gcode::SetAcceleration, gcode::SetPIDConstants,
@@ -62,7 +61,8 @@ class HostCommsTask {
                  gcode::SetSerialNumber, gcode::SetLEDDebug,
                  gcode::IdentifyModuleStartLED, gcode::IdentifyModuleStopLED,
                  gcode::SetOffsetConstants, gcode::DeactivateHeater,
-                 gcode::ClearErrorState, gcode::SetErrorStateDebug, gcode::GetErrorState>;
+                 gcode::ClearErrorState, gcode::SetErrorStateDebug,
+                 gcode::GetErrorState>;
     using GetTempCache = AckCache<8, gcode::GetTemperature>;
     using GetTempDebugCache = AckCache<8, gcode::GetTemperatureDebug>;
     using GetRPMCache = AckCache<8, gcode::GetRPM>;
@@ -1097,9 +1097,8 @@ class HostCommsTask {
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
-    std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_gcode(const gcode::GetErrorState& gcode,
-                     InputIt tx_into,
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetErrorState& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode, 2);
         if (id == 0) {
@@ -1127,7 +1126,7 @@ class HostCommsTask {
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
-    std::sized_sentinel_for<InputLimit, InputIt>
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::SetErrorStateDebug& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode, 2);
@@ -1136,7 +1135,8 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message = messages::SetErrorStateMessage{.id = id, .error_to_set = gcode.error, .delay_s = gcode.delay_s};
+        auto message = messages::SetErrorStateMessage{
+            .id = id, .error_to_set = gcode.error, .delay_s = gcode.delay_s};
         if (!task_registry->heater->get_message_queue().try_send(
                 message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
@@ -1156,7 +1156,7 @@ class HostCommsTask {
 
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
-    std::sized_sentinel_for<InputLimit, InputIt>
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::ClearErrorState& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         auto id = ack_only_cache.add(gcode, 2);
@@ -1182,7 +1182,6 @@ class HostCommsTask {
         }
         return std::make_pair(true, tx_into);
     }
-
 
     Queue& message_queue;
     tasks::Tasks<QueueImpl>* task_registry;

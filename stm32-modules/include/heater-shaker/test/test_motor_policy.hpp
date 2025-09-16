@@ -32,7 +32,8 @@ class TestMotorPolicy {
     auto plate_lock_set_power(float power) -> void;
     auto plate_lock_disable() -> void;
     auto plate_lock_brake() -> void;
-    auto set_manual_error(uint16_t motor_error_bitmap, uint32_t delay_seconds) -> void;
+    auto set_manual_error(uint16_t motor_error_bitmap, uint32_t delay_seconds)
+        -> void;
 
     [[nodiscard]] auto test_solenoid_engaged() const -> bool;
     [[nodiscard]] auto test_solenoid_current() const -> uint16_t;

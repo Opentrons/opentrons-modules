@@ -313,15 +313,16 @@ using HeaterMessage =
                    SetPIDConstantsMessage, SetPowerTestMessage,
                    HandleNTCSetupError, SetOffsetConstantsMessage,
                    GetOffsetConstantsMessage, DeactivateHeaterMessage,
-                   GetErrorStateMessage, ClearErrorStateMessage, SetErrorStateMessage
-                   >;
+                   GetErrorStateMessage, ClearErrorStateMessage,
+                   SetErrorStateMessage>;
 using MotorMessage = ::std::variant<
     std::monostate, MotorSystemErrorMessage, SetRPMMessage, GetRPMMessage,
     SetAccelerationMessage, CheckHomingStatusMessage, BeginHomingMessage,
     ActuateSolenoidMessage, SetPlateLockPowerMessage, OpenPlateLockMessage,
     ClosePlateLockMessage, SetPIDConstantsMessage, PlateLockComplete,
     GetPlateLockStateMessage, GetPlateLockStateDebugMessage,
-    CheckPlateLockStatusMessage, GetResetReasonMessage, GetErrorStateMessage, ClearErrorStateMessage, SetErrorStateMessage>;
+    CheckPlateLockStatusMessage, GetResetReasonMessage, GetErrorStateMessage,
+    ClearErrorStateMessage, SetErrorStateMessage>;
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage, SetLEDMessage,

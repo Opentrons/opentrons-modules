@@ -1469,30 +1469,44 @@ SCENARIO("message handling for error control") {
             tasks->get_host_comms_task().run_once(tx_buf.begin(), tx_buf.end());
             THEN("the gcode is parsed and sent to heater and motor") {
                 REQUIRE(!tasks->get_heater_queue().backing_deque.empty());
-                auto heater_message = tasks->get_heater_queue().backing_deque.front();
-                REQUIRE(std::holds_alternative<messages::SetErrorStateMessage>(heater_message));
-                auto heater_error_message = std::get<messages::SetErrorStateMessage>(heater_message);
-                REQUIRE(heater_error_message.error_to_set == errors::ErrorCode::HEATER_THERMISTOR_BOARD_OVERTEMP);
+                auto heater_message =
+                    tasks->get_heater_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::SetErrorStateMessage>(
+                    heater_message));
+                auto heater_error_message =
+                    std::get<messages::SetErrorStateMessage>(heater_message);
+                REQUIRE(heater_error_message.error_to_set ==
+                        errors::ErrorCode::HEATER_THERMISTOR_BOARD_OVERTEMP);
                 REQUIRE(heater_error_message.delay_s == 1200);
                 REQUIRE(!tasks->get_motor_queue().backing_deque.empty());
-                auto motor_message = tasks->get_motor_queue().backing_deque.front();
-                REQUIRE(std::holds_alternative<messages::SetErrorStateMessage>(motor_message));
-                auto motor_error_message = std::get<messages::SetErrorStateMessage>(motor_message);
-                REQUIRE(motor_error_message.error_to_set == errors::ErrorCode::HEATER_THERMISTOR_BOARD_OVERTEMP);
+                auto motor_message =
+                    tasks->get_motor_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::SetErrorStateMessage>(
+                    motor_message));
+                auto motor_error_message =
+                    std::get<messages::SetErrorStateMessage>(motor_message);
+                REQUIRE(motor_error_message.error_to_set ==
+                        errors::ErrorCode::HEATER_THERMISTOR_BOARD_OVERTEMP);
                 REQUIRE(motor_error_message.delay_s == 1200);
                 AND_WHEN("each task sends a response") {
-                    auto heater_response = messages::AcknowledgePrevious(
-                        heater_error_message.id);
-                    auto motor_response = messages::AcknowledgePrevious(
-                        motor_error_message.id);
-                    tasks->get_host_comms_queue().backing_deque.push_back(heater_response);
-                    tasks->get_host_comms_queue().backing_deque.push_back(motor_response);
+                    auto heater_response =
+                        messages::AcknowledgePrevious(heater_error_message.id);
+                    auto motor_response =
+                        messages::AcknowledgePrevious(motor_error_message.id);
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        heater_response);
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        motor_response);
                     std::string tx_buf_1(128, 'c');
-                    tasks->get_host_comms_task().run_once(tx_buf_1.begin(), tx_buf_1.end());
-                    REQUIRE_THAT(tx_buf_1, Catch::Matchers::StartsWith("M412.D OK\n"));
+                    tasks->get_host_comms_task().run_once(tx_buf_1.begin(),
+                                                          tx_buf_1.end());
+                    REQUIRE_THAT(tx_buf_1,
+                                 Catch::Matchers::StartsWith("M412.D OK\n"));
                     std::string tx_buf_2(128, 'c');
-                    tasks->get_host_comms_task().run_once(tx_buf_2.begin(), tx_buf_2.end());
-                    REQUIRE_THAT(tx_buf_2, Catch::Matchers::StartsWith("M412.D OK\n"));
+                    tasks->get_host_comms_task().run_once(tx_buf_2.begin(),
+                                                          tx_buf_2.end());
+                    REQUIRE_THAT(tx_buf_2,
+                                 Catch::Matchers::StartsWith("M412.D OK\n"));
                 }
             }
         }

@@ -501,15 +501,18 @@ class HeaterTask {
     }
 
     template <typename Policy>
-    auto visit_message(const messages::GetErrorStateMessage& msg, Policy& policy) -> void {
+    auto visit_message(const messages::GetErrorStateMessage& msg,
+                       Policy& policy) -> void {
         static_cast<void>(policy);
         static_cast<void>(task_registry->comms->get_message_queue().try_send(
-            messages::AcknowledgePrevious{.responding_to_id=msg.id, .with_error = most_relevant_error()}
-        ));
+            messages::AcknowledgePrevious{
+                .responding_to_id = msg.id,
+                .with_error = most_relevant_error()}));
     }
 
     template <typename Policy>
-    auto visit_message(const messages::ClearErrorStateMessage& msg, Policy& policy) -> void {
+    auto visit_message(const messages::ClearErrorStateMessage& msg,
+                       Policy& policy) -> void {
         state.system_status = State::IDLE;
         state.error_bitmap = 0;
         state.led_status = State::IDLE_LED;
@@ -519,18 +522,22 @@ class HeaterTask {
         if (state.system_status == State::ERROR) {
             response.with_error = most_relevant_error();
         }
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(response));
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
     }
 
     template <typename Policy>
-    auto visit_message(const messages::SetErrorStateMessage& msg, Policy& policy) -> void {
+    auto visit_message(const messages::SetErrorStateMessage& msg,
+                       Policy& policy) -> void {
         static_cast<void>(policy);
         state.set_error = msg.error_to_set;
-        state.set_error_countdown_ticks = std::max(msg.delay_s * CONTROL_PERIOD_TICKS, 1U);
-        auto response = messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        static_cast<void>(task_registry->comms->get_message_queue().try_send(response));
+        state.set_error_countdown_ticks =
+            std::max(msg.delay_s * CONTROL_PERIOD_TICKS, 1U);
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
     }
-
 
     template <typename Policy>
     requires HeaterExecutionPolicy<Policy>
@@ -747,8 +754,6 @@ class HeaterTask {
                 task_registry->system->get_message_queue().try_send(message));
         }
     }
-
-
 
     [[nodiscard]] auto pad_temperature() const -> double {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)

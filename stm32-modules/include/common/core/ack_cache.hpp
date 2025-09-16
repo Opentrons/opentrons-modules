@@ -21,7 +21,8 @@ struct AckCache {
     static constexpr size_t size = max_size;
 
     template <typename ContentElement>
-    auto add(const ContentElement& element, ssize_t require_ack_count=1) -> uint32_t {
+    auto add(const ContentElement& element, ssize_t require_ack_count = 1)
+        -> uint32_t {
         for (auto cache_element = cache.begin(); cache_element != cache.end();
              cache_element++) {
             if (std::holds_alternative<std::monostate>(

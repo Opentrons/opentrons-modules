@@ -6,9 +6,9 @@
 #include <thread>
 
 #include "heater-shaker/errors.hpp"
+#include "heater-shaker/messages.hpp"
 #include "heater-shaker/motor_task.hpp"
 #include "heater-shaker/tasks.hpp"
-#include "heater-shaker/messages.hpp"
 #include "systemwide.h"
 
 using namespace motor_thread;
@@ -27,7 +27,6 @@ struct SimMotorPolicy {
     static constexpr int32_t MIN_RAMP_RATE_RPM_PER_S = 1;
     bool manual_error_set = false;
     uint16_t manual_error = 0;
-
 
     auto set_manual_error(uint16_t error, uint32_t delay_s) -> void {
         static_cast<void>(delay_s);
@@ -153,7 +152,9 @@ auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
             return;
         }
         if (policy.manual_error_set) {
-            tcb->queue.try_send_message(messages::MotorMessage(messages::MotorSystemErrorMessage{.errors=policy.manual_error}));
+            tcb->queue.try_send_message(
+                messages::MotorMessage(messages::MotorSystemErrorMessage{
+                    .errors = policy.manual_error}));
             policy.manual_error_set = false;
         }
     }

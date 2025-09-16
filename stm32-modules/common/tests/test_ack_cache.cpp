@@ -79,16 +79,19 @@ SCENARIO("testing ack cache functionality") {
         WHEN("removing an element with a non-1 semaphore from the cache") {
             auto added1 = Element1(25);
             auto id1 = cache.add(added1, 5);
-            THEN("you should be able to keep removing the element until the semaphore expires") {
-                for (size_t i=0; i<5; i++) {
+            THEN(
+                "you should be able to keep removing the element until the "
+                "semaphore expires") {
+                for (size_t i = 0; i < 5; i++) {
                     auto removed_valid = cache.remove_if_present(id1);
                     REQUIRE(std::holds_alternative<Element1>(removed_valid));
-                    REQUIRE(std::get<Element1>(removed_valid).foo == added1.foo);
+                    REQUIRE(std::get<Element1>(removed_valid).foo ==
+                            added1.foo);
                 }
                 auto removed_invalid = cache.remove_if_present(id1);
-                REQUIRE(std::holds_alternative<std::monostate>(removed_invalid));
+                REQUIRE(
+                    std::holds_alternative<std::monostate>(removed_invalid));
             }
-
         }
 
         WHEN("forcing the id to roll over") {
@@ -132,5 +135,4 @@ SCENARIO("testing ack cache functionality") {
             }
         }
     }
-
 }

@@ -50,7 +50,8 @@ class MotorPolicy {
         -> std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH>;
     auto last_reset_reason() const -> uint16_t;
     auto tick_manual_error(uint32_t since_last) -> uint16_t;
-    auto set_manual_error(uint16_t error, uint32_t seconds_before_error) -> void;
+    auto set_manual_error(uint16_t error, uint32_t seconds_before_error)
+        -> void;
 
   private:
     static constexpr uint16_t MAX_SOLENOID_CURRENT_MA = 330;

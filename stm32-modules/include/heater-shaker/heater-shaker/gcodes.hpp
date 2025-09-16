@@ -1252,7 +1252,7 @@ struct GetErrorState {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt write_to_buf,
-                                    InLimit write_to_limit){
+                                    InLimit write_to_limit) {
         return write_string_to_iterpair(write_to_buf, write_to_limit, response);
     }
 };
@@ -1261,9 +1261,9 @@ struct SetErrorStateDebug {
     /**
      * SetErrorState is M412.D <E NNN> <T NNN>
      *
-     * Acknowledged immediately on receipt. Will cause the error state specified by E
-     * to happen T seconds after receipt. T is optional; if omitted, the error is
-     * set immediately.
+     * Acknowledged immediately on receipt. Will cause the error state specified
+     * by E to happen T seconds after receipt. T is optional; if omitted, the
+     * error is set immediately.
      * */
     using ParseResult = std::optional<SetErrorStateDebug>;
     static constexpr auto prefix = std::array{'M', '4', '1', '2', '.', 'D'};
@@ -1314,9 +1314,9 @@ struct SetErrorStateDebug {
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
-    std::sized_sentinel_for<InputIt, InLimit>
+        std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt write_to_buf,
-                                InLimit write_to_limit) {
+                                    InLimit write_to_limit) {
         return write_string_to_iterpair(write_to_buf, write_to_limit, response);
     }
 };
@@ -1324,15 +1324,14 @@ struct SetErrorStateDebug {
 struct ClearErrorState {
     /**
      * ClearErrorState is M413.
-      *
-     * Acknolwedged immediately on receipt. Clears the current error state, if any, though
-     * if the error state is from detecting a hardware error state it will likely rapidly
-     * reoccur.
+     *
+     * Acknolwedged immediately on receipt. Clears the current error state, if
+     *any, though if the error state is from detecting a hardware error state it
+     *will likely rapidly reoccur.
      **/
     using ParseResult = std::optional<ClearErrorState>;
     static constexpr auto prefix = std::array{'M', '4', '1', '3'};
     static constexpr const char* response = "M413 OK\n";
-
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -1348,9 +1347,9 @@ struct ClearErrorState {
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
-    std::sized_sentinel_for<InputIt, InLimit>
+        std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt write_to_buf,
-                                InLimit write_to_limit) {
+                                    InLimit write_to_limit) {
         return write_string_to_iterpair(write_to_buf, write_to_limit, response);
     }
 };

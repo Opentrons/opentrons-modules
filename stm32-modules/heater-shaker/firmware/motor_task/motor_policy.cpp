@@ -19,21 +19,22 @@
 using namespace errors;
 
 MotorPolicy::MotorPolicy(motor_hardware_handles* handles)
-    :  _ticks_before_manual_error(0), _manual_error(0), hw_handles(handles) {}
+    : _ticks_before_manual_error(0), _manual_error(0), hw_handles(handles) {}
 
 auto MotorPolicy::tick_manual_error(uint32_t since_last) -> uint16_t {
     if (_ticks_before_manual_error == 0) {
         return 0;
     }
     if (_ticks_before_manual_error <= since_last) {
-        _ticks_before_manual_error=0;
+        _ticks_before_manual_error = 0;
         return _manual_error;
     }
-    _ticks_before_manual_error-= since_last;
+    _ticks_before_manual_error -= since_last;
     return 0;
 }
 
-auto MotorPolicy::set_manual_error(uint16_t error, uint32_t seconds_before_error) -> void {
+auto MotorPolicy::set_manual_error(uint16_t error,
+                                   uint32_t seconds_before_error) -> void {
     _manual_error = error;
     _ticks_before_manual_error = seconds_before_error * 1000;
 }
