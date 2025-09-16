@@ -6,6 +6,7 @@
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/heater_task.hpp"
 #include "heater-shaker/host_comms_task.hpp"
+#include "heater-shaker/messages.hpp"
 #include "heater-shaker/motor_task.hpp"
 #include "heater-shaker/system_task.hpp"
 #include "heater-shaker/tasks.hpp"
@@ -39,8 +40,15 @@ struct TaskBuilder {
     auto require_has_ack_for(
         Message message, errors::ErrorCode error = errors::ErrorCode::NO_ERROR)
         -> AckMessage {
+        return require_has_ack_for_id<AckMessage>(message.id, error);
+    }
+
+    template <typename AckMessage = messages::AcknowledgePrevious>
+    auto require_has_ack_for_id(
+        uint32_t id, errors::ErrorCode error = errors::ErrorCode::NO_ERROR)
+        -> AckMessage {
         auto ack = get_latest_host_comms_message<AckMessage>();
-        REQUIRE(ack.responding_to_id == message.id);
+        REQUIRE(ack.responding_to_id == id);
         REQUIRE(ack.with_error == error);
         return ack;
     }
@@ -81,6 +89,7 @@ struct TaskBuilder {
     auto consume_heater_message(heater_task::Message message) -> void {
         heater_queue.backing_deque.push_back(message);
         run_heater_task();
+        CHECK(heater_queue.backing_deque.empty());
     }
     auto consume_motor_message(motor_task::Message message) -> void {
         motor_queue.backing_deque.push_back(message);
