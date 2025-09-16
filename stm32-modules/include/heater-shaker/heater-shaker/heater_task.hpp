@@ -30,19 +30,23 @@ namespace heater_task {
 
 template <typename Policy>
 concept HeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
-    // Check if the hardware is ready (true) or if some errors is preventing
-    // power flowing to the heater pad drivers
+    // Check if the hardware is ready (true) or
+    // if some errors is preventing power
+    // flowing to the heater pad drivers
     { cp.power_good() } -> std::same_as<bool>;
-    // Attempt to reset the heater error latch and check if it worked (true)
-    // or if the error condition is still present (false)
+    // Attempt to reset the heater error latch
+    // and check if it worked (true) or if the
+    // error condition is still present (false)
     { p.try_reset_power_good() } -> std::same_as<bool>;
 
-    // A set_power_output function with inputs between 0 and 1 sets the
-    // relative output of the heater pad
+    // A set_power_output function with inputs
+    // between 0 and 1 sets the relative output
+    // of the heater pad
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.set_power_output(0.5)};
-    // disable_power_output should fully turn off the driver (set_power_output
-    // will usually turn it on at least a little bit)
+    // disable_power_output should fully turn
+    // off the driver (set_power_output will
+    // usually turn it on at least a little bit)
     {p.disable_power_output()};
 };
 
@@ -532,7 +536,8 @@ class HeaterTask {
         static_cast<void>(policy);
         state.set_error = msg.error_to_set;
         state.set_error_countdown_ticks =
-            std::max(msg.delay_s * CONTROL_PERIOD_TICKS, 1U);
+            std::max(static_cast<uint32_t>(msg.delay_s * CONTROL_PERIOD_TICKS),
+                     uint32_t(1));
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         static_cast<void>(
