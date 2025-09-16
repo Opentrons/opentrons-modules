@@ -354,6 +354,13 @@ SCENARIO("motor task error handling", "[motor]") {
                     41);
             }
         }
+        WHEN("sending a clear error state command") {
+            auto clear_message = messages::ClearErrorStateMessage{.id = 1231};
+            tasks->consume_motor_message(clear_message);
+            THEN("the task should response") {
+                tasks->require_has_ack_for(clear_message);
+            }
+        }
     }
 }
 
