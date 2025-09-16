@@ -315,6 +315,13 @@ SCENARIO("heater task message passing") {
                 }
             }
         }
+        WHEN("sending a clear-error-state message") {
+            auto message = messages::ClearErrorStateMessage{.id = 1231};
+            tasks->consume_heater_message(message);
+            THEN("the task should acknowledge") {
+                tasks->require_has_ack_for(message);
+            }
+        }
     }
 
     GIVEN("a heater task with an invalid out-of-range temp") {
@@ -352,10 +359,6 @@ SCENARIO("heater task message passing") {
                                            messages::GetTemperatureResponse>(
                     message, errors::ErrorCode::HEATER_THERMISTOR_B_SHORT);
             }
-        }
-        WHEN("sending a clear-error-state message") {
-            auto message = messages::ClearErrorStateMessage{.id = 1231};
-            tasks->consume_heater_message(message);
         }
     }
 }
@@ -686,6 +689,30 @@ SCENARIO("heater task error handling") {
                 REQUIRE(tasks->get_heater_policy().try_reset_call_count() == 1);
                 tasks->require_has_ack_for(
                     settemp, errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH);
+            }
+        }
+        WHEN("sending a clear-error-state with the latch allowed to reset") {
+            tasks->get_heater_policy().set_can_reset(true);
+            tasks->get_heater_policy().reset_try_reset_call_count();
+            auto clearmessage = messages::ClearErrorStateMessage{.id = 254};
+            tasks->consume_heater_message(clearmessage);
+            THEN("the set temp should reset the latch and succeed") {
+                REQUIRE(tasks->get_heater_policy().try_reset_call_count() == 1);
+                REQUIRE(tasks->get_heater_policy().power_good());
+                tasks->require_has_ack_for(clearmessage);
+            }
+        }
+        WHEN(
+            "sending a clear-error-state with the latch not allowed to reset") {
+            tasks->get_heater_policy().set_can_reset(false);
+            tasks->get_heater_policy().reset_try_reset_call_count();
+            auto clearmessage = messages::ClearErrorStateMessage{.id = 254};
+            tasks->consume_heater_message(clearmessage);
+            THEN("the set temp should reset the latch and succeed") {
+                REQUIRE(tasks->get_heater_policy().try_reset_call_count() == 1);
+                tasks->require_has_ack_for(
+                    clearmessage,
+                    errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH);
             }
         }
     }
