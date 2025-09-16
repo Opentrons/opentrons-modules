@@ -152,9 +152,9 @@ auto run(std::stop_token st, std::shared_ptr<TaskControlBlock> tcb) -> void {
             return;
         }
         if (policy.manual_error_set) {
-            tcb->queue.try_send_message(
+            static_cast<void>(tcb->queue.try_send(
                 messages::MotorMessage(messages::MotorSystemErrorMessage{
-                    .errors = policy.manual_error}));
+                    .errors = policy.manual_error})));
             policy.manual_error_set = false;
         }
     }
