@@ -2,6 +2,7 @@
 #include "core/pid.hpp"
 #include "heater-shaker/heater_task.hpp"
 #include "heater-shaker/messages.hpp"
+#include "systemwide.h"
 #include "test/task_builder.hpp"
 
 constexpr double _valid_temp = 55.0;
@@ -740,6 +741,25 @@ SCENARIO("heater task error handling") {
                 REQUIRE(tasks->get_heater_policy().try_reset_call_count() == 1);
                 REQUIRE(tasks->get_heater_policy().power_good());
                 tasks->require_has_ack_for(clearmessage);
+            }
+            AND_WHEN("running one more time") {
+                tasks->get_system_queue().backing_deque.clear();
+                tasks->consume_heater_message(
+                    messages::GetErrorStateMessage{.id = 222});
+                THEN("the task should reset the LED state") {
+                    REQUIRE_FALSE(
+                        tasks->get_system_queue().backing_deque.empty());
+                    auto led_update =
+                        tasks->get_system_queue().backing_deque.front();
+                    REQUIRE(
+                        std::holds_alternative<messages::UpdateLEDStateMessage>(
+                            led_update));
+                    // since we lied about the temperature this will be saying
+                    // "i'm hot"
+                    REQUIRE(
+                        std::get<messages::UpdateLEDStateMessage>(led_update)
+                            .color == LED_COLOR::RED);
+                }
             }
         }
         WHEN(

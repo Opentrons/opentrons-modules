@@ -519,7 +519,6 @@ class HeaterTask {
                        Policy& policy) -> void {
         state.system_status = State::IDLE;
         state.error_bitmap = 0;
-        state.led_status = State::IDLE_LED;
         try_latch_disarm(policy);
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
