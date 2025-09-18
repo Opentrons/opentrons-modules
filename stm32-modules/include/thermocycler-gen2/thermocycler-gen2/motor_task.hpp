@@ -674,24 +674,6 @@ class MotorTask {
             _task_registry->comms->get_message_queue().try_send(response));
     }
 
-    template <MotorExecutionPolicy Policy>
-    auto visit_message(const messages::GetErrorStateMessage& msg, Policy& policy) -> void {
-        static_cast<void>(msg);
-        static_cast<void>(policy);
-    }
-
-    template <MotorExecutionPolicy Policy>
-    auto visit_message(const messages::SetErrorStateMessage& msg, Policy& policy) -> void {
-        static_cast<void>(msg);
-        static_cast<void>(policy);
-    }
-
-    template <MotorExecutionPolicy Policy>
-    auto visit_message(const messages::ClearErrorStateMessage& msg, Policy& policy) -> void {
-        static_cast<void>(msg);
-        static_cast<void>(policy);
-    }
-
     // Callback for each tick() during a seal stepper movement
     template <MotorExecutionPolicy Policy>
     auto seal_step_callback(Policy& policy) -> void {

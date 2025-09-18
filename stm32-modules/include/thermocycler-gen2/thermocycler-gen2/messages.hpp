@@ -475,7 +475,6 @@ using MotorMessage = ::std::variant<
     LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,
     GetSealDriveStatusMessage, SetSealParameterMessage, GetLidStatusMessage,
     GetResetReasonMessage, OpenLidMessage, CloseLidMessage, PlateLiftMessage,
-    FrontButtonPressMessage, GetLidSwitchesMessage,
-    GetErrorStateMessage, ClearErrorStateMessage, SetErrorStateMessage
+    FrontButtonPressMessage, GetLidSwitchesMessage
     >;
 };  // namespace messages
