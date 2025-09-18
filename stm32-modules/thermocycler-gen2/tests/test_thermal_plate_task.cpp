@@ -77,17 +77,7 @@ SCENARIO("thermal plate task message passing") {
             THEN("the task should get the message") {
                 REQUIRE(plate_queue.backing_deque.empty());
                 AND_THEN("the task should respond to the messsage") {
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(std::holds_alternative<
-                            messages::GetPlateTemperatureDebugResponse>(
-                        response));
-                    auto gettemp =
-                        std::get<messages::GetPlateTemperatureDebugResponse>(
-                            response);
+                    auto gettemp = tasks->get_latest_host_comms_message<messages::GetPlateTemperatureDebugResponse>();
 
                     REQUIRE(gettemp.responding_to_id == message.id);
 
@@ -145,17 +135,8 @@ SCENARIO("thermal plate task message passing") {
             tasks->run_thermal_plate_task();
             THEN("the task should get the message") {
                 REQUIRE(plate_queue.backing_deque.empty());
-                AND_THEN("the task should respond to the messsage") {
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(
-                        std::holds_alternative<messages::GetPlateTempResponse>(
-                            response));
-                    auto gettemp =
-                        std::get<messages::GetPlateTempResponse>(response);
+                AND_THEN("the task should respond to the message") {
+                    auto gettemp = tasks->get_latest_host_comms_message<messages::GetPlateTempResponse>();
                     REQUIRE(gettemp.responding_to_id == message.id);
                     REQUIRE_THAT(gettemp.current_temp,
                                  Catch::Matchers::WithinAbs(_valid_temp, 0.1));
@@ -187,18 +168,8 @@ SCENARIO("thermal plate task message passing") {
             tasks->run_thermal_plate_task();
             THEN("the task should get the message") {
                 REQUIRE(plate_queue.backing_deque.empty());
-                AND_THEN("the task should respond to the messsage") {
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            response));
-                    auto ack_msg =
-                        std::get<messages::AcknowledgePrevious>(response);
-                    REQUIRE(ack_msg.responding_to_id == offset_set_msg.id);
+                AND_THEN("the task should respond to the message") {
+                    tasks->require_has_ack_for(offset_set_msg);
                 }
             }
             AND_WHEN("sending a get-plate-temperature-debug message") {
@@ -216,17 +187,7 @@ SCENARIO("thermal plate task message passing") {
                             offset_set_msg.const_a * _valid_temp +
                             ((offset_set_msg.const_b + 1.0F) * _valid_temp) +
                             offset_set_msg.const_c;
-                        REQUIRE(!tasks->get_host_comms_queue()
-                                     .backing_deque.empty());
-                        auto response =
-                            tasks->get_host_comms_queue().backing_deque.front();
-                        tasks->get_host_comms_queue().backing_deque.pop_front();
-                        REQUIRE(std::holds_alternative<
-                                messages::GetPlateTemperatureDebugResponse>(
-                            response));
-                        auto gettemp = std::get<
-                            messages::GetPlateTemperatureDebugResponse>(
-                            response);
+                        auto gettemp = tasks->get_latest_host_comms_message<messages::GetPlateTemperatureDebugResponse>();
 
                         REQUIRE(gettemp.responding_to_id == message.id);
 
@@ -277,17 +238,8 @@ SCENARIO("thermal plate task message passing") {
                 THEN("the task should get the message") {
                     REQUIRE(plate_queue.backing_deque.empty());
                     AND_THEN("the response should have B=1 and C=6") {
-                        REQUIRE(!tasks->get_host_comms_queue()
-                                     .backing_deque.empty());
-                        auto response =
-                            tasks->get_host_comms_queue().backing_deque.front();
-                        tasks->get_host_comms_queue().backing_deque.pop_front();
-                        REQUIRE(std::holds_alternative<
-                                messages::GetOffsetConstantsResponse>(
-                            response));
-                        auto constants =
-                            std::get<messages::GetOffsetConstantsResponse>(
-                                response);
+                        auto constants = tasks->get_latest_host_comms_message<
+                            messages::GetOffsetConstantsResponse>();
                         REQUIRE(constants.responding_to_id == get_offsets.id);
                         REQUIRE_THAT(
                             constants.a,
@@ -317,16 +269,7 @@ SCENARIO("thermal plate task message passing") {
             THEN("the task should get the message") {
                 REQUIRE(plate_queue.backing_deque.empty());
 
-                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
-                auto response =
-                    tasks->get_host_comms_queue().backing_deque.front();
-                tasks->get_host_comms_queue().backing_deque.pop_front();
-                REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
-                    response));
-                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
-                            .responding_to_id == 123);
-                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
-                            .with_error == errors::ErrorCode::NO_ERROR);
+                tasks->require_has_ack_for(message);
                 auto policy = tasks->get_thermal_plate_policy();
                 REQUIRE(policy._enabled);
                 REQUIRE(policy._left.power == 0.5F);
@@ -401,19 +344,7 @@ SCENARIO("thermal plate task message passing") {
             THEN("the task should get the message") {
                 REQUIRE(plate_queue.backing_deque.empty());
                 AND_THEN("the task should act on the message") {
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            response));
-                    auto response_msg =
-                        std::get<messages::AcknowledgePrevious>(response);
-                    REQUIRE(response_msg.responding_to_id == 123);
-                    REQUIRE(response_msg.with_error ==
-                            errors::ErrorCode::NO_ERROR);
+                    tasks->require_has_ack_for(message);
                     REQUIRE(tasks->get_thermal_plate_policy()._fan_power ==
                             0.5);
                 }
@@ -427,18 +358,7 @@ SCENARIO("thermal plate task message passing") {
                 THEN("the task should get the message") {
                     REQUIRE(plate_queue.backing_deque.empty());
                     AND_THEN("the task should act on the message") {
-                        REQUIRE(!tasks->get_host_comms_queue()
-                                     .backing_deque.empty());
-                        auto response =
-                            tasks->get_host_comms_queue().backing_deque.front();
-                        tasks->get_host_comms_queue().backing_deque.pop_front();
-                        REQUIRE(std::holds_alternative<
-                                messages::AcknowledgePrevious>(response));
-                        auto response_msg =
-                            std::get<messages::AcknowledgePrevious>(response);
-                        REQUIRE(response_msg.responding_to_id == 555);
-                        REQUIRE(response_msg.with_error ==
-                                errors::ErrorCode::NO_ERROR);
+                        tasks->require_has_ack_for(set_fan_auto);
                         REQUIRE(tasks->get_thermal_plate_policy()._fan_power ==
                                 0.0F);
                     }
@@ -458,21 +378,7 @@ SCENARIO("thermal plate task message passing") {
             THEN("the task should get the message") {
                 REQUIRE(plate_queue.backing_deque.empty());
                 AND_THEN("the task should act on the message") {
-                    REQUIRE(plate_queue.backing_deque.empty());
-
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            response));
-                    auto response_msg =
-                        std::get<messages::AcknowledgePrevious>(response);
-                    REQUIRE(response_msg.responding_to_id == 123);
-                    REQUIRE(response_msg.with_error ==
-                            errors::ErrorCode::NO_ERROR);
+                    tasks->require_has_ack_for(message);
                 }
             }
         }
@@ -490,20 +396,9 @@ SCENARIO("thermal plate task message passing") {
                 REQUIRE(plate_queue.backing_deque.empty());
                 AND_THEN("the task should act on the message") {
                     REQUIRE(plate_queue.backing_deque.empty());
-
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            response));
-                    auto response_msg =
-                        std::get<messages::AcknowledgePrevious>(response);
-                    REQUIRE(response_msg.responding_to_id == 555);
-                    REQUIRE(response_msg.with_error ==
-                            errors::ErrorCode::THERMAL_CONSTANT_OUT_OF_RANGE);
+                    tasks->require_has_ack_for(
+                        message,
+                        errors::ErrorCode::THERMAL_CONSTANT_OUT_OF_RANGE);
                 }
             }
         }
@@ -516,19 +411,7 @@ SCENARIO("thermal plate task message passing") {
             THEN("the task should get the message") {
                 REQUIRE(plate_queue.backing_deque.empty());
                 AND_THEN("the task should respond to the message") {
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            response));
-                    auto response_msg =
-                        std::get<messages::AcknowledgePrevious>(response);
-                    REQUIRE(response_msg.responding_to_id == 123);
-                    REQUIRE(response_msg.with_error ==
-                            errors::ErrorCode::NO_ERROR);
+                    tasks->require_has_ack_for(message);
                     AND_WHEN("sending a GetPlateTemp query") {
                         auto tempMessage =
                             messages::GetPlateTempMessage{.id = 555};
@@ -536,12 +419,8 @@ SCENARIO("thermal plate task message passing") {
                             messages::ThermalPlateMessage(tempMessage));
                         tasks->run_thermal_plate_task();
                         THEN("the response should have the new setpoint") {
-                            REQUIRE(!tasks->get_host_comms_queue()
-                                         .backing_deque.empty());
-                            auto temperature_message =
-                                std::get<messages::GetPlateTempResponse>(
-                                    tasks->get_host_comms_queue()
-                                        .backing_deque.front());
+                            auto temperature_message = tasks->get_latest_host_comms_message<
+                                messages::GetPlateTempResponse>();
                             REQUIRE(temperature_message.set_temp ==
                                     message.setpoint);
                             REQUIRE_THAT(
@@ -603,13 +482,7 @@ SCENARIO("thermal plate task message passing") {
                     messages::ThermalPlateMessage(tempMessage));
                 tasks->run_thermal_plate_task();
                 THEN("the task should respond to the message") {
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    REQUIRE(
-                        std::get<messages::AcknowledgePrevious>(
-                            tasks->get_host_comms_queue().backing_deque.front())
-                            .responding_to_id == 321);
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    tasks->require_has_ack_for(tempMessage);
                     AND_WHEN("sending a GetPlateTemp query") {
                         auto tempMessage =
                             messages::GetPlateTempMessage{.id = 555};
@@ -617,12 +490,9 @@ SCENARIO("thermal plate task message passing") {
                             messages::ThermalPlateMessage(tempMessage));
                         tasks->run_thermal_plate_task();
                         THEN("the response should have no setpoint") {
-                            REQUIRE(!tasks->get_host_comms_queue()
-                                         .backing_deque.empty());
-                            REQUIRE(std::get<messages::GetPlateTempResponse>(
-                                        tasks->get_host_comms_queue()
-                                            .backing_deque.front())
-                                        .set_temp == 0.0F);
+                            auto response = tasks->get_latest_host_comms_message<
+                                messages::GetPlateTempResponse>();
+                            REQUIRE(response.set_temp == 0.0F);
                         }
                     }
                 }
@@ -649,13 +519,8 @@ SCENARIO("thermal plate task message passing") {
                     messages::ThermalPlateMessage(tempMessage));
                 tasks->run_thermal_plate_task();
                 THEN("the task should respond to the message") {
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    REQUIRE(
-                        std::get<messages::DeactivateAllResponse>(
-                            tasks->get_host_comms_queue().backing_deque.front())
-                            .responding_to_id == 321);
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
+                    auto response = tasks->get_latest_host_comms_message<messages::DeactivateAllResponse>();
+                    REQUIRE(response.responding_to_id == 321);
                     AND_WHEN("sending a GetPlateTemp query") {
                         auto tempMessage =
                             messages::GetPlateTempMessage{.id = 555};
@@ -663,12 +528,8 @@ SCENARIO("thermal plate task message passing") {
                             messages::ThermalPlateMessage(tempMessage));
                         tasks->run_thermal_plate_task();
                         THEN("the response should have no setpoint") {
-                            REQUIRE(!tasks->get_host_comms_queue()
-                                         .backing_deque.empty());
-                            REQUIRE(std::get<messages::GetPlateTempResponse>(
-                                        tasks->get_host_comms_queue()
-                                            .backing_deque.front())
-                                        .set_temp == 0.0F);
+                            auto plate_temp_response = tasks->get_latest_host_comms_message<messages::GetPlateTempResponse>();
+                            REQUIRE(plate_temp_response.set_temp == 0.0F);
                         }
                     }
                 }
@@ -690,19 +551,7 @@ SCENARIO("thermal plate task message passing") {
                     REQUIRE(plate_queue.backing_deque.empty());
                     AND_THEN("the task should respond with a busy error") {
                         REQUIRE(plate_queue.backing_deque.empty());
-
-                        REQUIRE(!tasks->get_host_comms_queue()
-                                     .backing_deque.empty());
-                        auto response =
-                            tasks->get_host_comms_queue().backing_deque.front();
-                        tasks->get_host_comms_queue().backing_deque.pop_front();
-                        REQUIRE(std::holds_alternative<
-                                messages::AcknowledgePrevious>(response));
-                        auto response_msg =
-                            std::get<messages::AcknowledgePrevious>(response);
-                        REQUIRE(response_msg.responding_to_id == 808);
-                        REQUIRE(response_msg.with_error ==
-                                errors::ErrorCode::THERMAL_PLATE_BUSY);
+                        tasks->require_has_ack_for(message, errors::ErrorCode::THERMAL_PLATE_BUSY);
                     }
                 }
             }
@@ -720,10 +569,7 @@ SCENARIO("thermal plate task message passing") {
                 plate_queue.backing_deque.push_back(message);
                 tasks->run_thermal_plate_task();
                 THEN("the powers are returned correctly") {
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response = std::get<messages::GetPlatePowerResponse>(
-                        tasks->get_host_comms_queue().backing_deque.front());
+                    auto response = tasks->get_latest_host_comms_message<messages::GetPlatePowerResponse>();
                     REQUIRE(response.responding_to_id == message.id);
                     REQUIRE_THAT(response.left,
                                  Catch::Matchers::WithinAbs(0.1, 0.01));
@@ -754,6 +600,11 @@ SCENARIO("thermal plate task message passing") {
                                                    .back_left = _shorted_adc,
                                                    .timestamp_ms = timestamp};
         timestamp += TIME_DELTA;
+        plate_queue.backing_deque.push_back(
+            messages::ThermalPlateMessage(read_message));
+        tasks->run_thermal_plate_task();
+#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
+        // Check that each error is reported
         // Order of errors doesn't care, so we use a list
         ErrorList errors = {
             errors::ErrorCode::THERMISTOR_HEATSINK_SHORT,
@@ -764,17 +615,9 @@ SCENARIO("thermal plate task message passing") {
             errors::ErrorCode::THERMISTOR_BACK_LEFT_SHORT,
             errors::ErrorCode::THERMISTOR_BACK_CENTER_SHORT,
         };
-        plate_queue.backing_deque.push_back(
-            messages::ThermalPlateMessage(read_message));
-        tasks->run_thermal_plate_task();
-        // Check that each error is reported
-#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
+
         while (!errors.empty()) {
-            CHECK(!tasks->get_host_comms_queue().backing_deque.empty());
-            CHECK(std::holds_alternative<messages::ErrorMessage>(
-                tasks->get_host_comms_queue().backing_deque.front()));
-            auto error_msg = std::get<messages::ErrorMessage>(
-                tasks->get_host_comms_queue().backing_deque.front());
+            auto error_msg = tasks->get_latest_host_comms_message<messages::ErrorMessage>();
             auto error_itr =
                 std::find(std::begin(errors), std::end(errors), error_msg.code);
             CHECK(error_itr != std::end(errors));
@@ -801,16 +644,8 @@ SCENARIO("thermal plate task message passing") {
             THEN("the task should get the message") {
                 REQUIRE(plate_queue.backing_deque.empty());
                 AND_THEN("the task should respond with a temp of 0.0") {
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(
-                        std::holds_alternative<messages::GetPlateTempResponse>(
-                            response));
-                    auto gettemp =
-                        std::get<messages::GetPlateTempResponse>(response);
+                    auto gettemp = tasks->get_latest_host_comms_message<
+                        messages::GetPlateTempResponse>();
                     REQUIRE(gettemp.responding_to_id == message.id);
                     REQUIRE_THAT(gettemp.current_temp,
                                  Catch::Matchers::WithinAbs(0.0, 0.1));
@@ -830,17 +665,8 @@ SCENARIO("thermal plate task message passing") {
             tasks->run_thermal_plate_task();
             THEN("the task should respond with an error") {
                 REQUIRE(plate_queue.backing_deque.empty());
-
-                REQUIRE(!tasks->get_host_comms_queue().backing_deque.empty());
-                auto response =
-                    tasks->get_host_comms_queue().backing_deque.front();
-                tasks->get_host_comms_queue().backing_deque.pop_front();
-                REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(
-                    response));
-                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
-                            .responding_to_id == 123);
-                REQUIRE(std::get<messages::AcknowledgePrevious>(response)
-                            .with_error != errors::ErrorCode::NO_ERROR);
+                tasks->require_has_ack_for(
+                    message, errors::ErrorCode::THERMISTOR_FRONT_RIGHT_SHORT);
             }
         }
         WHEN("sending a SetFanManual message to turn on the fan") {
@@ -852,19 +678,8 @@ SCENARIO("thermal plate task message passing") {
             THEN("the task should get the message") {
                 REQUIRE(plate_queue.backing_deque.empty());
                 AND_THEN("the task should respond with an error") {
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            response));
-                    auto response_msg =
-                        std::get<messages::AcknowledgePrevious>(response);
-                    REQUIRE(response_msg.responding_to_id == 123);
-                    REQUIRE(response_msg.with_error !=
-                            errors::ErrorCode::NO_ERROR);
+                    tasks->require_has_ack_for(
+                        message, errors::ErrorCode::THERMISTOR_FRONT_RIGHT_SHORT);
                     REQUIRE(tasks->get_thermal_plate_policy()._fan_power ==
                             0.0);
                 }
@@ -879,19 +694,8 @@ SCENARIO("thermal plate task message passing") {
             THEN("the task should get the message") {
                 REQUIRE(plate_queue.backing_deque.empty());
                 AND_THEN("the task should respond with an error") {
-                    REQUIRE(
-                        !tasks->get_host_comms_queue().backing_deque.empty());
-                    auto response =
-                        tasks->get_host_comms_queue().backing_deque.front();
-                    tasks->get_host_comms_queue().backing_deque.pop_front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            response));
-                    auto response_msg =
-                        std::get<messages::AcknowledgePrevious>(response);
-                    REQUIRE(response_msg.responding_to_id == 123);
-                    REQUIRE(response_msg.with_error !=
-                            errors::ErrorCode::NO_ERROR);
+                    tasks->require_has_ack_for(
+                        message, errors::ErrorCode::THERMISTOR_FRONT_RIGHT_SHORT);
                     AND_WHEN("sending a GetPlateTemp query") {
                         auto tempMessage =
                             messages::GetPlateTempMessage{.id = 555};
@@ -899,12 +703,8 @@ SCENARIO("thermal plate task message passing") {
                             messages::ThermalPlateMessage(tempMessage));
                         tasks->run_thermal_plate_task();
                         THEN("the response should have a setpoint of 0") {
-                            REQUIRE(!tasks->get_host_comms_queue()
-                                         .backing_deque.empty());
-                            REQUIRE(std::get<messages::GetPlateTempResponse>(
-                                        tasks->get_host_comms_queue()
-                                            .backing_deque.front())
-                                        .set_temp == 0.0F);
+                            auto response = tasks->get_latest_host_comms_message<messages::GetPlateTempResponse>();
+                            REQUIRE(response.set_temp == 0.0F);
                         }
                     }
                 }
@@ -956,7 +756,7 @@ SCENARIO("thermal plate task message passing") {
     }
 }
 
-TEST_CASE("thermal plate drift error check") {
+SCENARIO("thermal plate drift error check") {
     uint32_t timestamp = TIME_DELTA;
     GIVEN("thermal plate with good temperatures") {
         auto tasks = TaskBuilder::build();
@@ -1031,17 +831,8 @@ TEST_CASE("thermal plate drift error check") {
                     static_cast<void>(plate_queue.try_send(target_message));
                     tasks->run_thermal_plate_task();
                     THEN("it is acked with an error") {
-                        REQUIRE(host_queue.has_message());
-                        messages::HostCommsMessage response;
-                        host_queue.recv(&response);
-                        REQUIRE(std::holds_alternative<
-                                messages::AcknowledgePrevious>(response));
-                        auto response_ack =
-                            std::get<messages::AcknowledgePrevious>(response);
-                        REQUIRE(response_ack.responding_to_id ==
-                                target_message.id);
-                        REQUIRE(response_ack.with_error ==
-                                errors::ErrorCode::THERMAL_DRIFT);
+                        tasks->require_has_ack_for(
+                            target_message, errors::ErrorCode::THERMAL_DRIFT);
                     }
                     THEN("control does not start") {
                         REQUIRE(!plate_policy._enabled);
@@ -1068,7 +859,7 @@ TEST_CASE("thermal plate drift error check") {
     }
 }
 
-TEST_CASE("sending individual channel offset constants") {
+SCENARIO("sending individual channel offset constants") {
     uint32_t timestamp = TIME_DELTA;
     GIVEN("a thermal plate task") {
         auto tasks = TaskBuilder::build();
@@ -1135,13 +926,8 @@ TEST_CASE("sending individual channel offset constants") {
                     THEN(
                         "the temperatures are compensated by each "
                         "channel's coefficients") {
-                        REQUIRE(host_queue.has_message());
-                        auto msg = host_queue.backing_deque.front();
-                        REQUIRE(std::holds_alternative<
-                                messages::GetPlateTemperatureDebugResponse>(
-                            msg));
-                        auto temperatures = std::get<
-                            messages::GetPlateTemperatureDebugResponse>(msg);
+                        auto temperatures = tasks->get_latest_host_comms_message<
+                            messages::GetPlateTemperatureDebugResponse>();
                         double expected_left = (a * _valid_temp) +
                                                ((bl + 1.0F) * _valid_temp) + cl;
                         double expected_center = (a * _valid_temp) +
@@ -1175,7 +961,7 @@ TEST_CASE("sending individual channel offset constants") {
     }
 }
 
-TEST_CASE("thermal plate error flag handling") {
+SCENARIO("thermal plate error flag handling") {
     uint32_t timestamp = TIME_DELTA;
     GIVEN("a thermal plate task with invalid temperatures") {
         auto tasks = TaskBuilder::build();
@@ -1200,13 +986,8 @@ TEST_CASE("thermal plate error flag handling") {
             REQUIRE(plate_queue.try_send(set_msg));
             tasks->run_thermal_plate_task();
             THEN("the response shows an error") {
-                REQUIRE(host_queue.has_message());
-                auto rsp = host_queue.backing_deque.front();
-                REQUIRE(
-                    std::holds_alternative<messages::AcknowledgePrevious>(rsp));
-                auto response = std::get<messages::AcknowledgePrevious>(rsp);
-                REQUIRE(response.responding_to_id == 123);
-                REQUIRE(response.with_error != errors::ErrorCode::NO_ERROR);
+                tasks->require_has_ack_for(
+                    set_msg, errors::ErrorCode::THERMISTOR_FRONT_RIGHT_OVERTEMP);
             }
         }
         WHEN("sending a DeactivateAll message") {
@@ -1220,22 +1001,15 @@ TEST_CASE("thermal plate error flag handling") {
                 REQUIRE(plate_queue.try_send(set_msg));
                 tasks->run_thermal_plate_task();
                 THEN("the response shows an error") {
-                    REQUIRE(host_queue.has_message());
-                    auto rsp = host_queue.backing_deque.front();
-                    REQUIRE(
-                        std::holds_alternative<messages::AcknowledgePrevious>(
-                            rsp));
-                    auto response =
-                        std::get<messages::AcknowledgePrevious>(rsp);
-                    REQUIRE(response.responding_to_id == 123);
-                    REQUIRE(response.with_error != errors::ErrorCode::NO_ERROR);
+                    tasks->require_has_ack_for(
+                        set_msg, errors::ErrorCode::THERMISTOR_FRONT_RIGHT_OVERTEMP);
                 }
             }
         }
     }
 }
 
-TEST_CASE("thermal plate tick overflow handling") {
+SCENARIO("thermal plate tick overflow handling") {
     constexpr uint32_t max_tick = std::numeric_limits<uint32_t>::max();
     const uint32_t ms_diff = GENERATE(10, 1000, 10000);
     constexpr float temperature = 15;
@@ -1283,8 +1057,8 @@ TEST_CASE("thermal plate tick overflow handling") {
                 auto get_message = messages::GetPlateTempMessage{.id = 321};
                 std::ignore = plate_queue.try_send(get_message);
                 tasks->run_thermal_plate_task();
-                auto response = std::get<messages::GetPlateTempResponse>(
-                    host_queue.backing_deque.front());
+                auto response = tasks->get_latest_host_comms_message<
+                    messages::GetPlateTempResponse>();
                 REQUIRE_THAT(response.time_remaining,
                              Catch::Matchers::WithinAbs(expected, 0.01));
             }

@@ -2,6 +2,8 @@
 #include <memory>
 #include <utility>
 
+#include "catch2/catch.hpp"
+
 #include "test/test_lid_heater_policy.hpp"
 #include "test/test_message_queue.hpp"
 #include "test/test_motor_policy.hpp"
@@ -84,6 +86,33 @@ struct TaskBuilder {
     }
 
     auto run_motor_task() -> void { motor_task.run_once(motor_policy); }
+
+    template <typename Message,
+              typename AckMessage = messages::AcknowledgePrevious>
+    auto require_has_ack_for(
+        Message message, errors::ErrorCode error = errors::ErrorCode::NO_ERROR)
+        -> AckMessage {
+        return require_has_ack_for_id<AckMessage>(message.id, error);
+    }
+
+    template <typename AckMessage = messages::AcknowledgePrevious>
+    auto require_has_ack_for_id(
+        uint32_t id, errors::ErrorCode error = errors::ErrorCode::NO_ERROR)
+        -> AckMessage {
+        auto ack = get_latest_host_comms_message<AckMessage>();
+        REQUIRE(ack.responding_to_id == id);
+        REQUIRE(ack.with_error == error);
+        return ack;
+    }
+
+    template <typename Message>
+    auto get_latest_host_comms_message() -> Message {
+        CHECK_FALSE(host_comms_queue.backing_deque.empty());
+        auto resp = host_comms_queue.backing_deque.front();
+        CHECK(std::holds_alternative<Message>(resp));
+        host_comms_queue.backing_deque.pop_front();
+        return std::get<Message>(resp);
+    }
 
   private:
     TaskBuilder();
