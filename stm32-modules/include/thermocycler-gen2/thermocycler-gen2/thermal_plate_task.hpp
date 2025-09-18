@@ -14,6 +14,7 @@
 #include "core/pid.hpp"
 #include "core/thermistor_conversion.hpp"
 #include "hal/message_queue.hpp"
+#include "messages.hpp"
 #include "thermocycler-gen2/eeprom.hpp"
 #include "thermocycler-gen2/errors.hpp"
 #include "thermocycler-gen2/messages.hpp"
@@ -760,6 +761,24 @@ class ThermalPlateTask {
 
         static_cast<void>(
             _task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::GetErrorStateMessage& msg, Policy& policy) -> void {
+        static_cast<void>(msg);
+        static_cast<void>(policy);
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::SetErrorStateMessage& msg, Policy& policy) -> void {
+        static_cast<void>(msg);
+        static_cast<void>(policy);
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::ClearErrorStateMessage& msg, Policy& policy) -> void {
+        static_cast<void>(msg);
+        static_cast<void>(policy);
     }
 
     auto handle_temperature_conversion(

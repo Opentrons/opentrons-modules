@@ -391,6 +391,24 @@ class LidHeaterTask {
             _task_registry->comms->get_message_queue().try_send(response));
     }
 
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::GetErrorStateMessage& msg, Policy& policy) -> void {
+        static_cast<void>(msg);
+        static_cast<void>(policy);
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::SetErrorStateMessage& msg, Policy& policy) -> void {
+        static_cast<void>(msg);
+        static_cast<void>(policy);
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::ClearErrorStateMessage& msg, Policy& policy) -> void {
+        static_cast<void>(msg);
+        static_cast<void>(policy);
+    }
+
     auto handle_temperature_conversion(uint16_t conversion_result,
                                        Thermistor& thermistor) -> void {
         auto visitor = [this, &thermistor](const auto value) -> void {
