@@ -1,5 +1,5 @@
 #include "catch2/catch.hpp"
-#include "thermocycler-gen2/gcodes.hpp"
+#include "gcode_test_harness.hpp"
 
 SCENARIO("gcode m243.d parameter utility function works") {
     GIVEN("invalid parameter") {

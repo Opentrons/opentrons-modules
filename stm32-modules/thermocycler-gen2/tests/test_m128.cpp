@@ -1,11 +1,5 @@
 #include "catch2/catch.hpp"
-
-// Push this diagnostic to avoid a compiler error about printing to too
-// small of a buffer... which we're doing on purpose!
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-#include "thermocycler-gen2/gcodes.hpp"
-#pragma GCC diagnostic pop
+#include "gcode_test_harness.hpp"
 
 SCENARIO("LiftPlate (M128) parser works", "[gcode][parse][m128]") {
     GIVEN("a response buffer large enough for the formatted response") {

@@ -2,7 +2,7 @@
 
 #include "catch2/catch.hpp"
 #include "systemwide.h"
-#include "thermocycler-gen2/gcodes.hpp"
+#include "gcode_test_harness.hpp"
 
 SCENARIO("SetOffsetConstants (M116) parser works", "[gcode][parse][m116]") {
     GIVEN("a response buffer large enough for the formatted response") {
