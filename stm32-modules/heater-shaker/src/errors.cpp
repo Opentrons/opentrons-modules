@@ -165,3 +165,26 @@ auto errors::from_motor_error(uint16_t error_bitmap, MotorErrorOffset which)
     }
     return ErrorCode::MOTOR_UNKNOWN_ERROR;
 }
+
+auto errors::to_motor_error(ErrorCode error) -> uint16_t {
+    switch (error) {
+        case ErrorCode::MOTOR_FOC_DURATION:
+            return (1 << MotorErrorOffset::FOC_DURATION);
+        case ErrorCode::MOTOR_BLDC_OVERVOLT:
+            return (1 << MotorErrorOffset::OVER_VOLT);
+        case ErrorCode::MOTOR_BLDC_UNDERVOLT:
+            return (1 << MotorErrorOffset::UNDER_VOLT);
+        case ErrorCode::MOTOR_BLDC_OVERTEMP:
+            return (1 << MotorErrorOffset::OVER_TEMP);
+        case ErrorCode::MOTOR_BLDC_STARTUP_FAILED:
+            return (1 << MotorErrorOffset::START_UP);
+        case ErrorCode::MOTOR_BLDC_SPEEDSENSOR_FAILED:
+            return (1 << MotorErrorOffset::SPEED_FDBK);
+        case ErrorCode::MOTOR_BLDC_DRIVER_FAULT:
+            return (1 << MotorErrorOffset::OVERCURRENT);
+        case ErrorCode::MOTOR_BLDC_DRIVER_ERROR:
+            return (1 << MotorErrorOffset::SW_ERROR);
+        default:
+            return 0;
+    }
+}

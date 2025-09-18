@@ -32,6 +32,8 @@ class TestMotorPolicy {
     auto plate_lock_set_power(float power) -> void;
     auto plate_lock_disable() -> void;
     auto plate_lock_brake() -> void;
+    auto set_manual_error(uint16_t motor_error_bitmap, uint32_t delay_seconds)
+        -> void;
 
     [[nodiscard]] auto test_solenoid_engaged() const -> bool;
     [[nodiscard]] auto test_solenoid_current() const -> uint16_t;
@@ -54,6 +56,10 @@ class TestMotorPolicy {
     [[nodiscard]] auto test_get_overridden_ki() const -> double;
     [[nodiscard]] auto test_get_overridden_kp() const -> double;
     [[nodiscard]] auto test_get_overridden_kd() const -> double;
+
+    [[nodiscard]] auto test_get_manual_error_was_set() const -> bool;
+    [[nodiscard]] auto test_get_manual_error() const -> uint16_t;
+    [[nodiscard]] auto test_get_manual_error_timeout() const -> uint32_t;
 
     auto set_serial_number(
         std::array<char, SYSTEM_SERIAL_NUMBER_LENGTH> new_system_serial_number)
@@ -83,4 +89,7 @@ class TestMotorPolicy {
     double overridden_kd = 0.0;
     bool plate_lock_braked = false;
     uint16_t _reset_reason = 0;
+    bool manual_error_was_set = false;
+    uint16_t manual_error = 0;
+    uint32_t manual_error_timeout = 0;
 };

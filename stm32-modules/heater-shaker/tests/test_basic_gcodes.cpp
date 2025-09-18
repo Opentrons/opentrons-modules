@@ -21,7 +21,7 @@ TEMPLATE_TEST_CASE("gcode basic parsing", "[gcode][parse]", gcode::SetRPM,
                    gcode::GetPlateLockState, gcode::GetPlateLockStateDebug,
                    gcode::SetSerialNumber, gcode::SetLEDDebug,
                    gcode::IdentifyModuleStartLED, gcode::IdentifyModuleStopLED,
-                   gcode::DeactivateHeater) {
+                   gcode::DeactivateHeater, gcode::ClearErrorState) {
     SECTION("attempting to parse an empty string fails") {
         std::string to_parse = "";
         auto output = TestType::parse(to_parse.cbegin(), to_parse.cend());
@@ -53,7 +53,8 @@ TEMPLATE_TEST_CASE("gcodes without parameters parse", "[gcode][parse]",
                    gcode::GetSystemInfo, gcode::Home, gcode::OpenPlateLock,
                    gcode::ClosePlateLock, gcode::GetPlateLockState,
                    gcode::GetPlateLockStateDebug, gcode::IdentifyModuleStartLED,
-                   gcode::IdentifyModuleStopLED, gcode::DeactivateHeater) {
+                   gcode::IdentifyModuleStopLED, gcode::DeactivateHeater,
+                   gcode::ClearErrorState) {
     SECTION("parsing the full prefix succeeds") {
         auto output =
             TestType::parse(TestType::prefix.cbegin(), TestType::prefix.cend());
@@ -79,7 +80,8 @@ TEMPLATE_TEST_CASE("gcode responses without parameters generate",
                    gcode::SetSerialNumber, gcode::OpenPlateLock,
                    gcode::ClosePlateLock, gcode::SetLEDDebug,
                    gcode::IdentifyModuleStartLED, gcode::IdentifyModuleStopLED,
-                   gcode::DeactivateHeater) {
+                   gcode::DeactivateHeater, gcode::SetErrorStateDebug,
+                   gcode::ClearErrorState) {
     SECTION("responses won't write into zero-size buffers") {
         std::string buffer(10, 'c');
         auto res =

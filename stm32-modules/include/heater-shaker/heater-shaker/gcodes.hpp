@@ -1226,4 +1226,132 @@ struct DeactivateHeater {
     }
 };
 
+struct GetErrorState {
+    /**
+     * GetErrorState is M411.
+     *
+     * Acknowledged immediately upon receipt.
+     */
+    using ParseResult = std::optional<GetErrorState>;
+    static constexpr auto prefix = std::array{'M', '4', '1', '1'};
+    static constexpr const char* response = "M411 OK\n";
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetErrorState()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt write_to_buf,
+                                    InLimit write_to_limit) {
+        return write_string_to_iterpair(write_to_buf, write_to_limit, response);
+    }
+};
+
+struct SetErrorStateDebug {
+    /**
+     * SetErrorState is M412.D <E NNN> <T NNN>
+     *
+     * Acknowledged immediately on receipt. Will cause the error state specified
+     * by E to happen T seconds after receipt. T is optional; if omitted, the
+     * error is set immediately.
+     * */
+    using ParseResult = std::optional<SetErrorStateDebug>;
+    static constexpr auto prefix = std::array{'M', '4', '1', '2', '.', 'D'};
+    static constexpr auto prefix_t = std::array{' ', 'T'};
+    static constexpr auto prefix_e = std::array{' ', 'E'};
+    static constexpr const char* response = "M412.D OK\n";
+
+    uint32_t delay_s = 0;
+    errors::ErrorCode error = errors::ErrorCode::NO_ERROR;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto old_working = working;
+        auto ret = SetErrorStateDebug();
+        working = prefix_matches(old_working, limit, prefix_e);
+        if (working != old_working) {
+            old_working = working;
+            auto e = parse_value<uint16_t>(working, limit);
+            if (!e.first.has_value()) {
+                return std::make_pair(std::nullopt, input);
+            }
+            ret.error = static_cast<errors::ErrorCode>(e.first.value());
+            working = e.second;
+        } else {
+            return std::make_pair(std::nullopt, input);
+        }
+        old_working = working;
+
+        working = prefix_matches(old_working, limit, prefix_t);
+        if (working != old_working) {
+            old_working = working;
+            auto t = parse_value<uint32_t>(working, limit);
+            if (!t.first.has_value()) {
+                return std::make_pair(ParseResult(ret), input);
+            }
+            ret.delay_s = t.first.value();
+            working = t.second;
+        }
+        return std::make_pair(ParseResult(ret), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt write_to_buf,
+                                    InLimit write_to_limit) {
+        return write_string_to_iterpair(write_to_buf, write_to_limit, response);
+    }
+};
+
+struct ClearErrorState {
+    /**
+     * ClearErrorState is M413.
+     *
+     * Acknolwedged immediately on receipt. Clears the current error state, if
+     *any, though if the error state is from detecting a hardware error state it
+     *will likely rapidly reoccur.
+     **/
+    using ParseResult = std::optional<ClearErrorState>;
+    static constexpr auto prefix = std::array{'M', '4', '1', '3'};
+    static constexpr const char* response = "M413 OK\n";
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(ClearErrorState()), working);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt write_to_buf,
+                                    InLimit write_to_limit) {
+        return write_string_to_iterpair(write_to_buf, write_to_limit, response);
+    }
+};
+
 }  // namespace gcode

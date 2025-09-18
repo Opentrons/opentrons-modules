@@ -7,9 +7,11 @@
 #include <concepts>
 #include <variant>
 
+#include "errors.hpp"
 #include "hal/message_queue.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "messages.hpp"
 #include "systemwide.h"
 namespace tasks {
 template <template <class> class QueueImpl>
@@ -56,6 +58,7 @@ concept MotorExecutionPolicy = requires(Policy& p, const Policy& cp) {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.plate_lock_set_power(0.1)};
     {p.plate_lock_disable()};
+    {p.set_manual_error(15535, 2500)};
 };
 
 struct State {
@@ -72,6 +75,8 @@ struct State {
         STOPPED_HOMED             // Stopped and definitely homed
     };
     TaskStatus status;
+    uint32_t set_error_countdown_ticks = 0;
+    errors::ErrorCode set_error = errors::ErrorCode::NO_ERROR;
 };
 
 struct PlateLockState {
@@ -303,6 +308,39 @@ class MotorTask {
                 }
             }
         }
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::GetErrorStateMessage& msg,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id = msg.id, .with_error = current_error};
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::ClearErrorStateMessage& msg,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        current_error = errors::ErrorCode::NO_ERROR;
+        state.status = State::STOPPED_UNKNOWN;
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::SetErrorStateMessage& msg,
+                       Policy& policy) -> void {
+        policy.set_manual_error(errors::to_motor_error(msg.error_to_set),
+                                msg.delay_s);
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
     }
 
     /**

@@ -6,15 +6,18 @@
 #include <algorithm>
 #include <concepts>
 #include <cstddef>
+#include <cstdlib>
 #include <variant>
 
 #include "core/pid.hpp"
 #include "core/thermistor_conversion.hpp"
+#include "errors.hpp"
 #include "hal/message_queue.hpp"
 #include "heater-shaker/errors.hpp"
 #include "heater-shaker/flash.hpp"
 #include "heater-shaker/messages.hpp"
 #include "heater-shaker/tasks.hpp"
+#include "messages.hpp"
 #include "thermistor_lookups.hpp"
 
 /* Need a forward declaration for this because of recursive includes */
@@ -27,19 +30,23 @@ namespace heater_task {
 
 template <typename Policy>
 concept HeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
-    // Check if the hardware is ready (true) or if some errors is preventing
-    // power flowing to the heater pad drivers
+    // Check if the hardware is ready (true) or
+    // if some errors is preventing power
+    // flowing to the heater pad drivers
     { cp.power_good() } -> std::same_as<bool>;
-    // Attempt to reset the heater error latch and check if it worked (true)
-    // or if the error condition is still present (false)
+    // Attempt to reset the heater error latch
+    // and check if it worked (true) or if the
+    // error condition is still present (false)
     { p.try_reset_power_good() } -> std::same_as<bool>;
 
-    // A set_power_output function with inputs between 0 and 1 sets the
-    // relative output of the heater pad
+    // A set_power_output function with inputs
+    // between 0 and 1 sets the relative output
+    // of the heater pad
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     {p.set_power_output(0.5)};
-    // disable_power_output should fully turn off the driver (set_power_output
-    // will usually turn it on at least a little bit)
+    // disable_power_output should fully turn
+    // off the driver (set_power_output will
+    // usually turn it on at least a little bit)
     {p.disable_power_output()};
 };
 
@@ -62,6 +69,8 @@ struct State {
     };
     LEDStatus led_status;
     uint16_t error_bitmap;
+    uint32_t set_error_countdown_ticks;
+    errors::ErrorCode set_error;
     static constexpr uint16_t PAD_A_SENSE_ERROR = (1 << 0);
     static constexpr uint16_t PAD_B_SENSE_ERROR = (1 << 1);
     static constexpr uint16_t PAD_SENSE_ERROR =
@@ -171,7 +180,9 @@ class HeaterTask {
               .error_bit = State::BOARD_SENSE_ERROR},
           state{.system_status = State::IDLE,
                 .led_status = State::IDLE_LED,
-                .error_bitmap = 0},
+                .error_bitmap = 0,
+                .set_error_countdown_ticks = 0,
+                .set_error = errors::ErrorCode::NO_ERROR},
           pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_S, 1.0, -1.0),
           setpoint(std::nullopt),
           _flash(),
@@ -227,6 +238,41 @@ class HeaterTask {
     }
 
     [[nodiscard]] auto get_pid() const -> const PID& { return pid; }
+
+    [[nodiscard]] auto most_relevant_error() const -> errors::ErrorCode {
+        // We have a lot of different errors from a lot of different sources.
+        // Sometimes more than one can occur at the same time; sometimes, that
+        // means that one has caused the other. We want to track them
+        // separately, but we also sometimes want to respond with just one error
+        // condition that sums everything up. This method is used by code that
+        // wants the single most relevant code for the current error condition.
+        if ((state.error_bitmap & State::OPEN_CIRCUIT_ERROR) != 0) {
+            return errors::ErrorCode::HEATER_HARDWARE_OPEN_CIRCUIT;
+        } else if ((state.error_bitmap & State::SHORT_CIRCUIT_ERROR) != 0) {
+            return errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT;
+        } else if ((state.error_bitmap & State::OVERCURRENT_CIRCUIT_ERROR) !=
+                   0) {
+            return errors::ErrorCode::HEATER_HARDWARE_OVERCURRENT_CIRCUIT;
+        }
+        if ((state.error_bitmap & State::SENSE_ERROR) != 0) {
+            // Prefer sense errors since they'll be most specific
+            if ((state.error_bitmap & State::PAD_SENSE_ERROR) != 0) {
+                // Prefer pad a errors to pad b errors arbitrarily
+                if ((state.error_bitmap & State::PAD_A_SENSE_ERROR) != 0) {
+                    return pad_a.error;
+                }
+                return pad_b.error;
+            }
+        }
+
+        // Return the heater pad error if everything is ok but the error latch
+        // is set, which signifies that the latch circuit is broken
+        if ((state.error_bitmap & State::POWER_GOOD_ERROR) != 0) {
+            return errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH;
+        }
+
+        return board.error;
+    }
 
   private:
     template <typename Policy>
@@ -356,6 +402,27 @@ class HeaterTask {
     auto visit_message(const messages::TemperatureConversionComplete& msg,
                        Policy& policy) -> void {
         auto old_error_bitmap = state.error_bitmap;
+        if (state.set_error_countdown_ticks == 1) {
+            switch (state.set_error) {
+                case errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH:
+                    state.error_bitmap |= State::POWER_GOOD_ERROR;
+                    break;
+                case errors::ErrorCode::HEATER_HARDWARE_OPEN_CIRCUIT:
+                    state.error_bitmap |= State::OPEN_CIRCUIT_ERROR;
+                    break;
+                case errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT:
+                    state.error_bitmap |= State::SHORT_CIRCUIT_ERROR;
+                    break;
+                case errors::ErrorCode::HEATER_HARDWARE_OVERCURRENT_CIRCUIT:
+                    state.error_bitmap |= State::OVERCURRENT_CIRCUIT_ERROR;
+                    break;
+                default:
+                    break;
+            }
+        }
+        if (state.set_error_countdown_ticks > 0) {
+            state.set_error_countdown_ticks--;
+        }
         if (!policy.power_good()) {
             state.error_bitmap |= State::POWER_GOOD_ERROR;
         }
@@ -435,6 +502,45 @@ class HeaterTask {
         } else if (state.system_status != State::POWER_TEST) {
             policy.disable_power_output();
         }
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::GetErrorStateMessage& msg,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        static_cast<void>(task_registry->comms->get_message_queue().try_send(
+            messages::AcknowledgePrevious{
+                .responding_to_id = msg.id,
+                .with_error = most_relevant_error()}));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::ClearErrorStateMessage& msg,
+                       Policy& policy) -> void {
+        state.system_status = State::IDLE;
+        state.error_bitmap = 0;
+        try_latch_disarm(policy);
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+        }
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
+    }
+
+    template <typename Policy>
+    auto visit_message(const messages::SetErrorStateMessage& msg,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        state.set_error = msg.error_to_set;
+        state.set_error_countdown_ticks =
+            std::max(static_cast<uint32_t>(msg.delay_s * CONTROL_PERIOD_TICKS),
+                     uint32_t(1));
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        static_cast<void>(
+            task_registry->comms->get_message_queue().try_send(response));
     }
 
     template <typename Policy>
@@ -651,41 +757,6 @@ class HeaterTask {
             static_cast<void>(
                 task_registry->system->get_message_queue().try_send(message));
         }
-    }
-
-    [[nodiscard]] auto most_relevant_error() const -> errors::ErrorCode {
-        // We have a lot of different errors from a lot of different sources.
-        // Sometimes more than one can occur at the same time; sometimes, that
-        // means that one has caused the other. We want to track them
-        // separately, but we also sometimes want to respond with just one error
-        // condition that sums everything up. This method is used by code that
-        // wants the single most relevant code for the current error condition.
-        if ((state.error_bitmap & State::OPEN_CIRCUIT_ERROR) != 0) {
-            return errors::ErrorCode::HEATER_HARDWARE_OPEN_CIRCUIT;
-        } else if ((state.error_bitmap & State::SHORT_CIRCUIT_ERROR) != 0) {
-            return errors::ErrorCode::HEATER_HARDWARE_SHORT_CIRCUIT;
-        } else if ((state.error_bitmap & State::OVERCURRENT_CIRCUIT_ERROR) !=
-                   0) {
-            return errors::ErrorCode::HEATER_HARDWARE_OVERCURRENT_CIRCUIT;
-        }
-        if ((state.error_bitmap & State::SENSE_ERROR) != 0) {
-            // Prefer sense errors since they'll be most specific
-            if ((state.error_bitmap & State::PAD_SENSE_ERROR) != 0) {
-                // Prefer pad a errors to pad b errors arbitrarily
-                if ((state.error_bitmap & State::PAD_A_SENSE_ERROR) != 0) {
-                    return pad_a.error;
-                }
-                return pad_b.error;
-            }
-        }
-
-        // Return the heater pad error if everything is ok but the error latch
-        // is set, which signifies that the latch circuit is broken
-        if ((state.error_bitmap & State::POWER_GOOD_ERROR) != 0) {
-            return errors::ErrorCode::HEATER_HARDWARE_ERROR_LATCH;
-        }
-
-        return board.error;
     }
 
     [[nodiscard]] auto pad_temperature() const -> double {
