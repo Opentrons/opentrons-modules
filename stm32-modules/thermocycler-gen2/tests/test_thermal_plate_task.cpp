@@ -69,6 +69,16 @@ SCENARIO("thermal plate task message passing") {
                     messages::UpdatePlateState::PlateState::IDLE);
         }
 
+        WHEN("sending a get-error-state message") {
+            auto message = messages::GetErrorStateMessage{.id=123};
+            plate_queue.backing_deque.push_back(message);
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message and respond") {
+                REQUIRE(plate_queue.backing_deque.empty());
+                tasks->require_has_ack_for(message);
+            }
+        }
+
         WHEN("sending a get-plate-temperature-debug message") {
             auto message = messages::GetPlateTemperatureDebugMessage{.id = 123};
             plate_queue.backing_deque.push_back(
@@ -626,7 +636,15 @@ SCENARIO("thermal plate task message passing") {
         }
 #endif
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
-
+        WHEN("sending a get-error-state message") {
+            auto message = messages::GetErrorStateMessage{.id=123};
+            plate_queue.backing_deque.push_back(message);
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message and respond") {
+                REQUIRE(plate_queue.backing_deque.empty());
+                tasks->require_has_ack_for(message, errors::ErrorCode::THERMISTOR_FRONT_RIGHT_SHORT);
+            }
+        }
         THEN("the current error status was sent to system task") {
             REQUIRE(tasks->get_system_queue().has_message());
             auto sys_msg = tasks->get_system_queue().backing_deque.front();
@@ -753,6 +771,16 @@ SCENARIO("thermal plate task message passing") {
         }
 #endif
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+        WHEN("sending a get-error-state message") {
+            auto message = messages::GetErrorStateMessage{.id=123};
+            plate_queue.backing_deque.push_back(message);
+            tasks->run_thermal_plate_task();
+            THEN("the task should get the message and respond") {
+                REQUIRE(plate_queue.backing_deque.empty());
+                tasks->require_has_ack_for(
+                    message, errors::ErrorCode::THERMISTOR_FRONT_RIGHT_DISCONNECTED);
+            }
+        }
     }
 }
 

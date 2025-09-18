@@ -765,8 +765,13 @@ class ThermalPlateTask {
 
     template <ThermalPlateExecutionPolicy Policy>
     auto visit_message(const messages::GetErrorStateMessage& msg, Policy& policy) -> void {
-        static_cast<void>(msg);
         static_cast<void>(policy);
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id = msg.id,
+            .with_error = most_relevant_error()
+        };
+        static_cast<void>(
+            _task_registry->comms->get_message_queue().try_send(response));
     }
 
     template <ThermalPlateExecutionPolicy Policy>
