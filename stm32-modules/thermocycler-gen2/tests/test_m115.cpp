@@ -1,8 +1,8 @@
 #include <array>
 
 #include "catch2/catch.hpp"
-#include "systemwide.h"
 #include "gcode_test_harness.hpp"
+#include "systemwide.h"
 
 SCENARIO("GetSystemInfo (M115) response works", "[gcode][parse][m115]") {
     GIVEN("a response buffer large enough for the formatted response") {

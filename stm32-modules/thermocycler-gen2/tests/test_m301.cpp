@@ -1,6 +1,6 @@
 #include "catch2/catch.hpp"
-#include "systemwide.h"
 #include "gcode_test_harness.hpp"
+#include "systemwide.h"
 
 SCENARIO("SetPIDConstants (M301) parser works", "[gcode][parse][m301]") {
     GIVEN("a response buffer large enough for the formatted response") {

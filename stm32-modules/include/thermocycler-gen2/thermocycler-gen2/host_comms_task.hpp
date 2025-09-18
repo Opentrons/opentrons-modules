@@ -52,9 +52,8 @@ class HostCommsTask {
         gcode::GetOffsetConstants, gcode::OpenLid, gcode::CloseLid,
         gcode::LiftPlate, gcode::DeactivateAll, gcode::GetBoardRevision,
         gcode::GetLidSwitches, gcode::GetFrontButton, gcode::SetLidFans,
-        gcode::SetLightsDebug, gcode::GetResetReason,
-        gcode::SetErrorStateDebug, gcode::ClearErrorState, gcode::GetErrorState
-        >;
+        gcode::SetLightsDebug, gcode::GetResetReason, gcode::SetErrorStateDebug,
+        gcode::ClearErrorState, gcode::GetErrorState>;
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
                  gcode::ActuateSolenoid, gcode::ActuateLidStepperDebug,
@@ -65,7 +64,8 @@ class HostCommsTask {
                  gcode::SetFanAutomatic, gcode::SetSealParameter,
                  gcode::SetOffsetConstants, gcode::OpenLid, gcode::CloseLid,
                  gcode::LiftPlate, gcode::SetLidFans, gcode::SetLightsDebug,
-                 gcode::SetErrorStateDebug, gcode::ClearErrorState, gcode::GetErrorState>;
+                 gcode::SetErrorStateDebug, gcode::ClearErrorState,
+                 gcode::GetErrorState>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetLidTempDebugCache = AckCache<8, gcode::GetLidTemperatureDebug>;
     using GetPlateTempDebugCache = AckCache<8, gcode::GetPlateTemperatureDebug>;
@@ -1601,13 +1601,6 @@ class HostCommsTask {
             ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
-        if (!task_registry->motor->get_message_queue().try_send(
-                message, TICKS_TO_WAIT_ON_SEND)) {
-            auto wrote_to = errors::write_into(
-                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            ack_only_cache.remove_if_present(id);
-            return std::make_pair(false, wrote_to);
-        }
         return std::make_pair(true, tx_into);
     }
 
@@ -1616,7 +1609,7 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::SetErrorStateDebug& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
-        auto id = ack_only_cache.add(gcode, 3);
+        auto id = ack_only_cache.add(gcode, 2);
         if (id == 0) {
             return std::make_pair(
                 false, errors::write_into(tx_into, tx_limit,
@@ -1638,13 +1631,6 @@ class HostCommsTask {
             ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
-        if (!task_registry->motor->get_message_queue().try_send(
-                message, TICKS_TO_WAIT_ON_SEND)) {
-            auto wrote_to = errors::write_into(
-                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            ack_only_cache.remove_if_present(id);
-            return std::make_pair(false, wrote_to);
-        }
         return std::make_pair(true, tx_into);
     }
 
@@ -1653,7 +1639,7 @@ class HostCommsTask {
         std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const gcode::ClearErrorState& gcode, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
-        auto id = ack_only_cache.add(gcode, 3);
+        auto id = ack_only_cache.add(gcode, 2);
         if (id == 0) {
             return std::make_pair(
                 false, errors::write_into(tx_into, tx_limit,
@@ -1674,16 +1660,8 @@ class HostCommsTask {
             ack_only_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
-        if (!task_registry->motor->get_message_queue().try_send(
-                message, TICKS_TO_WAIT_ON_SEND)) {
-            auto wrote_to = errors::write_into(
-                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            ack_only_cache.remove_if_present(id);
-            return std::make_pair(false, wrote_to);
-        }
         return std::make_pair(true, tx_into);
     }
-
 
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>

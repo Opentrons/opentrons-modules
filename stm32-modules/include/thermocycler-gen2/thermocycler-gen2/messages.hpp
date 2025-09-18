@@ -453,28 +453,24 @@ using HostCommsMessage = ::std::variant<
     GetLidStatusResponse, GetResetReasonResponse, GetPlatePowerResponse,
     GetLidPowerResponse, GetOffsetConstantsResponse, SealStepperDebugResponse,
     DeactivateAllResponse, GetLidSwitchesResponse, GetFrontButtonResponse>;
-using ThermalPlateMessage =
-    ::std::variant<std::monostate, ThermalPlateTempReadComplete,
-                   GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
-                   SetFanManualMessage, GetPlateTempMessage, SetRampRateMessage,
-                   SetPlateTemperatureMessage, DeactivatePlateMessage,
-                   SetPIDConstantsMessage, SetFanAutomaticMessage,
-                   GetThermalPowerMessage, SetOffsetConstantsMessage,
-                   GetOffsetConstantsMessage, DeactivateAllMessage,
-                   GetErrorStateMessage, ClearErrorStateMessage, SetErrorStateMessage
-                   >;
+using ThermalPlateMessage = ::std::variant<
+    std::monostate, ThermalPlateTempReadComplete,
+    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
+    SetFanManualMessage, GetPlateTempMessage, SetRampRateMessage,
+    SetPlateTemperatureMessage, DeactivatePlateMessage, SetPIDConstantsMessage,
+    SetFanAutomaticMessage, GetThermalPowerMessage, SetOffsetConstantsMessage,
+    GetOffsetConstantsMessage, DeactivateAllMessage, GetErrorStateMessage,
+    ClearErrorStateMessage, SetErrorStateMessage>;
 using LidHeaterMessage = ::std::variant<
     std::monostate, LidTempReadComplete, GetLidTemperatureDebugMessage,
     SetHeaterDebugMessage, GetLidTempMessage, SetLidTemperatureMessage,
     DeactivateLidHeatingMessage, SetPIDConstantsMessage, GetThermalPowerMessage,
-    DeactivateAllMessage, SetLidFansMessage,
-    GetErrorStateMessage, ClearErrorStateMessage, SetErrorStateMessage
-    >;
+    DeactivateAllMessage, SetLidFansMessage, GetErrorStateMessage,
+    ClearErrorStateMessage, SetErrorStateMessage>;
 using MotorMessage = ::std::variant<
     std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
     LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,
     GetSealDriveStatusMessage, SetSealParameterMessage, GetLidStatusMessage,
     GetResetReasonMessage, OpenLidMessage, CloseLidMessage, PlateLiftMessage,
-    FrontButtonPressMessage, GetLidSwitchesMessage
-    >;
+    FrontButtonPressMessage, GetLidSwitchesMessage>;
 };  // namespace messages

@@ -8,8 +8,7 @@ SCENARIO("ClearErrorState (M413) parser works", "[gcode][parse][m413]") {
             auto written = gcode::ClearErrorState::write_response_into(
                 buffer.begin(), buffer.end(), true);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::StartsWith("M413 OK\n"));
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith("M413 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
