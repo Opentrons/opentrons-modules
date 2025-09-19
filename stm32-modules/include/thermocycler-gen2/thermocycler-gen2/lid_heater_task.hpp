@@ -31,15 +31,18 @@ using namespace thermal_general;
 
 template <typename Policy>
 concept LidHeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
-    // A set_heater_power function to set the power of the heater as
-    // a percentage from 0 to 1.0. Automatically toggles the Enable
-    // pin.
+    // A set_heater_power function to set the
+    // power of the heater as a percentage
+    // from 0 to 1.0. Automatically toggles
+    // the Enable pin.
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     { p.set_heater_power(1.0) } -> std::same_as<bool>;
-    // A get_heater_power function to get the power of the heater as
-    // a percentage from 0 to 1.0.
+    // A get_heater_power function to get the
+    // power of the heater as a percentage
+    // from 0 to 1.0.
     { p.get_heater_power() } -> std::same_as<double>;
-    // A function to enable or disable the lid fans
+    // A function to enable or disable the
+    // lid fans
     { p.set_lid_fans(true) } -> std::same_as<void>;
 };
 
@@ -137,7 +140,7 @@ class LidHeaterTask {
         // anywhere up to the provided timeout, which drives the controller
         // frequency.
 
-        static_cast<void>(_message_queue.recv(&message));
+        _message_queue.recv(&message);
         std::visit(
             [this, &policy](const auto& msg) -> void {
                 this->visit_message(msg, policy);
@@ -148,10 +151,7 @@ class LidHeaterTask {
   private:
     template <typename Policy>
     requires LidHeaterExecutionPolicy<Policy>
-    auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
-        static_cast<void>(policy);
-        static_cast<void>(_ignore);
-    }
+    auto visit_message(const std::monostate&, Policy&) -> void {}
 
     template <typename Policy>
     requires LidHeaterExecutionPolicy<Policy>
@@ -200,22 +200,20 @@ class LidHeaterTask {
     template <typename Policy>
     requires LidHeaterExecutionPolicy<Policy>
     auto visit_message(const messages::GetLidTemperatureDebugMessage& msg,
-                       Policy& policy) -> void {
-        static_cast<void>(policy);
+                       Policy&) -> void {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         auto response = messages::GetLidTemperatureDebugResponse{
             .responding_to_id = msg.id,
             .lid_temp = _thermistor.temp_c,
             .lid_adc = _thermistor.last_adc};
-        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
+        std::ignore = _task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response));
     }
 
     template <typename Policy>
     requires LidHeaterExecutionPolicy<Policy>
-    auto visit_message(const messages::GetLidTempMessage& msg, Policy& policy)
+    auto visit_message(const messages::GetLidTempMessage& msg, Policy&)
         -> void {
-        static_cast<void>(policy);
         auto response =
             messages::GetLidTempResponse{.responding_to_id = msg.id,
                                          .current_temp = _thermistor.temp_c,
@@ -223,8 +221,8 @@ class LidHeaterTask {
         if (_state.system_status != State::CONTROLLING) {
             response.set_temp = 0.0F;
         }
-        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
+        std::ignore = _task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response));
     }
 
     template <LidHeaterExecutionPolicy Policy>
@@ -234,15 +232,15 @@ class LidHeaterTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (_state.system_status == State::ERROR) {
             response.with_error = most_relevant_error();
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
         if (_state.system_status == State::CONTROLLING) {
             // Send busy error
             response.with_error = errors::ErrorCode::THERMAL_LID_BUSY;
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
 
@@ -255,8 +253,8 @@ class LidHeaterTask {
             _state.error_bitmap |= State::HEATER_POWER_ERROR;
         }
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <LidHeaterExecutionPolicy Policy>
@@ -266,8 +264,8 @@ class LidHeaterTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (_state.system_status == State::ERROR) {
             response.with_error = most_relevant_error();
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
         if (_state.system_status == State::HEATER_TEST) {
@@ -276,9 +274,9 @@ class LidHeaterTask {
                 response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
                 _state.system_status = State::ERROR;
                 _state.error_bitmap |= State::HEATER_POWER_ERROR;
-                static_cast<void>(
+                std::ignore =
                     _task_registry->comms->get_message_queue().try_send(
-                        response));
+                        response);
                 return;
             }
         }
@@ -292,8 +290,8 @@ class LidHeaterTask {
             _pid.reset();
         }
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <LidHeaterExecutionPolicy Policy>
@@ -305,8 +303,8 @@ class LidHeaterTask {
         if (_state.system_status == State::ERROR && !msg.from_system) {
             std::ignore = policy.set_heater_power(0.0F);
             response.with_error = most_relevant_error();
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
 
@@ -320,11 +318,11 @@ class LidHeaterTask {
         }
 
         if (msg.from_system) {
-            static_cast<void>(
-                _task_registry->system->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->system->get_message_queue().try_send(response);
         } else {
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
         }
     }
 
@@ -334,40 +332,39 @@ class LidHeaterTask {
         auto response =
             messages::DeactivateAllResponse{.responding_to_id = msg.id};
 
-        static_cast<void>(policy.set_heater_power(0.0F));
+        std::ignore = policy.set_heater_power(0.0F);
         if (_state.system_status != State::ERROR) {
             _state.system_status = State::IDLE;
         }
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::SetPIDConstantsMessage& msg,
-                       Policy& policy) -> void {
-        static_cast<void>(policy);
+    auto visit_message(const messages::SetPIDConstantsMessage& msg, Policy&)
+        -> void {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
 
         if (_state.system_status == State::CONTROLLING) {
             response.with_error = errors::ErrorCode::THERMAL_LID_BUSY;
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
         if ((msg.p < KP_MIN) || (msg.p > KP_MAX) || (msg.i < KI_MIN) ||
             (msg.i > KI_MAX) || (msg.d < KD_MIN) || (msg.d > KD_MAX)) {
             response.with_error =
                 errors::ErrorCode::THERMAL_CONSTANT_OUT_OF_RANGE;
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
 
         _pid = PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <LidHeaterExecutionPolicy Policy>
@@ -376,8 +373,8 @@ class LidHeaterTask {
         auto response = messages::GetLidPowerResponse{
             .responding_to_id = msg.id, .heater = policy.get_heater_power()};
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <LidHeaterExecutionPolicy Policy>
@@ -388,33 +385,25 @@ class LidHeaterTask {
 
         policy.set_lid_fans(msg.enable);
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::GetErrorStateMessage& msg,
-                       Policy& policy) -> void {
-        static_cast<void>(policy);
+    auto visit_message(const messages::GetErrorStateMessage& msg, Policy&)
+        -> void {
         auto ack = messages::AcknowledgePrevious{
             .responding_to_id = msg.id, .with_error = most_relevant_error()};
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(ack));
+        std::ignore = _task_registry->comms->get_message_queue().try_send(ack);
     }
 
     template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::SetErrorStateMessage& msg,
-                       Policy& policy) -> void {
-        static_cast<void>(msg);
-        static_cast<void>(policy);
+    auto visit_message(const messages::SetErrorStateMessage&, Policy&) -> void {
     }
 
     template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::ClearErrorStateMessage& msg,
-                       Policy& policy) -> void {
-        static_cast<void>(msg);
-        static_cast<void>(policy);
-    }
+    auto visit_message(const messages::ClearErrorStateMessage&, Policy&)
+        -> void {}
 
     auto handle_temperature_conversion(uint16_t conversion_result,
                                        Thermistor& thermistor) -> void {
@@ -430,9 +419,9 @@ class LidHeaterTask {
 #if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
                 auto error_message = messages::HostCommsMessage(
                     messages::ErrorMessage{.code = thermistor.error});
-                static_cast<void>(
+                std::ignore =
                     _task_registry->comms->get_message_queue().try_send(
-                        error_message));
+                        error_message);
 #endif
             } else {
                 _state.error_bitmap &= ~thermistor.error_bit;

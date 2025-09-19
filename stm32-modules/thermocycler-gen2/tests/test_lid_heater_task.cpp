@@ -405,7 +405,7 @@ SCENARIO("lid heater error flag handling") {
         auto read_message = messages::LidTempReadComplete{
             .lid_temp = _shorted_adc, .timestamp_ms = timestamp};
         timestamp += TIME_DELTA;
-        REQUIRE(lid_queue.try_send(read_message));
+        lid_queue.backing_deque.push_back(read_message);
         tasks->run_lid_heater_task();
         WHEN("sending a get error status message") {
             auto message = messages::GetErrorStateMessage{.id = 123};
@@ -419,7 +419,7 @@ SCENARIO("lid heater error flag handling") {
         WHEN("sending a SetPlateTemperature message") {
             auto set_msg =
                 messages::SetLidTemperatureMessage{.id = 123, .setpoint = 50};
-            REQUIRE(lid_queue.try_send(set_msg));
+            lid_queue.backing_deque.push_back(set_msg);
             tasks->run_lid_heater_task();
             THEN("the response shows an error") {
                 tasks->require_has_ack_for(
@@ -428,13 +428,13 @@ SCENARIO("lid heater error flag handling") {
         }
         WHEN("sending a DeactivateAll message") {
             auto deactivate = messages::DeactivateAllMessage{.id = 444};
-            REQUIRE(lid_queue.try_send(deactivate));
+            lid_queue.backing_deque.push_back(deactivate);
             tasks->run_lid_heater_task();
             host_queue.backing_deque.clear();
             AND_THEN("sending a SetPlateTemperature message") {
                 auto set_msg = messages::SetLidTemperatureMessage{
                     .id = 123, .setpoint = 50};
-                REQUIRE(lid_queue.try_send(set_msg));
+                lid_queue.backing_deque.push_back(set_msg);
                 tasks->run_lid_heater_task();
                 THEN("the response shows an error") {
                     tasks->require_has_ack_for(
