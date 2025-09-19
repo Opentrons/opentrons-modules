@@ -347,7 +347,8 @@ SCENARIO("motor task message passing") {
                     messages::OpenLidMessage{.id = 456});
                 tasks->run_motor_task();
                 THEN("the second command is ignored with an error") {
-                    tasks->require_has_ack_for_id(456, errors::ErrorCode::LID_MOTOR_BUSY);
+                    tasks->require_has_ack_for_id(
+                        456, errors::ErrorCode::LID_MOTOR_BUSY);
                 }
             }
         }
@@ -364,7 +365,8 @@ SCENARIO("motor task message passing") {
                     messages::CloseLidMessage{.id = 456});
                 tasks->run_motor_task();
                 THEN("the second command is ignored with an error") {
-                    tasks->require_has_ack_for_id(456, errors::ErrorCode::LID_MOTOR_BUSY);
+                    tasks->require_has_ack_for_id(
+                        456, errors::ErrorCode::LID_MOTOR_BUSY);
                 }
             }
         }

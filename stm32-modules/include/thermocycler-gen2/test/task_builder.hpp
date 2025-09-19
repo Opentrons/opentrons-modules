@@ -3,7 +3,6 @@
 #include <utility>
 
 #include "catch2/catch.hpp"
-
 #include "test/test_lid_heater_policy.hpp"
 #include "test/test_message_queue.hpp"
 #include "test/test_motor_policy.hpp"

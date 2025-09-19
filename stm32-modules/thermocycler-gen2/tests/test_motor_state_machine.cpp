@@ -4,7 +4,6 @@
 #include "thermocycler-gen2/messages.hpp"
 #include "thermocycler-gen2/motor_utils.hpp"
 
-
 struct MotorStep {
     // Message to send on this step
     messages::MotorMessage msg;
@@ -81,7 +80,8 @@ void test_motor_state_machine(std::shared_ptr<TaskBuilder> tasks,
             if (step.ack.has_value()) {
                 THEN("an ack is sent to host comms") {
                     auto ack = step.ack.value();
-                    tasks->require_has_ack_for_id(ack.responding_to_id, ack.with_error);
+                    tasks->require_has_ack_for_id(ack.responding_to_id,
+                                                  ack.with_error);
                 }
             }
             if (step.motor_state.has_value()) {
