@@ -55,6 +55,9 @@ struct State {
     };
     Status system_status;
     uint16_t error_bitmap;
+    errors::ErrorCode manual_error;
+    std::chrono::milliseconds manual_error_countdown;
+    errors::ErrorCode interrupted_by;
     static constexpr uint16_t LID_THERMISTOR_ERROR = (1 << 0);
     static constexpr uint16_t HEATER_POWER_ERROR = (1 << 1);
 };
@@ -100,7 +103,11 @@ class LidHeaterTask {
               .error_bit = State::LID_THERMISTOR_ERROR},
           _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
                      false),
-          _state{.system_status = State::IDLE, .error_bitmap = 0},
+          _state{.system_status = State::IDLE,
+                 .error_bitmap = 0,
+                 .manual_error = errors::ErrorCode::NO_ERROR,
+                 .manual_error_countdown = Milliseconds(0),
+                 .interrupted_by = errors::ErrorCode::NO_ERROR},
           _pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS, 1.0,
                -1.0),
           _last_update(0) {}
@@ -148,10 +155,52 @@ class LidHeaterTask {
             message);
     }
 
+    [[nodiscard]] auto most_relevant_error() const -> errors::ErrorCode {
+        // Sometimes more than one error can occur at the same time; sometimes,
+        // that means that one has caused the other. We want to track them
+        // separately, but we also sometimes want to respond with just one error
+        // condition that sums everything up. This method is used by code that
+        // wants the single most relevant code for the current error condition.
+        if ((_state.error_bitmap & _thermistor.error_bit) ==
+            _thermistor.error_bit) {
+            return _thermistor.error;
+        }
+        if ((_state.error_bitmap & State::HEATER_POWER_ERROR) ==
+            State::HEATER_POWER_ERROR) {
+            return errors::ErrorCode::THERMAL_HEATER_ERROR;
+        }
+
+        return errors::ErrorCode::NO_ERROR;
+    }
+
   private:
     template <typename Policy>
     requires LidHeaterExecutionPolicy<Policy>
     auto visit_message(const std::monostate&, Policy&) -> void {}
+
+    auto error_to_error_bitmap_and_set_thermistor(errors::ErrorCode error)
+        -> uint16_t {
+        if (error == errors::ErrorCode::THERMAL_HEATER_ERROR) {
+            return State::HEATER_POWER_ERROR;
+        }
+        // Calculate the bitmap that gives rise to this error code, and also
+        // set the appropriate thermistor error flag if this is a thermistor
+        // error. Note that we don't want to override real thermistor errors,
+        // so if there is one just return early.
+        if (_thermistor.error != errors::ErrorCode::NO_ERROR) {
+            return 0;
+        }
+        switch (error) {
+            case errors::ErrorCode::THERMISTOR_LID_DISCONNECTED:
+            case errors::ErrorCode::THERMISTOR_LID_OVERTEMP:
+            case errors::ErrorCode::THERMISTOR_LID_SHORT: {
+                _thermistor.error = error;
+                return State::LID_THERMISTOR_ERROR;
+            }
+            default:
+                return 0;
+        }
+    }
 
     template <typename Policy>
     requires LidHeaterExecutionPolicy<Policy>
@@ -161,13 +210,29 @@ class LidHeaterTask {
             std::numeric_limits<decltype(msg.timestamp_ms)>::max());
         auto old_error_bitmap = _state.error_bitmap;
         auto current_time = Milliseconds(msg.timestamp_ms);
+        auto time_delta = current_time - _last_update;
+        auto old_status = _state.system_status;
         handle_temperature_conversion(msg.lid_temp, _thermistor);
+
+        if (_state.manual_error_countdown > Milliseconds(0)) {
+            if (time_delta >= _state.manual_error_countdown) {
+                _state.manual_error_countdown = Milliseconds(0);
+                _state.error_bitmap |= error_to_error_bitmap_and_set_thermistor(
+                    _state.manual_error);
+                _state.interrupted_by = _state.manual_error;
+                _state.manual_error = errors::ErrorCode::NO_ERROR;
+            } else {
+                _state.manual_error_countdown -= time_delta;
+            }
+        }
+
         if ((old_error_bitmap != _state.error_bitmap) ||
             (_state.error_bitmap != 0)) {
             if (_state.error_bitmap != 0) {
                 // We entered an error state. Disable power output.
                 _state.system_status = State::ERROR;
                 policy.set_heater_power(0.0F);
+                update_interrupted_by();
             } else {
                 // We went from an error state to no error state... so go idle
                 _state.system_status = State::IDLE;
@@ -187,9 +252,18 @@ class LidHeaterTask {
                 policy.set_heater_power(0.0F);
                 _state.system_status = State::ERROR;
                 _state.error_bitmap |= State::HEATER_POWER_ERROR;
+                update_interrupted_by();
             }
         } else if (_state.system_status != State::HEATER_TEST) {
             policy.set_heater_power(0.0F);
+        }
+        if (_state.system_status == State::ERROR) {
+            if (old_status != State::ERROR) {
+                update_interrupted_by();
+            }
+            if (_state.error_bitmap == 0) {
+                _state.system_status = State::IDLE;
+            }
         }
 
         // Cache the timestamp from this message so the time difference for
@@ -392,18 +466,35 @@ class LidHeaterTask {
     template <LidHeaterExecutionPolicy Policy>
     auto visit_message(const messages::GetErrorStateMessage& msg, Policy&)
         -> void {
+        auto current_error = most_relevant_error();
+        auto interrupted_by = get_and_clear_interrupted_by();
         auto ack = messages::AcknowledgePrevious{
-            .responding_to_id = msg.id, .with_error = most_relevant_error()};
+            .responding_to_id = msg.id,
+            .with_error = current_error == errors::ErrorCode::NO_ERROR
+                              ? interrupted_by
+                              : current_error};
         std::ignore = _task_registry->comms->get_message_queue().try_send(ack);
     }
 
     template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::SetErrorStateMessage&, Policy&) -> void {
+    auto visit_message(const messages::SetErrorStateMessage& msg, Policy&)
+        -> void {
+        _state.manual_error = msg.error_to_set;
+        _state.manual_error_countdown =
+            Milliseconds(std::max(uint32_t(msg.delay_s * 1000), uint32_t(1)));
+        auto ack = messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        std::ignore = _task_registry->comms->get_message_queue().try_send(ack);
     }
 
     template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::ClearErrorStateMessage&, Policy&)
-        -> void {}
+    auto visit_message(const messages::ClearErrorStateMessage& msg, Policy&)
+        -> void {
+        _state.error_bitmap = 0;
+        _thermistor.error = errors::ErrorCode::NO_ERROR;
+        std::ignore = get_and_clear_interrupted_by();
+        auto ack = messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        std::ignore = _task_registry->comms->get_message_queue().try_send(ack);
+    }
 
     auto handle_temperature_conversion(uint16_t conversion_result,
                                        Thermistor& thermistor) -> void {
@@ -442,6 +533,8 @@ class LidHeaterTask {
                 therm.error = therm.short_error;
                 break;
             }
+            default:
+                break;
         }
     }
 
@@ -452,24 +545,6 @@ class LidHeaterTask {
             therm.error = errors::ErrorCode::NO_ERROR;
         }
         therm.temp_c = temp;
-    }
-
-    [[nodiscard]] auto most_relevant_error() const -> errors::ErrorCode {
-        // Sometimes more than one error can occur at the same time; sometimes,
-        // that means that one has caused the other. We want to track them
-        // separately, but we also sometimes want to respond with just one error
-        // condition that sums everything up. This method is used by code that
-        // wants the single most relevant code for the current error condition.
-        if ((_state.error_bitmap & _thermistor.error_bit) ==
-            _thermistor.error_bit) {
-            return _thermistor.error;
-        }
-        if ((_state.error_bitmap & State::HEATER_POWER_ERROR) ==
-            State::HEATER_POWER_ERROR) {
-            return errors::ErrorCode::THERMAL_HEATER_ERROR;
-        }
-
-        return errors::ErrorCode::NO_ERROR;
     }
 
     [[nodiscard]] auto update_control(double time_delta) -> double {
@@ -486,6 +561,23 @@ class LidHeaterTask {
 
         // Start integration once we're within the proportional band
         return _pid.compute(_setpoint_c - _thermistor.temp_c, time_delta);
+    }
+
+    auto set_interrupted_by(errors::ErrorCode error) -> void {
+        if (_state.interrupted_by == errors::ErrorCode::NO_ERROR &&
+            error != errors::ErrorCode::NO_ERROR) {
+            _state.interrupted_by = error;
+        }
+    }
+
+    auto update_interrupted_by() -> void {
+        set_interrupted_by(most_relevant_error());
+    }
+
+    auto get_and_clear_interrupted_by() -> errors::ErrorCode {
+        auto interrupted = _state.interrupted_by;
+        _state.interrupted_by = errors::ErrorCode::NO_ERROR;
+        return interrupted;
     }
 
     Queue& _message_queue;

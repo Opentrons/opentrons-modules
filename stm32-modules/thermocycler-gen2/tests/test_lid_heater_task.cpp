@@ -353,6 +353,8 @@ SCENARIO("lid heater task message passing") {
         CHECK(error_msg.code == errors::ErrorCode::THERMISTOR_LID_DISCONNECTED);
 #endif
         CHECK(tasks->get_host_comms_queue().backing_deque.empty());
+        CHECK(tasks->get_lid_heater_task().most_relevant_error() ==
+              errors::ErrorCode::THERMISTOR_LID_DISCONNECTED);
 
         WHEN("Sending a SetHeaterDebug message to enable the heater") {
             auto message =
@@ -366,6 +368,79 @@ SCENARIO("lid heater task message passing") {
                     message, errors::ErrorCode::THERMISTOR_LID_DISCONNECTED);
                 REQUIRE(tasks->get_lid_heater_policy().get_heater_power() ==
                         0.0F);
+            }
+        }
+        WHEN("it naturally clears") {
+            read_message.lid_temp = _valid_adc;
+            timestamp += TIME_DELTA;
+            tasks->get_lid_heater_queue().backing_deque.push_back(read_message);
+            tasks->run_lid_heater_task();
+            THEN("the error is cleared") {
+                REQUIRE(tasks->get_lid_heater_task().most_relevant_error() ==
+                        errors::ErrorCode::NO_ERROR);
+            }
+            THEN("a get error still gets it") {
+                tasks->get_host_comms_queue().backing_deque.clear();
+                auto get_message = messages::GetErrorStateMessage{.id = 222};
+                tasks->get_lid_heater_queue().backing_deque.push_back(
+                    get_message);
+                tasks->run_lid_heater_task();
+                tasks->require_has_ack_for(
+                    get_message,
+                    errors::ErrorCode::THERMISTOR_LID_DISCONNECTED);
+                AND_THEN("a subsequent get error doesn't") {
+                    get_message.id = 223;
+                    tasks->get_lid_heater_queue().backing_deque.push_back(
+                        get_message);
+                    tasks->run_lid_heater_task();
+                    tasks->require_has_ack_for(get_message);
+                }
+            }
+        }
+        WHEN("Sending a get error state message") {
+            auto get_message = messages::GetErrorStateMessage{.id = 333};
+            tasks->get_lid_heater_queue().backing_deque.push_back(get_message);
+            tasks->run_lid_heater_task();
+            THEN("the acknowledgement has the error") {
+                tasks->require_has_ack_for(
+                    get_message,
+                    errors::ErrorCode::THERMISTOR_LID_DISCONNECTED);
+            }
+        }
+        WHEN("sending a clear error state message") {
+            auto message = messages::ClearErrorStateMessage{.id = 123};
+            tasks->get_lid_heater_queue().backing_deque.push_back(message);
+            tasks->run_lid_heater_task();
+            AND_WHEN("the error is not physically cleared") {
+                read_message.timestamp_ms += TIME_DELTA;
+                tasks->get_lid_heater_queue().backing_deque.push_back(
+                    read_message);
+                tasks->run_lid_heater_task();
+                tasks->get_host_comms_queue().backing_deque.clear();
+                THEN("the error reoccurs") {
+                    auto message = messages::GetErrorStateMessage{.id = 333};
+                    tasks->get_lid_heater_queue().backing_deque.push_back(
+                        message);
+                    tasks->run_lid_heater_task();
+                    tasks->require_has_ack_for(
+                        message,
+                        errors::ErrorCode::THERMISTOR_LID_DISCONNECTED);
+                }
+            }
+            AND_WHEN("the error is physically cleared") {
+                read_message.timestamp_ms += TIME_DELTA;
+                read_message.lid_temp = _valid_adc;
+                tasks->get_lid_heater_queue().backing_deque.push_back(
+                    read_message);
+                tasks->run_lid_heater_task();
+                tasks->get_host_comms_queue().backing_deque.clear();
+                THEN("the error is cleared") {
+                    auto message = messages::GetErrorStateMessage{.id = 333};
+                    tasks->get_lid_heater_queue().backing_deque.push_back(
+                        message);
+                    tasks->run_lid_heater_task();
+                    tasks->require_has_ack_for(message);
+                }
             }
         }
     }
@@ -407,6 +482,35 @@ SCENARIO("lid heater error flag handling") {
         timestamp += TIME_DELTA;
         lid_queue.backing_deque.push_back(read_message);
         tasks->run_lid_heater_task();
+        CHECK(tasks->get_lid_heater_task().most_relevant_error() ==
+              errors::ErrorCode::THERMISTOR_LID_SHORT);
+        WHEN("it naturally clears") {
+            read_message.lid_temp = _valid_adc;
+            timestamp += TIME_DELTA;
+            tasks->get_lid_heater_queue().backing_deque.push_back(read_message);
+            tasks->run_lid_heater_task();
+            THEN("the error is cleared") {
+                REQUIRE(tasks->get_lid_heater_task().most_relevant_error() ==
+                        errors::ErrorCode::NO_ERROR);
+            }
+            THEN("a get error still gets it") {
+                tasks->get_host_comms_queue().backing_deque.clear();
+                auto get_message = messages::GetErrorStateMessage{.id = 222};
+                tasks->get_lid_heater_queue().backing_deque.push_back(
+                    get_message);
+                tasks->run_lid_heater_task();
+                tasks->require_has_ack_for(
+                    get_message, errors::ErrorCode::THERMISTOR_LID_SHORT);
+                AND_THEN("a subsequent get error doesn't") {
+                    get_message.id = 223;
+                    tasks->get_lid_heater_queue().backing_deque.push_back(
+                        get_message);
+                    tasks->run_lid_heater_task();
+                    tasks->require_has_ack_for(get_message);
+                }
+            }
+        }
+
         WHEN("sending a get error status message") {
             auto message = messages::GetErrorStateMessage{.id = 123};
             tasks->get_lid_heater_queue().backing_deque.push_back(message);
@@ -414,6 +518,41 @@ SCENARIO("lid heater error flag handling") {
             THEN("the task should respond with an error") {
                 tasks->require_has_ack_for(
                     message, errors::ErrorCode::THERMISTOR_LID_SHORT);
+            }
+        }
+        WHEN("sending a clear error state message") {
+            auto message = messages::ClearErrorStateMessage{.id = 123};
+            tasks->get_lid_heater_queue().backing_deque.push_back(message);
+            tasks->run_lid_heater_task();
+            AND_WHEN("the error is not physically cleared") {
+                read_message.timestamp_ms += TIME_DELTA;
+                tasks->get_lid_heater_queue().backing_deque.push_back(
+                    read_message);
+                tasks->run_lid_heater_task();
+                tasks->get_host_comms_queue().backing_deque.clear();
+                THEN("the error reoccurs") {
+                    auto message = messages::GetErrorStateMessage{.id = 333};
+                    tasks->get_lid_heater_queue().backing_deque.push_back(
+                        message);
+                    tasks->run_lid_heater_task();
+                    tasks->require_has_ack_for(
+                        message, errors::ErrorCode::THERMISTOR_LID_SHORT);
+                }
+            }
+            AND_WHEN("the error is physically cleared") {
+                read_message.timestamp_ms += TIME_DELTA;
+                read_message.lid_temp = _valid_adc;
+                tasks->get_lid_heater_queue().backing_deque.push_back(
+                    read_message);
+                tasks->run_lid_heater_task();
+                tasks->get_host_comms_queue().backing_deque.clear();
+                THEN("the error is cleared") {
+                    auto message = messages::GetErrorStateMessage{.id = 333};
+                    tasks->get_lid_heater_queue().backing_deque.push_back(
+                        message);
+                    tasks->run_lid_heater_task();
+                    tasks->require_has_ack_for(message);
+                }
             }
         }
         WHEN("sending a SetPlateTemperature message") {
@@ -439,6 +578,121 @@ SCENARIO("lid heater error flag handling") {
                 THEN("the response shows an error") {
                     tasks->require_has_ack_for(
                         set_msg, errors::ErrorCode::THERMISTOR_LID_SHORT);
+                }
+            }
+        }
+    }
+}
+
+SCENARIO("lid set-error") {
+    uint32_t timestamp = 1000;
+    GIVEN("a good lid heater task") {
+        auto tasks = TaskBuilder::build();
+        auto read_message = messages::LidTempReadComplete{
+            .lid_temp = _valid_adc, .timestamp_ms = timestamp};
+        tasks->get_lid_heater_queue().backing_deque.push_back(
+            messages::LidHeaterMessage(read_message));
+        tasks->run_lid_heater_task();
+        tasks->get_host_comms_queue().backing_deque.clear();
+        auto error_message = messages::SetErrorStateMessage{
+            .id = 333,
+            .error_to_set = errors::ErrorCode::THERMAL_HEATER_ERROR,
+            .delay_s = 5};
+        tasks->get_lid_heater_queue().backing_deque.push_back(error_message);
+        tasks->run_lid_heater_task();
+        tasks->require_has_ack_for(error_message);
+
+        THEN("after just less than the time the error is not set") {
+            read_message.timestamp_ms = 5999;
+            tasks->get_lid_heater_queue().backing_deque.push_back(read_message);
+            tasks->run_lid_heater_task();
+            REQUIRE(tasks->get_lid_heater_task().most_relevant_error() ==
+                    errors::ErrorCode::NO_ERROR);
+            auto get_message = messages::GetErrorStateMessage{.id = 100};
+            tasks->get_lid_heater_queue().backing_deque.push_back(get_message);
+            tasks->run_lid_heater_task();
+            tasks->require_has_ack_for(get_message);
+        }
+        THEN("after exactly the time the error is set") {
+            read_message.timestamp_ms = 6000;
+            tasks->get_lid_heater_queue().backing_deque.push_back(read_message);
+            tasks->run_lid_heater_task();
+#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
+            REQUIRE(
+                tasks->get_latest_host_comms_message<messages::ErrorMessage>()
+                    .error == errors::ErrorCode::THERMAL_HEATER_ERROR);
+
+#endif
+            REQUIRE(tasks->get_lid_heater_task().most_relevant_error() ==
+                    errors::ErrorCode::THERMAL_HEATER_ERROR);
+            auto get_message = messages::GetErrorStateMessage{.id = 100};
+            tasks->get_lid_heater_queue().backing_deque.push_back(get_message);
+            tasks->run_lid_heater_task();
+            tasks->require_has_ack_for(get_message,
+                                       errors::ErrorCode::THERMAL_HEATER_ERROR);
+        }
+        THEN("after more than the time the error is set") {
+            read_message.timestamp_ms = 10000;
+            tasks->get_lid_heater_queue().backing_deque.push_back(read_message);
+            tasks->run_lid_heater_task();
+#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
+            REQUIRE(
+                tasks->get_latest_host_comms_message<messages::ErrorMessage>()
+                    .error == errors::ErrorCode::THERMAL_HEATER_ERROR);
+
+#endif
+            REQUIRE(tasks->get_lid_heater_task().most_relevant_error() ==
+                    errors::ErrorCode::THERMAL_HEATER_ERROR);
+            auto get_message = messages::GetErrorStateMessage{.id = 100};
+            tasks->get_lid_heater_queue().backing_deque.push_back(get_message);
+            tasks->run_lid_heater_task();
+            tasks->require_has_ack_for(get_message,
+                                       errors::ErrorCode::THERMAL_HEATER_ERROR);
+        }
+        auto error = GENERATE(errors::ErrorCode::THERMISTOR_LID_SHORT,
+                              errors::ErrorCode::THERMISTOR_LID_DISCONNECTED,
+                              errors::ErrorCode::THERMISTOR_LID_OVERTEMP,
+                              errors::ErrorCode::THERMAL_HEATER_ERROR);
+        WHEN(std::string("Setting error ") +
+             std::to_string(static_cast<uint32_t>(error))) {
+            auto set_message = messages::SetErrorStateMessage{
+                .id = 1231, .error_to_set = error, .delay_s = 0};
+            tasks->get_lid_heater_queue().backing_deque.push_back(set_message);
+            tasks->run_lid_heater_task();
+            tasks->require_has_ack_for(set_message);
+            read_message.timestamp_ms = 2000;
+            tasks->get_lid_heater_queue().backing_deque.push_back(read_message);
+            tasks->run_lid_heater_task();
+#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
+            THEN("the error is reported asynchronously") {
+                auto error_msg = tasks->get_latest_host_comms_message<
+                    messages::ErrorMessage>();
+                REQUIRE(error_msg.error == error);
+                plate_queue.backing_deque.pop_front();
+            }
+#endif
+            THEN("the error is reported by a get-error-state") {
+                auto get_state = messages::GetErrorStateMessage{.id = 2222};
+                tasks->get_lid_heater_queue().backing_deque.push_back(
+                    get_state);
+                tasks->run_lid_heater_task();
+                tasks->require_has_ack_for(get_state, error);
+            }
+            AND_WHEN("clearing the error and updating the state") {
+                auto clear = messages::ClearErrorStateMessage{.id = 99};
+                tasks->get_lid_heater_queue().backing_deque.push_back(clear);
+                tasks->run_lid_heater_task();
+                tasks->require_has_ack_for(clear);
+                read_message.timestamp_ms = 3000;
+                tasks->get_lid_heater_queue().backing_deque.push_back(
+                    read_message);
+                tasks->run_lid_heater_task();
+                THEN("the error is gone") {
+                    auto get_state = messages::GetErrorStateMessage{.id = 3333};
+                    tasks->get_lid_heater_queue().backing_deque.push_back(
+                        get_state);
+                    tasks->run_lid_heater_task();
+                    tasks->require_has_ack_for(get_state);
                 }
             }
         }
