@@ -233,9 +233,6 @@ class LidHeaterTask {
                 _state.system_status = State::ERROR;
                 policy.set_heater_power(0.0F);
                 update_interrupted_by();
-            } else {
-                // We went from an error state to no error state... so go idle
-                _state.system_status = State::IDLE;
             }
         }
 

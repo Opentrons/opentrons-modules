@@ -408,9 +408,6 @@ class ThermalPlateTask {
                 reset_peltier_filters();
                 _state.interrupted_by = most_relevant_error();
                 send_current_error();
-            } else {
-                // We went from an error state to no error state... so go idle
-                _state.system_status = State::IDLE;
             }
         }
 
@@ -442,6 +439,7 @@ class ThermalPlateTask {
             if (_state.error_bitmap == 0) {
                 _state.system_status = State::IDLE;
                 send_current_state();
+                send_current_error();
             }
         }
 
@@ -887,6 +885,8 @@ class ThermalPlateTask {
             thermistor.error = errors::ErrorCode::NO_ERROR;
         }
         std::ignore = get_and_clear_interrupted_by();
+        send_current_state();
+        send_current_error();
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         std::ignore =
@@ -1067,9 +1067,13 @@ class ThermalPlateTask {
      *
      */
     auto send_current_error() -> void {
+        auto relevant = most_relevant_error();
+        auto interrupted_by = _state.interrupted_by;
         auto error_msg = messages::UpdateTaskErrorState{
             .task = messages::UpdateTaskErrorState::Tasks::THERMAL_PLATE,
-            .current_error = most_relevant_error()};
+            .current_error = relevant == errors::ErrorCode::NO_ERROR
+                                 ? interrupted_by
+                                 : relevant};
         std::ignore =
             _task_registry->system->get_message_queue().try_send(error_msg);
     }
