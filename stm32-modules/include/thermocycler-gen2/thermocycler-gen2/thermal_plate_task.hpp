@@ -291,9 +291,11 @@ class ThermalPlateTask {
 
     auto set_thermistor_if_not_errored(ThermistorID thermistor,
                                        errors::ErrorCode error) -> uint16_t {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
         if (_thermistors[thermistor].error != errors::ErrorCode::NO_ERROR) {
             return 0;
         }
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
         _thermistors[thermistor].error = error;
         return thermistorErrorBit(thermistor);
     }
@@ -379,7 +381,9 @@ class ThermalPlateTask {
 
         // Set the manual error after the conversions so it doesn't get
         // overridden by the thermistors
+        // NOLINTNEXTLINE(modernize-use-nullptr)
         if (_state.manual_error_countdown > Milliseconds(0)) {
+            // NOLINTNEXTLINE(modernize-use-nullptr)
             if (time_delta >= _state.manual_error_countdown) {
                 _state.manual_error_countdown = Milliseconds(0);
                 _state.error_bitmap |=
@@ -869,8 +873,9 @@ class ThermalPlateTask {
     auto visit_message(const messages::SetErrorStateMessage& msg, Policy&)
         -> void {
         _state.manual_error = msg.error_to_set;
-        _state.manual_error_countdown =
-            Milliseconds(std::max(msg.delay_s * 1000, uint32_t(1)));
+        _state.manual_error_countdown = std::max(
+            std::chrono::duration_cast<Milliseconds>(Seconds(msg.delay_s)),
+            Milliseconds(1));
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         std::ignore =

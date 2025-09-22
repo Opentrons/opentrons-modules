@@ -214,7 +214,9 @@ class LidHeaterTask {
         auto old_status = _state.system_status;
         handle_temperature_conversion(msg.lid_temp, _thermistor);
 
+        // NOLINTNEXTLINE(modernize-use-nullptr)
         if (_state.manual_error_countdown > Milliseconds(0)) {
+            // NOLINTNEXTLINE(modernize-use-nullptr)
             if (time_delta >= _state.manual_error_countdown) {
                 _state.manual_error_countdown = Milliseconds(0);
                 _state.error_bitmap |= error_to_error_bitmap_and_set_thermistor(
@@ -477,8 +479,9 @@ class LidHeaterTask {
     auto visit_message(const messages::SetErrorStateMessage& msg, Policy&)
         -> void {
         _state.manual_error = msg.error_to_set;
-        _state.manual_error_countdown =
-            Milliseconds(std::max(uint32_t(msg.delay_s * 1000), uint32_t(1)));
+        _state.manual_error_countdown = std::max(
+            std::chrono::duration_cast<Milliseconds>(Seconds(msg.delay_s)),
+            Milliseconds(1));
         auto ack = messages::AcknowledgePrevious{.responding_to_id = msg.id};
         std::ignore = _task_registry->comms->get_message_queue().try_send(ack);
     }
