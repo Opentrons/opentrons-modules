@@ -101,9 +101,12 @@ SCENARIO("motor task core message handling", "[motor]") {
                 }
                 AND_THEN(
                     "the task should respond to the message to the system") {
-                    REQUIRE_FALSE(tasks->get_system_queue().backing_deque.empty());
+                    REQUIRE_FALSE(
+                        tasks->get_system_queue().backing_deque.empty());
                     auto msg = tasks->get_system_queue().backing_deque.front();
-                    REQUIRE(std::holds_alternative<messages::AcknowledgePrevious>(msg));
+                    REQUIRE(
+                        std::holds_alternative<messages::AcknowledgePrevious>(
+                            msg));
                     auto ack = std::get<messages::AcknowledgePrevious>(msg);
                     REQUIRE(ack.responding_to_id == message.id);
                     REQUIRE(ack.with_error == errors::ErrorCode::NO_ERROR);
