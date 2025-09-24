@@ -22,6 +22,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_colors.cpp
     test_motor_task.cpp
     test_motor_utils.cpp
+    test_motor_state_machine.cpp
     test_eeprom.cpp
     test_errors.cpp
     # GCode parse tests
@@ -47,6 +48,7 @@ add_executable(${TARGET_MODULE_NAME}
     test_m140d.cpp
     test_m141.cpp
     test_m301.cpp
+    test_m412d.cpp
     test_g28d.cpp
     test_m240d.cpp
     test_m241d.cpp

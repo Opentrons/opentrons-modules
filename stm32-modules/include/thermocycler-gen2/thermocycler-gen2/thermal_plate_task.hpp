@@ -13,7 +13,9 @@
 
 #include "core/pid.hpp"
 #include "core/thermistor_conversion.hpp"
+#include "errors.hpp"
 #include "hal/message_queue.hpp"
+#include "messages.hpp"
 #include "thermocycler-gen2/eeprom.hpp"
 #include "thermocycler-gen2/errors.hpp"
 #include "thermocycler-gen2/messages.hpp"
@@ -74,6 +76,9 @@ struct State {
     };
     Status system_status;
     uint16_t error_bitmap;
+    errors::ErrorCode manual_error;
+    std::chrono::milliseconds manual_error_countdown;
+    errors::ErrorCode interrupted_by;
     // NOTE - thermistor error bits are defined in the thermistor array
     // initializor. Additional errors are defined assuming the max thermistor
     // error is (1 << 6), for the heat sink
@@ -200,7 +205,11 @@ class ThermalPlateTask {
                            CONTROL_PERIOD_SECONDS, 1.0, -1.0)},
           _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
                      false),
-          _state{.system_status = State::IDLE, .error_bitmap = 0},
+          _state{.system_status = State::IDLE,
+                 .error_bitmap = 0,
+                 .manual_error = errors::ErrorCode::NO_ERROR,
+                 .manual_error_countdown = Milliseconds(0),
+                 .interrupted_by = errors::ErrorCode::NO_ERROR},
           _plate_control(_peltier_left, _peltier_right, _peltier_center, _fans),
           // NOLINTNEXTLINE(readability-redundant-member-init)
           _eeprom(),
@@ -258,7 +267,7 @@ class ThermalPlateTask {
         // anywhere up to the provided timeout, which drives the controller
         // frequency.
 
-        static_cast<void>(_message_queue.recv(&message));
+        _message_queue.recv(&message);
         std::visit(
             [this, &policy](const auto& msg) -> void {
                 this->visit_message(msg, policy);
@@ -266,12 +275,73 @@ class ThermalPlateTask {
             message);
     }
 
+    [[nodiscard]] auto most_relevant_error() const -> errors::ErrorCode {
+        // Sometimes more than one error can occur at the same time; sometimes,
+        // that means that one has caused the other. We want to track them
+        // separately, but we also sometimes want to respond with just one error
+        // condition that sums everything up. This method is used by code that
+        // wants the single most relevant code for the current error condition.
+        return calculate_most_relevant_error(_state.error_bitmap);
+    }
+
   private:
     template <typename Policy>
     requires ThermalPlateExecutionPolicy<Policy>
-    auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
-        static_cast<void>(policy);
-        static_cast<void>(_ignore);
+    auto visit_message(const std::monostate&, Policy&) -> void {}
+
+    auto set_thermistor_if_not_errored(ThermistorID thermistor,
+                                       errors::ErrorCode error) -> uint16_t {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+        if (_thermistors[thermistor].error != errors::ErrorCode::NO_ERROR) {
+            return 0;
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+        _thermistors[thermistor].error = error;
+        return thermistorErrorBit(thermistor);
+    }
+
+    auto error_to_bitmap_and_set_thermistor(errors::ErrorCode error)
+        -> uint16_t {
+        switch (error) {
+            case errors::ErrorCode::THERMAL_PELTIER_ERROR:
+                return State::PELTIER_ERROR;
+            case errors::ErrorCode::THERMAL_HEATSINK_FAN_ERROR:
+                return State::FAN_ERROR;
+            case errors::ErrorCode::THERMAL_DRIFT:
+                return State::DRIFT_ERROR;
+            case errors::ErrorCode::THERMISTOR_FRONT_RIGHT_DISCONNECTED:
+            case errors::ErrorCode::THERMISTOR_FRONT_RIGHT_SHORT:
+            case errors::ErrorCode::THERMISTOR_FRONT_RIGHT_OVERTEMP:
+                return set_thermistor_if_not_errored(
+                    ThermistorID::THERM_FRONT_RIGHT, error);
+            case errors::ErrorCode::THERMISTOR_FRONT_LEFT_DISCONNECTED:
+            case errors::ErrorCode::THERMISTOR_FRONT_LEFT_SHORT:
+            case errors::ErrorCode::THERMISTOR_FRONT_LEFT_OVERTEMP:
+                return set_thermistor_if_not_errored(
+                    ThermistorID::THERM_FRONT_LEFT, error);
+            case errors::ErrorCode::THERMISTOR_FRONT_CENTER_DISCONNECTED:
+            case errors::ErrorCode::THERMISTOR_FRONT_CENTER_SHORT:
+            case errors::ErrorCode::THERMISTOR_FRONT_CENTER_OVERTEMP:
+                return set_thermistor_if_not_errored(
+                    ThermistorID::THERM_FRONT_CENTER, error);
+            case errors::ErrorCode::THERMISTOR_BACK_RIGHT_DISCONNECTED:
+            case errors::ErrorCode::THERMISTOR_BACK_RIGHT_SHORT:
+            case errors::ErrorCode::THERMISTOR_BACK_RIGHT_OVERTEMP:
+                return set_thermistor_if_not_errored(
+                    ThermistorID::THERM_BACK_RIGHT, error);
+            case errors::ErrorCode::THERMISTOR_BACK_LEFT_DISCONNECTED:
+            case errors::ErrorCode::THERMISTOR_BACK_LEFT_SHORT:
+            case errors::ErrorCode::THERMISTOR_BACK_LEFT_OVERTEMP:
+                return set_thermistor_if_not_errored(
+                    ThermistorID::THERM_BACK_LEFT, error);
+            case errors::ErrorCode::THERMISTOR_BACK_CENTER_DISCONNECTED:
+            case errors::ErrorCode::THERMISTOR_BACK_CENTER_SHORT:
+            case errors::ErrorCode::THERMISTOR_BACK_CENTER_OVERTEMP:
+                return set_thermistor_if_not_errored(
+                    ThermistorID::THERM_BACK_CENTER, error);
+            default:
+                return 0;
+        }
     }
 
     template <typename Policy>
@@ -280,8 +350,10 @@ class ThermalPlateTask {
                        Policy& policy) -> void {
         constexpr Milliseconds time_overflow_amount = Milliseconds(
             std::numeric_limits<decltype(msg.timestamp_ms)>::max());
+        auto old_status = _state.system_status;
         auto old_error_bitmap = _state.error_bitmap;
         auto current_time = Milliseconds(msg.timestamp_ms);
+        auto time_delta = current_time - _last_update;
 
         // Peltier temperatures are implicitly updated by updating the values
         // in the thermistors
@@ -307,6 +379,22 @@ class ThermalPlateTask {
             msg.back_center, _thermistors[THERM_BACK_CENTER], true, heatsink,
             _offset_constants.a, _offset_constants.bc, _offset_constants.cc);
 
+        // Set the manual error after the conversions so it doesn't get
+        // overridden by the thermistors
+        // NOLINTNEXTLINE(modernize-use-nullptr)
+        if (_state.manual_error_countdown > Milliseconds(0)) {
+            // NOLINTNEXTLINE(modernize-use-nullptr)
+            if (time_delta >= _state.manual_error_countdown) {
+                _state.manual_error_countdown = Milliseconds(0);
+                _state.error_bitmap |=
+                    error_to_bitmap_and_set_thermistor(_state.manual_error);
+                _state.interrupted_by = _state.manual_error;
+                _state.manual_error = errors::ErrorCode::NO_ERROR;
+            } else {
+                _state.manual_error_countdown -= time_delta;
+            }
+        }
+
         if (_state.system_status == State::CONTROLLING &&
             _plate_control.status() ==
                 plate_control::PlateStatus::STEADY_STATE) {
@@ -322,15 +410,12 @@ class ThermalPlateTask {
                 _state.system_status = State::ERROR;
                 policy.set_enabled(false);
                 reset_peltier_filters();
-            } else {
-                // We went from an error state to no error state... so go idle
-                _state.system_status = State::IDLE;
+                _state.interrupted_by = most_relevant_error();
+                send_current_error();
             }
-            send_current_error();
         }
 
         if (_state.system_status == State::CONTROLLING) {
-            auto time_delta = current_time - _last_update;
             if (time_delta.count() < 0) {
                 time_delta += time_overflow_amount;
             }
@@ -344,13 +429,22 @@ class ThermalPlateTask {
                 if (!policy.set_fan(fan_power)) {
                     _state.system_status = State::ERROR;
                     _state.error_bitmap |= State::FAN_ERROR;
+                    update_interrupted_by();
                 }
             }
         }
         // Not an `else` so we can immediately resolve any issue setting outputs
         if (_state.system_status == State::ERROR) {
+            if (old_status != State::ERROR) {
+                update_interrupted_by();
+            }
             policy.set_enabled(false);
             reset_peltier_filters();
+            if (_state.error_bitmap == 0) {
+                _state.system_status = State::IDLE;
+                send_current_state();
+                send_current_error();
+            }
         }
 
         // Cache the timestamp from this message so the time difference for
@@ -361,8 +455,7 @@ class ThermalPlateTask {
     template <typename Policy>
     requires ThermalPlateExecutionPolicy<Policy>
     auto visit_message(const messages::GetPlateTemperatureDebugMessage& msg,
-                       Policy& policy) -> void {
-        static_cast<void>(policy);
+                       Policy&) -> void {
         auto response = messages::GetPlateTemperatureDebugResponse{
             .responding_to_id = msg.id,
             .heat_sink_temp = _thermistors[THERM_HEATSINK].temp_c,
@@ -379,14 +472,13 @@ class ThermalPlateTask {
             .back_right_adc = _thermistors[THERM_BACK_RIGHT].last_adc,
             .back_center_adc = _thermistors[THERM_BACK_CENTER].last_adc,
             .back_left_adc = _thermistors[THERM_BACK_LEFT].last_adc};
-        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
+        std::ignore = _task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response));
     }
 
     template <ThermalPlateExecutionPolicy Policy>
-    auto visit_message(const messages::GetPlateTempMessage& msg, Policy& policy)
+    auto visit_message(const messages::GetPlateTempMessage& msg, Policy&)
         -> void {
-        static_cast<void>(policy);
         auto response = messages::GetPlateTempResponse{
             .responding_to_id = msg.id,
             .current_temp = average_plate_temp(),
@@ -401,8 +493,8 @@ class ThermalPlateTask {
         if (_state.system_status != State::CONTROLLING) {
             response.set_temp = 0.0F;
         }
-        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
+        std::ignore = _task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response));
     }
 
     template <ThermalPlateExecutionPolicy Policy>
@@ -412,15 +504,15 @@ class ThermalPlateTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (_state.system_status == State::ERROR) {
             response.with_error = most_relevant_error();
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
         if (_state.system_status == State::CONTROLLING) {
             // Send busy error
             response.with_error = errors::ErrorCode::THERMAL_PLATE_BUSY;
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
         bool ok = true;
@@ -463,10 +555,11 @@ class ThermalPlateTask {
             response.with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR;
             _state.system_status = State::ERROR;
             _state.error_bitmap |= State::PELTIER_ERROR;
+            update_interrupted_by();
         }
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <ThermalPlateExecutionPolicy Policy>
@@ -476,8 +569,8 @@ class ThermalPlateTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (_state.system_status == State::ERROR) {
             response.with_error = most_relevant_error();
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
         if (policy.set_fan(msg.power)) {
@@ -486,8 +579,8 @@ class ThermalPlateTask {
             response.with_error = errors::ErrorCode::THERMAL_HEATSINK_FAN_ERROR;
         }
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <ThermalPlateExecutionPolicy Policy>
@@ -497,8 +590,8 @@ class ThermalPlateTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (_state.system_status == State::ERROR) {
             response.with_error = most_relevant_error();
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
         // If we aren't actively in a control loop, deactivate fan
@@ -510,8 +603,8 @@ class ThermalPlateTask {
             }
         }
         _fans.manual_control = false;
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <ThermalPlateExecutionPolicy Policy>
@@ -524,8 +617,8 @@ class ThermalPlateTask {
             response.with_error = most_relevant_error();
         }
         _plate_control.set_new_ramp_rate(msg.ramp_rate);
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <ThermalPlateExecutionPolicy Policy>
@@ -535,8 +628,8 @@ class ThermalPlateTask {
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
         if (_state.system_status == State::ERROR) {
             response.with_error = most_relevant_error();
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
         if (_state.system_status == State::PWM_TEST) {
@@ -557,9 +650,10 @@ class ThermalPlateTask {
                 response.with_error = errors::ErrorCode::THERMAL_PELTIER_ERROR;
                 _state.system_status = State::ERROR;
                 _state.error_bitmap |= State::PELTIER_ERROR;
-                static_cast<void>(
+                update_interrupted_by();
+                std::ignore =
                     _task_registry->comms->get_message_queue().try_send(
-                        response));
+                        response);
                 return;
             }
         }
@@ -580,8 +674,8 @@ class ThermalPlateTask {
             }
         }
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <ThermalPlateExecutionPolicy Policy>
@@ -592,8 +686,8 @@ class ThermalPlateTask {
 
         if (_state.system_status == State::ERROR && !msg.from_system) {
             response.with_error = most_relevant_error();
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
 
@@ -602,11 +696,11 @@ class ThermalPlateTask {
         _state.system_status = State::IDLE;
 
         if (msg.from_system) {
-            static_cast<void>(
-                _task_registry->system->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->system->get_message_queue().try_send(response);
         } else {
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
         }
     }
 
@@ -621,29 +715,28 @@ class ThermalPlateTask {
         if (_state.system_status != State::ERROR) {
             _state.system_status = State::IDLE;
         }
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <ThermalPlateExecutionPolicy Policy>
-    auto visit_message(const messages::SetPIDConstantsMessage& msg,
-                       Policy& policy) -> void {
-        static_cast<void>(policy);
+    auto visit_message(const messages::SetPIDConstantsMessage& msg, Policy&)
+        -> void {
         auto response =
             messages::AcknowledgePrevious{.responding_to_id = msg.id};
 
         if (_state.system_status == State::CONTROLLING) {
             response.with_error = errors::ErrorCode::THERMAL_PLATE_BUSY;
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
         if ((msg.p < KP_MIN) || (msg.p > KP_MAX) || (msg.i < KI_MIN) ||
             (msg.i > KI_MAX) || (msg.d < KD_MIN) || (msg.d > KD_MAX)) {
             response.with_error =
                 errors::ErrorCode::THERMAL_CONSTANT_OUT_OF_RANGE;
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
             return;
         }
 
@@ -660,8 +753,8 @@ class ThermalPlateTask {
                 PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
         }
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <ThermalPlateExecutionPolicy Policy>
@@ -691,8 +784,8 @@ class ThermalPlateTask {
             right.second *
             (right.first == PeltierDirection::PELTIER_HEATING ? 1.0 : -1.0);
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <ThermalPlateExecutionPolicy Policy>
@@ -739,8 +832,8 @@ class ThermalPlateTask {
             response.with_error = errors::ErrorCode::SYSTEM_EEPROM_ERROR;
         }
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     template <ThermalPlateExecutionPolicy Policy>
@@ -758,8 +851,51 @@ class ThermalPlateTask {
                                                  .br = _offset_constants.br,
                                                  .cr = _offset_constants.cr};
 
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::GetErrorStateMessage& msg, Policy&)
+        -> void {
+        auto most_relevant = most_relevant_error();
+        auto interrupted = get_and_clear_interrupted_by();
+        auto response = messages::AcknowledgePrevious{
+            .responding_to_id = msg.id,
+            .with_error = ((most_relevant == errors::ErrorCode::NO_ERROR)
+                               ? interrupted
+                               : most_relevant)};
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::SetErrorStateMessage& msg, Policy&)
+        -> void {
+        _state.manual_error = msg.error_to_set;
+        _state.manual_error_countdown = std::max(
+            std::chrono::duration_cast<Milliseconds>(Seconds(msg.delay_s)),
+            Milliseconds(1));
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
+    }
+
+    template <ThermalPlateExecutionPolicy Policy>
+    auto visit_message(const messages::ClearErrorStateMessage& msg, Policy&)
+        -> void {
+        _state.error_bitmap = 0;
+        for (auto& thermistor : _thermistors) {
+            thermistor.error = errors::ErrorCode::NO_ERROR;
+        }
+        std::ignore = get_and_clear_interrupted_by();
+        send_current_state();
+        send_current_error();
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
     }
 
     auto handle_temperature_conversion(
@@ -784,9 +920,9 @@ class ThermalPlateTask {
 #if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
                 auto error_message = messages::HostCommsMessage(
                     messages::ErrorMessage{.code = thermistor.error});
-                static_cast<void>(
+                std::ignore =
                     _task_registry->comms->get_message_queue().try_send(
-                        error_message));
+                        error_message);
 #endif
             } else {
                 _state.error_bitmap &= ~thermistor.error_bit;
@@ -819,29 +955,24 @@ class ThermalPlateTask {
         therm.temp_c = temp;
     }
 
-    [[nodiscard]] auto most_relevant_error() const -> errors::ErrorCode {
-        // Sometimes more than one error can occur at the same time; sometimes,
-        // that means that one has caused the other. We want to track them
-        // separately, but we also sometimes want to respond with just one error
-        // condition that sums everything up. This method is used by code that
-        // wants the single most relevant code for the current error condition.
-        if ((_state.error_bitmap & State::PELTIER_ERROR) ==
-            State::PELTIER_ERROR) {
+    [[nodiscard]] auto calculate_most_relevant_error(uint16_t err_bitmap) const
+        -> errors::ErrorCode {
+        if ((err_bitmap & State::PELTIER_ERROR) == State::PELTIER_ERROR) {
             return errors::ErrorCode::THERMAL_PELTIER_ERROR;
         }
-        if ((_state.error_bitmap & State::FAN_ERROR) == State::FAN_ERROR) {
+        if ((err_bitmap & State::FAN_ERROR) == State::FAN_ERROR) {
             return errors::ErrorCode::THERMAL_HEATSINK_FAN_ERROR;
         }
 
         for (auto therm : _thermistors) {
-            if ((_state.error_bitmap & therm.error_bit) == therm.error_bit) {
+            if ((err_bitmap & therm.error_bit) == therm.error_bit) {
                 return therm.error;
             }
         }
         // Thermistor out-of-range errors are prioritized over drift because
         // the former may be the root cause of the latter; sending a drift
         // error when a thermistor is entirely disconnected is misleading.
-        if ((_state.error_bitmap & State::DRIFT_ERROR) == State::DRIFT_ERROR) {
+        if ((err_bitmap & State::DRIFT_ERROR) == State::DRIFT_ERROR) {
             return errors::ErrorCode::THERMAL_DRIFT;
         }
         return errors::ErrorCode::NO_ERROR;
@@ -888,6 +1019,7 @@ class ThermalPlateTask {
             policy.set_enabled(false);
             _state.system_status = State::ERROR;
             _state.error_bitmap |= State::PELTIER_ERROR;
+            _state.interrupted_by = most_relevant_error();
             return false;
         }
         if (!_fans.manual_control) {
@@ -897,6 +1029,7 @@ class ThermalPlateTask {
                 policy.set_enabled(false);
                 _state.system_status = State::ERROR;
                 _state.error_bitmap |= State::FAN_ERROR;
+                _state.interrupted_by = most_relevant_error();
                 return false;
             }
         }
@@ -939,11 +1072,15 @@ class ThermalPlateTask {
      *
      */
     auto send_current_error() -> void {
+        auto relevant = most_relevant_error();
+        auto interrupted_by = _state.interrupted_by;
         auto error_msg = messages::UpdateTaskErrorState{
             .task = messages::UpdateTaskErrorState::Tasks::THERMAL_PLATE,
-            .current_error = most_relevant_error()};
-        static_cast<void>(
-            _task_registry->system->get_message_queue().try_send(error_msg));
+            .current_error = relevant == errors::ErrorCode::NO_ERROR
+                                 ? interrupted_by
+                                 : relevant};
+        std::ignore =
+            _task_registry->system->get_message_queue().try_send(error_msg);
     }
 
     /**
@@ -975,8 +1112,8 @@ class ThermalPlateTask {
         }
 
         auto message = messages::UpdatePlateState{.state = state};
-        static_cast<void>(
-            _task_registry->system->get_message_queue().try_send(message));
+        std::ignore =
+            _task_registry->system->get_message_queue().try_send(message);
     }
 
     /**
@@ -1001,6 +1138,23 @@ class ThermalPlateTask {
         _peltier_left.filter.reset();
         _peltier_right.filter.reset();
         _peltier_center.filter.reset();
+    }
+
+    auto set_interrupted_by(errors::ErrorCode error) -> void {
+        if (_state.interrupted_by == errors::ErrorCode::NO_ERROR &&
+            error != errors::ErrorCode::NO_ERROR) {
+            _state.interrupted_by = error;
+        }
+    }
+
+    auto update_interrupted_by() -> void {
+        set_interrupted_by(most_relevant_error());
+    }
+
+    auto get_and_clear_interrupted_by() -> errors::ErrorCode {
+        auto was_interrupted = _state.interrupted_by;
+        _state.interrupted_by = errors::ErrorCode::NO_ERROR;
+        return was_interrupted;
     }
 
     Queue& _message_queue;

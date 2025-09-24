@@ -425,6 +425,20 @@ struct SetLightsDebugMessage {
     bool enable;
 };
 
+struct GetErrorStateMessage {
+    uint32_t id;
+};
+
+struct ClearErrorStateMessage {
+    uint32_t id;
+};
+
+struct SetErrorStateMessage {
+    uint32_t id;
+    errors::ErrorCode error_to_set;
+    uint32_t delay_s;
+};
+
 using SystemMessage =
     ::std::variant<std::monostate, EnterBootloaderMessage, AcknowledgePrevious,
                    SetSerialNumberMessage, GetSystemInfoMessage,
@@ -439,19 +453,20 @@ using HostCommsMessage = ::std::variant<
     GetLidStatusResponse, GetResetReasonResponse, GetPlatePowerResponse,
     GetLidPowerResponse, GetOffsetConstantsResponse, SealStepperDebugResponse,
     DeactivateAllResponse, GetLidSwitchesResponse, GetFrontButtonResponse>;
-using ThermalPlateMessage =
-    ::std::variant<std::monostate, ThermalPlateTempReadComplete,
-                   GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
-                   SetFanManualMessage, GetPlateTempMessage, SetRampRateMessage,
-                   SetPlateTemperatureMessage, DeactivatePlateMessage,
-                   SetPIDConstantsMessage, SetFanAutomaticMessage,
-                   GetThermalPowerMessage, SetOffsetConstantsMessage,
-                   GetOffsetConstantsMessage, DeactivateAllMessage>;
+using ThermalPlateMessage = ::std::variant<
+    std::monostate, ThermalPlateTempReadComplete,
+    GetPlateTemperatureDebugMessage, SetPeltierDebugMessage,
+    SetFanManualMessage, GetPlateTempMessage, SetRampRateMessage,
+    SetPlateTemperatureMessage, DeactivatePlateMessage, SetPIDConstantsMessage,
+    SetFanAutomaticMessage, GetThermalPowerMessage, SetOffsetConstantsMessage,
+    GetOffsetConstantsMessage, DeactivateAllMessage, GetErrorStateMessage,
+    ClearErrorStateMessage, SetErrorStateMessage>;
 using LidHeaterMessage = ::std::variant<
     std::monostate, LidTempReadComplete, GetLidTemperatureDebugMessage,
     SetHeaterDebugMessage, GetLidTempMessage, SetLidTemperatureMessage,
     DeactivateLidHeatingMessage, SetPIDConstantsMessage, GetThermalPowerMessage,
-    DeactivateAllMessage, SetLidFansMessage>;
+    DeactivateAllMessage, SetLidFansMessage, GetErrorStateMessage,
+    ClearErrorStateMessage, SetErrorStateMessage>;
 using MotorMessage = ::std::variant<
     std::monostate, ActuateSolenoidMessage, LidStepperDebugMessage,
     LidStepperComplete, SealStepperDebugMessage, SealStepperComplete,

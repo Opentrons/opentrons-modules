@@ -1,15 +1,14 @@
 #include "catch2/catch.hpp"
 #include "gcode_test_harness.hpp"
 
-SCENARIO("GetBoardRevision (M900.D) parser works", "[gcode][parse][m900d]") {
+SCENARIO("ClearErrorState (M413) parser works", "[gcode][parse][m413]") {
     GIVEN("a response buffer large enough for the formatted response") {
         std::string buffer(256, 'c');
         WHEN("filling response") {
-            auto written = gcode::GetBoardRevision::write_response_into(
-                buffer.begin(), buffer.end(), 1);
+            auto written = gcode::ClearErrorState::write_response_into(
+                buffer.begin(), buffer.end(), true);
             THEN("the response should be written in full") {
-                REQUIRE_THAT(buffer,
-                             Catch::Matchers::StartsWith("M900.D C:1 OK\n"));
+                REQUIRE_THAT(buffer, Catch::Matchers::StartsWith("M413 OK\n"));
                 REQUIRE(written != buffer.begin());
             }
         }
@@ -18,10 +17,10 @@ SCENARIO("GetBoardRevision (M900.D) parser works", "[gcode][parse][m900d]") {
     GIVEN("a response buffer not large enough for the formatted response") {
         std::string buffer(16, 'c');
         WHEN("filling response") {
-            auto written = gcode::GetBoardRevision::write_response_into(
-                buffer.begin(), buffer.begin() + 7, 1);
+            auto written = gcode::ClearErrorState::write_response_into(
+                buffer.begin(), buffer.begin() + 7, true);
             THEN("the response should write only up to the available space") {
-                std::string response = "M900.Dcccccccccc";
+                std::string response = "M413cccccccccc";
                 response[6] = '\0';
                 REQUIRE_THAT(buffer, Catch::Matchers::Equals(response));
                 REQUIRE(written != buffer.begin());
@@ -29,13 +28,24 @@ SCENARIO("GetBoardRevision (M900.D) parser works", "[gcode][parse][m900d]") {
         }
     }
     GIVEN("valid input") {
-        std::string input = "M900.D\n";
+        std::string input = "M413\n";
         WHEN("parsing input") {
             auto parsed =
-                gcode::GetBoardRevision::parse(input.begin(), input.end());
+                gcode::ClearErrorState::parse(input.begin(), input.end());
             THEN("the gcode is parsed") {
                 REQUIRE(parsed.first.has_value());
                 REQUIRE(parsed.second != input.begin());
+            }
+        }
+    }
+    GIVEN("invalid input") {
+        std::string input = "M4asda\n";
+        WHEN("parsing input") {
+            auto parsed =
+                gcode::ClearErrorState::parse(input.begin(), input.end());
+            THEN("the gcode is not parsed") {
+                REQUIRE(!parsed.first.has_value());
+                REQUIRE(parsed.second == input.begin());
             }
         }
     }

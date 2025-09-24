@@ -1,10 +1,7 @@
 #include <array>
 
 #include "catch2/catch.hpp"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-#include "thermocycler-gen2/gcodes.hpp"
-#pragma GCC diagnostic pop
+#include "gcode_test_harness.hpp"
 
 SCENARIO("GetPlateTemperatureDebug (M105.D) parser works",
          "[gcode][parse][m105.d]") {

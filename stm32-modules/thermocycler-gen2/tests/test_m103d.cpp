@@ -1,8 +1,5 @@
 #include "catch2/catch.hpp"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-#include "thermocycler-gen2/gcodes.hpp"
-#pragma GCC diagnostic pop
+#include "gcode_test_harness.hpp"
 
 SCENARIO("GetThermalPowerDebug (M103.D) parser works",
          "[gocde][parse][m103.d]") {

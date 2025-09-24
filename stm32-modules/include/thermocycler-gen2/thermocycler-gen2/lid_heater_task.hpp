@@ -12,6 +12,7 @@
 #include "core/pid.hpp"
 #include "core/thermistor_conversion.hpp"
 #include "hal/message_queue.hpp"
+#include "messages.hpp"
 #include "thermistor_lookups.hpp"
 #include "thermocycler-gen2/errors.hpp"
 #include "thermocycler-gen2/messages.hpp"
@@ -30,15 +31,18 @@ using namespace thermal_general;
 
 template <typename Policy>
 concept LidHeaterExecutionPolicy = requires(Policy& p, const Policy& cp) {
-    // A set_heater_power function to set the power of the heater as
-    // a percentage from 0 to 1.0. Automatically toggles the Enable
-    // pin.
+    // A set_heater_power function to set the
+    // power of the heater as a percentage
+    // from 0 to 1.0. Automatically toggles
+    // the Enable pin.
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
     { p.set_heater_power(1.0) } -> std::same_as<bool>;
-    // A get_heater_power function to get the power of the heater as
-    // a percentage from 0 to 1.0.
+    // A get_heater_power function to get the
+    // power of the heater as a percentage
+    // from 0 to 1.0.
     { p.get_heater_power() } -> std::same_as<double>;
-    // A function to enable or disable the lid fans
+    // A function to enable or disable the
+    // lid fans
     { p.set_lid_fans(true) } -> std::same_as<void>;
 };
 
@@ -51,6 +55,9 @@ struct State {
     };
     Status system_status;
     uint16_t error_bitmap;
+    errors::ErrorCode manual_error;
+    std::chrono::milliseconds manual_error_countdown;
+    errors::ErrorCode interrupted_by;
     static constexpr uint16_t LID_THERMISTOR_ERROR = (1 << 0);
     static constexpr uint16_t HEATER_POWER_ERROR = (1 << 1);
 };
@@ -96,7 +103,11 @@ class LidHeaterTask {
               .error_bit = State::LID_THERMISTOR_ERROR},
           _converter(THERMISTOR_CIRCUIT_BIAS_RESISTANCE_KOHM, ADC_BIT_MAX,
                      false),
-          _state{.system_status = State::IDLE, .error_bitmap = 0},
+          _state{.system_status = State::IDLE,
+                 .error_bitmap = 0,
+                 .manual_error = errors::ErrorCode::NO_ERROR,
+                 .manual_error_countdown = Milliseconds(0),
+                 .interrupted_by = errors::ErrorCode::NO_ERROR},
           _pid(DEFAULT_KP, DEFAULT_KI, DEFAULT_KD, CONTROL_PERIOD_SECONDS, 1.0,
                -1.0),
           _last_update(0) {}
@@ -136,308 +147,12 @@ class LidHeaterTask {
         // anywhere up to the provided timeout, which drives the controller
         // frequency.
 
-        static_cast<void>(_message_queue.recv(&message));
+        _message_queue.recv(&message);
         std::visit(
             [this, &policy](const auto& msg) -> void {
                 this->visit_message(msg, policy);
             },
             message);
-    }
-
-  private:
-    template <typename Policy>
-    requires LidHeaterExecutionPolicy<Policy>
-    auto visit_message(const std::monostate& _ignore, Policy& policy) -> void {
-        static_cast<void>(policy);
-        static_cast<void>(_ignore);
-    }
-
-    template <typename Policy>
-    requires LidHeaterExecutionPolicy<Policy>
-    auto visit_message(const messages::LidTempReadComplete& msg, Policy& policy)
-        -> void {
-        constexpr Milliseconds time_overflow_amount = Milliseconds(
-            std::numeric_limits<decltype(msg.timestamp_ms)>::max());
-        auto old_error_bitmap = _state.error_bitmap;
-        auto current_time = Milliseconds(msg.timestamp_ms);
-        handle_temperature_conversion(msg.lid_temp, _thermistor);
-        if ((old_error_bitmap != _state.error_bitmap) ||
-            (_state.error_bitmap != 0)) {
-            if (_state.error_bitmap != 0) {
-                // We entered an error state. Disable power output.
-                _state.system_status = State::ERROR;
-                policy.set_heater_power(0.0F);
-            } else {
-                // We went from an error state to no error state... so go idle
-                _state.system_status = State::IDLE;
-            }
-        }
-
-        // If we're in a controlling state, we now update the heater output
-        if (_state.system_status == State::CONTROLLING) {
-            auto time_delta = current_time - _last_update;
-            if (time_delta.count() < 0) {
-                time_delta += time_overflow_amount;
-            }
-            auto power = update_control(
-                std::chrono::duration_cast<Seconds>(time_delta).count());
-            auto ret = policy.set_heater_power(power);
-            if (!ret) {
-                policy.set_heater_power(0.0F);
-                _state.system_status = State::ERROR;
-                _state.error_bitmap |= State::HEATER_POWER_ERROR;
-            }
-        } else if (_state.system_status != State::HEATER_TEST) {
-            policy.set_heater_power(0.0F);
-        }
-
-        // Cache the timestamp from this message so the time difference for
-        // the next reading is correct
-        _last_update = current_time;
-    }
-
-    template <typename Policy>
-    requires LidHeaterExecutionPolicy<Policy>
-    auto visit_message(const messages::GetLidTemperatureDebugMessage& msg,
-                       Policy& policy) -> void {
-        static_cast<void>(policy);
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-        auto response = messages::GetLidTemperatureDebugResponse{
-            .responding_to_id = msg.id,
-            .lid_temp = _thermistor.temp_c,
-            .lid_adc = _thermistor.last_adc};
-        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
-    }
-
-    template <typename Policy>
-    requires LidHeaterExecutionPolicy<Policy>
-    auto visit_message(const messages::GetLidTempMessage& msg, Policy& policy)
-        -> void {
-        static_cast<void>(policy);
-        auto response =
-            messages::GetLidTempResponse{.responding_to_id = msg.id,
-                                         .current_temp = _thermistor.temp_c,
-                                         .set_temp = _setpoint_c};
-        if (_state.system_status != State::CONTROLLING) {
-            response.set_temp = 0.0F;
-        }
-        static_cast<void>(_task_registry->comms->get_message_queue().try_send(
-            messages::HostCommsMessage(response)));
-    }
-
-    template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::SetHeaterDebugMessage& msg,
-                       Policy& policy) -> void {
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        if (_state.system_status == State::ERROR) {
-            response.with_error = most_relevant_error();
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
-            return;
-        }
-        if (_state.system_status == State::CONTROLLING) {
-            // Send busy error
-            response.with_error = errors::ErrorCode::THERMAL_LID_BUSY;
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
-            return;
-        }
-
-        if (policy.set_heater_power(msg.power)) {
-            _state.system_status =
-                (msg.power > 0.0) ? State::HEATER_TEST : State::IDLE;
-        } else {
-            response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
-            _state.system_status = State::ERROR;
-            _state.error_bitmap |= State::HEATER_POWER_ERROR;
-        }
-
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
-    }
-
-    template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::SetLidTemperatureMessage& msg,
-                       Policy& policy) -> void {
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = msg.id};
-        if (_state.system_status == State::ERROR) {
-            response.with_error = most_relevant_error();
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
-            return;
-        }
-        if (_state.system_status == State::HEATER_TEST) {
-            auto ret = policy.set_heater_power(0.0F);
-            if (!ret) {
-                response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
-                _state.system_status = State::ERROR;
-                _state.error_bitmap |= State::HEATER_POWER_ERROR;
-                static_cast<void>(
-                    _task_registry->comms->get_message_queue().try_send(
-                        response));
-                return;
-            }
-        }
-
-        if (msg.setpoint <= 0.0F) {
-            _setpoint_c = 0.0F;
-            _state.system_status = State::IDLE;
-        } else {
-            _setpoint_c = msg.setpoint;
-            _state.system_status = State::CONTROLLING;
-            _pid.reset();
-        }
-
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
-    }
-
-    template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::DeactivateLidHeatingMessage& msg,
-                       Policy& policy) -> void {
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = msg.id};
-
-        if (_state.system_status == State::ERROR && !msg.from_system) {
-            std::ignore = policy.set_heater_power(0.0F);
-            response.with_error = most_relevant_error();
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
-            return;
-        }
-
-        auto ret = policy.set_heater_power(0.0F);
-        _state.system_status = State::IDLE;
-
-        if (!ret) {
-            response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
-            _state.system_status = State::ERROR;
-            _state.error_bitmap |= State::HEATER_POWER_ERROR;
-        }
-
-        if (msg.from_system) {
-            static_cast<void>(
-                _task_registry->system->get_message_queue().try_send(response));
-        } else {
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
-        }
-    }
-
-    template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::DeactivateAllMessage& msg,
-                       Policy& policy) -> void {
-        auto response =
-            messages::DeactivateAllResponse{.responding_to_id = msg.id};
-
-        static_cast<void>(policy.set_heater_power(0.0F));
-        if (_state.system_status != State::ERROR) {
-            _state.system_status = State::IDLE;
-        }
-
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
-    }
-
-    template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::SetPIDConstantsMessage& msg,
-                       Policy& policy) -> void {
-        static_cast<void>(policy);
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = msg.id};
-
-        if (_state.system_status == State::CONTROLLING) {
-            response.with_error = errors::ErrorCode::THERMAL_LID_BUSY;
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
-            return;
-        }
-        if ((msg.p < KP_MIN) || (msg.p > KP_MAX) || (msg.i < KI_MIN) ||
-            (msg.i > KI_MAX) || (msg.d < KD_MIN) || (msg.d > KD_MAX)) {
-            response.with_error =
-                errors::ErrorCode::THERMAL_CONSTANT_OUT_OF_RANGE;
-            static_cast<void>(
-                _task_registry->comms->get_message_queue().try_send(response));
-            return;
-        }
-
-        _pid = PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
-    }
-
-    template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::GetThermalPowerMessage& msg,
-                       Policy& policy) -> void {
-        auto response = messages::GetLidPowerResponse{
-            .responding_to_id = msg.id, .heater = policy.get_heater_power()};
-
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
-    }
-
-    template <LidHeaterExecutionPolicy Policy>
-    auto visit_message(const messages::SetLidFansMessage& msg, Policy& policy)
-        -> void {
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = msg.id};
-
-        policy.set_lid_fans(msg.enable);
-
-        static_cast<void>(
-            _task_registry->comms->get_message_queue().try_send(response));
-    }
-
-    auto handle_temperature_conversion(uint16_t conversion_result,
-                                       Thermistor& thermistor) -> void {
-        auto visitor = [this, &thermistor](const auto value) -> void {
-            this->visit_conversion(thermistor, value);
-        };
-        thermistor.last_adc = conversion_result;
-        auto old_error = thermistor.error;
-        std::visit(visitor, _converter.convert(conversion_result));
-        if (old_error != thermistor.error) {
-            if (thermistor.error != errors::ErrorCode::NO_ERROR) {
-                _state.error_bitmap |= thermistor.error_bit;
-#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
-                auto error_message = messages::HostCommsMessage(
-                    messages::ErrorMessage{.code = thermistor.error});
-                static_cast<void>(
-                    _task_registry->comms->get_message_queue().try_send(
-                        error_message));
-#endif
-            } else {
-                _state.error_bitmap &= ~thermistor.error_bit;
-            }
-        }
-    }
-
-    auto visit_conversion(Thermistor& therm,
-                          const thermistor_conversion::Error error) -> void {
-        switch (error) {
-            case thermistor_conversion::Error::OUT_OF_RANGE_LOW: {
-                therm.temp_c = 0;
-                therm.error = therm.disconnected_error;
-                break;
-            }
-            case thermistor_conversion::Error::OUT_OF_RANGE_HIGH: {
-                therm.temp_c = 0;
-                therm.error = therm.short_error;
-                break;
-            }
-        }
-    }
-
-    auto visit_conversion(Thermistor& therm, const double temp) -> void {
-        if (temp > therm.overtemp_limit_c) {
-            therm.error = therm.overtemp_error;
-        } else {
-            therm.error = errors::ErrorCode::NO_ERROR;
-        }
-        therm.temp_c = temp;
     }
 
     [[nodiscard]] auto most_relevant_error() const -> errors::ErrorCode {
@@ -458,6 +173,380 @@ class LidHeaterTask {
         return errors::ErrorCode::NO_ERROR;
     }
 
+  private:
+    template <typename Policy>
+    requires LidHeaterExecutionPolicy<Policy>
+    auto visit_message(const std::monostate&, Policy&) -> void {}
+
+    auto error_to_error_bitmap_and_set_thermistor(errors::ErrorCode error)
+        -> uint16_t {
+        if (error == errors::ErrorCode::THERMAL_HEATER_ERROR) {
+            return State::HEATER_POWER_ERROR;
+        }
+        // Calculate the bitmap that gives rise to this error code, and also
+        // set the appropriate thermistor error flag if this is a thermistor
+        // error. Note that we don't want to override real thermistor errors,
+        // so if there is one just return early.
+        if (_thermistor.error != errors::ErrorCode::NO_ERROR) {
+            return 0;
+        }
+        switch (error) {
+            case errors::ErrorCode::THERMISTOR_LID_DISCONNECTED:
+            case errors::ErrorCode::THERMISTOR_LID_OVERTEMP:
+            case errors::ErrorCode::THERMISTOR_LID_SHORT: {
+                _thermistor.error = error;
+                return State::LID_THERMISTOR_ERROR;
+            }
+            default:
+                return 0;
+        }
+    }
+
+    template <typename Policy>
+    requires LidHeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::LidTempReadComplete& msg, Policy& policy)
+        -> void {
+        constexpr Milliseconds time_overflow_amount = Milliseconds(
+            std::numeric_limits<decltype(msg.timestamp_ms)>::max());
+        auto old_error_bitmap = _state.error_bitmap;
+        auto current_time = Milliseconds(msg.timestamp_ms);
+        auto time_delta = current_time - _last_update;
+        auto old_status = _state.system_status;
+        handle_temperature_conversion(msg.lid_temp, _thermistor);
+
+        // NOLINTNEXTLINE(modernize-use-nullptr)
+        if (_state.manual_error_countdown > Milliseconds(0)) {
+            // NOLINTNEXTLINE(modernize-use-nullptr)
+            if (time_delta >= _state.manual_error_countdown) {
+                _state.manual_error_countdown = Milliseconds(0);
+                _state.error_bitmap |= error_to_error_bitmap_and_set_thermistor(
+                    _state.manual_error);
+                _state.interrupted_by = _state.manual_error;
+                _state.manual_error = errors::ErrorCode::NO_ERROR;
+            } else {
+                _state.manual_error_countdown -= time_delta;
+            }
+        }
+
+        if ((old_error_bitmap != _state.error_bitmap) ||
+            (_state.error_bitmap != 0)) {
+            if (_state.error_bitmap != 0) {
+                // We entered an error state. Disable power output.
+                _state.system_status = State::ERROR;
+                policy.set_heater_power(0.0F);
+                update_interrupted_by();
+            }
+        }
+
+        // If we're in a controlling state, we now update the heater output
+        if (_state.system_status == State::CONTROLLING) {
+            auto time_delta = current_time - _last_update;
+            if (time_delta.count() < 0) {
+                time_delta += time_overflow_amount;
+            }
+            auto power = update_control(
+                std::chrono::duration_cast<Seconds>(time_delta).count());
+            auto ret = policy.set_heater_power(power);
+            if (!ret) {
+                policy.set_heater_power(0.0F);
+                _state.system_status = State::ERROR;
+                _state.error_bitmap |= State::HEATER_POWER_ERROR;
+                update_interrupted_by();
+            }
+        } else if (_state.system_status != State::HEATER_TEST) {
+            policy.set_heater_power(0.0F);
+        }
+        if (_state.system_status == State::ERROR) {
+            if (old_status != State::ERROR) {
+                update_interrupted_by();
+            }
+            if (_state.error_bitmap == 0) {
+                _state.system_status = State::IDLE;
+            }
+        }
+
+        // Cache the timestamp from this message so the time difference for
+        // the next reading is correct
+        _last_update = current_time;
+    }
+
+    template <typename Policy>
+    requires LidHeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::GetLidTemperatureDebugMessage& msg,
+                       Policy&) -> void {
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        auto response = messages::GetLidTemperatureDebugResponse{
+            .responding_to_id = msg.id,
+            .lid_temp = _thermistor.temp_c,
+            .lid_adc = _thermistor.last_adc};
+        std::ignore = _task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response));
+    }
+
+    template <typename Policy>
+    requires LidHeaterExecutionPolicy<Policy>
+    auto visit_message(const messages::GetLidTempMessage& msg, Policy&)
+        -> void {
+        auto response =
+            messages::GetLidTempResponse{.responding_to_id = msg.id,
+                                         .current_temp = _thermistor.temp_c,
+                                         .set_temp = _setpoint_c};
+        if (_state.system_status != State::CONTROLLING) {
+            response.set_temp = 0.0F;
+        }
+        std::ignore = _task_registry->comms->get_message_queue().try_send(
+            messages::HostCommsMessage(response));
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::SetHeaterDebugMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
+            return;
+        }
+        if (_state.system_status == State::CONTROLLING) {
+            // Send busy error
+            response.with_error = errors::ErrorCode::THERMAL_LID_BUSY;
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
+            return;
+        }
+
+        if (policy.set_heater_power(msg.power)) {
+            _state.system_status =
+                (msg.power > 0.0) ? State::HEATER_TEST : State::IDLE;
+        } else {
+            response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
+            _state.system_status = State::ERROR;
+            _state.error_bitmap |= State::HEATER_POWER_ERROR;
+        }
+
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::SetLidTemperatureMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        if (_state.system_status == State::ERROR) {
+            response.with_error = most_relevant_error();
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
+            return;
+        }
+        if (_state.system_status == State::HEATER_TEST) {
+            auto ret = policy.set_heater_power(0.0F);
+            if (!ret) {
+                response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
+                _state.system_status = State::ERROR;
+                _state.error_bitmap |= State::HEATER_POWER_ERROR;
+                std::ignore =
+                    _task_registry->comms->get_message_queue().try_send(
+                        response);
+                return;
+            }
+        }
+
+        if (msg.setpoint <= 0.0F) {
+            _setpoint_c = 0.0F;
+            _state.system_status = State::IDLE;
+        } else {
+            _setpoint_c = msg.setpoint;
+            _state.system_status = State::CONTROLLING;
+            _pid.reset();
+        }
+
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::DeactivateLidHeatingMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        if (_state.system_status == State::ERROR && !msg.from_system) {
+            std::ignore = policy.set_heater_power(0.0F);
+            response.with_error = most_relevant_error();
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
+            return;
+        }
+
+        auto ret = policy.set_heater_power(0.0F);
+        _state.system_status = State::IDLE;
+
+        if (!ret) {
+            response.with_error = errors::ErrorCode::THERMAL_HEATER_ERROR;
+            _state.system_status = State::ERROR;
+            _state.error_bitmap |= State::HEATER_POWER_ERROR;
+        }
+
+        if (msg.from_system) {
+            std::ignore =
+                _task_registry->system->get_message_queue().try_send(response);
+        } else {
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
+        }
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::DeactivateAllMessage& msg,
+                       Policy& policy) -> void {
+        auto response =
+            messages::DeactivateAllResponse{.responding_to_id = msg.id};
+
+        std::ignore = policy.set_heater_power(0.0F);
+        if (_state.system_status != State::ERROR) {
+            _state.system_status = State::IDLE;
+        }
+
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::SetPIDConstantsMessage& msg, Policy&)
+        -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        if (_state.system_status == State::CONTROLLING) {
+            response.with_error = errors::ErrorCode::THERMAL_LID_BUSY;
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
+            return;
+        }
+        if ((msg.p < KP_MIN) || (msg.p > KP_MAX) || (msg.i < KI_MIN) ||
+            (msg.i > KI_MAX) || (msg.d < KD_MIN) || (msg.d > KD_MAX)) {
+            response.with_error =
+                errors::ErrorCode::THERMAL_CONSTANT_OUT_OF_RANGE;
+            std::ignore =
+                _task_registry->comms->get_message_queue().try_send(response);
+            return;
+        }
+
+        _pid = PID(msg.p, msg.i, msg.d, CONTROL_PERIOD_SECONDS, 1.0, -1.0);
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::GetThermalPowerMessage& msg,
+                       Policy& policy) -> void {
+        auto response = messages::GetLidPowerResponse{
+            .responding_to_id = msg.id, .heater = policy.get_heater_power()};
+
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::SetLidFansMessage& msg, Policy& policy)
+        -> void {
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = msg.id};
+
+        policy.set_lid_fans(msg.enable);
+
+        std::ignore =
+            _task_registry->comms->get_message_queue().try_send(response);
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::GetErrorStateMessage& msg, Policy&)
+        -> void {
+        auto current_error = most_relevant_error();
+        auto interrupted_by = get_and_clear_interrupted_by();
+        auto ack = messages::AcknowledgePrevious{
+            .responding_to_id = msg.id,
+            .with_error = current_error == errors::ErrorCode::NO_ERROR
+                              ? interrupted_by
+                              : current_error};
+        std::ignore = _task_registry->comms->get_message_queue().try_send(ack);
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::SetErrorStateMessage& msg, Policy&)
+        -> void {
+        _state.manual_error = msg.error_to_set;
+        _state.manual_error_countdown = std::max(
+            std::chrono::duration_cast<Milliseconds>(Seconds(msg.delay_s)),
+            Milliseconds(1));
+        auto ack = messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        std::ignore = _task_registry->comms->get_message_queue().try_send(ack);
+    }
+
+    template <LidHeaterExecutionPolicy Policy>
+    auto visit_message(const messages::ClearErrorStateMessage& msg, Policy&)
+        -> void {
+        _state.error_bitmap = 0;
+        _thermistor.error = errors::ErrorCode::NO_ERROR;
+        std::ignore = get_and_clear_interrupted_by();
+        auto ack = messages::AcknowledgePrevious{.responding_to_id = msg.id};
+        std::ignore = _task_registry->comms->get_message_queue().try_send(ack);
+    }
+
+    auto handle_temperature_conversion(uint16_t conversion_result,
+                                       Thermistor& thermistor) -> void {
+        auto visitor = [this, &thermistor](const auto value) -> void {
+            this->visit_conversion(thermistor, value);
+        };
+        thermistor.last_adc = conversion_result;
+        auto old_error = thermistor.error;
+        std::visit(visitor, _converter.convert(conversion_result));
+        if (old_error != thermistor.error) {
+            if (thermistor.error != errors::ErrorCode::NO_ERROR) {
+                _state.error_bitmap |= thermistor.error_bit;
+#if defined(SYSTEM_ALLOW_ASYNC_ERRORS)
+                auto error_message = messages::HostCommsMessage(
+                    messages::ErrorMessage{.code = thermistor.error});
+                std::ignore =
+                    _task_registry->comms->get_message_queue().try_send(
+                        error_message);
+#endif
+            } else {
+                _state.error_bitmap &= ~thermistor.error_bit;
+            }
+        }
+    }
+
+    auto visit_conversion(Thermistor& therm,
+                          const thermistor_conversion::Error error) -> void {
+        switch (error) {
+            case thermistor_conversion::Error::OUT_OF_RANGE_LOW: {
+                therm.temp_c = 0;
+                therm.error = therm.disconnected_error;
+                break;
+            }
+            case thermistor_conversion::Error::OUT_OF_RANGE_HIGH: {
+                therm.temp_c = 0;
+                therm.error = therm.short_error;
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    auto visit_conversion(Thermistor& therm, const double temp) -> void {
+        if (temp > therm.overtemp_limit_c) {
+            therm.error = therm.overtemp_error;
+        } else {
+            therm.error = errors::ErrorCode::NO_ERROR;
+        }
+        therm.temp_c = temp;
+    }
+
     [[nodiscard]] auto update_control(double time_delta) -> double {
         auto proportional_band = 1.0;
         if (_pid.kp() != 0.0) {
@@ -472,6 +561,23 @@ class LidHeaterTask {
 
         // Start integration once we're within the proportional band
         return _pid.compute(_setpoint_c - _thermistor.temp_c, time_delta);
+    }
+
+    auto set_interrupted_by(errors::ErrorCode error) -> void {
+        if (_state.interrupted_by == errors::ErrorCode::NO_ERROR &&
+            error != errors::ErrorCode::NO_ERROR) {
+            _state.interrupted_by = error;
+        }
+    }
+
+    auto update_interrupted_by() -> void {
+        set_interrupted_by(most_relevant_error());
+    }
+
+    auto get_and_clear_interrupted_by() -> errors::ErrorCode {
+        auto interrupted = _state.interrupted_by;
+        _state.interrupted_by = errors::ErrorCode::NO_ERROR;
+        return interrupted;
     }
 
     Queue& _message_queue;

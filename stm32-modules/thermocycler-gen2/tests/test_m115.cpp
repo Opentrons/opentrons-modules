@@ -1,11 +1,8 @@
 #include <array>
 
 #include "catch2/catch.hpp"
+#include "gcode_test_harness.hpp"
 #include "systemwide.h"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-#include "thermocycler-gen2/gcodes.hpp"
-#pragma GCC diagnostic pop
 
 SCENARIO("GetSystemInfo (M115) response works", "[gcode][parse][m115]") {
     GIVEN("a response buffer large enough for the formatted response") {

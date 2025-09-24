@@ -1,5 +1,5 @@
 #include "catch2/catch.hpp"
-#include "thermocycler-gen2/gcodes.hpp"
+#include "gcode_test_harness.hpp"
 
 SCENARIO("SetFanManual (M106) parser works", "[gcode][parse][m106]") {
     GIVEN("a response buffer large enough for the formatted response") {

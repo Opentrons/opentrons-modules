@@ -1,8 +1,5 @@
 #include "catch2/catch.hpp"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-#include "thermocycler-gen2/gcodes.hpp"
-#pragma GCC diagnostic pop
+#include "gcode_test_harness.hpp"
 
 SCENARIO("gcode m241.d works", "[gcode][parse][m241d]") {
     GIVEN("a response buffer large enough for the formatted response") {

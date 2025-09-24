@@ -972,6 +972,97 @@ SCENARIO("message passing for ack-only gcodes from usb input") {
                 }
             }
         }
+        WHEN("sending a GetErrorState") {
+            std::string message_text = std::string("M411\n");
+            auto message_obj =
+                messages::HostCommsMessage(messages::IncomingMessageFromHost(
+                    &*message_text.begin(), &*message_text.end()));
+            tasks->get_host_comms_queue().backing_deque.push_back(message_obj);
+            std::ignore = tasks->get_host_comms_task().run_once(tx_buf.begin(),
+                                                                tx_buf.end());
+            THEN("the task should message lid and thermal tasks") {
+                REQUIRE(tasks->get_thermal_plate_queue().backing_deque.size() !=
+                        0);
+                auto plate_message =
+                    tasks->get_thermal_plate_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::GetErrorStateMessage>(
+                    plate_message));
+                auto plate_get_error =
+                    std::get<messages::GetErrorStateMessage>(plate_message);
+                REQUIRE(tasks->get_lid_heater_queue().backing_deque.size() !=
+                        0);
+                auto lid_message =
+                    tasks->get_lid_heater_queue().backing_deque.front();
+                REQUIRE(std::holds_alternative<messages::GetErrorStateMessage>(
+                    lid_message));
+                auto lid_get_error =
+                    std::get<messages::GetErrorStateMessage>(lid_message);
+
+                AND_WHEN("getting two good responses") {
+                    std::string tx_buf_1(128, 'c');
+                    std::string tx_buf_2(128, 'c');
+                    auto response_1 = messages::AcknowledgePrevious{
+                        .responding_to_id = plate_get_error.id};
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response_1);
+                    auto response_2 = messages::AcknowledgePrevious{
+                        .responding_to_id = lid_get_error.id};
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response_2);
+                    THEN("two acks should be written") {
+                        auto written_first_response =
+                            tasks->get_host_comms_task().run_once(
+                                tx_buf_1.begin(), tx_buf_1.end());
+                        REQUIRE(written_first_response > tx_buf_1.begin());
+                        REQUIRE_THAT(tx_buf_1,
+                                     Catch::Matchers::StartsWith("M411 OK"));
+                        auto written_second_response =
+                            tasks->get_host_comms_task().run_once(
+                                tx_buf_2.begin(), tx_buf_2.end());
+                        REQUIRE(written_second_response > tx_buf_2.begin());
+                        REQUIRE_THAT(tx_buf_2,
+                                     Catch::Matchers::StartsWith("M411 OK"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+                AND_WHEN("getting two error responses") {
+                    std::string tx_buf_1(128, 'c');
+                    std::string tx_buf_2(128, 'c');
+                    auto response_1 = messages::AcknowledgePrevious{
+                        .responding_to_id = plate_get_error.id,
+                        .with_error =
+                            errors::ErrorCode::THERMISTOR_BACK_CENTER_SHORT};
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response_1);
+                    auto response_2 = messages::AcknowledgePrevious{
+                        .responding_to_id = lid_get_error.id,
+                        .with_error =
+                            errors::ErrorCode::THERMISTOR_LID_OVERTEMP};
+                    tasks->get_host_comms_queue().backing_deque.push_back(
+                        response_2);
+                    THEN("two acks with errors should be written") {
+                        auto written_first_response =
+                            tasks->get_host_comms_task().run_once(
+                                tx_buf_1.begin(), tx_buf_1.end());
+                        REQUIRE(written_first_response > tx_buf_1.begin());
+                        REQUIRE_THAT(
+                            tx_buf_1,
+                            Catch::Matchers::StartsWith(
+                                "ERR220:Back center thermistor shorted OK"));
+                        auto written_second_response =
+                            tasks->get_host_comms_task().run_once(
+                                tx_buf_2.begin(), tx_buf_2.end());
+                        REQUIRE(written_second_response > tx_buf_2.begin());
+                        REQUIRE_THAT(tx_buf_2,
+                                     Catch::Matchers::StartsWith(
+                                         "ERR224:Lid thermistor overtemp OK"));
+                        REQUIRE(tasks->get_host_comms_queue()
+                                    .backing_deque.empty());
+                    }
+                }
+            }
+        }
     }
 }
 
