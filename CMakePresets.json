@@ -79,7 +79,8 @@
                 "thermocycler-gen2",
                 "heater-shaker",
                 "tempdeck-gen3",
-                "flex-stacker"
+                "flex-stacker",
+                "reference-module"
             ]
         },
         {
@@ -92,7 +93,8 @@
                 "thermocycler-gen2-build-and-test",
                 "heater-shaker-build-and-test",
                 "tempdeck-gen3-build-and-test",
-                "flex-stacker-build-and-test"
+                "flex-stacker-build-and-test",
+                "reference-module-build-and-test"
             ]
         },
         {
@@ -175,6 +177,26 @@
             ]
         },
         {
+            "name": "reference-module-binary",
+            "displayName": "reference-module binary",
+            "description": "Build the reference-module cross binary",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "reference-module"
+            ]
+        },
+        {
+            "name": "reference-module-debug",
+            "displayName": "reference-module debug",
+            "description": "Build the reference-module cross debug",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "reference-module-debug"
+            ]
+        },
+        {
             "name": "lint",
             "displayName": "lint all",
             "description": "Runs clang-tidy on all targets",
@@ -185,7 +207,8 @@
                 "common-lint",
                 "thermocycler-gen2-lint",
                 "tempdeck-gen3-lint",
-                "flex-stacker-lint"
+                "flex-stacker-lint",
+                "reference-module-lint"
             ]
         },
         {
@@ -199,7 +222,8 @@
                 "common-format",
                 "thermocycler-gen2-format",
                 "tempdeck-gen3-format",
-                "flex-stacker-format"
+                "flex-stacker-format",
+                "reference-module-format"
             ]
         },
         {
@@ -213,7 +237,8 @@
                 "common-format",
                 "thermocycler-gen2-format",
                 "tempdeck-gen3-format",
-                "flex-stacker-format"
+                "flex-stacker-format",
+                "reference-module-format"
             ]
         },
         {
@@ -226,7 +251,8 @@
                 "heater-shaker-simulator",
                 "thermocycler-gen2-simulator",
                 "tempdeck-gen3-simulator",
-                "flex-stacker-simulator"
+                "flex-stacker-simulator",
+                "reference-module-simulator"
             ]
         },
         {
@@ -239,7 +265,8 @@
                 "heater-shaker-simulator",
                 "thermocycler-gen2-simulator",
                 "tempdeck-gen3-simulator",
-                "flex-stacker-simulator"
+                "flex-stacker-simulator",
+                "reference-module-simulator"
             ]
         },
         {
@@ -253,7 +280,8 @@
                 "common-build-and-test",
                 "thermocycler-gen2-build-and-test",
                 "tempdeck-gen3-build-and-test",
-                "flex-stacker-build-and-test"
+                "flex-stacker-build-and-test",
+                "reference-module-build-and-test"
             ]
         },
         {
@@ -294,6 +322,16 @@
             "jobs": 4,
             "targets": [
                 "flex-stacker-build-and-test"
+            ]
+        },
+        {
+            "name": "reference-module-tests",
+            "displayName": "tests",
+            "description": "Runs build-and-test target for reference-module",
+            "configurePreset": "stm32-host",
+            "jobs": 4,
+            "targets": [
+                "reference-module-build-and-test"
             ]
         },
         {
