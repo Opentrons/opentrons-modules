@@ -162,6 +162,7 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
                         local_task->tx_buf.committed()->data()),
                     tx_end - local_task->tx_buf.committed()->data());
             }
+            vTaskDelay(1);
         }
     }
 }
