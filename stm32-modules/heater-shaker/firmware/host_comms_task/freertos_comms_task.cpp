@@ -158,10 +158,14 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
                 vTaskDelay(1);
                 tx_result = USBD_CDC_TransmitPacket(&_local_task.usb_handle);
             }
-
-            while (((USBD_CDC_HandleTypeDef *)_local_task.usb_handle.pClassData)
-                       ->TxState == 1) {
-                vTaskDelay(1);
+            if (tx_result != USBD_FAIL) {
+                uint8_t retries = 0;
+                while ((((USBD_CDC_HandleTypeDef *)
+                             _local_task.usb_handle.pClassData)
+                            ->TxState == 1) &&
+                       retries++ < 10) {
+                    vTaskDelay(1);
+                }
             }
             if (UartReady) {
                 UartReady = false;
