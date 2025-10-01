@@ -50,5 +50,6 @@ add_subdirectory(heater-shaker)
 add_subdirectory(thermocycler-gen2)
 add_subdirectory(tempdeck-gen3)
 add_subdirectory(flex-stacker)
+add_subdirectory(reference-module)
 
 coverage_evaluate()
