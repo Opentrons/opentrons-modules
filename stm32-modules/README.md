@@ -9,3 +9,9 @@ All the CMake stuff in here should be done according to https://cliutils.gitlab.
 - `./heater-shaker` contains all of the code specific to the heater/shaker module
 - `./thermocycler-gen2` contains all of the code specific to the thermocycler-gen2 module
 - `./include` contains all the headers, sorted by subdirectory - e.g. `include/common/` is where include files common to all modules live. Within each base `include/` directory, files are sorted into further subdirectories based off of their use - for example, `include/heater-shaker/firmware` contains files specific to the heater/shaker cross-compile build. This is done (rather than the reverse, `firmware/include`) so that code can have liens like `#include "firmware/whatever.hpp"`, which makes it apparent in the code itself what domain the header is in.
+
+## Reference Module
+
+The `./reference-module` is a barebones implementation of an stm32 module that is used
+as a starting point when adding new modules. It sets up the bootloader, main application,
+usb connectivity, status LED, and i2c.

@@ -76,11 +76,12 @@
             "configurePreset": "stm32-cross",
             "jobs": 8,
             "targets": [
+                "reference-module",
                 "thermocycler-gen2",
                 "heater-shaker",
                 "tempdeck-gen3",
                 "flex-stacker",
-                "reference-module"
+                "vacuum-module"
             ]
         },
         {
@@ -90,11 +91,32 @@
             "configurePreset": "stm32-host",
             "jobs": 8,
             "targets": [
+                "reference-module-build-and-test",
                 "thermocycler-gen2-build-and-test",
                 "heater-shaker-build-and-test",
                 "tempdeck-gen3-build-and-test",
                 "flex-stacker-build-and-test",
-                "reference-module-build-and-test"
+                "vacuum-module-build-and-test"
+            ]
+        },
+        {
+            "name": "reference-module-binary",
+            "displayName": "reference-module binary",
+            "description": "Build the reference-module cross binary",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "reference-module"
+            ]
+        },
+        {
+            "name": "reference-module-debug",
+            "displayName": "reference-module debug",
+            "description": "Build the reference-module cross debug",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "reference-module-debug"
             ]
         },
         {
@@ -177,23 +199,23 @@
             ]
         },
         {
-            "name": "reference-module-binary",
-            "displayName": "reference-module binary",
-            "description": "Build the reference-module cross binary",
+            "name": "vacuum-module-binary",
+            "displayName": "vacuum-module binary",
+            "description": "Build the vacuum-module cross binary",
             "configurePreset": "stm32-cross",
             "jobs": 4,
             "targets": [
-                "reference-module"
+                "vacuum-module"
             ]
         },
         {
-            "name": "reference-module-debug",
-            "displayName": "reference-module debug",
-            "description": "Build the reference-module cross debug",
+            "name": "vacuum-module-debug",
+            "displayName": "vacuum-module debug",
+            "description": "Build the vacuum-module cross debug",
             "configurePreset": "stm32-cross",
             "jobs": 4,
             "targets": [
-                "reference-module-debug"
+                "vacuum-module-debug"
             ]
         },
         {
@@ -203,12 +225,13 @@
             "configurePreset": "stm32-cross",
             "jobs": 4,
             "targets": [
+                "reference-module-lint",
                 "heater-shaker-lint",
                 "common-lint",
                 "thermocycler-gen2-lint",
                 "tempdeck-gen3-lint",
                 "flex-stacker-lint",
-                "reference-module-lint"
+                "vacuum-module-lint"
             ]
         },
         {
@@ -218,12 +241,13 @@
             "configurePreset": "stm32-cross",
             "jobs": 4,
             "targets": [
+                "reference-module-format",
                 "heater-shaker-format",
                 "common-format",
                 "thermocycler-gen2-format",
                 "tempdeck-gen3-format",
                 "flex-stacker-format",
-                "reference-module-format"
+                "vacuum-module-format"
             ]
         },
         {
@@ -233,12 +257,13 @@
             "configurePreset": "stm32-host",
             "jobs": 4,
             "targets": [
+                "reference-module-format",
                 "heater-shaker-format",
                 "common-format",
                 "thermocycler-gen2-format",
                 "tempdeck-gen3-format",
                 "flex-stacker-format",
-                "reference-module-format"
+                "vacuum-module-format"
             ]
         },
         {
@@ -248,11 +273,12 @@
             "configurePreset": "stm32-host",
             "jobs": 4,
             "targets": [
+                "reference-module-simulator",
                 "heater-shaker-simulator",
                 "thermocycler-gen2-simulator",
                 "tempdeck-gen3-simulator",
                 "flex-stacker-simulator",
-                "reference-module-simulator"
+                "vacuum-module-simulator"
             ]
         },
         {
@@ -262,11 +288,11 @@
             "configurePreset": "stm32-host-gcc10",
             "jobs": 4,
             "targets": [
+                "reference-module-simulator",
                 "heater-shaker-simulator",
                 "thermocycler-gen2-simulator",
                 "tempdeck-gen3-simulator",
-                "flex-stacker-simulator",
-                "reference-module-simulator"
+                "vacuum-module-simulator"
             ]
         },
         {
@@ -276,11 +302,22 @@
             "configurePreset": "stm32-host",
             "jobs": 4,
             "targets": [
+                "reference-module-build-and-test",
                 "heater-shaker-build-and-test",
                 "common-build-and-test",
                 "thermocycler-gen2-build-and-test",
                 "tempdeck-gen3-build-and-test",
                 "flex-stacker-build-and-test",
+                "vacuum-module-build-and-test"
+            ]
+        },
+        {
+            "name": "reference-module-tests",
+            "displayName": "tests",
+            "description": "Runs build-and-test target for reference-module",
+            "configurePreset": "stm32-host",
+            "jobs": 4,
+            "targets": [
                 "reference-module-build-and-test"
             ]
         },
@@ -325,13 +362,13 @@
             ]
         },
         {
-            "name": "reference-module-tests",
+            "name": "vacuum-module-tests",
             "displayName": "tests",
-            "description": "Runs build-and-test target for reference-module",
+            "description": "Runs build-and-test target for vacuum-module",
             "configurePreset": "stm32-host",
             "jobs": 4,
             "targets": [
-                "reference-module-build-and-test"
+                "vacuum-module-build-and-test"
             ]
         },
         {
