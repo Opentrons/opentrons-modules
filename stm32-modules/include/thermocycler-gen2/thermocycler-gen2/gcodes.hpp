@@ -161,8 +161,8 @@ struct GetResetReason {
         -> InputIt {
         int res = 0;
         // print a hexadecimal representation of the reset flags
-        res = snprintf(&*buf, (limit - buf), "M114 Last Reset Reason: %X OK\n",
-                       reason);
+        res = snprintf(&*buf, (limit - buf),
+                       "M114 Last Reset Reason: %X h OK\n", reason);
         if (res <= 0) {
             return buf;
         }

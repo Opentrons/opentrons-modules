@@ -84,7 +84,6 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
                 reinterpret_cast<uint8_t *>(
                     local_task->tx_buf.committed()->data()),
                 tx_end - local_task->tx_buf.committed()->data());
-            vTaskDelay(1);
         }
     }
 }
