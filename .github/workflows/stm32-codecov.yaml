@@ -44,6 +44,8 @@ jobs:
           cmake --build --preset host --target thermocycler-gen2-build-and-test
           cmake --build --preset host --target heater-shaker-build-and-test
           cmake --build --preset host --target tempdeck-gen3-build-and-test
+          cmake --build --preset host --target flex-stacker-build-and-test
+          cmake --build --preset host --target vacuum-module-build-and-test
       - name: 'Generate coverage'
         run: cmake --build --preset host --target lcov-geninfo
       - name: 'Convert coverage to xml'

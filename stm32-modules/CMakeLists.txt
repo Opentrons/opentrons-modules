@@ -46,10 +46,11 @@ execute_process(COMMAND
     )
 
 add_subdirectory(common)
+add_subdirectory(reference-module)
 add_subdirectory(heater-shaker)
 add_subdirectory(thermocycler-gen2)
 add_subdirectory(tempdeck-gen3)
 add_subdirectory(flex-stacker)
-add_subdirectory(reference-module)
+add_subdirectory(vacuum-module)
 
 coverage_evaluate()
