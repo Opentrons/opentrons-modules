@@ -215,5 +215,17 @@ void usb_hw_send(uint8_t *buf, uint16_t len) {
     USBD_CDC_SetTxBuffer(
         &_local_config.usb_handle,
         buf, len);
-    USBD_CDC_TransmitPacket(&_local_config.usb_handle);
+    uint8_t tx_result = USBD_CDC_TransmitPacket(&_local_config.usb_handle);
+    while (tx_result == USBD_BUSY) {
+        vTaskDelay(1);
+        tx_result = USBD_CDC_TransmitPacket(&_local_config.usb_handle);
+    }
+    if (tx_result == USBD_FAIL) {
+        return;
+    }
+    uint8_t retries = 0;
+
+    while ((((USBD_CDC_HandleTypeDef*)_local_config.usb_handle.pClassData)->TxState == 1) && retries++ < 10) {
+        vTaskDelay(1);
+    }
 }

@@ -152,7 +152,21 @@ void run(void *param) {  // NOLINT(misc-unused-parameters)
                 reinterpret_cast<uint8_t *>(
                     local_task->tx_buf.committed()->data()),
                 tx_end - local_task->tx_buf.committed()->data());
-            USBD_CDC_TransmitPacket(&_local_task.usb_handle);
+            uint8_t tx_result =
+                USBD_CDC_TransmitPacket(&_local_task.usb_handle);
+            while (tx_result == USBD_BUSY) {
+                vTaskDelay(1);
+                tx_result = USBD_CDC_TransmitPacket(&_local_task.usb_handle);
+            }
+            if (tx_result != USBD_FAIL) {
+                uint8_t retries = 0;
+                while ((((USBD_CDC_HandleTypeDef *)
+                             _local_task.usb_handle.pClassData)
+                            ->TxState == 1) &&
+                       retries++ < 10) {
+                    vTaskDelay(1);
+                }
+            }
             if (UartReady) {
                 UartReady = false;
                 HAL_UART_Transmit_IT(
