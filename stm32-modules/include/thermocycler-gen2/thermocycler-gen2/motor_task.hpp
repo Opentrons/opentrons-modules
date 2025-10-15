@@ -1246,6 +1246,8 @@ class MotorTask {
                         : LidState::Status::IDLE;
                 if (!policy.lid_read_closed_switch()) {
                     error = errors::ErrorCode::UNEXPECTED_LID_STATE;
+                    _lid_stepper_state.position =
+                        motor_util::LidStepper::Position::BETWEEN;
                 } else {
                     error = handle_lid_state_enter(next_state, policy);
                 }
