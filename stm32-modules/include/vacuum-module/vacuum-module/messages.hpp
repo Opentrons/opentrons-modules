@@ -99,6 +99,17 @@ struct ForceUSBDisconnect {
     size_t return_address;
 };
 
+struct SetStatusBarStateMessage {
+    uint32_t id = 0;
+    bool from_host = false;
+    std::optional<StatusBarID> bar_id = std::nullopt;
+    std::optional<StatusBarColor> color = std::nullopt;
+    std::optional<StatusBarPattern> pattern = std::nullopt;
+    std::optional<uint32_t> duration = std::nullopt;
+    std::optional<int8_t> reps = std::nullopt;
+    std::optional<float> power = std::nullopt;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -109,6 +120,6 @@ using SystemMessage =
                    SetSerialNumberMessage, EnterBootloaderMessage,
                    GetResetReasonMessage>;
 
-using UIMessage = ::std::variant<std::monostate>;
+using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
 };  // namespace messages
