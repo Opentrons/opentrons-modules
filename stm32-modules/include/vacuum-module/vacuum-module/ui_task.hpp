@@ -353,12 +353,8 @@ class UITask {
 
     // Helper to get the StatusBarState given the bar id
     auto get_statusbar_state(StatusBarID bar) -> StatusBarState& {
-        switch (bar) {
-            case Internal:
-                return _led_bar_internal;
-            default:
-                return _led_bar_internal;
-        }
+        static_cast<void>(bar);
+        return _led_bar_internal;
     }
 
     auto get_default_period(StatusBarPattern pattern) -> uint32_t {
