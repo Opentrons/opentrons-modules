@@ -234,6 +234,58 @@ uint8_t hal_i2c_read(I2C_BUS bus, uint16_t DevAddress, uint16_t reg, uint8_t *da
     return rx_result;
 }
 
+uint8_t hal_i2c_master_write(I2C_BUS bus, uint16_t DevAddress, uint8_t *data, uint16_t size) {
+    uint32_t notification_val = 0;
+    NotificationHandle_t *notification_handle = lookup_handle(bus);
+    I2C_HandleTypeDef* i2c_handle = (I2C_HandleTypeDef*)notification_handle->i2c_handle;
+
+    // Bus was not registered
+    if(notification_handle == NULL) return NO_HANDLE_ERROR;
+
+    uint8_t retries = 0;
+    HAL_StatusTypeDef rx_result = HAL_OK;
+    do {
+        // Setup task handle and send message
+        notification_handle->task_to_notify = xTaskGetCurrentTaskHandle();
+        rx_result = HAL_I2C_Master_Transmit_IT(i2c_handle, DevAddress, data, size);
+
+        // Wait for callback and check result.
+        notification_val = ulTaskNotifyTake(pdTRUE, MAX_TIMEOUT);
+        if (rx_result == HAL_OK) break;
+        if (notification_handle->should_retry) rx_result = HAL_BUSY;
+        if (notification_val != 1) rx_result = HAL_TIMEOUT;
+
+        retries += 1;
+    } while (retries < MAX_RETRIES);
+    return rx_result;
+}
+
+uint8_t hal_i2c_master_read(I2C_BUS bus, uint16_t DevAddress, uint8_t *data, uint16_t size) {
+    uint32_t notification_val = 0;
+    NotificationHandle_t *notification_handle = lookup_handle(bus);
+    I2C_HandleTypeDef* i2c_handle = (I2C_HandleTypeDef*)notification_handle->i2c_handle;
+
+    // Bus was not registered
+    if(notification_handle == NULL) return NO_HANDLE_ERROR;
+
+    uint8_t retries = 0;
+    HAL_StatusTypeDef rx_result = HAL_OK;
+    do {
+        // Setup task handle and send message
+        notification_handle->task_to_notify = xTaskGetCurrentTaskHandle();
+        rx_result = HAL_I2C_Master_Receive_IT(i2c_handle, DevAddress, data, size);
+
+        // Wait for callback and check result.
+        notification_val = ulTaskNotifyTake(pdTRUE, MAX_TIMEOUT);
+        if (rx_result == HAL_OK) break;
+        if (notification_handle->should_retry) rx_result = HAL_BUSY;
+        if (notification_val != 1) rx_result = HAL_TIMEOUT;
+
+        retries += 1;
+    } while (retries < MAX_RETRIES);
+    return rx_result;
+}
+
 void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *i2c_handle) {
     handle_i2c_callback(i2c_handle, false);
 }
