@@ -1,6 +1,8 @@
 #include "firmware/ui_policy.hpp"
 
+#include "FreeRTOS.h"
 #include "firmware/ui_hardware.h"
+#include "task.h"
 
 namespace ui_policy {
 
@@ -8,4 +10,5 @@ namespace ui_policy {
 auto UIPolicy::set_heartbeat_led(bool value) -> void {
     ui_hardware_set_heartbeat_led(value);
 }
+
 }  // namespace ui_policy

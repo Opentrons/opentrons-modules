@@ -24,3 +24,15 @@ auto I2C::i2c_read(uint16_t dev_addr, uint16_t reg, uint8_t* data,
     auto ret = hal_i2c_read(bus, dev_addr, reg, data, size);
     return RxTxReturn(ret);
 }
+
+auto I2C::i2c_master_write(uint16_t dev_addr, uint8_t* data, uint16_t size)
+    -> RxTxReturn {
+    auto ret = hal_i2c_master_write(bus, dev_addr, data, size);
+    return RxTxReturn(ret);
+}
+
+auto I2C::i2c_master_read(uint16_t dev_addr, uint8_t* data, uint16_t size)
+    -> RxTxReturn {
+    auto ret = hal_i2c_master_read(bus, dev_addr, data, size);
+    return RxTxReturn(ret);
+}
