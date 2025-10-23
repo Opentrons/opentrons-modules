@@ -23,6 +23,10 @@ class I2CBase {
                           uint16_t size) -> RxTxReturn;
     virtual auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t* data,
                            uint16_t size) -> RxTxReturn;
+    virtual auto i2c_master_write(uint16_t dev_addr, uint8_t* data,
+                                  uint16_t size) -> RxTxReturn;
+    virtual auto i2c_master_read(uint16_t dev_addr, uint8_t* data,
+                                 uint16_t size) -> RxTxReturn;
 };
 
 }  // namespace i2c::hardware

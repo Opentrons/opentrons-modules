@@ -141,11 +141,22 @@ class UITask {
         if (!_initialized) {
             _policy = &policy;
 
-            if (!_led_driver.initialized()) {
-                _led_driver.initialize(policy);
-                _led_bar_internal.driver_ok = true;
-                set_status_bar(Internal);
-            }
+            // MPR Series
+            auto dev_address =
+                0x18
+                << 1;  // 22 SA0 LPS22DF I2C address select; HI: 0x5D; LO: 0x5C
+            // auto PRESSURE  = 0xAA;  // 1 byte
+            uint8_t buff[10] = {0};
+            uint8_t wr_buff[10] = {0xAA, 0x0, 0x0};
+            _policy->i2c_master_write(dev_address, wr_buff, 3);
+            _policy->sleep_ms(10);
+            _policy->i2c_master_read(dev_address, buff, 4);
+
+            // if (!_led_driver.initialized()) {
+            //     _led_driver.initialize(policy);
+            //     _led_bar_internal.driver_ok = true;
+            //     set_status_bar(Internal);
+            // }
             _message_queue.set_ready();
             _initialized = true;
         }
@@ -183,6 +194,7 @@ class UITask {
     auto visit_message(const messages::SetStatusBarStateMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(policy);
+        return;
         for (auto bar_id : {StatusBarID::Internal}) {
             bar_id = m.bar_id.value_or(bar_id);
             auto& status_bar = get_statusbar_state(bar_id);

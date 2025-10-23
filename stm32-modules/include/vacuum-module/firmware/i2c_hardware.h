@@ -28,6 +28,10 @@ uint8_t hal_i2c_write(I2C_BUS bus, uint16_t DevAddress, uint8_t reg,
                       uint8_t *data, uint16_t size);
 uint8_t hal_i2c_read(I2C_BUS bus, uint16_t DevAddress, uint16_t reg,
                      uint8_t *data, uint16_t size);
+uint8_t hal_i2c_master_write(I2C_BUS bus, uint16_t DevAddress, uint8_t *data,
+                             uint16_t size);
+uint8_t hal_i2c_master_read(I2C_BUS bus, uint16_t DevAddress, uint8_t *data,
+                            uint16_t size);
 
 #ifdef __cplusplus
 }  // extern "C"

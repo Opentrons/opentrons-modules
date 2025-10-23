@@ -49,6 +49,11 @@ void Error_Handler(void);
 #define USB_VBUS_MCU_Pin GPIO_PIN_4
 #define USB_VBUS_MCU_GPIO_Port GPIOB
 
+#define PRESSURE_B_I2C3_SCL_Pin GPIO_PIN_8
+#define PRESSURE_B_I2C3_SCL_GPIO_Port GPIOC
+#define PRESSURE_B_I2C3_SDA_Pin GPIO_PIN_9
+#define PRESSURE_B_I2C3_SDA_GPIO_Port GPIOC
+
 #ifdef __cplusplus
 }
 #endif
