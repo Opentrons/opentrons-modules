@@ -6,12 +6,13 @@ add_STM32G4_driver(${TARGET_MODULE_NAME})
 add_STM32G4_freertos(${TARGET_MODULE_NAME})
 add_STM32G4_usb(${TARGET_MODULE_NAME})
 
-set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
-set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
-set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32G491")
 set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
 set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
+set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
+set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
+set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
+set(VENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vent")
 
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
@@ -38,6 +39,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${COMMS_DIR}/usbd_conf.c
     ${COMMS_DIR}/usbd_desc.c
     ${COMMS_DIR}/usb_hardware.c
+    ${VENT_DIR}/vent_hardware.c
     )
 
 add_executable(${TARGET_MODULE_NAME}

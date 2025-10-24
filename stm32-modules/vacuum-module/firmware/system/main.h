@@ -55,6 +55,21 @@ void Error_Handler(void);
 #define USB_VBUS_MCU_Pin GPIO_PIN_4
 #define USB_VBUS_MCU_GPIO_Port GPIOB
 
+#define nSTATUS_LED_Pin GPIO_PIN_10
+#define nSTATUS_LED_GPIO_Port GPIOC
+#define USB_VBUS_MCU_Pin GPIO_PIN_4
+#define USB_VBUS_MCU_GPIO_Port GPIOB
+
+// Vent
+#define nSLEEP_DRV_MCU_GPIO_Pin GPIO_PIN_3
+#define nSLEEP_DRV_MCU_GPIO_Port GPIOA
+#define VENT_DAC_MCU_GPIO_Pin GPIO_PIN_4
+#define VENT_DAC_MCU_GPIO_Port GPIOA
+#define VENT_IN_GPIO_Pin GPIO_PIN_5
+#define VENT_IN_GPIO_Port GPIOA
+#define VENT_FAULT_GPIO_Pin GPIO_PIN_6
+#define VENT_FAULT_GPIO_Port GPIOA
+
 #ifdef __cplusplus
 }
 #endif

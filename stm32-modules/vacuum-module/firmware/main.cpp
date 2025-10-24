@@ -5,6 +5,7 @@
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
 #include "firmware/i2c_hardware.h"
+#include "firmware/vent_hardware.h"
 #include "firmware/system_stm32g4xx.h"
 #include "ot_utils/freertos/freertos_task.hpp"
 #include "systemwide.h"
@@ -53,6 +54,7 @@ static auto i2c_handles = I2CHandlerStruct{};
 auto main() -> int {
     HardwareInit();
 
+    vent_hardware_init();
     i2c_hardware_init(&i2c_handles);
 
     i2c2_comms.set_handle(i2c_handles.i2c2, I2C_BUS_2);
