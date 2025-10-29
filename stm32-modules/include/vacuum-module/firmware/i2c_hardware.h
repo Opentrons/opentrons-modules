@@ -10,6 +10,7 @@ extern "C" {
 #endif  // __cplusplus
 
 typedef enum I2C_BUS {
+    I2C_BUS_1,
     I2C_BUS_2,
     I2C_BUS_3,
     NO_BUS,
@@ -18,6 +19,7 @@ typedef enum I2C_BUS {
 typedef void *HAL_I2C_HANDLE;
 
 typedef struct HandlerStruct {
+    HAL_I2C_HANDLE i2c1;
     HAL_I2C_HANDLE i2c2;
     HAL_I2C_HANDLE i2c3;
 } I2CHandlerStruct;

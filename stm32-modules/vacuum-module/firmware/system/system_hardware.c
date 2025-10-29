@@ -116,6 +116,13 @@ uint16_t system_hardware_reset_reason() {
     return reset_reason;
 }
 
+bool system_hardware_read_eoc_pin() {
+    // have to write the actual port + pin val in here
+    uint8_t pin_val = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1);
+    // also gotta see if this is active low or hi
+    return pin_val == GPIO_PIN_SET ? true : false;
+}
+
 /** PUBLIC FUNCTION IMPLEMENTATION */
 
 void system_hardware_enter_bootloader(void) {

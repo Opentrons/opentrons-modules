@@ -14,6 +14,7 @@ void system_hardware_enter_bootloader(void);
 void system_hardware_gpio_init(void);
 uint16_t system_hardware_reset_reason(void);
 void enable_eeprom_write(bool enable);
+bool system_hardware_read_eoc_pin();
 
 #ifdef __cplusplus
 }  // extern "C"
