@@ -10,7 +10,7 @@
 namespace vacuum_pressure_sensor::hardware {
 using namespace i2c::hardware;
 class VacuumPressureSensorPolicy {
-    public:
+  public:
     explicit VacuumPressureSensorPolicy(I2CBase *i2c) : i2c_comms(i2c) {}
     VacuumPressureSensorPolicy(const VacuumPressureSensorPolicy &) = delete;
     VacuumPressureSensorPolicy(const VacuumPressureSensorPolicy &&) = delete;
@@ -19,13 +19,13 @@ class VacuumPressureSensorPolicy {
     ~VacuumPressureSensorPolicy() = default;
 
     auto i2c_read(uint16_t dev_addr, uint16_t reg, uint8_t *data, uint16_t size)
-    -> RxTxReturn;
+        -> RxTxReturn;
     auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t *data,
                    uint16_t size) -> RxTxReturn;
     auto conversion_ended() -> bool;
     auto static sleep_ms(uint32_t ms) -> void;
 
-    private:
-        I2CBase *i2c_comms{nullptr};
-    };
-} // namespace vacuum_pressure_sensor::hardware
+  private:
+    I2CBase *i2c_comms{nullptr};
+};
+}  // namespace vacuum_pressure_sensor::hardware

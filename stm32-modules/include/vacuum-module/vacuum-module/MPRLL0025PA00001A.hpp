@@ -8,16 +8,17 @@ namespace mpr_pressure_sensor {
 
 template <typename P>
 concept TMF8820Policy = requires(P p, uint16_t dev_addr, uint16_t reg,
-uint16_t size, uint8_t* data) {
-{ p.i2c_read(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
-{ p.i2c_write(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
+                                 uint16_t size, uint8_t* data) {
+    { p.i2c_read(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
+    { p.i2c_write(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
 };
 
 constexpr uint16_t WRITE_TO_SENSOR = 0x30;
 constexpr uint8_t READ_FROM_SENSOR_COMMAND = 0x31;
 constexpr uint16_t MEASURE_PRESSURE_BYTE = 0xAA;
 // measure pressure = 30 AA 00 00
-constexpr uint32_t MEASURE_PRESSURE_COMMAND = (WRITE_TO_SENSOR << 24) | (MEASURE_PRESSURE_BYTE << 16);
+constexpr uint32_t MEASURE_PRESSURE_COMMAND =
+    (WRITE_TO_SENSOR << 24) | (MEASURE_PRESSURE_BYTE << 16);
 
 // communication loop is:
 // 1. send measure pressure command, 4 bytes
@@ -34,12 +35,12 @@ struct StatusByte {
 };
 
 class MPRLL0025PA00001 {
-    public:
-        auto initialize(MPRPressureSensorPolicy* policy) -> void {
-            if (_policy == nullptr) {
-                _policy = policy;
-            }
+  public:
+    auto initialize(MPRPressureSensorPolicy* policy) -> void {
+        if (_policy == nullptr) {
+            _policy = policy;
         }
+    }
 
     // read pressure
 
@@ -49,12 +50,9 @@ class MPRLL0025PA00001 {
 
     // function for reading and streaming data in a loop
 
-    private:
+  private:
     MPRPressureSensorPolicy* _policy{nullptr};
     std::array<uint8_t, BUFFER_LEN> BUFFER{};
 };
 
-
-
-} // namespace mrp_pressure_sensor
-
+}  // namespace mpr_pressure_sensor

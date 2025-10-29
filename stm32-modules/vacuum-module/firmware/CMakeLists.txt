@@ -8,6 +8,8 @@ add_STM32G4_usb(${TARGET_MODULE_NAME})
 
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
+set(ATMOSPHERE_PS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/atmosphere-pressure-sensor")
+set(VACUUM_PS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vacuum-pressure-sensor")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32G491")
 set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
@@ -23,6 +25,8 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${SYSTEM_DIR}/i2c_comms.cpp
     ${UI_DIR}/freertos_ui_task.cpp
     ${UI_DIR}/ui_policy.cpp
+    ${ATMOSPHERE_PS_DIR}/atmosphere_pressure_sensor_policy.cpp
+    ${VACUUM_PS_DIR}/vacuum_pressure_sensor_policy.cpp
     )
 
 # Add source files that should NOT be checked by clang-tidy here
