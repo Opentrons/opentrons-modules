@@ -1,8 +1,9 @@
+#include "firmware/vacuum_pressure_sensor_policy.hpp"
+
 #include <cstdint>
 
 #include "FreeRTOS.h"
 #include "firmware/hardware_iface.hpp"
-#include "firmware/vacuum_pressure_sensor_policy.hpp"
 #include "firmware/system_hardware.h"
 #include "projdefs.h"
 #include "systemwide.h"

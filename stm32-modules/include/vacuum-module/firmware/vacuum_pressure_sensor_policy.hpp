@@ -22,7 +22,7 @@ class VacuumPressureSensorPolicy {
         -> RxTxReturn;
     auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t *data,
                    uint16_t size) -> RxTxReturn;
-    auto conversion_ended() -> bool;
+    auto static conversion_ended() -> bool;
     auto static sleep_ms(uint32_t ms) -> void;
 
   private:

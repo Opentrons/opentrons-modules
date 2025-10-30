@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <optional>
 
-namespace mpr_pressure_sensor {
+namespace vacuum_pressure_sensor {
 
 template <typename P>
 concept TMF8820Policy = requires(P p, uint16_t dev_addr, uint16_t reg,
@@ -36,7 +36,7 @@ struct StatusByte {
 
 class MPRLL0025PA00001 {
   public:
-    auto initialize(MPRPressureSensorPolicy* policy) -> void {
+    auto initialize(VacuumPressureSensorPolicy* policy) -> void {
         if (_policy == nullptr) {
             _policy = policy;
         }
@@ -51,8 +51,8 @@ class MPRLL0025PA00001 {
     // function for reading and streaming data in a loop
 
   private:
-    MPRPressureSensorPolicy* _policy{nullptr};
+    VacuumressureSensorPolicy* _policy{nullptr};
     std::array<uint8_t, BUFFER_LEN> BUFFER{};
 };
 
-}  // namespace mpr_pressure_sensor
+}  // namespace vacuum_pressure_sensor
