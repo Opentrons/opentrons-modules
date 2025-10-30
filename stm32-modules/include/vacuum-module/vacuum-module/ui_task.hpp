@@ -142,15 +142,53 @@ class UITask {
             _policy = &policy;
 
             // MPR Series
-            auto dev_address =
-                0x18
-                << 1;  // 22 SA0 LPS22DF I2C address select; HI: 0x5D; LO: 0x5C
-            // auto PRESSURE  = 0xAA;  // 1 byte
-            uint8_t buff[10] = {0};
-            uint8_t wr_buff[10] = {0xAA, 0x0, 0x0};
-            _policy->i2c_master_write(dev_address, wr_buff, 3);
-            _policy->sleep_ms(10);
-            _policy->i2c_master_read(dev_address, buff, 4);
+            // auto dev_address =
+            //     0x18
+            //     << 1;  // 22 SA0 LPS22DF I2C address select; HI: 0x5D; LO: 0x5C
+            // // auto PRESSURE  = 0xAA;  // 1 byte
+            // uint8_t buff[10] = {0};
+            // uint8_t wr_buff[10] = {0xAA, 0x0, 0x0};
+            // _policy->i2c_master_write(dev_address, wr_buff, 3);
+            // _policy->sleep_ms(10);
+            // _policy->i2c_master_read(dev_address, buff, 4);
+
+            // LSP22DF Get Pressure oneshot
+            auto dev_address = 0x5C << 1;
+            uint8_t rd_buff[10] = {0};
+            uint8_t wr_buff[10] = {0};
+
+            // Get STATUS (27h)
+            _policy->i2c_read(dev_address, 0x27, rd_buff, 1);
+            _policy->sleep_ms(1);
+
+            // Get CTRL_REG2 (11h)
+            _policy->i2c_read(dev_address, 0x11, rd_buff, 1);
+            _policy->sleep_ms(1);
+
+            // Get Pressure
+            wr_buff[0] = 0x1;
+            _policy->i2c_wr(dev_address, 0x11, wr_buff, 1);
+            _policy->sleep_ms(5);  // need to wait some time after write
+
+            // The STATUS (27h) will set the 0th bit when pressure data is available
+            // So lets poll the register until we get the correct status
+            auto retries = 3;
+            auto pressure_ready = 0;
+            while (!pressure_ready) {
+                if (retries < 0) break;
+                _policy->i2c_read(dev_address, 0x27, rd_buff, 1);
+                auto pressure_ready_mask = (1 << 0);
+                pressure_ready = rd_buff[0] & pressure_ready_mask;
+                retries -= 1;
+            }
+
+            // Once pressure is available, read 3bytes from PRESS_OUT_XL (28h)
+            if (pressure_ready) {
+                _policy->i2c_read(dev_address, 0x28, rd_buff, 3);
+                auto press_value = (double)((int32_t)rd_buff[2]+(int32_t)rd_buff[1]+(int32_t)rd_buff[0]);
+                pressure = press_value / 4096;
+            }
+
 
             // if (!_led_driver.initialized()) {
             //     _led_driver.initialize(policy);
@@ -456,5 +494,6 @@ class UITask {
     bool hb_led_state = false;
     uint32_t hb_counter = 0;
     bool _led_update_pending = false;
+    double pressure = 0;
 };
 }  // namespace ui_task
