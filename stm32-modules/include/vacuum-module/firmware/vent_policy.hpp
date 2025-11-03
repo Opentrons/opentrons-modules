@@ -1,13 +1,11 @@
 #pragma once
 
-#include <cstdint>
-
 #include "systemwide.h"
 
 namespace vent_policy {
 
 class VentPolicy {
   public:
-    auto open_vent(bool open) -> bool;
+    auto open_vent(bool open) -> void;
 };
 }  // namespace vent_policy

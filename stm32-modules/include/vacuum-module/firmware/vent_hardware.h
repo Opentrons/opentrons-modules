@@ -1,13 +1,14 @@
-#pragma once
+#ifndef VENT_HARDWARE_H__
+#define VENT_HARDWARE_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
 
 #include <stdbool.h>
 #include <stdint.h>
 
 #include "systemwide.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
 
 void vent_hardware_init(void);
 void hw_open_vent(bool open);
@@ -15,3 +16,4 @@ void hw_open_vent(bool open);
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus
+#endif  // _VENT_HARDWARE_H__

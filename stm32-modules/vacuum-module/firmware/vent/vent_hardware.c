@@ -24,8 +24,8 @@ void vent_hardware_gpio_init(void) {
     GPIO_InitStruct.Pin = nSLEEP_DRV_MCU_GPIO_Pin;
     HAL_GPIO_Init(nSLEEP_DRV_MCU_GPIO_Port, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = VENT_DAC_MCU_GPIO_Pin;
-    HAL_GPIO_Init(VENT_DAC_MCU_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Pin = VENT_IN_GPIO_Pin;
+    HAL_GPIO_Init(VENT_IN_GPIO_Port, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = VENT_DAC_MCU_GPIO_Pin;
     HAL_GPIO_Init(VENT_DAC_MCU_GPIO_Port, &GPIO_InitStruct);

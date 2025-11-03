@@ -13,6 +13,7 @@ set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
 set(VENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vent")
+set(PUMP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/pump")
 
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
@@ -24,6 +25,8 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${SYSTEM_DIR}/i2c_comms.cpp
     ${UI_DIR}/freertos_ui_task.cpp
     ${UI_DIR}/ui_policy.cpp
+    ${VENT_DIR}/vent_policy.cpp
+    ${PUMP_DIR}/pump_policy.cpp
     )
 
 # Add source files that should NOT be checked by clang-tidy here
@@ -40,6 +43,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${COMMS_DIR}/usbd_desc.c
     ${COMMS_DIR}/usb_hardware.c
     ${VENT_DIR}/vent_hardware.c
+    ${PUMP_DIR}/pump_hardware.c
     )
 
 add_executable(${TARGET_MODULE_NAME}

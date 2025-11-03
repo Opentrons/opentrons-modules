@@ -70,6 +70,12 @@ void Error_Handler(void);
 #define VENT_FAULT_GPIO_Pin GPIO_PIN_6
 #define VENT_FAULT_GPIO_Port GPIOA
 
+// Pump
+#define PUMP_PWM_GPIO_Pin GPIO_PIN_7
+#define PUMP_PWM_GPIO_Port GPIOA
+#define PUMP_TACH_GPIO_Pin GPIO_PIN_1
+#define PUMP_TACH_GPIO_Port GPIOB
+
 #ifdef __cplusplus
 }
 #endif
