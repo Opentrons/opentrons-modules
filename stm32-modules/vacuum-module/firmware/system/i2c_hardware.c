@@ -16,6 +16,7 @@
 #define NO_HANDLE_ERROR (255)
 #define REGISTER_ADDR_LEN (1)  // 1 byte
 
+static I2C_HandleTypeDef hi2c1;
 static I2C_HandleTypeDef hi2c2;
 static I2C_HandleTypeDef hi2c3;
 
@@ -96,9 +97,42 @@ HAL_I2C_HANDLE MX_I2C3_Init() {
     return &hi2c3;
 }
 
+HAL_I2C_HANDLE MX_I2C1_Init() {
+    hi2c1.Instance = I2C1;
+    hi2c1.Init.Timing = 0x10C0ECFF;
+    hi2c1.Init.OwnAddress1 = 0;
+    hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+    hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+    hi2c1.Init.OwnAddress2 = 0;
+    hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+    hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+    hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+    if (HAL_I2C_Init(&hi2c1) != HAL_OK) {
+        Error_Handler();
+    }
+    /** Configure Analogue filter
+     */
+    if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) !=
+        HAL_OK) {
+        Error_Handler();
+    }
+    /** Configure Digital filter
+     */
+    if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK) {
+        Error_Handler();
+    }
+
+    /** I2C Fast mode Plus enable */
+    __HAL_SYSCFG_FASTMODEPLUS_ENABLE(I2C_FASTMODEPLUS_I2C1);
+
+    return &hi2c1;
+}
+
 void i2c_hardware_init(I2CHandlerStruct* i2c_handles) {
+    HAL_I2C_HANDLE i2c1 = MX_I2C1_Init();
     HAL_I2C_HANDLE i2c2 = MX_I2C2_Init();
     HAL_I2C_HANDLE i2c3 = MX_I2C3_Init();
+    i2c_handles->i2c1 = i2c1;
     i2c_handles->i2c2 = i2c2;
     i2c_handles->i2c3 = i2c3;
 }
@@ -304,6 +338,16 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *i2c_handle) {
 
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *i2c_handle) {
     handle_i2c_callback(i2c_handle, true);
+}
+
+void I2C1_EV_IRQHandler(void)
+{
+    HAL_I2C_EV_IRQHandler(&hi2c1);
+}
+
+void I2C1_ER_IRQHandler(void)
+{
+    HAL_I2C_ER_IRQHandler(&hi2c1);
 }
 
 void I2C2_EV_IRQHandler(void)

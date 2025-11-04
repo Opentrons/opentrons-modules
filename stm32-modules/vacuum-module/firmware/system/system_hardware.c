@@ -116,6 +116,11 @@ uint16_t system_hardware_reset_reason() {
     return reset_reason;
 }
 
+bool system_hardware_read_eoc_pin() {
+    uint8_t pin_val = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1);
+    return pin_val == GPIO_PIN_SET ? true : false;
+}
+
 /** PUBLIC FUNCTION IMPLEMENTATION */
 
 void system_hardware_enter_bootloader(void) {

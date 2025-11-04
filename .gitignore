@@ -119,6 +119,9 @@ ENV/
 # node
 node_modules
 
+# swap files
+*.swp
+
 releases
 
 cmake-build-debug/
