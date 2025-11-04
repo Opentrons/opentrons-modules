@@ -13,19 +13,8 @@ concept TMF8820Policy = requires(P p, uint16_t dev_addr, uint16_t reg,
     { p.i2c_write(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
 };
 
-constexpr uint16_t WRITE_TO_SENSOR = 0x30;
-constexpr uint8_t READ_FROM_SENSOR_COMMAND = 0x31;
-constexpr uint16_t MEASURE_PRESSURE_BYTE = 0xAA;
-// measure pressure = 30 AA 00 00
-constexpr uint32_t MEASURE_PRESSURE_COMMAND =
-    (WRITE_TO_SENSOR << 24) | (MEASURE_PRESSURE_BYTE << 16);
-
-// communication loop is:
-// 1. send measure pressure command, 4 bytes
-// 2. send read from sensor command, 1 byte
-//      3. sensor sends status byte, 1 byte
-// 4. send read from pressure command, 1 byte
-//      5. sensor sends pressure reading, 3 bytes
+constexpr uint8_t DEV_ADDRESS = 0x18;
+constexpr uint8_t MEASURE_PRESSURE_BYTE = 0xAA;
 
 struct StatusByte {
     uint8_t power_indication;
@@ -41,14 +30,6 @@ class MPRLL0025PA00001 {
             _policy = policy;
         }
     }
-
-    // read pressure
-
-    // read eoc pin
-
-    // write start read command
-
-    // function for reading and streaming data in a loop
 
   private:
     VacuumressureSensorPolicy* _policy{nullptr};
