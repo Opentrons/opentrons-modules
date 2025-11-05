@@ -37,6 +37,11 @@ void Error_Handler(void);
 #define n48V_FAULT_Pin GPIO_PIN_6
 #define n48V_FAULT_GPIO_Port GPIOC
 
+#define I2C1_SDA_Pin GPIO_PIN_7
+#define I2C1_SDA_GPIO_Port GPIOB
+#define I2C1_SCL_Pin GPIO_PIN_15
+#define I2C1_SCL_GPIO_Port GPIOA
+
 #define I2C2_SDA_Pin GPIO_PIN_8
 #define I2C2_SDA_GPIO_Port GPIOA
 #define I2C2_SCL_Pin GPIO_PIN_9

@@ -14,6 +14,8 @@ set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
 set(VENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vent")
 set(PUMP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/pump")
+set(ATMOSPHERE_PS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/atmosphere-pressure-sensor")
+set(VACUUM_PS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vacuum-pressure-sensor")
 
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
@@ -27,6 +29,8 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${UI_DIR}/ui_policy.cpp
     ${VENT_DIR}/vent_policy.cpp
     ${PUMP_DIR}/pump_policy.cpp
+    ${ATMOSPHERE_PS_DIR}/atmosphere_pressure_sensor_policy.cpp
+    ${VACUUM_PS_DIR}/vacuum_pressure_sensor_policy.cpp
     )
 
 # Add source files that should NOT be checked by clang-tidy here
