@@ -195,9 +195,9 @@ void pump_hardware_init(void) {
     pump_pwm_timer_init();
 
     // Turn off pump
-    hw_set_pump_duty_cycle(50);
-    hw_start_pump_motor(true);
-    hw_enable_pump_tach(true);
+    hw_set_pump_duty_cycle(0);
+    hw_start_pump_motor(false);
+    hw_enable_pump_tach(false);
 }
 
 void update_filtered_rpm(float new_rpm) {
