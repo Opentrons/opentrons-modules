@@ -21,4 +21,9 @@ auto set_pump_duty_cycle(uint16_t duty) -> void {
 auto get_pump_duty_cycle() -> uint16_t { return hw_get_pump_duty_cycle(); }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto get_pump_rpm() -> double { return hw_get_pump_rpm(); }
+auto enable_pump_tach(bool enable) -> bool {
+    return hw_enable_pump_tach(enable);
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto get_pump_rpm() -> float { return hw_get_pump_rpm(); }

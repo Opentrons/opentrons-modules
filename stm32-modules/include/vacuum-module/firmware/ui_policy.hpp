@@ -12,7 +12,6 @@ class UIPolicy {
   public:
     UIPolicy(I2C *i2c) : i2c_comms{i2c} {}
     auto set_heartbeat_led(bool value) -> void;
-    auto get_pump_rpm() -> float;
     template <size_t Len>
     auto i2c_write(uint8_t device_address, uint8_t register_address,
                    std::array<uint8_t, Len> &data) -> bool {

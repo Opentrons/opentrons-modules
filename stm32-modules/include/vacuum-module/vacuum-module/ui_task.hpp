@@ -75,8 +75,7 @@ static constexpr uint32_t LED_CONFIRM_PERIOD_MS = 300U;
 static constexpr uint32_t LED_CONFIRM_ON_PERIOD_MS =
     LED_CONFIRM_PERIOD_MS + 100;
 // Time to blink heartbeat LED
-// static constexpr uint32_t HB_UPDATE_PERIOD_MS = 500U / UPDATE_PERIOD_MS;
-static constexpr uint32_t HB_UPDATE_PERIOD_MS = 1000U / UPDATE_PERIOD_MS;
+static constexpr uint32_t HB_UPDATE_PERIOD_MS = 500U / UPDATE_PERIOD_MS;
 // Max duration of the animation in ms (10 seconds)
 static constexpr uint32_t MAX_UPDATE_PERIOD_MS = 10000U;
 // Min duration of the animation in ms (25 ms)
@@ -167,7 +166,6 @@ class UITask {
         if (hb_counter > HB_UPDATE_PERIOD_MS) {
             hb_led_state = !hb_led_state;
             _policy->set_heartbeat_led(hb_led_state);
-            rpm = _policy->get_pump_rpm();
             hb_counter = 0;
         }
 
@@ -446,6 +444,5 @@ class UITask {
     bool hb_led_state = false;
     uint32_t hb_counter = 0;
     bool _led_update_pending = false;
-    float rpm = 0.0f;
 };
 }  // namespace ui_task

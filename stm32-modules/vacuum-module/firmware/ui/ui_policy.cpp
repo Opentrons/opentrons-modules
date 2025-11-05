@@ -11,8 +11,4 @@ namespace ui_policy {
 auto UIPolicy::set_heartbeat_led(bool value) -> void {
     ui_hardware_set_heartbeat_led(value);
 }
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto UIPolicy::get_pump_rpm() -> float { return hw_get_pump_rpm(); }
-
 }  // namespace ui_policy

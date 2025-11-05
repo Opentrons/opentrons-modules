@@ -223,6 +223,10 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base) {
     /* TIM1 interrupt Init */
     HAL_NVIC_SetPriority(TIM1_UP_TIM16_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(TIM1_UP_TIM16_IRQn);
+  } else if(htim_base->Instance==TIM3) {
+
+    /* Peripheral clock enable */
+    __HAL_RCC_TIM3_CLK_ENABLE();
   } else if(htim_base->Instance==TIM17) {
 
     /* Peripheral clock enable */
@@ -245,6 +249,10 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base) {
 
     /* TIM1 interrupt DeInit */
     HAL_NVIC_DisableIRQ(TIM1_UP_TIM16_IRQn);
+
+  } else if(htim_base->Instance==TIM3) {
+    /* Peripheral clock disable */
+    __HAL_RCC_TIM3_CLK_DISABLE();
   } else if(htim_base->Instance==TIM17) {
     /* Peripheral clock disable */
     __HAL_RCC_TIM17_CLK_DISABLE();

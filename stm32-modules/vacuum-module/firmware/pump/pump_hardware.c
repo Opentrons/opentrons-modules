@@ -1,91 +1,47 @@
 #include "firmware/pump_hardware.h"
 #include "main.h"
 
-#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdatomic.h>
-
-#include "stm32g4xx_hal.h"
-#include "stm32g4xx_hal_conf.h"
-#include "stm32g4xx_hal_gpio.h"
-#include "stm32g4xx_hal_def.h"
-#include "stm32g4xx_hal_rcc.h"
-#include "stm32g4xx_it.h"
-#include "stm32g4xx_hal_tim.h"
 
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
 
-#define TIMER_CLOCK_FREQ (170000000)
+#define TIMER_CLOCK_HZ     (170000000)  // 170Mhz
+#define PWM_FREQUENCY_HZ   (25000)  // 25Khz
+#define PWM_PRESCALER      (0)
+#define PWM_PERIOD         ((TIMER_CLOCK_HZ / (PWM_FREQUENCY_HZ * (PWM_PRESCALER + 1))) - 1)
+#define MAX_PWM            (PWM_PERIOD + 1)
 
-// Pump PWM timer reload frequency
-#define PWM_FREQUENCY    (25000)  // 25Khz
-#define PWM_PRESCALER    (0)
-#define PWM_PERIOD       ((TIMER_CLOCK_FREQ / (PWM_FREQUENCY * (PWM_PRESCALER + 1))) - 1)
-#define MAX_PWM (PWM_PERIOD + 1)
+#define TACH_FREQUENCY_HZ  (500)  // used only for prescaler calc
+#define TACH_PRESCALER     (5)    // chosen to fit 500 Hz - 5 kHz range
+#define TACH_PERIOD        (0xFFFFUL)  // 16-bit timer max
 
-// Tachometer timer reload frequency
-#define TACH_FREQUENCY   (1000000)  // 1Mhz
-#define TACH_PRESCALER   (0)
-#define TACH_PERIOD      ((TIMER_CLOCK_FREQ / (TACH_FREQUENCY * (TACH_PRESCALER + 1))) - 1)
-
-#define TACH_TIMER_PRESCALED_FREQ (TIMER_CLOCK_FREQ / (TACH_PERIOD + 1))
-#define SEC_PER_MIN (60)
-#define PULSES_PER_ROTATION (4)
-#define PULSES_PER_CAPTURE (8)
-
-#define TACH_TIMER (TIM3)
-#define TACH_CHANNEL (TIM_CHANNEL_4)
-#define TACH_IRQ (TIM3_IRQn)
-
-TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim3;
-TIM_HandleTypeDef htim17;
-
-
-// The rotor speed should be determined by taking the moving average of the
-// time between the last 6 FG transitions. This will represent one electrical
-// cycle of the motor which will help smooth out any errors as a result of
-// misalignment of hall effect sensors relative to the rotor.
+#define PWM_TIMER          (TIM17)
+#define PWM_CHANNEL        (TIM_CHANNEL_1)
+#define TACH_TIMER         (TIM3)
+#define TACH_CHANNEL       (TIM_CHANNEL_4)
+#define TACH_IRQ           (TIM3_IRQn)
 
 #define RPM_AVG_WINDOW 6
+#define TACH_PULSES_PER_REV  60.0f
 
 typedef struct {
+    float period;
+    float rpm;
     float buffer[RPM_AVG_WINDOW];
     uint8_t index;
     uint8_t count;
     float sum;
     float filtered_rpm;
-} TachFilter_t;
-
-TachFilter_t tach_filter = {0};
-
-typedef struct {
-    TIM_HandleTypeDef timer;
-    // Holds the previous Capture Compare value, for computing the period
-    uint32_t last_ccr;
-    // Most recent period calculation. Set in interrupt and read by 
-    // thread contexts. Stored in units of raw timer counts.
-    float tach_period;
-    // Has there been an overflow in this timer period?
-    bool pulse_in_this_period;
-    int edges;
-
-    atomic_bool initialized;
-    atomic_bool initialization_started;
 } tachometer_hardware_t;
 
-static tachometer_hardware_t hardware = {
-    .timer = {0},
-    .last_ccr = 0,
-    .tach_period = 0.0f,
-    .edges = 0,
-    .pulse_in_this_period = false,
-    .initialized = false,
-    .initialization_started = false,
-};
+static tachometer_hardware_t hardware = {0};
+
+TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim17;
 
 void pump_pwm_timer_init(void) {
 	TIM_ClockConfigTypeDef sClockSourceConfig = {0};
@@ -124,9 +80,7 @@ void pump_pwm_timer_init(void) {
     HAL_TIM_MspPostInit(&htim17);
 }
 
-static void init_tach_timer(TIM_HandleTypeDef *handle) {
-    (void)handle;
-
+static void pump_tach_timer_init(void) {
     TIM_MasterConfigTypeDef sMasterConfig = {0};
     TIM_IC_InitTypeDef sConfigIC = {0};
     TIM_ClockConfigTypeDef sClockSourceConfig = {0};
@@ -197,26 +151,18 @@ void pump_tach_gpio_init() {
     HAL_GPIO_Init(PUMP_TACH_GPIO_Port, &GPIO_InitStruct);
 }
 
-void pump_tach_timer_init() {
-    if(atomic_exchange(&hardware.initialization_started, true) == false) {
-        init_tach_timer(&hardware.timer);
-        hardware.initialized = true;
-    } else {
-        // Spin until the hardware is initialized
-        while(!hardware.initialized) {
-            taskYIELD();
-        }
-    }
-}
-
 static uint32_t clamp(uint32_t val, uint32_t min, uint32_t max) {
     if (val < min) return min;
     if (val > max) return max;
     return val;
 }
 
-void hw_start_pump_motor(bool start) {
-    start ? HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1) : HAL_TIM_PWM_Stop(&htim17, TIM_CHANNEL_1);
+bool hw_start_pump_motor(bool start) {
+    if (start) {
+        return HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1) == HAL_OK;
+    } else {
+        return HAL_TIM_PWM_Stop(&htim17, TIM_CHANNEL_1) == HAL_OK;
+    }
 }
 
 void hw_set_pump_duty_cycle(int16_t duty) {
@@ -240,24 +186,7 @@ bool hw_enable_pump_tach(bool enable) {
     }
 }
 
-float hw_get_pump_rpm(void) {
-    // If we directly use the atomic variable after the if(),
-    // there's a chance we can divide by zero!
-    float period = hardware.tach_period;
-
-    if(period == 0) {
-      return 0;
-    }
-
-    float edges = (float)hardware.edges;
-    hardware.edges = 0;
-    return edges;
-
-    // return (float)period;
-    // return ((float)SEC_PER_MIN * (float)(PULSES_PER_CAPTURE) *
-    //         (float)TACH_TIMER_PRESCALED_FREQ)
-    //         / ((float)period * PULSES_PER_ROTATION);
-}
+float hw_get_pump_rpm(void) { return hardware.filtered_rpm; }
 
 void pump_hardware_init(void) {
     pump_tach_gpio_init();
@@ -271,46 +200,56 @@ void pump_hardware_init(void) {
     hw_enable_pump_tach(true);
 }
 
+void update_filtered_rpm(float new_rpm) {
+    // Subtract the oldest sample from the sum and store new sample
+    hardware.sum -= hardware.buffer[hardware.index];
+    hardware.buffer[hardware.index] = new_rpm;
+    hardware.sum += new_rpm;
 
-void update_tach_filter(float new_rpm) {
-    // Subtract the oldest sample from the sum
-    tach_filter.sum -= tach_filter.buffer[tach_filter.index];
+    // Update index (circular) and count
+    hardware.index++;
+    if (hardware.index >= RPM_AVG_WINDOW)
+        hardware.index = 0;
 
-    // Store new sample
-    tach_filter.buffer[tach_filter.index] = new_rpm;
-    tach_filter.sum += new_rpm;
+    if (hardware.count < RPM_AVG_WINDOW)
+        hardware.count++;
 
-    // Update index (circular)
-    tach_filter.index++;
-    if (tach_filter.index >= RPM_AVG_WINDOW)
-        tach_filter.index = 0;
-
-    // Track how many samples weve accumulated
-    if (tach_filter.count < RPM_AVG_WINDOW)
-        tach_filter.count++;
-
-    // Compute average
-    tach_filter.filtered_rpm = tach_filter.sum / tach_filter.count;
+    hardware.filtered_rpm = hardware.sum / hardware.count;
 }
 
 
-float old_val = 0.0f;
+float tach_ticks_to_rpm(uint32_t tick_period) {
+    if (tick_period == 0) return 0.0f;
+    float period_s = (float)tick_period / (TIMER_CLOCK_HZ / (TACH_PRESCALER + 1));
+    float fgout_freq = 1.0f / period_s;
+    float rev_per_s = fgout_freq / TACH_PULSES_PER_REV;
+    return rev_per_s * 60.0f;
+}
+
+static bool valid_capture = false;
+static uint16_t last_capture = 0;
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
-    if (htim->Instance == TACH_TIMER) {
-        hardware.edges += 1;
-        if (old_val == 0.0f) {
-            old_val = (float)HAL_TIM_ReadCapturedValue(htim, TACH_CHANNEL);
-        } else {
-            float new_val = (float)HAL_TIM_ReadCapturedValue(htim, TACH_CHANNEL);
-            float period = new_val > old_val ? new_val - old_val : ((0xffffffff - old_val) + new_val) + 1;
-            hardware.tach_period = 1.0f / (period / 1000);
-            if (hardware.edges > 6) {
-                hardware.edges = 0;
-                update_tach_filter(hardware.tach_period);
-            }
-            old_val = 0.0f;
-            __HAL_TIM_SET_COUNTER(htim, 0);
-        }
+    if (htim->Instance != TACH_TIMER) return;
+    uint16_t ticks;
+    uint16_t current_capture = HAL_TIM_ReadCapturedValue(htim, TACH_CHANNEL);
+    if (!valid_capture) {
+        last_capture = current_capture;
+        valid_capture = true;
+        return;
     }
+
+    // compute tick difference with wraparound
+    if (current_capture >= last_capture)
+        ticks = current_capture - last_capture;
+    else
+        ticks = (0xFFFF - last_capture) + current_capture + 1;
+
+    last_capture = current_capture;
+    if (ticks < 10 || ticks > 0xFFFF) return;
+
+    // Convert the ticks to RPM and update moving average
+    hardware.period = (float)ticks;
+    hardware.rpm = tach_ticks_to_rpm(ticks);
+    update_filtered_rpm(hardware.rpm);
 }
 
