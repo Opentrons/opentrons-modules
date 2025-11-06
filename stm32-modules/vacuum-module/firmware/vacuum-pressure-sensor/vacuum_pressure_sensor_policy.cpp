@@ -5,6 +5,7 @@
 #include "FreeRTOS.h"
 #include "firmware/hardware_iface.hpp"
 #include "firmware/system_hardware.h"
+#include "firmware/vacuum_pressure_sensor_hardware.h"
 #include "projdefs.h"
 #include "systemwide.h"
 #include "task.h"
@@ -23,8 +24,28 @@ auto VacuumPressureSensorPolicy::i2c_read(uint16_t dev_addr, uint16_t reg,
     return i2c_comms->i2c_read(dev_addr, reg, data, size);
 }
 
-auto VacuumPressureSensorPolicy::conversion_ended() -> bool {
-    return system_hardware_read_eoc_pin();
+auto VacuumPressureSensorPolicy::i2c_master_write(uint16_t dev_addr,
+                                                  uint8_t* data, uint16_t size)
+    -> RxTxReturn {
+    auto ret = i2c_comms->i2c_master_write(dev_addr, data, size);
+    return RxTxReturn(ret);
+}
+
+auto VacuumPressureSensorPolicy::i2c_master_read(uint16_t dev_addr,
+                                                 uint8_t* data, uint16_t size)
+    -> RxTxReturn {
+    auto ret = i2c_comms->i2c_master_write(dev_addr, data, size);
+    return RxTxReturn(ret);
+}
+
+auto VacuumPressureSensorPolicy::conversion_ended(
+    VacuumPressureSensorId sensor_id) -> bool {
+    return sensor_hardware_read_eoc_pin(sensor_id);
+}
+
+auto VacuumPressureSensorPolicy::sensor_reset(VacuumPressureSensorId sensor_id)
+    -> void {
+    sensor_hardware_sensor_reset(sensor_id);
 }
 
 auto VacuumPressureSensorPolicy::sleep_ms(uint32_t ms) -> void {
