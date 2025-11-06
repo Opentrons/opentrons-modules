@@ -4,7 +4,6 @@
 
 #include "FreeRTOS.h"
 #include "firmware/hardware_iface.hpp"
-#include "firmware/system_hardware.h"
 #include "firmware/vacuum_pressure_sensor_hardware.h"
 #include "projdefs.h"
 #include "systemwide.h"
@@ -28,14 +27,14 @@ auto VacuumPressureSensorPolicy::i2c_master_write(uint16_t dev_addr,
                                                   uint8_t* data, uint16_t size)
     -> RxTxReturn {
     auto ret = i2c_comms->i2c_master_write(dev_addr, data, size);
-    return RxTxReturn(ret);
+    return ret;
 }
 
 auto VacuumPressureSensorPolicy::i2c_master_read(uint16_t dev_addr,
                                                  uint8_t* data, uint16_t size)
     -> RxTxReturn {
     auto ret = i2c_comms->i2c_master_write(dev_addr, data, size);
-    return RxTxReturn(ret);
+    return ret;
 }
 
 auto VacuumPressureSensorPolicy::conversion_ended(
