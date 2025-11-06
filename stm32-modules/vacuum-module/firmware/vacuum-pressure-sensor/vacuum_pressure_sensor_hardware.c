@@ -1,9 +1,5 @@
 #include "systemwide.h"
 
-// reset, eoc
-// sensor a, sensor b 
-
-// TODO: call this in a FreeRTOS Task startup routine
 void vacuum_pressure_sensor_init(void) {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
