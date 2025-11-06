@@ -28,9 +28,6 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     _queue.provide_handle(handle);
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
-    // TODO: move this call to the FreeRTOS task that will be responsible for
-    // sensors
-    vacuum_pressure_sensor_init();
     auto policy = SystemPolicy();
 
     while (true) {

@@ -1,6 +1,6 @@
 #include "systemwide.h"
 
-void vacuum_pressure_sensor_init(void) {
+void vacuum_pressure_sensor_hardware_init(void) {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
     __HAL_RCC_GPIOA_CLK_ENABLE();

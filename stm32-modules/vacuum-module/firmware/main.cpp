@@ -6,6 +6,7 @@
 #include "firmware/i2c_comms.hpp"
 #include "firmware/i2c_hardware.h"
 #include "firmware/system_stm32g4xx.h"
+#include "firmware/vacuum_pressure_sensor_hardware.h"
 #include "ot_utils/freertos/freertos_task.hpp"
 #include "systemwide.h"
 #include "task.h"
@@ -54,6 +55,7 @@ auto main() -> int {
     HardwareInit();
 
     i2c_hardware_init(&i2c_handles);
+    vacuum_pressure_sensor_hardware_init();
 
     i2c2_comms.set_handle(i2c_handles.i2c2, I2C_BUS_2);
     i2c3_comms.set_handle(i2c_handles.i2c3, I2C_BUS_3);
