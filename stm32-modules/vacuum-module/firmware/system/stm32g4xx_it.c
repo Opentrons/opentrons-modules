@@ -21,6 +21,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "firmware/pump_hardware.h"
+
 /* External variables --------------------------------------------------------*/
 extern DMA_HandleTypeDef hdma_spi2_rx;
 extern DMA_HandleTypeDef hdma_spi2_tx;
@@ -109,7 +111,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if(htim->Instance == TIM7) {
         HAL_IncTick();
+    } else if(htim->Instance == TIM3) {
+       tach_period_overflow_callback();
     }
+
 }
 
 /**
