@@ -4,7 +4,6 @@
 #include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/system_policy.hpp"
-#include "firmware/vacuum_pressure_sensor_hardware.h"
 #include "task.h"
 #include "vacuum-module/system_task.hpp"
 
@@ -28,8 +27,8 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     _queue.provide_handle(handle);
     aggregator->register_queue(_queue);
     _top_task.provide_aggregator(aggregator);
-    auto policy = SystemPolicy();
 
+    auto policy = SystemPolicy();
     while (true) {
         _top_task.run_once(policy);
     }
