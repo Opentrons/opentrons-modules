@@ -1,4 +1,11 @@
+#include <stdbool.h>
+
+#include "stm32g4xx_hal.h"
+#include "stm32g4xx_hal_conf.h"
+#include "stm32g4xx_hal_gpio.h"
+#include "stm32g4xx_hal_def.h"
 #include "systemwide.h"
+#include "main.h"
 
 void vacuum_pressure_sensor_hardware_init(void) {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -37,17 +44,18 @@ void vacuum_pressure_sensor_hardware_init(void) {
 
 
 bool sensor_hardware_read_eoc_pin(VacuumPressureSensorId sensor_id) {
-	if (sensor_id == VacuumPressureSensorId::SensorA) {
-	    uint8_t pin_val = HAL_GPIO_ReadPin(SENSOR_A_EOC_PORT, SENSOR_A_EOC_PIN);
+	uint8_t pin_val;
+    if (sensor_id == SensorA) {
+	    pin_val = HAL_GPIO_ReadPin(SENSOR_A_EOC_PORT, SENSOR_A_EOC_PIN);
 	}
 	else {
-		uint8_t pin_val = HAL_GPIO_ReadPin(SENSOR_B_EOC_PORT, SENSOR_B_EOC_PIN);
+		pin_val = HAL_GPIO_ReadPin(SENSOR_B_EOC_PORT, SENSOR_B_EOC_PIN);
 	}
     return pin_val == GPIO_PIN_SET ? true : false;
 }
 
 void sensor_hardware_sensor_reset(VacuumPressureSensorId sensor_id) {
-	if (sensor_id == VacuumPressureSensorId::SensorA) {
+	if (sensor_id == SensorA) {
 	    HAL_GPIO_WritePin(SENSOR_A_RESET_PORT, SENSOR_A_RESET_PIN, GPIO_PIN_RESET);
 	}
 	else {
