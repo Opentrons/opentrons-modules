@@ -42,6 +42,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${COMMS_DIR}/usbd_conf.c
     ${COMMS_DIR}/usbd_desc.c
     ${COMMS_DIR}/usb_hardware.c
+    ${VACUUM_PS_DIR}/vacuum_pressure_sensor_hardware.c
     )
 
 add_executable(${TARGET_MODULE_NAME}
