@@ -9,7 +9,8 @@ namespace pump_policy {
 
 class PumpPolicy {
   public:
-    auto start_pump_motor(bool start) -> void;
+    auto start_pump_motor() -> bool;
+    auto stop_pump_motor() -> bool;
     auto set_pump_duty_cycle(uint16_t duty) -> void;
     auto get_pump_duty_cycle() -> uint16_t;
     auto enable_pump_tach() -> bool;

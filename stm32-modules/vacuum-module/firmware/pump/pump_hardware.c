@@ -169,12 +169,12 @@ static uint32_t clamp(uint32_t val, uint32_t min, uint32_t max) {
     return val;
 }
 
-bool hw_start_pump_motor(bool start) {
-    if (start) {
-        return HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1) == HAL_OK;
-    } else {
-        return HAL_TIM_PWM_Stop(&htim17, TIM_CHANNEL_1) == HAL_OK;
-    }
+bool hw_start_pump_motor() {
+    return HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1) == HAL_OK;
+}
+
+bool hw_stop_pump_motor() {
+    return HAL_TIM_PWM_Stop(&htim17, TIM_CHANNEL_1) == HAL_OK;
 }
 
 void hw_set_pump_duty_cycle(int16_t duty) {

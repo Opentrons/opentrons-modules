@@ -10,7 +10,10 @@
 using namespace pump_policy;
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto start_pump_motor(bool start) -> void { hw_start_pump_motor(start); }
+auto start_pump_motor() -> bool { return hw_start_pump_motor(); }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto stop_pump_motor() -> bool { return hw_stop_pump_motor(); }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto set_pump_duty_cycle(uint16_t duty) -> void {
