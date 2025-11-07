@@ -52,7 +52,7 @@ class MPRLL0025PA00001 {
         _policy->i2c_write(DEVICE_ADDRESS, MEASURE_PRESSURE_COMMAND, READ_BUFF,
                            0);
 
-        for (int i = 0; i < retries; i++) {
+        for (int i = 0; i < (retries + 1); i++) {
             _policy->i2c_master_read(DEV_ADDRESS, READ_BUFF, 4);
             auto status_byte = READ_BUFF[0];
             sensor_busy = static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
