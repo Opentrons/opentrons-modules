@@ -48,7 +48,7 @@ class LPS222DF {
         _policy->i2c_write(DEVICE_ADDRESS, CTRL_REG2, ONE_SHOT_PRESSURE_READ,
                            1);
         _policy->sleep_ms(5);
-        for (int i = 0; i < retries; i++) {
+        for (int i = 0; i < (retries + 1); i++) {
             _policy->i2c_read(DEVICE_ADDRESS, PRESSURE_OUTPUT_REGISTER,
                               READ_BUFF, 4);
             auto status_byte = READ_BUFF[0];
