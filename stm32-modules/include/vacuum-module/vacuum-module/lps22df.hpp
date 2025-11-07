@@ -15,7 +15,8 @@ concept LPS22DFPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
     { p.i2c_write(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
 };
 
-constexpr uint8_t DEVICE_ADDRESS = 0xB8;
+// 7-bit device is 5C if pin SDO is LOW
+constexpr uint8_t DEVICE_ADDRESS = 0x5C << 1;
 // address CTRL_REG2 to read pressure
 constexpr uint8_t CTRL_REG2 = 0x11;
 // pressure reading is 4 bytes, starting with status at 0x27
