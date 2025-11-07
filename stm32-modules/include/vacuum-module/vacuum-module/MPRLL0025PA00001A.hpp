@@ -19,7 +19,7 @@ concept MPRPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
         } -> std::same_as<i2c::hardware::RxTxReturn>;
 };
 
-constexpr uint8_t DEV_ADDRESS = 0x30;
+constexpr uint8_t DEV_ADDRESS = 0x18 << 1;
 constexpr uint8_t MEASURE_PRESSURE_COMMAND = 0xAA;
 constexpr uint8_t STATUS_BUSY_FLAG = 0x20;
 constexpr uint32_t OUTPUT_MAX = 15099494;
