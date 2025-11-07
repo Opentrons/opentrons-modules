@@ -1,5 +1,7 @@
 #include "firmware/pump_policy.hpp"
 
+#include <cstdint>
+
 #include "FreeRTOS.h"
 #include "firmware/pump_hardware.h"
 #include "task.h"
