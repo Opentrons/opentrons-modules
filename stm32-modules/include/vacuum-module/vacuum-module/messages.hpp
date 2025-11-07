@@ -122,4 +122,6 @@ using SystemMessage =
 
 using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
+using ControlMessage = ::std::variant<std::monostate>;
+
 };  // namespace messages

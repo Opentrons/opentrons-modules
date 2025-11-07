@@ -1,7 +1,6 @@
 #include "firmware/ui_policy.hpp"
 
 #include "FreeRTOS.h"
-#include "firmware/pump_hardware.h"
 #include "firmware/ui_hardware.h"
 #include "task.h"
 

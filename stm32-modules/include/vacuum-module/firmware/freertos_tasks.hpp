@@ -22,3 +22,9 @@ namespace system_control_task {
 // Actual function that runs in the task
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
 }  // namespace system_control_task
+
+namespace pressure_control_task {
+// Actual function that runs in the task
+auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
+         i2c::hardware::I2C* i2c_comms) -> void;
+}  // namespace pressure_control_task

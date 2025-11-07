@@ -20,4 +20,7 @@ constexpr uint8_t SYSTEM_TASK_PRIORITY = 1;
 
 constexpr size_t UI_STACK_SIZE = 256;
 constexpr uint8_t UI_TASK_PRIORITY = 1;
+
+constexpr size_t CONTROL_STACK_SIZE = 256;
+constexpr uint8_t CONTROL_TASK_PRIORITY = 1;
 }  // namespace tasks
