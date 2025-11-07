@@ -177,7 +177,7 @@ bool hw_stop_pump_motor() {
     return HAL_TIM_PWM_Stop(&htim17, TIM_CHANNEL_1) == HAL_OK;
 }
 
-void hw_set_pump_duty_cycle(int16_t duty) {
+void hw_set_pump_duty_cycle(uint16_t duty) {
     duty = clamp(duty, 0, 100);
     uint16_t ccr = (uint16_t)(((float)duty / 100.0f) * (PWM_PERIOD + 1));
     TIM17->CCR1 = ccr;
