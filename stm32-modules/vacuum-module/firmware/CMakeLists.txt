@@ -16,7 +16,6 @@ set(VENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vent")
 set(PUMP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/pump")
 set(ATMOSPHERE_PS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/atmosphere-pressure-sensor")
 set(VACUUM_PS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vacuum-pressure-sensor")
-set(CONTROL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/control_task")
 
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS

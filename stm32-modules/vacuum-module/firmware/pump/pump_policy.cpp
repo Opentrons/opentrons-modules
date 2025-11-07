@@ -4,7 +4,6 @@
 
 #include "FreeRTOS.h"
 #include "firmware/pump_hardware.h"
-#include "projdefs.h"
 #include "task.h"
 
 using namespace pump_policy;
