@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <optional>
 
+#include "firmware/atmosphere_pressure_sensor_policy.hpp"
+
 namespace lps22df {
 
 template <typename P>
@@ -28,7 +30,7 @@ constexpr uint8_t PRESSURE_READY_FLAG = 0x01;
 
 class LPS222DF {
   public:
-    auto initialize(LPS22DFPolicy* policy) -> void {
+    auto initialize(atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy* policy) -> void {
         if (_policy == nullptr) {
             _policy = policy;
         }
@@ -61,14 +63,14 @@ class LPS222DF {
     }
 
   private:
-    LPS22DFPolicy* _policy{nullptr};
+    atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy* _policy{nullptr};
 
     auto convert_pressure(uint8_t* sensor_output) -> uint16_t {
         auto pressure_read_bytes = {sensor_output[1], sensor_output[2],
                                     sensor_output[3]};
         // test that this is accurate
         auto pressure_read_counts =
-            sensor_outputf[1] << 16 | sensor_output[2] << 8 | sensor_outputf[3];
+            sensor_output[1] << 16 | sensor_output[2] << 8 | sensor_output[3];
         auto pressure_hPa = pressure_read_counts / SENSOR_SENSITIVITY;
         return pressure_hPa
     }
