@@ -28,16 +28,20 @@ constexpr uint16_t SENSOR_SENSITIVITY = 4096;
 // bit 0 in the status byte is for pressure reading available
 constexpr uint8_t PRESSURE_READY_FLAG = 0x01;
 
+constexpr uint8_t PRESSURE_FRAME_LEN = 4;
+std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};
+
 class LPS222DF {
   public:
-    auto initialize(atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy* policy) -> void {
+    auto initialize(
+        atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy*
+            policy) -> void {
         if (_policy == nullptr) {
             _policy = policy;
         }
     }
 
     auto read_pressure(int retries) -> uint16_t {
-        uint8_t read_buff[4] = {0x00};
         bool pressure_reading_ready = false;
 
         _policy->i2c_write(DEVICE_ADDRESS, CTRL_REG2, ONE_SHOT_PRESSURE_READ,
@@ -45,8 +49,8 @@ class LPS222DF {
         _policy->sleep_ms(5);
         for (int i = 0; i < retries; i++) {
             _policy->i2c_read(DEVICE_ADDRESS, PRESSURE_OUTPUT_REGISTER,
-                              read_bufff, 4);
-            auto status_byte = read_buff[0];
+                              READ_BUFF, 4);
+            auto status_byte = READ_BUFF[0];
             pressure_reading_ready =
                 static_cast<bool>(status_byte & PRESSURE_READY_FLAG);
 
@@ -58,12 +62,13 @@ class LPS222DF {
             // raise an error here
         }
 
-        auto pressure_hPa = convert_pressure(read_buff);
+        auto pressure_hPa = convert_pressure(READ_BUFF);
         return pressure_hPa
     }
 
   private:
-    atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy* _policy{nullptr};
+    atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy*
+        _policy{nullptr};
 
     auto convert_pressure(uint8_t* sensor_output) -> uint16_t {
         auto pressure_read_bytes = {sensor_output[1], sensor_output[2],

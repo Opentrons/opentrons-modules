@@ -11,8 +11,12 @@ namespace vacuum_pressure_sensor {
 template <typename P>
 concept MPRPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
                              uint16_t size, uint8_t* data) {
-    { p.i2c_read(dev_addr, reg, data, size) } -> std::same_as<i2c::hardware::RxTxReturn>;
-    { p.i2c_write(dev_addr, reg, data, size) } -> std::same_as<i2c::hardware::RxTxReturn>;
+    {
+        p.i2c_read(dev_addr, reg, data, size)
+        } -> std::same_as<i2c::hardware::RxTxReturn>;
+    {
+        p.i2c_write(dev_addr, reg, data, size)
+        } -> std::same_as<i2c::hardware::RxTxReturn>;
 };
 
 constexpr uint8_t DEV_ADDRESS = 0x30;
@@ -23,6 +27,9 @@ constexpr uint32_t OUTPUT_MIN = 1677722;
 constexpr uint32_t OUTPUT_RANGE_COUNTS = OUTPUT_MAX - OUTPUT_MIN;
 // range for this particular model is 0-25 PSI
 constexpr uint16_t PRESSURE_RANGE_PSI = 25;
+
+constexpr uint8_t PRESSURE_FRAME_LEN = 4;
+std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};
 
 struct StatusByte {
     uint8_t power_indication;
@@ -40,14 +47,14 @@ class MPRLL0025PA00001 {
     }
 
     auto read_pressure(int retries) -> uint16_t {
-        uint8_t read_buff[4] = {0x00};
         bool sensor_busy = true;
 
-        _policy->i2c_write(0x18 << 1, 0xAA, read_buff, 0);
+        _policy->i2c_write(DEVICE_ADDRESS, MEASURE_PRESSURE_COMMAND, READ_BUFF,
+                           0);
 
         for (int i = 0; i < retries; i++) {
-            _policy->i2c_master_read(0x18 << 1, read_buff, 4);
-            auto status_byte = read_buff[0];
+            _policy->i2c_master_read(DEV_ADDRESS, READ_BUFF, 4);
+            auto status_byte = READ_BUFF[0];
             sensor_busy = static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
 
             if (!sensor_busy) {
@@ -55,7 +62,7 @@ class MPRLL0025PA00001 {
             }
         }
 
-        auto pressure_psi = convert_pressure(read_buff);
+        auto pressure_psi = convert_pressure(READ_BUFF);
         return pressure_psi;
     }
 
