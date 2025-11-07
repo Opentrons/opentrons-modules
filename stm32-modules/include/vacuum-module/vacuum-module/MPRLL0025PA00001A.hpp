@@ -28,8 +28,10 @@ constexpr uint32_t OUTPUT_RANGE_COUNTS = OUTPUT_MAX - OUTPUT_MIN;
 // range for this particular model is 0-25 PSI
 constexpr uint16_t PRESSURE_RANGE_PSI = 25;
 
-constexpr uint8_t PRESSURE_FRAME_LEN = 4;
+constexpr uint8_t PRESSURE_FRAME_LEN = 10;
 std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};
+std::array<uint8_t, PRESSURE_FRAME_LEN> WRITE = {MEASURE_PRESSURE_COMMAND};
+constexpr int retries = 3;
 
 struct StatusByte {
     uint8_t power_indication;
@@ -46,11 +48,11 @@ class MPRLL0025PA00001 {
         }
     }
 
-    auto read_pressure(int retries) -> uint16_t {
+    auto read_pressure() -> uint16_t {
         bool sensor_busy = true;
 
-        _policy->i2c_write(DEVICE_ADDRESS, MEASURE_PRESSURE_COMMAND, READ_BUFF,
-                           0);
+        _policy->i2c_master_write(DEVICE_ADDRESS, MEASURE_PRESSURE_COMMAND,
+                                  WRITE_BUFF, 1);
 
         for (int i = 0; i < (retries + 1); i++) {
             _policy->i2c_master_read(DEV_ADDRESS, READ_BUFF, 4);

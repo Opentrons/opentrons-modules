@@ -29,8 +29,10 @@ constexpr uint16_t SENSOR_SENSITIVITY = 4096;
 // bit 0 in the status byte is for pressure reading available
 constexpr uint8_t PRESSURE_READY_FLAG = 0x01;
 
-constexpr uint8_t PRESSURE_FRAME_LEN = 4;
+constexpr uint8_t PRESSURE_FRAME_LEN = 10;
 std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};
+std::array<uint8_t, PRESSURE_FRAME_LEN> WRITE_BUFF = {0};
+constexpr int retries = 3;
 
 class LPS222DF {
   public:
@@ -42,7 +44,7 @@ class LPS222DF {
         }
     }
 
-    auto read_pressure(int retries) -> uint16_t {
+    auto read_pressure() -> uint16_t {
         bool pressure_reading_ready = false;
 
         _policy->i2c_write(DEVICE_ADDRESS, CTRL_REG2, ONE_SHOT_PRESSURE_READ,
