@@ -21,10 +21,14 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "firmware/pump_hardware.h"
+
 /* External variables --------------------------------------------------------*/
 extern DMA_HandleTypeDef hdma_spi2_rx;
 extern DMA_HandleTypeDef hdma_spi2_tx;
 extern SPI_HandleTypeDef hspi2;
+extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim3;
 
 
 /******************************************************************************/
@@ -94,6 +98,11 @@ void DebugMon_Handler(void)
 /* please refer to the startup file (startup_stm32g4xx.s).                    */
 /******************************************************************************/
 
+void EXTI9_5_IRQHandler(void) {
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_7)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_7);
+    }
+}
 
 /**
  * TIM7 = timebase counter
@@ -102,5 +111,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if(htim->Instance == TIM7) {
         HAL_IncTick();
+    } else if(htim->Instance == TIM3) {
+       tach_period_overflow_callback();
     }
+
 }
+
+/**
+ * @brief This function handles TIM3 global interrupt.
+ */
+__attribute__((section(".ccmram")))
+void TIM3_IRQHandler(void) { HAL_TIM_IRQHandler(&htim3); }
+

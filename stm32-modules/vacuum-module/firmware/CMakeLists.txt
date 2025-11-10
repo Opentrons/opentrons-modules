@@ -6,14 +6,16 @@ add_STM32G4_driver(${TARGET_MODULE_NAME})
 add_STM32G4_freertos(${TARGET_MODULE_NAME})
 add_STM32G4_usb(${TARGET_MODULE_NAME})
 
-set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
-set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
-set(ATMOSPHERE_PS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/atmosphere-pressure-sensor")
-set(VACUUM_PS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vacuum-pressure-sensor")
-set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32G491")
 set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
 set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
+set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
+set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
+set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
+set(VENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vent")
+set(PUMP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/pump")
+set(ATMOSPHERE_PS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/atmosphere-pressure-sensor")
+set(VACUUM_PS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vacuum-pressure-sensor")
 
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
@@ -25,6 +27,8 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${SYSTEM_DIR}/i2c_comms.cpp
     ${UI_DIR}/freertos_ui_task.cpp
     ${UI_DIR}/ui_policy.cpp
+    ${VENT_DIR}/vent_policy.cpp
+    ${PUMP_DIR}/pump_policy.cpp
     ${ATMOSPHERE_PS_DIR}/atmosphere_pressure_sensor_policy.cpp
     ${VACUUM_PS_DIR}/vacuum_pressure_sensor_policy.cpp
     )
@@ -42,6 +46,8 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${COMMS_DIR}/usbd_conf.c
     ${COMMS_DIR}/usbd_desc.c
     ${COMMS_DIR}/usb_hardware.c
+    ${VENT_DIR}/vent_hardware.c
+    ${PUMP_DIR}/pump_hardware.c
     ${VACUUM_PS_DIR}/vacuum_pressure_sensor_hardware.c
     )
 
