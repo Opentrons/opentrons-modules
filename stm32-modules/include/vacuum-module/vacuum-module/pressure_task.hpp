@@ -5,40 +5,40 @@
 #include "core/ack_cache.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
-#include "firmware/control_policy.hpp"
+#include "firmware/pressure_policy.hpp"
 #include "vacuum-module/errors.hpp"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/tasks.hpp"
 #include "hal/message_queue.hpp"
 #include "messages.hpp"
 
-namespace control_task {
+namespace pressure_task {
 template <typename P>
 concept PressureControlPolicy = requires(P p) {
     { p.sleep_ms(1) };
 };
 
-using ControlPolicy = control_policy::ControlPolicy;
-using Message = messages::ControlMessage;
+using PressurePolicy = pressure_policy::PressurePolicy;
+using Message = messages::PressureMessage;
 using Error = errors::ErrorCode;
 
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
-class ControlTask {
+class PressureTask {
   private:
     using Queue = QueueImpl<Message>;
     using Aggregator = typename tasks::Tasks<QueueImpl>::QueueAggregator;
     using Queues = typename tasks::Tasks<QueueImpl>;
 
   public:
-    explicit ControlTask(Queue& q, Aggregator* aggregator, ControlPolicy* policy)
+    explicit PressureTask(Queue& q, Aggregator* aggregator, PressurePolicy* policy)
         : _message_queue(q),
           _task_registry(aggregator) {}
-    ControlTask(const ControlTask& other) = delete;
-    auto operator=(const ControlTask& other) -> ControlTask& = delete;
-    ControlTask(ControlTask&& other) noexcept = delete;
-    auto operator=(ControlTask&& other) noexcept -> ControlTask& = delete;
-    ~ControlTask() = default;
+    PressureTask(const PressureTask& other) = delete;
+    auto operator=(const PressureTask& other) -> PressureTask& = delete;
+    PressureTask(PressureTask&& other) noexcept = delete;
+    auto operator=(PressureTask&& other) noexcept -> PressureTask& = delete;
+    ~PressureTask() = default;
 
     auto provide_aggregator(Aggregator* aggregator) {
         _task_registry = aggregator;
@@ -93,4 +93,4 @@ class ControlTask {
     bool _initialized{false};
 };
 
-}  // namespace control_task
+}  // namespace pressure_task

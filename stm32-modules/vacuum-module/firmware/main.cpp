@@ -21,7 +21,7 @@
 using EntryPoint = std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
 using EntryPointUI = std::function<void(tasks::FirmwareTasks::QueueAggregator *,
                                         i2c::hardware::I2C *)>;
-using EntryPointControl = std::function<void(tasks::FirmwareTasks::QueueAggregator *,
+using EntryPointPressure = std::function<void(tasks::FirmwareTasks::QueueAggregator *,
                                         i2c::hardware::I2C *)>;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -31,7 +31,7 @@ static auto host_comms_entry = EntryPoint(host_comms_control_task::run);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto system_task_entry = EntryPoint(system_control_task::run);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static auto control_task_entry = EntryPointControl(pressure_control_task::run);
+static auto pressure_task_entry = EntryPointPressure(pressure_control_task::run);
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto host_comms_task =
@@ -46,9 +46,9 @@ static auto system_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::SYSTEM_STACK_SIZE, EntryPoint>(
         system_task_entry);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static auto control_task =
-    ot_utils::freertos_task::FreeRTOSTask<tasks::CONTROL_STACK_SIZE, EntryPointControl>(
-        control_task_entry);
+static auto pressure_task =
+    ot_utils::freertos_task::FreeRTOSTask<tasks::PRESSURE_STACK_SIZE, EntryPointPressure>(
+        pressure_task_entry);
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
@@ -73,7 +73,7 @@ auto main() -> int {
     system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);
     ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator, &i2c2_comms);
-    control_task.start(tasks::CONTROL_TASK_PRIORITY, "Control", &aggregator, &i2c2_comms);
+    pressure_task.start(tasks::PRESSURE_TASK_PRIORITY, "Pressure", &aggregator, &i2c2_comms);
 
     vTaskStartScheduler();
     return 0;

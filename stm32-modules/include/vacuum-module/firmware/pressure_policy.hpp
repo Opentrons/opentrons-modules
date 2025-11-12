@@ -5,12 +5,12 @@
 #include "i2c_comms.hpp"
 #include "systemwide.h"
 
-namespace control_policy {
+namespace pressure_policy {
 using namespace i2c::hardware;
 
-class ControlPolicy {
+class PressurePolicy {
   public:
-    ControlPolicy(I2C *i2c) : i2c_comms{i2c} {}
+    PressurePolicy(I2C *i2c) : i2c_comms{i2c} {}
 
     template <size_t Len>
     auto i2c_write(uint8_t device_address, uint8_t register_address,
@@ -24,4 +24,4 @@ class ControlPolicy {
   private:
     I2C *i2c_comms;
 };
-}  // namespace control_policy
+}  // namespace pressure_policy

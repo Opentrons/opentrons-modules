@@ -1,4 +1,4 @@
-#include "firmware/control_policy.hpp"
+#include "firmware/pressure_policy.hpp"
 
 #include <cstdint>
 
@@ -6,10 +6,10 @@
 #include "projdefs.h"
 #include "task.h"
 
-using namespace control_policy;
+using namespace pressure_policy;
 
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto ControlPolicy::sleep_ms(uint32_t ms) -> void {
+auto PressurePolicy::sleep_ms(uint32_t ms) -> void {
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
