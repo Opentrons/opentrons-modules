@@ -124,9 +124,11 @@ auto start() -> tasks::Task<TaskHandle_t,
     auto *handle = xTaskCreateStatic(run, "HeaterControl", _stack.size(),
                                      &_heater_tasks, 1, _stack.data(), &_data);
     _heater_queue.provide_handle(handle);
+
     auto *hardware_handle = xTaskCreateStatic(
         run_hardware_task, "HeaterHardware", _hardware_stack.size(),
         &_heater_tasks, 1, _hardware_stack.data(), &_hardware_data);
+
     _heater_tasks.hardware_task_handle = hardware_handle;
     return tasks::Task<TaskHandle_t, decltype(_heater_tasks.heater_main_task)>{
         .handle = handle, .task = &_heater_tasks.heater_main_task};

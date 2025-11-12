@@ -110,6 +110,11 @@ struct SetStatusBarStateMessage {
     std::optional<float> power = std::nullopt;
 };
 
+struct GetPressureMessage {
+    uint32_t id = 0;
+    bool from_host = false;
+};
+
 struct SetTargetPressureMessage {
     uint32_t id = 0;
     bool from_host = false;
@@ -135,7 +140,7 @@ using SystemMessage =
 using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
 using PressureMessage =
-    ::std::variant<std::monostate, SetTargetPressureMessage>;
+    ::std::variant<std::monostate, GetPressureMessage, SetTargetPressureMessage>;
 
 using PumpMessage = ::std::variant<std::monostate, SetTargetRPMMessage>;
 

@@ -13,6 +13,8 @@
 #include "vacuum-module/tasks.hpp"
 
 namespace pressure_task {
+static constexpr const uint32_t CONTROL_PERIOD_MS = 3;
+
 template <typename P>
 concept PressureControlPolicy = requires(P p) {
     {p.sleep_ms(1)};
@@ -84,6 +86,13 @@ class PressureTask {
 
     template <PressureControlPolicy Policy>
     auto visit_message(const std::monostate& m, Policy& policy) -> void {
+        static_cast<void>(m);
+        static_cast<void>(policy);
+    }
+
+    template <PressureControlPolicy Policy>
+    auto visit_message(const messages::GetPressureMessage& m,
+                       Policy& policy) -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
     }
