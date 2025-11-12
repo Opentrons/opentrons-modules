@@ -22,7 +22,12 @@ class VacuumPressureSensorPolicy {
         -> RxTxReturn;
     auto i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t *data,
                    uint16_t size) -> RxTxReturn;
-    auto static conversion_ended() -> bool;
+    auto i2c_master_write(uint16_t dev_addr, uint8_t *data, uint16_t size)
+        -> RxTxReturn;
+    auto i2c_master_read(uint16_t dev_addr, uint8_t *data, uint16_t size)
+        -> RxTxReturn;
+    auto static conversion_ended(VacuumPressureSensorId sensor_id) -> bool;
+    auto static sensor_reset(VacuumPressureSensorId sensor_id) -> void;
     auto static sleep_ms(uint32_t ms) -> void;
 
   private:

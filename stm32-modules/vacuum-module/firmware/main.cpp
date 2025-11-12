@@ -7,6 +7,7 @@
 #include "firmware/i2c_hardware.h"
 #include "firmware/pump_hardware.h"
 #include "firmware/system_stm32g4xx.h"
+#include "firmware/vacuum_pressure_sensor_hardware.h"
 #include "firmware/vent_hardware.h"
 #include "ot_utils/freertos/freertos_task.hpp"
 #include "systemwide.h"
@@ -63,6 +64,8 @@ static auto pump_task =
 static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static auto i2c1_comms = i2c::hardware::I2C();
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto i2c2_comms = i2c::hardware::I2C();
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto i2c3_comms = i2c::hardware::I2C();
@@ -74,8 +77,10 @@ auto main() -> int {
 
     vent_hardware_init();
     pump_hardware_init();
+    vacuum_pressure_sensor_hardware_init();
     i2c_hardware_init(&i2c_handles);
 
+    i2c1_comms.set_handle(i2c_handles.i2c1, I2C_BUS_1);
     i2c2_comms.set_handle(i2c_handles.i2c2, I2C_BUS_2);
     i2c3_comms.set_handle(i2c_handles.i2c3, I2C_BUS_3);
 

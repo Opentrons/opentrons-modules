@@ -27,5 +27,9 @@ typedef enum StatusBarPattern {
     Confirm,
 } StatusBarPattern;
 
+typedef enum VacuumPressureSensorId {
+    SensorA,  // Sensor A
+    SensorB,  // Sensor B
+} VacuumPressureSensorId;
 /* size of array for setting serial number */
 #define SYSTEM_WIDE_SERIAL_NUMBER_LENGTH 24
