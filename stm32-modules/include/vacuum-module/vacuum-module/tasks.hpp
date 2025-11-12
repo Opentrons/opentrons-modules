@@ -19,10 +19,12 @@ struct Tasks {
     using UIQueue = QueueImpl<messages::UIMessage>;
     // Message queue for Pressure task
     using PressureQueue = QueueImpl<messages::PressureMessage>;
+    // Message queue for Pump task
+    using PumpQueue = QueueImpl<messages::PumpMessage>;
 
     // Central aggregator
     using QueueAggregator =
-        queue_aggregator::QueueAggregator<HostCommsQueue, SystemQueue, UIQueue, PressureQueue>;
+        queue_aggregator::QueueAggregator<HostCommsQueue, SystemQueue, UIQueue, PressureQueue, PumpQueue>;
 
     // Addresses
     static constexpr size_t HostCommsAddress =
@@ -33,6 +35,8 @@ struct Tasks {
         QueueAggregator::template get_queue_idx<UIQueue>();
     static constexpr size_t PressureAddress =
         QueueAggregator::template get_queue_idx<PressureQueue>();
+    static constexpr size_t PumpAddress =
+        QueueAggregator::template get_queue_idx<PumpQueue>();
 };
 
 };  // namespace tasks

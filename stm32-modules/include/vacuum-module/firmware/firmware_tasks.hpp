@@ -23,4 +23,7 @@ constexpr uint8_t UI_TASK_PRIORITY = 1;
 
 constexpr size_t PRESSURE_STACK_SIZE = 256;
 constexpr uint8_t PRESSURE_TASK_PRIORITY = 1;
+
+constexpr size_t PUMP_STACK_SIZE = 256;
+constexpr uint8_t PUMP_TASK_PRIORITY = 1;
 }  // namespace tasks

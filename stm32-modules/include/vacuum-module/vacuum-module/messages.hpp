@@ -110,6 +110,18 @@ struct SetStatusBarStateMessage {
     std::optional<float> power = std::nullopt;
 };
 
+struct SetTargetPressureMessage {
+    uint32_t id =  0;
+    bool from_host = false;
+    uint32_t pressure_setpoint = 0;
+};
+
+struct SetTargetRPMMessage {
+    uint32_t id =  0;
+    bool from_host = false;
+    uint32_t rpm_setpoint = 0;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -122,6 +134,8 @@ using SystemMessage =
 
 using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
-using PressureMessage = ::std::variant<std::monostate>;
+using PressureMessage = ::std::variant<std::monostate, SetTargetPressureMessage>;
+
+using PumpMessage = ::std::variant<std::monostate, SetTargetRPMMessage>;
 
 };  // namespace messages
