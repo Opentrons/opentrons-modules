@@ -6,16 +6,16 @@
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
 #include "firmware/pump_policy.hpp"
+#include "hal/message_queue.hpp"
+#include "messages.hpp"
 #include "vacuum-module/errors.hpp"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/tasks.hpp"
-#include "hal/message_queue.hpp"
-#include "messages.hpp"
 
 namespace pump_task {
 template <typename P>
 concept PumpControlPolicy = requires(P p) {
-    { p.sleep_ms(1) };
+    {p.sleep_ms(1)};
 };
 
 using PumpPolicy = pump_policy::PumpPolicy;
@@ -32,8 +32,7 @@ class PumpTask {
 
   public:
     explicit PumpTask(Queue& q, Aggregator* aggregator, PumpPolicy* policy)
-        : _message_queue(q),
-          _task_registry(aggregator) {}
+        : _message_queue(q), _task_registry(aggregator) {}
     PumpTask(const PumpTask& other) = delete;
     auto operator=(const PumpTask& other) -> PumpTask& = delete;
     PumpTask(PumpTask&& other) noexcept = delete;
@@ -89,7 +88,8 @@ class PumpTask {
     }
 
     template <PumpControlPolicy Policy>
-    auto visit_message(const messages::SetTargetRPMMessage& m, Policy& policy) -> void {
+    auto visit_message(const messages::SetTargetRPMMessage& m, Policy& policy)
+        -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
     }

@@ -1,6 +1,12 @@
 // included in c++ and c files
 #pragma once
 
+typedef enum PressureSensorID {
+    ABS_PRESSURE_A = 0,
+    ABS_PRESSURE_B,
+    ATM_PRESSURE,
+} PressureSensorID;
+
 typedef enum StatusBarID {
     Internal = 0,
     External,

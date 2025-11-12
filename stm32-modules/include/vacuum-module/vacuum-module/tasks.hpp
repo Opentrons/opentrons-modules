@@ -24,7 +24,8 @@ struct Tasks {
 
     // Central aggregator
     using QueueAggregator =
-        queue_aggregator::QueueAggregator<HostCommsQueue, SystemQueue, UIQueue, PressureQueue, PumpQueue>;
+        queue_aggregator::QueueAggregator<HostCommsQueue, SystemQueue, UIQueue,
+                                          PressureQueue, PumpQueue>;
 
     // Addresses
     static constexpr size_t HostCommsAddress =

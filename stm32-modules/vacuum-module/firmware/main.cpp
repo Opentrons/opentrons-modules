@@ -21,10 +21,11 @@
 using EntryPoint = std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
 using EntryPointUI = std::function<void(tasks::FirmwareTasks::QueueAggregator *,
                                         i2c::hardware::I2C *)>;
-using EntryPointPressure = std::function<void(tasks::FirmwareTasks::QueueAggregator *,
-                                        i2c::hardware::I2C *)>;
-using EntryPointPump = std::function<void(tasks::FirmwareTasks::QueueAggregator *,
-                                        i2c::hardware::I2C *)>;
+using EntryPointPressure = std::function<void(
+    tasks::FirmwareTasks::QueueAggregator *, i2c::hardware::I2C *,
+    i2c::hardware::I2C *, i2c::hardware::I2C *)>;
+using EntryPointPump = std::function<void(
+    tasks::FirmwareTasks::QueueAggregator *, i2c::hardware::I2C *)>;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto ui_task_entry = EntryPointUI(ui_control_task::run);
@@ -33,7 +34,8 @@ static auto host_comms_entry = EntryPoint(host_comms_control_task::run);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto system_task_entry = EntryPoint(system_control_task::run);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static auto pressure_task_entry = EntryPointPressure(pressure_control_task::run);
+static auto pressure_task_entry =
+    EntryPointPressure(pressure_control_task::run);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto pump_task_entry = EntryPointPump(pump_control_task::run);
 
@@ -50,13 +52,12 @@ static auto system_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::SYSTEM_STACK_SIZE, EntryPoint>(
         system_task_entry);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static auto pressure_task =
-    ot_utils::freertos_task::FreeRTOSTask<tasks::PRESSURE_STACK_SIZE, EntryPointPressure>(
-        pressure_task_entry);
+static auto pressure_task = ot_utils::freertos_task::FreeRTOSTask<
+    tasks::PRESSURE_STACK_SIZE, EntryPointPressure>(pressure_task_entry);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto pump_task =
-    ot_utils::freertos_task::FreeRTOSTask<tasks::PUMP_STACK_SIZE, EntryPointPump>(
-        pump_task_entry);
+    ot_utils::freertos_task::FreeRTOSTask<tasks::PUMP_STACK_SIZE,
+                                          EntryPointPump>(pump_task_entry);
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
@@ -81,8 +82,11 @@ auto main() -> int {
     system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);
     ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator, &i2c2_comms);
-    pressure_task.start(tasks::PRESSURE_TASK_PRIORITY, "Pressure", &aggregator, &i2c2_comms);
-    pump_task.start(tasks::PUMP_TASK_PRIORITY, "Pump", &aggregator, &i2c2_comms);
+    pressure_task.start(tasks::PRESSURE_TASK_PRIORITY, "Pressure", &aggregator,
+                        // TODO: switch to i2c1
+                        &i2c2_comms, &i2c2_comms, &i2c3_comms);
+    pump_task.start(tasks::PUMP_TASK_PRIORITY, "Pump", &aggregator,
+                    &i2c2_comms);
 
     vTaskStartScheduler();
     return 0;

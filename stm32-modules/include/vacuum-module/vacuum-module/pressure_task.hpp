@@ -6,16 +6,16 @@
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
 #include "firmware/pressure_policy.hpp"
+#include "hal/message_queue.hpp"
+#include "messages.hpp"
 #include "vacuum-module/errors.hpp"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/tasks.hpp"
-#include "hal/message_queue.hpp"
-#include "messages.hpp"
 
 namespace pressure_task {
 template <typename P>
 concept PressureControlPolicy = requires(P p) {
-    { p.sleep_ms(1) };
+    {p.sleep_ms(1)};
 };
 
 using PressurePolicy = pressure_policy::PressurePolicy;
@@ -31,9 +31,9 @@ class PressureTask {
     using Queues = typename tasks::Tasks<QueueImpl>;
 
   public:
-    explicit PressureTask(Queue& q, Aggregator* aggregator, PressurePolicy* policy)
-        : _message_queue(q),
-          _task_registry(aggregator) {}
+    explicit PressureTask(Queue& q, Aggregator* aggregator,
+                          PressurePolicy* policy)
+        : _message_queue(q), _task_registry(aggregator) {}
     PressureTask(const PressureTask& other) = delete;
     auto operator=(const PressureTask& other) -> PressureTask& = delete;
     PressureTask(PressureTask&& other) noexcept = delete;
@@ -89,7 +89,8 @@ class PressureTask {
     }
 
     template <PressureControlPolicy Policy>
-    auto visit_message(const messages::SetTargetPressureMessage& m, Policy& policy) -> void {
+    auto visit_message(const messages::SetTargetPressureMessage& m,
+                       Policy& policy) -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
     }

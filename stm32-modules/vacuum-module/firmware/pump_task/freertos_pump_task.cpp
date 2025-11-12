@@ -5,8 +5,8 @@
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
 #include "firmware/pump_policy.hpp"
-#include "vacuum-module/pump_task.hpp"
 #include "task.h"
+#include "vacuum-module/pump_task.hpp"
 
 namespace pump_control_task {
 using namespace pump_policy;

@@ -6,7 +6,6 @@
 
 namespace lps22df {
 
-
 template <typename P>
 concept LPS22DFPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
                                  uint16_t size, uint8_t* data) {
@@ -21,7 +20,6 @@ class LPS222DF {
             _policy = policy;
         }
     }
-
 };
 
 }  // namespace lps22df
