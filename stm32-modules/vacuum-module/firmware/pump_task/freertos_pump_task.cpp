@@ -22,8 +22,7 @@ static tasks::FirmwareTasks::PumpQueue
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _top_task = pump_task::PumpTask(_queue, nullptr, nullptr);
 
-auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
-         i2c::hardware::I2C* i2c1_comms) -> void {
+auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
     auto* handle = xTaskGetCurrentTaskHandle();
     _queue.provide_handle(handle);
     aggregator->register_queue(_queue);

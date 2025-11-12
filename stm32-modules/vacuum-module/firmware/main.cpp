@@ -25,8 +25,8 @@ using EntryPointUI = std::function<void(tasks::FirmwareTasks::QueueAggregator *,
 using EntryPointPressure = std::function<void(
     tasks::FirmwareTasks::QueueAggregator *, i2c::hardware::I2C *,
     i2c::hardware::I2C *, i2c::hardware::I2C *)>;
-using EntryPointPump = std::function<void(
-    tasks::FirmwareTasks::QueueAggregator *, i2c::hardware::I2C *)>;
+using EntryPointPump =
+    std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto ui_task_entry = EntryPointUI(ui_control_task::run);
@@ -87,11 +87,9 @@ auto main() -> int {
     system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);
     ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator, &i2c2_comms);
+    pump_task.start(tasks::PUMP_TASK_PRIORITY, "Pump", &aggregator);
     pressure_task.start(tasks::PRESSURE_TASK_PRIORITY, "Pressure", &aggregator,
-                        // TODO: switch to i2c1
-                        &i2c2_comms, &i2c2_comms, &i2c3_comms);
-    pump_task.start(tasks::PUMP_TASK_PRIORITY, "Pump", &aggregator,
-                    &i2c2_comms);
+                        &i2c1_comms, &i2c2_comms, &i2c3_comms);
 
     vTaskStartScheduler();
     return 0;

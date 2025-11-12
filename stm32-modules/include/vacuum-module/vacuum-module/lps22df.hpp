@@ -94,7 +94,7 @@ class LPS222DF {
         // pressure in hPa, take the complete 24-bit word and then divide by the
         // sensitivity 4096 LSB/hPa.
         int32_t pressure_lsb =
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             ((int32_t)raw[3] << 16) | ((int32_t)raw[2] << 8) | (int32_t)raw[1];
 
         // Convert from 24-bit twos complement to signed 32-bit

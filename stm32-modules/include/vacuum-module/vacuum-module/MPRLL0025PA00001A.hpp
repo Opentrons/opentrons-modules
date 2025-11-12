@@ -98,7 +98,7 @@ class MPRLL0025PA00001 {
         // Calculation of pressure value according to equation 2 of datasheet
         // Equation 2: Pressure Output Function
         auto press_counts =
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             (double)((int32_t)raw[3] + (int32_t)raw[2] * (int32_t)256 +
                      (int32_t)raw[1] *
                          (int32_t)65536);  // calculate digital pressure counts

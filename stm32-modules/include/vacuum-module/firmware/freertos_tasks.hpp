@@ -32,6 +32,5 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
 
 namespace pump_control_task {
 // Actual function that runs in the task
-auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
-         i2c::hardware::I2C* i2c_comms) -> void;
+auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
 }  // namespace pump_control_task
