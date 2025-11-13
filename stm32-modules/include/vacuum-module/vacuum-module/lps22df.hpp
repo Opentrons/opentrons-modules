@@ -7,6 +7,8 @@
 #include "firmware/atmosphere_pressure_sensor_policy.hpp"
 
 namespace lps22df {
+using atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy;
+using i2c::hardware::RxTxReturn;
 
 template <typename P>
 concept LPS22DFPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
@@ -21,7 +23,7 @@ constexpr uint8_t DEVICE_ADDRESS = 0x5C << 1;
 constexpr uint8_t CTRL_REG2 = 0x11;
 // pressure reading is 4 bytes, starting with status at 0x27
 constexpr uint8_t PRESSURE_OUTPUT_REGISTER = 0x27;
-// write bit 1 to CTRL REG 2 to read pressure once
+// write bit 0 to CTRL REG 2 to read pressure once
 constexpr uint8_t ONE_SHOT_PRESSURE_READ[1] = {0x01};
 // pressure in hectoPascals is the 3 byte output value divided by the
 // sensitivity
@@ -30,28 +32,25 @@ constexpr uint16_t SENSOR_SENSITIVITY = 4096;
 constexpr uint8_t PRESSURE_READY_FLAG = 0x01;
 
 constexpr uint8_t PRESSURE_FRAME_LEN = 10;
-std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};
-std::array<uint8_t, PRESSURE_FRAME_LEN> WRITE_BUFF = {0};
-constexpr int retries = 3;
+constexpr int DEFAULT_RETRIES = 3;
 
 class LPS222DF {
   public:
-    auto initialize(
-        atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy*
-            policy) -> void {
+    auto initialize(AtmospherePressureSensorPolicy* policy) -> void {
         if (_policy == nullptr) {
             _policy = policy;
         }
     }
 
-    auto read_pressure() -> uint16_t {
-        bool pressure_reading_ready = false;
-
+    // TODO: separate sending the write pressure command from the read so
+    // the task doesn't need to wait for the conversion
+    auto read_pressure() -> std::optional<double> {
         _policy->i2c_write(DEVICE_ADDRESS, CTRL_REG2, ONE_SHOT_PRESSURE_READ,
                            1);
-        for (int i = 0; i < (retries + 1); i++) {
+        for (int i = 0; i < (DEFAULT_RETRIES + 1); i++) {
             _policy->i2c_read(DEVICE_ADDRESS, PRESSURE_OUTPUT_REGISTER,
                               READ_BUFF, 4);
+            _policy->sleep_ms(3);
             auto status_byte = READ_BUFF[0];
             pressure_reading_ready =
                 static_cast<bool>(status_byte & PRESSURE_READY_FLAG);
@@ -60,25 +59,30 @@ class LPS222DF {
                 break;
             }
         }
-        if (!pressure_reading_ready) {
-            // raise an error here
-        }
 
         auto pressure_hPa = convert_pressure(READ_BUFF);
-        return pressure_hPa
+        pressure_mbar = pressure_hPa;
+        return pressure_hPa;
     }
 
-  private:
-    atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy*
-        _policy{nullptr};
+    std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};
+    std::array<uint8_t, PRESSURE_FRAME_LEN> WRITE_BUFF = {0};
+    // 1 hectoPascal = mbar
+    double pressure_mbar;
+    bool pressure_reading_ready = false;
 
-    auto convert_pressure(uint8_t* sensor_output) -> uint16_t {
+  private:
+    AtmospherePressureSensorPolicy* _policy{nullptr};
+
+    auto convert_pressure(uint8_t* sensor_output) -> double {
         auto pressure_read_bytes = {sensor_output[1], sensor_output[2],
                                     sensor_output[3]};
         // test that this is accurate
-        auto pressure_read_counts =
-            sensor_output[1] << 16 | sensor_output[2] << 8 | sensor_output[3];
-        auto pressure_hPa = pressure_read_counts / SENSOR_SENSITIVITY;
+        auto pressure_read_counts = sensor_output[1] << 24 |
+                                    sensor_output[2] << 16 |
+                                    sensor_output[3] << 8;
+        double pressure_hPa =
+            static_cast<double>(pressure_read_counts / SENSOR_SENSITIVITY);
         return pressure_hPa
     }
 };
