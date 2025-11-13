@@ -13,8 +13,6 @@ class PressurePolicy {
     PressurePolicy(I2C *i2c1, I2C *i2c2, I2C *i2c3)
         : i2c_comms1{i2c1}, i2c_comms2{i2c2}, i2c_comms3{i2c3} {}
 
-    auto static sleep_ms(uint32_t ms) -> void;
-
     auto get_i2c_comms(PressureSensorID sensor_id) -> I2C * {
         switch (sensor_id) {
             case PressureSensorID::ABS_PRESSURE_A:
@@ -27,6 +25,10 @@ class PressurePolicy {
                 return nullptr;
         }
     }
+
+    auto static conversion_ended(PressureSensorID sensor_id) -> bool;
+    auto static sensor_reset(PressureSensorID sensor_id) -> void;
+    auto static sleep_ms(uint32_t ms) -> void;
 
   private:
     I2C *i2c_comms1;

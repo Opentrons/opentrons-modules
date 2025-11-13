@@ -7,6 +7,14 @@ typedef enum PressureSensorID {
     ATM_PRESSURE,
 } PressureSensorID;
 
+typedef enum PressureSensorState {
+    DISABLED = 0,
+    INITIALIZING,
+    IDLE,
+    MEASURING,
+    SENSOR_ERROR,
+} PressureSensorState;
+
 typedef enum StatusBarID {
     Internal = 0,
     External,

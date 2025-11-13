@@ -139,8 +139,8 @@ using SystemMessage =
 
 using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
-using PressureMessage =
-    ::std::variant<std::monostate, GetPressureMessage, SetTargetPressureMessage>;
+using PressureMessage = ::std::variant<std::monostate, GetPressureMessage,
+                                       SetTargetPressureMessage>;
 
 using PumpMessage = ::std::variant<std::monostate, SetTargetRPMMessage>;
 

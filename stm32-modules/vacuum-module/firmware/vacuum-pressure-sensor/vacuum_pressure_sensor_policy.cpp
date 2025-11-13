@@ -38,11 +38,11 @@ auto VacuumPressureSensorPolicy::i2c_master_read(uint16_t dev_addr,
 }
 
 auto VacuumPressureSensorPolicy::conversion_ended(
-    VacuumPressureSensorId sensor_id) -> bool {
+    PressureSensorID sensor_id) -> bool {
     return sensor_hardware_read_eoc_pin(sensor_id);
 }
 
-auto VacuumPressureSensorPolicy::sensor_reset(VacuumPressureSensorId sensor_id)
+auto VacuumPressureSensorPolicy::sensor_reset(PressureSensorID sensor_id)
     -> void {
     sensor_hardware_sensor_reset(sensor_id);
 }

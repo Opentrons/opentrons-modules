@@ -6,8 +6,8 @@
 #include "firmware/vacuum_pressure_sensor_policy.hpp"
 
 namespace vacuum_pressure_sensor {
-using hardware::VacuumPressureSensorPolicy;
 using i2c::hardware::RxTxReturn;
+using vacuum_pressure_sensor::hardware::VacuumPressureSensorPolicy;
 
 template <typename P>
 concept MPRPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
@@ -16,7 +16,7 @@ concept MPRPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
     { p.i2c_write(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
 };
 
-constexpr uint8_t DEV_ADDRESS = 0x18 << 1;
+constexpr uint8_t DEV_ADDRESS = 0x18;
 constexpr uint8_t MEASURE_PRESSURE_COMMAND = 0xAA;
 constexpr uint8_t STATUS_BUSY_FLAG = 0x20;
 
@@ -44,24 +44,32 @@ struct StatusByte {
 };
 
 using hardware::VacuumPressureSensorPolicy;
+
+template <typename Policy>
+requires MPRPolicy<Policy>
 class MPRLL0025PA00001 {
   public:
-    auto initialize(VacuumPressureSensorPolicy* policy) -> void {
+    MPRLL0025PA00001(uint8_t dev_address) : device_address{dev_address} {}
+
+    auto initialize(Policy* policy, PressureSensorID sensor_id) -> bool {
         if (_policy == nullptr) {
             _policy = policy;
+            _sensor_id = sensor_id;
         }
+
+        return true;
     }
 
     auto read_pressure() -> double {
         bool sensor_busy = true;
         auto len = prepare_cmd_frame(MEASURE_PRESSURE_COMMAND, nullptr, 0);
-        _policy->i2c_master_write(DEV_ADDRESS, WR_BUFF.data(), len);
+        _policy->i2c_master_write(device_address << 1, WR_BUFF.data(), len);
 
         for (int i = 0; i < (DEFAULT_RETRIES + 1); i++) {
             // TODO: Needs at least 3ms for measurement
             // Find better way of doing this async.
             _policy->sleep_ms(3);
-            _policy->i2c_master_read(DEV_ADDRESS, RD_BUFF.data(), 4);
+            _policy->i2c_master_read(device_address << 1, RD_BUFF.data(), 4);
             auto status_byte = RD_BUFF[0];
             sensor_busy = static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
             if (!sensor_busy) {
@@ -108,9 +116,11 @@ class MPRLL0025PA00001 {
         return pressure * PSI2MBAR;
     }
 
-    VacuumPressureSensorPolicy* _policy{nullptr};
+    Policy* _policy{nullptr};
     std::array<uint8_t, PRESSURE_FRAME_LEN> RD_BUFF = {0};
     std::array<uint8_t, PRESSURE_FRAME_LEN> WR_BUFF = {0};
+    PressureSensorID _sensor_id;
+    uint8_t device_address;
 
     double pressure_mbar = {0};
 };

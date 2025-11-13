@@ -64,8 +64,9 @@ void Error_Handler(void);
 // PC3
 #define SENSOR_B_EOC_PIN GPIO_PIN_3
 #define SENSOR_B_EOC_PORT GPIOC
-
-// TODO: add atmospheric pressure sensor pin definition
+// PB0
+#define ATMOSPHERIC_EOC_PIN GPIO_PIN_0
+#define ATMOSPHERIC_EOC_PORT GPIOB
 
 #define EEPROM_WP_PIN GPIO_PIN_10
 #define EEPROM_WP_PORT GPIOA

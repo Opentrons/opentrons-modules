@@ -15,8 +15,8 @@ concept LPS22DFPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
     { p.i2c_write(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
 };
 
-// 7-bit device is 5C if pin SDO is LOW
-constexpr uint8_t DEVICE_ADDRESS = 0x5C << 1;
+// 7-bit device is 5D if pin SDO is HIGH
+constexpr uint8_t DEVICE_ADDRESS = 0x5D;
 // address CTRL_REG2 to read pressure
 constexpr uint8_t CTRL_REG2 = 0x11;
 // pressure reading is 4 bytes, starting with status at 0x27
@@ -25,7 +25,7 @@ constexpr uint8_t PRESSURE_OUTPUT_REGISTER = 0x27;
 constexpr uint8_t ONE_SHOT_PRESSURE_READ = 0x01;
 // pressure in hectoPascals is the 3 byte output value divided by the
 // sensitivity
-constexpr uint16_t SENSOR_SENSITIVITY = 4096.0f;
+constexpr uint16_t SENSOR_SENSITIVITY = 4096;
 // bit 0 in the status byte is for pressure reading available
 constexpr uint8_t PRESSURE_READY_FLAG = 0x01;
 
@@ -34,25 +34,32 @@ constexpr uint8_t PRESSURE_FRAME_LEN = 10;
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
 constexpr uint32_t DEFAULT_SLEEP_MS = 1;
-using atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy;
 
+template <typename Policy>
+requires LPS22DFPolicy<Policy>
 class LPS222DF {
   public:
-    auto initialize(AtmospherePressureSensorPolicy* policy) -> void {
+    LPS222DF(uint8_t dev_address = DEVICE_ADDRESS)
+        : device_address{dev_address} {}
+
+    auto initialize(Policy* policy, PressureSensorID sensor_id) -> bool {
         if (_policy == nullptr) {
             _policy = policy;
+            _sensor_id = sensor_id;
         }
+
+        return true;
     }
 
     auto read_pressure() -> double {
         bool pressure_reading_ready = false;
         auto len = prepare_cmd_frame(ONE_SHOT_PRESSURE_READ, nullptr, 0);
-        _policy->i2c_write(DEVICE_ADDRESS, CTRL_REG2, WR_BUFF.data(), len);
+        _policy->i2c_write(device_address << 1, CTRL_REG2, WR_BUFF.data(), len);
         for (int i = 0; i < (DEFAULT_RETRIES + 1); i++) {
             // TODO: Needs at least 2ms for measurement
             // Find better way of doing this async.
             _policy->sleep_ms(2);
-            _policy->i2c_read(DEVICE_ADDRESS, PRESSURE_OUTPUT_REGISTER,
+            _policy->i2c_read(device_address << 1, PRESSURE_OUTPUT_REGISTER,
                               RD_BUFF.data(), 4);
             auto status_byte = RD_BUFF[0];
             pressure_reading_ready =
@@ -104,9 +111,11 @@ class LPS222DF {
         return static_cast<double>(pressure_lsb) / SENSOR_SENSITIVITY;
     }
 
-    AtmospherePressureSensorPolicy* _policy{nullptr};
+    Policy* _policy{nullptr};
     std::array<uint8_t, PRESSURE_FRAME_LEN> RD_BUFF = {0};
     std::array<uint8_t, PRESSURE_FRAME_LEN> WR_BUFF = {0};
+    PressureSensorID _sensor_id;
+    uint8_t device_address;
 
     double pressure_hpa = {0};
 };
