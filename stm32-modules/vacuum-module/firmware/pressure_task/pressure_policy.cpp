@@ -15,6 +15,11 @@ auto PressurePolicy::sleep_ms(uint32_t ms) -> void {
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+[[nodiscard]] auto PressurePolicy::get_time_ms() const -> uint32_t {
+    return xTaskGetTickCount();
+}
+
 auto PressurePolicy::conversion_ended(PressureSensorID sensor_id) -> bool {
     return sensor_hardware_read_eoc_pin(sensor_id);
 }

@@ -3,13 +3,14 @@
 #include <cstdint>
 #include <variant>
 
-#include "MPRLL0025PA00001A.hpp"
+#include "core/pid.hpp"
 #include "core/ack_cache.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
 #include "firmware/pressure_policy.hpp"
 #include "hal/message_queue.hpp"
 #include "lps22df.hpp"
+#include "mprll0025pa00001a.hpp"
 #include "messages.hpp"
 #include "vacuum-module/errors.hpp"
 #include "vacuum-module/messages.hpp"
@@ -19,7 +20,8 @@ namespace pressure_task {
 using lps22df::LPS222DF;
 using vacuum_pressure_sensor::MPRLL0025PA00001;
 
-static constexpr const uint32_t CONTROL_PERIOD_MS = 3;
+static constexpr const uint32_t CONTROL_PERIOD_MS = 100;
+static constexpr const double MILLISECONDS_TO_SECONDS = 0.001F;
 
 constexpr uint8_t ABS_PRESSURE_A_ADDR = 0x18;
 constexpr uint8_t ABS_PRESSURE_B_ADDR = 0x18;
@@ -49,6 +51,19 @@ const PressureSensor abs_pressure_b = {
 const PressureSensor atm_pressure = {
     .kind = ATM_PRESSURE,
     .driver = LPS222DF<i2c::hardware::I2C>(ATM_PRESSURE_ADDR),
+};
+
+struct PressureControl {
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    double target_pressure = 0.0F;  // Target Guage Pressure
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    PID pid;  // Current PID loop
+    uint32_t last_tick = 0;
+};
+
+const PressureControl pressure_control = {
+    .target_pressure = 0.0f,
+    .pid = PID(1, 1, 1, 1),
 };
 
 template <typename P>
@@ -97,15 +112,15 @@ class PressureTask {
                 auto comms = policy.get_i2c_comms(sensor_id);
                 sensor.ok = std::visit(
                     [&](auto&& driver) -> bool {
-                        return driver.initialize(comms, sensor_id);
+                        auto ok = driver.initialize(comms, sensor_id);
+                        if (ok) {
+                            // Get latest pressure
+                            driver.read_pressure();
+                        }
+                        return ok;
                     },
                     sensor.driver);
                 sensor.state = sensor.ok ? IDLE : SENSOR_ERROR;
-
-                // Get latest pressure
-                std::visit(
-                    [&](auto&& driver) -> void { driver.read_pressure(); },
-                    sensor.driver);
             }
 
             _message_queue.set_ready();
@@ -150,6 +165,22 @@ class PressureTask {
         -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
+
+        auto timestamp = policy.get_time_ms();
+        auto delta_time = (timestamp - _pressure_control.last_tick) * MILLISECONDS_TO_SECONDS;
+        _pressure_control.last_tick = timestamp;
+
+        auto abs_pressure_mbar = std::get<MPRDriverType>(get_sensor(ABS_PRESSURE_A).driver).read_pressure();
+        // TODO: add FIR filter for abs pressure
+        // maybe we want to take the average pressure?
+        auto atm_pressure_hpa = std::get<LPSDriverType>(get_sensor(ATM_PRESSURE).driver).get_pressure();
+        auto guage_pressure = abs_pressure_mbar - atm_pressure_hpa;
+        auto pressure_error = _pressure_control.target_pressure - guage_pressure;
+        auto rpm = _pressure_control.pid.compute(pressure_error, delta_time);
+
+        // Send new rpm to pump task
+        auto msg = messages::SetTargetRPMMessage{.rpm_setpoint = rpm};
+        static_cast<void>(_task_registry->send_to_address(msg, Queues::PumpAddress));
     }
 
     template <PressureControlPolicy Policy>
@@ -157,6 +188,9 @@ class PressureTask {
                        Policy& policy) -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
+
+        _pressure_control.target_pressure = m.pressure_setpoint;
+        // TODO: kick off pressure control here
     }
 
     auto get_sensor(PressureSensorID sensor_id) -> PressureSensor& {
@@ -179,6 +213,8 @@ class PressureTask {
     PressureSensor _abs_pressure_a = abs_pressure_a;
     PressureSensor _abs_pressure_b = abs_pressure_b;
     PressureSensor _atm_pressure = atm_pressure;
+
+    PressureControl _pressure_control = pressure_control;
 };
 
 }  // namespace pressure_task

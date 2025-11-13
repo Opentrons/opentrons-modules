@@ -29,6 +29,8 @@ class PressurePolicy {
     auto static conversion_ended(PressureSensorID sensor_id) -> bool;
     auto static sensor_reset(PressureSensorID sensor_id) -> void;
     auto static sleep_ms(uint32_t ms) -> void;
+    [[nodiscard]] auto get_time_ms() const -> uint32_t;
+
 
   private:
     I2C *i2c_comms1;

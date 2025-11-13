@@ -10,10 +10,7 @@
 
 using namespace i2c::hardware;
 
-
-auto I2C::sleep_ms(uint32_t ms) -> void {
-    vTaskDelay(pdMS_TO_TICKS(ms));
-}
+auto I2C::sleep_ms(uint32_t ms) -> void { vTaskDelay(pdMS_TO_TICKS(ms)); }
 
 auto I2C::set_handle(HAL_I2C_HANDLE i2c_handle, I2C_BUS i2c_bus) -> void {
     this->bus = i2c_bus;

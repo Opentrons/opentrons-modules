@@ -49,6 +49,8 @@ class LPS222DF {
         return true;
     }
 
+    [[nodiscard]] auto get_pressure() const -> double { return pressure_hpa; }
+
     auto read_pressure() -> double {
         bool pressure_reading_ready = false;
         auto len = prepare_cmd_frame(ONE_SHOT_PRESSURE_READ, nullptr, 0);

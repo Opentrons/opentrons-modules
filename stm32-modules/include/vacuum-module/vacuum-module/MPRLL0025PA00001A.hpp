@@ -55,6 +55,8 @@ class MPRLL0025PA00001 {
         return true;
     }
 
+    [[nodiscard]] auto get_pressure() const -> double { return pressure_mbar; }
+
     auto read_pressure() -> double {
         bool sensor_busy = true;
         auto len = prepare_cmd_frame(MEASURE_PRESSURE_COMMAND, nullptr, 0);

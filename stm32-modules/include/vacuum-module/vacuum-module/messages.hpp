@@ -113,6 +113,7 @@ struct SetStatusBarStateMessage {
 struct GetPressureMessage {
     uint32_t id = 0;
     bool from_host = false;
+    uint32_t timestamp = 0;
 };
 
 struct SetTargetPressureMessage {
@@ -124,7 +125,7 @@ struct SetTargetPressureMessage {
 struct SetTargetRPMMessage {
     uint32_t id = 0;
     bool from_host = false;
-    uint32_t rpm_setpoint = 0;
+    double rpm_setpoint = 0;
 };
 
 using HostCommsMessage =
