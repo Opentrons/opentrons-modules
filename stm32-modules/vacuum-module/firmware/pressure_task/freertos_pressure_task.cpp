@@ -54,7 +54,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
 
     // second task to drive get pressure periodically
     // auto *hardware_handle = xTaskCreateStatic(
-    xTaskCreateStatic(run_hardware_task, "HeaterHardware",
+    xTaskCreateStatic(run_hardware_task, "PressureHardware",
                       _hardware_stack.size(), nullptr, 1,
                       _hardware_stack.data(), &_hardware_data);
 

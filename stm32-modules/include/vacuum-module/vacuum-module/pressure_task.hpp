@@ -171,6 +171,7 @@ class PressureTask {
         _pressure_control.last_tick = timestamp;
 
         auto abs_pressure_mbar = std::get<MPRDriverType>(get_sensor(ABS_PRESSURE_A).driver).read_pressure();
+        abs_pressure_mbar = std::get<MPRDriverType>(get_sensor(ABS_PRESSURE_B).driver).read_pressure();
         // TODO: add FIR filter for abs pressure
         // maybe we want to take the average pressure?
         auto atm_pressure_hpa = std::get<LPSDriverType>(get_sensor(ATM_PRESSURE).driver).get_pressure();
