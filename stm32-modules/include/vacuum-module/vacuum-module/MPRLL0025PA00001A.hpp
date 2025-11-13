@@ -6,7 +6,7 @@
 #include "firmware/vacuum_pressure_sensor_policy.hpp"
 
 namespace vacuum_pressure_sensor {
-using hardware::VacuumPressureSensorPolicy;
+using vacuum_pressure_sensor::hardware::VacuumPressureSensorPolicy;
 using i2c::hardware::RxTxReturn;
 
 template <typename P>
