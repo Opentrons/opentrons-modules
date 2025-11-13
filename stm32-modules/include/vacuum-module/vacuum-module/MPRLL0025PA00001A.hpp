@@ -3,11 +3,8 @@
 #include <array>
 #include <cstdint>
 
-#include "firmware/vacuum_pressure_sensor_policy.hpp"
-
 namespace vacuum_pressure_sensor {
 using i2c::hardware::RxTxReturn;
-using vacuum_pressure_sensor::hardware::VacuumPressureSensorPolicy;
 
 template <typename P>
 concept MPRPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
@@ -42,8 +39,6 @@ struct StatusByte {
     uint8_t error_flag;
     uint8_t math_saturation;
 };
-
-using hardware::VacuumPressureSensorPolicy;
 
 template <typename Policy>
 requires MPRPolicy<Policy>

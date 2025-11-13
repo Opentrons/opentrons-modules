@@ -18,9 +18,9 @@ class PressurePolicy {
             case PressureSensorID::ABS_PRESSURE_A:
                 return i2c_comms1;
             case PressureSensorID::ABS_PRESSURE_B:
-                return i2c_comms2;
-            case PressureSensorID::ATM_PRESSURE:
                 return i2c_comms3;
+            case PressureSensorID::ATM_PRESSURE:
+                return i2c_comms2;
             default:
                 return nullptr;
         }

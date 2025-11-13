@@ -13,8 +13,6 @@ set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 set(SYSTEM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/system")
 set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
 set(VENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vent")
-set(ATMOSPHERE_PS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/atmosphere-pressure-sensor")
-set(VACUUM_PS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vacuum-pressure-sensor")
 set(PRESSURE_CONTROL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/pressure_task")
 set(PUMP_CONTROL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/pump_task")
 
@@ -29,8 +27,6 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${UI_DIR}/freertos_ui_task.cpp
     ${UI_DIR}/ui_policy.cpp
     ${VENT_DIR}/vent_policy.cpp
-    ${ATMOSPHERE_PS_DIR}/atmosphere_pressure_sensor_policy.cpp
-    ${VACUUM_PS_DIR}/vacuum_pressure_sensor_policy.cpp
     ${PRESSURE_CONTROL_DIR}/freertos_pressure_task.cpp
     ${PRESSURE_CONTROL_DIR}/pressure_policy.cpp
     ${PUMP_CONTROL_DIR}/freertos_pump_task.cpp
@@ -52,7 +48,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${COMMS_DIR}/usb_hardware.c
     ${VENT_DIR}/vent_hardware.c
     ${PUMP_CONTROL_DIR}/pump_hardware.c
-    ${VACUUM_PS_DIR}/vacuum_pressure_sensor_hardware.c
+    ${PRESSURE_CONTROL_DIR}/pressure_sensor_hardware.c
     )
 
 add_executable(${TARGET_MODULE_NAME}

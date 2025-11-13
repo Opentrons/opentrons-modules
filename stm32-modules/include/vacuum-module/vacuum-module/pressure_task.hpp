@@ -7,9 +7,7 @@
 #include "core/ack_cache.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
-#include "firmware/atmosphere_pressure_sensor_policy.hpp"
 #include "firmware/pressure_policy.hpp"
-#include "firmware/vacuum_pressure_sensor_policy.hpp"
 #include "hal/message_queue.hpp"
 #include "lps22df.hpp"
 #include "messages.hpp"
@@ -25,7 +23,7 @@ static constexpr const uint32_t CONTROL_PERIOD_MS = 3;
 
 constexpr uint8_t ABS_PRESSURE_A_ADDR = 0x18;
 constexpr uint8_t ABS_PRESSURE_B_ADDR = 0x18;
-constexpr uint8_t ATM_PRESSURE_ADDR = 0x5C;
+constexpr uint8_t ATM_PRESSURE_ADDR = 0x5D;
 
 using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
 using LPSDriverType = LPS222DF<i2c::hardware::I2C>;
@@ -43,15 +41,15 @@ const PressureSensor abs_pressure_a = {
     .driver = MPRLL0025PA00001<i2c::hardware::I2C>(ABS_PRESSURE_A_ADDR),
 };
 
-// const PressureSensor abs_pressure_b = {
-//     .kind = ABS_PRESSURE_B,
-//     .driver = MPRLL0025PA00001(ABS_PRESSURE_B_ADDR),
-// };
-//
-// const PressureSensor atm_pressure = {
-//     .kind = ATM_PRESSURE,
-//     .driver = MPRLL0025PA00001(ATM_PRESSURE_ADDR),
-// };
+const PressureSensor abs_pressure_b = {
+    .kind = ABS_PRESSURE_B,
+    .driver = MPRLL0025PA00001<i2c::hardware::I2C>(ABS_PRESSURE_B_ADDR),
+};
+
+const PressureSensor atm_pressure = {
+    .kind = ATM_PRESSURE,
+    .driver = LPS222DF<i2c::hardware::I2C>(ATM_PRESSURE_ADDR),
+};
 
 template <typename P>
 concept PressureControlPolicy = requires(P p) {
@@ -103,6 +101,11 @@ class PressureTask {
                     },
                     sensor.driver);
                 sensor.state = sensor.ok ? IDLE : SENSOR_ERROR;
+
+                // Get latest pressure
+                std::visit(
+                    [&](auto&& driver) -> void { driver.read_pressure(); },
+                    sensor.driver);
             }
 
             _message_queue.set_ready();
@@ -161,11 +164,9 @@ class PressureTask {
             case ABS_PRESSURE_A:
                 return _abs_pressure_a;
             case ABS_PRESSURE_B:
-                return _abs_pressure_a;
-            //     return _abs_pressure_b;
+                return _abs_pressure_b;
             case ATM_PRESSURE:
-                return _abs_pressure_a;
-                // return _atm_pressure;
+                return _atm_pressure;
             default:
                 return _abs_pressure_a;
         }
@@ -176,8 +177,8 @@ class PressureTask {
     bool _initialized{false};
 
     PressureSensor _abs_pressure_a = abs_pressure_a;
-    // PressureSensor _abs_pressure_b = abs_pressure_b;
-    // PressureSensor _atm_pressure = atm_pressure;
+    PressureSensor _abs_pressure_b = abs_pressure_b;
+    PressureSensor _atm_pressure = atm_pressure;
 };
 
 }  // namespace pressure_task
