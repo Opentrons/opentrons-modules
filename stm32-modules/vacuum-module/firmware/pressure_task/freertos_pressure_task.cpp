@@ -40,7 +40,7 @@ static void run_hardware_task(void* param) {
             &last_wake_time,
             // NOLINTNEXTLINE(readability-static-accessed-through-instance)
             pdMS_TO_TICKS(pressure_task::CONTROL_PERIOD_MS));
-        static_cast<void>(_queue.try_send(messages::GetPressureMessage{}));
+        static_cast<void>(_queue.try_send(messages::PressureControlMessage{}));
     }
 }
 

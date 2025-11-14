@@ -18,6 +18,7 @@ class PumpPolicy {
     auto enable_pump_tach(bool enable) -> bool;
     auto get_pump_rpm() -> float;
     auto sleep_ms(uint32_t ms) -> void;
+    [[nodiscard]] auto get_time_ms() const -> uint32_t;
     auto enable_pump_control(bool enable) -> void;
 
   private:

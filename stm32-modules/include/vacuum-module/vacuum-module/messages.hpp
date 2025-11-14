@@ -111,7 +111,7 @@ struct SetStatusBarStateMessage {
 };
 
 // For internal driving
-struct GetPressureMessage {};
+struct PressureControlMessage {};
 struct PumpControlMessage {};
 
 struct SetTargetPressureMessage {
@@ -119,13 +119,17 @@ struct SetTargetPressureMessage {
     double pressure_setpoint = 0;
     double ramp_rate = 0;
     uint32_t duration_s = 0;
+    bool start_pump = false;
     bool vent_after = false;
 };
 
-struct SetTargetPWMMessage {
+struct SetPumpStateMessage {
     uint32_t id = 0;
     bool from_host = false;
-    double pwm_setpoint = 0;
+    // This is from inner pressureTask, can we use this from host?
+    // or do we need something like pwm/duty cycle?
+    double rpm_setpoint = 0;
+    bool run_pump = false;
 };
 
 using HostCommsMessage =
@@ -140,9 +144,9 @@ using SystemMessage =
 
 using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
-using PressureMessage = ::std::variant<std::monostate, GetPressureMessage,
+using PressureMessage = ::std::variant<std::monostate, PressureControlMessage,
                                        SetTargetPressureMessage>;
 
-using PumpMessage = ::std::variant<std::monostate, PumpControlMessage, SetTargetPWMMessage>;
+using PumpMessage = ::std::variant<std::monostate, PumpControlMessage, SetPumpStateMessage>;
 
 };  // namespace messages

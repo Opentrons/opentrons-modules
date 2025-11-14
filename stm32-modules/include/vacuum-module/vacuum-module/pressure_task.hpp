@@ -62,12 +62,12 @@ struct PressureControl {
     double ramp_rate = 0;
     uint32_t duration_s = 0;
     bool vent_after = false;
+    bool start_pump = false;
 
     PressureRamp rampgen;
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     PID pid;  // Current PID loop
     uint32_t last_tick = 0;
-    bool enable_pump = false;
 };
 
 const PressureControl pressure_control = {
@@ -178,11 +178,11 @@ class PressureTask {
     }
 
     template <PressureControlPolicy Policy>
-    auto visit_message(const messages::GetPressureMessage& m, Policy& policy)
+    auto visit_message(const messages::PressureControlMessage& m, Policy& policy)
         -> void {
         // Get delta time
         auto timestamp = policy.get_time_ms();
-        auto delta = (timestamp - _pressure_control.last_tick) * MS_TO_SECONDS;
+        auto delta_s = (timestamp - _pressure_control.last_tick) * MS_TO_SECONDS;
         _pressure_control.last_tick = timestamp;
 
         // TODO: add FIR filter for abs pressure.
@@ -201,15 +201,16 @@ class PressureTask {
             std::get<LPSDriverType>(get_sensor(ATM_PRESSURE).driver)
                 .get_pressure();
 
-        // Compute the new target pwm with ramp rate
+        // Compute the new pwm with ramp rate
         double target_setpoint =
             _pressure_control.rampgen.update_setpoint(timestamp);
         auto guage_pressure = abs_a_pressure_mbar - atm_pressure_hpa;
         auto difference = target_setpoint - guage_pressure;
-        auto pwm = _pressure_control.pid.compute(difference, delta);
+        auto rpm = _pressure_control.pid.compute(difference, delta_s);
+        // TODO: clamp the rpm here to something sensible
 
-        // Send new pwm to pump task
-        auto msg = messages::SetTargetPWMMessage{.pwm_setpoint = pwm};
+        // Send new rpm to pump task
+        auto msg = messages::SetPumpStateMessage{.rpm_setpoint = rpm, .run_pump = true};
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::PumpAddress));
     }
@@ -222,6 +223,7 @@ class PressureTask {
         _pressure_control.ramp_rate = m.ramp_rate;
         _pressure_control.duration_s = m.duration_s;
         _pressure_control.vent_after = m.vent_after;
+        _pressure_control.start_pump = m.start_pump;
 
         // Update ramp rate generator
         // TODO: Do we need to stop pump when we update ramp rate?
@@ -229,7 +231,7 @@ class PressureTask {
         auto timestamp = policy.get_time_ms();
         _pressure_control.rampgen.start_ramp(
             current_pressure, m.pressure_setpoint, m.ramp_rate, timestamp);
-        // TODO: kick off pressure control here
+        // TODO: kick off pressure control here, or in sep gcode? maybe StartPump?
         // 0. set target pressure, ramp rate, etc
         // 1. start the pressure driving task (if not started)
         // 1. set the pwm
