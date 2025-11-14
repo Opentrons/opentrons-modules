@@ -12,6 +12,7 @@
 #include "lps22df.hpp"
 #include "messages.hpp"
 #include "mprll0025pa00001a.hpp"
+#include "pressure_ramp.hpp"
 #include "vacuum-module/errors.hpp"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/tasks.hpp"
@@ -21,7 +22,8 @@ using lps22df::LPS222DF;
 using vacuum_pressure_sensor::MPRLL0025PA00001;
 
 static constexpr const uint32_t CONTROL_PERIOD_MS = 100;
-static constexpr const double MILLISECONDS_TO_SECONDS = 0.001F;
+static constexpr const double MS_TO_SECONDS = 0.001F;
+static constexpr const double RAMP_RATE_MBAR_S = 68.9476;
 
 constexpr uint8_t ABS_PRESSURE_A_ADDR = 0x18;
 constexpr uint8_t ABS_PRESSURE_B_ADDR = 0x18;
@@ -56,6 +58,12 @@ const PressureSensor atm_pressure = {
 struct PressureControl {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     double target_pressure = 0.0F;  // Target Guage Pressure
+    double current_pressure = 0.0F;
+    double ramp_rate = 0;
+    uint32_t duration_s = 0;
+    bool vent_after = false;
+
+    PressureRamp rampgen;
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     PID pid;  // Current PID loop
     uint32_t last_tick = 0;
@@ -172,29 +180,33 @@ class PressureTask {
     template <PressureControlPolicy Policy>
     auto visit_message(const messages::GetPressureMessage& m, Policy& policy)
         -> void {
-        static_cast<void>(m);
-        static_cast<void>(policy);
-
+        // Get delta time
         auto timestamp = policy.get_time_ms();
-        auto delta_time =
-            (timestamp - _pressure_control.last_tick) * MILLISECONDS_TO_SECONDS;
+        auto delta = (timestamp - _pressure_control.last_tick) * MS_TO_SECONDS;
         _pressure_control.last_tick = timestamp;
 
-        auto abs_pressure_mbar =
+        // TODO: add FIR filter for abs pressure.
+        auto abs_a_pressure_mbar =
             std::get<MPRDriverType>(get_sensor(ABS_PRESSURE_A).driver)
                 .read_pressure();
-        abs_pressure_mbar =
+        // TODO: use difference in pressure between a and b to raise error if >
+        // threhold. Dont do anything with it for now
+        auto abs_b_pressure_mbar =
             std::get<MPRDriverType>(get_sensor(ABS_PRESSURE_B).driver)
                 .read_pressure();
-        // TODO: add FIR filter for abs pressure
-        // maybe we want to take the average pressure?
+        static_cast<void>(abs_b_pressure_mbar);
+
+        // TODO: figure out how often to read atm pressure
         auto atm_pressure_hpa =
             std::get<LPSDriverType>(get_sensor(ATM_PRESSURE).driver)
                 .get_pressure();
-        auto guage_pressure = abs_pressure_mbar - atm_pressure_hpa;
-        auto pressure_error =
-            _pressure_control.target_pressure - guage_pressure;
-        auto pwm = _pressure_control.pid.compute(pressure_error, delta_time);
+
+        // Compute the new target pwm with ramp rate
+        double target_setpoint =
+            _pressure_control.rampgen.update_setpoint(timestamp);
+        auto guage_pressure = abs_a_pressure_mbar - atm_pressure_hpa;
+        auto difference = target_setpoint - guage_pressure;
+        auto pwm = _pressure_control.pid.compute(difference, delta);
 
         // Send new pwm to pump task
         auto msg = messages::SetTargetPWMMessage{.pwm_setpoint = pwm};
@@ -205,10 +217,18 @@ class PressureTask {
     template <PressureControlPolicy Policy>
     auto visit_message(const messages::SetTargetPressureMessage& m,
                        Policy& policy) -> void {
-        static_cast<void>(m);
-        static_cast<void>(policy);
-
+        // TODO: Validate incoming values
         _pressure_control.target_pressure = m.pressure_setpoint;
+        _pressure_control.ramp_rate = m.ramp_rate;
+        _pressure_control.duration_s = m.duration_s;
+        _pressure_control.vent_after = m.vent_after;
+
+        // Update ramp rate generator
+        // TODO: Do we need to stop pump when we update ramp rate?
+        auto current_pressure = _pressure_control.current_pressure;
+        auto timestamp = policy.get_time_ms();
+        _pressure_control.rampgen.start_ramp(
+            current_pressure, m.pressure_setpoint, m.ramp_rate, timestamp);
         // TODO: kick off pressure control here
         // 0. set target pressure, ramp rate, etc
         // 1. start the pressure driving task (if not started)

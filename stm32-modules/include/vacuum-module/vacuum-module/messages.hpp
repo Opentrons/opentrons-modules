@@ -118,8 +118,10 @@ struct GetPressureMessage {
 
 struct SetTargetPressureMessage {
     uint32_t id = 0;
-    bool from_host = false;
-    uint32_t pressure_setpoint = 0;
+    double pressure_setpoint = 0;
+    double ramp_rate = 0;
+    uint32_t duration_s = 0;
+    bool vent_after = false;
 };
 
 struct SetTargetPWMMessage {
