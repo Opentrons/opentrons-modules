@@ -50,12 +50,11 @@ class MPRLL0025PA00001 {
     // TODO: separate sending the write pressure command,
     // and read the pressure from a callback for an eoc pin irq
     auto read_pressure() -> std::optional<double> {
-        _policy->i2c_master_write(DEVICE_ADDRESS, MEASURE_PRESSURE_COMMAND,
-                                  WRITE_BUFF, 1);
+        _policy->i2c_master_write(DEVICE_ADDRESS, WRITE_BUFF, 1);
 
         for (int i = 0; i < (DEFAULT_RETRIES + 1); i++) {
-            _policy->i2c_master_read(DEV_ADDRESS, READ_BUFF, 4);
             _policy->sleep_ms(3);
+            _policy->i2c_master_read(DEV_ADDRESS, READ_BUFF, 4);
             auto status_byte = READ_BUFF[0];
             sensor_busy = static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
 
