@@ -88,7 +88,7 @@ class PumpTask {
     }
 
     template <PumpControlPolicy Policy>
-    auto visit_message(const messages::SetTargetRPMMessage& m, Policy& policy)
+    auto visit_message(const messages::SetTargetPWMMessage& m, Policy& policy)
         -> void {
         static_cast<void>(m);
         static_cast<void>(policy);

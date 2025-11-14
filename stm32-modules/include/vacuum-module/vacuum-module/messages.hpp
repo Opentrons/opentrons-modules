@@ -122,10 +122,10 @@ struct SetTargetPressureMessage {
     uint32_t pressure_setpoint = 0;
 };
 
-struct SetTargetRPMMessage {
+struct SetTargetPWMMessage {
     uint32_t id = 0;
     bool from_host = false;
-    double rpm_setpoint = 0;
+    double pwm_setpoint = 0;
 };
 
 using HostCommsMessage =
@@ -143,6 +143,6 @@ using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 using PressureMessage = ::std::variant<std::monostate, GetPressureMessage,
                                        SetTargetPressureMessage>;
 
-using PumpMessage = ::std::variant<std::monostate, SetTargetRPMMessage>;
+using PumpMessage = ::std::variant<std::monostate, SetTargetPWMMessage>;
 
 };  // namespace messages

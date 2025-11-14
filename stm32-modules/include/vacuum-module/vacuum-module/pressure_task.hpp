@@ -3,15 +3,15 @@
 #include <cstdint>
 #include <variant>
 
-#include "core/pid.hpp"
 #include "core/ack_cache.hpp"
+#include "core/pid.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
 #include "firmware/pressure_policy.hpp"
 #include "hal/message_queue.hpp"
 #include "lps22df.hpp"
-#include "mprll0025pa00001a.hpp"
 #include "messages.hpp"
+#include "mprll0025pa00001a.hpp"
 #include "vacuum-module/errors.hpp"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/tasks.hpp"
@@ -59,16 +59,26 @@ struct PressureControl {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     PID pid;  // Current PID loop
     uint32_t last_tick = 0;
+    bool enable_pump = false;
 };
 
 const PressureControl pressure_control = {
     .target_pressure = 0.0f,
-    .pid = PID(1, 1, 1, 1),
+    .pid = PID{.kp = 1,
+               .ki = 0.5,
+               .kd = 0,
+               .sampletime = CONTROL_PERIOD_MS * 1000,
+               .windup_limit_high = 18000,
+               .windup_limit_low = 0},
 };
 
 template <typename P>
 concept PressureControlPolicy = requires(P p) {
     {p.sleep_ms(1)};
+    { p.get_time_ms() } -> std::same_as<uint32_t>;
+    {
+        p.get_i2c_comms(PressureSensorID{})
+        } -> std::same_as<i2c::hardware::I2C*>;
 };
 
 using PressurePolicy = pressure_policy::PressurePolicy;
@@ -114,7 +124,6 @@ class PressureTask {
                     [&](auto&& driver) -> bool {
                         auto ok = driver.initialize(comms, sensor_id);
                         if (ok) {
-                            // Get latest pressure
                             driver.read_pressure();
                         }
                         return ok;
@@ -167,21 +176,30 @@ class PressureTask {
         static_cast<void>(policy);
 
         auto timestamp = policy.get_time_ms();
-        auto delta_time = (timestamp - _pressure_control.last_tick) * MILLISECONDS_TO_SECONDS;
+        auto delta_time =
+            (timestamp - _pressure_control.last_tick) * MILLISECONDS_TO_SECONDS;
         _pressure_control.last_tick = timestamp;
 
-        auto abs_pressure_mbar = std::get<MPRDriverType>(get_sensor(ABS_PRESSURE_A).driver).read_pressure();
-        abs_pressure_mbar = std::get<MPRDriverType>(get_sensor(ABS_PRESSURE_B).driver).read_pressure();
+        auto abs_pressure_mbar =
+            std::get<MPRDriverType>(get_sensor(ABS_PRESSURE_A).driver)
+                .read_pressure();
+        abs_pressure_mbar =
+            std::get<MPRDriverType>(get_sensor(ABS_PRESSURE_B).driver)
+                .read_pressure();
         // TODO: add FIR filter for abs pressure
         // maybe we want to take the average pressure?
-        auto atm_pressure_hpa = std::get<LPSDriverType>(get_sensor(ATM_PRESSURE).driver).get_pressure();
+        auto atm_pressure_hpa =
+            std::get<LPSDriverType>(get_sensor(ATM_PRESSURE).driver)
+                .get_pressure();
         auto guage_pressure = abs_pressure_mbar - atm_pressure_hpa;
-        auto pressure_error = _pressure_control.target_pressure - guage_pressure;
-        auto rpm = _pressure_control.pid.compute(pressure_error, delta_time);
+        auto pressure_error =
+            _pressure_control.target_pressure - guage_pressure;
+        auto pwm = _pressure_control.pid.compute(pressure_error, delta_time);
 
-        // Send new rpm to pump task
-        auto msg = messages::SetTargetRPMMessage{.rpm_setpoint = rpm};
-        static_cast<void>(_task_registry->send_to_address(msg, Queues::PumpAddress));
+        // Send new pwm to pump task
+        auto msg = messages::SetTargetPWMMessage{.pwm_setpoint = pwm};
+        static_cast<void>(
+            _task_registry->send_to_address(msg, Queues::PumpAddress));
     }
 
     template <PressureControlPolicy Policy>
@@ -192,6 +210,10 @@ class PressureTask {
 
         _pressure_control.target_pressure = m.pressure_setpoint;
         // TODO: kick off pressure control here
+        // 0. set target pressure, ramp rate, etc
+        // 1. start the pressure driving task (if not started)
+        // 1. set the pwm
+        // 2. start the pump
     }
 
     auto get_sensor(PressureSensorID sensor_id) -> PressureSensor& {

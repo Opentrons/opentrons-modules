@@ -31,7 +31,6 @@ class PressurePolicy {
     auto static sleep_ms(uint32_t ms) -> void;
     [[nodiscard]] auto get_time_ms() const -> uint32_t;
 
-
   private:
     I2C *i2c_comms1;
     I2C *i2c_comms2;
