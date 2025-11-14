@@ -110,11 +110,9 @@ struct SetStatusBarStateMessage {
     std::optional<float> power = std::nullopt;
 };
 
-struct GetPressureMessage {
-    uint32_t id = 0;
-    bool from_host = false;
-    uint32_t timestamp = 0;
-};
+// For internal driving
+struct GetPressureMessage {};
+struct PumpControlMessage {};
 
 struct SetTargetPressureMessage {
     uint32_t id = 0;
@@ -145,6 +143,6 @@ using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 using PressureMessage = ::std::variant<std::monostate, GetPressureMessage,
                                        SetTargetPressureMessage>;
 
-using PumpMessage = ::std::variant<std::monostate, SetTargetPWMMessage>;
+using PumpMessage = ::std::variant<std::monostate, PumpControlMessage, SetTargetPWMMessage>;
 
 };  // namespace messages

@@ -41,3 +41,12 @@ auto pump_policy::PumpPolicy::get_pump_rpm() -> float {
 auto pump_policy::PumpPolicy::sleep_ms(uint32_t ms) -> void {
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
+
+auto pump_policy::PumpPolicy::enable_pump_control(bool enable) -> void {
+    auto handle = static_cast<TaskHandle_t>(hardware_handle);
+    if (enable) {
+        vTaskResume(handle);
+    } else {
+        vTaskSuspend(handle);
+    }
+}

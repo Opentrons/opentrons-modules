@@ -13,6 +13,9 @@
 #include "vacuum-module/tasks.hpp"
 
 namespace pump_task {
+
+static constexpr const uint32_t CONTROL_PERIOD_MS = 20;
+
 template <typename P>
 concept PumpControlPolicy = requires(P p) {
     {p.sleep_ms(1)};
@@ -83,6 +86,13 @@ class PumpTask {
 
     template <PumpControlPolicy Policy>
     auto visit_message(const std::monostate& m, Policy& policy) -> void {
+        static_cast<void>(m);
+        static_cast<void>(policy);
+    }
+
+    template <PumpControlPolicy Policy>
+    auto visit_message(const messages::PumpControlMessage& m, Policy& policy)
+        -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
     }
