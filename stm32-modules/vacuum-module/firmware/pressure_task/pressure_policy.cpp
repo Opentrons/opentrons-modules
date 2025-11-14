@@ -27,3 +27,12 @@ auto PressurePolicy::conversion_ended(PressureSensorID sensor_id) -> bool {
 auto PressurePolicy::sensor_reset(PressureSensorID sensor_id) -> void {
     sensor_hardware_sensor_reset(sensor_id);
 }
+
+auto PressurePolicy::enable_continous_pressure(bool enable) -> void {
+    auto handle = static_cast<TaskHandle_t>(hardware_handle);
+    if (enable) {
+        vTaskResume(handle);
+    } else {
+        vTaskSuspend(handle);
+    }
+}

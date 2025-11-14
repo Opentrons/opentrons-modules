@@ -53,12 +53,12 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
     _top_task.provide_aggregator(aggregator);
 
     // second task to drive get pressure periodically
-    // auto *hardware_handle = xTaskCreateStatic(
-    xTaskCreateStatic(run_hardware_task, "PressureHardware",
-                      _hardware_stack.size(), nullptr, 1,
-                      _hardware_stack.data(), &_hardware_data);
+    auto* hw_handle = xTaskCreateStatic(
+        run_hardware_task, "PressureHardware", _hardware_stack.size(), nullptr,
+        1, _hardware_stack.data(), &_hardware_data);
 
-    auto policy = PressurePolicy(i2c1_comms, i2c2_comms, i2c3_comms);
+    auto policy = PressurePolicy(hw_handle, i2c1_comms, i2c2_comms, i2c3_comms);
+    policy.enable_continous_pressure(false);
     while (true) {
         _top_task.run_once(policy);
     }
