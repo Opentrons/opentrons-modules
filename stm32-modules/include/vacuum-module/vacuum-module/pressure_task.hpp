@@ -221,7 +221,7 @@ class PressureTask {
     }
 
     template <PressureControlPolicy Policy>
-    auto visit_message(const messages::SetTargetPressureMessage& m,
+    auto visit_message(const messages::SetPressureStateMessage& m,
                        Policy& policy) -> void {
         // TODO: Validate incoming values
         _pressure_control.target_pressure = m.pressure_setpoint;

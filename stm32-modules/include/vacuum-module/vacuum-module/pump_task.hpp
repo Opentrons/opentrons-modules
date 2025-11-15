@@ -20,11 +20,16 @@ static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1 / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
+static constexpr const uint8_t MAX_PWM = 100;
+static constexpr const double MAX_RPM = 3000;
 
 struct PumpControl {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    uint8_t current_pwm = 0;
+    uint8_t target_pwm = 0;
     double target_rpm = 0.0F;
     double current_rpm = 0.0F;
+    bool manual_control = false;
 
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     PID pid;  // Current PID loop
@@ -34,6 +39,7 @@ struct PumpControl {
 };
 
 const PumpControl pump_control = {
+    .target_pwm = 0,
     .target_rpm = 0.0f,
     .pid = PID{.kp = 1,
                .ki = 0.5,
@@ -128,11 +134,13 @@ class PumpTask {
         auto delta_s = (timestamp - pump_control.last_tick) * MS_TO_SECONDS;
         _pump_control.last_tick = timestamp;
 
-        // TODO: Do we want ramp gen here for smooth interpolation?
+        // TODO: Do we want rampgen here for smooth interpolation?
         // Compute the new duty cycle
         auto current_rpm = policy.get_pump_rpm();
         auto difference = _pump_control.target_rpm - current_rpm;
         auto duty = _pump_control.pid.compute(difference, delta_s);
+        duty = std::clamp<uint8_t>(duty, 0, MAX_PWM);
+        _pump_control.current_pwm = duty;
 
         // set the motor duty cycle
         policy.set_pump_duty_cycle(duty);
@@ -143,12 +151,12 @@ class PumpTask {
         -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
-
         // TODO: validate incoming values
-        _pump_control.target_rpm = m.rpm_setpoint;
+        _pump_control.target_pwm =
+            std::clamp<uint8_t>(m.duty_cycle, 0, MAX_PWM);
+        _pump_control.target_rpm =
+            std::clamp<double>(m.rpm_setpoint, 0, MAX_RPM);
         _pump_control.enable_pump = m.run_pump;
-        auto timestamp = policy.get_time_ms();
-        (void)timestamp;
 
         if (!m.run_pump) {
             policy.enable_pump_control(false);
