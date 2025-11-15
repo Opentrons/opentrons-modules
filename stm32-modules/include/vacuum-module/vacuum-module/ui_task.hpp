@@ -142,8 +142,8 @@ class UITask {
             _policy = &policy;
 
             if (!_led_driver.initialized()) {
-                _led_driver.initialize(policy);
-                _led_bar_internal.driver_ok = true;
+                auto ok = _led_driver.initialize(policy);
+                _led_bar_internal.driver_ok = ok;
                 set_status_bar(Internal);
             }
             _message_queue.set_ready();
