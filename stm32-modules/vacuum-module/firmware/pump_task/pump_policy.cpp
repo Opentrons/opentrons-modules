@@ -55,4 +55,3 @@ auto pump_policy::PumpPolicy::sleep_ms(uint32_t ms) -> void {
 [[nodiscard]] auto pump_policy::PumpPolicy::get_time_ms() const -> uint32_t {
     return xTaskGetTickCount();
 }
-

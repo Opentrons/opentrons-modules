@@ -132,6 +132,17 @@ struct SetPumpStateMessage {
     bool run_pump = false;
 };
 
+struct GetPumpStateMessage {
+    uint32_t id = 0;
+};
+
+struct GetPumpStateResponseMessage {
+    uint32_t responding_to_id;
+    double target_rpm;
+    double current_rpm;
+    bool pump_enabled;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -147,6 +158,7 @@ using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 using PressureMessage = ::std::variant<std::monostate, PressureControlMessage,
                                        SetTargetPressureMessage>;
 
-using PumpMessage = ::std::variant<std::monostate, PumpControlMessage, SetPumpStateMessage>;
+using PumpMessage = ::std::variant<std::monostate, PumpControlMessage,
+                                   SetPumpStateMessage, GetPumpStateMessage>;
 
 };  // namespace messages

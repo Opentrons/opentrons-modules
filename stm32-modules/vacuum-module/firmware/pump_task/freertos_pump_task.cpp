@@ -48,8 +48,8 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void {
 
     // second task to drive pump motor
     auto* hw_handle = xTaskCreateStatic(
-        run_hardware_task, "PumpHardware", _hardware_stack.size(), nullptr,
-        1, _hardware_stack.data(), &_hardware_data);
+        run_hardware_task, "PumpHardware", _hardware_stack.size(), nullptr, 1,
+        _hardware_stack.data(), &_hardware_data);
 
     auto policy = PumpPolicy(hw_handle);
     policy.enable_pump_control(false);

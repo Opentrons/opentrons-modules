@@ -293,4 +293,43 @@ struct SetStatusBarState {
         return write_string_to_iterpair(buf, limit, response);
     }
 };
+
+
+struct GetPumpState {
+    /*
+     * M120- GetPumpState state of the pump (target rpm, current rpm, etc)
+     * */
+    using ParseResult = std::optional<GetPumpState>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '0'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double target_rpm, double current_rpm)
+        -> InputIt {
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf), "M120 T:%d C:%d OK\n",
+                       target_rpm, current_rpm);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetPumpState()), working);
+    }
+};
+
 }  // namespace gcode

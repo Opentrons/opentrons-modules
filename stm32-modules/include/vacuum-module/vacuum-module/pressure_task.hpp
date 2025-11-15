@@ -21,7 +21,10 @@ namespace pressure_task {
 using lps22df::LPS222DF;
 using vacuum_pressure_sensor::MPRLL0025PA00001;
 
-static constexpr const uint32_t CONTROL_PERIOD_MS = 100;
+// The frequency the pressure control loop runs at.
+static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
+static constexpr const uint32_t CONTROL_PERIOD_MS =
+    (1 / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double RAMP_RATE_MBAR_S = 68.9476;
 
@@ -178,11 +181,12 @@ class PressureTask {
     }
 
     template <PressureControlPolicy Policy>
-    auto visit_message(const messages::PressureControlMessage& m, Policy& policy)
-        -> void {
+    auto visit_message(const messages::PressureControlMessage& m,
+                       Policy& policy) -> void {
         // Get delta time
         auto timestamp = policy.get_time_ms();
-        auto delta_s = (timestamp - _pressure_control.last_tick) * MS_TO_SECONDS;
+        auto delta_s =
+            (timestamp - _pressure_control.last_tick) * MS_TO_SECONDS;
         _pressure_control.last_tick = timestamp;
 
         // TODO: add FIR filter for abs pressure.
@@ -210,7 +214,8 @@ class PressureTask {
         // TODO: clamp the rpm here to something sensible
 
         // Send new rpm to pump task
-        auto msg = messages::SetPumpStateMessage{.rpm_setpoint = rpm, .run_pump = true};
+        auto msg = messages::SetPumpStateMessage{.rpm_setpoint = rpm,
+                                                 .run_pump = true};
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::PumpAddress));
     }
@@ -231,8 +236,8 @@ class PressureTask {
         auto timestamp = policy.get_time_ms();
         _pressure_control.rampgen.start_ramp(
             current_pressure, m.pressure_setpoint, m.ramp_rate, timestamp);
-        // TODO: kick off pressure control here, or in sep gcode? maybe StartPump?
-        // 0. set target pressure, ramp rate, etc
+        // TODO: kick off pressure control here, or in sep gcode? maybe
+        // StartPump? 0. set target pressure, ramp rate, etc
         // 1. start the pressure driving task (if not started)
         // 1. set the pwm
         // 2. start the pump

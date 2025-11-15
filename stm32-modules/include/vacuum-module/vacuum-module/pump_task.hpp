@@ -15,7 +15,10 @@
 
 namespace pump_task {
 
-static constexpr const uint32_t CONTROL_PERIOD_MS = 20;
+// The frequency the pump control loop runs at.
+static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
+static constexpr const uint32_t CONTROL_PERIOD_MS =
+    (1 / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
 
 struct PumpControl {
@@ -163,6 +166,19 @@ class PumpTask {
             policy.start_pump_motor();
             _pump_control.pump_running = true;
         }
+    }
+
+    template <PumpControlPolicy Policy>
+    auto visit_message(const messages::GetPumpStateMessage& m, Policy& policy)
+        -> void {
+        auto msg = messages::GetPumpStateResponseMessage{
+            .responding_to_id = m.id,
+            .target_rpm = _pump_control.target_rpm,
+            .current_rpm = _pump_control.current_rpm,
+            .pump_enabled = _pump_control.enable_pump,
+        };
+        static_cast<void>(
+            _task_registry->send_to_address(msg, Queues::HostCommsAddress));
     }
 
     Queue& _message_queue;
