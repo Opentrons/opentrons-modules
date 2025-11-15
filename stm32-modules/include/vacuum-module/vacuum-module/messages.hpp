@@ -132,6 +132,16 @@ struct SetPumpStateMessage {
     bool run_pump = false;
 };
 
+struct GetPressureStateMessage {
+    uint32_t id = 0;
+};
+
+struct GetPressureStateResponseMessage {
+    uint32_t responding_to_id;
+    double target_pressure;
+    double current_pressure;
+};
+
 struct GetPumpStateMessage {
     uint32_t id = 0;
 };
@@ -155,8 +165,9 @@ using SystemMessage =
 
 using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
-using PressureMessage = ::std::variant<std::monostate, PressureControlMessage,
-                                       SetTargetPressureMessage>;
+using PressureMessage =
+    ::std::variant<std::monostate, PressureControlMessage,
+                   SetTargetPressureMessage, GetPressureStateMessage>;
 
 using PumpMessage = ::std::variant<std::monostate, PumpControlMessage,
                                    SetPumpStateMessage, GetPumpStateMessage>;

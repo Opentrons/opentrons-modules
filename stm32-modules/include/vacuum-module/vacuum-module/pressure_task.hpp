@@ -243,6 +243,18 @@ class PressureTask {
         // 2. start the pump
     }
 
+    template <PressureControlPolicy Policy>
+    auto visit_message(const messages::GetPressureStateMessage& m,
+                       Policy& policy) -> void {
+        auto msg = messages::GetPressureStateResponseMessage{
+            .responding_to_id = m.id,
+            .target_pressure = _pressure_control.target_pressure,
+            .current_pressure = _pressure_control.current_pressure,
+        };
+        static_cast<void>(
+            _task_registry->send_to_address(msg, Queues::HostCommsAddress));
+    }
+
     auto get_sensor(PressureSensorID sensor_id) -> PressureSensor& {
         switch (sensor_id) {
             case ABS_PRESSURE_A:
