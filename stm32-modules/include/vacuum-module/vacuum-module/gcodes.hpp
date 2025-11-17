@@ -374,10 +374,14 @@ struct GetPressureState {
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit,
                                     double target_pressure,
-                                    double current_pressure) -> InputIt {
+                                    double current_pressure,
+                                    double pressure_abs_a,
+                                    double pressure_abs_b,
+                                    double pressure_atm) -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M121 T:%d C:%d OK\n",
-                       target_pressure, current_pressure);
+        res =
+            snprintf(&*buf, (limit - buf), "M121 T:%d C:%d A:%d B:%d H:%d OK\n",
+                     target_pressure, current_pressure);
         if (res <= 0) {
             return buf;
         }

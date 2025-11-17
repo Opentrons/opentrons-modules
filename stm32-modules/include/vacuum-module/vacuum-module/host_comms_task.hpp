@@ -317,7 +317,7 @@ class HostCommsTask {
                 } else {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.target_pressure,
-                        response.current_pressure);
+                        response.current_pressure, response.pressure_abs_a, response.pressure_abs_b, response.pressure_atm);
                 }
             },
             cache_entry);

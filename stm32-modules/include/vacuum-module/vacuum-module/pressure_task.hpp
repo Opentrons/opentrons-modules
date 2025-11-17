@@ -62,6 +62,9 @@ struct PressureControl {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     double target_pressure = 0.0F;  // Target Guage Pressure
     double current_pressure = 0.0F;
+    double pressure_abs_a = 0.0F;
+    double pressure_abs_b = 0.0F;
+    double pressure_atm = 0.0F;
     double ramp_rate = 0;
     uint32_t duration_s = 0;
     bool vent_after = false;
@@ -190,25 +193,24 @@ class PressureTask {
         _pressure_control.last_tick = timestamp;
 
         // TODO: add FIR filter for abs pressure.
-        auto abs_a_pressure_mbar =
+        _pressure_control.pressure_abs_a =
             std::get<MPRDriverType>(get_sensor(ABS_PRESSURE_A).driver)
                 .read_pressure();
         // TODO: use difference in pressure between a and b to raise error if >
         // threhold. Dont do anything with it for now
-        auto abs_b_pressure_mbar =
+        _pressure_control.pressure_abs_b =
             std::get<MPRDriverType>(get_sensor(ABS_PRESSURE_B).driver)
                 .read_pressure();
-        static_cast<void>(abs_b_pressure_mbar);
 
         // TODO: figure out how often to read atm pressure
-        auto atm_pressure_hpa =
+        _pressure_control.pressure_atm =
             std::get<LPSDriverType>(get_sensor(ATM_PRESSURE).driver)
                 .get_pressure();
 
         // Compute the new pwm with ramp rate
         double target_setpoint =
             _pressure_control.rampgen.update_setpoint(timestamp);
-        auto guage_pressure = abs_a_pressure_mbar - atm_pressure_hpa;
+        auto guage_pressure = _pressure_control.pressure_abs_a - _pressure_control.pressure_atm;
         auto difference = target_setpoint - guage_pressure;
         auto rpm = _pressure_control.pid.compute(difference, delta_s);
         // TODO: clamp the rpm here to something sensible
@@ -250,6 +252,9 @@ class PressureTask {
             .responding_to_id = m.id,
             .target_pressure = _pressure_control.target_pressure,
             .current_pressure = _pressure_control.current_pressure,
+            .pressure_abs_a = _pressure_control.pressure_abs_a,
+            .pressure_abs_b = _pressure_control.pressure_abs_b,
+            .pressure_atm = _pressure_control.pressure_atm,
         };
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));

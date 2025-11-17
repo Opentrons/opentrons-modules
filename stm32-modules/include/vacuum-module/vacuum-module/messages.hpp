@@ -141,6 +141,9 @@ struct GetPressureStateResponseMessage {
     uint32_t responding_to_id;
     double target_pressure;
     double current_pressure;
+    double pressure_abs_a;
+    double pressure_abs_b;
+    double pressure_atm;
 };
 
 struct GetPumpStateMessage {
