@@ -20,7 +20,8 @@ class UIPolicy {
         return ret == 0;
     }
 
-  private:
     I2C *i2c_comms;
+  private:
+    // I2C *i2c_comms;
 };
 }  // namespace ui_policy

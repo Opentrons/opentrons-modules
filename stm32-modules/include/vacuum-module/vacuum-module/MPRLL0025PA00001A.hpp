@@ -54,6 +54,8 @@ class MPRLL0025PA00001 {
 
         for (int i = 0; i < (DEFAULT_RETRIES + 1); i++) {
             _policy->sleep_ms(3);
+//        _policy->i2c_write(DEV_ADDRESS, MEASURE_PRESSURE_COMMAND, READ_BUFF,
+//                           0);
             _policy->i2c_master_read(DEV_ADDRESS, READ_BUFF, 4);
             auto status_byte = READ_BUFF[0];
             sensor_busy = static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
@@ -68,11 +70,17 @@ class MPRLL0025PA00001 {
         return pressure_psi;
     }
 
-    std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};
-    std::array<uint8_t, PRESSURE_FRAME_LEN> WRITE = {MEASURE_PRESSURE_COMMAND};
+//    std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};
+ //   std::array<uint8_t, PRESSURE_FRAME_LEN> WRITE = {MEASURE_PRESSURE_COMMAND};
+    uint8_t READ_BUFF[4] = {0x00};
+    uint8_t WRITE_BUFF[1] = {MEASURE_PRESSURE_COMMAND};
     double pressure_psi;
     double pressure_mbar;
     bool sensor_busy = true;
+    int default_retries = 5;
+
+  private:
+    hardware::VacuumPressureSensorPolicy* _policy{nullptr};
 
   private:
     VacuumPressureSensorPolicy* _policy{nullptr};
@@ -90,4 +98,4 @@ class MPRLL0025PA00001 {
     }
 };
 
-}  // namespace vacuum_pressure_sensor
+};  // namespace vacuum_pressure_sensor

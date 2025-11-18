@@ -64,6 +64,7 @@ class LPS222DF {
         pressure_mbar = pressure_hPa;
         return pressure_hPa;
     }
+    uint8_t READ_BUFF[4] = {0x00};
 
     std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};
     std::array<uint8_t, PRESSURE_FRAME_LEN> WRITE_BUFF = {0};
@@ -75,15 +76,13 @@ class LPS222DF {
     AtmospherePressureSensorPolicy* _policy{nullptr};
 
     auto convert_pressure(uint8_t* sensor_output) -> double {
-        auto pressure_read_bytes = {sensor_output[1], sensor_output[2],
-                                    sensor_output[3]};
         // test that this is accurate
         auto pressure_read_counts = sensor_output[1] << 24 |
                                     sensor_output[2] << 16 |
                                     sensor_output[3] << 8;
         double pressure_hPa =
             static_cast<double>(pressure_read_counts / SENSOR_SENSITIVITY);
-        return pressure_hPa
+        return pressure_hPa;
     }
 };
 
