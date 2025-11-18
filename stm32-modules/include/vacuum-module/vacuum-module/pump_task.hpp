@@ -1,4 +1,6 @@
 #pragma once
+#pragma GCC push_options
+#pragma GCC optimize("O0")
 #include <cmath>
 #include <cstdint>
 
@@ -16,7 +18,8 @@
 namespace pump_task {
 
 // The frequency the pump control loop runs at.
-static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
+// static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
+static constexpr const uint32_t CONTROL_PERIOD_HZ = 1;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1 / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
@@ -25,10 +28,10 @@ static constexpr const double MAX_RPM = 3000;
 
 struct PumpControl {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    uint8_t current_pwm = 0;
-    uint8_t target_pwm = 0;
     double target_rpm = 0.0F;
     double current_rpm = 0.0F;
+    uint8_t current_pwm = 0;
+    uint8_t target_pwm = 0;
     bool manual_control = false;
 
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
@@ -39,8 +42,8 @@ struct PumpControl {
 };
 
 const PumpControl pump_control = {
-    .target_pwm = 0,
     .target_rpm = 0.0f,
+    .target_pwm = 0,
     .pid = PID{.kp = 1,
                .ki = 0.5,
                .kd = 0,
@@ -174,6 +177,10 @@ class PumpTask {
             policy.start_pump_motor();
             _pump_control.pump_running = true;
         }
+
+        if (m.from_host) {
+            send_ack_message(m.id);
+        }
     }
 
     template <PumpControlPolicy Policy>
@@ -183,7 +190,10 @@ class PumpTask {
             .responding_to_id = m.id,
             .target_rpm = _pump_control.target_rpm,
             .current_rpm = _pump_control.current_rpm,
-            .pump_enabled = _pump_control.enable_pump,
+            .target_pwm = _pump_control.target_pwm,
+            .current_pwm = _pump_control.current_pwm,
+            .manual_control = _pump_control.manual_control,
+            .pump_running = _pump_control.pump_running,
         };
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));
@@ -197,3 +207,4 @@ class PumpTask {
 };
 
 }  // namespace pump_task
+#pragma GCC pop_options

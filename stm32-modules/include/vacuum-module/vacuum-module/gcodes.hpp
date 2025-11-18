@@ -376,12 +376,13 @@ struct GetPressureState {
                                     double target_pressure,
                                     double current_pressure,
                                     double pressure_abs_a,
-                                    double pressure_abs_b,
-                                    double pressure_atm) -> InputIt {
+                                    double pressure_abs_b, double pressure_atm)
+        -> InputIt {
         int res = 0;
-        res =
-            snprintf(&*buf, (limit - buf), "M121 T:%d C:%d A:%d B:%d H:%d OK\n",
-                     target_pressure, current_pressure);
+        res = snprintf(&*buf, (limit - buf),
+                       "M121 T:%.1f C:%.1f A:%.1f B:%.1f H:%.1f OK\n",
+                       target_pressure, current_pressure, pressure_abs_a,
+                       pressure_abs_b, pressure_atm);
         if (res <= 0) {
             return buf;
         }
@@ -408,15 +409,17 @@ struct SetPumpState {
      * M122- SetPumpState set state of pump control (start pump, target rpm,
      * on/off)
      * */
-    std::optional<double> target_rpm = 0;
-    std::optional<uint8_t> duty_cycle = 0;
+    // TODO: Make these optionals so we keep the current state
+    double target_rpm = 0;
+    uint8_t duty_cycle = 0;
+    //
     bool start_pump = false;
 
     using ParseResult = std::optional<SetPumpState>;
     static constexpr auto prefix = std::array{'M', '1', '2', '2', ' '};
     static constexpr const char* response = "M122 OK\n";
 
-    using StartArg = Arg<float, 'S'>;
+    using StartArg = Arg<uint8_t, 'S'>;
     using RPMArg = Arg<uint16_t, 'R'>;
     using DutyArg = Arg<uint8_t, 'D'>;
 
@@ -466,11 +469,15 @@ struct GetPumpState {
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit,
-                                    double target_rpm, double current_rpm)
+                                    double target_rpm, double current_rpm,
+                                    uint8_t target_pwm, uint8_t current_pwm,
+                                    bool pump_running, bool manual_control)
         -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M123 T:%d C:%d OK\n", target_rpm,
-                       current_rpm);
+        res = snprintf(&*buf, (limit - buf),
+                       "M123 T:%.1f R:%.1f A:%d D:%d E:%d M:%d OK\n", target_rpm,
+                       current_rpm, target_pwm, current_pwm, pump_running,
+                       manual_control);
         if (res <= 0) {
             return buf;
         }

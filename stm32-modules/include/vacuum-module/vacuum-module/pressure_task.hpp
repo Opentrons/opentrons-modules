@@ -1,3 +1,7 @@
+
+#pragma GCC push_options
+#pragma GCC optimize("O0")
+
 #pragma once
 #include <cmath>
 #include <cstdint>
@@ -22,7 +26,8 @@ using lps22df::LPS222DF;
 using vacuum_pressure_sensor::MPRLL0025PA00001;
 
 // The frequency the pressure control loop runs at.
-static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
+// static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
+static constexpr const uint32_t CONTROL_PERIOD_HZ = 1;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1 / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
@@ -208,9 +213,12 @@ class PressureTask {
                 .get_pressure();
 
         // Compute the new pwm with ramp rate
-        double target_setpoint =
-            _pressure_control.rampgen.update_setpoint(timestamp);
-        auto guage_pressure = _pressure_control.pressure_abs_a - _pressure_control.pressure_atm;
+        // IGNORE RAMPING FOR NOW
+        // double target_setpoint =
+        //     _pressure_control.rampgen.update_setpoint(timestamp);
+        double target_setpoint = _pressure_control.target_pressure;
+        auto guage_pressure =
+            _pressure_control.pressure_abs_a - _pressure_control.pressure_atm;
         auto difference = target_setpoint - guage_pressure;
         auto rpm = _pressure_control.pid.compute(difference, delta_s);
         // TODO: clamp the rpm here to something sensible
@@ -230,7 +238,6 @@ class PressureTask {
         _pressure_control.ramp_rate = m.ramp_rate;
         _pressure_control.duration_s = m.duration_s;
         _pressure_control.vent_after = m.vent_after;
-        _pressure_control.start_pump = m.start_pump;
 
         // Update ramp rate generator
         // TODO: Do we need to stop pump when we update ramp rate?
@@ -238,11 +245,13 @@ class PressureTask {
         auto timestamp = policy.get_time_ms();
         _pressure_control.rampgen.start_ramp(
             current_pressure, m.pressure_setpoint, m.ramp_rate, timestamp);
-        // TODO: kick off pressure control here, or in sep gcode? maybe
-        // StartPump? 0. set target pressure, ramp rate, etc
-        // 1. start the pressure driving task (if not started)
-        // 1. set the pwm
-        // 2. start the pump
+
+        if (!_pressure_control.start_pump && m.start_pump) {
+            // maybe rename this, since this starts the pressure control loop
+            policy.enable_continous_pressure(true);
+        }
+        _pressure_control.start_pump = m.start_pump;
+        send_ack_message(m.id);
     }
 
     template <PressureControlPolicy Policy>
@@ -285,3 +294,4 @@ class PressureTask {
 };
 
 }  // namespace pressure_task
+#pragma GCC pop_options

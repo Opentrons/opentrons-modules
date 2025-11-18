@@ -148,19 +148,24 @@ struct GetPressureStateResponseMessage {
 
 struct GetPumpStateMessage {
     uint32_t id = 0;
+    bool refresh = false;
 };
 
 struct GetPumpStateResponseMessage {
     uint32_t responding_to_id;
     double target_rpm;
     double current_rpm;
-    bool pump_enabled;
+    uint8_t target_pwm;
+    uint8_t current_pwm;
+    bool manual_control;
+    bool pump_running;
 };
 
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetResetReasonResponse>;
+                   GetResetReasonResponse, GetPressureStateResponseMessage,
+                   GetPumpStateResponseMessage>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,

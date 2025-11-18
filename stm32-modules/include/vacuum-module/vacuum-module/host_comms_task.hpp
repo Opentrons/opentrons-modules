@@ -1,6 +1,10 @@
 /*
  * the primary interface to the host communications task
  */
+
+#pragma GCC push_options
+#pragma GCC optimize("O0")
+
 #pragma once
 
 #include <cstring>
@@ -37,15 +41,15 @@ class HostCommsTask {
     using Queues = typename tasks::Tasks<QueueImpl>;
 
   private:
-    using GCodeParser =
-        gcode::GroupParser<gcode::EnterBootloader, gcode::SetSerialNumber,
-                           gcode::GetSystemInfo, gcode::GetResetReason,
-                           gcode::SetStatusBarState, gcode::GetPumpState,
-                           gcode::GetPressureState, gcode::SetPressureState>;
+    using GCodeParser = gcode::GroupParser<
+        gcode::EnterBootloader, gcode::SetSerialNumber, gcode::GetSystemInfo,
+        gcode::GetResetReason, gcode::SetStatusBarState, gcode::GetPumpState,
+        gcode::GetPressureState, gcode::SetPressureState, gcode::SetPumpState>;
 
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
-                 gcode::SetStatusBarState, gcode::SetPressureState>;
+                 gcode::SetStatusBarState, gcode::SetPressureState,
+                 gcode::SetPumpState>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetResetReasonCache = AckCache<8, gcode::GetResetReason>;
     using GetPumpStateCache = AckCache<8, gcode::GetPumpState>;
@@ -293,7 +297,9 @@ class HostCommsTask {
                 } else {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.target_rpm,
-                        response.current_rpm);
+                        response.current_rpm, response.target_pwm,
+                        response.current_pwm, response.manual_control,
+                        response.pump_running);
                 }
             },
             cache_entry);
@@ -317,7 +323,8 @@ class HostCommsTask {
                 } else {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.target_pressure,
-                        response.current_pressure, response.pressure_abs_a, response.pressure_abs_b, response.pressure_atm);
+                        response.current_pressure, response.pressure_abs_a,
+                        response.pressure_abs_b, response.pressure_atm);
                 }
             },
             cache_entry);
@@ -494,7 +501,7 @@ class HostCommsTask {
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            get_reset_reason_cache.remove_if_present(id);
+            get_pump_state_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
@@ -543,7 +550,7 @@ class HostCommsTask {
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
-            get_reset_reason_cache.remove_if_present(id);
+            get_pressure_state_cache.remove_if_present(id);
             return std::make_pair(false, wrote_to);
         }
         return std::make_pair(true, tx_into);
@@ -572,3 +579,4 @@ class HostCommsTask {
 };
 
 };  // namespace host_comms_task
+#pragma GCC pop_options
