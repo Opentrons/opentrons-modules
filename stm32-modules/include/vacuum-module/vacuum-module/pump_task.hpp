@@ -19,17 +19,17 @@ namespace pump_task {
 
 // The frequency the pump control loop runs at.
 // static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
-static constexpr const uint32_t CONTROL_PERIOD_HZ = 1;
+static constexpr const uint32_t CONTROL_PERIOD_HZ = 20;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1 / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const uint8_t MAX_PWM = 100;
+static constexpr const double MIN_RPM = 0;
 static constexpr const double MAX_RPM = 3000;
 
 struct PumpControl {
-    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    double target_rpm = 0.0F;
-    double current_rpm = 0.0F;
+    double target_rpm = 0;
+    double current_rpm = 0;
     uint8_t current_pwm = 0;
     uint8_t target_pwm = 0;
     bool manual_control = false;
@@ -42,14 +42,14 @@ struct PumpControl {
 };
 
 const PumpControl pump_control = {
-    .target_rpm = 0.0f,
+    .target_rpm = 0,
     .target_pwm = 0,
-    .pid = PID{.kp = 1,
-               .ki = 0.5,
-               .kd = 0,
-               .sampletime = CONTROL_PERIOD_MS * 1000,
-               .windup_limit_high = 18000,
-               .windup_limit_low = 0},
+    .pid = PID(2.0F,               // kp
+               0.8F,               // ki
+               0.1F,               // kd
+               CONTROL_PERIOD_MS,  // sampletime
+               18000,              // windup_limit_high
+               0),                 // windup_limit_low
 };
 
 template <typename P>
@@ -71,7 +71,7 @@ class PumpTask {
 
   public:
     explicit PumpTask(Queue& q, Aggregator* aggregator, PumpPolicy* policy)
-        : _message_queue(q), _task_registry(aggregator) {}
+        : _message_queue(q), _task_registry(aggregator), _policy(policy) {}
     PumpTask(const PumpTask& other) = delete;
     auto operator=(const PumpTask& other) -> PumpTask& = delete;
     PumpTask(PumpTask&& other) noexcept = delete;
@@ -89,6 +89,7 @@ class PumpTask {
         }
 
         if (!_initialized) {
+            _policy = &policy;
             _message_queue.set_ready();
             _initialized = true;
         }
@@ -132,6 +133,10 @@ class PumpTask {
         static_cast<void>(m);
         static_cast<void>(policy);
 
+        if (!_pump_control.enable_pump) {
+            return;
+        }
+
         // Get delta time
         auto timestamp = policy.get_time_ms();
         auto delta_s = (timestamp - pump_control.last_tick) * MS_TO_SECONDS;
@@ -139,13 +144,18 @@ class PumpTask {
 
         // TODO: Do we want rampgen here for smooth interpolation?
         // Compute the new duty cycle
-        auto current_rpm = policy.get_pump_rpm();
-        auto difference = _pump_control.target_rpm - current_rpm;
+        auto rpm = policy.get_pump_rpm();
+        // reject non-sense rpm
+        if (rpm < MIN_RPM || rpm >= MAX_RPM) {
+            return;
+        }
+
+        auto difference = _pump_control.target_rpm - rpm;
         auto duty = _pump_control.pid.compute(difference, delta_s);
         duty = std::clamp<uint8_t>(duty, 0, MAX_PWM);
+        // set the motor duty cycle if different
         _pump_control.current_pwm = duty;
-
-        // set the motor duty cycle
+        _pump_control.current_rpm = rpm;
         policy.set_pump_duty_cycle(duty);
     }
 
@@ -163,15 +173,14 @@ class PumpTask {
 
         if (!m.run_pump) {
             policy.enable_pump_control(false);
+            policy.enable_pump_tach(false);
             policy.stop_pump_motor();
             // TODO: maybe check the rpm here and verify that the pump is off
             // Might want a way to ramp down when we turn off the pump.
             _pump_control.pump_running = false;
-            return;
-        }
-
-        // start pump if not running
-        if (m.run_pump && !_pump_control.pump_running) {
+            _pump_control.current_rpm = 0;
+            _pump_control.current_pwm = 0;
+        } else if (!_pump_control.pump_running) {
             policy.enable_pump_tach(true);
             policy.enable_pump_control(true);
             policy.start_pump_motor();
@@ -186,14 +195,16 @@ class PumpTask {
     template <PumpControlPolicy Policy>
     auto visit_message(const messages::GetPumpStateMessage& m, Policy& policy)
         -> void {
+        static_cast<void>(m);
+        static_cast<void>(policy);
         auto msg = messages::GetPumpStateResponseMessage{
             .responding_to_id = m.id,
             .target_rpm = _pump_control.target_rpm,
             .current_rpm = _pump_control.current_rpm,
             .target_pwm = _pump_control.target_pwm,
             .current_pwm = _pump_control.current_pwm,
-            .manual_control = _pump_control.manual_control,
             .pump_running = _pump_control.pump_running,
+            .manual_control = _pump_control.manual_control,
         };
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));
@@ -201,6 +212,7 @@ class PumpTask {
 
     Queue& _message_queue;
     Aggregator* _task_registry;
+    PumpPolicy* _policy;
     bool _initialized{false};
 
     PumpControl _pump_control = pump_control;

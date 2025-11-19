@@ -29,10 +29,13 @@ auto PressurePolicy::sensor_reset(PressureSensorID sensor_id) -> void {
 }
 
 auto PressurePolicy::enable_continous_pressure(bool enable) -> void {
-    auto handle = static_cast<TaskHandle_t>(hardware_handle);
-    if (enable) {
-        vTaskResume(handle);
-    } else {
-        vTaskSuspend(handle);
+    auto *handle = static_cast<TaskHandle_t>(hardware_handle);
+    if (handle != nullptr) {
+        if (enable) {
+            t_resync_needed->store(true);
+            vTaskResume(handle);
+        } else {
+            vTaskSuspend(handle);
+        }
     }
 }

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdatomic.h>
+#include <string.h>
 
 #include "FreeRTOS.h"
 #include "semphr.h"
@@ -24,8 +25,15 @@
 #define TACH_CHANNEL       (TIM_CHANNEL_4)
 #define TACH_IRQ           (TIM3_IRQn)
 
-#define RPM_AVG_WINDOW 6
+#define MIN_RPM 1
+#define MAX_RPM 5000
+#define RPM_AVG_WINDOW 10
 #define TACH_PULSES_PER_REV 60.0f
+
+#define PUMP_STOP_TIMEOUT_MS   150   // no pulses for n >= ms -> stopped
+#define PUMP_STOP_RPM_THRESH   40.0f // filtered RPM < n ->  likely stopped
+#define PUMP_STOP_DEBOUNCE     3     // require 3 consecutive detections
+
 
 typedef struct {
     // tachometer
@@ -34,12 +42,17 @@ typedef struct {
     bool valid_capture;
     _Atomic uint32_t tach_overflow_count;
     // rolling average rpm
-    float rpm;
+    _Atomic float rpm;
     float buffer[RPM_AVG_WINDOW];
     uint8_t index;
     uint8_t count;
     float sum;
     float filtered_rpm;
+    // pump stopped detection
+    uint32_t last_pulse_time_ms;
+    uint8_t stopped_counter;
+    bool pump_stopped;
+
 } tachometer_hardware_t;
 
 static tachometer_hardware_t hardware = {0};
@@ -159,6 +172,10 @@ void pump_tach_gpio_init() {
     HAL_GPIO_Init(PUMP_TACH_GPIO_Port, &GPIO_InitStruct);
 }
 
+void reset_filtered_rpm() {
+    memset(&hardware, 0, sizeof(tachometer_hardware_t));
+}
+
 static uint32_t clamp(uint32_t val, uint32_t min, uint32_t max) {
     if (val < min) {
         return min;
@@ -189,16 +206,24 @@ uint16_t hw_get_pump_duty_cycle(void) {
 }
 
 bool hw_enable_pump_tach(bool enable) {
+    bool success = false;
     if (enable) {
+        reset_filtered_rpm();
         __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
-        return HAL_TIM_IC_Start_IT(&htim3, TACH_CHANNEL) == HAL_OK;
+        success = HAL_TIM_IC_Start_IT(&htim3, TACH_CHANNEL) == HAL_OK;
     } else {
         __HAL_TIM_DISABLE_IT(&htim3, TIM_IT_UPDATE);
-        return HAL_TIM_IC_Stop_IT(&htim3, TACH_CHANNEL) == HAL_OK;
+        success = HAL_TIM_IC_Stop_IT(&htim3, TACH_CHANNEL) == HAL_OK;
+        reset_filtered_rpm();
     }
+
+    return success;
 }
 
 float hw_get_pump_rpm(void) {
+    if (hardware.pump_stopped) {
+        return 0;
+    }
     return hardware.filtered_rpm;
 }
 
@@ -215,6 +240,10 @@ void pump_hardware_init(void) {
 }
 
 void update_filtered_rpm(float new_rpm) {
+    // Update rpm only if sensible
+    if (new_rpm <= MIN_RPM || new_rpm >= MAX_RPM) {
+        return;
+    }
     // Subtract the oldest sample from the sum and store new sample
     hardware.sum -= hardware.buffer[hardware.index];
     hardware.buffer[hardware.index] = new_rpm;
@@ -233,15 +262,6 @@ void update_filtered_rpm(float new_rpm) {
     hardware.filtered_rpm = hardware.sum / hardware.count;
 }
 
-void reset_filtered_rpm() {
-    hardware.filtered_rpm = 0;
-    hardware.count = 0;
-    hardware.index = 0;
-    hardware.sum = 0;
-    for (uint16_t i = 0; i < RPM_AVG_WINDOW; i++) {
-        hardware.buffer[i] = 0;
-    }
-}
 
 float tach_ticks_to_rpm(uint32_t tick_period) {
     if (tick_period == 0) {
@@ -253,13 +273,37 @@ float tach_ticks_to_rpm(uint32_t tick_period) {
     return rev_per_s * 60.0f;
 }
 
+void update_pump_stopped_state(void) {
+    uint32_t now = HAL_GetTick();
+    bool detected = false;
+
+    // detected, if last pulse ms is greater than threshold OR rpm is less than threshold
+    uint32_t elapsed = now - hardware.last_pulse_time_ms;
+    if (elapsed >= PUMP_STOP_TIMEOUT_MS || hardware.filtered_rpm < PUMP_STOP_RPM_THRESH) {
+        detected = true;
+    }
+
+    // if either are true, then lets debounce
+    if (detected) {
+        if (hardware.stopped_counter < PUMP_STOP_DEBOUNCE) {
+            hardware.stopped_counter++;
+        }
+    } else {
+        hardware.stopped_counter = 0;
+    }
+    // pump is "stopped" if enough signals have been detected
+    hardware.pump_stopped = (hardware.stopped_counter >= PUMP_STOP_DEBOUNCE);
+}
 
 void tach_period_overflow_callback(void) {
     hardware.tach_overflow_count += 1;
+    update_pump_stopped_state();
+    // TODO: maybe have cb here to inform task?
 }
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
     if (htim->Instance == TACH_TIMER) {
+        hardware.last_pulse_time_ms = HAL_GetTick();
         uint32_t current_capture = HAL_TIM_ReadCapturedValue(htim, TACH_CHANNEL);
         if (!hardware.valid_capture) {
             hardware.last_ccr = current_capture;
@@ -274,6 +318,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
         ticks += current_capture - hardware.last_ccr;
         hardware.last_ccr = current_capture;
         hardware.tach_overflow_count = 0;
+
         // calculate rpm
         hardware.period = (float)ticks;
         hardware.rpm = tach_ticks_to_rpm(ticks);

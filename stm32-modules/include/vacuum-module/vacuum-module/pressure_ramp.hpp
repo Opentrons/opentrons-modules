@@ -37,12 +37,12 @@ class PressureRamp {
         }
 
         // Calculate elapsed time in seconds (using doubles for precision)
-        double elapsed_seconds =
+        const double elapsed_seconds =
             static_cast<double>(current_time_ms - _start_time_ms) *
             MS_TO_SECONDS;
 
         // Calculate the magnitude of pressure change requested so far
-        double pressure_change_magnitude =
+        const double pressure_change_magnitude =
             _ramp_rate_per_second * elapsed_seconds;
 
         // Determine if we are ramping up or down

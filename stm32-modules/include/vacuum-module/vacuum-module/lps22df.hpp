@@ -114,8 +114,8 @@ class LPS222DF {
     Policy* _policy{nullptr};
     std::array<uint8_t, PRESSURE_FRAME_LEN> RD_BUFF = {0};
     std::array<uint8_t, PRESSURE_FRAME_LEN> WR_BUFF = {0};
-    PressureSensorID _sensor_id;
-    uint8_t device_address;
+    PressureSensorID _sensor_id{};
+    uint8_t device_address{};
 
     double pressure_hpa = {0};
 };

@@ -4,6 +4,7 @@
 
 #include "FreeRTOS.h"
 #include "firmware/pump_hardware.h"
+#include "projdefs.h"
 #include "task.h"
 
 using namespace pump_policy;
@@ -39,11 +40,14 @@ auto pump_policy::PumpPolicy::get_pump_rpm() -> float {
 }
 
 auto pump_policy::PumpPolicy::enable_pump_control(bool enable) -> void {
-    auto handle = static_cast<TaskHandle_t>(hardware_handle);
-    if (enable) {
-        vTaskResume(handle);
-    } else {
-        vTaskSuspend(handle);
+    auto *handle = static_cast<TaskHandle_t>(hardware_handle);
+    if (handle != nullptr) {
+        if (enable) {
+            t_resync_needed->store(true);
+            vTaskResume(handle);
+        } else {
+            vTaskSuspend(handle);
+        }
     }
 }
 

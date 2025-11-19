@@ -157,8 +157,8 @@ struct GetPumpStateResponseMessage {
     double current_rpm;
     uint8_t target_pwm;
     uint8_t current_pwm;
-    bool manual_control;
     bool pump_running;
+    bool manual_control;
 };
 
 using HostCommsMessage =

@@ -475,9 +475,9 @@ struct GetPumpState {
         -> InputIt {
         int res = 0;
         res = snprintf(&*buf, (limit - buf),
-                       "M123 T:%.1f R:%.1f A:%d D:%d E:%d M:%d OK\n", target_rpm,
-                       current_rpm, target_pwm, current_pwm, pump_running,
-                       manual_control);
+                       "M123 T:%.1f R:%.1f A:%d D:%d E:%d M:%d OK\n",
+                       target_rpm, current_rpm, target_pwm, current_pwm,
+                       pump_running, manual_control);
         if (res <= 0) {
             return buf;
         }

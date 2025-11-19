@@ -26,8 +26,8 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator) -> void;
 namespace pressure_control_task {
 // Actual function that runs in the task
 auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
-         i2c::hardware::I2C* i2c_comms1, i2c::hardware::I2C* i2c_comms2,
-         i2c::hardware::I2C* i2c_comms3) -> void;
+         i2c::hardware::I2C* i2c1_comms, i2c::hardware::I2C* i2c2_comms,
+         i2c::hardware::I2C* i2c3_comms) -> void;
 }  // namespace pressure_control_task
 
 namespace pump_control_task {

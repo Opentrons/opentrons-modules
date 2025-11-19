@@ -65,11 +65,11 @@ const PressureSensor atm_pressure = {
 
 struct PressureControl {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    double target_pressure = 0.0F;  // Target Guage Pressure
-    double current_pressure = 0.0F;
-    double pressure_abs_a = 0.0F;
-    double pressure_abs_b = 0.0F;
-    double pressure_atm = 0.0F;
+    double target_pressure = 0;  // Target Guage Pressure
+    double current_pressure = 0;
+    double pressure_abs_a = 0;
+    double pressure_abs_b = 0;
+    double pressure_atm = 0;
     double ramp_rate = 0;
     uint32_t duration_s = 0;
     bool vent_after = false;
@@ -82,13 +82,13 @@ struct PressureControl {
 };
 
 const PressureControl pressure_control = {
-    .target_pressure = 0.0f,
-    .pid = PID{.kp = 1,
-               .ki = 0.5,
-               .kd = 0,
-               .sampletime = CONTROL_PERIOD_MS * 1000,
-               .windup_limit_high = 18000,
-               .windup_limit_low = 0},
+    .target_pressure = 0,
+    .pid = PID(1,                  // kp
+               0.5,                // ki
+               0,                  // kd
+               CONTROL_PERIOD_MS,  // sampletime
+               18000,              // windup_limit_high
+               0),                 // windup_limit_low
 };
 
 template <typename P>
@@ -115,7 +115,7 @@ class PressureTask {
   public:
     explicit PressureTask(Queue& q, Aggregator* aggregator,
                           PressurePolicy* policy)
-        : _message_queue(q), _task_registry(aggregator) {}
+        : _message_queue(q), _task_registry(aggregator), _policy(policy) {}
     PressureTask(const PressureTask& other) = delete;
     auto operator=(const PressureTask& other) -> PressureTask& = delete;
     PressureTask(PressureTask&& other) noexcept = delete;
@@ -133,6 +133,7 @@ class PressureTask {
         }
 
         if (!_initialized) {
+            _policy = &policy;
             // Initialize pressure sensors
             for (auto sensor_id :
                  {ABS_PRESSURE_A, ABS_PRESSURE_B, ATM_PRESSURE}) {
@@ -191,6 +192,7 @@ class PressureTask {
     template <PressureControlPolicy Policy>
     auto visit_message(const messages::PressureControlMessage& m,
                        Policy& policy) -> void {
+        static_cast<void>(m);
         // Get delta time
         auto timestamp = policy.get_time_ms();
         auto delta_s =
@@ -216,7 +218,7 @@ class PressureTask {
         // IGNORE RAMPING FOR NOW
         // double target_setpoint =
         //     _pressure_control.rampgen.update_setpoint(timestamp);
-        double target_setpoint = _pressure_control.target_pressure;
+        const double target_setpoint = _pressure_control.target_pressure;
         auto guage_pressure =
             _pressure_control.pressure_abs_a - _pressure_control.pressure_atm;
         auto difference = target_setpoint - guage_pressure;
@@ -241,10 +243,10 @@ class PressureTask {
 
         // Update ramp rate generator
         // TODO: Do we need to stop pump when we update ramp rate?
-        auto current_pressure = _pressure_control.current_pressure;
-        auto timestamp = policy.get_time_ms();
+        const auto start_pressure = _pressure_control.current_pressure;
+        const auto timestamp = policy.get_time_ms();
         _pressure_control.rampgen.start_ramp(
-            current_pressure, m.pressure_setpoint, m.ramp_rate, timestamp);
+            start_pressure, m.pressure_setpoint, m.ramp_rate, timestamp);
 
         if (!_pressure_control.start_pump && m.start_pump) {
             // maybe rename this, since this starts the pressure control loop
@@ -257,6 +259,7 @@ class PressureTask {
     template <PressureControlPolicy Policy>
     auto visit_message(const messages::GetPressureStateMessage& m,
                        Policy& policy) -> void {
+        static_cast<void>(policy);
         auto msg = messages::GetPressureStateResponseMessage{
             .responding_to_id = m.id,
             .target_pressure = _pressure_control.target_pressure,
@@ -284,6 +287,7 @@ class PressureTask {
 
     Queue& _message_queue;
     Aggregator* _task_registry;
+    PressurePolicy* _policy;
     bool _initialized{false};
 
     PressureSensor _abs_pressure_a = abs_pressure_a;
