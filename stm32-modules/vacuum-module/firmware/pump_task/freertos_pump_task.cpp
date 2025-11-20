@@ -9,6 +9,7 @@
 #include "firmware/pump_policy.hpp"
 #include "portmacro.h"
 #include "task.h"
+#include "vacuum-module/messages.hpp"
 #include "vacuum-module/pump_task.hpp"
 
 namespace pump_control_task {

@@ -2,7 +2,6 @@
 #include <atomic>
 #include <cstdint>
 
-#include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
 #include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_tasks.hpp"
