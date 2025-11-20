@@ -105,7 +105,9 @@ class MPRLL0025PA00001 {
         auto press_counts =
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             (double)((int32_t)raw[3] + (int32_t)raw[2] * (int32_t)256 +
+                     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
                      (int32_t)raw[1] *
+                         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
                          (int32_t)65536);  // calculate digital pressure counts
         auto pressure = (((press_counts - OUTPUT_MIN) * (PMAX - PMIN)) /
                          (OUTPUT_MAX - OUTPUT_MIN)) +

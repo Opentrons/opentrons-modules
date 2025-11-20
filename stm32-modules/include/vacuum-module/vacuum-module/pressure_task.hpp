@@ -1,7 +1,3 @@
-
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 #pragma once
 #include <cmath>
 #include <cstdint>
@@ -298,4 +294,3 @@ class PressureTask {
 };
 
 }  // namespace pressure_task
-#pragma GCC pop_options

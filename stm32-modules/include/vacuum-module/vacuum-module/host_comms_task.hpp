@@ -1,10 +1,6 @@
 /*
  * the primary interface to the host communications task
  */
-
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 #pragma once
 
 #include <cstring>
@@ -579,4 +575,3 @@ class HostCommsTask {
 };
 
 };  // namespace host_comms_task
-#pragma GCC pop_options
