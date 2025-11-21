@@ -26,7 +26,6 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${SYSTEM_DIR}/i2c_comms.cpp
     ${UI_DIR}/freertos_ui_task.cpp
     ${UI_DIR}/ui_policy.cpp
-    ${VENT_DIR}/vent_policy.cpp
     ${PRESSURE_CONTROL_DIR}/freertos_pressure_task.cpp
     ${PRESSURE_CONTROL_DIR}/pressure_policy.cpp
     ${PUMP_CONTROL_DIR}/freertos_pump_task.cpp

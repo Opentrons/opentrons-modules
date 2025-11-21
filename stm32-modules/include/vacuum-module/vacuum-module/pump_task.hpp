@@ -171,6 +171,9 @@ class PumpTask {
             std::clamp<double>(m.rpm_setpoint, 0, MAX_RPM);
         _pump_control.enable_pump = m.run_pump;
 
+        // // TODO: FOR TESTING ONLY
+        // policy.set_pump_duty_cycle(m.duty_cycle);
+
         if (!m.run_pump) {
             policy.enable_pump_control(false);
             policy.enable_pump_tach(false);
@@ -186,6 +189,7 @@ class PumpTask {
             policy.start_pump_motor();
             _pump_control.pump_running = true;
         }
+
 
         if (m.from_host) {
             send_ack_message(m.id);

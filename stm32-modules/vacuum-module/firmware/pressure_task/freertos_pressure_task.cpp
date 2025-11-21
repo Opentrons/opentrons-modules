@@ -70,7 +70,7 @@ auto run(tasks::FirmwareTasks::QueueAggregator* aggregator,
 
     auto policy = PressurePolicy(hw_handle, &t_resync_needed, i2c1_comms,
                                  i2c2_comms, i2c3_comms);
-    policy.enable_continous_pressure(false);
+    policy.start_pressure_control(false);
     while (true) {
         _top_task.run_once(policy);
     }

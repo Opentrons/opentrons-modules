@@ -4,6 +4,7 @@
 
 #include "FreeRTOS.h"
 #include "firmware/pressure_sensor_hardware.h"
+#include "firmware/vent_hardware.h"
 #include "projdefs.h"
 #include "systemwide.h"
 #include "task.h"
@@ -28,7 +29,18 @@ auto PressurePolicy::sensor_reset(PressureSensorID sensor_id) -> void {
     sensor_hardware_sensor_reset(sensor_id);
 }
 
-auto PressurePolicy::enable_continous_pressure(bool enable) -> void {
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto PressurePolicy::set_vent_state(bool open) -> void { hw_open_vent(open); }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto PressurePolicy::get_vent_state() -> bool { return hw_get_vent_state(); }
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto PressurePolicy::get_vent_fault() -> bool {
+    return hw_vent_fault_detected();
+}
+
+auto PressurePolicy::start_pressure_control(bool enable) -> void {
     auto *handle = static_cast<TaskHandle_t>(hardware_handle);
     if (handle != nullptr) {
         if (enable) {

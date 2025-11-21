@@ -376,13 +376,14 @@ struct GetPressureState {
                                     double target_pressure,
                                     double current_pressure,
                                     double pressure_abs_a,
-                                    double pressure_abs_b, double pressure_atm)
+                                    double pressure_abs_b, double pressure_atm,
+                                    bool vent_opened)
         -> InputIt {
         int res = 0;
         res = snprintf(&*buf, (limit - buf),
-                       "M121 T:%.1f C:%.1f A:%.1f B:%.1f H:%.1f OK\n",
+                       "M121 T:%.1f C:%.1f A:%.1f B:%.1f H:%.1f V:%d OK\n",
                        target_pressure, current_pressure, pressure_abs_a,
-                       pressure_abs_b, pressure_atm);
+                       pressure_abs_b, pressure_atm, vent_opened);
         if (res <= 0) {
             return buf;
         }
@@ -496,6 +497,45 @@ struct GetPumpState {
             return std::make_pair(ParseResult(), input);
         }
         return std::make_pair(ParseResult(GetPumpState()), working);
+    }
+};
+
+struct SetVentState {
+    /*
+     * M124- SetVentState set state of vent (on/off)
+     * */
+    bool vent = false;
+
+    using ParseResult = std::optional<SetVentState>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '4', ' '};
+    static constexpr const char* response = "M124 OK\n";
+
+    using VentArg = Arg<uint8_t, 'V'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res =
+            gcode::SingleParser<VentArg>::parse_gcode(input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = SetVentState{.vent = false};
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.vent = static_cast<bool>(std::get<0>(arguments).value);
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
     }
 };
 

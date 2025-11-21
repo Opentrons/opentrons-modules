@@ -70,6 +70,7 @@ struct PressureControl {
     uint32_t duration_s = 0;
     bool vent_after = false;
     bool start_pump = false;
+    bool vent_opened = false;
 
     PressureRamp rampgen;
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
@@ -130,6 +131,8 @@ class PressureTask {
 
         if (!_initialized) {
             _policy = &policy;
+            // Get vent state
+            _pressure_control.vent_opened = policy.get_vent_state();
             // Initialize pressure sensors
             for (auto sensor_id :
                  {ABS_PRESSURE_A, ABS_PRESSURE_B, ATM_PRESSURE}) {
@@ -217,6 +220,7 @@ class PressureTask {
         const double target_setpoint = _pressure_control.target_pressure;
         auto guage_pressure =
             _pressure_control.pressure_abs_a - _pressure_control.pressure_atm;
+        _pressure_control.current_pressure = guage_pressure;
         auto difference = target_setpoint - guage_pressure;
         auto rpm = _pressure_control.pid.compute(difference, delta_s);
         // TODO: clamp the rpm here to something sensible
@@ -239,6 +243,7 @@ class PressureTask {
 
         // Update ramp rate generator
         // TODO: Do we need to stop pump when we update ramp rate?
+        // TODO: check the actual pressure
         const auto start_pressure = _pressure_control.current_pressure;
         const auto timestamp = policy.get_time_ms();
         _pressure_control.rampgen.start_ramp(
@@ -246,7 +251,7 @@ class PressureTask {
 
         if (!_pressure_control.start_pump && m.start_pump) {
             // maybe rename this, since this starts the pressure control loop
-            policy.enable_continous_pressure(true);
+            policy.start_pressure_control(true);
         }
         _pressure_control.start_pump = m.start_pump;
         send_ack_message(m.id);
@@ -263,9 +268,33 @@ class PressureTask {
             .pressure_abs_a = _pressure_control.pressure_abs_a,
             .pressure_abs_b = _pressure_control.pressure_abs_b,
             .pressure_atm = _pressure_control.pressure_atm,
+            .vent_opened = _pressure_control.vent_opened,
         };
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));
+    }
+
+    template <PressureControlPolicy Policy>
+    auto visit_message(const messages::SetVentMessage& m, Policy& policy) -> void {
+        // TODO:
+        // 2. vent system
+        // 3. clear cached pressure values
+        if (_pressure_control.start_pump && m.vent) {
+            // stop pressure control
+            policy.start_pressure_control(false);
+            // stop pump if running
+            auto msg = messages::SetPumpStateMessage{.run_pump = false};
+            static_cast<void>(
+                _task_registry->send_to_address(msg, Queues::PumpAddress));
+            _pressure_control.start_pump = false;
+
+            // TODO: maybe wait a few seconds here to verify?
+        }
+
+        // open/close the vent
+        policy.set_vent_state(m.vent);
+        _pressure_control.vent_opened = policy.get_vent_state();
+        send_ack_message(m.id);
     }
 
     auto get_sensor(PressureSensorID sensor_id) -> PressureSensor& {

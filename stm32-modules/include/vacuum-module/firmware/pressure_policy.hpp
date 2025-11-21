@@ -36,7 +36,10 @@ class PressurePolicy {
     auto static sensor_reset(PressureSensorID sensor_id) -> void;
     auto static sleep_ms(uint32_t ms) -> void;
     [[nodiscard]] auto get_time_ms() const -> uint32_t;
-    auto enable_continous_pressure(bool enable) -> void;
+    auto start_pressure_control(bool enable) -> void;
+    auto set_vent_state(bool open) -> void;
+    auto get_vent_state() -> bool;
+    auto get_vent_fault() -> bool;
 
   private:
     TaskHandle hardware_handle;

@@ -144,6 +144,7 @@ struct GetPressureStateResponseMessage {
     double pressure_abs_a;
     double pressure_abs_b;
     double pressure_atm;
+    bool vent_opened;
 };
 
 struct GetPumpStateMessage {
@@ -161,6 +162,12 @@ struct GetPumpStateResponseMessage {
     bool manual_control;
 };
 
+struct SetVentMessage {
+    uint32_t id = 0;
+    bool from_host = false;
+    bool vent = false;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
@@ -174,9 +181,9 @@ using SystemMessage =
 
 using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
-using PressureMessage =
-    ::std::variant<std::monostate, PressureControlMessage,
-                   SetPressureStateMessage, GetPressureStateMessage>;
+using PressureMessage = ::std::variant<std::monostate, PressureControlMessage,
+                                       SetPressureStateMessage,
+                                       GetPressureStateMessage, SetVentMessage>;
 
 using PumpMessage = ::std::variant<std::monostate, PumpControlMessage,
                                    SetPumpStateMessage, GetPumpStateMessage>;
