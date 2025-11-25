@@ -192,8 +192,8 @@ class UITask {
             hb_counter = 0;
 
             // pressure sensor test
-            auto abs_pressure = abs_pressureB.read_pressure();
-            (void)abs_pressure;
+//             auto abs_pressure = abs_pressureB.read_pressure();
+//             (void)abs_pressure;
 
             // atmospheric pressure test
             // auto atm_reading = atm_pressure.read_pressure();
@@ -209,6 +209,20 @@ class UITask {
         static_cast<void>(m);
         static_cast<void>(policy);
     }
+
+
+
+    template <UIPolicyIface Policy>
+    auto visit_message(const messages::GetResetReasonMessage& msg,
+                       Policy& policy) -> void {
+       //  auto reason = policy.last_reset_reason();
+        auto abs_pressure = abs_pressureB.read_pressure();
+        auto response = messages::GetResetReasonResponse{
+            .responding_to_id = msg.id, .reason = abs_pressure};
+        static_cast<void>(
+            _task_registry->send(response, Queues::HostCommsAddress));
+    }
+
 
     template <UIPolicyIface Policy>
     auto visit_message(const messages::SetStatusBarStateMessage& m,

@@ -156,11 +156,11 @@ struct GetResetReason {
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
-    static auto write_response_into(InputIt buf, InLimit limit, uint16_t reason)
+    static auto write_response_into(InputIt buf, InLimit limit, uint32_t reason)
         -> InputIt {
         int res = 0;
         // print a hexadecimal representation of the reset flags
-        res = snprintf(&*buf, (limit - buf), "M114 R:%X OK\n", reason);
+        res = snprintf(&*buf, (limit - buf), "M114 R:%lX OK\n", reason);
         if (res <= 0) {
             return buf;
         }

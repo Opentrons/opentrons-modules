@@ -52,14 +52,14 @@ class MPRLL0025PA00001 {
 
     // TODO: separate sending the write pressure command,
     // and read the pressure from a callback for an eoc pin irq
-    auto read_pressure() -> double {
+    auto read_pressure() -> uint32_t{
         _policy->i2c_master_write(DEV_ADDRESS, this->WRITE_BUFF, 2);
 
 //         _policy->i2c_write(DEV_ADDRESS, MEASURE_PRESSURE_COMMAND, READ_BUFF,
   //                         0);
         for (int i = 0; i < default_retries; i++) {
-            _policy->sleep_ms(3);
-            _policy->i2c_master_read(DEV_ADDRESS, this->READ_BUFF, 4);
+//             _policy->sleep_ms(3);
+            _policy->i2c_master_read(DEV_ADDRESS, READ_BUFF, 4);
             std::size_t size = 4;
             std::memcpy(this->sensor_output, this->READ_BUFF, size);
             uint8_t status_byte = this->sensor_output[0];
@@ -69,8 +69,16 @@ class MPRLL0025PA00001 {
                 break;
             }
         }
-        auto pressure_psi = this->convert_pressure();
-        return pressure_psi;
+
+//         auto pressure_read_counts =
+//             this->sensor_output[1] << 24 | this->sensor_output[2] << 16 | this->sensor_output[3] << 8;
+        uint32_t pressure_read_counts = static_cast<uint32_t>(sensor_output[1] << 24);
+        pressure_read_counts |= static_cast<uint32_t>(sensor_output[2] << 16);
+        pressure_read_counts |= static_cast<uint32_t>(sensor_output[3] << 8);
+//          auto pressure_psi = this->convert_pressure();
+//          static_cast<void>(pressure_read_counts);
+         return pressure_read_counts;
+//         return 5555;
     }
 
 //    std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};

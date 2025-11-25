@@ -33,7 +33,7 @@ auto VacuumPressureSensorPolicy::i2c_master_write(uint16_t dev_addr,
 auto VacuumPressureSensorPolicy::i2c_master_read(uint16_t dev_addr,
                                                  uint8_t* data, uint16_t size)
     -> RxTxReturn {
-    auto ret = i2c_comms->i2c_master_write(dev_addr, data, size);
+    auto ret = i2c_comms->i2c_master_read(dev_addr, data, size);
     return ret;
 }
 

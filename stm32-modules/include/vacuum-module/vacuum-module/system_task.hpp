@@ -91,16 +91,16 @@ class SystemTask {
         static_cast<void>(_task_registry->send(response));
     }
 
-    template <SystemExecutionPolicy Policy>
-    auto visit_message(const messages::GetResetReasonMessage& msg,
-                       Policy& policy) -> void {
-        auto reason = policy.last_reset_reason();
-
-        auto response = messages::GetResetReasonResponse{
-            .responding_to_id = msg.id, .reason = reason};
-        static_cast<void>(
-            _task_registry->send(response, Queues::HostCommsAddress));
-    }
+//     template <SystemExecutionPolicy Policy>
+//     auto visit_message(const messages::GetResetReasonMessage& msg,
+//                        Policy& policy) -> void {
+//         auto reason = policy.last_reset_reason();
+// 
+//         auto response = messages::GetResetReasonResponse{
+//             .responding_to_id = msg.id, .reason = reason};
+//         static_cast<void>(
+//             _task_registry->send(response, Queues::HostCommsAddress));
+//     }
 
     template <SystemExecutionPolicy Policy>
     auto visit_message(const messages::SetSerialNumberMessage& message,
