@@ -75,7 +75,7 @@ class LPS222DF {
 
     auto convert_pressure(uint8_t* sensor_output) -> uint16_t {
         // auto pressure_read_bytes = {sensor_output[1], sensor_output[2],
-          //                           sensor_output[3]};
+        //                           sensor_output[3]};
         // test that this is accurate
         auto pressure_read_counts = sensor_output[1] << 24 |
                                     sensor_output[2] << 16 |

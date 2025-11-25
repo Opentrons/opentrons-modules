@@ -1,27 +1,18 @@
 #pragma once
 
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 #include <algorithm>
 #include <array>
 #include <cstdint>
 #include <iterator>
 #include <optional>
 
-#include "MPRLL0025PA00001A.hpp"
 #include "core/is31fl_driver.hpp"
 #include "errors.hpp"
-#include "firmware/atmosphere_pressure_sensor_policy.hpp"
-#include "firmware/vacuum_pressure_sensor_policy.hpp"
 #include "hal/message_queue.hpp"
-#include "lps22df.hpp"
 #include "messages.hpp"
 #include "ot_utils/freertos/freertos_timer.hpp"
 #include "systemwide.h"
 #include "ui_policy.hpp"
-#include "vacuum-module/lps22df.hpp"
-#include "vacuum-module/mprll0025pa00001a.hpp"
 
 namespace ui_task {
 using namespace ot_utils::freertos_timer;
@@ -113,10 +104,6 @@ const StatusBarState led_bar_internal = {
     .power = DEFAULT_POWER,
     .power_dt = 0,
 };
-using atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy;
-using lps22df::LPS222DF;
-using vacuum_pressure_sensor::MPRLL0025PA00001;
-using vacuum_pressure_sensor::hardware::VacuumPressureSensorPolicy;
 
 using Message = messages::UIMessage;
 
@@ -154,21 +141,11 @@ class UITask {
         if (!_initialized) {
             _policy = &policy;
 
-            // testing abs sensors
-            auto p_policy = VacuumPressureSensorPolicy(_policy->i2c_comms);
-            abs_pressureA.initialize(&p_policy);
-            abs_pressureB.initialize(&p_policy);
-
-            // testing atm sensor
-            auto atm_policy =
-                AtmospherePressureSensorPolicy(_policy->i2c_comms);
-            atm_pressure.initialize(&atm_policy);
-
-            // if (!_led_driver.initialized()) {
-            //     _led_driver.initialize(policy);
-            //     _led_bar_internal.driver_ok = true;
-            //     set_status_bar(Internal);
-            // }
+            if (!_led_driver.initialized()) {
+                _led_driver.initialize(policy);
+                _led_bar_internal.driver_ok = true;
+                set_status_bar(Internal);
+            }
             _message_queue.set_ready();
             _initialized = true;
         }
@@ -190,14 +167,6 @@ class UITask {
             hb_led_state = !hb_led_state;
             _policy->set_heartbeat_led(hb_led_state);
             hb_counter = 0;
-
-            // pressure sensor test
-//             auto abs_pressure = abs_pressureB.read_pressure();
-//             (void)abs_pressure;
-
-            // atmospheric pressure test
-            // auto atm_reading = atm_pressure.read_pressure();
-            // (void)atm_reading;
         }
 
         // tic the statusbar leds
@@ -209,20 +178,6 @@ class UITask {
         static_cast<void>(m);
         static_cast<void>(policy);
     }
-
-
-
-    template <UIPolicyIface Policy>
-    auto visit_message(const messages::GetResetReasonMessage& msg,
-                       Policy& policy) -> void {
-       //  auto reason = policy.last_reset_reason();
-        auto abs_pressure = abs_pressureB.read_pressure();
-        auto response = messages::GetResetReasonResponse{
-            .responding_to_id = msg.id, .reason = abs_pressure};
-        static_cast<void>(
-            _task_registry->send(response, Queues::HostCommsAddress));
-    }
-
 
     template <UIPolicyIface Policy>
     auto visit_message(const messages::SetStatusBarStateMessage& m,
@@ -489,9 +444,5 @@ class UITask {
     bool hb_led_state = false;
     uint32_t hb_counter = 0;
     bool _led_update_pending = false;
-    MPRLL0025PA00001 abs_pressureA{};
-    MPRLL0025PA00001 abs_pressureB{};
-    LPS222DF atm_pressure{};
 };
 }  // namespace ui_task
-#pragma GCC pop_options

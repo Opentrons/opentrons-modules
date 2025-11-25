@@ -7,8 +7,8 @@
 #include "firmware/i2c_hardware.h"
 #include "firmware/pump_hardware.h"
 #include "firmware/system_stm32g4xx.h"
-#include "firmware/vent_hardware.h"
 #include "firmware/vacuum_pressure_sensor_hardware.h"
+#include "firmware/vent_hardware.h"
 #include "ot_utils/freertos/freertos_task.hpp"
 #include "systemwide.h"
 #include "task.h"
@@ -66,7 +66,7 @@ auto main() -> int {
 
     system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);
-    ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator, &i2c3_comms);
+    ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator, &i2c2_comms);
 
     vTaskStartScheduler();
     return 0;

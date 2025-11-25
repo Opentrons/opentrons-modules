@@ -80,7 +80,7 @@ struct GetResetReasonMessage {
 
 struct GetResetReasonResponse {
     uint32_t responding_to_id;
-    uint32_t reason;
+    uint16_t reason;
 };
 
 struct SetSerialNumberMessage {
@@ -117,8 +117,9 @@ using HostCommsMessage =
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
-                   SetSerialNumberMessage, EnterBootloaderMessage>;
+                   SetSerialNumberMessage, EnterBootloaderMessage,
+                   GetResetReasonMessage>;
 
-using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage, GetResetReasonMessage>;
+using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
 };  // namespace messages
