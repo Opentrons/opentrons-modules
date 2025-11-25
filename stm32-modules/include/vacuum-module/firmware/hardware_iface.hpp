@@ -13,7 +13,7 @@ using RxTxReturn = uint8_t;
 class I2CBase {
   public:
     I2CBase() = default;
-    virtual ~I2CBase() = default;
+//    virtual ~I2CBase() = default;
     I2CBase(const I2CBase&) = default;
     auto operator=(const I2CBase&) -> I2CBase& = default;
     I2CBase(I2CBase&&) = default;

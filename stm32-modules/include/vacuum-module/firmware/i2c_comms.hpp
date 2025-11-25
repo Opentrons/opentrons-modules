@@ -12,7 +12,7 @@ namespace i2c::hardware {
 class I2C : public I2CBase {
   public:
     explicit I2C() = default;
-    ~I2C() final = default;
+//     ~I2C() final = default;
     I2C(const I2C &) = delete;
     I2C(const I2C &&) = delete;
     auto operator=(const I2C &) = delete;
