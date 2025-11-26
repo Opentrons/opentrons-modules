@@ -1,5 +1,3 @@
-#pragma once
-
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -31,7 +29,7 @@ constexpr uint16_t SENSOR_SENSITIVITY = 4096;
 constexpr uint8_t PRESSURE_READY_FLAG = 0x01;
 
 constexpr uint8_t PRESSURE_FRAME_LEN = 4;
-// std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};
+constexpr uint8_t WRITE_LEN = 2;
 
 class LPS222DF {
   public:
@@ -43,16 +41,18 @@ class LPS222DF {
         }
     }
 
-    auto read_pressure(int retries) -> uint16_t {
-        bool pressure_reading_ready = false;
+    auto read_pressure() -> uint16_t {
+        pressure_reading_ready = false;
 
         _policy->i2c_write(DEVICE_ADDRESS, CTRL_REG2, ONE_SHOT_PRESSURE_READ,
                            1);
-        _policy->sleep_ms(5);
-        for (int i = 0; i < retries; i++) {
+        _policy->sleep_ms(3);
+        for (int i = 0; i < default_retries; i++) {
             _policy->i2c_read(DEVICE_ADDRESS, PRESSURE_OUTPUT_REGISTER,
-                              READ_BUFF, 4);
-            auto status_byte = READ_BUFF[0];
+                              this->READ_BUFF, 4);
+            std::memcpy(this->sensor_output, this->READ_BUFF,
+                        PRESSURE_FRAME_LEN);
+            uint8_t status_byte = this->sensor_output[0];
             pressure_reading_ready =
                 static_cast<bool>(status_byte & PRESSURE_READY_FLAG);
 
@@ -60,28 +60,24 @@ class LPS222DF {
                 break;
             }
         }
-        if (!pressure_reading_ready) {
-            // raise an error here
-        }
-
-        auto pressure_hPa = convert_pressure(READ_BUFF);
+        auto pressure_hPa = convert_pressure();
         return pressure_hPa;
     }
     uint8_t READ_BUFF[4] = {0x00};
+    uint8_t sensor_output[4] = {0x00};
+    bool pressure_reading_ready = false;
+    uint32_t pressure_hPa;
 
   private:
     atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy*
         _policy{nullptr};
+    int default_retries = 5;
 
-    auto convert_pressure(uint8_t* sensor_output) -> uint16_t {
-        // auto pressure_read_bytes = {sensor_output[1], sensor_output[2],
-        //                           sensor_output[3]};
-        // test that this is accurate
-        auto pressure_read_counts = sensor_output[1] << 24 |
-                                    sensor_output[2] << 16 |
-                                    sensor_output[3] << 8;
-        double pressure_hPa =
-            static_cast<double>(pressure_read_counts / SENSOR_SENSITIVITY);
+    auto convert_pressure() -> uint32_t {
+        uint32_t pressure_read_counts = this->sensor_output[1] << 24 |
+                                        this->sensor_output[2] << 16 |
+                                        this->sensor_output[3] << 8;
+        pressure_hPa = pressure_read_counts / SENSOR_SENSITIVITY;
         return pressure_hPa;
     }
 };

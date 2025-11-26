@@ -1,8 +1,3 @@
-#pragma once
-
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -31,9 +26,8 @@ constexpr uint32_t OUTPUT_MIN = 1677722;
 constexpr uint32_t OUTPUT_RANGE_COUNTS = OUTPUT_MAX - OUTPUT_MIN;
 // range for this particular model is 0-25 PSI
 constexpr uint16_t PRESSURE_RANGE_PSI = 25;
-
+constexpr uint8_t WRITE_LEN = 2;
 constexpr uint8_t PRESSURE_FRAME_LEN = 4;
-// std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};
 
 struct StatusByte {
     uint8_t power_indication;
@@ -53,16 +47,14 @@ class MPRLL0025PA00001 {
     // TODO: separate sending the write pressure command,
     // and read the pressure from a callback for an eoc pin irq
     auto read_pressure() -> uint32_t {
-        _policy->i2c_master_write(DEV_ADDRESS, this->WRITE_BUFF, 2);
-
-        //         _policy->i2c_write(DEV_ADDRESS, MEASURE_PRESSURE_COMMAND,
-        //         READ_BUFF,
-        //                         0);
+        sensor_busy = true;
+        _policy->i2c_master_write(DEV_ADDRESS, this->WRITE_BUFF, WRITE_LEN);
+        _policy->sleep_ms(3);
         for (int i = 0; i < default_retries; i++) {
-            //             _policy->sleep_ms(3);
-            _policy->i2c_master_read(DEV_ADDRESS, READ_BUFF, 4);
-            std::size_t size = 4;
-            std::memcpy(this->sensor_output, this->READ_BUFF, size);
+            _policy->i2c_master_read(DEV_ADDRESS, READ_BUFF,
+                                     PRESSURE_FRAME_LEN);
+            std::memcpy(this->sensor_output, this->READ_BUFF,
+                        PRESSURE_FRAME_LEN);
             uint8_t status_byte = this->sensor_output[0];
             this->sensor_busy =
                 static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
@@ -71,25 +63,12 @@ class MPRLL0025PA00001 {
                 break;
             }
         }
-
-        //         auto pressure_read_counts =
-        //             this->sensor_output[1] << 24 | this->sensor_output[2] <<
-        //             16 | this->sensor_output[3] << 8;
-        uint32_t pressure_read_counts =
-            static_cast<uint32_t>(sensor_output[1] << 24);
-        pressure_read_counts |= static_cast<uint32_t>(sensor_output[2] << 16);
-        pressure_read_counts |= static_cast<uint32_t>(sensor_output[3] << 8);
-        //          auto pressure_psi = this->convert_pressure();
-        //          static_cast<void>(pressure_read_counts);
-        return pressure_read_counts;
-        //         return 5555;
+        auto pressure_psi = this->convert_pressure();
+        return pressure_psi;
     }
 
-    //    std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0};
-    //   std::array<uint8_t, PRESSURE_FRAME_LEN> WRITE =
-    //   {MEASURE_PRESSURE_COMMAND};
-    uint8_t READ_BUFF[4] = {0x00};
-    uint8_t WRITE_BUFF[2] = {0x01, 0xAA};
+    uint8_t READ_BUFF[PRESSURE_FRAME_LEN] = {0x00};
+    uint8_t WRITE_BUFF[WRITE_LEN] = {0x01, 0xAA};
     uint8_t sensor_output[4] = {0x00};
     double pressure_psi;
     double pressure_mbar;
@@ -99,7 +78,7 @@ class MPRLL0025PA00001 {
   private:
     hardware::VacuumPressureSensorPolicy* _policy{nullptr};
 
-    auto convert_pressure() -> uint16_t {
+    auto convert_pressure() -> uint32_t {
         auto pressure_read_counts = this->sensor_output[1] << 24 |
                                     this->sensor_output[2] << 16 |
                                     this->sensor_output[3] << 8;
@@ -110,4 +89,3 @@ class MPRLL0025PA00001 {
 };
 
 };  // namespace vacuum_pressure_sensor
-#pragma GCC pop_options
