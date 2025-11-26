@@ -46,24 +46,27 @@ class MPRLL0025PA00001 {
 
     // TODO: separate sending the write pressure command,
     // and read the pressure from a callback for an eoc pin irq
-    auto read_pressure() -> uint32_t {
+    auto read_pressure() -> std::optional<uint32_t> {
         sensor_busy = true;
-        _policy->i2c_master_write(DEV_ADDRESS, this->WRITE_BUFF, WRITE_LEN);
+        _policy->i2c_master_write(DEV_ADDRESS, WRITE_BUFF, WRITE_LEN);
         _policy->sleep_ms(3);
         for (int i = 0; i < default_retries; i++) {
             _policy->i2c_master_read(DEV_ADDRESS, READ_BUFF,
                                      PRESSURE_FRAME_LEN);
             std::memcpy(this->sensor_output, this->READ_BUFF,
                         PRESSURE_FRAME_LEN);
-            uint8_t status_byte = this->sensor_output[0];
+            uint8_t status_byte = sensor_output[0];
             this->sensor_busy =
                 static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
 
-            if (!this->sensor_busy) {
+            if (sensor_busy) {
                 break;
             }
         }
-        auto pressure_psi = this->convert_pressure();
+        if (sensor_busy) {
+            return std::nullopt;
+        }
+        auto pressure_psi = convert_pressure();
         return pressure_psi;
     }
 
@@ -79,9 +82,9 @@ class MPRLL0025PA00001 {
     hardware::VacuumPressureSensorPolicy* _policy{nullptr};
 
     auto convert_pressure() -> uint32_t {
-        auto pressure_read_counts = this->sensor_output[1] << 24 |
-                                    this->sensor_output[2] << 16 |
-                                    this->sensor_output[3] << 8;
+        auto pressure_read_counts = sensor_output[1] << 24 |
+                                    sensor_output[2] << 16 |
+                                    sensor_output[3] << 8;
         this->pressure_psi =
             (pressure_read_counts * PRESSURE_RANGE_PSI) / OUTPUT_RANGE_COUNTS;
         return pressure_psi;

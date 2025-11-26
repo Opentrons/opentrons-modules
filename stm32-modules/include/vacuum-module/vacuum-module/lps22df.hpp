@@ -41,7 +41,7 @@ class LPS222DF {
         }
     }
 
-    auto read_pressure() -> uint16_t {
+    auto read_pressure() -> std::optional<uint32_t> {
         pressure_reading_ready = false;
 
         _policy->i2c_write(DEVICE_ADDRESS, CTRL_REG2, ONE_SHOT_PRESSURE_READ,
@@ -49,16 +49,19 @@ class LPS222DF {
         _policy->sleep_ms(3);
         for (int i = 0; i < default_retries; i++) {
             _policy->i2c_read(DEVICE_ADDRESS, PRESSURE_OUTPUT_REGISTER,
-                              this->READ_BUFF, 4);
+                              READ_BUFF, 4);
             std::memcpy(this->sensor_output, this->READ_BUFF,
                         PRESSURE_FRAME_LEN);
-            uint8_t status_byte = this->sensor_output[0];
+            uint8_t status_byte = sensor_output[0];
             pressure_reading_ready =
                 static_cast<bool>(status_byte & PRESSURE_READY_FLAG);
 
             if (pressure_reading_ready) {
                 break;
             }
+        }
+        if (!presure_ready) {
+            return std::nullopt
         }
         auto pressure_hPa = convert_pressure();
         return pressure_hPa;
@@ -74,9 +77,9 @@ class LPS222DF {
     int default_retries = 5;
 
     auto convert_pressure() -> uint32_t {
-        uint32_t pressure_read_counts = this->sensor_output[1] << 24 |
-                                        this->sensor_output[2] << 16 |
-                                        this->sensor_output[3] << 8;
+        uint32_t pressure_read_counts = sensor_output[1] << 24 |
+                                        sensor_output[2] << 16 |
+                                        sensor_output[3] << 8;
         pressure_hPa = pressure_read_counts / SENSOR_SENSITIVITY;
         return pressure_hPa;
     }
