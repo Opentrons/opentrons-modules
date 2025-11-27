@@ -56,7 +56,7 @@ class MPRLL0025PA00001 {
             std::memcpy(this->sensor_output, this->READ_BUFF,
                         PRESSURE_FRAME_LEN);
             uint8_t status_byte = sensor_output[0];
-            this->sensor_busy =
+            sensor_busy =
                 static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
 
             if (sensor_busy) {
@@ -85,7 +85,7 @@ class MPRLL0025PA00001 {
         auto pressure_read_counts = sensor_output[1] << 24 |
                                     sensor_output[2] << 16 |
                                     sensor_output[3] << 8;
-        this->pressure_psi =
+        pressure_psi =
             (pressure_read_counts * PRESSURE_RANGE_PSI) / OUTPUT_RANGE_COUNTS;
         return pressure_psi;
     }
