@@ -56,8 +56,7 @@ class MPRLL0025PA00001 {
             std::memcpy(this->sensor_output, this->READ_BUFF,
                         PRESSURE_FRAME_LEN);
             uint8_t status_byte = sensor_output[0];
-            sensor_busy =
-                static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
+            sensor_busy = static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
 
             if (sensor_busy) {
                 break;
