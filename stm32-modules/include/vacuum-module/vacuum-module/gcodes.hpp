@@ -377,8 +377,7 @@ struct GetPressureState {
                                     double current_pressure,
                                     double pressure_abs_a,
                                     double pressure_abs_b, double pressure_atm,
-                                    bool vent_opened)
-        -> InputIt {
+                                    bool vent_opened) -> InputIt {
         int res = 0;
         res = snprintf(&*buf, (limit - buf),
                        "M121 T:%.1f C:%.1f A:%.1f B:%.1f H:%.1f V:%d OK\n",

@@ -12,7 +12,6 @@
 #include "lps22df.hpp"
 #include "messages.hpp"
 #include "mprll0025pa00001a.hpp"
-#include "pressure_ramp.hpp"
 #include "vacuum-module/errors.hpp"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/tasks.hpp"
@@ -72,7 +71,6 @@ struct PressureControl {
     bool start_pump = false;
     bool vent_opened = false;
 
-    PressureRamp rampgen;
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     PID pid;  // Current PID loop
     uint32_t last_tick = 0;
@@ -213,10 +211,6 @@ class PressureTask {
             std::get<LPSDriverType>(get_sensor(ATM_PRESSURE).driver)
                 .get_pressure();
 
-        // Compute the new pwm with ramp rate
-        // IGNORE RAMPING FOR NOW
-        // double target_setpoint =
-        //     _pressure_control.rampgen.update_setpoint(timestamp);
         const double target_setpoint = _pressure_control.target_pressure;
         auto guage_pressure =
             _pressure_control.pressure_abs_a - _pressure_control.pressure_atm;
@@ -244,10 +238,8 @@ class PressureTask {
         // Update ramp rate generator
         // TODO: Do we need to stop pump when we update ramp rate?
         // TODO: check the actual pressure
-        const auto start_pressure = _pressure_control.current_pressure;
-        const auto timestamp = policy.get_time_ms();
-        _pressure_control.rampgen.start_ramp(
-            start_pressure, m.pressure_setpoint, m.ramp_rate, timestamp);
+        // const auto start_pressure = _pressure_control.current_pressure;
+        // const auto timestamp = policy.get_time_ms();
 
         if (!_pressure_control.start_pump && m.start_pump) {
             // maybe rename this, since this starts the pressure control loop
@@ -275,7 +267,8 @@ class PressureTask {
     }
 
     template <PressureControlPolicy Policy>
-    auto visit_message(const messages::SetVentMessage& m, Policy& policy) -> void {
+    auto visit_message(const messages::SetVentMessage& m, Policy& policy)
+        -> void {
         // TODO:
         // 2. vent system
         // 3. clear cached pressure values

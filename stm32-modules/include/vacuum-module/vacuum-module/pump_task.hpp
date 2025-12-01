@@ -11,6 +11,7 @@
 #include "firmware/pump_policy.hpp"
 #include "hal/message_queue.hpp"
 #include "messages.hpp"
+#include "slew_rate_limiter.hpp"
 #include "vacuum-module/errors.hpp"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/tasks.hpp"
@@ -18,14 +19,21 @@
 namespace pump_task {
 
 // The frequency the pump control loop runs at.
-// static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
-static constexpr const uint32_t CONTROL_PERIOD_HZ = 20;
+// static constexpr const uint32_t CONTROL_PERIOD_HZ = 20;
+static constexpr const uint32_t CONTROL_PERIOD_HZ = 50;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
-    (1 / CONTROL_PERIOD_HZ) * 1000;
+    (1.0f / CONTROL_PERIOD_HZ * 1000);
+static constexpr const uint32_t RPM_SAMPLE_TIME_S = CONTROL_PERIOD_MS / 1000.0f;
 static constexpr const double MS_TO_SECONDS = 0.001F;
-static constexpr const uint8_t MAX_PWM = 100;
-static constexpr const double MIN_RPM = 0;
-static constexpr const double MAX_RPM = 3000;
+// static constexpr const uint8_t MIN_PWM = 35;  // this helps to reduce jerk
+static constexpr const uint8_t MIN_PWM = 5;
+// static constexpr const uint8_t MAX_PWM = 100;
+static constexpr const uint8_t MAX_PWM = 60;
+static constexpr const double MIN_RPM = 0.0f;
+static constexpr const double MAX_RPM = 4000.0f;
+static constexpr const double K_FF = MAX_PWM / MAX_RPM;
+// static constexpr const float DEFAULT_RAMP_RATE = 1;  // rpm/s
+static constexpr const float DEFAULT_RAMP_RATE = 0.3;  // rpm/s
 
 struct PumpControl {
     double target_rpm = 0;
@@ -34,6 +42,7 @@ struct PumpControl {
     uint8_t target_pwm = 0;
     bool manual_control = false;
 
+    SlewRateLimiter slew;
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     PID pid;  // Current PID loop
     uint32_t last_tick = 0;
@@ -44,11 +53,11 @@ struct PumpControl {
 const PumpControl pump_control = {
     .target_rpm = 0,
     .target_pwm = 0,
-    .pid = PID(2.0F,               // kp
-               0.8F,               // ki
-               0.1F,               // kd
-               CONTROL_PERIOD_MS,  // sampletime
-               18000,              // windup_limit_high
+    .pid = PID(0.3F,               // kp
+               0.001F,             // ki
+               0.0001F,            // kd
+               RPM_SAMPLE_TIME_S,  // sampletime
+               MAX_PWM,            // windup_limit_high
                0),                 // windup_limit_low
 };
 
@@ -89,6 +98,9 @@ class PumpTask {
         }
 
         if (!_initialized) {
+            // Configure
+            _pump_control.slew.configure(0, DEFAULT_RAMP_RATE);
+
             _policy = &policy;
             _message_queue.set_ready();
             _initialized = true;
@@ -133,27 +145,43 @@ class PumpTask {
         static_cast<void>(m);
         static_cast<void>(policy);
 
-        if (!_pump_control.enable_pump) {
-            return;
-        }
-
         // Get delta time
         auto timestamp = policy.get_time_ms();
         auto delta_s = (timestamp - pump_control.last_tick) * MS_TO_SECONDS;
         _pump_control.last_tick = timestamp;
 
-        // TODO: Do we want rampgen here for smooth interpolation?
-        // Compute the new duty cycle
         auto rpm = policy.get_pump_rpm();
         // reject non-sense rpm
         if (rpm < MIN_RPM || rpm >= MAX_RPM) {
             return;
         }
 
-        auto difference = _pump_control.target_rpm - rpm;
+        // stop pump control
+        if (rpm < 150 && !_pump_control.enable_pump) {
+            policy.enable_pump_control(false);
+            policy.enable_pump_tach(false);
+            policy.stop_pump_motor();
+
+            _pump_control.pid.reset();
+
+            _pump_control.pump_running = false;
+            _pump_control.current_rpm = 0;
+            _pump_control.current_pwm = 0;
+            return;
+        }
+
+        // Compute the new duty cycle
+        auto target_setpoint = _pump_control.target_rpm;
+        target_setpoint = _pump_control.slew.update(target_setpoint, delta_s);
+        float ff_output = target_setpoint * K_FF;
+        auto difference = target_setpoint - rpm;
         auto duty = _pump_control.pid.compute(difference, delta_s);
-        duty = std::clamp<uint8_t>(duty, 0, MAX_PWM);
-        // set the motor duty cycle if different
+        duty = _pump_control.target_pwm > 0 ? _pump_control.target_pwm : duty;
+
+        // add feed-forward
+        duty = ff_output + duty;
+
+        duty = std::clamp<uint8_t>(duty, MIN_PWM, MAX_PWM);
         _pump_control.current_pwm = duty;
         _pump_control.current_rpm = rpm;
         policy.set_pump_duty_cycle(duty);
@@ -171,25 +199,15 @@ class PumpTask {
             std::clamp<double>(m.rpm_setpoint, 0, MAX_RPM);
         _pump_control.enable_pump = m.run_pump;
 
-        // // TODO: FOR TESTING ONLY
-        // policy.set_pump_duty_cycle(m.duty_cycle);
-
-        if (!m.run_pump) {
-            policy.enable_pump_control(false);
-            policy.enable_pump_tach(false);
-            policy.stop_pump_motor();
-            // TODO: maybe check the rpm here and verify that the pump is off
-            // Might want a way to ramp down when we turn off the pump.
-            _pump_control.pump_running = false;
-            _pump_control.current_rpm = 0;
-            _pump_control.current_pwm = 0;
-        } else if (!_pump_control.pump_running) {
-            policy.enable_pump_tach(true);
+        if (!_pump_control.pump_running) {
+            const auto current_rpm = policy.get_pump_rpm();
+            _pump_control.slew.reset(current_rpm);
+            _pump_control.pid.reset();
             policy.enable_pump_control(true);
+            policy.enable_pump_tach(true);
             policy.start_pump_motor();
             _pump_control.pump_running = true;
         }
-
 
         if (m.from_host) {
             send_ack_message(m.id);
