@@ -222,6 +222,7 @@ class PressureTask {
         // Send new rpm to pump task
         auto msg = messages::SetPumpStateMessage{.rpm_setpoint = rpm,
                                                  .run_pump = true};
+        // static_cast<void>(msg);
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::PumpAddress));
     }
@@ -242,7 +243,6 @@ class PressureTask {
         // const auto timestamp = policy.get_time_ms();
 
         if (!_pressure_control.start_pump && m.start_pump) {
-            // maybe rename this, since this starts the pressure control loop
             policy.start_pressure_control(true);
         }
         _pressure_control.start_pump = m.start_pump;

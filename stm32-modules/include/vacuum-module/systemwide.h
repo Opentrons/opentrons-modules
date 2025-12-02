@@ -43,3 +43,8 @@ typedef enum VacuumPressureSensorId {
 #define SYSTEM_WIDE_SERIAL_NUMBER_LENGTH 24
 
 typedef void* TaskHandle;
+
+#define MIN_PWM 7
+#define MAX_PWM 60
+#define MIN_RPM 0.0f
+#define MAX_RPM 3500.0f

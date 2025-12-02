@@ -31,7 +31,7 @@ constexpr uint8_t PRESSURE_FRAME_LEN = 10;
 
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
-constexpr uint32_t DEFAULT_SLEEP_MS = 1;
+constexpr uint32_t DEFAULT_SLEEP_MS = 5;
 
 struct StatusByte {
     uint8_t power_indication;
@@ -63,9 +63,9 @@ class MPRLL0025PA00001 {
         _policy->i2c_master_write(device_address << 1, WR_BUFF.data(), len);
 
         for (int i = 0; i < (DEFAULT_RETRIES + 1); i++) {
-            // TODO: Needs at least 3ms for measurement
+            // TODO: Needs at least n ms for measurement
             // Find better way of doing this async.
-            _policy->sleep_ms(3);
+            _policy->sleep_ms(DEFAULT_SLEEP_MS);
             _policy->i2c_master_read(device_address << 1, RD_BUFF.data(), 4);
             auto status_byte = RD_BUFF[0];
             sensor_busy = static_cast<bool>(status_byte & STATUS_BUSY_FLAG);

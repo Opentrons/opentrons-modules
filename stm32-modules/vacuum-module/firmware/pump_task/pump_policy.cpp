@@ -20,12 +20,12 @@ auto pump_policy::PumpPolicy::stop_pump_motor() -> bool {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto pump_policy::PumpPolicy::set_pump_duty_cycle(uint16_t duty) -> void {
+auto pump_policy::PumpPolicy::set_pump_duty_cycle(uint8_t duty) -> void {
     hw_set_pump_duty_cycle(duty);
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto pump_policy::PumpPolicy::get_pump_duty_cycle() -> uint16_t {
+auto pump_policy::PumpPolicy::get_pump_duty_cycle() -> uint8_t {
     return hw_get_pump_duty_cycle();
 }
 

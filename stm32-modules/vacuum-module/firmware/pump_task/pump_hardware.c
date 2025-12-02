@@ -12,11 +12,12 @@
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_tim.h"
 
+#include "systemwide.h"
+
 #define TIMER_CLOCK_HZ     (170000000)  // 170Mhz
 #define PWM_FREQUENCY_HZ   (25000)  // 25Khz
 #define PWM_PRESCALER      (0)
 #define PWM_PERIOD         ((TIMER_CLOCK_HZ / (PWM_FREQUENCY_HZ * (PWM_PRESCALER + 1))) - 1)
-#define MAX_PWM            (PWM_PERIOD + 1)
 
 #define TACH_PRESCALER     (5)    // Timer ticks at ~28.33 MHzA
 #define TACH_PERIOD        (0xFFFFUL)  // 16-bit timer max
@@ -28,8 +29,6 @@
 #define TACH_CHANNEL       (TIM_CHANNEL_4)
 #define TACH_IRQ           (TIM3_IRQn)
 
-#define MIN_RPM 1
-#define MAX_RPM 5000
 #define RPM_AVG_WINDOW 6
 #define TACH_TRANSITIONS_PER_REV 30.0f
 
@@ -37,8 +36,8 @@
 #define PUMP_STOP_RPM_THRESH   40.0f // filtered RPM < n ->  likely stopped
 #define PUMP_STOP_DEBOUNCE     3     // require 3 consecutive detections
 
-#define PID_FILTER_ALPHA  0.01f  // Reacts fast (good for control) [WORKING]
-#define STARTUP_BLIND_TIME_MS  100 // Ignore tach for n  ms after start
+#define PID_FILTER_ALPHA  0.03f  // Reacts fast (good for control) [WORKING]
+#define STARTUP_BLIND_TIME_MS  0 // Ignore tach for n  ms after start
 
 // Define the minimum ticks allowed between pulses.
 // 170MHz / 6 (prescaler 5) = 28.33MHz.
@@ -229,26 +228,28 @@ bool hw_stop_pump_motor() {
     return HAL_TIM_PWM_Stop(&htim17, TIM_CHANNEL_1) == HAL_OK;
 }
 
-void hw_set_pump_duty_cycle(uint16_t duty) {
+void hw_set_pump_duty_cycle(uint8_t duty) {
     duty = clamp(duty, 0, 100);
     uint16_t ccr = (uint16_t)(((float)duty / 100.0f) * (PWM_PERIOD + 1));
     TIM17->CCR1 = ccr;
 }
 
-uint16_t hw_get_pump_duty_cycle(void) {
+uint8_t hw_get_pump_duty_cycle(void) {
     float duty = ((float)TIM17->CCR1 / (PWM_PERIOD + 1)) * 100.0f;
-    return (uint16_t)(clamp(duty, 0, 100));
+    return (uint8_t)(clamp(duty, 0, 100));
 }
 
 bool hw_enable_pump_tach(bool enable) {
     bool success = false;
     if (enable) {
         reset_rpm_filtered();
+        __HAL_TIM_CLEAR_IT(&htim3, TIM_IT_UPDATE);
         __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
         success = HAL_TIM_IC_Start_IT(&htim3, TACH_CHANNEL) == HAL_OK;
     } else {
         __HAL_TIM_DISABLE_IT(&htim3, TIM_IT_UPDATE);
         success = HAL_TIM_IC_Stop_IT(&htim3, TACH_CHANNEL) == HAL_OK;
+        __HAL_TIM_CLEAR_IT(&htim3, TIM_IT_UPDATE);
         reset_rpm_filtered();
     }
 
@@ -258,7 +259,14 @@ bool hw_enable_pump_tach(bool enable) {
 float hw_get_pump_rpm(void) {
     // check if the motor has stopped
     update_pump_stopped_state();
-    if (hardware.pump_stopped) return 0.0f;
+    if (hardware.pump_stopped) {
+        return 0.0f;
+    }
+    if (hardware.valid_samples < RPM_AVG_WINDOW) {
+        // Option A: Return 0 until stable (Recommended for pump startup)
+        return 0.0f;
+    }
+
     // check blint start time to allow the motor time to overcome friction
     if ((HAL_GetTick() - hardware.pump_start_time) < STARTUP_BLIND_TIME_MS) {
         return 0.0f;

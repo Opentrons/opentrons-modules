@@ -25,15 +25,12 @@ static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0f / CONTROL_PERIOD_HZ * 1000);
 static constexpr const uint32_t RPM_SAMPLE_TIME_S = CONTROL_PERIOD_MS / 1000.0f;
 static constexpr const double MS_TO_SECONDS = 0.001F;
-// static constexpr const uint8_t MIN_PWM = 35;  // this helps to reduce jerk
-static constexpr const uint8_t MIN_PWM = 5;
-// static constexpr const uint8_t MAX_PWM = 100;
-static constexpr const uint8_t MAX_PWM = 60;
-static constexpr const double MIN_RPM = 0.0f;
-static constexpr const double MAX_RPM = 4000.0f;
 static constexpr const double K_FF = MAX_PWM / MAX_RPM;
+static constexpr const double PUMP_STOP_RPM_THRESH = 500;
 // static constexpr const float DEFAULT_RAMP_RATE = 1;  // rpm/s
-static constexpr const float DEFAULT_RAMP_RATE = 0.3;  // rpm/s
+static constexpr const float INITIAL_RAMP_RATE = 0.1;  // rpm/s
+static constexpr const float DEFAULT_RAMP_RATE = 0.2;  // rpm/s
+
 
 struct PumpControl {
     double target_rpm = 0;
@@ -53,9 +50,9 @@ struct PumpControl {
 const PumpControl pump_control = {
     .target_rpm = 0,
     .target_pwm = 0,
-    .pid = PID(0.3F,               // kp
+    .pid = PID(0.19F,              // kp
                0.001F,             // ki
-               0.0001F,            // kd
+               0.0F,               // kd
                RPM_SAMPLE_TIME_S,  // sampletime
                MAX_PWM,            // windup_limit_high
                0),                 // windup_limit_low
@@ -157,16 +154,19 @@ class PumpTask {
         }
 
         // stop pump control
-        if (rpm < 150 && !_pump_control.enable_pump) {
+        if (rpm < PUMP_STOP_RPM_THRESH && !_pump_control.enable_pump) {
+            policy.set_pump_duty_cycle(0);
             policy.enable_pump_control(false);
             policy.enable_pump_tach(false);
             policy.stop_pump_motor();
 
             _pump_control.pid.reset();
+            _pump_control.slew.reset();
 
             _pump_control.pump_running = false;
             _pump_control.current_rpm = 0;
             _pump_control.current_pwm = 0;
+            _pump_control.last_tick = 0;
             return;
         }
 
@@ -176,12 +176,16 @@ class PumpTask {
         float ff_output = target_setpoint * K_FF;
         auto difference = target_setpoint - rpm;
         auto duty = _pump_control.pid.compute(difference, delta_s);
-        duty = _pump_control.target_pwm > 0 ? _pump_control.target_pwm : duty;
-
         // add feed-forward
         duty = ff_output + duty;
 
+        // override + clamp
+        duty = _pump_control.target_pwm > 0 ? _pump_control.target_pwm : duty;
         duty = std::clamp<uint8_t>(duty, MIN_PWM, MAX_PWM);
+
+        // ramp control the output
+        // duty = _pump_control.slew_pwm.update(duty, delta_s);
+
         _pump_control.current_pwm = duty;
         _pump_control.current_rpm = rpm;
         policy.set_pump_duty_cycle(duty);
@@ -200,12 +204,9 @@ class PumpTask {
         _pump_control.enable_pump = m.run_pump;
 
         if (!_pump_control.pump_running) {
-            const auto current_rpm = policy.get_pump_rpm();
-            _pump_control.slew.reset(current_rpm);
-            _pump_control.pid.reset();
-            policy.enable_pump_control(true);
             policy.enable_pump_tach(true);
             policy.start_pump_motor();
+            policy.enable_pump_control(true);
             _pump_control.pump_running = true;
         }
 
@@ -222,9 +223,10 @@ class PumpTask {
         auto msg = messages::GetPumpStateResponseMessage{
             .responding_to_id = m.id,
             .target_rpm = _pump_control.target_rpm,
-            .current_rpm = _pump_control.current_rpm,
+            // .current_rpm = _pump_control.current_rpm,
+            .current_rpm = policy.get_pump_rpm(),
             .target_pwm = _pump_control.target_pwm,
-            .current_pwm = _pump_control.current_pwm,
+            .current_pwm = policy.get_pump_duty_cycle(),
             .pump_running = _pump_control.pump_running,
             .manual_control = _pump_control.manual_control,
         };
