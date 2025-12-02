@@ -48,7 +48,8 @@ class MPRLL0025PA00001 {
     // and read the pressure from a callback for an eoc pin irq
     auto read_pressure() -> std::optional<double> {
         sensor_busy = true;
-        _policy->i2c_master_write(DEV_ADDRESS, WRITE_BUFF, static_cast<uint16_t>(1));
+        _policy->i2c_master_write(DEV_ADDRESS, WRITE_BUFF,
+                                  static_cast<uint16_t>(1));
         for (int i = 0; i < default_retries; i++) {
             _policy->sleep_ms(3);
             _policy->i2c_master_read(DEV_ADDRESS, READ_BUFF,
@@ -79,12 +80,13 @@ class MPRLL0025PA00001 {
     hardware::VacuumPressureSensorPolicy* _policy{nullptr};
 
     auto convert_pressure() -> double {
-        double pressure_read_counts = static_cast<double>(sensor_output[3] |
-                                    sensor_output[2] << 8 |
-                                    sensor_output[1] << 16);
-       double pressure_psi = ((pressure_read_counts - OUTPUT_MIN) * PRESSURE_RANGE_PSI) / (OUTPUT_MAX - OUTPUT_MIN);
-        return pressure_psi; 
-   }
+        double pressure_read_counts = static_cast<double>(
+            sensor_output[3] | sensor_output[2] << 8 | sensor_output[1] << 16);
+        double pressure_psi =
+            ((pressure_read_counts - OUTPUT_MIN) * PRESSURE_RANGE_PSI) /
+            (OUTPUT_MAX - OUTPUT_MIN);
+        return pressure_psi;
+    }
 };
 
 };  // namespace vacuum_pressure_sensor
