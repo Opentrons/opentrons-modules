@@ -60,8 +60,8 @@ class LPS222DF {
                 break;
             }
         }
-        if (!presure_ready) {
-            return std::nullopt
+        if (!pressure_reading_ready) {
+            return std::nullopt;
         }
         auto pressure_hPa = convert_pressure();
         return pressure_hPa;
@@ -79,7 +79,7 @@ class LPS222DF {
         uint32_t pressure_read_counts = sensor_output[1] << 24 |
                                         sensor_output[2] << 16 |
                                         sensor_output[3] << 8;
-        pressure_hPa = pressure_read_counts / SENSOR_SENSITIVITY;
+        uint32_t pressure_hPa = pressure_read_counts / SENSOR_SENSITIVITY;
         return pressure_hPa;
     }
 };

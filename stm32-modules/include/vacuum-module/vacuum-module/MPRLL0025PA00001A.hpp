@@ -46,11 +46,11 @@ class MPRLL0025PA00001 {
 
     // TODO: separate sending the write pressure command,
     // and read the pressure from a callback for an eoc pin irq
-    auto read_pressure() -> std::optional<uint32_t> {
+    auto read_pressure() -> std::optional<double> {
         sensor_busy = true;
-        _policy->i2c_master_write(DEV_ADDRESS, WRITE_BUFF, WRITE_LEN);
-        _policy->sleep_ms(3);
+        _policy->i2c_master_write(DEV_ADDRESS, WRITE_BUFF, static_cast<uint16_t>(1));
         for (int i = 0; i < default_retries; i++) {
+            _policy->sleep_ms(3);
             _policy->i2c_master_read(DEV_ADDRESS, READ_BUFF,
                                      PRESSURE_FRAME_LEN);
             std::memcpy(this->sensor_output, this->READ_BUFF,
@@ -65,12 +65,12 @@ class MPRLL0025PA00001 {
         if (sensor_busy) {
             return std::nullopt;
         }
-        auto pressure_psi = convert_pressure();
+        double pressure_psi = convert_pressure();
         return pressure_psi;
     }
 
     uint8_t READ_BUFF[PRESSURE_FRAME_LEN] = {0x00};
-    uint8_t WRITE_BUFF[WRITE_LEN] = {0x01, 0xAA};
+    uint8_t WRITE_BUFF[1] = {0xAA};
     uint8_t sensor_output[4] = {0x00};
     bool sensor_busy = true;
     int default_retries = 5;
@@ -78,14 +78,13 @@ class MPRLL0025PA00001 {
   private:
     hardware::VacuumPressureSensorPolicy* _policy{nullptr};
 
-    auto convert_pressure() -> uint32_t {
-        auto pressure_read_counts = sensor_output[1] << 24 |
-                                    sensor_output[2] << 16 |
-                                    sensor_output[3] << 8;
-        pressure_psi =
-            (pressure_read_counts * PRESSURE_RANGE_PSI) / OUTPUT_RANGE_COUNTS;
-        return pressure_psi;
-    }
+    auto convert_pressure() -> double {
+        double pressure_read_counts = static_cast<double>(sensor_output[3] |
+                                    sensor_output[2] << 8 |
+                                    sensor_output[1] << 16);
+       double pressure_psi = ((pressure_read_counts - OUTPUT_MIN) * PRESSURE_RANGE_PSI) / (OUTPUT_MAX - OUTPUT_MIN);
+        return pressure_psi; 
+   }
 };
 
 };  // namespace vacuum_pressure_sensor
