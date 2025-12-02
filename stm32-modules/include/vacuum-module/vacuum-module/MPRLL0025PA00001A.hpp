@@ -58,7 +58,7 @@ class MPRLL0025PA00001 {
             uint8_t status_byte = sensor_output[0];
             sensor_busy = static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
 
-            if (sensor_busy) {
+            if (!sensor_busy) {
                 break;
             }
         }
@@ -72,8 +72,6 @@ class MPRLL0025PA00001 {
     uint8_t READ_BUFF[PRESSURE_FRAME_LEN] = {0x00};
     uint8_t WRITE_BUFF[WRITE_LEN] = {0x01, 0xAA};
     uint8_t sensor_output[4] = {0x00};
-    double pressure_psi;
-    double pressure_mbar;
     bool sensor_busy = true;
     int default_retries = 5;
 

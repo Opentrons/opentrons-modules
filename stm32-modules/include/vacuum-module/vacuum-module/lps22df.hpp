@@ -69,7 +69,6 @@ class LPS222DF {
     uint8_t READ_BUFF[4] = {0x00};
     uint8_t sensor_output[4] = {0x00};
     bool pressure_reading_ready = false;
-    uint32_t pressure_hPa;
 
   private:
     atmosphere_pressure_sensor::hardware::AtmospherePressureSensorPolicy*
