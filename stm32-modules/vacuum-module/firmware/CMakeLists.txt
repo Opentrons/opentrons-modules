@@ -48,6 +48,7 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${COMMS_DIR}/usb_hardware.c
     ${VENT_DIR}/vent_hardware.c
     ${PUMP_DIR}/pump_hardware.c
+    ${VACUUM_PS_DIR}/vacuum_pressure_sensor_hardware.c
     )
 
 add_executable(${TARGET_MODULE_NAME}
