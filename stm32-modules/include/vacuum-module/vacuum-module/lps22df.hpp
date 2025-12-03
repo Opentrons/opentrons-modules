@@ -1,7 +1,7 @@
-#pragma once
-
 #include <array>
 #include <cstdint>
+
+#include "firmware/atmosphere_pressure_sensor_policy.hpp"
 
 namespace lps22df {
 using i2c::hardware::RxTxReturn;
