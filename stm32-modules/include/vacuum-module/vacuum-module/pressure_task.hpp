@@ -1,4 +1,6 @@
 #pragma once
+#pragma GCC push_options
+#pragma GCC optimize("O0")
 #include <cmath>
 #include <cstdint>
 #include <variant>
@@ -15,6 +17,7 @@
 #include "vacuum-module/errors.hpp"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/tasks.hpp"
+#include "systemwide.h"
 
 namespace pressure_task {
 using lps22df::LPS222DF;
@@ -22,7 +25,7 @@ using vacuum_pressure_sensor::MPRLL0025PA00001;
 
 // The frequency the pressure control loop runs at.
 // static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
-static constexpr const uint32_t CONTROL_PERIOD_HZ = 1;
+static constexpr const uint32_t CONTROL_PERIOD_HZ = 20;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1 / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
@@ -62,6 +65,7 @@ struct PressureControl {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     double target_pressure = 0;  // Target Guage Pressure
     double current_pressure = 0;
+    double target_rpm = 0;
     double pressure_abs_a = 0;
     double pressure_abs_b = 0;
     double pressure_atm = 0;
@@ -78,11 +82,11 @@ struct PressureControl {
 
 const PressureControl pressure_control = {
     .target_pressure = 0,
-    .pid = PID(1,                  // kp
+    .pid = PID(2,                  // kp
                0.5,                // ki
                0,                  // kd
                CONTROL_PERIOD_MS,  // sampletime
-               18000,              // windup_limit_high
+               MAX_RPM,            // windup_limit_high
                0),                 // windup_limit_low
 };
 
@@ -196,6 +200,8 @@ class PressureTask {
             (timestamp - _pressure_control.last_tick) * MS_TO_SECONDS;
         _pressure_control.last_tick = timestamp;
 
+        // TODO: Add shutdown sequence if start_pump == false
+
         // TODO: add FIR filter for abs pressure.
         _pressure_control.pressure_abs_a =
             std::get<MPRDriverType>(get_sensor(ABS_PRESSURE_A).driver)
@@ -213,10 +219,11 @@ class PressureTask {
 
         const double target_setpoint = _pressure_control.target_pressure;
         auto guage_pressure =
-            _pressure_control.pressure_abs_a - _pressure_control.pressure_atm;
+            _pressure_control.pressure_abs_b - _pressure_control.pressure_atm;
         _pressure_control.current_pressure = guage_pressure;
-        auto difference = target_setpoint - guage_pressure;
+        auto difference = guage_pressure - target_setpoint;
         auto rpm = _pressure_control.pid.compute(difference, delta_s);
+        _pressure_control.target_rpm = rpm;
         // TODO: clamp the rpm here to something sensible
 
         // Send new rpm to pump task
@@ -316,3 +323,4 @@ class PressureTask {
 };
 
 }  // namespace pressure_task
+#pragma GCC pop_options
