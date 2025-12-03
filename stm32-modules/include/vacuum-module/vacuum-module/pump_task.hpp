@@ -50,7 +50,7 @@ struct PumpControl {
 const PumpControl pump_control = {
     .target_rpm = 0,
     .target_pwm = 0,
-    .pid = PID(0.19F,              // kp
+    .pid = PID(0.15F,              // kp
                0.001F,             // ki
                0.0F,               // kd
                RPM_SAMPLE_TIME_S,  // sampletime

@@ -36,7 +36,7 @@
 #define PUMP_STOP_RPM_THRESH   40.0f // filtered RPM < n ->  likely stopped
 #define PUMP_STOP_DEBOUNCE     3     // require 3 consecutive detections
 
-#define PID_FILTER_ALPHA  0.03f  // Reacts fast (good for control) [WORKING]
+#define PID_FILTER_ALPHA  0.05f  // Reacts fast (good for control) [WORKING]
 #define STARTUP_BLIND_TIME_MS  0 // Ignore tach for n  ms after start
 
 // Define the minimum ticks allowed between pulses.
