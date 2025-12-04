@@ -31,25 +31,23 @@ static constexpr const double PUMP_STOP_RPM_THRESH = 500;
 static constexpr const float INITIAL_RAMP_RATE = 0.1;  // rpm/s
 static constexpr const float DEFAULT_RAMP_RATE = 0.2;  // rpm/s
 
-
 struct PumpControl {
+    SlewRateLimiter slew;
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    PID pid;  // RPM PID loop
+
     double target_rpm = 0;
     double current_rpm = 0;
     uint8_t current_pwm = 0;
     uint8_t target_pwm = 0;
     bool manual_control = false;
 
-    SlewRateLimiter slew;
-    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    PID pid;  // Current PID loop
     uint32_t last_tick = 0;
     bool enable_pump = false;
     bool pump_running = false;
 };
 
 const PumpControl pump_control = {
-    .target_rpm = 0,
-    .target_pwm = 0,
     .pid = PID(0.15F,              // kp
                0.001F,             // ki
                0.0F,               // kd

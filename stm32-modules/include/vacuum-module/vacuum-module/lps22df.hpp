@@ -1,7 +1,7 @@
+#pragma once
+
 #include <array>
 #include <cstdint>
-
-#include "firmware/atmosphere_pressure_sensor_policy.hpp"
 
 namespace lps22df {
 using i2c::hardware::RxTxReturn;
@@ -11,6 +11,7 @@ concept LPS22DFPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
                                  uint16_t size, uint8_t* data) {
     { p.i2c_read(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
     { p.i2c_write(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
+    { p.is_device_ready(dev_addr) } -> std::same_as<bool>;
 };
 
 // 7-bit device is 5D if pin SDO is HIGH
@@ -31,7 +32,7 @@ constexpr uint8_t PRESSURE_FRAME_LEN = 10;
 
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
-constexpr uint32_t DEFAULT_SLEEP_MS = 1;
+constexpr uint32_t DEFAULT_SLEEP_MS = 10;
 
 template <typename Policy>
 requires LPS22DFPolicy<Policy>
@@ -41,12 +42,16 @@ class LPS222DF {
         : device_address{dev_address} {}
 
     auto initialize(Policy* policy, PressureSensorID sensor_id) -> bool {
+        auto ok = false;
         if (_policy == nullptr) {
             _policy = policy;
             _sensor_id = sensor_id;
+
+            // check device status
+            ok = _policy->is_device_ready(device_address << 1);
         }
 
-        return true;
+        return ok;
     }
 
     [[nodiscard]] auto get_pressure() const -> double { return pressure_hpa; }
@@ -56,9 +61,9 @@ class LPS222DF {
         auto len = prepare_cmd_frame(ONE_SHOT_PRESSURE_READ, nullptr, 0);
         _policy->i2c_write(device_address << 1, CTRL_REG2, WR_BUFF.data(), len);
         for (int i = 0; i < (DEFAULT_RETRIES + 1); i++) {
-            // TODO: Needs at least 2ms for measurement
+            // NOTE: Needs at least 7ms for conversion
             // Find better way of doing this async.
-            _policy->sleep_ms(2);
+            _policy->sleep_ms(DEFAULT_SLEEP_MS);
             _policy->i2c_read(device_address << 1, PRESSURE_OUTPUT_REGISTER,
                               RD_BUFF.data(), 4);
             auto status_byte = RD_BUFF[0];
@@ -69,8 +74,10 @@ class LPS222DF {
                 break;
             }
         }
+
+        // Error state
         if (!pressure_reading_ready) {
-            // raise an error here
+            return -1;
         }
 
         pressure_hpa = parse_pressure(RD_BUFF.data());

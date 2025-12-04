@@ -11,11 +11,22 @@ concept MPRPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
                              uint16_t size, uint8_t* data) {
     { p.i2c_read(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
     { p.i2c_write(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
+    { p.is_device_ready(dev_addr) } -> std::same_as<bool>;
 };
 
 constexpr uint8_t DEV_ADDRESS = 0x18;
 constexpr uint8_t MEASURE_PRESSURE_COMMAND = 0xAA;
+constexpr std::array<uint8_t, 2> MEASURE_PRESSURE_COMMAND_DATA = {0};
+
+// Bit 5 (Busy flag): Indicates that the data for the last command is not yet
+// available. No new commands are processed if the device is busy.
 constexpr uint8_t STATUS_BUSY_FLAG = 0x20;
+// Bit 2 (Memory integrity/error flag): Indicates whether the checksum-based
+// integrity check passed or failed; the memory error status bit is calculated
+// only during the power-up sequence.
+constexpr uint8_t STATUS_ERROR_FLAG = 0x2;
+// Bit 0 (Math saturation): 1 = internal math saturation has occurred
+constexpr uint8_t STATUS_SATURATION_FLAG = 0x1;
 
 // output at maximum pressure [counts]
 constexpr double OUTPUT_MAX = 15099494;
@@ -31,7 +42,7 @@ constexpr uint8_t PRESSURE_FRAME_LEN = 10;
 
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
-constexpr uint32_t DEFAULT_SLEEP_MS = 5;
+constexpr uint32_t DEFAULT_SLEEP_MS = 10;
 
 struct StatusByte {
     uint8_t power_indication;
@@ -47,19 +58,23 @@ class MPRLL0025PA00001 {
     MPRLL0025PA00001(uint8_t dev_address) : device_address{dev_address} {}
 
     auto initialize(Policy* policy, PressureSensorID sensor_id) -> bool {
+        auto ok = false;
         if (_policy == nullptr) {
             _policy = policy;
             _sensor_id = sensor_id;
+
+            // check device status
+            ok = _policy->is_device_ready(device_address << 1);
         }
 
-        return true;
+        return ok;
     }
 
     [[nodiscard]] auto get_pressure() const -> double { return pressure_mbar; }
 
     auto read_pressure() -> double {
-        bool sensor_busy = true;
-        auto len = prepare_cmd_frame(MEASURE_PRESSURE_COMMAND, nullptr, 0);
+        auto len = prepare_cmd_frame(MEASURE_PRESSURE_COMMAND,
+                                     MEASURE_PRESSURE_COMMAND_DATA.data(), 2);
         _policy->i2c_master_write(device_address << 1, WR_BUFF.data(), len);
 
         for (int i = 0; i < (DEFAULT_RETRIES + 1); i++) {
@@ -68,18 +83,20 @@ class MPRLL0025PA00001 {
             _policy->sleep_ms(DEFAULT_SLEEP_MS);
             _policy->i2c_master_read(device_address << 1, RD_BUFF.data(), 4);
             auto status_byte = RD_BUFF[0];
-            sensor_busy = static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
+
+            // return negative if sensor is in error state
+            if (static_cast<bool>(status_byte & STATUS_ERROR_FLAG) ||
+                static_cast<bool>(status_byte & STATUS_SATURATION_FLAG)) {
+                return -1;
+            }
+            auto sensor_busy = static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
             if (!sensor_busy) {
-                break;
+                pressure_mbar = parse_pressure(RD_BUFF.data());
+                return pressure_mbar;
             }
         }
 
-        if (sensor_busy) {
-            // return error
-        }
-
-        pressure_mbar = parse_pressure(RD_BUFF.data());
-        return pressure_mbar;
+        return -1;
     }
 
   private:
@@ -102,17 +119,14 @@ class MPRLL0025PA00001 {
     static auto parse_pressure(const uint8_t* raw) -> double {
         // Calculation of pressure value according to equation 2 of datasheet
         // Equation 2: Pressure Output Function
+        // The pressure counts are in big-endian (most significant byte first)
+        // order, not little-endian.
         auto press_counts =
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            (double)((int32_t)raw[3] + (int32_t)raw[2] * (int32_t)256 +
-                     // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-                     (int32_t)raw[1] *
-                         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-                         (int32_t)65536);  // calculate digital pressure counts
-        auto pressure = (((press_counts - OUTPUT_MIN) * (PMAX - PMIN)) /
-                         (OUTPUT_MAX - OUTPUT_MIN)) +
-                        PMIN;
-        return pressure * PSI2MBAR;
+            static_cast<double>(raw[1] << 16 | raw[2] << 8 | raw[3]);
+        auto pressure_psi = (((press_counts - OUTPUT_MIN) * (PMAX - PMIN)) /
+                             (OUTPUT_MAX - OUTPUT_MIN)) +
+                            PMIN;
+        return pressure_psi * PSI2MBAR;
     }
 
     Policy* _policy{nullptr};
@@ -122,6 +136,7 @@ class MPRLL0025PA00001 {
     uint8_t device_address{};
 
     double pressure_mbar = {0};
+    uint8_t last_status = 0;
 };
 
 }  // namespace vacuum_pressure_sensor

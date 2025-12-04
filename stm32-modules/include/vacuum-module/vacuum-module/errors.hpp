@@ -19,6 +19,11 @@ enum class ErrorCode : uint16_t {
     SYSTEM_SERIAL_NUMBER_INVALID = 301,
     SYSTEM_SERIAL_NUMBER_HAL_ERROR = 302,
     SYSTEM_EEPROM_ERROR = 303,
+    // 4xx - Vacuum Errors
+    PRESSURE_NOT_REACHED_ERROR = 400,
+    WASTE_FULL_ERROR = 401,
+    VENT_FAILED_ERROR = 402,
+    // 5xx - Pump Errors
 };
 
 auto errorstring(ErrorCode code) -> const char*;

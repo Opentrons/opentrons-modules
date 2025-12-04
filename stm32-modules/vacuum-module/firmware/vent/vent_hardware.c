@@ -45,7 +45,7 @@ void hw_open_vent(bool open) {
 }
 
 bool hw_get_vent_state() {
-    return HAL_GPIO_ReadPin(VENT_IN_GPIO_Port, VENT_IN_GPIO_Pin);
+    return HAL_GPIO_ReadPin(VENT_IN_GPIO_Port, VENT_IN_GPIO_Pin) == GPIO_PIN_RESET;
 }
 
 bool hw_vent_fault_detected() {

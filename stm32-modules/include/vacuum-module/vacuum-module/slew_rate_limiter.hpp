@@ -2,8 +2,8 @@
 #include <cmath>
 
 class SlewRateLimiter {
- public:
-    // Default constructor: Initializes to safe zeros. 
+  public:
+    // Default constructor: Initializes to safe zeros.
     // You MUST call configure() before using update().
     SlewRateLimiter() : _current_output(0.0f), _rate_limit(0.0f) {}
 
@@ -23,9 +23,7 @@ class SlewRateLimiter {
      * Call this when the control loop resumes from Idle to prevent jumps.
      * Does not change the configured rate limit.
      */
-    void reset(float value = 0.0) {
-        _current_output = value;
-    }
+    void reset(float value = 0.0) { _current_output = value; }
 
     /**
      * @brief Update the rate limit dynamically.
@@ -58,7 +56,7 @@ class SlewRateLimiter {
 
     [[nodiscard]] float get_current_setpoint() const { return _current_output; }
 
- private:
+  private:
     float _current_output;
     float _rate_limit;
 };

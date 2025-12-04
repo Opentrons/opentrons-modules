@@ -15,6 +15,14 @@ typedef enum PressureSensorState {
     SENSOR_ERROR,
 } PressureSensorState;
 
+typedef enum PressureSensorError {
+    NO_ERROR = 0,
+    DRIVER_INIT_ERROR,
+    SENSOR_BUSY_ERROR,
+    MATH_SATURATION_ERROR,
+    UNKNOWN_ERROR,
+} PressureSensorError;
+
 typedef enum StatusBarID {
     Internal = 0,
     External,
@@ -45,6 +53,7 @@ typedef enum VacuumPressureSensorId {
 typedef void* TaskHandle;
 
 #define MIN_PWM 7
-#define MAX_PWM 60
+// #define MAX_PWM 60
+#define MAX_PWM 70
 #define MIN_RPM 0.0f
 #define MAX_RPM 3500.0f
