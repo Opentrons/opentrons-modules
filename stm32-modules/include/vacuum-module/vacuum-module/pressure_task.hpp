@@ -189,6 +189,14 @@ class PressureTask {
         }
     }
 
+    auto send_debug_message(const char* message) -> void {
+        if (_task_registry) {
+            auto msg = messages::DebugMessage{.message = message};
+            static_cast<void>(
+                _task_registry->send_to_address(msg, Queues::HostCommsAddress));
+        }
+    }
+
     template <PressureControlPolicy Policy>
     auto visit_message(const std::monostate& m, Policy& policy) -> void {
         static_cast<void>(m);
@@ -249,6 +257,9 @@ class PressureTask {
         // static_cast<void>(msg);
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::PumpAddress));
+
+        // Send debug message
+        send_debug_message("TEST");
     }
 
     template <PressureControlPolicy Policy>

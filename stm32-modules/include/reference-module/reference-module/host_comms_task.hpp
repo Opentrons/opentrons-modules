@@ -193,6 +193,15 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::DebugMessage& msg, InputIt tx_into,
+                       InputLimit tx_limit) -> InputIt {
+        return errors::write_into_async(
+            tx_into, tx_limit, errors::ErrorCode::DEBUG_MESSAGE, msg.message);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const std::monostate& ignore, InputIt tx_into,
                        InputLimit tx_limit) -> InputIt {
         static_cast<void>(ignore);
