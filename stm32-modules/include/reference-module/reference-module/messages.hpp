@@ -51,6 +51,10 @@ struct ErrorMessage {
     errors::ErrorCode code;
 };
 
+struct DebugMessage {
+    const char* message;
+};
+
 struct AcknowledgePrevious {
     uint32_t responding_to_id{};
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
@@ -101,8 +105,8 @@ struct ForceUSBDisconnect {
 
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
-                   ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetResetReasonResponse>;
+                   ErrorMessage, DebugMessage, AcknowledgePrevious,
+                   GetSystemInfoResponse, GetResetReasonResponse>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,

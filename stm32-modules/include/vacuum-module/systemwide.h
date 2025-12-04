@@ -43,17 +43,12 @@ typedef enum StatusBarPattern {
     Confirm,
 } StatusBarPattern;
 
-typedef enum VacuumPressureSensorId {
-    SensorA,  // Sensor A
-    SensorB,  // Sensor B
-} VacuumPressureSensorId;
 /* size of array for setting serial number */
 #define SYSTEM_WIDE_SERIAL_NUMBER_LENGTH 24
 
 typedef void* TaskHandle;
 
-#define MIN_PWM 7
-// #define MAX_PWM 60
-#define MAX_PWM 70
+#define MIN_PWM 0
+#define MAX_PWM 95
 #define MIN_RPM 0.0f
 #define MAX_RPM 3500.0f

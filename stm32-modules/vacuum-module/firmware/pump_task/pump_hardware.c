@@ -33,11 +33,8 @@
 #define TACH_TRANSITIONS_PER_REV 30.0f
 
 #define PUMP_STOP_TIMEOUT_MS   500   // no pulses for n >= ms -> stopped
-#define PUMP_STOP_RPM_THRESH   40.0f // filtered RPM < n ->  likely stopped
 #define PUMP_STOP_DEBOUNCE     3     // require 3 consecutive detections
-
-#define PID_FILTER_ALPHA  0.05f  // Reacts fast (good for control) [WORKING]
-#define STARTUP_BLIND_TIME_MS  0 // Ignore tach for n  ms after start
+#define PID_FILTER_ALPHA  0.04f  // Reacts fast (good for control) [WORKING]
 
 // Define the minimum ticks allowed between pulses.
 // 170MHz / 6 (prescaler 5) = 28.33MHz.
@@ -264,11 +261,6 @@ float hw_get_pump_rpm(void) {
     }
     if (hardware.valid_samples < RPM_AVG_WINDOW) {
         // Option A: Return 0 until stable (Recommended for pump startup)
-        return 0.0f;
-    }
-
-    // check blint start time to allow the motor time to overcome friction
-    if ((HAL_GetTick() - hardware.pump_start_time) < STARTUP_BLIND_TIME_MS) {
         return 0.0f;
     }
 

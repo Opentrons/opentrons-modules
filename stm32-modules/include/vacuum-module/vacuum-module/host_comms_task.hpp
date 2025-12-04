@@ -201,6 +201,15 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::DebugMessage& msg, InputIt tx_into,
+                       InputLimit tx_limit) -> InputIt {
+        return errors::write_into_async(
+            tx_into, tx_limit, errors::ErrorCode::DEBUG_MESSAGE, msg.message);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const std::monostate& ignore, InputIt tx_into,
                        InputLimit tx_limit) -> InputIt {
         static_cast<void>(ignore);
@@ -296,8 +305,8 @@ class HostCommsTask {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.target_rpm,
                         response.current_rpm, response.target_pwm,
-                        response.current_pwm, response.manual_control,
-                        response.pump_running);
+                        response.current_pwm, response.pump_running,
+                        response.manual_control);
                 }
             },
             cache_entry);

@@ -51,6 +51,10 @@ struct ErrorMessage {
     errors::ErrorCode code;
 };
 
+struct DebugMessage {
+    const char* message;
+};
+
 struct AcknowledgePrevious {
     uint32_t responding_to_id{};
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
@@ -126,10 +130,8 @@ struct SetPressureStateMessage {
 struct SetPumpStateMessage {
     uint32_t id = 0;
     bool from_host = false;
-    // This is from inner pressureTask, can we use this from host?
-    // or do we need something like pwm/duty cycle?
     double rpm_setpoint = 0;
-    uint8_t duty_cycle = 0;  // for external use
+    uint8_t duty_cycle = 0;
     bool run_pump = false;
 };
 
@@ -149,7 +151,6 @@ struct GetPressureStateResponseMessage {
 
 struct GetPumpStateMessage {
     uint32_t id = 0;
-    bool refresh = false;
 };
 
 struct GetPumpStateResponseMessage {
@@ -170,8 +171,9 @@ struct SetVentMessage {
 
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
-                   ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetResetReasonResponse, GetPressureStateResponseMessage,
+                   ErrorMessage, DebugMessage, AcknowledgePrevious,
+                   GetSystemInfoResponse, GetResetReasonResponse,
+                   GetPressureStateResponseMessage,
                    GetPumpStateResponseMessage>;
 
 using SystemMessage =
