@@ -84,7 +84,7 @@ struct PressureControl {
 };
 
 const PressureControl pressure_control = {
-    .pid = PID(2.5,                  // kp
+    .pid = PID(2.5,                // kp
                0.1,                // ki
                0,                  // kd
                CONTROL_PERIOD_MS,  // sampletime

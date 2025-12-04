@@ -209,6 +209,7 @@ bool i2c_register_handle(HAL_I2C_HANDLE handle, I2C_BUS bus) {
 }
 
 
+// Check that the device is ready to communicate
 bool hal_is_device_ready(I2C_BUS bus, uint16_t DevAddress) {
     NotificationHandle_t *notification_handle = lookup_handle(bus);
     I2C_HandleTypeDef* i2c_handle = (I2C_HandleTypeDef*)notification_handle->i2c_handle;

@@ -89,7 +89,8 @@ class MPRLL0025PA00001 {
                 static_cast<bool>(status_byte & STATUS_SATURATION_FLAG)) {
                 return -1;
             }
-            auto sensor_busy = static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
+            auto sensor_busy =
+                static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
             if (!sensor_busy) {
                 pressure_mbar = parse_pressure(RD_BUFF.data());
                 return pressure_mbar;
