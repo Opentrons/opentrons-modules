@@ -83,6 +83,7 @@ struct PressureControl {
     bool vent_opened = false;
 };
 
+// WORKING
 const PressureControl pressure_control = {
     .pid = PID(2.5,                // kp
                0.1,                // ki
@@ -91,6 +92,15 @@ const PressureControl pressure_control = {
                MAX_RPM,            // windup_limit_high
                0),                 // windup_limit_low
 };
+
+// const PressureControl pressure_control = {
+//     .pid = PID(0.18,                // kp
+//                0.05,                // ki
+//                0,                  // kd
+//                CONTROL_PERIOD_MS,  // sampletime
+//                MAX_PWM,            // windup_limit_high
+//                0),                 // windup_limit_low
+// };
 
 template <typename P>
 concept PressureControlPolicy = requires(P p) {
@@ -213,8 +223,11 @@ class PressureTask {
             (timestamp - _pressure_control.last_tick) * MS_TO_SECONDS;
         _pressure_control.last_tick = timestamp;
 
+        send_debug_message("STOPPED PRESSURE CONTROL!");
+
         // stop vacuum control
         if (!_pressure_control.enable_vacuum) {
+
             policy.start_pressure_control(false);
 
             // Stop pump control
@@ -259,7 +272,6 @@ class PressureTask {
             _task_registry->send_to_address(msg, Queues::PumpAddress));
 
         // Send debug message
-        send_debug_message("TEST");
     }
 
     template <PressureControlPolicy Policy>

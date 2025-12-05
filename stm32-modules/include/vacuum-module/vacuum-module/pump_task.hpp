@@ -29,7 +29,7 @@ static constexpr const double K_FF = MAX_PWM / MAX_RPM;
 static constexpr const double PUMP_STOP_RPM_THRESH = 500;
 // static constexpr const float DEFAULT_RAMP_RATE = 1;  // rpm/s
 static constexpr const float INITIAL_RAMP_RATE = 0.1;  // rpm/s
-static constexpr const float DEFAULT_RAMP_RATE = 0.2;  // rpm/s
+static constexpr const float DEFAULT_RAMP_RATE = 0.15;  // rpm/s
 
 struct PumpControl {
     SlewRateLimiter slew;
@@ -139,8 +139,8 @@ class PumpTask {
         -> void {
         static_cast<void>(m);
         static_cast<void>(policy);
-
         // Get delta time
+
         auto timestamp = policy.get_time_ms();
         auto delta_s = (timestamp - pump_control.last_tick) * MS_TO_SECONDS;
         _pump_control.last_tick = timestamp;
