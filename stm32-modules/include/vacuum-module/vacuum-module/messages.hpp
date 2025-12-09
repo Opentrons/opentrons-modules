@@ -171,8 +171,9 @@ struct SetVentMessage {
 
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
-                   ErrorMessage, DebugMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetResetReasonResponse, GetPressureStateResponseMessage,
+                   ErrorMessage, DebugMessage, AcknowledgePrevious,
+                   GetSystemInfoResponse, GetResetReasonResponse,
+                   GetPressureStateResponseMessage,
                    GetPumpStateResponseMessage>;
 
 using SystemMessage =

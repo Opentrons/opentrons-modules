@@ -227,7 +227,6 @@ class PressureTask {
 
         // stop vacuum control
         if (!_pressure_control.enable_vacuum) {
-
             policy.start_pressure_control(false);
 
             // Stop pump control

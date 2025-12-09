@@ -28,7 +28,7 @@ static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double K_FF = MAX_PWM / MAX_RPM;
 static constexpr const double PUMP_STOP_RPM_THRESH = 500;
 // static constexpr const float DEFAULT_RAMP_RATE = 1;  // rpm/s
-static constexpr const float INITIAL_RAMP_RATE = 0.1;  // rpm/s
+static constexpr const float INITIAL_RAMP_RATE = 0.1;   // rpm/s
 static constexpr const float DEFAULT_RAMP_RATE = 0.15;  // rpm/s
 
 struct PumpControl {
