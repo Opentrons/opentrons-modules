@@ -305,8 +305,8 @@ class HostCommsTask {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.target_rpm,
                         response.current_rpm, response.target_pwm,
-                        response.current_pwm, response.manual_control,
-                        response.pump_running);
+                        response.current_pwm, response.pump_running,
+                        response.manual_control);
                 }
             },
             cache_entry);

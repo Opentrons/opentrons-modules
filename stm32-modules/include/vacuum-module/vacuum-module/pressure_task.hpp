@@ -1,5 +1,8 @@
 #pragma once
+#include <algorithm>
+
 #include "errors.hpp"
+#include "pump_task.hpp"
 #pragma GCC push_options
 #pragma GCC optimize("O0")
 #include <cmath>
@@ -24,17 +27,30 @@ namespace pressure_task {
 using lps22df::LPS222DF;
 using vacuum_pressure_sensor::MPRLL0025PA00001;
 
+constexpr uint8_t ABS_PRESSURE_A_ADDR = 0x18;
+constexpr uint8_t ABS_PRESSURE_B_ADDR = 0x18;
+constexpr uint8_t ATM_PRESSURE_ADDR = 0x5D;
+
 // The frequency the pressure control loop runs at.
 // static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
-static constexpr const uint32_t CONTROL_PERIOD_HZ = 20;
+static constexpr const uint32_t CONTROL_PERIOD_HZ = 50;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0 / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double RAMP_RATE_MBAR_S = 68.9476;
 
-constexpr uint8_t ABS_PRESSURE_A_ADDR = 0x18;
-constexpr uint8_t ABS_PRESSURE_B_ADDR = 0x18;
-constexpr uint8_t ATM_PRESSURE_ADDR = 0x5D;
+// Tuning Constants
+const float ATM_PRESSURE_MBAR = 1013.0f;
+
+// TUNING 1: Velocity Gain
+// How much RPM to add for every 1 mbar/sec drop requested?
+// Example: Dropping 500 mbar in 2 seconds (Rate = 250 mbar/s) needs 3000 RPM.
+// K = 3000 / 250 = 12.0
+const float K_VELOCITY = 40.0f;
+
+// TUNING 2: Holding Gain
+// Max RPM required to hold a deep vacuum against leaks.
+const float K_HOLDING = 300.0f;
 
 using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
 using LPSDriverType = LPS222DF<i2c::hardware::I2C>;
@@ -65,9 +81,11 @@ const PressureSensor atm_pressure = {
 struct PressureControl {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     PID pid;  // Pressure PID loop
+    SlewRateLimiter slew;
 
     double target_pressure = 0;   // Target Guage Pressure
     double current_pressure = 0;  // Current Guage Pressure
+    double prev_target_mbar = ATM_PRESSURE_MBAR;
     double ramp_rate = 0;
     double target_rpm = 0;
     uint32_t duration_s = 0;
@@ -83,24 +101,14 @@ struct PressureControl {
     bool vent_opened = false;
 };
 
-// WORKING
 const PressureControl pressure_control = {
-    .pid = PID(2.5,                // kp
-               0.1,                // ki
+    .pid = PID(0.5,                // kp
+               0.39,                // ki
                0,                  // kd
                CONTROL_PERIOD_MS,  // sampletime
                MAX_RPM,            // windup_limit_high
                0),                 // windup_limit_low
 };
-
-// const PressureControl pressure_control = {
-//     .pid = PID(0.18,                // kp
-//                0.05,                // ki
-//                0,                  // kd
-//                CONTROL_PERIOD_MS,  // sampletime
-//                MAX_PWM,            // windup_limit_high
-//                0),                 // windup_limit_low
-// };
 
 template <typename P>
 concept PressureControlPolicy = requires(P p) {
@@ -165,6 +173,12 @@ class PressureTask {
                 sensor.state = sensor.ok ? IDLE : SENSOR_ERROR;
             }
 
+            // TODO: TEST THIS
+            auto current_pressure = _pressure_control.pressure_abs_b;
+            // _pressure_control.slew.configure(current_pressure, 50.0f); //
+            // Slew rate is 25.0 mbar/sec
+            _pressure_control.slew.configure(current_pressure, 40.0f);  // Slew rate is 25.0 mbar/sec
+
             // Close the vent
             policy.set_vent_state(true);
 
@@ -219,11 +233,8 @@ class PressureTask {
         static_cast<void>(m);
         // Get delta time
         auto timestamp = policy.get_time_ms();
-        auto delta_s =
-            (timestamp - _pressure_control.last_tick) * MS_TO_SECONDS;
+        auto dt = (timestamp - _pressure_control.last_tick) * MS_TO_SECONDS;
         _pressure_control.last_tick = timestamp;
-
-        send_debug_message("STOPPED PRESSURE CONTROL!");
 
         // stop vacuum control
         if (!_pressure_control.enable_vacuum) {
@@ -235,6 +246,7 @@ class PressureTask {
                 _task_registry->send_to_address(msg, Queues::PumpAddress));
 
             _pressure_control.pid.reset();
+            _pressure_control.slew.reset();
             _pressure_control.target_rpm = 0;
             _pressure_control.last_tick = 0;
             return;
@@ -251,13 +263,49 @@ class PressureTask {
             }
         }
 
+        // Run Slew Limiter (Get smooth trajectory in mbar)
+        // auto target_pressure = _pressure_control.target_pressure;
+        // auto smooth_target = _pressure_control.slew.update(target_pressure, dt);
+        auto smooth_target = _pressure_control.target_pressure;
+
+        // Calculate Velocity Feed-Forward (Movement) Rate = Change in mbar /
+        // Time (Previous - Current) because we want a positive RPM for a
+        // pressure drop
+        auto prev_target = _pressure_control.prev_target_mbar;
+        auto rate_mbar_s = (prev_target - smooth_target) / dt;
+        _pressure_control.prev_target_mbar = smooth_target;
+
+        // Calculate RPM needed to achieve this flow rate
+        auto ff_velocity = std::max(0.0, rate_mbar_s * K_VELOCITY);
+
+        // 3. Calculate Holding Feed-Forward (Static Load)
+        // Calculate how "deep" the vacuum is as a percentage (0.0 to 1.0)
+        // 1013 mbar = 0% Vacuum, 0 mbar = 100% Vacuum
+        auto ratio = (ATM_PRESSURE_MBAR - smooth_target) / ATM_PRESSURE_MBAR;
+        ratio = std::clamp<double>(ratio, 0.0f, 1.0f);
+        auto ff_holding = ratio * K_HOLDING;
+
+        // If we are deeper than target, we don't need holding force, we need to
+        // stop.
+        auto current_abs = _pressure_control.pressure_abs_b;
+        if (current_abs < smooth_target) {
+            ff_holding = 0;
+        }
+
+        // 4. Total Feed Forward
+        auto total_ff_rpm = ff_velocity + ff_holding;
+
         // Calculate target rpm
-        const double target_setpoint = _pressure_control.target_pressure;
-        auto guage_pressure =
-            _pressure_control.pressure_abs_b - _pressure_control.pressure_atm;
-        _pressure_control.current_pressure = guage_pressure;
-        auto difference = guage_pressure - target_setpoint;
-        auto rpm = _pressure_control.pid.compute(difference, delta_s);
+        _pressure_control.current_pressure = current_abs;
+        auto error = current_abs - smooth_target;
+        auto rpm = _pressure_control.pid.compute(error, dt);
+        rpm = total_ff_rpm + rpm;
+
+        // If we are significantly below target (deeper vacuum), cut the motor.
+        // We add a small hysteresis (e.g. 5 mbar) to prevent jitter.
+        if (current_abs < (smooth_target - 10.0f)) {
+            rpm = 0;
+        }
 
         // clamp rpm to max
         rpm = std::clamp<double>(rpm, MIN_RPM, MAX_RPM);
@@ -266,11 +314,8 @@ class PressureTask {
         // Send new rpm to pump task
         auto msg = messages::SetPumpStateMessage{.rpm_setpoint = rpm,
                                                  .run_pump = true};
-        // static_cast<void>(msg);
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::PumpAddress));
-
-        // Send debug message
     }
 
     template <PressureControlPolicy Policy>
@@ -282,8 +327,7 @@ class PressureTask {
         _pressure_control.duration_s = m.duration_s;
         _pressure_control.vent_after = m.vent_after;
 
-        // Update ramp rate generator
-        // TODO: Do we need to stop pump when we update ramp rate?
+        // Start the pressure control loop
         if (!_pressure_control.enable_vacuum && m.start_pump) {
             update_pressure(ATM_PRESSURE);
             policy.start_pressure_control(true);
@@ -295,11 +339,6 @@ class PressureTask {
     template <PressureControlPolicy Policy>
     auto visit_message(const messages::GetPressureStateMessage& m,
                        Policy& policy) -> void {
-        auto current_pressure = _pressure_control.current_pressure;
-        auto pressure_abs_a = _pressure_control.pressure_abs_a;
-        auto pressure_abs_b = _pressure_control.pressure_abs_b;
-        auto pressure_atm = _pressure_control.pressure_atm;
-
         // refresh if the pump is not running
         if (!_pressure_control.enable_vacuum) {
             // NOTE: this updates the internal _pressure_control variables
@@ -312,22 +351,15 @@ class PressureTask {
                     continue;
                 }
             }
-
-            pressure_abs_a = _pressure_control.pressure_abs_a;
-            pressure_abs_b = _pressure_control.pressure_abs_b;
-            pressure_atm = _pressure_control.pressure_atm;
-            current_pressure = pressure_abs_b - pressure_atm;
-
-            // reset interals, TODO: deal with this
         }
 
         auto msg = messages::GetPressureStateResponseMessage{
             .responding_to_id = m.id,
             .target_pressure = _pressure_control.target_pressure,
-            .current_pressure = current_pressure,
-            .pressure_abs_a = pressure_abs_a,
-            .pressure_abs_b = pressure_abs_b,
-            .pressure_atm = pressure_atm,
+            .current_pressure = _pressure_control.current_pressure,
+            .pressure_abs_a = _pressure_control.pressure_abs_a,
+            .pressure_abs_b = _pressure_control.pressure_abs_b,
+            .pressure_atm = _pressure_control.pressure_atm,
             .vent_opened = _pressure_control.vent_opened,
         };
         static_cast<void>(
@@ -362,6 +394,8 @@ class PressureTask {
             // TODO: Maybe return specific driver error
             return MATH_SATURATION_ERROR;
         }
+
+        // TODO: Add FIR filter here
 
         // Update variables
         if (sensor_id == ABS_PRESSURE_A) {

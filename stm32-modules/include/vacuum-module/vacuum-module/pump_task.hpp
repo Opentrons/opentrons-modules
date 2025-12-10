@@ -19,17 +19,17 @@
 namespace pump_task {
 
 // The frequency the pump control loop runs at.
-// static constexpr const uint32_t CONTROL_PERIOD_HZ = 20;
-static constexpr const uint32_t CONTROL_PERIOD_HZ = 50;
+static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0f / CONTROL_PERIOD_HZ * 1000);
 static constexpr const uint32_t RPM_SAMPLE_TIME_S = CONTROL_PERIOD_MS / 1000.0f;
 static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double K_FF = MAX_PWM / MAX_RPM;
 static constexpr const double PUMP_STOP_RPM_THRESH = 500;
-// static constexpr const float DEFAULT_RAMP_RATE = 1;  // rpm/s
-static constexpr const float INITIAL_RAMP_RATE = 0.1;   // rpm/s
-static constexpr const float DEFAULT_RAMP_RATE = 0.15;  // rpm/s
+static constexpr const float MIN_RAMP_RATE = 1;       // rpm/s
+static constexpr const float DEFAULT_RAMP_RATE = 10;  // rpm/s
+static constexpr const float MAX_RAMP_RATE = 20;      // rpm/s
+static constexpr const int8_t MAX_PWM_JUMP = 1;       // pwm/tick
 
 struct PumpControl {
     SlewRateLimiter slew;
@@ -47,9 +47,10 @@ struct PumpControl {
     bool pump_running = false;
 };
 
+// Feed forward (K_FF) provides most of the power, so kp and ki can be small.
 const PumpControl pump_control = {
-    .pid = PID(0.15F,              // kp
-               0.001F,             // ki
+    .pid = PID(0.1000F,            // kp
+               0.0001F,            // ki
                0.0F,               // kd
                RPM_SAMPLE_TIME_S,  // sampletime
                MAX_PWM,            // windup_limit_high
@@ -118,6 +119,14 @@ class PumpTask {
         }
     }
 
+    auto send_debug_message(const char* message) -> void {
+        if (_task_registry) {
+            auto msg = messages::DebugMessage{.message = message};
+            static_cast<void>(
+                _task_registry->send_to_address(msg, Queues::HostCommsAddress));
+        }
+    }
+
     auto send_ack_message(uint32_t response_id, Error error = Error::NO_ERROR)
         -> void {
         if (_task_registry) {
@@ -137,22 +146,22 @@ class PumpTask {
     template <PumpControlPolicy Policy>
     auto visit_message(const messages::PumpControlMessage& m, Policy& policy)
         -> void {
-        static_cast<void>(m);
-        static_cast<void>(policy);
         // Get delta time
-
         auto timestamp = policy.get_time_ms();
-        auto delta_s = (timestamp - pump_control.last_tick) * MS_TO_SECONDS;
-        _pump_control.last_tick = timestamp;
+        auto last_tick =
+            _pump_control.last_tick ? _pump_control.last_tick : timestamp;
+        auto delta_s = (timestamp - last_tick) * MS_TO_SECONDS;
+        _pump_control.last_tick = last_tick;
 
         auto rpm = policy.get_pump_rpm();
-        // reject non-sense rpm
+        // If sensor is blind, assume we are at target to prevent PID freak-out
         if (rpm < MIN_RPM || rpm >= MAX_RPM) {
-            return;
+            rpm = _pump_control.target_rpm;
         }
 
-        // stop pump control
+        // Stop pump control
         if (rpm < PUMP_STOP_RPM_THRESH && !_pump_control.enable_pump) {
+            send_debug_message("PUMP STOPPED!");
             policy.set_pump_duty_cycle(0);
             policy.enable_pump_control(false);
             policy.enable_pump_tach(false);
@@ -171,18 +180,30 @@ class PumpTask {
         // Compute the new duty cycle
         auto target_setpoint = _pump_control.target_rpm;
         target_setpoint = _pump_control.slew.update(target_setpoint, delta_s);
-        float ff_output = target_setpoint * K_FF;
         auto difference = target_setpoint - rpm;
-        auto duty = _pump_control.pid.compute(difference, delta_s);
+        auto pwm = _pump_control.pid.compute(difference, delta_s);
         // add feed-forward
-        duty = ff_output + duty;
+        pwm = (target_setpoint * K_FF) + pwm;
 
-        // override + clamp
-        duty = _pump_control.target_pwm > 0 ? _pump_control.target_pwm : duty;
-        duty = std::clamp<uint8_t>(duty, MIN_PWM, MAX_PWM);
+        // Sudden, large pwm changes (e.g., 0% to 60% or 80% to 10%) can induce
+        // significant back-EMF and result in large current and voltage spikes
+        // which can shut down the system. Limit how fast the duty cycle changes
+        // so the motor does not freak out.
+        auto current_pwm = _pump_control.current_pwm;
+        auto desired_pwm = _pump_control.enable_pump ? pwm : MIN_PWM;
+        desired_pwm = std::clamp<uint8_t>(desired_pwm, MIN_PWM, MAX_PWM);
+        if (desired_pwm > current_pwm + MAX_PWM_JUMP) {
+            current_pwm += MAX_PWM_JUMP;
+        } else if (desired_pwm < current_pwm - MAX_PWM_JUMP) {
+            current_pwm -= MAX_PWM_JUMP;
+        } else {
+            current_pwm = desired_pwm;
+        }
 
-        // ramp control the output
-        // duty = _pump_control.slew_pwm.update(duty, delta_s);
+        // Manual override + safety clamp
+        auto target_pwm = _pump_control.target_pwm;
+        auto duty = target_pwm > 0 ? target_pwm : current_pwm;
+        duty = std::clamp<uint8_t>(duty, 0, MAX_PWM);
 
         _pump_control.current_pwm = duty;
         _pump_control.current_rpm = rpm;
@@ -192,16 +213,15 @@ class PumpTask {
     template <PumpControlPolicy Policy>
     auto visit_message(const messages::SetPumpStateMessage& m, Policy& policy)
         -> void {
-        static_cast<void>(m);
-        static_cast<void>(policy);
-        // TODO: validate incoming values
         _pump_control.target_pwm =
             std::clamp<uint8_t>(m.duty_cycle, 0, MAX_PWM);
         _pump_control.target_rpm =
             std::clamp<double>(m.rpm_setpoint, 0, MAX_RPM);
         _pump_control.enable_pump = m.run_pump;
+        _pump_control.manual_control = m.from_host;
 
         if (!_pump_control.pump_running) {
+            send_debug_message("PUMP STARTED!");
             policy.enable_pump_tach(true);
             policy.start_pump_motor();
             policy.enable_pump_control(true);
@@ -217,14 +237,12 @@ class PumpTask {
     auto visit_message(const messages::GetPumpStateMessage& m, Policy& policy)
         -> void {
         static_cast<void>(m);
-        static_cast<void>(policy);
         auto msg = messages::GetPumpStateResponseMessage{
             .responding_to_id = m.id,
             .target_rpm = _pump_control.target_rpm,
-            // .current_rpm = _pump_control.current_rpm,
-            .current_rpm = policy.get_pump_rpm(),
+            .current_rpm = _pump_control.current_rpm,
             .target_pwm = _pump_control.target_pwm,
-            .current_pwm = policy.get_pump_duty_cycle(),
+            .current_pwm = _pump_control.current_pwm,
             .pump_running = _pump_control.pump_running,
             .manual_control = _pump_control.manual_control,
         };
