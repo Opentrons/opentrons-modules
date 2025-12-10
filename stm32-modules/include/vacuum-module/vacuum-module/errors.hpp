@@ -41,8 +41,8 @@ constexpr auto write_into(Input start, Limit end, ErrorCode code) -> Input {
 
 template <typename Input, typename Limit>
 requires std::forward_iterator<Input> && std::sized_sentinel_for<Limit, Input>
-constexpr auto write_into_async(Input start, Limit end, ErrorCode code, const char* message = nullptr)
-    -> Input {
+constexpr auto write_into_async(Input start, Limit end, ErrorCode code,
+                                const char* message = nullptr) -> Input {
     constexpr const char* prefix = "async ";
     auto next = write_string_to_iterpair(start, end, prefix);
 
