@@ -40,17 +40,17 @@ static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double RAMP_RATE_MBAR_S = 68.9476;
 
 // Tuning Constants
-const float ATM_PRESSURE_MBAR = 1013.0f;
+const float ATM_PRESSURE_MBAR = 1013.0F;
 
 // TUNING 1: Velocity Gain
 // How much RPM to add for every 1 mbar/sec drop requested?
 // Example: Dropping 500 mbar in 2 seconds (Rate = 250 mbar/s) needs 3000 RPM.
 // K = 3000 / 250 = 12.0
-const float K_VELOCITY = 40.0f;
+const float K_VELOCITY = 40.0F;
 
 // TUNING 2: Holding Gain
 // Max RPM required to hold a deep vacuum against leaks.
-const float K_HOLDING = 300.0f;
+const float K_HOLDING = 300.0F;
 
 using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
 using LPSDriverType = LPS222DF<i2c::hardware::I2C>;
@@ -174,10 +174,10 @@ class PressureTask {
             }
 
             // TODO: TEST THIS
-            auto current_pressure = _pressure_control.pressure_abs_b;
-            // _pressure_control.slew.configure(current_pressure, 50.0f); //
+            auto current_pressure = static_cast<float>(_pressure_control.pressure_abs_b);
+            // _pressure_control.slew.configure(current_pressure, 50.0F); //
             // Slew rate is 25.0 mbar/sec
-            _pressure_control.slew.configure(current_pressure, 40.0f);  // Slew rate is 25.0 mbar/sec
+            _pressure_control.slew.configure(current_pressure, 40.0F);  // Slew rate is 25.0 mbar/sec
 
             // Close the vent
             policy.set_vent_state(true);
@@ -282,7 +282,7 @@ class PressureTask {
         // Calculate how "deep" the vacuum is as a percentage (0.0 to 1.0)
         // 1013 mbar = 0% Vacuum, 0 mbar = 100% Vacuum
         auto ratio = (ATM_PRESSURE_MBAR - smooth_target) / ATM_PRESSURE_MBAR;
-        ratio = std::clamp<double>(ratio, 0.0f, 1.0f);
+        ratio = std::clamp<double>(ratio, 0.0F, 1.0F);
         auto ff_holding = ratio * K_HOLDING;
 
         // If we are deeper than target, we don't need holding force, we need to
@@ -303,7 +303,7 @@ class PressureTask {
 
         // If we are significantly below target (deeper vacuum), cut the motor.
         // We add a small hysteresis (e.g. 5 mbar) to prevent jitter.
-        if (current_abs < (smooth_target - 10.0f)) {
+        if (current_abs < (smooth_target - 10.0F)) {
             rpm = 0;
         }
 
