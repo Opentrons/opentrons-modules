@@ -1,6 +1,7 @@
 #include "firmware/pressure_policy.hpp"
 
 #include <cstdint>
+#include <optional>
 
 #include "FreeRTOS.h"
 #include "firmware/pressure_sensor_hardware.h"

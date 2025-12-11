@@ -385,25 +385,26 @@ class PressureTask {
         }
 
         // Request latest pressure readings
+        // let this be optional
         auto pressure = std::visit(
-            [&](auto&& driver) -> double { return driver.read_pressure(); },
+            [&](auto&& driver) -> std::optional<double> {
+                return driver.read_pressure().value();
+            },
             sensor.driver);
 
         // Handle error
-        if (pressure < 0) {
+        if (!pressure.has_value()) {
             // TODO: Maybe return specific driver error
             return MATH_SATURATION_ERROR;
         }
-
-        // TODO: Add FIR filter here
-
+        double pressure_val = pressure.value();
         // Update variables
         if (sensor_id == ABS_PRESSURE_A) {
-            _pressure_control.pressure_abs_a = pressure;
+            _pressure_control.pressure_abs_a = pressure_val;
         } else if (sensor_id == ABS_PRESSURE_B) {
-            _pressure_control.pressure_abs_b = pressure;
+            _pressure_control.pressure_abs_b = pressure_val;
         } else if (sensor_id == ATM_PRESSURE) {
-            _pressure_control.pressure_atm = pressure;
+            _pressure_control.pressure_atm = pressure_val;
         }
 
         return NO_ERROR;
