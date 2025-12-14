@@ -28,26 +28,19 @@ constexpr uint8_t ABS_PRESSURE_B_ADDR = 0x18;
 constexpr uint8_t ATM_PRESSURE_ADDR = 0x5D;
 
 // The frequency the pressure control loop runs at.
-// static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
 static constexpr const uint32_t CONTROL_PERIOD_HZ = 50;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0 / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
+static constexpr const double ATM_PRESSURE_MBAR = 1013.0f;
 static constexpr const double RAMP_RATE_MBAR_S = 68.9476;
-
-// Tuning Constants
-const float ATM_PRESSURE_MBAR = 1013.0f;
-
-// TUNING 1: Velocity Gain
-// How much RPM to add for every 1 mbar/sec drop requested?
-// Example: Dropping 500 mbar in 2 seconds (Rate = 250 mbar/s) needs 3000 RPM.
-// K = 3000 / 250 = 12.0
-const float K_VELOCITY = 20.0f;
-
-// TUNING 2: Holding Gain
+static constexpr const double SENSOR_ALPHA = 0.2;  // Sensor EMA Alpha
+// Velocity Gain:
+// How much RPM to add for every 1 mbar/sec drop requested.
+static constexpr const float K_VELOCITY = 20.0f;
+// Holding Gain:
 // Max RPM required to hold a deep vacuum against leaks.
-// const float K_HOLDING = 300.0f;
-const float K_HOLDING = 43.0f;
+static constexpr const float K_HOLDING = 43.0f;
 
 using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
 using LPSDriverType = LPS222DF<i2c::hardware::I2C>;
@@ -82,7 +75,7 @@ struct PressureControl {
 
     double target_pressure = 0;   // Target Guage Pressure
     double current_pressure = 0;  // Current Guage Pressure
-    double prev_target_mbar = ATM_PRESSURE_MBAR;
+    double prev_target_mbar = 0;
     double ramp_rate = 0;
     double target_rpm = 0;
     uint32_t duration_s = 0;
@@ -90,7 +83,7 @@ struct PressureControl {
 
     double pressure_abs_a = 0;
     double pressure_abs_b = 0;
-    double pressure_atm = 0;
+    double pressure_atm = ATM_PRESSURE_MBAR;
 
     uint32_t last_tick = 0;
     bool enable_vacuum = false;
@@ -100,7 +93,7 @@ struct PressureControl {
 
 // WORKING, but overshoots
 // const PressureControl pressure_control = {
-//     .pid = PID(15,                // kp
+//     .pid = PID(15,                 // kp
 //                1.0,                // ki
 //                0,                  // kd
 //                CONTROL_PERIOD_MS,  // sampletime
@@ -110,13 +103,14 @@ struct PressureControl {
 
 // working, does not overshoot
 // const PressureControl pressure_control = {
-//     .pid = PID(9.50,                // kp
-//                0.015,                // ki
-//                0.28,                  // kd
+//     .pid = PID(9.50,               // kp
+//                0.015,              // ki
+//                0.28,               // kd
 //                CONTROL_PERIOD_MS,  // sampletime
 //                MAX_RPM,            // windup_limit_high
 //                0),                 // windup_limit_low
 // };
+
 const PressureControl pressure_control = {
     .pid = PID(15.00,              // kp
                0.0388,             // ki
@@ -189,9 +183,8 @@ class PressureTask {
                 sensor.state = sensor.ok ? IDLE : SENSOR_ERROR;
             }
 
-            // TODO: TEST THIS
-            auto current_pressure = _pressure_control.pressure_abs_b;
             // Slew rate is mbar/sec
+            auto current_pressure = _pressure_control.pressure_abs_b;
             _pressure_control.slew.configure(current_pressure, 400.0f);
 
             // Close the vent
@@ -258,19 +251,20 @@ class PressureTask {
         auto dt = (timestamp - _pressure_control.last_tick) * MS_TO_SECONDS;
         _pressure_control.last_tick = timestamp;
 
-        // stop vacuum control
+        // Stop vacuum control
         if (!_pressure_control.enable_vacuum) {
             policy.start_pressure_control(false);
             set_pump_state(false, 0);
 
             _pressure_control.pid.reset();
             _pressure_control.slew.reset();
+            _pressure_control.current_pressure = 0;
             _pressure_control.target_rpm = 0;
             _pressure_control.last_tick = 0;
             return;
         }
 
-        // update latest absolute pressure
+        // Update latest absolute pressure
         for (auto sensor_id : {ABS_PRESSURE_A, ABS_PRESSURE_B}) {
             // TODO: add FIR filter for abs pressure.
             auto ret = update_pressure(sensor_id);
@@ -281,14 +275,20 @@ class PressureTask {
             }
         }
 
-        // Run Slew Limiter (Get smooth trajectory in mbar)
+        // Use EMA pressure filter. TODO: change this to FIR filter
+        auto raw_pressure = _pressure_control.pressure_abs_b;
+        auto previous_pressure = _pressure_control.current_pressure;
+        auto current_pressure = (SENSOR_ALPHA * raw_pressure) +
+                                ((1.0 - SENSOR_ALPHA) * previous_pressure);
+        _pressure_control.current_pressure = current_pressure;
+
+        // Run Slew Limiter to get smooth trajectory in mbar
         auto target_pressure = _pressure_control.target_pressure;
         auto smooth_target = _pressure_control.slew.update(target_pressure, dt);
 
-        auto current_abs = _pressure_control.pressure_abs_b;
         auto prev_target = _pressure_control.prev_target_mbar;
         auto rate_mbar_s = (prev_target - smooth_target) / dt;
-        auto error = current_abs - smooth_target;
+        auto error = current_pressure - smooth_target;
         _pressure_control.prev_target_mbar = smooth_target;
 
         // Apply Feed Forward if we are Pumping or Holding.
@@ -312,7 +312,6 @@ class PressureTask {
         }
 
         // Calculate target rpm
-        _pressure_control.current_pressure = current_abs;
         auto rpm = _pressure_control.pid.compute(error, dt);
         rpm = total_ff_rpm + rpm;
 
@@ -345,7 +344,6 @@ class PressureTask {
                        Policy& policy) -> void {
         // refresh if the pump is not running
         if (!_pressure_control.enable_vacuum) {
-            // NOTE: this updates the internal _pressure_control variables
             for (auto sensor_id :
                  {ABS_PRESSURE_A, ABS_PRESSURE_B, ATM_PRESSURE}) {
                 auto ret = update_pressure(sensor_id);
@@ -398,8 +396,6 @@ class PressureTask {
             // TODO: Maybe return specific driver error
             return MATH_SATURATION_ERROR;
         }
-
-        // TODO: Add FIR filter here
 
         // Update variables
         if (sensor_id == ABS_PRESSURE_A) {
