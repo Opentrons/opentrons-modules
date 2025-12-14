@@ -9,7 +9,7 @@
 extern "C" {
 #endif  // __cplusplus
 
-void vacuum_pressure_sensor_hardware_init(void);
+void pressure_sensor_hardware_init(void);
 bool sensor_hardware_read_eoc_pin(PressureSensorID sensor_id);
 void sensor_hardware_sensor_reset(PressureSensorID sensor_id);
 

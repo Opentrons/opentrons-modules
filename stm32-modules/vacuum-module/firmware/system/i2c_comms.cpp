@@ -14,7 +14,7 @@ using namespace i2c::hardware;
 auto I2C::sleep_ms(uint32_t ms) -> void { vTaskDelay(pdMS_TO_TICKS(ms)); }
 
 auto I2C::set_handle(HAL_I2C_HANDLE i2c_handle, I2C_BUS i2c_bus) -> void {
-    this->bus = i2c_bus;
+    bus = i2c_bus;
     i2c_register_handle(i2c_handle, i2c_bus);
 }
 
@@ -36,12 +36,12 @@ auto I2C::i2c_read(uint16_t dev_addr, uint16_t reg, uint8_t *data,
 
 auto I2C::i2c_master_write(uint16_t dev_addr, uint8_t *data, uint16_t size)
     -> RxTxReturn {
-    auto ret = hal_i2c_master_write(this->bus, dev_addr, data, size);
+    auto ret = hal_i2c_master_write(bus, dev_addr, data, size);
     return RxTxReturn(ret);
 }
 
 auto I2C::i2c_master_read(uint16_t dev_addr, uint8_t *data, uint16_t size)
     -> RxTxReturn {
-    auto ret = hal_i2c_master_read(this->bus, dev_addr, data, size);
+    auto ret = hal_i2c_master_read(bus, dev_addr, data, size);
     return RxTxReturn(ret);
 }

@@ -123,6 +123,7 @@ class MPRLL0025PA00001 {
         // The pressure counts are in big-endian (most significant byte first)
         // order, not little-endian.
         auto press_counts =
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             static_cast<double>(raw[1] << 16 | raw[2] << 8 | raw[3]);
         auto pressure_psi = (((press_counts - OUTPUT_MIN) * (PMAX - PMIN)) /
                              (OUTPUT_MAX - OUTPUT_MIN)) +

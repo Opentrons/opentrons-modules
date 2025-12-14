@@ -32,10 +32,9 @@
 #define RPM_AVG_WINDOW 6
 #define TACH_TRANSITIONS_PER_REV 30.0f
 
-#define PUMP_STOP_TIMEOUT_MS   500   // no pulses for n >= ms -> stopped
-#define PUMP_STOP_DEBOUNCE     3     // require 3 consecutive detections
-// #define PID_FILTER_ALPHA  0.04f      // Aggresive filter
-#define PID_FILTER_ALPHA  0.15f      // [NEEDS TESTING]
+#define PUMP_STOP_TIMEOUT_MS   500    // no pulses for n >= ms -> stopped
+#define PUMP_STOP_DEBOUNCE     3      // require 3 consecutive detections
+#define PID_FILTER_ALPHA       0.15f  // RPM EMA Alpha
 
 // Define the minimum ticks allowed between pulses.
 // 170MHz / 6 (prescaler 5) = 28.33MHz.
@@ -71,9 +70,9 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim17;
 
 void pump_pwm_timer_init(void) {
-	TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-	TIM_MasterConfigTypeDef sMasterConfig = {0};
-	TIM_OC_InitTypeDef sConfigOC = {0};
+    TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+    TIM_OC_InitTypeDef sConfigOC = {0};
 
     htim17.Instance = TIM17;
     htim17.Init.Prescaler = PWM_PRESCALER;
@@ -251,7 +250,6 @@ float hw_get_pump_rpm(void) {
     portEXIT_CRITICAL();
 
     if (sample_count == 0 || total_ticks == 0) return 0.0f;
-
     float numerator = (float)sample_count * (float)TACH_TIMER_FREQ * 60.0f;
     float denominator = (float)total_ticks * TACH_TRANSITIONS_PER_REV;
     float current_rpm = numerator / denominator;
@@ -281,10 +279,7 @@ void pump_hardware_init(void) {
 
 void update_pump_stopped_state(void) {
     uint32_t now = HAL_GetTick();
-
-    // Check timeout
     uint32_t elapsed = now - hardware.last_pulse_time_ms;
-
     if (elapsed >= PUMP_STOP_TIMEOUT_MS) {
         if (hardware.stopped_counter < PUMP_STOP_DEBOUNCE) {
             hardware.stopped_counter++;
@@ -339,13 +334,12 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
                  delta_ticks = ((overflows - 1) * (TACH_PERIOD + 1)) + ((TACH_PERIOD + 1 - hardware.last_ccr) + current_capture);
              } else {
                  // Fallback: If capture Wrapped but Overflow flag isn't set
-                 // assume 1 overflow occurred exactly.
                  delta_ticks = ((TACH_PERIOD + 1 - hardware.last_ccr) + current_capture);
              }
         }
 
-        // If the pulse came too fast (e.g., < 100us), it's electrical noise.
-        // Ignore this capture, but DONT update last_ccr. We effectively "wait" for the real edge.
+        // If the pulse came too fast, it's electrical noise.
+        // Ignore this capture, but DONT update last_ccr.
         if (delta_ticks < MIN_VALID_DELTA_TICKS) {
             return;
         }

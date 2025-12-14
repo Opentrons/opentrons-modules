@@ -77,9 +77,8 @@ auto main() -> int {
 
     vent_hardware_init();
     pump_hardware_init();
-    vacuum_pressure_sensor_hardware_init();
+    pressure_sensor_hardware_init();
     i2c_hardware_init(&i2c_handles);
-    vacuum_pressure_sensor_hardware_init();
 
     i2c1_comms.set_handle(i2c_handles.i2c1, I2C_BUS_1);
     i2c2_comms.set_handle(i2c_handles.i2c2, I2C_BUS_2);

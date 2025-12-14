@@ -146,6 +146,7 @@ struct GetPressureStateResponseMessage {
     double pressure_abs_a;
     double pressure_abs_b;
     double pressure_atm;
+    bool vacuum_enabled;
     bool vent_opened;
 };
 

@@ -332,7 +332,7 @@ class HostCommsTask {
                         tx_into, tx_limit, response.target_pressure,
                         response.current_pressure, response.pressure_abs_a,
                         response.pressure_abs_b, response.pressure_atm,
-                        response.vent_opened);
+                        response.vacuum_enabled, response.vent_opened);
                 }
             },
             cache_entry);
