@@ -15,12 +15,12 @@
 #include "systemwide.h"
 
 #define TIMER_CLOCK_HZ     (170000000)  // 170Mhz
-#define PWM_FREQUENCY_HZ   (25000)  // 25Khz
+#define PWM_FREQUENCY_HZ   (25000)      // 25Khz
 #define PWM_PRESCALER      (0)
 #define PWM_PERIOD         ((TIMER_CLOCK_HZ / (PWM_FREQUENCY_HZ * (PWM_PRESCALER + 1))) - 1)
 
-#define TACH_PRESCALER     (5)    // Timer ticks at ~28.33 MHzA
-#define TACH_PERIOD        (0xFFFFUL)  // 16-bit timer max
+#define TACH_PRESCALER     (5)          // Timer ticks at ~28.33 MHzA
+#define TACH_PERIOD        (0xFFFFUL)   // 16-bit timer max
 #define TACH_TIMER_FREQ     (TIMER_CLOCK_HZ / (TACH_PRESCALER + 1))
 
 #define PWM_TIMER          (TIM17)
@@ -34,7 +34,8 @@
 
 #define PUMP_STOP_TIMEOUT_MS   500   // no pulses for n >= ms -> stopped
 #define PUMP_STOP_DEBOUNCE     3     // require 3 consecutive detections
-#define PID_FILTER_ALPHA  0.04f  // Reacts fast (good for control) [WORKING]
+// #define PID_FILTER_ALPHA  0.04f      // Aggresive filter
+#define PID_FILTER_ALPHA  0.15f      // [NEEDS TESTING]
 
 // Define the minimum ticks allowed between pulses.
 // 170MHz / 6 (prescaler 5) = 28.33MHz.
@@ -43,38 +44,21 @@
 
 
 typedef struct {
-    // tachometer
-    // uint32_t last_ccr;
-    atomic_long period;
-    // bool valid_capture;
-    // _Atomic uint32_t tach_overflow_count;
-    // rolling average rpm
-    _Atomic float rpm;
-    float buffer[RPM_AVG_WINDOW];
-    uint8_t index;
-    uint8_t count;
-    float sum;
+    uint32_t last_ccr;
+    volatile uint32_t tach_overflow_count;
+    bool valid_capture;
     float rpm_filtered;
 
-    // pump stopped detection
+    // Pump stopped detection
     uint32_t last_pulse_time_ms;
     uint8_t stopped_counter;
     bool pump_stopped;
 
-    // NEW --------------------------
-    // tachometer raw capture
-    uint32_t last_ccr;
-    volatile uint32_t tach_overflow_count;
-    bool valid_capture;
-
-    // rolling average of TICKS (Time), not RPM
+    // Rolling average of ticks (Time)
     uint32_t tick_buffer[RPM_AVG_WINDOW];
-    uint32_t running_tick_sum; // Sum of the buffer
+    uint32_t running_tick_sum;
     uint8_t  buf_index;
-    uint8_t  valid_samples;    // To handle startup cleanly
-
-    uint32_t pump_start_time;
-
+    uint8_t  valid_samples;
 } tachometer_hardware_t;
 
 static tachometer_hardware_t hardware = {0};
@@ -216,12 +200,10 @@ static uint32_t clamp(uint32_t val, uint32_t min, uint32_t max) {
 }
 
 bool hw_start_pump_motor() {
-    hardware.pump_start_time = HAL_GetTick();
     return HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1) == HAL_OK;
 }
 
 bool hw_stop_pump_motor() {
-    hardware.pump_start_time = 0;
     return HAL_TIM_PWM_Stop(&htim17, TIM_CHANNEL_1) == HAL_OK;
 }
 
@@ -259,27 +241,26 @@ float hw_get_pump_rpm(void) {
     if (hardware.pump_stopped) {
         return 0.0f;
     }
-    if (hardware.valid_samples < RPM_AVG_WINDOW) {
-        // Option A: Return 0 until stable (Recommended for pump startup)
-        return 0.0f;
-    }
 
+    uint8_t sample_count;
     uint32_t total_ticks;
+
     portENTER_CRITICAL();
+    sample_count = hardware.valid_samples;
     total_ticks = hardware.running_tick_sum;
     portEXIT_CRITICAL();
 
-    if (total_ticks == 0) return 0.0f;
+    if (sample_count == 0 || total_ticks == 0) return 0.0f;
 
-    float numerator = (float)RPM_AVG_WINDOW * (float)TACH_TIMER_FREQ * 60.0f;
+    float numerator = (float)sample_count * (float)TACH_TIMER_FREQ * 60.0f;
     float denominator = (float)total_ticks * TACH_TRANSITIONS_PER_REV;
-    float current_raw_rpm = numerator / denominator;
+    float current_rpm = numerator / denominator;
 
     // Filter to Smooth out the piston compression ripple
     if (hardware.rpm_filtered == 0.0f) {
-        hardware.rpm_filtered = current_raw_rpm;
+        hardware.rpm_filtered = current_rpm;
     } else {
-        hardware.rpm_filtered = (PID_FILTER_ALPHA * current_raw_rpm) +
+        hardware.rpm_filtered = (PID_FILTER_ALPHA * current_rpm) +
                                     ((1.0f - PID_FILTER_ALPHA) * hardware.rpm_filtered);
     }
 
@@ -296,40 +277,6 @@ void pump_hardware_init(void) {
     hw_set_pump_duty_cycle(0);
     hw_start_pump_motor(false);
     hw_enable_pump_tach(false);
-}
-
-void update_rpm_filtered(float new_rpm) {
-    // Update rpm only if sensible
-    if (new_rpm <= MIN_RPM || new_rpm >= MAX_RPM) {
-        return;
-    }
-    // Subtract the oldest sample from the sum and store new sample
-    hardware.sum -= hardware.buffer[hardware.index];
-    hardware.buffer[hardware.index] = new_rpm;
-    hardware.sum += new_rpm;
-
-    // Update index (circular) and count
-    hardware.index++;
-    if (hardware.index >= RPM_AVG_WINDOW) {
-        hardware.index = 0;
-    }
-
-    if (hardware.count < RPM_AVG_WINDOW) {
-        hardware.count++;
-    }
-
-    hardware.rpm_filtered = hardware.sum / hardware.count;
-}
-
-
-float tach_ticks_to_rpm(uint32_t tick_period) {
-    if (tick_period == 0) {
-        return 0.0f;
-    }
-    float period_s = (float)tick_period / (TIMER_CLOCK_HZ / (TACH_PRESCALER + 1));
-    float fgout_freq = 1.0f / period_s;
-    float rev_per_s = fgout_freq / TACH_TRANSITIONS_PER_REV;
-    return rev_per_s * 60.0f;
 }
 
 void update_pump_stopped_state(void) {
@@ -349,9 +296,22 @@ void update_pump_stopped_state(void) {
     hardware.pump_stopped = (hardware.stopped_counter >= PUMP_STOP_DEBOUNCE);
 }
 
+static uint32_t get_total_overflows(TIM_HandleTypeDef *htim) {
+    uint32_t ovf = hardware.tach_overflow_count;
+
+    // Check if the hardware flag is set but the interrupt hasn't run yet.
+    // This happens if Capture Interrupt pre-empts Update Interrupt.
+    if (__HAL_TIM_GET_FLAG(htim, TIM_FLAG_UPDATE) != RESET) {
+        // If the captured value is low, the wrap likely happened just before capture
+        if (__HAL_TIM_GET_COMPARE(htim, TACH_CHANNEL) < 0x8000) {
+            ovf++;
+        }
+    }
+    return ovf;
+}
+
 void tach_period_overflow_callback(void) {
     hardware.tach_overflow_count += 1;
-    // TODO: maybe have cb here to inform task?
 }
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
@@ -359,53 +319,51 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
         hardware.last_pulse_time_ms = HAL_GetTick();
 
         uint32_t current_capture = HAL_TIM_ReadCapturedValue(htim, TACH_CHANNEL);
-        uint32_t overflows = hardware.tach_overflow_count;
+        uint32_t overflows = get_total_overflows(htim);
 
         if (!hardware.valid_capture) {
             hardware.last_ccr = current_capture;
             hardware.valid_capture = true;
             hardware.tach_overflow_count = 0;
+            __HAL_TIM_CLEAR_FLAG(htim, TIM_FLAG_UPDATE);
             return;
         }
 
-        // 2. Calculate Ticks since last pulse (Delta)
-        // (overflows * 65536) + (current - last)
-        // Note: Using standard math. If current < last, it handles borrowing,
-        // but we need to account for the full overflow counts.
+        // Calculate Ticks since last pulse (overflows * 65536) + (current - last)
         uint32_t delta_ticks = 0;
         if (current_capture >= hardware.last_ccr) {
              delta_ticks = (overflows * (TACH_PERIOD + 1)) + (current_capture - hardware.last_ccr);
         } else {
              // Timer wrapped within the calculation window
-             // Note: overflows should be at least 1 here if wrap occurred
-             delta_ticks = ((overflows - 1) * (TACH_PERIOD + 1)) + ((TACH_PERIOD + 1 - hardware.last_ccr) + current_capture);
+             if (overflows > 0) {
+                 delta_ticks = ((overflows - 1) * (TACH_PERIOD + 1)) + ((TACH_PERIOD + 1 - hardware.last_ccr) + current_capture);
+             } else {
+                 // Fallback: If capture Wrapped but Overflow flag isn't set
+                 // assume 1 overflow occurred exactly.
+                 delta_ticks = ((TACH_PERIOD + 1 - hardware.last_ccr) + current_capture);
+             }
         }
 
         // If the pulse came too fast (e.g., < 100us), it's electrical noise.
-        // Ignore this capture, but DONT update last_ccr.
-        // We effectively "wait" for the real edge.
+        // Ignore this capture, but DONT update last_ccr. We effectively "wait" for the real edge.
         if (delta_ticks < MIN_VALID_DELTA_TICKS) {
-            // Do not reset overflow count here, because we are continuing to count time
-            // until the next valid edge.
             return;
         }
 
-        // Reset tracking for next loop
         hardware.last_ccr = current_capture;
         hardware.tach_overflow_count = 0;
+        __HAL_TIM_CLEAR_FLAG(htim, TIM_FLAG_UPDATE);
 
-        // 3. Ring Buffer: Update Running Sum (Subtract Oldest, Add Newest)
+        // Update Running Sum
         hardware.running_tick_sum -= hardware.tick_buffer[hardware.buf_index];
         hardware.tick_buffer[hardware.buf_index] = delta_ticks;
         hardware.running_tick_sum += delta_ticks;
 
-        // 4. Advance Index
         hardware.buf_index++;
         if (hardware.buf_index >= RPM_AVG_WINDOW) {
             hardware.buf_index = 0;
         }
 
-        // 5. Startup Logic
         if (hardware.valid_samples < RPM_AVG_WINDOW) {
             hardware.valid_samples++;
         }

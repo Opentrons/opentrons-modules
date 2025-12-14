@@ -18,6 +18,7 @@
 #include "vacuum-module/errors.hpp"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/tasks.hpp"
+#include "slew_rate_limiter.hpp"
 
 namespace pressure_task {
 using lps22df::LPS222DF;
