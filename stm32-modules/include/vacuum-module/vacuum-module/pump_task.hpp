@@ -1,6 +1,4 @@
 #pragma once
-#pragma GCC push_options
-#pragma GCC optimize("O0")
 #include <cmath>
 #include <cstdint>
 
@@ -29,7 +27,7 @@ static constexpr const double PUMP_STOP_RPM_THRESH = 500;
 static constexpr const float MIN_RAMP_RATE = 1;       // rpm/s
 static constexpr const float DEFAULT_RAMP_RATE = 10;  // rpm/s
 static constexpr const float MAX_RAMP_RATE = 20;      // rpm/s
-static constexpr const int8_t MAX_PWM_JUMP = 1;       // pwm/tick
+static constexpr const int8_t MAX_PWM_JUMP = 10;      // pwm/tick
 
 struct PumpControl {
     SlewRateLimiter slew;
@@ -156,7 +154,7 @@ class PumpTask {
         auto rpm = policy.get_pump_rpm();
         // If sensor is blind, assume we are at target to prevent PID freak-out
         if (rpm < MIN_RPM || rpm >= MAX_RPM) {
-            rpm = _pump_control.target_rpm;
+            // rpm = _pump_control.target_rpm;
         }
 
         // Stop pump control
@@ -257,4 +255,3 @@ class PumpTask {
 };
 
 }  // namespace pump_task
-#pragma GCC pop_options

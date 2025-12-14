@@ -1,6 +1,5 @@
 #pragma once
 #include <algorithm>
-
 #include <cmath>
 #include <cstdint>
 #include <variant>
@@ -14,11 +13,11 @@
 #include "lps22df.hpp"
 #include "messages.hpp"
 #include "mprll0025pa00001a.hpp"
+#include "slew_rate_limiter.hpp"
 #include "systemwide.h"
 #include "vacuum-module/errors.hpp"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/tasks.hpp"
-#include "slew_rate_limiter.hpp"
 
 namespace pressure_task {
 using lps22df::LPS222DF;
@@ -119,9 +118,9 @@ struct PressureControl {
 //                0),                 // windup_limit_low
 // };
 const PressureControl pressure_control = {
-    .pid = PID(15.00,                // kp
-               0.0388,                // ki
-               0.15,                  // kd
+    .pid = PID(15.00,              // kp
+               0.0388,             // ki
+               0.15,               // kd
                CONTROL_PERIOD_MS,  // sampletime
                MAX_RPM,            // windup_limit_high
                0),                 // windup_limit_low
@@ -237,6 +236,13 @@ class PressureTask {
         }
     }
 
+    auto set_pump_state(bool run_pump, double rpm = 0.0) -> void {
+        auto msg = messages::SetPumpStateMessage{.rpm_setpoint = rpm,
+                                                 .run_pump = run_pump};
+        static_cast<void>(
+            _task_registry->send_to_address(msg, Queues::PumpAddress));
+    }
+
     template <PressureControlPolicy Policy>
     auto visit_message(const std::monostate& m, Policy& policy) -> void {
         static_cast<void>(m);
@@ -255,11 +261,7 @@ class PressureTask {
         // stop vacuum control
         if (!_pressure_control.enable_vacuum) {
             policy.start_pressure_control(false);
-
-            // Stop pump control
-            auto msg = messages::SetPumpStateMessage{.run_pump = false};
-            static_cast<void>(
-                _task_registry->send_to_address(msg, Queues::PumpAddress));
+            set_pump_state(false, 0);
 
             _pressure_control.pid.reset();
             _pressure_control.slew.reset();
@@ -282,46 +284,42 @@ class PressureTask {
         // Run Slew Limiter (Get smooth trajectory in mbar)
         auto target_pressure = _pressure_control.target_pressure;
         auto smooth_target = _pressure_control.slew.update(target_pressure, dt);
-        // auto smooth_target = _pressure_control.target_pressure;
 
-        // Calculate Velocity Feed-Forward (Movement) Rate = Change in mbar /
-        // Time (Previous - Current) because we want a positive RPM for a
-        // pressure drop
         auto current_abs = _pressure_control.pressure_abs_b;
         auto prev_target = _pressure_control.prev_target_mbar;
         auto rate_mbar_s = (prev_target - smooth_target) / dt;
-        _pressure_control.prev_target_mbar = smooth_target;
         auto error = current_abs - smooth_target;
+        _pressure_control.prev_target_mbar = smooth_target;
 
         // Apply Feed Forward if we are Pumping or Holding.
-        // If we are Relaxing (Target is rising, rate is negative), we want 0 FF.
-        // If we are Overshot (Error is very negative), we want 0 FF.
+        // If we are Relaxing (Target is rising, rate is negative), we want 0
+        // FF. If we are Overshot (Error is very negative), we want 0 FF.
+        auto total_ff_rpm = 0.f;
+        auto is_relaxing = (rate_mbar_s < 0.0);
+        auto is_overshot = (error < -2.0);
+        if (!is_relaxing && !is_overshot) {
+            // Calculate RPM needed to achieve this flow rate (Pumping)
+            auto ff_velocity = std::max(0.0, rate_mbar_s * K_VELOCITY);
 
-        // Calculate RPM needed to achieve this flow rate (Pumping)
-        auto ff_velocity = std::max(0.0, rate_mbar_s * K_VELOCITY);
-
-        // Calculate Holding Feed-Forward (Static Load)
-        // Calculate how "deep" the vacuum is as a percentage (0.0 to 1.0)
-        // 1013 mbar = 0% Vacuum, 0 mbar = 100% Vacuum
-        auto ratio = (ATM_PRESSURE_MBAR - smooth_target) / ATM_PRESSURE_MBAR;
-        ratio = std::clamp<double>(ratio, 0.0f, 1.0f);
-        auto ff_holding = ratio * K_HOLDING;
-        auto total_ff_rpm = ff_velocity + ff_holding;
+            // Calculate Holding Feed-Forward (Static Load)
+            // Calculate how "deep" the vacuum is as a percentage (0.0 to 1.0)
+            // 1013 mbar = 0% Vacuum, 0 mbar = 100% Vacuum
+            auto ratio =
+                (ATM_PRESSURE_MBAR - smooth_target) / ATM_PRESSURE_MBAR;
+            ratio = std::clamp<double>(ratio, 0.0f, 1.0f);
+            auto ff_holding = ratio * K_HOLDING;
+            total_ff_rpm = ff_velocity + ff_holding;
+        }
 
         // Calculate target rpm
         _pressure_control.current_pressure = current_abs;
         auto rpm = _pressure_control.pid.compute(error, dt);
         rpm = total_ff_rpm + rpm;
 
-        // clamp rpm to max
+        // Safety clamp
         rpm = std::clamp<double>(rpm, MIN_RPM, MAX_RPM);
         _pressure_control.target_rpm = rpm;
-
-        // Send new rpm to pump task
-        auto msg = messages::SetPumpStateMessage{.rpm_setpoint = rpm,
-                                                 .run_pump = true};
-        static_cast<void>(
-            _task_registry->send_to_address(msg, Queues::PumpAddress));
+        set_pump_state(true, rpm);
     }
 
     template <PressureControlPolicy Policy>
