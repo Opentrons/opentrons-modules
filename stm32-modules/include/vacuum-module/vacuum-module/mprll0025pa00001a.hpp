@@ -34,7 +34,7 @@ constexpr uint8_t PRESSURE_FRAME_LEN = 4;
 constexpr int FILTER_TAPS = 3;
 constexpr int FILTERED_PRESSURE_LEN = 50;
 // need to just tune these values based on testing outcomes
-constexpr std::array<float, FILTER_TAPS> FILTER_VALUES = {0.6, 0.5, 0.5};
+constexpr float FILTER_VALUES[FILTER_TAPS] = {0.6, 0.5, 0.5};
 constexpr float PSI_TO_MBAR = 68.94757;
 constexpr int DEFAULT_RETRIES = 5;
 
@@ -65,13 +65,13 @@ class MPRLL0025PA00001 {
     // and read the pressure from a callback for an eoc pin irq
     auto read_pressure() -> double {
         sensor_busy = true;
-        _policy->i2c_master_write(_device_address << 1, WRITE_BUFF.data(),
+        _policy->i2c_master_write(_device_address << 1, WRITE_BUFF,
                                   static_cast<uint16_t>(1));
         for (int i = 0; i < DEFAULT_RETRIES; i++) {
          //   _policy->sleep_ms(3);
-            _policy->i2c_master_read(_device_address << 1, READ_BUFF.data(),
+            _policy->i2c_master_read(_device_address << 1, READ_BUFF,
                                      PRESSURE_FRAME_LEN);
-            std::memcpy(sensor_output.data(), READ_BUFF.data(),
+            std::memcpy(sensor_output, READ_BUFF,
                         PRESSURE_FRAME_LEN);
             uint8_t status_byte = sensor_output[0];
             sensor_busy = static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
@@ -86,17 +86,18 @@ class MPRLL0025PA00001 {
         double pressure_mbar = convert_pressure();
         buffer_pressure_value(pressure_mbar);
         filter_pressure();
-        return pressure_mbar;
+//        return pressure_mbar;
+        return get_latest_filtered_pressure();
     }
 
   private:
-    std::array<uint8_t, PRESSURE_FRAME_LEN> READ_BUFF = {0x00};
-    std::array<uint8_t, PRESSURE_FRAME_LEN> sensor_output = {0x00};
-    std::array<uint8_t, 1> WRITE_BUFF = {0x00};
+    uint8_t READ_BUFF[PRESSURE_FRAME_LEN] = {0x00};
+    uint8_t sensor_output[PRESSURE_FRAME_LEN] = {0x00};
+    uint8_t WRITE_BUFF[1] = {0x00};
     bool sensor_busy = true;
     // both of these act as FIFO buffers
-    std::array<double, FILTER_TAPS> PRESSURE_BUFFER_MBAR = {0};
-    std::array<double, FILTERED_PRESSURE_LEN> FILTERED_PRESSURE_MBAR = {0};
+    double PRESSURE_BUFFER_MBAR[FILTER_TAPS] = {0};
+    double FILTERED_PRESSURE_MBAR[FILTERED_PRESSURE_LEN] = {0};
     int pressure_input_index = 0;
     int filtered_pressure_buffer_index = 0;
     PressureSensorID _sensor_id = PressureSensorID::ABS_PRESSURE_A;
@@ -108,7 +109,7 @@ class MPRLL0025PA00001 {
     }
 
     auto get_filtered_pressure_buffer() -> double* {
-        return FILTERED_PRESSURE_MBAR.data();
+        return FILTERED_PRESSURE_MBAR;
     }
 
     auto filter_pressure() -> void {
@@ -116,11 +117,11 @@ class MPRLL0025PA00001 {
         int current_term = pressure_input_index;
         for (int i = 0; i < FILTER_TAPS; i++) {
             current_term -= i;
-            filter_output += PRESSURE_BUFFER_MBAR.at(current_term) *
-                             FILTER_VALUES.at(current_term);
+            filter_output += PRESSURE_BUFFER_MBAR[current_term] *
+                             FILTER_VALUES[current_term];
         }
         // TODO: abstract this buffer processing into its own function
-        FILTERED_PRESSURE_MBAR.at(filtered_pressure_buffer_index) =
+        FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index] =
             filter_output;
         filtered_pressure_buffer_index++;
         if (filtered_pressure_buffer_index == FILTERED_PRESSURE_LEN) {
@@ -129,7 +130,7 @@ class MPRLL0025PA00001 {
     }
 
     auto buffer_pressure_value(double pressure_mbar) -> void {
-        PRESSURE_BUFFER_MBAR.at(pressure_input_index) = pressure_mbar;
+        PRESSURE_BUFFER_MBAR[pressure_input_index] = pressure_mbar;
         pressure_input_index++;
         if (pressure_input_index == FILTER_TAPS) {
             pressure_input_index = 0;
@@ -138,8 +139,8 @@ class MPRLL0025PA00001 {
 
     auto convert_pressure() -> double {
         auto pressure_read_counts =
-            static_cast<double>(sensor_output.at(3) | sensor_output.at(2) << 8 |
-                                sensor_output.at(1) << 16);
+            static_cast<double>(sensor_output[3] | sensor_output[2] << 8 |
+                                sensor_output[1] << 16);
         double pressure_psi =
             ((pressure_read_counts - OUTPUT_MIN) * PRESSURE_RANGE_PSI) /
             (OUTPUT_MAX - OUTPUT_MIN);
