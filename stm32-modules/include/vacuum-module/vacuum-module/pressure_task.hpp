@@ -203,9 +203,8 @@ class PressureTask {
             }
 
             // Slew rate is mbar/sec
-            auto current_pressure =
-                static_cast<float>(_pressure_control.pressure_abs_b);
-            _pressure_control.slew.configure(current_pressure,
+            auto current_pressure = _pressure_control.pressure_abs_b;
+            _pressure_control.slew.configure(static_cast<float>(current_pressure),
                                              DEFAULT_RAMP_RATE);
 
             // Close the vent
