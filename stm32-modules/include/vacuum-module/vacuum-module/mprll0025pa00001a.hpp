@@ -41,7 +41,7 @@ constexpr uint8_t PRESSURE_FRAME_LEN = 10;
 constexpr int UNFILTERED_PRESSURE_BUFFER_LEN = 5;
 constexpr int FILTER_LEN = 3;
 constexpr int FILTERED_PRESSURE_BUFFER_LEN = 20;
-constexpr double FILTER[3] = {1, 1, 1};
+constexpr double FILTER[3] = {0.6, 0.2, 0.2};
 
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
@@ -140,10 +140,8 @@ class MPRLL0025PA00001 {
     auto filter_pressure() -> void {
         double filter_output = 0;
         for (int i = 0; i < FILTER_LEN; i++) {
-            for (int j = 0; j < FILTER_LEN; j++) {
-                int current_term = (unfiltered_pressure_buffer_index + i + j) % UNFILTERED_PRESSURE_BUFFER_LEN;
-                filter_output += UNFILTERED_PRESSURE_BUFFER_MBAR[current_term] * FILTER[j];
-            }
+            int current_term = (unfiltered_pressure_buffer_index + i) % UNFILTERED_PRESSURE_BUFFER_LEN;
+            filter_output += UNFILTERED_PRESSURE_BUFFER_MBAR[current_term] * FILTER[i];
         }
         // TODO: abstract this buffer processing into its own function
         FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index] = filter_output;
