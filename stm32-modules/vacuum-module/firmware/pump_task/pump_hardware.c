@@ -180,6 +180,24 @@ void pump_tach_gpio_init() {
     HAL_GPIO_Init(PUMP_TACH_GPIO_Port, &GPIO_InitStruct);
 }
 
+void pump_gpio_init() {
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOD_CLK_ENABLE();
+
+    /*Configure Output GPIO pins : PC15*/
+    GPIO_InitStruct.Pin = PUMP_HALL_EN_GPIO_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(PUMP_HALL_EN_GPIO_Port, &GPIO_InitStruct);
+
+    // PD2
+    GPIO_InitStruct.Pin = PUMP_MOTOR_EN_GPIO_Pin;
+    HAL_GPIO_Init(PUMP_MOTOR_EN_GPIO_Port, &GPIO_InitStruct);
+}
+
 void reset_rpm_filtered() {
     // Safely clear the hardware struct
     portENTER_CRITICAL();
@@ -199,10 +217,14 @@ static uint32_t clamp(uint32_t val, uint32_t min, uint32_t max) {
 }
 
 bool hw_start_pump_motor() {
+    HAL_GPIO_WritePin(PUMP_HALL_EN_GPIO_Port, PUMP_HALL_EN_GPIO_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(PUMP_MOTOR_EN_GPIO_Port, PUMP_MOTOR_EN_GPIO_Pin, GPIO_PIN_SET);
     return HAL_TIM_PWM_Start(&htim17, TIM_CHANNEL_1) == HAL_OK;
 }
 
 bool hw_stop_pump_motor() {
+    HAL_GPIO_WritePin(PUMP_HALL_EN_GPIO_Port, PUMP_HALL_EN_GPIO_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(PUMP_MOTOR_EN_GPIO_Port, PUMP_MOTOR_EN_GPIO_Pin, GPIO_PIN_RESET);
     return HAL_TIM_PWM_Stop(&htim17, TIM_CHANNEL_1) == HAL_OK;
 }
 
@@ -266,6 +288,7 @@ float hw_get_pump_rpm(void) {
 }
 
 void pump_hardware_init(void) {
+    pump_gpio_init();
     pump_tach_gpio_init();
     pump_pwm_gpio_init();
     pump_tach_timer_init();

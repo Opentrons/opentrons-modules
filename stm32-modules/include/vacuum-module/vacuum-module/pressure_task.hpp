@@ -32,7 +32,7 @@ static constexpr const uint32_t CONTROL_PERIOD_HZ = 25;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0F / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
-static constexpr const double ATM_PRESSURE_MBAR = 1013.0;
+static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
 static constexpr const double DEFAULT_RAMP_RATE = 400.0F;
 static constexpr const double SENSOR_ALPHA = 0.2F;  // Pressure Sensor EMA Alpha
 // Velocity Gain:
@@ -220,7 +220,7 @@ class PressureTask {
             // Reset the sensor if there is some problem
             if (ret != NO_ERROR) {
                 policy.sensor_reset(sensor_id);
-                return;
+                continue;
             }
         }
 

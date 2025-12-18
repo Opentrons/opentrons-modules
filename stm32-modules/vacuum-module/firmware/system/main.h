@@ -96,6 +96,14 @@ void Error_Handler(void);
 #define PUMP_PWM_GPIO_Port GPIOA
 #define PUMP_TACH_GPIO_Pin GPIO_PIN_1
 #define PUMP_TACH_GPIO_Port GPIOB
+#define PUMP_HALL_EN_GPIO_Pin GPIO_PIN_15
+#define PUMP_HALL_EN_GPIO_Port GPIOC
+#define PUMP_MOTOR_EN_GPIO_Pin GPIO_PIN_2
+#define PUMP_MOTOR_EN_GPIO_Port GPIOD
+#define PUMP_NTC_GPIO_Pin GPIO_PIN_1
+#define PUMP_NTC_GPIO_Port GPIOF
+#define PUMP_NFault_GPIO_Pin GPIO_PIN_14
+#define PUMP_NFault_GPIO_Port GPIOC
 
 #ifdef __cplusplus
 }
