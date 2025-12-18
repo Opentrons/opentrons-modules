@@ -38,9 +38,10 @@ constexpr double PMAX = 25;
 constexpr double PMIN = 0;
 constexpr double PSI2MBAR = 68.9475729318;
 constexpr uint8_t PRESSURE_FRAME_LEN = 10;
-constexpr int UNFILTERED_PRESSURE_VALUES_LEN = 3;
-constexpr int FILTERED_PRESSURE_VALUES_LEN = 20;
-constexpr double FILTER[3] = {0.75, 0.5, 0.5};
+constexpr int UNFILTERED_PRESSURE_BUFFER_LEN = 5;
+constexpr int FILTER_LEN = 3;
+constexpr int FILTERED_PRESSURE_BUFFER_LEN = 20;
+constexpr double FILTER[3] = {1, 1, 1};
 
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
@@ -95,7 +96,10 @@ class MPRLL0025PA00001 {
                 static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
             if (!sensor_busy) {
                 pressure_mbar = parse_pressure(RD_BUFF.data());
-                return pressure_mbar;
+                // return pressure_mbar;
+                buffer_pressure_value(pressure_mbar);
+                filter_pressure();
+                return FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index-1];
             }
         }
 
@@ -135,16 +139,16 @@ class MPRLL0025PA00001 {
 
     auto filter_pressure() -> void {
         double filter_output = 0;
-        int current_term = unfiltered_pressure_buffer_index;
-        for (int i = 0; i < FILTERED_PRESSURE_VALUES_LEN; i++) {
-            current_term -= i;
-            filter_output += UNFILTERED_PRESSURE_BUFFER_MBAR[current_term] *
-                             FILTER[current_term];
+        for (int i = 0; i < FILTER_LEN; i++) {
+            for (int j = 0; j < FILTER_LEN; j++) {
+                int current_term = (unfiltered_pressure_buffer_index + i + j) % UNFILTERED_PRESSURE_BUFFER_LEN;
+                filter_output += UNFILTERED_PRESSURE_BUFFER_MBAR[current_term] * FILTER[j];
+            }
         }
         // TODO: abstract this buffer processing into its own function
         FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index] = filter_output;
         filtered_pressure_buffer_index++;
-        if (filtered_pressure_buffer_index == FILTERED_PRESSURE_VALUES_LEN) {
+        if (filtered_pressure_buffer_index == FILTERED_PRESSURE_BUFFER_LEN) {
             filtered_pressure_buffer_index = 0;
         }
     }
@@ -154,7 +158,7 @@ class MPRLL0025PA00001 {
             input_pressure_mbar;
         unfiltered_pressure_buffer_index++;
         if (unfiltered_pressure_buffer_index ==
-            UNFILTERED_PRESSURE_VALUES_LEN) {
+            UNFILTERED_PRESSURE_BUFFER_LEN) {
             unfiltered_pressure_buffer_index = 0;
         }
     }
@@ -165,8 +169,8 @@ class MPRLL0025PA00001 {
     PressureSensorID _sensor_id{};
     uint8_t device_address{};
 
-    double FILTERED_PRESSURE_MBAR[FILTERED_PRESSURE_VALUES_LEN] = {0};
-    double UNFILTERED_PRESSURE_BUFFER_MBAR[FILTERED_PRESSURE_VALUES_LEN] = {0};
+    double FILTERED_PRESSURE_MBAR[FILTERED_PRESSURE_BUFFER_LEN] = {0};
+    double UNFILTERED_PRESSURE_BUFFER_MBAR[FILTERED_PRESSURE_BUFFER_LEN] = {0};
     int filtered_pressure_buffer_index = 0;
     int unfiltered_pressure_buffer_index = 0;
     double pressure_mbar = {0};
