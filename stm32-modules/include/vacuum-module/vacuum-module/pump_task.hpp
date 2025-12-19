@@ -20,7 +20,7 @@ namespace pump_task {
 static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0F / CONTROL_PERIOD_HZ * 1000);
-static constexpr const uint32_t RPM_SAMPLE_TIME_S = CONTROL_PERIOD_MS / 1000.0F;
+static constexpr const double RPM_SAMPLE_TIME_S = CONTROL_PERIOD_MS / 1000.0F;
 static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double K_FF = MAX_PWM / MAX_RPM;
 static constexpr const double PUMP_STOP_RPM_THRESH = 500;

@@ -8,7 +8,9 @@
 #include "firmware/i2c_comms.hpp"
 #include "firmware/pressure_policy.hpp"
 #include "portmacro.h"
+#include "projdefs.h"
 #include "task.h"
+#include "timers.h"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/pressure_task.hpp"
 

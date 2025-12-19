@@ -10,7 +10,7 @@
 #include "core/version.hpp"
 #include "firmware/pressure_policy.hpp"
 #include "hal/message_queue.hpp"
-#include "lps22df.hpp"
+#include "lps22hb.hpp"
 #include "messages.hpp"
 #include "mprll0025pa00001a.hpp"
 #include "slew_rate_limiter.hpp"
@@ -20,7 +20,7 @@
 #include "vacuum-module/tasks.hpp"
 
 namespace pressure_task {
-using lps22df::LPS222DF;
+using lps22hb::LPS22HB;
 using vacuum_pressure_sensor::MPRLL0025PA00001;
 
 constexpr uint8_t ABS_PRESSURE_A_ADDR = 0x18;  // Closest to Manifold
@@ -45,7 +45,7 @@ static constexpr const float K_HOLDING = 43.0F;
 static constexpr const double OVERSHOOT_ERROR = -2.0F;
 
 using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
-using LPSDriverType = LPS222DF<i2c::hardware::I2C>;
+using LPSDriverType = LPS22HB<i2c::hardware::I2C>;
 using Driver = std::variant<MPRDriverType, LPSDriverType>;
 
 struct PressureSensor {
@@ -67,7 +67,7 @@ const PressureSensor abs_pressure_b = {
 
 const PressureSensor atm_pressure = {
     .kind = ATM_PRESSURE,
-    .driver = LPS222DF<i2c::hardware::I2C>(ATM_PRESSURE_ADDR),
+    .driver = LPS22HB<i2c::hardware::I2C>(ATM_PRESSURE_ADDR),
 };
 
 struct PressureControl {
@@ -85,7 +85,7 @@ struct PressureControl {
 
     double pressure_abs_a = 0;
     double pressure_abs_b = 0;
-    double pressure_atm = ATM_PRESSURE_MBAR;
+    double pressure_atm = 0;
 
     uint32_t last_tick = 0;
     bool enable_vacuum = false;
@@ -164,7 +164,8 @@ class PressureTask {
             }
 
             // Slew rate is mbar/sec
-            auto current_pressure = _pressure_control.pressure_abs_b;
+            auto current_pressure =
+                static_cast<float>(_pressure_control.pressure_abs_b);
             _pressure_control.slew.configure(current_pressure,
                                              DEFAULT_RAMP_RATE);
 

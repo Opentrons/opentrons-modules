@@ -7,7 +7,9 @@
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/pump_policy.hpp"
 #include "portmacro.h"
+#include "projdefs.h"
 #include "task.h"
+#include "timers.h"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/pump_task.hpp"
 

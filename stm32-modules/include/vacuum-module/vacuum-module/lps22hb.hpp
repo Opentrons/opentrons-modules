@@ -3,11 +3,11 @@
 #include <array>
 #include <cstdint>
 
-namespace lps22df {
+namespace lps22hb {
 using i2c::hardware::RxTxReturn;
 
 template <typename P>
-concept LPS22DFPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
+concept LPS22HBPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
                                  uint16_t size, uint8_t* data) {
     { p.i2c_read(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
     { p.i2c_write(dev_addr, reg, data, size) } -> std::same_as<RxTxReturn>;
@@ -20,8 +20,8 @@ constexpr uint8_t DEVICE_ADDRESS = 0x5D;
 constexpr uint8_t CTRL_REG2 = 0x11;
 // pressure reading is 4 bytes, starting with status at 0x27
 constexpr uint8_t PRESSURE_OUTPUT_REGISTER = 0x27;
-// write bit 1 to CTRL REG 2 to read pressure once
-constexpr uint8_t ONE_SHOT_PRESSURE_READ = 0x01;
+// write 0x11 to CTRL REG 2 to read pressure once
+constexpr uint8_t ONE_SHOT_PRESSURE_READ = 0x11;
 // pressure in hectoPascals is the 3 byte output value divided by the
 // sensitivity
 constexpr uint16_t SENSOR_SENSITIVITY = 4096;
@@ -35,10 +35,10 @@ constexpr uint8_t DEFAULT_RETRIES = 3;
 constexpr uint32_t DEFAULT_SLEEP_MS = 10;
 
 template <typename Policy>
-requires LPS22DFPolicy<Policy>
-class LPS222DF {
+requires LPS22HBPolicy<Policy>
+class LPS22HB {
   public:
-    LPS222DF(uint8_t dev_address = DEVICE_ADDRESS)
+    LPS22HB(uint8_t dev_address = DEVICE_ADDRESS)
         : device_address{dev_address} {}
 
     auto initialize(Policy* policy, PressureSensorID sensor_id) -> bool {
@@ -127,4 +127,4 @@ class LPS222DF {
     double pressure_hpa = {0};
 };
 
-}  // namespace lps22df
+}  // namespace lps22hb
