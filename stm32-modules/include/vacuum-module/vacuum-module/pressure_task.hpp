@@ -274,15 +274,18 @@ class PressureTask {
     template <PressureControlPolicy Policy>
     auto visit_message(const messages::SetPressureStateMessage& m,
                        Policy& policy) -> void {
-        // TODO: Validate incoming values
-        _pressure_control.target_pressure = m.pressure_setpoint;
+        // Convert target guage presure to abs pressure
+        update_pressure(ATM_PRESSURE);
+        auto guage_pressure =
+            std::clamp<double>(m.pressure_setpoint, ATM_PRESSURE_MBAR * -1, 0);
+        auto target_pressure = guage_pressure + _pressure_control.pressure_atm;
+        _pressure_control.target_pressure = target_pressure;
         _pressure_control.ramp_rate = m.ramp_rate;
         _pressure_control.duration_s = m.duration_s;
         _pressure_control.vent_after = m.vent_after;
 
         // Start the pressure control loop
         if (!_pressure_control.enable_vacuum && m.start_pump) {
-            update_pressure(ATM_PRESSURE);
             policy.start_pressure_control(true);
         }
         _pressure_control.enable_vacuum = m.start_pump;
@@ -305,10 +308,15 @@ class PressureTask {
             }
         }
 
+        // Convert to guage pressure
+        auto target_pressure =
+            _pressure_control.target_pressure - _pressure_control.pressure_atm;
+        auto current_pressure =
+            _pressure_control.current_pressure - _pressure_control.pressure_atm;
         auto msg = messages::GetPressureStateResponseMessage{
             .responding_to_id = m.id,
-            .target_pressure = _pressure_control.target_pressure,
-            .current_pressure = _pressure_control.current_pressure,
+            .target_pressure = target_pressure,
+            .current_pressure = current_pressure,
             .pressure_abs_a = _pressure_control.pressure_abs_a,
             .pressure_abs_b = _pressure_control.pressure_abs_b,
             .pressure_atm = _pressure_control.pressure_atm,
@@ -324,7 +332,7 @@ class PressureTask {
         -> void {
         // open/close the vent
         policy.set_vent_state(m.vent);
-        auto vent_state = !policy.get_vent_state();
+        auto vent_state = policy.get_vent_state();
         _pressure_control.vent_opened = vent_state;
         auto ret =
             vent_state == m.vent ? Error::NO_ERROR : Error::VENT_FAILED_ERROR;
