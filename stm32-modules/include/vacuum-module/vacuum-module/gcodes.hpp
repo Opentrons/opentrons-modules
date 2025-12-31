@@ -408,10 +408,8 @@ struct SetPumpState {
      * M122- SetPumpState set state of pump control (start pump, target rpm,
      * on/off)
      * */
-    // TODO: Make these optionals so we keep the current state
     double target_rpm = 0;
     uint8_t duty_cycle = 0;
-    //
     bool start_pump = false;
 
     using ParseResult = std::optional<SetPumpState>;
