@@ -49,6 +49,7 @@ class LPS22HB {
 
             // check device status
             ok = _policy->is_device_ready(device_address << 1);
+            ok = read_pressure() > 0;
         }
 
         return ok;

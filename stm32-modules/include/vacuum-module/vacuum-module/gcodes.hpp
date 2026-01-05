@@ -310,9 +310,9 @@ struct SetPressureState {
     static constexpr const char* response = "M120 OK\n";
 
     using StartArg = Arg<uint8_t, 'S'>;
-    using PressureArg = Arg<uint16_t, 'P'>;
+    using PressureArg = Arg<float, 'P'>;
     using DurationArg = Arg<uint32_t, 'D'>;
-    using RampArg = Arg<uint16_t, 'R'>;
+    using RampArg = Arg<float, 'R'>;
     using VentArg = Arg<uint8_t, 'V'>;
 
     template <typename InputIt, typename Limit>
