@@ -117,14 +117,6 @@ class PumpTask {
         }
     }
 
-    auto send_debug_message(const char* message) -> void {
-        if (_task_registry) {
-            auto msg = messages::DebugMessage{.message = message};
-            static_cast<void>(
-                _task_registry->send_to_address(msg, Queues::HostCommsAddress));
-        }
-    }
-
     auto send_ack_message(uint32_t response_id, Error error = Error::NO_ERROR)
         -> void {
         if (_task_registry) {

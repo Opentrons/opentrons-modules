@@ -52,7 +52,8 @@ struct ErrorMessage {
 };
 
 struct DebugMessage {
-    const char* message;
+    static constexpr std::size_t MAX_LENGTH = DEBUG_MESSAGE_LENGTH;
+    std::optional<std::array<char, MAX_LENGTH>> message = std::nullopt;
 };
 
 struct AcknowledgePrevious {

@@ -408,14 +408,6 @@ class PressureTask {
         }
     }
 
-    auto send_debug_message(const char* message) -> void {
-        if (_task_registry) {
-            auto msg = messages::DebugMessage{.message = message};
-            static_cast<void>(
-                _task_registry->send_to_address(msg, Queues::HostCommsAddress));
-        }
-    }
-
     Queue& _message_queue;
     Aggregator* _task_registry;
     PressurePolicy* _policy;
