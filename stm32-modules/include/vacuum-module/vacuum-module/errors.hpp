@@ -1,8 +1,12 @@
 #pragma once
+#include <array>
 #include <charconv>
 #include <cstdint>
+#include <optional>
 
 #include "core/utility.hpp"
+
+constexpr uint8_t DEBUG_MAX_MESSAGE_LENGTH = 100;
 
 namespace errors {
 
@@ -41,8 +45,10 @@ constexpr auto write_into(Input start, Limit end, ErrorCode code) -> Input {
 
 template <typename Input, typename Limit>
 requires std::forward_iterator<Input> && std::sized_sentinel_for<Limit, Input>
-constexpr auto write_into_async(Input start, Limit end, ErrorCode code, std::optional<std::array<char, 100>> message = std::nullopt)
-    -> Input {
+constexpr auto write_into_async(
+    Input start, Limit end, ErrorCode code,
+    std::optional<std::array<char, DEBUG_MAX_MESSAGE_LENGTH>> message =
+        std::nullopt) -> Input {
     constexpr const char* prefix = "async ";
     auto next = write_string_to_iterpair(start, end, prefix);
 

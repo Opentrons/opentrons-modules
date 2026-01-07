@@ -1,3 +1,42 @@
+/**
+ * The Pressure Task is responsible for regulating pressure, it is the main
+ * control loop which at a high-level, reads the pressure sensors, and sends
+ * messages to the PumpTask to tell the motor what rpm is needed to maintain the
+ * target pressure.
+ *
+ * 1. The entrypoint message is the `SetPressureStateMessage` which tells this
+ * task the desired target pressure to maintain. In this message we start the
+ * pressure control loop by calling the `policy.start_pressure_control` function
+ * which starts a second FreeRTOS task that emits a `PressureControlMessage`
+ * every `CONTROL_PERIOD_MS`.
+ * 2. In the `PressureControlMessage`, we read the absolute pressure sensors
+ *  from the motor (A) and manifold (B).
+ * 3. We pass the abs readings through an EMA filter to smooth out the values
+ * 4. The Slew Rate Limiter creates a smooth ramp to the target_pressure.
+ * 5. We then calculate the error by subtracting the smooth target pressure
+ *  from the current pressure which is fed to a PID that outputs base rpm.
+ * 6. For the total rpm we use this base rpm and add on feed-forward velocity +
+ * holding.
+ * 7. A `SetPumpState` message is sent to the PumpTask with the new target RPM
+ *  and the cycle is repeated on the next `PressureControlMessage` tick.
+ *
+ * Feed-Forward (FF) Math:
+ * - Velocity FF: rpm = (mbar/sec_rate) * K_VELOCITY
+ * Compensates for the dynamic load of changing pressure; provides the 'push'
+ * to follow the ramp.
+ * - Holding FF: rpm = [(P_atm - P_target) / P_atm] * K_HOLDING
+ * Compensates for static atmospheric load. As vacuum deepens (ratio 0.0
+ * -> 1.0), base RPM increases to counteract leaks and back-pressure. Safety: FF
+ * is disabled during overshoot (error < -2.0mbar) or target relaxation to
+ * prevent the pump from fighting the natural pressure rise.
+ *
+ * Stopping Pressure Control:
+ * The pressure control is stopped when the `_pressure_control.enable_pump`
+ * is false. We stop the `PressureControlMessage` emitter task, send a stop
+ * `SetPumpMessage` message to the PumpTask, then reset all relevant internal
+ *  _pressure_control variables.
+ */
+
 #pragma once
 #include <algorithm>
 #include <cmath>
@@ -312,10 +351,10 @@ class PressureTask {
         auto target_pressure = 0.0F;
         auto current_pressure = 0.0F;
         if (_pressure_control.target_pressure > 0) {
-            target_pressure =
-                _pressure_control.target_pressure - _pressure_control.pressure_atm;
-            current_pressure =
-                _pressure_control.current_pressure - _pressure_control.pressure_atm;
+            target_pressure = _pressure_control.target_pressure -
+                              _pressure_control.pressure_atm;
+            current_pressure = _pressure_control.current_pressure -
+                               _pressure_control.pressure_atm;
         }
         auto msg = messages::GetPressureStateResponseMessage{
             .responding_to_id = m.id,
