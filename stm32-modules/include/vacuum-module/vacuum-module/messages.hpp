@@ -51,6 +51,11 @@ struct ErrorMessage {
     errors::ErrorCode code;
 };
 
+struct DebugMessage {
+    static constexpr std::size_t MAX_LENGTH = DEBUG_MESSAGE_LENGTH;
+    std::optional<std::array<char, MAX_LENGTH>> message = std::nullopt;
+};
+
 struct AcknowledgePrevious {
     uint32_t responding_to_id{};
     errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
@@ -110,10 +115,68 @@ struct SetStatusBarStateMessage {
     std::optional<float> power = std::nullopt;
 };
 
+// For internal driving
+struct PressureControlMessage {};
+struct PumpControlMessage {};
+
+struct SetPressureStateMessage {
+    uint32_t id = 0;
+    double pressure_setpoint = 0;
+    uint32_t duration_s = 0;
+    double ramp_rate = 0;
+    bool start_pump = false;
+    bool vent_after = false;
+};
+
+struct SetPumpStateMessage {
+    uint32_t id = 0;
+    bool from_host = false;
+    double rpm_setpoint = 0;
+    uint8_t duty_cycle = 0;
+    bool run_pump = false;
+};
+
+struct GetPressureStateMessage {
+    uint32_t id = 0;
+};
+
+struct GetPressureStateResponseMessage {
+    uint32_t responding_to_id;
+    double target_pressure;
+    double current_pressure;
+    double pressure_abs_a;
+    double pressure_abs_b;
+    double pressure_atm;
+    bool vacuum_enabled;
+    bool vent_opened;
+};
+
+struct GetPumpStateMessage {
+    uint32_t id = 0;
+};
+
+struct GetPumpStateResponseMessage {
+    uint32_t responding_to_id;
+    double target_rpm;
+    double current_rpm;
+    uint8_t target_pwm;
+    uint8_t current_pwm;
+    bool pump_running;
+    bool manual_control;
+};
+
+struct SetVentMessage {
+    uint32_t id = 0;
+    bool from_host = false;
+    bool vent = false;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
-                   ErrorMessage, AcknowledgePrevious, GetSystemInfoResponse,
-                   GetResetReasonResponse>;
+                   ErrorMessage, DebugMessage, AcknowledgePrevious,
+                   GetSystemInfoResponse, GetResetReasonResponse,
+                   GetPressureStateResponseMessage,
+                   GetPumpStateResponseMessage>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -121,5 +184,12 @@ using SystemMessage =
                    GetResetReasonMessage>;
 
 using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
+
+using PressureMessage = ::std::variant<std::monostate, PressureControlMessage,
+                                       SetPressureStateMessage,
+                                       GetPressureStateMessage, SetVentMessage>;
+
+using PumpMessage = ::std::variant<std::monostate, PumpControlMessage,
+                                   SetPumpStateMessage, GetPumpStateMessage>;
 
 };  // namespace messages

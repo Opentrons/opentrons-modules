@@ -2,15 +2,24 @@
 
 #include <cstdint>
 
+#include "FreeRTOS.h"
 #include "firmware/hardware_iface.hpp"
 #include "firmware/i2c_hardware.h"
+#include "projdefs.h"
 #include "systemwide.h"
+#include "task.h"
 
 using namespace i2c::hardware;
 
+auto I2C::sleep_ms(uint32_t ms) -> void { vTaskDelay(pdMS_TO_TICKS(ms)); }
+
 auto I2C::set_handle(HAL_I2C_HANDLE i2c_handle, I2C_BUS i2c_bus) -> void {
-    this->bus = i2c_bus;
+    bus = i2c_bus;
     i2c_register_handle(i2c_handle, i2c_bus);
+}
+
+auto I2C::is_device_ready(uint16_t dev_addr) -> bool {
+    return hal_is_device_ready(bus, dev_addr);
 }
 
 auto I2C::i2c_write(uint16_t dev_addr, uint16_t reg, uint8_t *data,

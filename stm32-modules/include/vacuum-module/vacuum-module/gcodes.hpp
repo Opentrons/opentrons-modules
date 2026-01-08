@@ -293,4 +293,246 @@ struct SetStatusBarState {
         return write_string_to_iterpair(buf, limit, response);
     }
 };
+
+struct SetPressureState {
+    /*
+     * M120- SetPressureState set state of pressure control (target pressure,
+     * current pressure)
+     * */
+    double pressure = 0;
+    uint32_t duration_s = 0;
+    double ramp_rate = 0;
+    bool vent_after = false;
+    bool start_pump = false;
+
+    using ParseResult = std::optional<SetPressureState>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '0', ' '};
+    static constexpr const char* response = "M120 OK\n";
+
+    using StartArg = Arg<uint8_t, 'S'>;
+    using PressureArg = Arg<float, 'P'>;
+    using DurationArg = Arg<uint32_t, 'D'>;
+    using RampArg = Arg<float, 'R'>;
+    using VentArg = Arg<uint8_t, 'V'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res =
+            gcode::SingleParser<StartArg, PressureArg, DurationArg, RampArg,
+                                VentArg>::parse_gcode(input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = SetPressureState{.pressure = 0.0,
+                                    .duration_s = 0,
+                                    .ramp_rate = 0.0,
+                                    .vent_after = false,
+                                    .start_pump = false};
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.start_pump = static_cast<bool>(std::get<0>(arguments).value);
+        }
+        if (std::get<1>(arguments).present) {
+            ret.pressure = static_cast<double>(std::get<1>(arguments).value);
+        }
+        if (std::get<2>(arguments).present) {
+            ret.duration_s =
+                static_cast<uint32_t>(std::get<2>(arguments).value);
+        }
+        if (std::get<3>(arguments).present) {
+            ret.ramp_rate = static_cast<double>(std::get<3>(arguments).value);
+        }
+        if (std::get<4>(arguments).present) {
+            ret.vent_after = static_cast<bool>(std::get<4>(arguments).value);
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct GetPressureState {
+    /*
+     * M121- GetPressureState get state of pressure control (target pressure,
+     * current pressure)
+     * */
+    using ParseResult = std::optional<GetPressureState>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '1'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(
+        InputIt buf, InLimit limit, double target_pressure,
+        double current_pressure, double pressure_abs_a, double pressure_abs_b,
+        double pressure_atm, bool vacuum_enabled, bool vent_opened) -> InputIt {
+        int res = 0;
+        res =
+            snprintf(&*buf, (limit - buf),
+                     "M121 T:%.1f C:%.1f A:%.1f B:%.1f H:%.1f E:%d V:%d OK\n",
+                     target_pressure, current_pressure, pressure_abs_a,
+                     pressure_abs_b, pressure_atm, vacuum_enabled, vent_opened);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetPressureState()), working);
+    }
+};
+
+struct SetPumpState {
+    /*
+     * M122- SetPumpState set state of pump control (start pump, target rpm,
+     * on/off)
+     * */
+    double target_rpm = 0;
+    uint8_t duty_cycle = 0;
+    bool start_pump = false;
+
+    using ParseResult = std::optional<SetPumpState>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '2', ' '};
+    static constexpr const char* response = "M122 OK\n";
+
+    using StartArg = Arg<uint8_t, 'S'>;
+    using RPMArg = Arg<uint16_t, 'R'>;
+    using DutyArg = Arg<uint8_t, 'D'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<StartArg, RPMArg, DutyArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret =
+            SetPumpState{.target_rpm = 0, .duty_cycle = 0, .start_pump = false};
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.start_pump = static_cast<bool>(std::get<0>(arguments).value);
+        }
+        if (std::get<1>(arguments).present) {
+            ret.target_rpm = static_cast<double>(std::get<1>(arguments).value);
+        }
+        if (std::get<2>(arguments).present) {
+            ret.duty_cycle = static_cast<uint8_t>(std::get<2>(arguments).value);
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct GetPumpState {
+    /*
+     * M123- GetPumpState state of the pump (target rpm, current rpm, etc)
+     * */
+    using ParseResult = std::optional<GetPumpState>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '3'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double target_rpm, double current_rpm,
+                                    uint8_t target_pwm, uint8_t current_pwm,
+                                    bool pump_running, bool manual_control)
+        -> InputIt {
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf),
+                       "M123 T:%.1f R:%.1f A:%d D:%d E:%d M:%d OK\n",
+                       target_rpm, current_rpm, target_pwm, current_pwm,
+                       pump_running, manual_control);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetPumpState()), working);
+    }
+};
+
+struct SetVentState {
+    /*
+     * M124- SetVentState set state of vent (on/off)
+     * */
+    bool vent = false;
+
+    using ParseResult = std::optional<SetVentState>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '4', ' '};
+    static constexpr const char* response = "M124 OK\n";
+
+    using VentArg = Arg<uint8_t, 'V'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res =
+            gcode::SingleParser<VentArg>::parse_gcode(input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = SetVentState{.vent = false};
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.vent = static_cast<bool>(std::get<0>(arguments).value);
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
 }  // namespace gcode

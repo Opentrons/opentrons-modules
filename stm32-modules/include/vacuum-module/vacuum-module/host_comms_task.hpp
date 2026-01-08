@@ -9,6 +9,7 @@
 #include "core/gcode_parser.hpp"
 #include "core/version.hpp"
 #include "errors.hpp"
+#include "gcodes.hpp"
 #include "hal/message_queue.hpp"
 #include "messages.hpp"
 #include "vacuum-module/errors.hpp"
@@ -39,13 +40,18 @@ class HostCommsTask {
     using GCodeParser =
         gcode::GroupParser<gcode::EnterBootloader, gcode::SetSerialNumber,
                            gcode::GetSystemInfo, gcode::GetResetReason,
-                           gcode::SetStatusBarState>;
+                           gcode::SetStatusBarState, gcode::GetPumpState,
+                           gcode::GetPressureState, gcode::SetPressureState,
+                           gcode::SetPumpState, gcode::SetVentState>;
 
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
-                 gcode::SetStatusBarState>;
+                 gcode::SetStatusBarState, gcode::SetPressureState,
+                 gcode::SetPumpState, gcode::SetVentState>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetResetReasonCache = AckCache<8, gcode::GetResetReason>;
+    using GetPumpStateCache = AckCache<8, gcode::GetPumpState>;
+    using GetPressureStateCache = AckCache<8, gcode::GetPressureState>;
 
   public:
     static constexpr size_t TICKS_TO_WAIT_ON_SEND = 10;
@@ -195,6 +201,15 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::DebugMessage& msg, InputIt tx_into,
+                       InputLimit tx_limit) -> InputIt {
+        return errors::write_into_async(
+            tx_into, tx_limit, errors::ErrorCode::DEBUG_MESSAGE, msg.message);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_message(const std::monostate& ignore, InputIt tx_into,
                        InputLimit tx_limit) -> InputIt {
         static_cast<void>(ignore);
@@ -267,6 +282,57 @@ class HostCommsTask {
                 } else {
                     return cache_element.write_response_into(tx_into, tx_limit,
                                                              response.reason);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(const messages::GetPumpStateResponseMessage& response,
+                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry =
+            get_pump_state_cache.remove_if_present(response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.target_rpm,
+                        response.current_rpm, response.target_pwm,
+                        response.current_pwm, response.pump_running,
+                        response.manual_control);
+                }
+            },
+            cache_entry);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_message(
+        const messages::GetPressureStateResponseMessage& response,
+        InputIt tx_into, InputLimit tx_limit) -> InputIt {
+        auto cache_entry = get_pressure_state_cache.remove_if_present(
+            response.responding_to_id);
+        return std::visit(
+            [tx_into, tx_limit, response](auto cache_element) {
+                using T = std::decay_t<decltype(cache_element)>;
+                if constexpr (std::is_same_v<std::monostate, T>) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else {
+                    return cache_element.write_response_into(
+                        tx_into, tx_limit, response.target_pressure,
+                        response.current_pressure, response.pressure_abs_a,
+                        response.pressure_abs_b, response.pressure_atm,
+                        response.vacuum_enabled, response.vent_opened);
                 }
             },
             cache_entry);
@@ -399,6 +465,127 @@ class HostCommsTask {
         return std::make_pair(true, tx_into);
     }
 
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetPressureState& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::SetPressureStateMessage{
+            .id = id,
+            .pressure_setpoint = gcode.pressure,
+            .duration_s = gcode.duration_s,
+            .ramp_rate = gcode.ramp_rate,
+            .start_pump = gcode.start_pump,
+            .vent_after = gcode.vent_after,
+        };
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetPumpState& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_pump_state_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetPumpStateMessage{.id = id};
+
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_pump_state_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetPumpState& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::SetPumpStateMessage{
+            .id = id,
+            .from_host = true,
+            .rpm_setpoint = gcode.target_rpm,
+            .duty_cycle = gcode.duty_cycle,
+            .run_pump = gcode.start_pump,
+        };
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::GetPressureState& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = get_pressure_state_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::GetPressureStateMessage{.id = id};
+
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            get_pressure_state_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
+    auto visit_gcode(const gcode::SetVentState& gcode, InputIt tx_into,
+                     InputLimit tx_limit) -> std::pair<bool, InputIt> {
+        auto id = ack_only_cache.add(gcode);
+        if (id == 0) {
+            return std::make_pair(
+                false, errors::write_into(tx_into, tx_limit,
+                                          errors::ErrorCode::GCODE_CACHE_FULL));
+        }
+        auto message = messages::SetVentMessage{
+            .id = id, .from_host = true, .vent = gcode.vent};
+        if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
+            auto wrote_to = errors::write_into(
+                tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
+            ack_only_cache.remove_if_present(id);
+            return std::make_pair(false, wrote_to);
+        }
+        return std::make_pair(true, tx_into);
+    }
+
     // Our error handler just writes an error and bails
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
@@ -416,6 +603,8 @@ class HostCommsTask {
     AckOnlyCache ack_only_cache;
     GetSystemInfoCache get_system_info_cache;
     GetResetReasonCache get_reset_reason_cache;
+    GetPumpStateCache get_pump_state_cache;
+    GetPressureStateCache get_pressure_state_cache;
     bool may_connect_latch = true;
 };
 

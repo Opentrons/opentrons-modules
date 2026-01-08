@@ -24,6 +24,7 @@ typedef struct HandlerStruct {
 
 void i2c_hardware_init(I2CHandlerStruct *i2c_handles);
 bool i2c_register_handle(HAL_I2C_HANDLE handle, I2C_BUS bus);
+bool hal_is_device_ready(I2C_BUS bus, uint16_t DevAddress);
 uint8_t hal_i2c_write(I2C_BUS bus, uint16_t DevAddress, uint8_t reg,
                       uint8_t *data, uint16_t size);
 uint8_t hal_i2c_read(I2C_BUS bus, uint16_t DevAddress, uint16_t reg,

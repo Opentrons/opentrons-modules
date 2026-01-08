@@ -208,6 +208,16 @@ bool i2c_register_handle(HAL_I2C_HANDLE handle, I2C_BUS bus) {
     return true;
 }
 
+
+// Check that the device is ready to communicate
+bool hal_is_device_ready(I2C_BUS bus, uint16_t DevAddress) {
+    NotificationHandle_t *notification_handle = lookup_handle(bus);
+    I2C_HandleTypeDef* i2c_handle = (I2C_HandleTypeDef*)notification_handle->i2c_handle;
+    // Bus was not registered
+    if(notification_handle == NULL) return false;
+    return HAL_I2C_IsDeviceReady(i2c_handle, DevAddress, MAX_RETRIES, 1) == HAL_OK;
+}
+
 /**
  * Wrapper around HAL_I2C_Mem_Write
  */
