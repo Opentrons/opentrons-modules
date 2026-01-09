@@ -264,11 +264,12 @@ class PressureTask {
         }
 
         // Use EMA pressure filter. TODO: change this to FIR filter
-        auto raw_pressure = _pressure_control.pressure_abs_b;
-        auto previous_pressure = _pressure_control.current_pressure;
-        auto current_pressure = (SENSOR_ALPHA * raw_pressure) +
-                                ((1.0F - SENSOR_ALPHA) * previous_pressure);
-        _pressure_control.current_pressure = current_pressure;
+        auto filtered_pressure = _pressure_control.pressure_abs_b;
+        //        auto previous_pressure = _pressure_control.current_pressure;
+        //         auto current_pressure = (SENSOR_ALPHA * raw_pressure) +
+        //                                 ((1.0F - SENSOR_ALPHA) *
+        //                                 previous_pressure);
+        _pressure_control.current_pressure = filtered_pressure;
 
         // Run Slew Limiter to get smooth trajectory in mbar
         auto target_pressure = _pressure_control.target_pressure;
@@ -276,7 +277,7 @@ class PressureTask {
 
         auto prev_target = _pressure_control.prev_target_mbar;
         auto rate_mbar_s = (prev_target - smooth_target) / dt;
-        auto error = current_pressure - smooth_target;
+        auto error = filtered_pressure - smooth_target;
         _pressure_control.prev_target_mbar = smooth_target;
 
         // Apply Feed Forward if we are Pumping or Holding.

@@ -38,10 +38,16 @@ constexpr double PMAX = 25;
 constexpr double PMIN = 0;
 constexpr double PSI2MBAR = 68.9475729318;
 constexpr uint8_t PRESSURE_FRAME_LEN = 10;
-constexpr int UNFILTERED_PRESSURE_BUFFER_LEN = 5;
-constexpr int FILTER_LEN = 3;
-constexpr int FILTERED_PRESSURE_BUFFER_LEN = 20;
-constexpr double FILTER[3] = {0.6, 0.2, 0.2};
+constexpr int UNFILTERED_PRESSURE_BUFFER_LEN = 13;
+constexpr int FILTER_LEN = 13;
+constexpr int FILTERED_PRESSURE_BUFFER_LEN = 13;
+// constexpr double FILTER[7] = {0.4, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
+constexpr double FILTER[FILTER_LEN] = {
+    0.010706764820195613, 0.004479591512863062, -0.03763880801131707,
+    -0.05058137081735985, 0.07224069856733616,  0.2946203090266103,
+    0.4108766636374232,   0.2946203090266103,   0.07224069856733616,
+    -0.05058137081735985, -0.03763880801131707, 0.004479591512863062,
+    0.010706764820195613};
 
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
@@ -99,7 +105,9 @@ class MPRLL0025PA00001 {
                 // return pressure_mbar;
                 buffer_pressure_value(pressure_mbar);
                 filter_pressure();
-                return FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index-1];
+                return filtered_pressure_buffer_index;
+                //                return
+                //                FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index-1];
             }
         }
 
@@ -140,10 +148,16 @@ class MPRLL0025PA00001 {
     auto filter_pressure() -> void {
         double filter_output = 0;
         for (int i = 0; i < FILTER_LEN; i++) {
-            int current_term = (unfiltered_pressure_buffer_index + i) % UNFILTERED_PRESSURE_BUFFER_LEN;
-            filter_output += UNFILTERED_PRESSURE_BUFFER_MBAR[current_term] * FILTER[i];
+            int current_term = (unfiltered_pressure_buffer_index + i - 1) %
+                               UNFILTERED_PRESSURE_BUFFER_LEN;
+            filter_output +=
+                UNFILTERED_PRESSURE_BUFFER_MBAR[current_term] * FILTER[i];
         }
         // TODO: abstract this buffer processing into its own function
+
+        // note: filtered pressure buffer might be the problem
+        // check whether I shoudl filter based off unfiltered or previosuly
+        // filtered data
         FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index] = filter_output;
         filtered_pressure_buffer_index++;
         if (filtered_pressure_buffer_index == FILTERED_PRESSURE_BUFFER_LEN) {
