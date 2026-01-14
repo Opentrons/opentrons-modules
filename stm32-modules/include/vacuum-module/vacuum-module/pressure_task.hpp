@@ -264,11 +264,7 @@ class PressureTask {
             }
         }
 
-        // Use EMA pressure filter. TODO: change this to FIR filter
-        auto raw_pressure = _pressure_control.pressure_abs_b;
-        auto previous_pressure = _pressure_control.current_pressure;
-        auto current_pressure = (SENSOR_ALPHA * raw_pressure) +
-                                ((1.0F - SENSOR_ALPHA) * previous_pressure);
+        auto current_pressure = _pressure_control.pressure_abs_b;
         _pressure_control.current_pressure = current_pressure;
 
         // Run Slew Limiter to get smooth trajectory in mbar
