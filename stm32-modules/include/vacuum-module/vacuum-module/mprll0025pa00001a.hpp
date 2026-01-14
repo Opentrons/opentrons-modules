@@ -152,7 +152,7 @@ class MPRLL0025PA00001 {
             input_pressure_mbar;
         double filter_output = 0;
         for (int i = 0; i < FILTER_LEN; i++) {
-            int current_term = (unfiltered_pressure_buffer_index + i) %
+            int current_term = (unfiltered_pressure_buffer_index - i) %
                                UNFILTERED_PRESSURE_BUFFER_LEN;
             filter_output +=
                 UNFILTERED_PRESSURE_BUFFER_MBAR[current_term] * FILTER[i];
