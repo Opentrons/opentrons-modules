@@ -41,17 +41,8 @@ constexpr uint8_t PRESSURE_FRAME_LEN = 10;
 constexpr int UNFILTERED_PRESSURE_BUFFER_LEN = 13;
 constexpr int FILTER_LEN = 13;
 constexpr int FILTERED_PRESSURE_BUFFER_LEN = 13;
-// constexpr double FILTER[7] = {0.4, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
-// constexpr double FILTER[FILTER_LEN] = {
-//     0.010706764820195613, 0.004479591512863062, -0.03763880801131707,
-//     -0.05058137081735985, 0.07224069856733616,  0.2946203090266103,
-//     0.4108766636374232,   0.2946203090266103,   0.07224069856733616,
-//     -0.05058137081735985, -0.03763880801131707, 0.004479591512863062,
-//     0.010706764820195613};
-double avg_coef = 1 / FILTER_LEN;
 double FILTER[FILTER_LEN] = {};
 
-// double FILTER[FILTER_LEN] = {avg_coef};
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
 constexpr uint32_t DEFAULT_SLEEP_MS = 10;
@@ -78,10 +69,14 @@ class MPRLL0025PA00001 {
             // check device status
             ok = _policy->is_device_ready(device_address << 1);
         }
-        for (int i = 0; i < FILTER_LEN; i++) {FILTER[i] = 0.076923076923 ;}
-       
+        // initialize filter buffer to be an unweighted moving average
+        // TODO: optimize these filter coefficients
+        double moving_average_coefficient = 1 / FILTER_LEN;
+        for (int i = 0; i < FILTER_LEN; i++) {
+            FILTER[i] = moving_average_coefficient;
+        }
 
-         return ok;
+        return ok;
     }
 
     [[nodiscard]] auto get_pressure() const -> double { return pressure_mbar; }
@@ -108,7 +103,6 @@ class MPRLL0025PA00001 {
             if (!sensor_busy) {
                 pressure_mbar = parse_pressure(RD_BUFF.data());
                 filter_pressure(pressure_mbar);
-                // return FILTER[filtered_pressure_buffer_index];
                 return FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index];
             }
         }
@@ -149,7 +143,7 @@ class MPRLL0025PA00001 {
 
     auto filter_pressure(double input_pressure_mbar) -> void {
         filtered_pressure_buffer_index++;
-        unfiltered_pressure_buffer_index++;       
+        unfiltered_pressure_buffer_index++;
 
         filtered_pressure_buffer_index %= FILTERED_PRESSURE_BUFFER_LEN;
         unfiltered_pressure_buffer_index %= UNFILTERED_PRESSURE_BUFFER_LEN;
@@ -173,7 +167,8 @@ class MPRLL0025PA00001 {
     uint8_t device_address{};
 
     double FILTERED_PRESSURE_MBAR[FILTERED_PRESSURE_BUFFER_LEN] = {0};
-    double UNFILTERED_PRESSURE_BUFFER_MBAR[UNFILTERED_PRESSURE_BUFFER_LEN] = {0};
+    double UNFILTERED_PRESSURE_BUFFER_MBAR[UNFILTERED_PRESSURE_BUFFER_LEN] = {
+        0};
     int filtered_pressure_buffer_index = -1;
     int unfiltered_pressure_buffer_index = -1;
     double pressure_mbar = 0;
