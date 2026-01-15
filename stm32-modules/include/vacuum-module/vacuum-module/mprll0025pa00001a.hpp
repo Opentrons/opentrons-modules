@@ -38,10 +38,9 @@ constexpr double PMAX = 25;
 constexpr double PMIN = 0;
 constexpr double PSI2MBAR = 68.9475729318;
 constexpr uint8_t PRESSURE_FRAME_LEN = 10;
-constexpr int UNFILTERED_PRESSURE_BUFFER_LEN = 13;
-constexpr int FILTER_LEN = 13;
-constexpr int FILTERED_PRESSURE_BUFFER_LEN = 13;
-constexpr std::array<double, FILTER_LEN> FILTER = {(1.0 / FILTER_LEN)};
+constexpr int PRESSURE_BUFFER_LEN = 13;
+constexpr std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
+    (1.0 / PRESSURE_BUFFER_LEN)};
 
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
@@ -137,18 +136,17 @@ class MPRLL0025PA00001 {
     }
 
     auto filter_pressure(double input_pressure_mbar) -> void {
-        ++filtered_pressure_buffer_index %= FILTERED_PRESSURE_BUFFER_LEN;
-        ++unfiltered_pressure_buffer_index %= UNFILTERED_PRESSURE_BUFFER_LEN;
-        UNFILTERED_PRESSURE_BUFFER_MBAR.at(filtered_pressure_buffer_index) =
+        ++filtered_pressure_buffer_index %= PRESSURE_BUFFER_LEN;
+        ++unfiltered_pressure_buffer_index %= PRESSURE_BUFFER_LEN;
+        UNFILTERED_PRESSURE_MBAR.at(filtered_pressure_buffer_index) =
             input_pressure_mbar;
         double filter_output = 0;
 
-        for (int i = 0; i < UNFILTERED_PRESSURE_BUFFER_LEN; i++) {
-            int p_index = (unfiltered_pressure_buffer_index + i) %
-                          UNFILTERED_PRESSURE_BUFFER_LEN;
-            double pressure_sample =
-                UNFILTERED_PRESSURE_BUFFER_MBAR.at(p_index);
-            for (int j = 0; j < FILTER_LEN; j++) {
+        for (int i = 0; i < PRESSURE_BUFFER_LEN; i++) {
+            int p_index =
+                (unfiltered_pressure_buffer_index + i) % PRESSURE_BUFFER_LEN;
+            double pressure_sample = UNFILTERED_PRESSURE_MBAR.at(p_index);
+            for (int j = 0; j < PRESSURE_BUFFER_LEN; j++) {
                 filter_output += pressure_sample * FILTER.at(j);
             }
         }
@@ -163,10 +161,8 @@ class MPRLL0025PA00001 {
     PressureSensorID _sensor_id{};
     uint8_t device_address{};
 
-    std::array<double, FILTERED_PRESSURE_BUFFER_LEN> FILTERED_PRESSURE_MBAR = {
-        0};
-    std::array<double, UNFILTERED_PRESSURE_BUFFER_LEN>
-        UNFILTERED_PRESSURE_BUFFER_MBAR = {0};
+    std::array<double, PRESSURE_BUFFER_LEN> FILTERED_PRESSURE_MBAR = {0};
+    std::array<double, PRESSURE_BUFFER_LEN> UNFILTERED_PRESSURE_MBAR = {0};
     size_t filtered_pressure_buffer_index = 0;
     size_t unfiltered_pressure_buffer_index = 0;
     double pressure_mbar = 0;
