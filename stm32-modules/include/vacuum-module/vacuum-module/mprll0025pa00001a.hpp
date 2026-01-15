@@ -39,6 +39,9 @@ constexpr double PMIN = 0;
 constexpr double PSI2MBAR = 68.9475729318;
 constexpr uint8_t PRESSURE_FRAME_LEN = 10;
 constexpr int PRESSURE_BUFFER_LEN = 13;
+// TODO: currently this filter acts as an unweighted moving average. Find
+// coefficient values that optimize sensor output behavior for closed-loop
+// control
 constexpr std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
     (1.0 / PRESSURE_BUFFER_LEN)};
 
@@ -127,7 +130,7 @@ class MPRLL0025PA00001 {
         // The pressure counts are in big-endian (most significant byte first)
         // order, not little-endian.
         auto press_counts =
-            // NOLINTNEXTLINE
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             static_cast<double>(raw[1] << 16 | raw[2] << 8 | raw[3]);
         auto pressure_psi = (((press_counts - OUTPUT_MIN) * (PMAX - PMIN)) /
                              (OUTPUT_MAX - OUTPUT_MIN)) +
