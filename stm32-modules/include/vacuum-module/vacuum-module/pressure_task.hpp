@@ -73,7 +73,6 @@ static constexpr const uint32_t CONTROL_PERIOD_MS =
 static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
 static constexpr const double DEFAULT_RAMP_RATE = 400.0F;
-static constexpr const double SENSOR_ALPHA = 0.2F;  // Pressure Sensor EMA Alpha
 // Velocity Gain:
 // How much RPM to add for every 1 mbar/sec drop requested.
 static constexpr const float K_VELOCITY = 20.0F;

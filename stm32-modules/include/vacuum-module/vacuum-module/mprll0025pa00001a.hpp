@@ -128,7 +128,7 @@ class MPRLL0025PA00001 {
         // The pressure counts are in big-endian (most significant byte first)
         // order, not little-endian.
         auto press_counts =
-        // NOLINTNEXTLINE
+            // NOLINTNEXTLINE
             static_cast<double>(raw[1] << 16 | raw[2] << 8 | raw[3]);
         auto pressure_psi = (((press_counts - OUTPUT_MIN) * (PMAX - PMIN)) /
                              (OUTPUT_MAX - OUTPUT_MIN)) +
@@ -167,8 +167,8 @@ class MPRLL0025PA00001 {
         0};
     std::array<double, UNFILTERED_PRESSURE_BUFFER_LEN>
         UNFILTERED_PRESSURE_BUFFER_MBAR = {0};
-    int filtered_pressure_buffer_index = -1;
-    int unfiltered_pressure_buffer_index = -1;
+    size_t filtered_pressure_buffer_index = 0;
+    size_t unfiltered_pressure_buffer_index = 0;
     double pressure_mbar = 0;
     uint8_t last_status = 0;
 };
