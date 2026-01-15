@@ -150,12 +150,21 @@ class MPRLL0025PA00001 {
         UNFILTERED_PRESSURE_BUFFER_MBAR[filtered_pressure_buffer_index] =
             input_pressure_mbar;
         double filter_output = 0;
-        for (int i = 0; i < FILTER_LEN; i++) {
-            int current_term = (unfiltered_pressure_buffer_index - i + UNFILTERED_PRESSURE_BUFFER_LEN) %
-                       UNFILTERED_PRESSURE_BUFFER_LEN;
-            filter_output +=
-                UNFILTERED_PRESSURE_BUFFER_MBAR[current_term] * FILTER[i];
+
+        for (int i = 0; i < UNFILTERED_PRESSURE_BUFFER_LEN; i++) {
+            int p_index = (unfiltered_pressure_buffer_index + i) % UNFILTERED_PRESSURE_BUFFER_LEN; 
+            double pressure_sample = UNFILTERED_PRESSURE_BUFFER_MBAR[p_index];
+            for (int j = 0; j < FILTER_LEN; j++) {
+                filter_output += pressure_sample * FILTER[j];
+            }
         }
+
+//        for (int i = 0; i < FILTER_LEN; i++) {
+//            int current_term = (unfiltered_pressure_buffer_index - i + UNFILTERED_PRESSURE_BUFFER_LEN) %
+//                       UNFILTERED_PRESSURE_BUFFER_LEN;
+//            filter_output +=
+//                UNFILTERED_PRESSURE_BUFFER_MBAR[current_term] * FILTER[i];
+//        }
         FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index] =
             filter_output;
     }
