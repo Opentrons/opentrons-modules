@@ -41,7 +41,6 @@ constexpr uint8_t PRESSURE_FRAME_LEN = 10;
 constexpr int UNFILTERED_PRESSURE_BUFFER_LEN = 13;
 constexpr int FILTER_LEN = 13;
 constexpr int FILTERED_PRESSURE_BUFFER_LEN = 13;
-//constexpr double FILTER[FILTER_LEN] = {(1.0 / FILTER_LEN)};
 constexpr std::array<double, FILTER_LEN> FILTER = {(1.0 / FILTER_LEN)};
 
 // Frame retry defaults
@@ -70,12 +69,6 @@ class MPRLL0025PA00001 {
             // check device status
             ok = _policy->is_device_ready(device_address << 1);
         }
-        // initialize filter buffer to be an unweighted moving average
-        // TODO: optimize these filter coefficients
-//        double moving_average_coefficient = 1.0 / FILTER_LEN;
-//        for (int i = 0; i < FILTER_LEN; i++) {
-//            FILTER.at(i) = moving_average_coefficient;
-//        }
 
         return ok;
     }
@@ -103,10 +96,8 @@ class MPRLL0025PA00001 {
                 static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
             if (!sensor_busy) {
                 pressure_mbar = parse_pressure(RD_BUFF.data());
-                return pressure_mbar;
-//                filter_pressure(pressure_mbar);
-//                return FILTERED_PRESSURE_MBAR[
-//                    filtered_pressure_buffer_index];
+                filter_pressure(pressure_mbar);
+                return FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index];
             }
         }
 
@@ -124,7 +115,6 @@ class MPRLL0025PA00001 {
         WR_BUFF[0] = cmd;
         // Copy data to the buffer starting from the header len.
         for (uint8_t i = 1; i < len; i++) {
-            // NOLINTNEXTLINE
             WR_BUFF[i] = data[i - 1];
         }
         return len + 1;
@@ -136,7 +126,6 @@ class MPRLL0025PA00001 {
         // The pressure counts are in big-endian (most significant byte first)
         // order, not little-endian.
         auto press_counts =
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             static_cast<double>(raw[1] << 16 | raw[2] << 8 | raw[3]);
         auto pressure_psi = (((press_counts - OUTPUT_MIN) * (PMAX - PMIN)) /
                              (OUTPUT_MAX - OUTPUT_MIN)) +
@@ -152,36 +141,27 @@ class MPRLL0025PA00001 {
         double filter_output = 0;
 
         for (int i = 0; i < UNFILTERED_PRESSURE_BUFFER_LEN; i++) {
-            int p_index = (unfiltered_pressure_buffer_index + i) % UNFILTERED_PRESSURE_BUFFER_LEN; 
+            int p_index = (unfiltered_pressure_buffer_index + i) %
+                          UNFILTERED_PRESSURE_BUFFER_LEN;
             double pressure_sample = UNFILTERED_PRESSURE_BUFFER_MBAR[p_index];
             for (int j = 0; j < FILTER_LEN; j++) {
                 filter_output += pressure_sample * FILTER[j];
             }
         }
 
-//        for (int i = 0; i < FILTER_LEN; i++) {
-//            int current_term = (unfiltered_pressure_buffer_index - i + UNFILTERED_PRESSURE_BUFFER_LEN) %
-//                       UNFILTERED_PRESSURE_BUFFER_LEN;
-//            filter_output +=
-//                UNFILTERED_PRESSURE_BUFFER_MBAR[current_term] * FILTER[i];
-//        }
-        FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index] =
-            filter_output;
+        FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index] = filter_output;
     }
 
     Policy* _policy{nullptr};
     std::array<uint8_t, PRESSURE_FRAME_LEN> RD_BUFF = {0};
     std::array<uint8_t, PRESSURE_FRAME_LEN> WR_BUFF = {0};
     PressureSensorID _sensor_id{};
-//    std::array<double, FILTER_LEN> FILTER = {};
     uint8_t device_address{};
 
     std::array<double, FILTERED_PRESSURE_BUFFER_LEN> FILTERED_PRESSURE_MBAR = {
         0};
     std::array<double, UNFILTERED_PRESSURE_BUFFER_LEN>
         UNFILTERED_PRESSURE_BUFFER_MBAR = {0};
-//    double FILTERED_PRESSURE_MBAR[FILTERED_PRESSURE_BUFFER_LEN] = {0};
-//    double UNFILTERED_PRESSURE_BUFFER_MBAR[UNFILTERED_PRESSURE_BUFFER_LEN] = {0};
     int filtered_pressure_buffer_index = -1;
     int unfiltered_pressure_buffer_index = -1;
     double pressure_mbar = 0;
