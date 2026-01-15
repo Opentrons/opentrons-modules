@@ -97,7 +97,7 @@ class MPRLL0025PA00001 {
             if (!sensor_busy) {
                 pressure_mbar = parse_pressure(RD_BUFF.data());
                 filter_pressure(pressure_mbar);
-                return FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index];
+                return FILTERED_PRESSURE_MBAR.at(filtered_pressure_buffer_index);
             }
         }
 
@@ -136,20 +136,20 @@ class MPRLL0025PA00001 {
     auto filter_pressure(double input_pressure_mbar) -> void {
         ++filtered_pressure_buffer_index %= FILTERED_PRESSURE_BUFFER_LEN;
         ++unfiltered_pressure_buffer_index %= UNFILTERED_PRESSURE_BUFFER_LEN;
-        UNFILTERED_PRESSURE_BUFFER_MBAR[filtered_pressure_buffer_index] =
+        UNFILTERED_PRESSURE_BUFFER_MBAR.at(filtered_pressure_buffer_index) =
             input_pressure_mbar;
         double filter_output = 0;
 
         for (int i = 0; i < UNFILTERED_PRESSURE_BUFFER_LEN; i++) {
             int p_index = (unfiltered_pressure_buffer_index + i) %
                           UNFILTERED_PRESSURE_BUFFER_LEN;
-            double pressure_sample = UNFILTERED_PRESSURE_BUFFER_MBAR[p_index];
+            double pressure_sample = UNFILTERED_PRESSURE_BUFFER_MBAR.at(p_index);
             for (int j = 0; j < FILTER_LEN; j++) {
                 filter_output += pressure_sample * FILTER[j];
             }
         }
 
-        FILTERED_PRESSURE_MBAR[filtered_pressure_buffer_index] = filter_output;
+        FILTERED_PRESSURE_MBAR.at(filtered_pressure_buffer_index) = filter_output;
     }
 
     Policy* _policy{nullptr};
