@@ -38,7 +38,7 @@ constexpr double PMAX = 25;
 constexpr double PMIN = 0;
 constexpr double PSI2MBAR = 68.9475729318;
 constexpr uint8_t PRESSURE_FRAME_LEN = 10;
-constexpr int PRESSURE_BUFFER_LEN = 13;
+constexpr int PRESSURE_BUFFER_LEN = 5;
 // TODO: currently this filter acts as an unweighted moving average. Find
 // coefficient values that optimize sensor output behavior for closed-loop
 // control
