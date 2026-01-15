@@ -99,7 +99,7 @@ class MPRLL0025PA00001 {
             if (!sensor_busy) {
                 pressure_mbar = parse_pressure(RD_BUFF.data());
                 filter_pressure(pressure_mbar);
-                return FILTERED_PRESSURE_MBAR.at(
+                return filtered_pressure_mbar.at(
                     filtered_pressure_buffer_index);
             }
         }
@@ -141,20 +141,20 @@ class MPRLL0025PA00001 {
     auto filter_pressure(double input_pressure_mbar) -> void {
         ++filtered_pressure_buffer_index %= PRESSURE_BUFFER_LEN;
         ++unfiltered_pressure_buffer_index %= PRESSURE_BUFFER_LEN;
-        UNFILTERED_PRESSURE_MBAR.at(filtered_pressure_buffer_index) =
+        unfiltered_pressure_mbar.at(filtered_pressure_buffer_index) =
             input_pressure_mbar;
         double filter_output = 0;
 
         for (int i = 0; i < PRESSURE_BUFFER_LEN; i++) {
             int p_index =
                 (unfiltered_pressure_buffer_index + i) % PRESSURE_BUFFER_LEN;
-            double pressure_sample = UNFILTERED_PRESSURE_MBAR.at(p_index);
+            double pressure_sample = unfiltered_pressure_mbar.at(p_index);
             for (int j = 0; j < PRESSURE_BUFFER_LEN; j++) {
                 filter_output += pressure_sample * FILTER.at(j);
             }
         }
 
-        FILTERED_PRESSURE_MBAR.at(filtered_pressure_buffer_index) =
+        filtered_pressure_mbar.at(filtered_pressure_buffer_index) =
             filter_output;
     }
 
@@ -164,8 +164,8 @@ class MPRLL0025PA00001 {
     PressureSensorID _sensor_id{};
     uint8_t device_address{};
 
-    std::array<double, PRESSURE_BUFFER_LEN> FILTERED_PRESSURE_MBAR = {0};
-    std::array<double, PRESSURE_BUFFER_LEN> UNFILTERED_PRESSURE_MBAR = {0};
+    std::array<double, PRESSURE_BUFFER_LEN> filtered_pressure_mbar = {0};
+    std::array<double, PRESSURE_BUFFER_LEN> unfiltered_pressure_mbar = {0};
     size_t filtered_pressure_buffer_index = 0;
     size_t unfiltered_pressure_buffer_index = 0;
     double pressure_mbar = 0;
