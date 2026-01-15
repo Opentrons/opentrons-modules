@@ -97,7 +97,8 @@ class MPRLL0025PA00001 {
             if (!sensor_busy) {
                 pressure_mbar = parse_pressure(RD_BUFF.data());
                 filter_pressure(pressure_mbar);
-                return FILTERED_PRESSURE_MBAR.at(filtered_pressure_buffer_index);
+                return FILTERED_PRESSURE_MBAR.at(
+                    filtered_pressure_buffer_index);
             }
         }
 
@@ -115,6 +116,7 @@ class MPRLL0025PA00001 {
         WR_BUFF[0] = cmd;
         // Copy data to the buffer starting from the header len.
         for (uint8_t i = 1; i < len; i++) {
+            // NOLINTNEXTLINE
             WR_BUFF[i] = data[i - 1];
         }
         return len + 1;
@@ -126,6 +128,7 @@ class MPRLL0025PA00001 {
         // The pressure counts are in big-endian (most significant byte first)
         // order, not little-endian.
         auto press_counts =
+        // NOLINTNEXTLINE
             static_cast<double>(raw[1] << 16 | raw[2] << 8 | raw[3]);
         auto pressure_psi = (((press_counts - OUTPUT_MIN) * (PMAX - PMIN)) /
                              (OUTPUT_MAX - OUTPUT_MIN)) +
@@ -143,13 +146,15 @@ class MPRLL0025PA00001 {
         for (int i = 0; i < UNFILTERED_PRESSURE_BUFFER_LEN; i++) {
             int p_index = (unfiltered_pressure_buffer_index + i) %
                           UNFILTERED_PRESSURE_BUFFER_LEN;
-            double pressure_sample = UNFILTERED_PRESSURE_BUFFER_MBAR.at(p_index);
+            double pressure_sample =
+                UNFILTERED_PRESSURE_BUFFER_MBAR.at(p_index);
             for (int j = 0; j < FILTER_LEN; j++) {
-                filter_output += pressure_sample * FILTER[j];
+                filter_output += pressure_sample * FILTER.at(j);
             }
         }
 
-        FILTERED_PRESSURE_MBAR.at(filtered_pressure_buffer_index) = filter_output;
+        FILTERED_PRESSURE_MBAR.at(filtered_pressure_buffer_index) =
+            filter_output;
     }
 
     Policy* _policy{nullptr};
