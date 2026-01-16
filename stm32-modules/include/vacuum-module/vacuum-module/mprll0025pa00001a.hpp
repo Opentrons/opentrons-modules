@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 
 namespace vacuum_pressure_sensor {
@@ -42,8 +43,11 @@ constexpr int PRESSURE_BUFFER_LEN = 5;
 // TODO: currently this filter acts as an unweighted moving average. Find
 // coefficient values that optimize sensor output behavior for closed-loop
 // control
+constexpr double moving_avg_coefficient =
+    1.0 / std::pow((PRESSURE_BUFFER_LEN - 0.75), 2);
 constexpr std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
-    (1.0 / PRESSURE_BUFFER_LEN)};
+    moving_avg_coefficient, moving_avg_coefficient, moving_avg_coefficient,
+    moving_avg_coefficient};
 
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
@@ -141,7 +145,7 @@ class MPRLL0025PA00001 {
     auto filter_pressure(double input_pressure_mbar) -> void {
         ++filtered_pressure_buffer_index %= PRESSURE_BUFFER_LEN;
         ++unfiltered_pressure_buffer_index %= PRESSURE_BUFFER_LEN;
-        unfiltered_pressure_mbar.at(filtered_pressure_buffer_index) =
+        unfiltered_pressure_mbar.at(unfiltered_pressure_buffer_index) =
             input_pressure_mbar;
         double filter_output = 0;
 
