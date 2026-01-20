@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 
 namespace vacuum_pressure_sensor {
@@ -37,8 +38,16 @@ constexpr double PMAX = 25;
 // minimum value of pressure range [bar, psi, kPa, etc.]
 constexpr double PMIN = 0;
 constexpr double PSI2MBAR = 68.9475729318;
-
 constexpr uint8_t PRESSURE_FRAME_LEN = 10;
+constexpr int PRESSURE_BUFFER_LEN = 5;
+// TODO: currently this filter acts as an unweighted moving average. Find
+// coefficient values that optimize sensor output behavior for closed-loop
+// control
+const double moving_avg_coefficient =
+    1.0 / std::pow((PRESSURE_BUFFER_LEN - 0.75), 2);
+const std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
+    moving_avg_coefficient, moving_avg_coefficient, moving_avg_coefficient,
+    moving_avg_coefficient};
 
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
@@ -93,7 +102,9 @@ class MPRLL0025PA00001 {
                 static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
             if (!sensor_busy) {
                 pressure_mbar = parse_pressure(RD_BUFF.data());
-                return pressure_mbar;
+                filter_pressure(pressure_mbar);
+                return filtered_pressure_mbar.at(
+                    filtered_pressure_buffer_index);
             }
         }
 
@@ -131,13 +142,38 @@ class MPRLL0025PA00001 {
         return pressure_psi * PSI2MBAR;
     }
 
+    auto filter_pressure(double input_pressure_mbar) -> void {
+        ++filtered_pressure_buffer_index %= PRESSURE_BUFFER_LEN;
+        ++unfiltered_pressure_buffer_index %= PRESSURE_BUFFER_LEN;
+        unfiltered_pressure_mbar.at(unfiltered_pressure_buffer_index) =
+            input_pressure_mbar;
+        double filter_output = 0;
+        double pressure_sample = 0;
+        int p_index = unfiltered_pressure_buffer_index;
+        for (int i = 0; i < PRESSURE_BUFFER_LEN; i++) {
+            p_index =
+                (unfiltered_pressure_buffer_index + i) % PRESSURE_BUFFER_LEN;
+            pressure_sample = unfiltered_pressure_mbar.at(p_index);
+            for (int j = 0; j < PRESSURE_BUFFER_LEN; j++) {
+                filter_output += pressure_sample * FILTER.at(j);
+            }
+        }
+
+        filtered_pressure_mbar.at(filtered_pressure_buffer_index) =
+            filter_output;
+    }
+
     Policy* _policy{nullptr};
     std::array<uint8_t, PRESSURE_FRAME_LEN> RD_BUFF = {0};
     std::array<uint8_t, PRESSURE_FRAME_LEN> WR_BUFF = {0};
     PressureSensorID _sensor_id{};
     uint8_t device_address{};
 
-    double pressure_mbar = {0};
+    std::array<double, PRESSURE_BUFFER_LEN> filtered_pressure_mbar = {0};
+    std::array<double, PRESSURE_BUFFER_LEN> unfiltered_pressure_mbar = {0};
+    size_t filtered_pressure_buffer_index = 0;
+    size_t unfiltered_pressure_buffer_index = 0;
+    double pressure_mbar = 0;
     uint8_t last_status = 0;
 };
 
