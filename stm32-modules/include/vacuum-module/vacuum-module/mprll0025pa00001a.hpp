@@ -43,9 +43,9 @@ constexpr int PRESSURE_BUFFER_LEN = 5;
 // TODO: currently this filter acts as an unweighted moving average. Find
 // coefficient values that optimize sensor output behavior for closed-loop
 // control
-constexpr double moving_avg_coefficient =
+const double moving_avg_coefficient =
     1.0 / std::pow((PRESSURE_BUFFER_LEN - 0.75), 2);
-constexpr std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
+const std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
     moving_avg_coefficient, moving_avg_coefficient, moving_avg_coefficient,
     moving_avg_coefficient};
 
@@ -148,11 +148,12 @@ class MPRLL0025PA00001 {
         unfiltered_pressure_mbar.at(unfiltered_pressure_buffer_index) =
             input_pressure_mbar;
         double filter_output = 0;
-
+        double pressure_sample = 0;
+        int p_index = unfiltered_pressure_buffer_index;
         for (int i = 0; i < PRESSURE_BUFFER_LEN; i++) {
-            int p_index =
+            p_index =
                 (unfiltered_pressure_buffer_index + i) % PRESSURE_BUFFER_LEN;
-            double pressure_sample = unfiltered_pressure_mbar.at(p_index);
+            pressure_sample = unfiltered_pressure_mbar.at(p_index);
             for (int j = 0; j < PRESSURE_BUFFER_LEN; j++) {
                 filter_output += pressure_sample * FILTER.at(j);
             }
