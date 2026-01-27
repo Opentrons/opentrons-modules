@@ -40,6 +40,14 @@ static tasks::FirmwareTasks::PressureQueue
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _top_task = pressure_task::PressureTask(_queue, nullptr, nullptr);
 
+// extern "C" {
+// 
+// void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+//     auto& sensor = _top_task.get_sensor_from_pin(GPIO_Pin);
+//     sensor.driver.read_pressure();
+// }
+// }
+
 static void run_hardware_task(void* param) {
     static_cast<void>(param);
     TickType_t last_wake_time = xTaskGetTickCount();

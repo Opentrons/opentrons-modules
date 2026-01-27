@@ -104,6 +104,20 @@ void EXTI9_5_IRQHandler(void) {
     }
 }
 
+// IRQHandler for sensor a eoc
+void EXTI1_IRQHandler(void) {
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_1)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
+    }
+}
+
+// IRQHandler for sensor b eoc
+void EXTI3_IRQHandler(void) {
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_3)) {
+        HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3);
+    }
+}
+
 /**
  * TIM7 = timebase counter
  */
