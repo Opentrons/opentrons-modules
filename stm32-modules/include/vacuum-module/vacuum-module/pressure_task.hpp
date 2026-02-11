@@ -38,6 +38,8 @@
  */
 
 #pragma once
+#include <bits/stdc++.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -50,6 +52,7 @@
 #include "firmware/pressure_policy.hpp"
 #include "hal/message_queue.hpp"
 #include "lps22hb.hpp"
+#include "main.h"
 #include "messages.hpp"
 #include "mprll0025pa00001a.hpp"
 #include "slew_rate_limiter.hpp"
@@ -188,17 +191,23 @@ class PressureTask {
                  {ABS_PRESSURE_A, ABS_PRESSURE_B, ATM_PRESSURE}) {
                 auto& sensor = get_sensor(sensor_id);
                 sensor.state = INITIALIZING;
-                auto comms = policy.get_i2c_comms(sensor_id);
-                sensor.ok = std::visit(
-                    [&](auto&& driver) -> bool {
-                        auto ok = driver.initialize(comms, sensor_id);
-                        if (ok) {
-                            driver.read_pressure();
-                        }
-                        return ok;
-                    },
-                    sensor.driver);
-                sensor.state = sensor.ok ? IDLE : SENSOR_ERROR;
+//                auto comms = policy.get_i2c_comms(sensor_id);
+                // TODO: get the sensor state somewhere else
+                //                sensor.ok = std::visit(
+                //                    [&](auto&& driver) -> bool {
+                //                        auto ok = driver.initialize(comms,
+                //                        sensor_id); if (ok) {
+                //                            if (sensor_id == ATM_PRESSURE) {
+                //                                driver.read_pressure();
+                //                            } else {
+                //                                driver.start_pressure_read();
+                //                            }
+                //                        }
+                //                        return ok;
+                //                    },
+                //                    sensor.driver);
+                //                sensor.state = sensor.ok ? IDLE :
+                //                SENSOR_ERROR;
             }
 
             // Slew rate is mbar/sec
@@ -221,6 +230,34 @@ class PressureTask {
             this->visit_message(message, policy);
         };
         std::visit(visit_helper, message);
+    }
+
+    auto send_pressure_reading_it(uint16_t GPIO_Pin) -> void {
+        // this calls update pressure, and sends a GCODE message w the result
+        PressureSensorID sensor_id = get_sensor_id_from_pin(GPIO_Pin);
+        update_pressure(sensor_id);
+
+        // Convert to guage pressure
+        auto target_pressure = 0.0F;
+        auto current_pressure = 0.0F;
+        if (_pressure_control.target_pressure > 0) {
+            target_pressure = _pressure_control.target_pressure -
+                              _pressure_control.pressure_atm;
+            current_pressure = _pressure_control.current_pressure -
+                               _pressure_control.pressure_atm;
+        }
+        auto msg = messages::GetPressureStateResponseMessage{
+            .responding_to_id = 0,  // TODO : might want to change this later
+            .target_pressure = target_pressure,
+            .current_pressure = current_pressure,
+            .pressure_abs_a = _pressure_control.pressure_abs_a,
+            .pressure_abs_b = _pressure_control.pressure_abs_b,
+            .pressure_atm = _pressure_control.pressure_atm,
+            .vacuum_enabled = _pressure_control.enable_vacuum,
+            .vent_opened = _pressure_control.vent_opened,
+        };
+        static_cast<void>(
+            _task_registry->send_to_address(msg, Queues::HostCommsAddress));
     }
 
   private:
@@ -377,6 +414,14 @@ class PressureTask {
         send_ack_message(m.id, ret);
     }
 
+    auto get_pressure(MPRLL0025PA00001<i2c::hardware::I2C>& driver) -> double {
+        return driver.get_latest_pressure_reading();
+    }
+
+    auto get_pressure(LPS22HB<i2c::hardware::I2C>& driver) -> double {
+        return driver.read_pressure();
+    }
+
     auto get_sensor(PressureSensorID sensor_id) -> PressureSensor& {
         switch (sensor_id) {
             case ABS_PRESSURE_A:
@@ -390,14 +435,27 @@ class PressureTask {
         }
     }
 
+    auto get_sensor_id_from_pin(uint16_t GPIO_Pin) -> PressureSensorID {
+        switch (GPIO_Pin) {
+            case SENSOR_A_EOC_PIN:
+                return ABS_PRESSURE_A;
+            case SENSOR_B_EOC_PIN:
+                return ABS_PRESSURE_B;
+            default:
+                return ATM_PRESSURE;
+        }
+    }
+
+    // right now, update_pressure doesn't get you a new pressure reading, it
+    // starts the next one, buffers the pressure value, and then grabs the most
+    // recent pressure reading that was already available before
     auto update_pressure(PressureSensorID sensor_id) -> PressureSensorError {
         auto& sensor = get_sensor(sensor_id);
         if (!sensor.ok) {
             return DRIVER_INIT_ERROR;
         }
-
         auto pressure = std::visit(
-            [&](auto&& driver) -> double { return driver.read_pressure(); },
+            [this](auto& driver) -> double { return get_pressure(driver); },
             sensor.driver);
 
         // TODO: Handle error

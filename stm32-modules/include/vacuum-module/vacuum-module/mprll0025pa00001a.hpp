@@ -39,15 +39,22 @@ constexpr double PMAX = 25;
 constexpr double PMIN = 0;
 constexpr double PSI2MBAR = 68.9475729318;
 constexpr uint8_t PRESSURE_FRAME_LEN = 10;
-constexpr int PRESSURE_BUFFER_LEN = 5;
+constexpr int PRESSURE_BUFFER_LEN = 13;
 // TODO: currently this filter acts as an unweighted moving average. Find
 // coefficient values that optimize sensor output behavior for closed-loop
 // control
-const double moving_avg_coefficient =
-    1.0 / std::pow((PRESSURE_BUFFER_LEN - 0.75), 2);
-const std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
-    moving_avg_coefficient, moving_avg_coefficient, moving_avg_coefficient,
-    moving_avg_coefficient};
+// constexpr std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
+//     (1.0 / PRESSURE_BUFFER_LEN)};
+
+constexpr std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
+    (1.0 / PRESSURE_BUFFER_LEN) + 0.06, (1.0 / PRESSURE_BUFFER_LEN) + 0.06,
+    (1.0 / PRESSURE_BUFFER_LEN) + 0.06, (1.0 / PRESSURE_BUFFER_LEN) + 0.06,
+    (1.0 / PRESSURE_BUFFER_LEN) + 0.06, (1.0 / PRESSURE_BUFFER_LEN),
+    (1.0 / PRESSURE_BUFFER_LEN),        (1.0 / PRESSURE_BUFFER_LEN),
+    (1.0 / PRESSURE_BUFFER_LEN) - 0.06, (1.0 / PRESSURE_BUFFER_LEN) - 0.06,
+    (1.0 / PRESSURE_BUFFER_LEN) - 0.06, (1.0 / PRESSURE_BUFFER_LEN) - 0.06,
+    (1.0 / PRESSURE_BUFFER_LEN) - 0.06,
+};
 
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
@@ -81,33 +88,30 @@ class MPRLL0025PA00001 {
 
     [[nodiscard]] auto get_pressure() const -> double { return pressure_mbar; }
 
-    auto read_pressure() -> double {
+    auto start_pressure_read() -> void {
         auto len = prepare_cmd_frame(MEASURE_PRESSURE_COMMAND,
                                      MEASURE_PRESSURE_COMMAND_DATA.data(), 2);
         _policy->i2c_master_write(device_address << 1, WR_BUFF.data(), len);
+    }
 
-        for (int i = 0; i < (DEFAULT_RETRIES + 1); i++) {
-            // TODO: Needs at least n ms for measurement
-            // Find better way of doing this async.
-            _policy->sleep_ms(DEFAULT_SLEEP_MS);
-            _policy->i2c_master_read(device_address << 1, RD_BUFF.data(), 4);
-            auto status_byte = RD_BUFF[0];
+    auto read_pressure() -> void {
+        // TODO: Needs at least n ms for measurement
+        // Find better way of doing this async.
+        _policy->sleep_ms(DEFAULT_SLEEP_MS);
+        _policy->i2c_master_read(device_address << 1, RD_BUFF.data(), 4);
+        last_status = RD_BUFF[0];
+        sensor_error = static_cast<bool>(last_status & STATUS_ERROR_FLAG) ||
+                       static_cast<bool>(last_status & STATUS_SATURATION_FLAG);
+        sensor_busy = static_cast<bool>(last_status & STATUS_BUSY_FLAG);
+    }
 
-            // return negative if sensor is in error state
-            if (static_cast<bool>(status_byte & STATUS_ERROR_FLAG) ||
-                static_cast<bool>(status_byte & STATUS_SATURATION_FLAG)) {
-                return -1;
-            }
-            auto sensor_busy =
-                static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
-            if (!sensor_busy) {
-                pressure_mbar = parse_pressure(RD_BUFF.data());
-                filter_pressure(pressure_mbar);
-                return filtered_pressure_mbar.at(
-                    filtered_pressure_buffer_index);
-            }
+    auto get_latest_pressure_reading() -> double {
+        if (!sensor_busy && !sensor_error) {
+            pressure_mbar = parse_pressure(RD_BUFF.data());
+            filter_pressure(pressure_mbar);
+            return filtered_pressure_mbar.at(filtered_pressure_buffer_index);
         }
-
+        // return negative if sensor is in error state
         return -1;
     }
 
@@ -175,6 +179,8 @@ class MPRLL0025PA00001 {
     size_t unfiltered_pressure_buffer_index = 0;
     double pressure_mbar = 0;
     uint8_t last_status = 0;
+    bool sensor_busy = true;
+    bool sensor_error = false;
 };
 
 }  // namespace vacuum_pressure_sensor
