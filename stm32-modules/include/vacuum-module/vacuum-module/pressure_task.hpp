@@ -191,7 +191,7 @@ class PressureTask {
                  {ABS_PRESSURE_A, ABS_PRESSURE_B, ATM_PRESSURE}) {
                 auto& sensor = get_sensor(sensor_id);
                 sensor.state = INITIALIZING;
-                auto comms = policy.get_i2c_comms(sensor_id);
+//                auto comms = policy.get_i2c_comms(sensor_id);
                 // TODO: get the sensor state somewhere else
                 //                sensor.ok = std::visit(
                 //                    [&](auto&& driver) -> bool {
