@@ -41,7 +41,7 @@ static tasks::FirmwareTasks::PressureQueue
 static auto _top_task = pressure_task::PressureTask(_queue, nullptr, nullptr);
 
 // extern "C" {
-// 
+//
 // void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 //     auto& sensor = _top_task.get_sensor_from_pin(GPIO_Pin);
 //     sensor.driver.read_pressure();

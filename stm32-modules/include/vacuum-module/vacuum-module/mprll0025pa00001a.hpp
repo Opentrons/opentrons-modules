@@ -39,15 +39,22 @@ constexpr double PMAX = 25;
 constexpr double PMIN = 0;
 constexpr double PSI2MBAR = 68.9475729318;
 constexpr uint8_t PRESSURE_FRAME_LEN = 10;
-constexpr int PRESSURE_BUFFER_LEN = 5;
+constexpr int PRESSURE_BUFFER_LEN = 13;
 // TODO: currently this filter acts as an unweighted moving average. Find
 // coefficient values that optimize sensor output behavior for closed-loop
 // control
-const double moving_avg_coefficient =
-    1.0 / std::pow((PRESSURE_BUFFER_LEN - 0.75), 2);
-const std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
-    moving_avg_coefficient, moving_avg_coefficient, moving_avg_coefficient,
-    moving_avg_coefficient};
+// constexpr std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
+//     (1.0 / PRESSURE_BUFFER_LEN)};
+
+constexpr std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
+    (1.0 / PRESSURE_BUFFER_LEN) + 0.06, (1.0 / PRESSURE_BUFFER_LEN) + 0.06,
+    (1.0 / PRESSURE_BUFFER_LEN) + 0.06, (1.0 / PRESSURE_BUFFER_LEN) + 0.06,
+    (1.0 / PRESSURE_BUFFER_LEN) + 0.06, (1.0 / PRESSURE_BUFFER_LEN),
+    (1.0 / PRESSURE_BUFFER_LEN),        (1.0 / PRESSURE_BUFFER_LEN),
+    (1.0 / PRESSURE_BUFFER_LEN) - 0.06, (1.0 / PRESSURE_BUFFER_LEN) - 0.06,
+    (1.0 / PRESSURE_BUFFER_LEN) - 0.06, (1.0 / PRESSURE_BUFFER_LEN) - 0.06,
+    (1.0 / PRESSURE_BUFFER_LEN) - 0.06,
+};
 
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
