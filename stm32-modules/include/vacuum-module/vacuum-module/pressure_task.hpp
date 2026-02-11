@@ -232,6 +232,34 @@ class PressureTask {
         std::visit(visit_helper, message);
     }
 
+    auto send_pressure_reading_it(uint16_t GPIO_Pin) -> void {
+        // this calls update pressure, and sends a GCODE message w the result
+        PressureSensorID sensor_id = get_sensor_id_from_pin(GPIO_Pin);
+        update_pressure(sensor_id);
+
+        // Convert to guage pressure
+        auto target_pressure = 0.0F;
+        auto current_pressure = 0.0F;
+        if (_pressure_control.target_pressure > 0) {
+            target_pressure = _pressure_control.target_pressure -
+                              _pressure_control.pressure_atm;
+            current_pressure = _pressure_control.current_pressure -
+                               _pressure_control.pressure_atm;
+        }
+        auto msg = messages::GetPressureStateResponseMessage{
+            .responding_to_id = 0,  // TODO : might want to change this later
+            .target_pressure = target_pressure,
+            .current_pressure = current_pressure,
+            .pressure_abs_a = _pressure_control.pressure_abs_a,
+            .pressure_abs_b = _pressure_control.pressure_abs_b,
+            .pressure_atm = _pressure_control.pressure_atm,
+            .vacuum_enabled = _pressure_control.enable_vacuum,
+            .vent_opened = _pressure_control.vent_opened,
+        };
+        static_cast<void>(
+            _task_registry->send_to_address(msg, Queues::HostCommsAddress));
+    }
+
   private:
     template <PressureControlPolicy Policy>
     auto visit_message(const std::monostate& m, Policy& policy) -> void {
@@ -407,14 +435,14 @@ class PressureTask {
         }
     }
 
-    auto get_sensor_from_pin(uint16_t GPIO_Pin) -> PressureSensor& {
+    auto get_sensor_id_from_pin(uint16_t GPIO_Pin) -> PressureSensorID {
         switch (GPIO_Pin) {
             case SENSOR_A_EOC_PIN:
-                return _abs_pressure_a;
+                return ABS_PRESSURE_A;
             case SENSOR_B_EOC_PIN:
-                return _abs_pressure_b;
+                return ABS_PRESSURE_B;
             default:
-                return _abs_pressure_a;
+                return ATM_PRESSURE;
         }
     }
 
