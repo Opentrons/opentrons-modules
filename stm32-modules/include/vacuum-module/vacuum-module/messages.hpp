@@ -171,12 +171,37 @@ struct SetVentMessage {
     bool vent = false;
 };
 
+struct SetPressurePIDMessage {
+    uint32_t id = 0;
+    std::optional<double> kp = std::nullopt;
+    std::optional<double> ki = std::nullopt;
+    std::optional<double> kd = std::nullopt;
+    std::optional<double> overshoot = std::nullopt;
+    std::optional<double> k_velocity = std::nullopt;
+    std::optional<double> k_holding = std::nullopt;
+    bool reset = false;
+};
+
+struct GetPressurePIDMessage {
+    uint32_t id = 0;
+};
+
+struct GetPressurePIDResponseMessage {
+    uint32_t responding_to_id;
+    double kp;
+    double ki;
+    double kd;
+    double overshoot;
+    double k_velocity;
+    double k_holding;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, DebugMessage, AcknowledgePrevious,
                    GetSystemInfoResponse, GetResetReasonResponse,
-                   GetPressureStateResponseMessage,
-                   GetPumpStateResponseMessage>;
+                   GetPressureStateResponseMessage, GetPumpStateResponseMessage,
+                   GetPressurePIDResponseMessage>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -185,9 +210,11 @@ using SystemMessage =
 
 using UIMessage = ::std::variant<std::monostate, SetStatusBarStateMessage>;
 
-using PressureMessage = ::std::variant<std::monostate, PressureControlMessage,
-                                       SetPressureStateMessage,
-                                       GetPressureStateMessage, SetVentMessage>;
+using PressureMessage =
+    ::std::variant<std::monostate, PressureControlMessage,
+                   SetPressureStateMessage, GetPressureStateMessage,
+                   SetVentMessage, SetPressurePIDMessage,
+                   GetPressurePIDMessage>;
 
 using PumpMessage = ::std::variant<std::monostate, PumpControlMessage,
                                    SetPumpStateMessage, GetPumpStateMessage>;

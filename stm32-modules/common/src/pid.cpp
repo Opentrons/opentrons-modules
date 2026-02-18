@@ -72,3 +72,13 @@ auto PID::arm_integrator_reset(double error, double threshold) -> void {
     }
     _reset_threshold = std::abs(threshold);
 }
+
+auto PID::set_tunings(double kp, double ki, double kd, bool reset_system)
+    -> void {
+    _kp = kp;
+    _ki = ki;
+    _kd = kd;
+    if (reset_system) {
+        reset();
+    }
+}

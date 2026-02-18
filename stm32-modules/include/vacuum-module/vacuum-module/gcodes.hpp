@@ -535,4 +535,117 @@ struct SetVentState {
     }
 };
 
+struct SetPressurePID {
+    /*
+     * M125- SetPressurePID tune the pressure regulation parameters
+     * */
+    std::optional<double> kp;
+    std::optional<double> ki;
+    std::optional<double> kd;
+    std::optional<double> overshoot;
+    std::optional<double> k_velocity;
+    std::optional<double> k_holding;
+    bool reset = false;
+
+    using ParseResult = std::optional<SetPressurePID>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '5', ' '};
+    static constexpr const char* response = "M125 OK\n";
+
+    using P = Arg<float, 'P'>;
+    using I = Arg<float, 'I'>;
+    using D = Arg<float, 'D'>;
+    using O = Arg<float, 'O'>;
+    using V = Arg<float, 'V'>;
+    using H = Arg<float, 'H'>;
+    using R = Arg<uint8_t, 'R'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<P, I, D, O, V, H, R>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = SetPressurePID{.reset = false};
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.kp = static_cast<double>(std::get<0>(arguments).value);
+        }
+        if (std::get<1>(arguments).present) {
+            ret.ki = static_cast<double>(std::get<1>(arguments).value);
+        }
+        if (std::get<2>(arguments).present) {
+            ret.kd = static_cast<double>(std::get<2>(arguments).value);
+        }
+        if (std::get<3>(arguments).present) {
+            ret.overshoot = static_cast<double>(std::get<3>(arguments).value);
+        }
+        if (std::get<4>(arguments).present) {
+            ret.k_velocity = static_cast<double>(std::get<4>(arguments).value);
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (std::get<5>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            ret.k_holding = static_cast<double>(std::get<5>(arguments).value);
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (std::get<6>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            ret.reset = static_cast<bool>(std::get<6>(arguments).value);
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit) -> InputIt {
+        return write_string_to_iterpair(buf, limit, response);
+    }
+};
+
+struct GetPressurePID {
+    /*
+     * M126- GetPressurePID get the pressure control PID tunings
+     * */
+    using ParseResult = std::optional<GetPressurePID>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '6'};
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit, double kp,
+                                    double ki, double kd, double overshoot,
+                                    double k_velocity, double k_holding)
+        -> InputIt {
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf),
+                       "M126 P:%.1f I:%.1f D:%.1f O:%.1f V:%.1f H:%.1f OK\n",
+                       kp, ki, kd, overshoot, k_velocity, k_holding);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto working = prefix_matches(input, limit, prefix);
+        if (working == input) {
+            return std::make_pair(ParseResult(), input);
+        }
+        if (working != limit && !std::isspace(*working)) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetPressurePID()), working);
+    }
+};
+
 }  // namespace gcode

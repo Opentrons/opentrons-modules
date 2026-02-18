@@ -75,10 +75,10 @@ static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
 static constexpr const double DEFAULT_RAMP_RATE = 400.0F;
 // Velocity Gain:
 // How much RPM to add for every 1 mbar/sec drop requested.
-static constexpr const float K_VELOCITY = 20.0F;
+static constexpr const double K_VELOCITY = 20.0F;
 // Holding Gain:
 // Max RPM required to hold a deep vacuum against leaks.
-static constexpr const float K_HOLDING = 43.0F;
+static constexpr const double K_HOLDING = 43.0F;
 // Disables Velocity and Holding Gain if target is overshot
 static constexpr const double OVERSHOOT_ERROR = -2.0F;
 
@@ -119,6 +119,9 @@ struct PressureControl {
     double ramp_rate = 0;
     double target_rpm = 0;
     uint32_t duration_s = 0;
+    float k_velocity = 0;
+    float k_holding = 0;
+    double overshoot_error = 0;
     bool vent_after = false;
 
     double pressure_abs_a = 0;
@@ -138,7 +141,9 @@ const PressureControl pressure_control = {
                CONTROL_PERIOD_MS,  // sampletime
                MAX_RPM,            // windup_limit_high
                0),                 // windup_limit_low
-};
+    .k_velocity = K_VELOCITY,
+    .k_holding = K_HOLDING,
+    .overshoot_error = OVERSHOOT_ERROR};
 
 template <typename P>
 concept PressureControlPolicy = requires(P p) {
@@ -280,10 +285,11 @@ class PressureTask {
         // FF. If we are Overshot (Error is very negative), we want 0 FF.
         auto total_ff_rpm = 0.F;
         auto is_relaxing = (rate_mbar_s < 0.0F);
-        auto is_overshot = (error < OVERSHOOT_ERROR);
+        auto is_overshot = (error < _pressure_control.overshoot_error);
         if (!is_relaxing && !is_overshot) {
             // Calculate RPM needed to achieve this flow rate (Pumping)
-            auto ff_velocity = std::max<double>(0.0F, rate_mbar_s * K_VELOCITY);
+            auto ff_velocity = std::max<double>(
+                0.0F, rate_mbar_s * _pressure_control.k_velocity);
 
             // Calculate Holding Feed-Forward (Static Load)
             // Calculate how "deep" the vacuum is as a percentage (0.0 to 1.0)
@@ -291,7 +297,7 @@ class PressureTask {
             auto ratio =
                 (ATM_PRESSURE_MBAR - smooth_target) / ATM_PRESSURE_MBAR;
             ratio = std::clamp<double>(ratio, 0.0F, 1.0F);
-            auto ff_holding = ratio * K_HOLDING;
+            auto ff_holding = ratio * _pressure_control.k_holding;
             total_ff_rpm = ff_velocity + ff_holding;
         }
 
@@ -375,6 +381,38 @@ class PressureTask {
         auto ret =
             vent_state == m.vent ? Error::NO_ERROR : Error::VENT_FAILED_ERROR;
         send_ack_message(m.id, ret);
+    }
+
+    template <PressureControlPolicy Policy>
+    auto visit_message(const messages::SetPressurePIDMessage& m, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        auto& pc = _pressure_control;
+        pc.overshoot_error = m.overshoot.value_or(pc.overshoot_error);
+        pc.k_velocity = m.k_velocity.value_or(pc.k_velocity);
+        pc.k_holding = m.k_holding.value_or(pc.k_holding);
+        auto kp = m.kp.value_or(pc.pid.kp());
+        auto ki = m.ki.value_or(pc.pid.ki());
+        auto kd = m.kd.value_or(pc.pid.kd());
+        pc.pid.set_tunings(kp, ki, kd, m.reset);
+        send_ack_message(m.id);
+    }
+
+    template <PressureControlPolicy Policy>
+    auto visit_message(const messages::GetPressurePIDMessage& m, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        auto msg = messages::GetPressurePIDResponseMessage{
+            .responding_to_id = m.id,
+            .kp = _pressure_control.pid.kp(),
+            .ki = _pressure_control.pid.ki(),
+            .kd = _pressure_control.pid.kd(),
+            .overshoot = _pressure_control.overshoot_error,
+            .k_velocity = _pressure_control.k_velocity,
+            .k_holding = _pressure_control.k_holding,
+        };
+        static_cast<void>(
+            _task_registry->send_to_address(msg, Queues::HostCommsAddress));
     }
 
     auto get_sensor(PressureSensorID sensor_id) -> PressureSensor& {
