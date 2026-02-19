@@ -57,6 +57,8 @@ class PID {
     [[nodiscard]] auto last_error() const -> double;
     [[nodiscard]] auto last_iterm() const -> double;
     auto arm_integrator_reset(double error, double threshold = 0.0F) -> void;
+    auto set_tunings(double kp, double ki, double kd, bool reset_system = false)
+        -> void;
 
   private:
     enum IntegratorResetTrigger : uint8_t { RISING, FALLING, NONE };
