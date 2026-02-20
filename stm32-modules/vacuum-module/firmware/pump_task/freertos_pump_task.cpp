@@ -47,7 +47,7 @@ static void run_hardware_task(void* param) {
             last_wake_time = xTaskGetTickCount();
             t_resync_needed.store(false);
         }
-
+        // have this send the current time to the pump task
         vTaskDelayUntil(
             &last_wake_time,
             // NOLINTNEXTLINE(readability-static-accessed-through-instance)

@@ -123,6 +123,20 @@ class MPRLL0025PA00001 {
         return -1;
     }
 
+    auto solid_state_target_pressure(double target_pressure, int num_samples,
+                                     double tolerance) -> bool {
+        int p_index = 0;
+        for (int i = 0; i < num_samples; i++) {
+            p_index = (filtered_pressure_buffer_index + i) % PRESSURE_BUFFER_LEN;
+            double pressure_sample = filtered_pressure_mbar.at(p_index);
+            if (std::abs(pressure_sample - target_pressure) > tolerance) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
   private:
     // Formulate a CMD frame
     auto prepare_cmd_frame(uint8_t cmd, const uint8_t* data, uint8_t len)
