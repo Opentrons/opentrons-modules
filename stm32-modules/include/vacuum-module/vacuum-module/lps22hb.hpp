@@ -85,16 +85,6 @@ class LPS22HB {
         return pressure_hpa;
     }
 
-    // TODO: get rid of this and add a visitor to the pressure_task call to this
-    // so we dont have to call a dumb function here
-    auto solid_state_target_pressure(double target_pressure, int num_samples,
-                                     double tolerance) -> bool {
-        static_cast<void>(target_pressure);
-        static_cast<void>(num_samples);
-        static_cast<void>(tolerance);
-        return false;
-    }
-
   private:
     // Formulate a CMD frame
     auto prepare_cmd_frame(uint8_t cmd, const uint8_t* data, uint8_t len)

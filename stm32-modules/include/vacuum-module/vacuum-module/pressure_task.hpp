@@ -262,16 +262,33 @@ class PressureTask {
         _pressure_control.timestamp_target_pressure_reached_tick = 0;
     }
 
+    auto get_solid_state_pressure(MPRLL0025PA00001<i2c::hardware::I2C>& driver,
+                                  double target_pressure, int num_samples,
+                                  double tolerance) -> bool {
+        return driver.solid_state_target_pressure(target_pressure, num_samples,
+                                                  tolerance);
+    }
+
+    auto get_solid_state_pressure(LPS22HB<i2c::hardware::I2C>& driver,
+                                  double target_pressure, int num_samples,
+                                  double tolerance) -> bool {
+        static_cast<void>(driver);
+        static_cast<void>(target_pressure);
+        static_cast<void>(num_samples);
+        static_cast<void>(tolerance);
+        return false;
+    }
+
     // NOTE : this timing is slightly inaccurate, it gets called once per
     // pressure control cycle
     template <PressureControlPolicy Policy>
     auto keep_vacuum_time(Policy& policy, uint32_t timestamp) -> void {
         // TODO : make sure B is the right sensor to use here
         auto& sensor = get_sensor(ABS_PRESSURE_B);
-        const bool solid_state_pressure = std::visit(
+        const bool solid_state_target_pressure = std::visit(
             [&](auto&& driver) -> bool {
-                return driver.solid_state_target_pressure(
-                    _pressure_control.target_pressure,
+                return get_solid_state_pressure(
+                    driver, _pressure_control.target_pressure,
                     SOLID_STATE_PRESSURE_SAMPLES,
                     SOLID_STATE_PRESSURE_TOLERANCE);
             },
@@ -294,7 +311,7 @@ class PressureTask {
             }
         } else {
             // check if target pressure has been achieved since last call
-            if (solid_state_pressure) {
+            if (solid_state_target_pressure) {
                 _pressure_control.target_pressure_reached = true;
                 _pressure_control.timestamp_target_pressure_reached_tick =
                     timestamp;
@@ -322,9 +339,9 @@ class PressureTask {
         // Stop vacuum control
         if (!_pressure_control.enable_vacuum) {
             stop_vacuum(policy);
-        } else {
-            keep_vacuum_time(policy, timestamp);
+            return;
         }
+        keep_vacuum_time(policy, timestamp);
 
         // Update latest absolute pressure
         for (auto sensor_id : {ABS_PRESSURE_A, ABS_PRESSURE_B}) {
