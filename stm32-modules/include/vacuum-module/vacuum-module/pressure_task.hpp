@@ -414,6 +414,8 @@ class PressureTask {
         if (!_pressure_control.enable_vacuum && m.start_pump) {
             policy.start_pressure_control(true);
         }
+        auto timestamp = policy.get_time_ms();
+        _pressure_control.timestamp_command_issued_tick = timestamp;
         _pressure_control.enable_vacuum = m.start_pump;
         send_ack_message(m.id);
     }
