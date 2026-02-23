@@ -269,10 +269,13 @@ class PressureTask {
         // TODO : make sure B is the right sensor to use here
         auto& sensor = get_sensor(ABS_PRESSURE_B);
         bool solid_state_pressure = std::visit(
-            [&](auto&& driver) -> double { return driver.solid_state_target_pressure(_pressure_control.target_pressure,
-                                            SOLID_STATE_PRESSURE_SAMPLES, SOLID_STATE_PRESSURE_TOLERANCE); },
+            [&](auto&& driver) -> double {
+                return driver.solid_state_target_pressure(
+                    _pressure_control.target_pressure,
+                    SOLID_STATE_PRESSURE_SAMPLES,
+                    SOLID_STATE_PRESSURE_TOLERANCE);
+            },
             sensor.driver);
-        
 
         // if we're here it's safe to assume a target pressure has been
         // requested
