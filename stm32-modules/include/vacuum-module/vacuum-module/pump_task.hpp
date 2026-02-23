@@ -133,7 +133,6 @@ class PumpTask {
         static_cast<void>(policy);
     }
 
-    // already have access to the time in here
     template <PumpControlPolicy Policy>
     auto visit_message(const messages::PumpControlMessage& m, Policy& policy)
         -> void {

@@ -114,12 +114,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     } else if(htim->Instance == TIM3) {
        tach_period_overflow_callback();
     }
-    // add interrupt handler for new timer
-    // - create timer in pump_hardware.c
-    // - start timer in visitor for setpressuremessage, when duration > 0
-    // - would need to set the timer period ? 
-    // not sure if you could do that from static pump_hardware function
-    // would be prescaler val, and youd have to calculate what it should be
 
 }
 

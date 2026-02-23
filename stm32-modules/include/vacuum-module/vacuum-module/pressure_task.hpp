@@ -268,8 +268,8 @@ class PressureTask {
     auto keep_vacuum_time(Policy& policy, uint32_t timestamp) -> void {
         // TODO : make sure B is the right sensor to use here
         auto& sensor = get_sensor(ABS_PRESSURE_B);
-        bool solid_state_pressure = std::visit(
-            [&](auto&& driver) -> double {
+        const bool solid_state_pressure = std::visit(
+            [&](auto&& driver) -> bool {
                 return driver.solid_state_target_pressure(
                     _pressure_control.target_pressure,
                     SOLID_STATE_PRESSURE_SAMPLES,
@@ -286,7 +286,7 @@ class PressureTask {
             if (!_pressure_control.vent_after) {
                 return;
             }
-            uint32_t time_elapsed_under_vacuum =
+            const uint32_t time_elapsed_under_vacuum =
                 timestamp -
                 _pressure_control.timestamp_target_pressure_reached_tick;
             if (time_elapsed_under_vacuum >= _pressure_control.duration_s) {
@@ -301,7 +301,7 @@ class PressureTask {
             } else {
                 // see if it's taken too long for target pressure to be reached
                 // and throw an error if so
-                uint32_t time_elapsed_before_target =
+                const uint32_t time_elapsed_before_target =
                     timestamp - _pressure_control.timestamp_command_issued_tick;
                 if (time_elapsed_before_target > TARGET_PRESSURE_MAX_TIME_S) {
                     send_error_message(Error::PRESSURE_NOT_REACHED_ERROR);
@@ -383,16 +383,72 @@ class PressureTask {
     template <PressureControlPolicy Policy>
     auto visit_message(const messages::SetPressureStateMessage& m,
                        Policy& policy) -> void {
-        // should probably wipe some of the _pressure_control values upon
-        // receipt, like duration, target_pressure_reached
-
         // Convert target guage presure to abs pressure
         update_pressure(ATM_PRESSURE);
         auto guage_pressure =
             std::clamp<double>(m.pressure_setpoint, ATM_PRESSURE_MBAR * -1, 0);
         auto target_pressure = guage_pressure + _pressure_control.pressure_atm;
         _pressure_control.target_pressure = target_pressure;
-        vent_state == m.vent ? Error::NO_ERROR : Error::VENT_FAILED_ERROR;
+        _pressure_control.ramp_rate = m.ramp_rate;
+        _pressure_control.duration_s = m.duration_s;
+        _pressure_control.vent_after = m.vent_after;
+
+        // Start the pressure control loop
+        if (!_pressure_control.enable_vacuum && m.start_pump) {
+            policy.start_pressure_control(true);
+        }
+        _pressure_control.enable_vacuum = m.start_pump;
+        send_ack_message(m.id);
+    }
+
+    template <PressureControlPolicy Policy>
+    auto visit_message(const messages::GetPressureStateMessage& m,
+                       Policy& policy) -> void {
+        // refresh if the pump is not running
+        if (!_pressure_control.enable_vacuum) {
+            for (auto sensor_id :
+                 {ABS_PRESSURE_A, ABS_PRESSURE_B, ATM_PRESSURE}) {
+                auto ret = update_pressure(sensor_id);
+                // Reset the sensor if there is some problem
+                if (ret != NO_ERROR) {
+                    policy.sensor_reset(sensor_id);
+                    continue;
+                }
+            }
+        }
+
+        // Convert to guage pressure
+        auto target_pressure = 0.0F;
+        auto current_pressure = 0.0F;
+        if (_pressure_control.target_pressure > 0) {
+            target_pressure = _pressure_control.target_pressure -
+                              _pressure_control.pressure_atm;
+            current_pressure = _pressure_control.current_pressure -
+                               _pressure_control.pressure_atm;
+        }
+        auto msg = messages::GetPressureStateResponseMessage{
+            .responding_to_id = m.id,
+            .target_pressure = target_pressure,
+            .current_pressure = current_pressure,
+            .pressure_abs_a = _pressure_control.pressure_abs_a,
+            .pressure_abs_b = _pressure_control.pressure_abs_b,
+            .pressure_atm = _pressure_control.pressure_atm,
+            .vacuum_enabled = _pressure_control.enable_vacuum,
+            .vent_opened = _pressure_control.vent_opened,
+        };
+        static_cast<void>(
+            _task_registry->send_to_address(msg, Queues::HostCommsAddress));
+    }
+
+    template <PressureControlPolicy Policy>
+    auto visit_message(const messages::SetVentMessage& m, Policy& policy)
+        -> void {
+        // open/close the vent
+        policy.set_vent_state(m.vent);
+        auto vent_state = policy.get_vent_state();
+        _pressure_control.vent_opened = vent_state;
+        auto ret =
+            vent_state == m.vent ? Error::NO_ERROR : Error::VENT_FAILED_ERROR;
         send_ack_message(m.id, ret);
     }
 
