@@ -84,8 +84,7 @@ static constexpr const double OVERSHOOT_ERROR = -2.0F;
 
 using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
 static constexpr const uint32_t TARGET_PRESSURE_MAX_TIME_S = 100;
-static constexpr const uint32_t SOLID_STATE_PRESSURE_TOLERANCE = 100;
-static constexpr const uint32_t SOLID_STATE_PRESSURE_SAMPLES = 100;
+static constexpr const uint32_t SOLID_STATE_PRESSURE_TOLERANCE = 10;
 
 using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
 using LPSDriverType = LPS22HB<i2c::hardware::I2C>;
@@ -113,8 +112,6 @@ const PressureSensor atm_pressure = {
     .driver = LPS22HB<i2c::hardware::I2C>(ATM_PRESSURE_ADDR),
 };
 
-// need to break the new params out to host comms task and allow them to be
-// passed to pressure task
 struct PressureControl {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     PID pid;  // Pressure PID loop
@@ -263,18 +260,16 @@ class PressureTask {
     }
 
     auto get_solid_state_pressure(MPRLL0025PA00001<i2c::hardware::I2C>& driver,
-                                  double target_pressure, int num_samples,
-                                  double tolerance) -> bool {
-        return driver.solid_state_target_pressure(target_pressure, num_samples,
-                                                  tolerance);
+                                  double target_pressure, double tolerance)
+        -> bool {
+        return driver.solid_state_target_pressure(target_pressure, tolerance);
     }
 
     auto get_solid_state_pressure(LPS22HB<i2c::hardware::I2C>& driver,
-                                  double target_pressure, int num_samples,
-                                  double tolerance) -> bool {
+                                  double target_pressure, double tolerance)
+        -> bool {
         static_cast<void>(driver);
         static_cast<void>(target_pressure);
-        static_cast<void>(num_samples);
         static_cast<void>(tolerance);
         return false;
     }
@@ -289,7 +284,6 @@ class PressureTask {
             [&](auto&& driver) -> bool {
                 return get_solid_state_pressure(
                     driver, _pressure_control.target_pressure,
-                    SOLID_STATE_PRESSURE_SAMPLES,
                     SOLID_STATE_PRESSURE_TOLERANCE);
             },
             sensor.driver);
