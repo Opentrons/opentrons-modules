@@ -4,6 +4,8 @@
 #include <cmath>
 #include <cstdint>
 
+#include "firmware/hardware_iface.hpp"
+
 namespace vacuum_pressure_sensor {
 using i2c::hardware::RxTxReturn;
 
@@ -39,15 +41,18 @@ constexpr double PMAX = 25;
 constexpr double PMIN = 0;
 constexpr double PSI2MBAR = 68.9475729318;
 constexpr uint8_t PRESSURE_FRAME_LEN = 10;
-constexpr int PRESSURE_BUFFER_LEN = 5;
-// TODO: currently this filter acts as an unweighted moving average. Find
-// coefficient values that optimize sensor output behavior for closed-loop
-// control
-const double moving_avg_coefficient =
-    1.0 / std::pow((PRESSURE_BUFFER_LEN - 0.75), 2);
+constexpr int PRESSURE_BUFFER_LEN = 8;
+// These coefficients act as an EMI (Exponential Moving Average) filter.
+// Ci = alpha(1 - alpha)^i
+// clang-format off
 const std::array<double, PRESSURE_BUFFER_LEN> FILTER = {
-    moving_avg_coefficient, moving_avg_coefficient, moving_avg_coefficient,
-    moving_avg_coefficient};
+    // 0.1756, 0.1580, 0.1422, 0.1280, 0.1152, 0.1037, 0.0933, 0.0840  // a=0.1
+    0.2403, 0.1923, 0.1538, 0.1231, 0.0985, 0.0788, 0.0630, 0.0504  // a=0.2
+    // 0.3133, 0.2193, 0.1535, 0.1075, 0.0752, 0.0527, 0.0369, 0.0258  // a=0.3
+    // 0.5020, 0.2510, 0.1255, 0.0627, 0.0314, 0.0157, 0.0078, 0.0039  // a=0.5
+    // 0.8000, 0.1600, 0.0320, 0.0064, 0.0013, 0.0003, 0.0001, 0.0000  // a=0.8
+};
+// clang-format on
 
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
@@ -71,6 +76,7 @@ class MPRLL0025PA00001 {
         if (_policy == nullptr) {
             _policy = policy;
             _sensor_id = sensor_id;
+            is_first_read = true;
 
             // check device status
             ok = _policy->is_device_ready(device_address << 1);
@@ -101,10 +107,16 @@ class MPRLL0025PA00001 {
             auto sensor_busy =
                 static_cast<bool>(status_byte & STATUS_BUSY_FLAG);
             if (!sensor_busy) {
-                pressure_mbar = parse_pressure(RD_BUFF.data());
-                filter_pressure(pressure_mbar);
-                return filtered_pressure_mbar.at(
-                    filtered_pressure_buffer_index);
+                auto raw_pressure = parse_pressure(RD_BUFF.data());
+                // Pre-fill the buffer if this is the first read so we dont
+                // calculate the filtered pressure from 1 reading where the
+                // rest of the buffer is holding 0.
+                if (is_first_read) {
+                    unfiltered_pressure_mbar.fill(raw_pressure);
+                    is_first_read = false;
+                }
+                pressure_mbar = filter_pressure(raw_pressure);
+                return pressure_mbar;
             }
         }
 
@@ -142,25 +154,19 @@ class MPRLL0025PA00001 {
         return pressure_psi * PSI2MBAR;
     }
 
-    auto filter_pressure(double input_pressure_mbar) -> void {
-        ++filtered_pressure_buffer_index %= PRESSURE_BUFFER_LEN;
-        ++unfiltered_pressure_buffer_index %= PRESSURE_BUFFER_LEN;
-        unfiltered_pressure_mbar.at(unfiltered_pressure_buffer_index) =
-            input_pressure_mbar;
+    auto filter_pressure(double pressure_mbar) -> double {
         double filter_output = 0;
-        double pressure_sample = 0;
-        int p_index = unfiltered_pressure_buffer_index;
+        unfiltered_pressure_mbar.at(pressure_buffer_index) = pressure_mbar;
         for (int i = 0; i < PRESSURE_BUFFER_LEN; i++) {
-            p_index =
-                (unfiltered_pressure_buffer_index + i) % PRESSURE_BUFFER_LEN;
-            pressure_sample = unfiltered_pressure_mbar.at(p_index);
-            for (int j = 0; j < PRESSURE_BUFFER_LEN; j++) {
-                filter_output += pressure_sample * FILTER.at(j);
-            }
+            const int p_index =
+                (pressure_buffer_index - i + PRESSURE_BUFFER_LEN) %
+                PRESSURE_BUFFER_LEN;
+            filter_output +=
+                unfiltered_pressure_mbar.at(p_index) * FILTER.at(i);
         }
-
-        filtered_pressure_mbar.at(filtered_pressure_buffer_index) =
-            filter_output;
+        pressure_buffer_index =
+            (pressure_buffer_index + 1) % PRESSURE_BUFFER_LEN;
+        return filter_output;
     }
 
     Policy* _policy{nullptr};
@@ -169,12 +175,11 @@ class MPRLL0025PA00001 {
     PressureSensorID _sensor_id{};
     uint8_t device_address{};
 
-    std::array<double, PRESSURE_BUFFER_LEN> filtered_pressure_mbar = {0};
     std::array<double, PRESSURE_BUFFER_LEN> unfiltered_pressure_mbar = {0};
-    size_t filtered_pressure_buffer_index = 0;
-    size_t unfiltered_pressure_buffer_index = 0;
+    uint8_t pressure_buffer_index = 0;
     double pressure_mbar = 0;
     uint8_t last_status = 0;
+    bool is_first_read = true;
 };
 
 }  // namespace vacuum_pressure_sensor
