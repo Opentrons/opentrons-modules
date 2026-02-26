@@ -42,7 +42,7 @@ constexpr double PMIN = 0;
 constexpr double PSI2MBAR = 68.9475729318;
 constexpr uint8_t PRESSURE_FRAME_LEN = 10;
 
-constexpr int PRESSURE_FILTER_BUFFER_LEN = 5;
+constexpr int PRESSURE_FILTER_BUFFER_LEN = 8;
 // pressure needs to hold for 10 seconds to be considered stable
 constexpr int PRESSURE_STATE_BUFFER_LEN = 250;
 // TODO: currently this filter acts as an unweighted moving average. Find
@@ -188,7 +188,7 @@ class MPRLL0025PA00001 {
 //             (pressure_buffer_index + 1) % PRESSURE_BUFFER_LEN;
 //         return filter_output;
 // =======
-    auto filter_pressure(double input_pressure_mbar) -> void {
+    auto filter_pressure(double input_pressure_mbar) -> double {
         ++filtered_pressure_buffer_index %= PRESSURE_FILTER_BUFFER_LEN;
         ++unfiltered_pressure_buffer_index %= PRESSURE_FILTER_BUFFER_LEN;
         ++filtered_pressure_state_buffer_mbar_index %=
@@ -212,6 +212,7 @@ class MPRLL0025PA00001 {
             filter_output;
         filtered_pressure_state_buffer_mbar.at(
             filtered_pressure_state_buffer_mbar_index) = filter_output;
+        return filter_output;
 // >>>>>>> 80a6636 (make larger buffer for keeping track of target pressure state)
     }
 
