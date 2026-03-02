@@ -52,6 +52,7 @@
 #include "lps22hb.hpp"
 #include "messages.hpp"
 #include "mprll0025pa00001a.hpp"
+#include "ot_utils/freertos/freertos_timer.hpp"
 #include "slew_rate_limiter.hpp"
 #include "systemwide.h"
 #include "vacuum-module/errors.hpp"
@@ -61,6 +62,7 @@
 namespace pressure_task {
 using lps22hb::LPS22HB;
 using vacuum_pressure_sensor::MPRLL0025PA00001;
+using namespace ot_utils::freertos_timer;
 
 constexpr uint8_t ABS_PRESSURE_A_ADDR = 0x18;  // Closest to Manifold
 constexpr uint8_t ABS_PRESSURE_B_ADDR = 0x18;  // Closest to Pump
@@ -89,6 +91,8 @@ static constexpr const uint32_t SOLID_STATE_PRESSURE_TOLERANCE = 10;
 using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
 using LPSDriverType = LPS22HB<i2c::hardware::I2C>;
 using Driver = std::variant<MPRDriverType, LPSDriverType>;
+
+static constexpr uint32_t UPDATE_PERIOD_MS = 10;
 
 struct PressureSensor {
     PressureSensorID kind;
@@ -133,8 +137,8 @@ struct PressureControl {
     double pressure_atm = 0;
 
     uint32_t last_tick = 0;
-    uint32_t timestamp_command_issued_tick = 0;
-    uint32_t timestamp_target_pressure_reached_tick = 0;
+    //    uint32_t timestamp_command_issued_tick = 0;
+    //    uint32_t timestamp_target_pressure_reached_tick = 0;
     bool enable_vacuum = false;
     bool vent_opened = false;
     bool target_pressure_reached = false;
@@ -176,7 +180,13 @@ class PressureTask {
   public:
     explicit PressureTask(Queue& q, Aggregator* aggregator,
                           PressurePolicy* policy)
-        : _message_queue(q), _task_registry(aggregator), _policy(policy) {}
+        : _message_queue(q),
+          _task_registry(aggregator),
+          _policy(policy),
+          _vacuum_timer(
+              "Vacuum Timer",
+              [ThisPtr = this] { ThisPtr->vacuum_timer_end_callback(); },
+              UPDATE_PERIOD_MS) {}
     PressureTask(const PressureTask& other) = delete;
     auto operator=(const PressureTask& other) -> PressureTask& = delete;
     PressureTask(PressureTask&& other) noexcept = delete;
@@ -242,10 +252,48 @@ class PressureTask {
         static_cast<void>(policy);
     }
 
-    template <PressureControlPolicy Policy>
-    auto stop_vacuum(Policy& policy) -> void {
+    auto keep_vacuum_time() -> void {
+        if (!_pressure_control.target_pressure_reached) {
+            // check for solid state target pressure and set target_pressure
+            // true if its there
+            auto& sensor = get_sensor(ABS_PRESSURE_B);
+            _pressure_control.target_pressure_reached = std::visit(
+                [&](auto&& driver) -> bool {
+                    return solid_state_target_pressure(
+                        driver, _pressure_control.target_pressure,
+                        SOLID_STATE_PRESSURE_TOLERANCE);
+                },
+                sensor.driver);
+            if (_pressure_control.target_pressure_reached) {
+                // reset the freertos timer period to be the hold duration, and
+                // start the timer
+                uint32_t duration_ms = _pressure_control.duration_s * 1000;
+                _vacuum_timer.update_period(duration_ms);
+         //       _vacuum_timer.start();
+            }
+        }
+        // if we wanted to keep checking during the hold time that the pressure
+        // holds, we could do it here
+    }
+
+    auto vacuum_timer_end_callback() -> void {
+        // we've reached target pressure and are holding
+        if (_pressure_control.target_pressure_reached) {
+            stop_vacuum();
+            // maybe also send an ack messsage
+            if (_pressure_control.vent_after) {
+                // send open vent message
+            }
+        } else {  // we've reached the end of the allowed time to reach target
+                  // pressure
+            // throw an error here
+        }
+        _vacuum_timer.stop();
+    }
+
+    auto stop_vacuum() -> void {
         // Stop vacuum control
-        policy.start_pressure_control(false);
+        _policy->start_pressure_control(false);
         set_pump_state(false, 0);
 
         _pressure_control.pid.reset();
@@ -255,70 +303,25 @@ class PressureTask {
         _pressure_control.last_tick = 0;
         _pressure_control.duration_s = 0;
         _pressure_control.target_pressure_reached = false;
-        _pressure_control.timestamp_command_issued_tick = 0;
-        _pressure_control.timestamp_target_pressure_reached_tick = 0;
     }
 
-    auto get_solid_state_pressure(MPRLL0025PA00001<i2c::hardware::I2C>& driver,
-                                  double target_pressure, double tolerance)
-        -> bool {
-        return driver.solid_state_target_pressure(target_pressure, tolerance);
+    auto solid_state_target_pressure(
+        MPRLL0025PA00001<i2c::hardware::I2C>& driver, double target_pressure,
+        double tolerance) -> bool {
+        // TODO : once timing is verified, replace this with the actual solid
+        // state logic
+        //        return driver.solid_state_target_pressure(target_pressure,
+        //        tolerance);
+        return true;
     }
 
-    auto get_solid_state_pressure(LPS22HB<i2c::hardware::I2C>& driver,
-                                  double target_pressure, double tolerance)
+    auto solid_state_target_pressure(LPS22HB<i2c::hardware::I2C>& driver,
+                                     double target_pressure, double tolerance)
         -> bool {
         static_cast<void>(driver);
         static_cast<void>(target_pressure);
         static_cast<void>(tolerance);
         return false;
-    }
-
-    // NOTE : this timing is slightly inaccurate, it gets called once per
-    // pressure control cycle
-    template <PressureControlPolicy Policy>
-    auto keep_vacuum_time(Policy& policy, uint32_t timestamp) -> void {
-        // TODO : make sure B is the right sensor to use here
-        auto& sensor = get_sensor(ABS_PRESSURE_B);
-        const bool solid_state_target_pressure = std::visit(
-            [&](auto&& driver) -> bool {
-                return get_solid_state_pressure(
-                    driver, _pressure_control.target_pressure,
-                    SOLID_STATE_PRESSURE_TOLERANCE);
-            },
-            sensor.driver);
-
-        // if we're here it's safe to assume a target pressure has been
-        // requested
-        if (_pressure_control.target_pressure_reached) {
-            // assumption here is that if you don't set vent_after, you want the
-            // pump to just keep running indefinitely; and if you do set
-            // vent_after, you want the pump to also stop when you open the vent
-            if (!_pressure_control.vent_after) {
-                return;
-            }
-            const uint32_t time_elapsed_under_vacuum =
-                timestamp -
-                _pressure_control.timestamp_target_pressure_reached_tick;
-            if (time_elapsed_under_vacuum >= _pressure_control.duration_s) {
-                stop_vacuum(policy);
-            }
-        } else {
-            // check if target pressure has been achieved since last call
-            if (solid_state_target_pressure) {
-                _pressure_control.target_pressure_reached = true;
-                _pressure_control.timestamp_target_pressure_reached_tick =
-                    timestamp;
-            } else {
-                // see if it's taken too long for target pressure to be reached
-                // and throw an error if so
-                const uint32_t time_elapsed_before_target =
-                    timestamp - _pressure_control.timestamp_command_issued_tick;
-                if (time_elapsed_before_target > TARGET_PRESSURE_MAX_TIME_S) {
-                    send_error_message(Error::PRESSURE_NOT_REACHED_ERROR);
-                }
-            }
-        }
     }
 
     template <PressureControlPolicy Policy>
@@ -332,10 +335,13 @@ class PressureTask {
 
         // Stop vacuum control
         if (!_pressure_control.enable_vacuum) {
-            stop_vacuum(policy);
+            stop_vacuum();
             return;
         }
-        keep_vacuum_time(policy, timestamp);
+        // this condition is redundant ; figure out where I want to keep it
+        if (!_pressure_control.target_pressure_reached) {
+            keep_vacuum_time();
+        }
 
         // Update latest absolute pressure
         for (auto sensor_id : {ABS_PRESSURE_A, ABS_PRESSURE_B}) {
@@ -403,13 +409,15 @@ class PressureTask {
         _pressure_control.ramp_rate = m.ramp_rate;
         _pressure_control.duration_s = m.duration_s;
         _pressure_control.vent_after = m.vent_after;
+        _pressure_control.target_pressure_reached = false;
 
         // Start the pressure control loop
         if (!_pressure_control.enable_vacuum && m.start_pump) {
             policy.start_pressure_control(true);
+            // start timing how long it takes to reach target pressure
+            _vacuum_timer.update_period(TARGET_PRESSURE_MAX_TIME_S);
+            _vacuum_timer.start();
         }
-        auto timestamp = policy.get_time_ms();
-        _pressure_control.timestamp_command_issued_tick = timestamp;
         _pressure_control.enable_vacuum = m.start_pump;
         send_ack_message(m.id);
     }
@@ -566,6 +574,7 @@ class PressureTask {
     Aggregator* _task_registry;
     PressurePolicy* _policy;
     bool _initialized{false};
+    FreeRTOSTimer _vacuum_timer;
 
     PressureSensor _abs_pressure_a = abs_pressure_a;
     PressureSensor _abs_pressure_b = abs_pressure_b;
