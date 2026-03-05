@@ -39,6 +39,7 @@
 
 #pragma once
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <variant>
@@ -93,6 +94,8 @@ using LPSDriverType = LPS22HB<i2c::hardware::I2C>;
 using Driver = std::variant<MPRDriverType, LPSDriverType>;
 
 static constexpr uint32_t UPDATE_PERIOD_MS = 10;
+static constexpr uint8_t PRESSURE_STATE_BUFFER_LEN = 125;
+static constexpr uint8_t TARGET_PRESSURE_TOLERANCE_MBAR = 10;
 
 struct PressureSensor {
     PressureSensorID kind;
@@ -256,20 +259,17 @@ class PressureTask {
         if (!_pressure_control.target_pressure_reached) {
             // check for solid state target pressure and set target_pressure
             // true if its there
-            auto& sensor = get_sensor(ABS_PRESSURE_B);
-            _pressure_control.target_pressure_reached = std::visit(
-                [&](auto&& driver) -> bool {
-                    return solid_state_target_pressure(
-                        driver, _pressure_control.target_pressure,
-                        SOLID_STATE_PRESSURE_TOLERANCE);
-                },
-                sensor.driver);
+
+            // make this atomic
+            _pressure_control.target_pressure_reached = 
+                solid_state_target_pressure();
             if (_pressure_control.target_pressure_reached) {
                 // reset the freertos timer period to be the hold duration, and
                 // start the timer
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
                 uint32_t duration_ms = _pressure_control.duration_s * 1000;
                 _vacuum_timer.update_period(duration_ms);
-         //       _vacuum_timer.start();
+                _vacuum_timer.start();
             }
         }
         // if we wanted to keep checking during the hold time that the pressure
@@ -277,9 +277,10 @@ class PressureTask {
     }
 
     auto vacuum_timer_end_callback() -> void {
+        _vacuum_timer.stop();
         // we've reached target pressure and are holding
         if (_pressure_control.target_pressure_reached) {
-            stop_vacuum();
+            _pressure_control.enable_vacuum = false;
             // maybe also send an ack messsage
             if (_pressure_control.vent_after) {
                 // send open vent message
@@ -288,7 +289,6 @@ class PressureTask {
                   // pressure
             // throw an error here
         }
-        _vacuum_timer.stop();
     }
 
     auto stop_vacuum() -> void {
@@ -305,23 +305,16 @@ class PressureTask {
         _pressure_control.target_pressure_reached = false;
     }
 
-    auto solid_state_target_pressure(
-        MPRLL0025PA00001<i2c::hardware::I2C>& driver, double target_pressure,
-        double tolerance) -> bool {
-        // TODO : once timing is verified, replace this with the actual solid
-        // state logic
-        //        return driver.solid_state_target_pressure(target_pressure,
-        //        tolerance);
+    auto solid_state_target_pressure() -> bool {
+        // this could be adjusted to be a little more lenient by adjusting the
+        // tolerance; it will fail though if there are extreme transient values
+        for (int i = 0; i < PRESSURE_STATE_BUFFER_LEN; i++) {
+            if (std::abs(pressure_state_buffer.at(i) - _pressure_control.target_pressure) >
+                TARGET_PRESSURE_TOLERANCE_MBAR) {
+                return false;
+            }
+        }
         return true;
-    }
-
-    auto solid_state_target_pressure(LPS22HB<i2c::hardware::I2C>& driver,
-                                     double target_pressure, double tolerance)
-        -> bool {
-        static_cast<void>(driver);
-        static_cast<void>(target_pressure);
-        static_cast<void>(tolerance);
-        return false;
     }
 
     template <PressureControlPolicy Policy>
@@ -534,6 +527,10 @@ class PressureTask {
             return MATH_SATURATION_ERROR;
         }
 
+        // buffer pressure response
+        pressure_state_buffer.at(pressure_state_buffer_index) = pressure;
+        pressure_state_buffer_index =
+            (pressure_state_buffer_index + 1) % PRESSURE_STATE_BUFFER_LEN;
         if (sensor_id == ABS_PRESSURE_A) {
             _pressure_control.pressure_abs_a = pressure;
         } else if (sensor_id == ABS_PRESSURE_B) {
@@ -579,6 +576,8 @@ class PressureTask {
     PressureSensor _abs_pressure_a = abs_pressure_a;
     PressureSensor _abs_pressure_b = abs_pressure_b;
     PressureSensor _atm_pressure = atm_pressure;
+    std::array<double, PRESSURE_STATE_BUFFER_LEN> pressure_state_buffer = {0};
+    uint8_t pressure_state_buffer_index = 0;
 
     PressureControl _pressure_control = pressure_control;
 };
