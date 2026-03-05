@@ -272,6 +272,10 @@ class PressureTask {
                 // reset the freertos timer period to be the hold duration, and
                 // start the timer
                 // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                if (_pressure_control.duration_s == 0) {
+                    _vacuum_timer.stop();
+                    return;
+                }
                 uint32_t duration_ms = _pressure_control.duration_s * 1000;
                 _vacuum_timer.update_period(duration_ms);
                 _vacuum_timer.start();
