@@ -151,10 +151,7 @@ struct PressureControl {
     bool target_pressure_reached = false;
 };
 
-enum class VentState : bool {
-    OPEN = false,
-    CLOSED = true
-};
+enum class VentState : bool { OPEN = false, CLOSED = true };
 
 const PressureControl pressure_control = {
     // Tuned for 25hz freq
@@ -262,20 +259,17 @@ class PressureTask {
 
     auto monitor_target_pressure() -> void {
         if (!_pressure_control.target_pressure_reached) {
-            // check for solid state target pressure and set target_pressure
-            // true if its there
-
-            // make this atomic
-            _pressure_control.target_pressure_reached = 
+            _pressure_control.target_pressure_reached =
                 solid_state_target_pressure();
             if (_pressure_control.target_pressure_reached) {
-                // reset the freertos timer period to be the hold duration, and
-                // start the timer
-                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                // if duration is 0, continue indefinitely
                 if (_pressure_control.duration_s == 0) {
                     _vacuum_timer.stop();
                     return;
                 }
+                // reset the freertos timer period to be the hold duration, and
+                // start the timer
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
                 uint32_t duration_ms = _pressure_control.duration_s * 1000;
                 _vacuum_timer.update_period(duration_ms);
                 _vacuum_timer.start();
@@ -289,13 +283,14 @@ class PressureTask {
         _vacuum_timer.stop();
         // we've reached target pressure and are holding
         if (_pressure_control.target_pressure_reached) {
-            _pressure_control.enable_vacuum = false;        
+            _pressure_control.enable_vacuum = false;
             if (_pressure_control.vent_after) {
-                _pressure_control.handle_open_vent = true;  
+                _pressure_control.handle_open_vent = true;
             }
         } else {  // we've reached the end of the allowed time to reach target
                   // pressure
-            _pressure_control.pressure_error = Error::PRESSURE_NOT_REACHED_ERROR; 
+            _pressure_control.pressure_error =
+                Error::PRESSURE_NOT_REACHED_ERROR;
         }
     }
 
@@ -317,7 +312,8 @@ class PressureTask {
         // this could be adjusted to be a little more lenient by adjusting the
         // tolerance; it will fail though if there are extreme transient values
         for (int i = 0; i < PRESSURE_STATE_BUFFER_LEN; i++) {
-            if (std::abs(pressure_state_buffer.at(i) - _pressure_control.target_pressure) >
+            if (std::abs(pressure_state_buffer.at(i) -
+                         _pressure_control.target_pressure) >
                 TARGET_PRESSURE_TOLERANCE_MBAR) {
                 return false;
             }
@@ -331,9 +327,10 @@ class PressureTask {
         }
         if (_pressure_control.handle_open_vent) {
             _policy->set_vent_state(static_cast<bool>(VentState::OPEN));
-        } 
+        }
         if (_pressure_control.pressure_error != Error::NO_ERROR) {
-            send_ack_message(_pressure_control.responding_to_id, _pressure_control.pressure_error);
+            send_ack_message(_pressure_control.responding_to_id,
+                             _pressure_control.pressure_error);
         }
     }
 
@@ -352,7 +349,7 @@ class PressureTask {
             return;
         }
         monitor_target_pressure();
-        
+
         // Update latest absolute pressure
         for (auto sensor_id : {ABS_PRESSURE_A, ABS_PRESSURE_B}) {
             // TODO: add FIR filter for abs pressure.
@@ -545,7 +542,6 @@ class PressureTask {
             return MATH_SATURATION_ERROR;
         }
 
-        // buffer pressure response
         pressure_state_buffer.at(pressure_state_buffer_index) = pressure;
         pressure_state_buffer_index =
             (pressure_state_buffer_index + 1) % PRESSURE_STATE_BUFFER_LEN;
