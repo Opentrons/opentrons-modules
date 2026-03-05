@@ -93,6 +93,10 @@ using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
 using LPSDriverType = LPS22HB<i2c::hardware::I2C>;
 using Driver = std::variant<MPRDriverType, LPSDriverType>;
 
+using PressurePolicy = pressure_policy::PressurePolicy;
+using Message = messages::PressureMessage;
+using Error = errors::ErrorCode;
+
 static constexpr uint32_t UPDATE_PERIOD_MS = 10;
 static constexpr uint8_t PRESSURE_STATE_BUFFER_LEN = 125;
 static constexpr uint8_t TARGET_PRESSURE_TOLERANCE_MBAR = 10;
@@ -134,17 +138,22 @@ struct PressureControl {
     float k_holding = 0;
     double overshoot_error = 0;
     bool vent_after = false;
-
+    bool handle_open_vent = false;
+    Error pressure_error = Error::NO_ERROR;
+    uint32_t responding_to_id = 0;
     double pressure_abs_a = 0;
     double pressure_abs_b = 0;
     double pressure_atm = 0;
 
     uint32_t last_tick = 0;
-    //    uint32_t timestamp_command_issued_tick = 0;
-    //    uint32_t timestamp_target_pressure_reached_tick = 0;
     bool enable_vacuum = false;
     bool vent_opened = false;
     bool target_pressure_reached = false;
+};
+
+enum class VentState : bool {
+    OPEN = false,
+    CLOSED = true
 };
 
 const PressureControl pressure_control = {
@@ -167,10 +176,6 @@ concept PressureControlPolicy = requires(P p) {
         p.get_i2c_comms(PressureSensorID{})
         } -> std::same_as<i2c::hardware::I2C*>;
 };
-
-using PressurePolicy = pressure_policy::PressurePolicy;
-using Message = messages::PressureMessage;
-using Error = errors::ErrorCode;
 
 template <template <class> class QueueImpl>
 requires MessageQueue<QueueImpl<Message>, Message>
@@ -233,7 +238,7 @@ class PressureTask {
                                              DEFAULT_RAMP_RATE);
 
             // Close the vent
-            policy.set_vent_state(true);
+            policy.set_vent_state(static_cast<bool>(VentState::CLOSED));
             _pressure_control.vent_opened = policy.get_vent_state();
 
             _message_queue.set_ready();
@@ -255,7 +260,7 @@ class PressureTask {
         static_cast<void>(policy);
     }
 
-    auto keep_vacuum_time() -> void {
+    auto monitor_target_pressure() -> void {
         if (!_pressure_control.target_pressure_reached) {
             // check for solid state target pressure and set target_pressure
             // true if its there
@@ -280,14 +285,13 @@ class PressureTask {
         _vacuum_timer.stop();
         // we've reached target pressure and are holding
         if (_pressure_control.target_pressure_reached) {
-            _pressure_control.enable_vacuum = false;
-            // maybe also send an ack messsage
+            _pressure_control.enable_vacuum = false;        
             if (_pressure_control.vent_after) {
-                // send open vent message
+                _pressure_control.handle_open_vent = true;  
             }
         } else {  // we've reached the end of the allowed time to reach target
                   // pressure
-            // throw an error here
+            _pressure_control.pressure_error = Error::PRESSURE_NOT_REACHED_ERROR; 
         }
     }
 
@@ -317,6 +321,18 @@ class PressureTask {
         return true;
     }
 
+    auto handle_pressure_control_outcomes() -> void {
+        if (!_pressure_control.enable_vacuum) {
+            stop_vacuum();
+        }
+        if (_pressure_control.handle_open_vent) {
+            _policy->set_vent_state(static_cast<bool>(VentState::OPEN));
+        } 
+        if (_pressure_control.pressure_error != Error::NO_ERROR) {
+            send_ack_message(_pressure_control.responding_to_id, _pressure_control.pressure_error);
+        }
+    }
+
     template <PressureControlPolicy Policy>
     auto visit_message(const messages::PressureControlMessage& m,
                        Policy& policy) -> void {
@@ -328,14 +344,11 @@ class PressureTask {
 
         // Stop vacuum control
         if (!_pressure_control.enable_vacuum) {
-            stop_vacuum();
+            handle_pressure_control_outcomes();
             return;
         }
-        // this condition is redundant ; figure out where I want to keep it
-        if (!_pressure_control.target_pressure_reached) {
-            keep_vacuum_time();
-        }
-
+        monitor_target_pressure();
+        
         // Update latest absolute pressure
         for (auto sensor_id : {ABS_PRESSURE_A, ABS_PRESSURE_B}) {
             // TODO: add FIR filter for abs pressure.
@@ -407,6 +420,7 @@ class PressureTask {
         // Start the pressure control loop
         if (!_pressure_control.enable_vacuum && m.start_pump) {
             policy.start_pressure_control(true);
+            _pressure_control.responding_to_id = m.id;
             // start timing how long it takes to reach target pressure
             _vacuum_timer.update_period(TARGET_PRESSURE_MAX_TIME_S);
             _vacuum_timer.start();
