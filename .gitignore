@@ -121,6 +121,7 @@ node_modules
 
 # swap files
 *.swp
+*.swo
 
 releases
 
