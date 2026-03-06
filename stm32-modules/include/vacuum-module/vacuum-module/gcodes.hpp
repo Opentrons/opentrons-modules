@@ -375,13 +375,13 @@ struct GetPressureState {
     static auto write_response_into(
         InputIt buf, InLimit limit, double target_pressure,
         double current_pressure, double pressure_abs_a, double pressure_abs_b,
-        double pressure_atm, bool vacuum_enabled, bool vent_opened) -> InputIt {
+        double pressure_atm, bool vacuum_enabled, VentState vent_state) -> InputIt {
         int res = 0;
         res =
             snprintf(&*buf, (limit - buf),
                      "M121 T:%.1f C:%.1f A:%.1f B:%.1f H:%.1f E:%d V:%d OK\n",
                      target_pressure, current_pressure, pressure_abs_a,
-                     pressure_abs_b, pressure_atm, vacuum_enabled, vent_opened);
+                     pressure_abs_b, pressure_atm, vacuum_enabled, vent_state);
         if (res <= 0) {
             return buf;
         }
@@ -500,7 +500,7 @@ struct SetVentState {
     /*
      * M124- SetVentState set state of vent (on/off)
      * */
-    bool vent = false;
+    VentState state;
 
     using ParseResult = std::optional<SetVentState>;
     static constexpr auto prefix = std::array{'M', '1', '2', '4', ' '};
@@ -519,10 +519,10 @@ struct SetVentState {
             return std::make_pair(ParseResult(), input);
         }
 
-        auto ret = SetVentState{.vent = false};
+        auto ret = SetVentState{.state = VentState::CLOSED};
         auto arguments = res.first.value();
         if (std::get<0>(arguments).present) {
-            ret.vent = static_cast<bool>(std::get<0>(arguments).value);
+            ret.state = static_cast<VentState>(std::get<0>(arguments).value);
         }
         return std::make_pair(ret, res.second);
     }

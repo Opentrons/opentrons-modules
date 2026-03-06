@@ -11,8 +11,8 @@ extern "C" {
 #include "systemwide.h"
 
 void vent_hardware_init(void);
-void hw_open_vent(bool open);
-bool hw_get_vent_state(void);
+void hw_set_vent_state(VentState state);
+VentState hw_get_vent_state(void);
 bool hw_vent_fault_detected();
 
 #ifdef __cplusplus

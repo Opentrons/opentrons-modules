@@ -170,7 +170,8 @@ struct PressureControl {
 
     uint32_t last_tick = 0;
     bool enable_vacuum = false;
-    bool vent_opened = false;
+    VentState vent_state = VentState::CLOSED;
+    bool vent_after = false;
 
     // --- Waste Detection Logic ---
     bool waste_full = false;
@@ -186,8 +187,6 @@ struct PressureControl {
     bool in_ramp_phase = false;
     uint32_t near_target_ticks = 0;
 };
-
-enum class VentState : bool { OPEN = false, CLOSED = true };
 
 const PressureControl pressure_control = {
     // Tuned for 25hz freq
@@ -456,7 +455,7 @@ class PressureTask {
             .pressure_abs_b = _pressure_control.pressure_abs_b,
             .pressure_atm = _pressure_control.pressure_atm,
             .vacuum_enabled = _pressure_control.enable_vacuum,
-            .vent_opened = _pressure_control.vent_opened,
+            .vent_state = _pressure_control.vent_state,
         };
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));
@@ -465,12 +464,9 @@ class PressureTask {
     template <PressureControlPolicy Policy>
     auto visit_message(const messages::SetVentMessage& m, Policy& policy)
         -> void {
-        // open/close the vent
-        policy.set_vent_state(m.vent);
-        auto vent_state = policy.get_vent_state();
-        _pressure_control.vent_opened = vent_state;
-        auto ret =
-            vent_state == m.vent ? Error::NO_ERROR : Error::VENT_FAILED_ERROR;
+        auto state = static_cast<VentState>(m.state);
+        auto ok = set_vent_state(state);
+        auto ret = ok ? Error::NO_ERROR : Error::VENT_FAILED_ERROR;
         send_ack_message(m.id, ret);
     }
 
@@ -560,11 +556,10 @@ class PressureTask {
         return NO_ERROR;
     }
 
-    auto set_vent_state(VentState state) -> bool {
-        auto set_state = static_cast<bool>(state);
+    auto set_vent_state(VentState set_state) -> bool {
         _policy->set_vent_state(set_state);
         auto vent_state = _policy->get_vent_state();
-        _pressure_control.vent_opened = vent_state;
+        _pressure_control.vent_state = vent_state;
         return vent_state == set_state;
     }
 

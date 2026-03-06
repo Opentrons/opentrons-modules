@@ -148,7 +148,7 @@ struct GetPressureStateResponseMessage {
     double pressure_abs_b;
     double pressure_atm;
     bool vacuum_enabled;
-    bool vent_opened;
+    VentState vent_state;
 };
 
 struct GetPumpStateMessage {
@@ -168,7 +168,7 @@ struct GetPumpStateResponseMessage {
 struct SetVentMessage {
     uint32_t id = 0;
     bool from_host = false;
-    bool vent = false;
+    VentState state = VentState::CLOSED;
 };
 
 struct SetPressurePIDMessage {
