@@ -140,7 +140,6 @@ struct PressureControl {
     bool vent_after = false;
     bool handle_open_vent = false;
     Error pressure_error = Error::NO_ERROR;
-    uint32_t responding_to_id = 0;
     double pressure_abs_a = 0;
     double pressure_abs_b = 0;
     double pressure_atm = 0;
@@ -260,7 +259,7 @@ class PressureTask {
     auto monitor_target_pressure() -> void {
         if (!_pressure_control.target_pressure_reached) {
             _pressure_control.target_pressure_reached =
-                solid_state_target_pressure();
+                maintaining_target_pressure();
             if (_pressure_control.target_pressure_reached) {
                 // if duration is 0, continue indefinitely
                 if (_pressure_control.duration_s == 0) {
@@ -309,7 +308,7 @@ class PressureTask {
         _pressure_control.target_pressure_reached = false;
     }
 
-    auto solid_state_target_pressure() -> bool {
+    auto maintaining_target_pressure() -> bool {
         // this could be adjusted to be a little more lenient by adjusting the
         // tolerance; it will fail though if there are extreme transient values
         for (int i = 0; i < PRESSURE_STATE_BUFFER_LEN; i++) {
@@ -330,8 +329,7 @@ class PressureTask {
             _policy->set_vent_state(static_cast<bool>(VentState::OPEN));
         }
         if (_pressure_control.pressure_error != Error::NO_ERROR) {
-            send_ack_message(_pressure_control.responding_to_id,
-                             _pressure_control.pressure_error);
+            send_error_message(_pressure_control.pressure_error);
         }
     }
 
@@ -422,7 +420,6 @@ class PressureTask {
         // Start the pressure control loop
         if (!_pressure_control.enable_vacuum && m.start_pump) {
             policy.start_pressure_control(true);
-            _pressure_control.responding_to_id = m.id;
             _vacuum_timer.update_period(TARGET_PRESSURE_MAX_TIME_S);
             _vacuum_timer.start();
         }
