@@ -270,7 +270,8 @@ class PressureTask {
                 // reset the freertos timer period to be the hold duration, and
                 // start the timer
                 // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-                uint32_t duration_ms = _pressure_control.duration_s * 1000;
+                const uint32_t duration_ms =
+                    _pressure_control.duration_s * 1000;
                 _vacuum_timer.update_period(duration_ms);
                 _vacuum_timer.start();
             }
@@ -422,7 +423,6 @@ class PressureTask {
         if (!_pressure_control.enable_vacuum && m.start_pump) {
             policy.start_pressure_control(true);
             _pressure_control.responding_to_id = m.id;
-            // start timing how long it takes to reach target pressure
             _vacuum_timer.update_period(TARGET_PRESSURE_MAX_TIME_S);
             _vacuum_timer.start();
         }
