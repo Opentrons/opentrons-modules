@@ -16,20 +16,22 @@ concept LPS22HBPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
 
 // 7-bit device is 5D if pin SDO is HIGH
 constexpr uint8_t DEVICE_ADDRESS = 0x5D;
-// address CTRL_REG2 to read pressure
+// address CTRL_REG2 to initialize data read
 constexpr uint8_t CTRL_REG2 = 0x11;
-// pressure reading is 4 bytes, starting with status at 0x27
-constexpr uint8_t PRESSURE_OUTPUT_REGISTER = 0x27;
-// write 0x11 to CTRL REG 2 to read pressure once
-constexpr uint8_t ONE_SHOT_PRESSURE_READ = 0x11;
+// pressure + temp reading is 4 bytes, starting with status at 0x27
+constexpr uint8_t DATA_OUTPUT_REGISTER = 0x27;
+// write 0x11 to CTRL REG 2 to read pressure and temperature once
+constexpr uint8_t ONE_SHOT_DATA_READ = 0x11;
 // pressure in hectoPascals is the 3 byte output value divided by the
 // sensitivity
-constexpr uint16_t SENSOR_SENSITIVITY = 4096;
+constexpr uint16_t SENSOR_SENSITIVITY_PRESSURE = 4096;
+// temperature in celcius is the 2 byte output divided by the sensitivity.
+constexpr uint16_t SENSOR_SENSITIVITY_TEMPERATURE = 100;
 // bit 0 in the status byte is for pressure reading available
 constexpr uint8_t PRESSURE_READY_FLAG = 0x01;
-
+// bit 1 in the status byte is for temperature reading available
+constexpr uint8_t TEMP_READY_FLAG = 0x02;
 constexpr uint8_t PRESSURE_FRAME_LEN = 10;
-
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
 constexpr uint32_t DEFAULT_SLEEP_MS = 10;
@@ -55,35 +57,16 @@ class LPS22HB {
         return ok;
     }
 
-    [[nodiscard]] auto get_pressure() const -> double { return pressure_hpa; }
-
     auto read_pressure(bool reset_filter = false) -> double {
-        bool pressure_reading_ready = false;
-        auto len = prepare_cmd_frame(ONE_SHOT_PRESSURE_READ, nullptr, 0);
-        _policy->i2c_write(device_address << 1, CTRL_REG2, WR_BUFF.data(), len);
-        for (int i = 0; i < (DEFAULT_RETRIES + 1); i++) {
-            // NOTE: Needs at least 7ms for conversion
-            // Find better way of doing this async.
-            _policy->sleep_ms(DEFAULT_SLEEP_MS);
-            _policy->i2c_read(device_address << 1, PRESSURE_OUTPUT_REGISTER,
-                              RD_BUFF.data(), 4);
-            auto status_byte = RD_BUFF[0];
-            pressure_reading_ready =
-                static_cast<bool>(status_byte & PRESSURE_READY_FLAG);
-
-            if (pressure_reading_ready) {
-                break;
-            }
+        auto ok = read_data();
+        if (ok) {
+            return pressure_hpa;
         }
-
-        // Error state
-        if (!pressure_reading_ready) {
-            return -1;
-        }
-
-        pressure_hpa = parse_pressure(RD_BUFF.data());
-        return pressure_hpa;
+        return -1;
     }
+
+    [[nodiscard]] auto get_pressure() const -> double { return pressure_hpa; }
+    [[nodiscard]] auto get_temperature() const -> double { return temperature; }
 
   private:
     // Formulate a CMD frame
@@ -102,8 +85,37 @@ class LPS22HB {
         return len + 1;
     }
 
+    auto read_data() -> bool {
+        bool pres_ready = false;
+        bool temp_ready = false;
+        auto len = prepare_cmd_frame(ONE_SHOT_DATA_READ, nullptr, 0);
+        _policy->i2c_write(device_address << 1, CTRL_REG2, WR_BUFF.data(), len);
+        for (int i = 0; i < (DEFAULT_RETRIES + 1); i++) {
+            // NOTE: Needs at least 7ms for conversion
+            // Find better way of doing this async.
+            _policy->sleep_ms(DEFAULT_SLEEP_MS);
+            _policy->i2c_read(device_address << 1, DATA_OUTPUT_REGISTER,
+                              RD_BUFF.data(), 4);
+            auto status_byte = RD_BUFF[0];
+            pres_ready = static_cast<bool>(status_byte & PRESSURE_READY_FLAG);
+            temp_ready = static_cast<bool>(status_byte & TEMP_READY_FLAG);
+            if (pres_ready || temp_ready) {
+                break;
+            }
+        }
+
+        if (pres_ready) {
+            pressure_hpa = parse_pressure(RD_BUFF.data());
+        }
+        if (temp_ready) {
+            temperature = parse_temperature(RD_BUFF.data());
+        }
+
+        return pres_ready && temp_ready;
+    }
+
     static auto parse_pressure(const uint8_t* raw) -> double {
-        // The pressure data are stored in three registers: PRESS_OUT_H (2Ah),
+        // The pressure data is stored in three registers: PRESS_OUT_H (2Ah),
         // PRESS_OUT_L (29h), and PRESS_OUT_XL (28h). The value is expressed
         // as a 24-bit signed number (in two’s complement). To obtain the
         // pressure in hPa, take the complete 24-bit word and then divide by the
@@ -116,7 +128,21 @@ class LPS22HB {
         pressure_lsb = ((int32_t)(pressure_lsb << 8)) >> 8;
 
         // Convert to hPa
-        return static_cast<double>(pressure_lsb) / SENSOR_SENSITIVITY;
+        return static_cast<double>(pressure_lsb) / SENSOR_SENSITIVITY_PRESSURE;
+    }
+
+    static auto parse_temperature(const uint8_t* raw) -> double {
+        // The temperature is are stored in two registers: TEMP_OUT_L (2Bh),
+        // and TEMP_OUT_H (2Ch). The value is expressed as a 16-bit signed
+        // number (in two’s complement). To obtain the temperature in Celcius,
+        // take the complete 16-bit and then divide by the sensitivity 100
+        // LSB/C.
+
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        int16_t temp_lsb = ((int16_t)raw[5] << 8) | (int16_t)raw[4];
+
+        // Convert to Celcius
+        return static_cast<double>(temp_lsb) / SENSOR_SENSITIVITY_TEMPERATURE;
     }
 
     Policy* _policy{nullptr};
@@ -126,6 +152,7 @@ class LPS22HB {
     uint8_t device_address{};
 
     double pressure_hpa = {0};
+    double temperature = {0};
 };
 
 }  // namespace lps22hb
