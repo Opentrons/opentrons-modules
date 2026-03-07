@@ -372,10 +372,13 @@ struct GetPressureState {
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
-    static auto write_response_into(
-        InputIt buf, InLimit limit, double target_pressure,
-        double current_pressure, double pressure_abs_a, double pressure_abs_b,
-        double pressure_atm, bool vacuum_enabled, VentState vent_state) -> InputIt {
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    double target_pressure,
+                                    double current_pressure,
+                                    double pressure_abs_a,
+                                    double pressure_abs_b, double pressure_atm,
+                                    bool vacuum_enabled, VentState vent_state)
+        -> InputIt {
         int res = 0;
         res =
             snprintf(&*buf, (limit - buf),
