@@ -125,7 +125,7 @@ struct SetPressureStateMessage {
     uint32_t duration_s = 0;
     double ramp_rate = 0;
     bool start_pump = false;
-    bool vent_after = false;
+    bool vent_after = true;
 };
 
 struct SetPumpStateMessage {

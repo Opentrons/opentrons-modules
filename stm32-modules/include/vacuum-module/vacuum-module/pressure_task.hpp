@@ -171,7 +171,7 @@ struct PressureControl {
     uint32_t last_tick = 0;
     bool enable_vacuum = false;
     VentState vent_state = VentState::CLOSED;
-    bool vent_after = false;
+    bool vent_after = true;
 
     // --- Waste Detection Logic ---
     bool waste_full = false;
@@ -405,6 +405,13 @@ class PressureTask {
         _pressure_control.vent_after = m.vent_after;
         _pressure_control.target_pressure_reached = false;
 
+        // Start the duration timer
+        if (m.start_pump && m.duration_s > 0) {
+            _vacuum_timer.stop();
+            _vacuum_timer.update_period(m.duration_s * 1000);
+            _vacuum_timer.start();
+        }
+
         // Start the pressure control loop
         if (!_pressure_control.enable_vacuum && m.start_pump) {
             reset_pressure_state_buffer();
@@ -413,8 +420,8 @@ class PressureTask {
             _pressure_control.slope_monitored_this_cycle = false;
             _pressure_control.slew.configure(_pressure_control.pressure_abs_b,
                                              ramp_rate);
-            _vacuum_timer.update_period(TARGET_PRESSURE_MAX_TIME_S);
-            _vacuum_timer.start();
+
+            // Start pressure control messages
             policy.start_pressure_control(true);
         }
         _pressure_control.enable_vacuum = m.start_pump;
@@ -574,20 +581,6 @@ class PressureTask {
         if (!_pressure_control.target_pressure_reached) {
             _pressure_control.target_pressure_reached =
                 maintaining_target_pressure();
-            if (_pressure_control.target_pressure_reached) {
-                // if duration is 0, continue indefinitely
-                if (_pressure_control.duration_s == 0) {
-                    _vacuum_timer.stop();
-                    return;
-                }
-                // reset the freertos timer period to be the hold duration, and
-                // start the timer
-                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-                const uint32_t duration_ms =
-                    _pressure_control.duration_s * 1000;
-                _vacuum_timer.update_period(duration_ms);
-                _vacuum_timer.start();
-            }
         }
         // if we wanted to keep checking during the hold time that the pressure
         // holds, we could do it here
@@ -595,12 +588,11 @@ class PressureTask {
 
     auto vacuum_timer_end_callback() -> void {
         _vacuum_timer.stop();
-        // we've reached target pressure and are holding
-        if (_pressure_control.target_pressure_reached) {
-            _pressure_control.enable_vacuum = false;
-        } else {
+        _pressure_control.enable_vacuum = false;
+        if (!_pressure_control.target_pressure_reached &&
+            _pressure_control.vent_state == VentState::CLOSED) {
             // we've reached the end of the allowed time to reach target
-            // pressure
+            // pressure while the vent was closed.
             _pressure_control.error = Error::PRESSURE_NOT_REACHED_ERROR;
         }
     }
