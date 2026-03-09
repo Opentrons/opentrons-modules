@@ -166,6 +166,7 @@ struct PressureControl {
     double pressure_abs_a = 0;
     double pressure_abs_b = 0;
     double pressure_atm = 0;
+    double temperature = 0;
     bool target_pressure_reached = false;
 
     uint32_t last_tick = 0;
@@ -764,6 +765,14 @@ class PressureTask {
             }
         }
         return false;
+    }
+
+    auto get_temperature() -> double {
+        auto d = std::get<LPSDriverType>(_atm_pressure.driver);
+        auto temp = _pressure_control.enable_vacuum ? d.get_temperature()
+                                                    : d.read_temperature();
+        _pressure_control.temperature = temp;
+        return temp;
     }
 
     auto send_debug_message(const char* message) -> void {

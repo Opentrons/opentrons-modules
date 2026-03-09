@@ -18,7 +18,7 @@ concept LPS22HBPolicy = requires(P p, uint16_t dev_addr, uint16_t reg,
 constexpr uint8_t DEVICE_ADDRESS = 0x5D;
 // address CTRL_REG2 to initialize data read
 constexpr uint8_t CTRL_REG2 = 0x11;
-// pressure + temp reading is 4 bytes, starting with status at 0x27
+// pressure + temp reading is 5 bytes, starting with status at 0x27
 constexpr uint8_t DATA_OUTPUT_REGISTER = 0x27;
 // write 0x11 to CTRL REG 2 to read pressure and temperature once
 constexpr uint8_t ONE_SHOT_DATA_READ = 0x11;
@@ -31,7 +31,7 @@ constexpr uint16_t SENSOR_SENSITIVITY_TEMPERATURE = 100;
 constexpr uint8_t PRESSURE_READY_FLAG = 0x01;
 // bit 1 in the status byte is for temperature reading available
 constexpr uint8_t TEMP_READY_FLAG = 0x02;
-constexpr uint8_t PRESSURE_FRAME_LEN = 10;
+constexpr uint8_t DATA_FRAME_LEN = 6;
 // Frame retry defaults
 constexpr uint8_t DEFAULT_RETRIES = 3;
 constexpr uint32_t DEFAULT_SLEEP_MS = 10;
@@ -65,6 +65,14 @@ class LPS22HB {
         return -1;
     }
 
+    auto read_temperature() -> double {
+        auto ok = read_data();
+        if (ok) {
+            return temperature;
+        }
+        return -1;
+    }
+
     [[nodiscard]] auto get_pressure() const -> double { return pressure_hpa; }
     [[nodiscard]] auto get_temperature() const -> double { return temperature; }
 
@@ -72,7 +80,7 @@ class LPS22HB {
     // Formulate a CMD frame
     auto prepare_cmd_frame(uint8_t cmd, const uint8_t* data, uint8_t len)
         -> uint8_t {
-        if (len > PRESSURE_FRAME_LEN) {
+        if (len > DATA_FRAME_LEN) {
             return 0;
         }
         // Add the header
@@ -95,7 +103,7 @@ class LPS22HB {
             // Find better way of doing this async.
             _policy->sleep_ms(DEFAULT_SLEEP_MS);
             _policy->i2c_read(device_address << 1, DATA_OUTPUT_REGISTER,
-                              RD_BUFF.data(), 4);
+                              RD_BUFF.data(), DATA_FRAME_LEN);
             auto status_byte = RD_BUFF[0];
             pres_ready = static_cast<bool>(status_byte & PRESSURE_READY_FLAG);
             temp_ready = static_cast<bool>(status_byte & TEMP_READY_FLAG);
@@ -146,8 +154,8 @@ class LPS22HB {
     }
 
     Policy* _policy{nullptr};
-    std::array<uint8_t, PRESSURE_FRAME_LEN> RD_BUFF = {0};
-    std::array<uint8_t, PRESSURE_FRAME_LEN> WR_BUFF = {0};
+    std::array<uint8_t, DATA_FRAME_LEN> RD_BUFF = {0};
+    std::array<uint8_t, DATA_FRAME_LEN> WR_BUFF = {0};
     PressureSensorID _sensor_id{};
     uint8_t device_address{};
 
