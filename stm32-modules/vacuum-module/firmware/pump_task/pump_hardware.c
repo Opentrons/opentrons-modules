@@ -34,7 +34,7 @@
 
 #define PUMP_STOP_TIMEOUT_MS   500    // no pulses for n >= ms -> stopped
 #define PUMP_STOP_DEBOUNCE     3      // require 3 consecutive detections
-#define PID_FILTER_ALPHA       0.15f  // RPM EMA Alpha
+#define PID_FILTER_ALPHA       0.9f  // RPM EMA Alpha
 
 // Define the minimum ticks allowed between pulses.
 // 170MHz / 6 (prescaler 5) = 28.33MHz.

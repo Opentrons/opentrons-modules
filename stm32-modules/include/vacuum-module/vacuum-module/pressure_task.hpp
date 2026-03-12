@@ -37,9 +37,6 @@
  *  _control_state variables.
  */
 
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 #pragma once
 #include <algorithm>
 #include <array>
@@ -80,48 +77,17 @@ static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0F / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
-static constexpr const double MIN_RAMP_RATE = 0.20F;
-static constexpr const double MAX_RAMP_RATE = 400.0F;
-static constexpr const double DEFAULT_RAMP_RATE = 50;
-
-// Velocity Gain
-// How much RPM to add for every 1 mbar/sec drop requested.
-static constexpr const double K_VELOCITY = 20.0F;
-// Holding Gain:
-// Max RPM required to hold a deep vacuum against leaks.
-static constexpr const double K_HOLDING = 43.0F;
-// Disables Velocity and Holding Gain if target is overshot
-static constexpr const double OVERSHOOT_ERROR = -2.0F;
 
 // -- Duration Threshold --
-static constexpr uint32_t UPDATE_PERIOD_MS = 10;
-static constexpr uint8_t PRESSURE_STATE_BUFFER_LEN = 125;
-static constexpr uint8_t TARGET_PRESSURE_TOLERANCE_MBAR = 10;
-
-// -- Waste Detection Thresholds --
-// Window thresholds: Measure from p1 depth to p2 depth
-static constexpr const double WASTE_WINDOW_START_PCT = 0.10F;
-static constexpr const double WASTE_WINDOW_END_PCT = 0.95F;
-// Compare to the learned baseline. If it is N x faster than empty, it's full.
-static constexpr const double BASELINE_FAST_FACTOR = 0.75F;
-// Hard Minimum: If it reaches p2 vacuum in <  this many ms, it's full.
-static constexpr const uint32_t MIN_ALLOWABLE_WINDOW_TIME_MS = 700;
-// If the ramp takes longer than this, we flag it as a stall or leak.
-static constexpr const uint32_t MAX_ALLOWABLE_WINDOW_TIME_MS = 20000;
-// Allowed upward drift per tick while in hold phase
-static constexpr const double MAX_RISE_PER_TICK = 3.5;
-// Total allowed rise before flag for slow build up case
-static constexpr const double MAX_CUMULATIVE_RISE = 11.0;
-// Pressure offset from target to be considered in "hold" state
-static constexpr const double PRESSURE_TOLERANCE = 10.0F;
-// Large negative = draining (air rush) - ignore
-static constexpr const double MAX_DRAIN_RISE_PER_TICK = -150.0;
-// Debug buffer
-std::array<char, 100> DEBUG_BUF;
-
-using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
+static constexpr const uint32_t UPDATE_PERIOD_MS = 10;
+static constexpr const uint8_t PRESSURE_STATE_BUFFER_LEN = 125;
+static constexpr const uint8_t TARGET_PRESSURE_TOLERANCE_MBAR = 10;
 static constexpr const uint32_t TARGET_PRESSURE_MAX_TIME_S = 100;
 static constexpr const uint32_t SOLID_STATE_PRESSURE_TOLERANCE = 10;
+
+// Debug buffer
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+inline std::array<char, DEBUG_MAX_MESSAGE_LENGTH> DEBUG_BUF = {0};
 
 using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
 using LPSDriverType = LPS22HB<i2c::hardware::I2C>;
@@ -156,51 +122,23 @@ const PressureSensor atm_pressure = {
 struct PressureControlState {
     double target_pressure = 0;   // Target Guage Pressure
     double current_pressure = 0;  // Current Guage Pressure
-    double prev_target_mbar = 0;
-    double ramp_rate = 0;
     double target_rpm = 0;
 
-    uint32_t duration_s = 0;
-    float k_velocity = 0;
-    float k_holding = 0;
-    double overshoot_error = 0;
-    Error error = Error::NO_ERROR;
     double pressure_abs_a = 0;
     double pressure_abs_b = 0;
     double pressure_atm = 0;
+
+    uint32_t duration_s = 0;
+    Error error = Error::NO_ERROR;
     bool target_pressure_reached = false;
 
     uint32_t last_tick = 0;
     bool enable_vacuum = false;
     VentState vent_state = VentState::CLOSED;
     bool vent_after = true;
-
-    // --- Waste Detection Logic ---
-    bool waste_full = false;
-    bool slope_monitored_this_cycle = false;
-    uint32_t ramp_start_ms = 0;
-    double p_low_threshold = 0;
-    double p_high_threshold = 0;
-    double cumulative_rise = 0.0;
-
-    // Baseline Rise Time to handle the "already full at startup"
-    uint32_t baseline_rise_time_ms = 600;
-    bool baseline_captured = false;
-    bool in_ramp_phase = false;
-    uint32_t near_target_ticks = 0;
 };
 
-const PressureControlState pressure_control_state = {
-    // Tuned for 25hz freq
-    // .pid = PID(13.1,               // kp
-    //            4.59,               // ki
-    //            0.15,               // kd
-    //            CONTROL_PERIOD_MS,  // sampletime
-    //            MAX_RPM,            // windup_limit_high
-    //            0),                 // windup_limit_low
-    .k_velocity = K_VELOCITY,
-    .k_holding = K_HOLDING,
-    .overshoot_error = OVERSHOOT_ERROR};
+const PressureControlState pressure_control_state;
 
 template <typename P>
 concept PressureControlPolicy = requires(P p) {
@@ -229,8 +167,7 @@ class PressureTask {
               "Vacuum Timer",
               [ThisPtr = this] { ThisPtr->vacuum_timer_end_callback(); },
               UPDATE_PERIOD_MS),
-          _controller(),
-          _detector() {}
+          _controller(CONTROL_PERIOD_MS) {}
     PressureTask(const PressureTask& other) = delete;
     auto operator=(const PressureTask& other) -> PressureTask& = delete;
     PressureTask(PressureTask&& other) noexcept = delete;
@@ -268,8 +205,8 @@ class PressureTask {
             }
 
             // Slew rate is mbar/sec
-            _controller.configure(_control_state.pressure_abs_b,
-                                  DEFAULT_RAMP_RATE);
+            _controller.configure_slew(_control_state.pressure_abs_b,
+                                       pressure_controller::DEFAULT_RAMP_RATE);
 
             // Close the vent
             set_vent_state(VentState::CLOSED);
@@ -313,7 +250,7 @@ class PressureTask {
             auto ret = update_pressure(sensor_id);
             // Reset the sensor if there is some problem
             if (ret != NO_ERROR) {
-                _policy->sensor_reset(sensor_id);
+                policy.sensor_reset(sensor_id);
                 continue;
             }
         }
@@ -330,11 +267,9 @@ class PressureTask {
             (pressure_state_buffer_index + 1) % PRESSURE_STATE_BUFFER_LEN;
         monitor_target_pressure();
 
-        auto check =
-            _detector.check(timestamp, current_pressure, target_pressure,
-                            pressure_atm, pressure_atm - target_pressure);
-        _control_state.pressure_abs_a = check;
-        if (check > 0) {
+        auto res = _detector.check(timestamp, current_pressure, target_pressure,
+                                   pressure_atm);
+        if (res != waste_detector::WasteFullError::NO_ERROR) {
             stop_vacuum();
             set_vent_state(VentState::OPENED);
             send_error_message(Error::WASTE_FULL_ERROR);
@@ -350,29 +285,27 @@ class PressureTask {
     auto visit_message(const messages::SetPressureStateMessage& m,
                        Policy& policy) -> void {
         // Convert target guage presure to abs pressure
-        update_pressures(true);
-        double p_atm = _control_state.pressure_atm;
+        update_pressures(policy, true);
+        auto p_atm = _control_state.pressure_atm;
         auto guage_pressure =
             std::clamp<double>(m.pressure_setpoint, ATM_PRESSURE_MBAR * -1, 0);
         auto target_pressure = guage_pressure + p_atm;
 
         // Check for Significant Target Change (> 10% of the vacuum range)
-        double current_target = _control_state.target_pressure;
-        double vacuum_depth = std::abs(p_atm - target_pressure);
-        double change_delta = std::abs(target_pressure - current_target);
+        auto current_pressure = _control_state.pressure_abs_b;
+        auto current_target = _control_state.target_pressure;
+        auto vacuum_depth = std::abs(p_atm - target_pressure);
+        auto change_delta = std::abs(target_pressure - current_target);
 
-        // If the target moves by more than 10% of the intended depth,
+        // If the target moves by more than N % of the intended depth,
         // the previous baseline is no longer physically representative.
-        if (_control_state.baseline_captured &&
-            (change_delta > (vacuum_depth * 0.10))) {
-            _control_state.baseline_captured = false;
-            _control_state.baseline_rise_time_ms = 0;
+        if (_detector.baseline_captured() &&
+            (change_delta >
+             (vacuum_depth * waste_detector::BASELINE_DEPTH_RESET))) {
+            _detector.reset_baseline();
         }
 
-        auto ramp_rate = m.ramp_rate > 0 ? m.ramp_rate : DEFAULT_RAMP_RATE;
-        ramp_rate = std::clamp<double>(ramp_rate, MIN_RAMP_RATE, MAX_RAMP_RATE);
         _control_state.target_pressure = target_pressure;
-        _control_state.ramp_rate = ramp_rate;
         _control_state.duration_s = m.duration_s;
         _control_state.vent_after = m.vent_after;
         _control_state.target_pressure_reached = false;
@@ -380,6 +313,7 @@ class PressureTask {
         // Start the duration timer
         if (m.start_pump && m.duration_s > 0) {
             _vacuum_timer.stop();
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
             _vacuum_timer.update_period(m.duration_s * 1000);
             _vacuum_timer.start();
         }
@@ -387,11 +321,8 @@ class PressureTask {
         // Start the pressure control loop
         if (!_control_state.enable_vacuum && m.start_pump) {
             reset_pressure_state_buffer();
-            _control_state.ramp_start_ms = 0;
-            _control_state.waste_full = false;
-            _control_state.slope_monitored_this_cycle = false;
-            // _control_state.slew.configure(_control_state.pressure_abs_b,
-            //                               ramp_rate);
+            _detector.reset();
+            _controller.configure_slew(current_pressure, m.ramp_rate);
 
             // Start pressure control messages
             policy.start_pressure_control(true);
@@ -443,6 +374,7 @@ class PressureTask {
     template <PressureControlPolicy Policy>
     auto visit_message(const messages::SetVentMessage& m, Policy& policy)
         -> void {
+        static_cast<void>(policy);
         auto state = static_cast<VentState>(m.state);
         auto ok = set_vent_state(state);
         auto ret = ok ? Error::NO_ERROR : Error::VENT_FAILED_ERROR;
@@ -453,15 +385,15 @@ class PressureTask {
     auto visit_message(const messages::SetPressurePIDMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        auto& pc = _control_state;
-        pc.overshoot_error = m.overshoot.value_or(pc.overshoot_error);
-        pc.k_velocity = m.k_velocity.value_or(pc.k_velocity);
-        pc.k_holding = m.k_holding.value_or(pc.k_holding);
-        auto pid = _controller.get_pid();
-        auto kp = m.kp.value_or(pid.kp());
-        auto ki = m.ki.value_or(pid.ki());
-        auto kd = m.kd.value_or(pid.kd());
-        pid.set_tunings(kp, ki, kd, m.reset);
+        auto cs = _controller.get_state();
+        auto kp = m.kp.value_or(cs.kp);
+        auto ki = m.ki.value_or(cs.ki);
+        auto kd = m.kd.value_or(cs.kd);
+        auto overshoot = m.overshoot.value_or(cs.overshoot);
+        auto k_velocity = m.k_velocity.value_or(cs.k_velocity);
+        auto k_holding = m.k_holding.value_or(cs.k_holding);
+        _controller.configure_pid(kp, ki, kd, k_velocity, k_holding, overshoot,
+                                  m.reset);
         send_ack_message(m.id);
     }
 
@@ -469,15 +401,15 @@ class PressureTask {
     auto visit_message(const messages::GetPressurePIDMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        auto pid = _controller.get_pid();
+        auto cs = _controller.get_state();
         auto msg = messages::GetPressurePIDResponseMessage{
             .responding_to_id = m.id,
-            .kp = pid.kp(),
-            .ki = pid.ki(),
-            .kd = pid.kd(),
-            .overshoot = _control_state.overshoot_error,
-            .k_velocity = _control_state.k_velocity,
-            .k_holding = _control_state.k_holding,
+            .kp = cs.kp,
+            .ki = cs.ki,
+            .kd = cs.kd,
+            .overshoot = cs.overshoot,
+            .k_velocity = cs.k_velocity,
+            .k_holding = cs.k_holding,
         };
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));
@@ -496,12 +428,13 @@ class PressureTask {
         }
     }
 
-    auto update_pressures(bool reset_filter = false) -> void {
+    template <PressureControlPolicy Policy>
+    auto update_pressures(Policy& policy, bool reset_filter = false) -> void {
         for (auto sensor_id : {ABS_PRESSURE_A, ABS_PRESSURE_B, ATM_PRESSURE}) {
             auto ret = update_pressure(sensor_id, reset_filter);
             // Reset the sensor if there is some problem
             if (ret != NO_ERROR) {
-                _policy->sensor_reset(sensor_id);
+                policy.sensor_reset(sensor_id);
                 continue;
             }
         }
@@ -582,12 +515,7 @@ class PressureTask {
         _control_state.target_pressure = 0;
         _control_state.target_rpm = 0;
         _control_state.last_tick = 0;
-        _control_state.ramp_start_ms = 0;
         _control_state.enable_vacuum = false;
-        _control_state.slope_monitored_this_cycle = false;
-        _control_state.in_ramp_phase = false;
-        _control_state.cumulative_rise = 0.0;
-        _control_state.near_target_ticks = 0.0;
         _control_state.target_pressure_reached = false;
     }
 
@@ -669,4 +597,3 @@ class PressureTask {
 };
 
 }  // namespace pressure_task
-#pragma GCC pop_options

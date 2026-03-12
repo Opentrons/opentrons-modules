@@ -58,6 +58,7 @@ class LPS22HB {
     [[nodiscard]] auto get_pressure() const -> double { return pressure_hpa; }
 
     auto read_pressure(bool reset_filter = false) -> double {
+        static_cast<void>(reset_filter);
         bool pressure_reading_ready = false;
         auto len = prepare_cmd_frame(ONE_SHOT_PRESSURE_READ, nullptr, 0);
         _policy->i2c_write(device_address << 1, CTRL_REG2, WR_BUFF.data(), len);

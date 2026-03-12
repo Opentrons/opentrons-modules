@@ -8,6 +8,8 @@ add_executable(${TARGET_MODULE_NAME}
         test_main.cpp
         test_errors.cpp
         test_mprll0025pa00001a.cpp
+        test_pressure_controller.cpp
+        test_waste_detector.cpp
     )
 
 target_include_directories(${TARGET_MODULE_NAME}
