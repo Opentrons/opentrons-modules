@@ -30,10 +30,14 @@ auto PressurePolicy::sensor_reset(PressureSensorID sensor_id) -> void {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto PressurePolicy::set_vent_state(bool open) -> void { hw_open_vent(open); }
+auto PressurePolicy::set_vent_state(VentState state) -> void {
+    hw_set_vent_state(state);
+}
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto PressurePolicy::get_vent_state() -> bool { return hw_get_vent_state(); }
+auto PressurePolicy::get_vent_state() -> VentState {
+    return hw_get_vent_state();
+}
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto PressurePolicy::get_vent_fault() -> bool {

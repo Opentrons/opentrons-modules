@@ -38,14 +38,16 @@ void vent_hardware_gpio_init(void) {
     HAL_GPIO_Init(VENT_FAULT_GPIO_Port, &GPIO_InitStruct);
 }
 
-void hw_open_vent(bool open) {
-    HAL_GPIO_WritePin(VENT_IN_GPIO_Port, VENT_IN_GPIO_Pin, open ? GPIO_PIN_RESET : GPIO_PIN_SET);
+void hw_set_vent_state(VentState state) {
+    bool open = (bool)state;
+    HAL_GPIO_WritePin(VENT_IN_GPIO_Port, VENT_IN_GPIO_Pin, open ? GPIO_PIN_SET : GPIO_PIN_RESET);
     // Puts stepper into low power mode
-    HAL_GPIO_WritePin(nSLEEP_DRV_MCU_GPIO_Port, nSLEEP_DRV_MCU_GPIO_Pin, open ? GPIO_PIN_RESET : GPIO_PIN_SET);
+    HAL_GPIO_WritePin(nSLEEP_DRV_MCU_GPIO_Port, nSLEEP_DRV_MCU_GPIO_Pin, open ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
-bool hw_get_vent_state() {
-    return HAL_GPIO_ReadPin(VENT_IN_GPIO_Port, VENT_IN_GPIO_Pin) == GPIO_PIN_RESET;
+VentState hw_get_vent_state() {
+    bool open = HAL_GPIO_ReadPin(VENT_IN_GPIO_Port, VENT_IN_GPIO_Pin) == GPIO_PIN_SET;
+    return (VentState)open;
 }
 
 bool hw_vent_fault_detected() {
@@ -55,5 +57,5 @@ bool hw_vent_fault_detected() {
 void vent_hardware_init(void) {
     vent_hardware_gpio_init();
     // close the vent
-    hw_open_vent(false);
+    hw_set_vent_state(CLOSED);
 }

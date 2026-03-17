@@ -333,7 +333,7 @@ class HostCommsTask {
                         tx_into, tx_limit, response.target_pressure,
                         response.current_pressure, response.pressure_abs_a,
                         response.pressure_abs_b, response.pressure_atm,
-                        response.vacuum_enabled, response.vent_opened);
+                        response.vacuum_enabled, response.vent_state);
                 }
             },
             cache_entry);
@@ -601,7 +601,7 @@ class HostCommsTask {
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
         auto message = messages::SetVentMessage{
-            .id = id, .from_host = true, .vent = gcode.vent};
+            .id = id, .from_host = true, .state = gcode.state};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);

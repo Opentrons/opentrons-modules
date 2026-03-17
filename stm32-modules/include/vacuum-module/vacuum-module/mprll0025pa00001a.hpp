@@ -87,7 +87,7 @@ class MPRLL0025PA00001 {
 
     [[nodiscard]] auto get_pressure() const -> double { return pressure_mbar; }
 
-    auto read_pressure() -> double {
+    auto read_pressure(bool reset_filter = false) -> double {
         auto len = prepare_cmd_frame(MEASURE_PRESSURE_COMMAND,
                                      MEASURE_PRESSURE_COMMAND_DATA.data(), 2);
         _policy->i2c_master_write(device_address << 1, WR_BUFF.data(), len);
@@ -111,7 +111,7 @@ class MPRLL0025PA00001 {
                 // Pre-fill the buffer if this is the first read so we dont
                 // calculate the filtered pressure from 1 reading where the
                 // rest of the buffer is holding 0.
-                if (is_first_read) {
+                if (is_first_read || reset_filter) {
                     unfiltered_pressure_mbar.fill(raw_pressure);
                     is_first_read = false;
                 }
