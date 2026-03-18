@@ -148,10 +148,11 @@ class LPS22HB {
         // LSB/C.
 
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        const uint16_t temp_u16 = (static_cast<uint16_t>(raw[5]) << 8) |
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                                  static_cast<uint16_t>(raw[4]);
+        const uint16_t temp_u16 =
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            (static_cast<uint16_t>(raw[5]) << 8) |
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            static_cast<uint16_t>(raw[4]);
         const auto temp_lsb = static_cast<int16_t>(temp_u16);
 
         // Convert to Celcius
