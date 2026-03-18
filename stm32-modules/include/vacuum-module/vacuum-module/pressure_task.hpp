@@ -136,6 +136,7 @@ struct PressureControlState {
     bool enable_vacuum = false;
     VentState vent_state = VentState::CLOSED;
     bool vent_after = true;
+    bool enable_waste_full = true;
 };
 
 const PressureControlState pressure_control_state;
@@ -411,6 +412,50 @@ class PressureTask {
             .k_velocity = cs.k_velocity,
             .k_holding = cs.k_holding,
         };
+        static_cast<void>(
+            _task_registry->send_to_address(msg, Queues::HostCommsAddress));
+    }
+
+    template <PressureControlPolicy Policy>
+    auto visit_message(const messages::SetWasteDetectionConfigMessage& m,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        auto dc = _detector.get_config();
+        dc.enable_waste_full = m.enable_waste_full;
+        dc.p_window_start = m.p_window_start.value_or(dc.p_window_start);
+        dc.p_window_end = m.p_window_end.value_or(dc.p_window_end);
+        dc.baseline_fast_factor =
+            m.baseline_fast_factor.value_or(dc.baseline_fast_factor);
+        dc.max_delta_per_tick =
+            m.max_delta_per_tick.value_or(dc.max_delta_per_tick);
+        dc.max_rise_per_tick =
+            m.max_rise_per_tick.value_or(dc.max_rise_per_tick);
+        dc.max_cummulative_rise =
+            m.max_cummulative_rise.value_or(dc.max_cummulative_rise);
+        dc.p_filter_alpha = m.p_filter_alpha.value_or(dc.p_filter_alpha);
+        dc.min_window_time = m.min_window_time.value_or(dc.min_window_time);
+        dc.max_window_time = m.max_window_time.value_or(dc.max_window_time);
+        _detector.configure(dc);
+        send_ack_message(m.id);
+    }
+
+    template <PressureControlPolicy Policy>
+    auto visit_message(const messages::GetWasteDetectionConfigMessage& m,
+                       Policy& policy) -> void {
+        static_cast<void>(policy);
+        auto dc = _detector.get_config();
+        auto msg = messages::GetWasteDetectionConfigResponse{
+            .responding_to_id = m.id,
+            .enable_waste_full = dc.enable_waste_full,
+            .p_window_start = dc.p_window_start,
+            .p_window_end = dc.p_window_end,
+            .baseline_fast_factor = dc.baseline_fast_factor,
+            .max_delta_per_tick = dc.max_delta_per_tick,
+            .max_rise_per_tick = dc.max_rise_per_tick,
+            .max_cummulative_rise = dc.max_cummulative_rise,
+            .p_filter_alpha = dc.p_filter_alpha,
+            .min_window_time = dc.min_window_time,
+            .max_window_time = dc.max_window_time};
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));
     }
