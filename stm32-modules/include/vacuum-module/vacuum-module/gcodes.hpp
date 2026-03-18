@@ -302,7 +302,7 @@ struct SetPressureState {
     double pressure = 0;
     uint32_t duration_s = 0;
     double ramp_rate = 0;
-    bool vent_after = false;
+    bool vent_after = true;
     bool start_pump = false;
 
     using ParseResult = std::optional<SetPressureState>;
@@ -330,7 +330,7 @@ struct SetPressureState {
         auto ret = SetPressureState{.pressure = 0.0,
                                     .duration_s = 0,
                                     .ramp_rate = 0.0,
-                                    .vent_after = false,
+                                    .vent_after = true,
                                     .start_pump = false};
 
         auto arguments = res.first.value();

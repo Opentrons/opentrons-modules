@@ -6,7 +6,7 @@
  *
  * 1. The entrypoint message is the `SetPressureStateMessage` which tells this
  * task the desired target pressure to maintain. In this message we start the
- * pressure control loop by calling the `policy.start_pressure_control` function
+ * pressure control loop by calling the `policy.pressure_control_state` function
  * which starts a second FreeRTOS task that emits a `PressureControlMessage`
  * every `CONTROL_PERIOD_MS`.
  * 2. In the `PressureControlMessage`, we read the absolute pressure sensors
@@ -31,10 +31,10 @@
  * prevent the pump from fighting the natural pressure rise.
  *
  * Stopping Pressure Control:
- * The pressure control is stopped when the `_pressure_control.enable_pump`
+ * The pressure control is stopped when the `_control_state.enable_pump`
  * is false. We stop the `PressureControlMessage` emitter task, send a stop
  * `SetPumpMessage` message to the PumpTask, then reset all relevant internal
- *  _pressure_control variables.
+ *  _control_state variables.
  */
 
 #pragma once
@@ -45,7 +45,6 @@
 #include <variant>
 
 #include "core/ack_cache.hpp"
-#include "core/pid.hpp"
 #include "core/queue_aggregator.hpp"
 #include "core/version.hpp"
 #include "firmware/pressure_policy.hpp"
@@ -54,16 +53,19 @@
 #include "messages.hpp"
 #include "mprll0025pa00001a.hpp"
 #include "ot_utils/freertos/freertos_timer.hpp"
-#include "slew_rate_limiter.hpp"
+#include "pressure_controller.hpp"
 #include "systemwide.h"
 #include "vacuum-module/errors.hpp"
 #include "vacuum-module/messages.hpp"
 #include "vacuum-module/tasks.hpp"
+#include "waste_detector.hpp"
 
 namespace pressure_task {
 using lps22hb::LPS22HB;
 using vacuum_pressure_sensor::MPRLL0025PA00001;
 using namespace ot_utils::freertos_timer;
+using pressure_controller::PressureController;
+using waste_detector::WasteDetector;
 
 constexpr uint8_t ABS_PRESSURE_A_ADDR = 0x18;  // Closest to Manifold
 constexpr uint8_t ABS_PRESSURE_B_ADDR = 0x18;  // Closest to Pump
@@ -75,48 +77,17 @@ static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0F / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
-static constexpr const double MIN_RAMP_RATE = 0.20F;
-static constexpr const double MAX_RAMP_RATE = 400.0F;
-static constexpr const double DEFAULT_RAMP_RATE = 50;
-
-// Velocity Gain
-// How much RPM to add for every 1 mbar/sec drop requested.
-static constexpr const double K_VELOCITY = 20.0F;
-// Holding Gain:
-// Max RPM required to hold a deep vacuum against leaks.
-static constexpr const double K_HOLDING = 43.0F;
-// Disables Velocity and Holding Gain if target is overshot
-static constexpr const double OVERSHOOT_ERROR = -2.0F;
 
 // -- Duration Threshold --
-static constexpr uint32_t UPDATE_PERIOD_MS = 10;
-static constexpr uint8_t PRESSURE_STATE_BUFFER_LEN = 125;
-static constexpr uint8_t TARGET_PRESSURE_TOLERANCE_MBAR = 10;
-
-// -- Waste Detection Thresholds --
-// Window thresholds: Measure from p1 depth to p2 depth
-static constexpr const double WASTE_WINDOW_START_PCT = 0.10F;
-static constexpr const double WASTE_WINDOW_END_PCT = 0.95F;
-// Compare to the learned baseline. If it is N x faster than empty, it's full.
-static constexpr const double BASELINE_FAST_FACTOR = 0.75F;
-// Hard Minimum: If it reaches p2 vacuum in <  this many ms, it's full.
-static constexpr const uint32_t MIN_ALLOWABLE_WINDOW_TIME_MS = 700;
-// If the ramp takes longer than this, we flag it as a stall or leak.
-static constexpr const uint32_t MAX_ALLOWABLE_WINDOW_TIME_MS = 20000;
-// Allowed upward drift per tick while in hold phase
-static constexpr const double MAX_RISE_PER_TICK = 3.5;
-// Total allowed rise before flag for slow build up case
-static constexpr const double MAX_CUMULATIVE_RISE = 11.0;
-// Pressure offset from target to be considered in "hold" state
-static constexpr const double PRESSURE_TOLERANCE = 10.0F;
-// Large negative = draining (air rush) - ignore
-static constexpr const double MAX_DRAIN_RISE_PER_TICK = -150.0;
-// Debug buffer
-std::array<char, 100> DEBUG_BUF;
-
-using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
+static constexpr const uint32_t UPDATE_PERIOD_MS = 10;
+static constexpr const uint8_t PRESSURE_STATE_BUFFER_LEN = 125;
+static constexpr const uint8_t TARGET_PRESSURE_TOLERANCE_MBAR = 10;
 static constexpr const uint32_t TARGET_PRESSURE_MAX_TIME_S = 100;
 static constexpr const uint32_t SOLID_STATE_PRESSURE_TOLERANCE = 10;
+
+// Debug buffer
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+inline std::array<char, DEBUG_MAX_MESSAGE_LENGTH> DEBUG_BUF = {0};
 
 using MPRDriverType = MPRLL0025PA00001<i2c::hardware::I2C>;
 using LPSDriverType = LPS22HB<i2c::hardware::I2C>;
@@ -148,58 +119,28 @@ const PressureSensor atm_pressure = {
     .driver = LPS22HB<i2c::hardware::I2C>(ATM_PRESSURE_ADDR),
 };
 
-struct PressureControl {
-    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    PID pid;  // Pressure PID loop
-    SlewRateLimiter slew;
-
+struct PressureControlState {
     double target_pressure = 0;   // Target Guage Pressure
     double current_pressure = 0;  // Current Guage Pressure
-    double prev_target_mbar = 0;
-    double ramp_rate = 0;
     double target_rpm = 0;
-    uint32_t duration_s = 0;
-    float k_velocity = 0;
-    float k_holding = 0;
-    double overshoot_error = 0;
-    Error error = Error::NO_ERROR;
+
     double pressure_abs_a = 0;
     double pressure_abs_b = 0;
     double pressure_atm = 0;
     double temperature = 0;
     bool target_pressure_reached = false;
 
+    uint32_t duration_s = 0;
+    Error error = Error::NO_ERROR;
+    bool target_pressure_reached = false;
+
     uint32_t last_tick = 0;
     bool enable_vacuum = false;
     VentState vent_state = VentState::CLOSED;
-    bool vent_after = false;
-
-    // --- Waste Detection Logic ---
-    bool waste_full = false;
-    bool slope_monitored_this_cycle = false;
-    uint32_t ramp_start_ms = 0;
-    double p_low_threshold = 0;
-    double p_high_threshold = 0;
-    double cumulative_rise = 0.0;
-
-    // Baseline Rise Time to handle the "already full at startup"
-    uint32_t baseline_rise_time_ms = 600;
-    bool baseline_captured = false;
-    bool in_ramp_phase = false;
-    uint32_t near_target_ticks = 0;
+    bool vent_after = true;
 };
 
-const PressureControl pressure_control = {
-    // Tuned for 25hz freq
-    .pid = PID(13.1,               // kp
-               4.59,               // ki
-               0.15,               // kd
-               CONTROL_PERIOD_MS,  // sampletime
-               MAX_RPM,            // windup_limit_high
-               0),                 // windup_limit_low
-    .k_velocity = K_VELOCITY,
-    .k_holding = K_HOLDING,
-    .overshoot_error = OVERSHOOT_ERROR};
+const PressureControlState pressure_control_state;
 
 template <typename P>
 concept PressureControlPolicy = requires(P p) {
@@ -227,7 +168,8 @@ class PressureTask {
           _vacuum_timer(
               "Vacuum Timer",
               [ThisPtr = this] { ThisPtr->vacuum_timer_end_callback(); },
-              UPDATE_PERIOD_MS) {}
+              UPDATE_PERIOD_MS),
+          _controller(CONTROL_PERIOD_MS) {}
     PressureTask(const PressureTask& other) = delete;
     auto operator=(const PressureTask& other) -> PressureTask& = delete;
     PressureTask(PressureTask&& other) noexcept = delete;
@@ -265,10 +207,8 @@ class PressureTask {
             }
 
             // Slew rate is mbar/sec
-            auto current_pressure =
-                static_cast<float>(_pressure_control.pressure_abs_b);
-            _pressure_control.slew.configure(current_pressure,
-                                             DEFAULT_RAMP_RATE);
+            _controller.configure_slew(_control_state.pressure_abs_b,
+                                       pressure_controller::DEFAULT_RAMP_RATE);
 
             // Close the vent
             set_vent_state(VentState::CLOSED);
@@ -298,16 +238,16 @@ class PressureTask {
         static_cast<void>(m);
         // Get delta time
         auto timestamp = policy.get_time_ms();
-        auto dt = (timestamp - _pressure_control.last_tick) * MS_TO_SECONDS;
-        _pressure_control.last_tick = timestamp;
+        auto dt = (timestamp - _control_state.last_tick) * MS_TO_SECONDS;
+        _control_state.last_tick = timestamp;
 
         // Stop vacuum control
-        if (!_pressure_control.enable_vacuum) {
-            handle_pressure_control_outcomes();
+        if (!_control_state.enable_vacuum) {
+            handle_control_state_outcomes();
             return;
         }
 
-        // Update latest absolute pressure
+        // Update absolute pressure
         for (auto sensor_id : {ABS_PRESSURE_A, ABS_PRESSURE_B}) {
             auto ret = update_pressure(sensor_id);
             // Reset the sensor if there is some problem
@@ -317,8 +257,10 @@ class PressureTask {
             }
         }
 
-        auto current_pressure = _pressure_control.pressure_abs_b;
-        _pressure_control.current_pressure = current_pressure;
+        auto target_pressure = _control_state.target_pressure;
+        auto pressure_atm = _control_state.pressure_atm;
+        auto current_pressure = _control_state.pressure_abs_b;
+        _control_state.current_pressure = current_pressure;
 
         // Handle duration and vent after
         pressure_state_buffer.at(pressure_state_buffer_index) =
@@ -327,51 +269,21 @@ class PressureTask {
             (pressure_state_buffer_index + 1) % PRESSURE_STATE_BUFFER_LEN;
         monitor_target_pressure();
 
-        // Handle waste full
-        if (check_waste_state(timestamp)) {
+        // Run Slew Limiter to get smooth trajectory in mbar
+        auto target_pressure = _pressure_control.target_pressure;
+        auto smooth_target = _pressure_control.slew.update(target_pressure, dt);
+
+        auto res = _detector.check(timestamp, current_pressure, target_pressure,
+                                   pressure_atm);
+        if (res != waste_detector::WasteFullError::NO_ERROR) {
             stop_vacuum();
             set_vent_state(VentState::OPENED);
             send_error_message(Error::WASTE_FULL_ERROR);
             return;
         }
 
-        // Run Slew Limiter to get smooth trajectory in mbar
-        auto target_pressure = _pressure_control.target_pressure;
-        auto smooth_target = _pressure_control.slew.update(target_pressure, dt);
-
-        auto prev_target = _pressure_control.prev_target_mbar;
-        auto rate_mbar_s = (prev_target - smooth_target) / dt;
-        auto error = current_pressure - smooth_target;
-        _pressure_control.prev_target_mbar = smooth_target;
-
-        // Apply Feed Forward if we are Pumping or Holding.
-        // If we are Relaxing (Target is rising, rate is negative), we want 0
-        // FF. If we are Overshot (Error is very negative), we want 0 FF.
-        auto total_ff_rpm = 0.F;
-        auto is_relaxing = (rate_mbar_s < 0.0F);
-        auto is_overshot = (error < _pressure_control.overshoot_error);
-        if (!is_relaxing && !is_overshot) {
-            // Calculate RPM needed to achieve this flow rate (Pumping)
-            auto ff_velocity = std::max<double>(
-                0.0F, rate_mbar_s * _pressure_control.k_velocity);
-
-            // Calculate Holding Feed-Forward (Static Load)
-            // Calculate how "deep" the vacuum is as a percentage (0.0 to 1.0)
-            // 1013 mbar = 0% Vacuum, 0 mbar = 100% Vacuum
-            auto ratio =
-                (ATM_PRESSURE_MBAR - smooth_target) / ATM_PRESSURE_MBAR;
-            ratio = std::clamp<double>(ratio, 0.0F, 1.0F);
-            auto ff_holding = ratio * _pressure_control.k_holding;
-            total_ff_rpm = ff_velocity + ff_holding;
-        }
-
-        // Calculate target rpm
-        auto rpm = _pressure_control.pid.compute(error, dt);
-        rpm = total_ff_rpm + rpm;
-
-        // Safety clamp
-        rpm = std::clamp<double>(rpm, MIN_RPM, MAX_RPM);
-        _pressure_control.target_rpm = rpm;
+        auto rpm = _controller.update(dt, current_pressure, target_pressure);
+        _control_state.target_rpm = rpm;
         set_pump_state(true, rpm);
     }
 
@@ -379,46 +291,50 @@ class PressureTask {
     auto visit_message(const messages::SetPressureStateMessage& m,
                        Policy& policy) -> void {
         // Convert target guage presure to abs pressure
-        update_pressures(true);
-        double p_atm = _pressure_control.pressure_atm;
+        update_pressures(policy, true);
+        auto p_atm = _control_state.pressure_atm;
         auto guage_pressure =
             std::clamp<double>(m.pressure_setpoint, ATM_PRESSURE_MBAR * -1, 0);
         auto target_pressure = guage_pressure + p_atm;
 
         // Check for Significant Target Change (> 10% of the vacuum range)
-        double current_target = _pressure_control.target_pressure;
-        double vacuum_depth = std::abs(p_atm - target_pressure);
-        double change_delta = std::abs(target_pressure - current_target);
+        auto current_pressure = _control_state.pressure_abs_b;
+        auto current_target = _control_state.target_pressure;
+        auto vacuum_depth = std::abs(p_atm - target_pressure);
+        auto change_delta = std::abs(target_pressure - current_target);
 
-        // If the target moves by more than 10% of the intended depth,
+        // If the target moves by more than N % of the intended depth,
         // the previous baseline is no longer physically representative.
-        if (_pressure_control.baseline_captured &&
-            (change_delta > (vacuum_depth * 0.10))) {
-            _pressure_control.baseline_captured = false;
-            _pressure_control.baseline_rise_time_ms = 0;
+        if (_detector.baseline_captured() &&
+            (change_delta >
+             (vacuum_depth * waste_detector::BASELINE_DEPTH_RESET))) {
+            _detector.reset_baseline();
         }
 
-        auto ramp_rate = m.ramp_rate > 0 ? m.ramp_rate : DEFAULT_RAMP_RATE;
-        ramp_rate = std::clamp<double>(ramp_rate, MIN_RAMP_RATE, MAX_RAMP_RATE);
-        _pressure_control.target_pressure = target_pressure;
-        _pressure_control.ramp_rate = ramp_rate;
-        _pressure_control.duration_s = m.duration_s;
-        _pressure_control.vent_after = m.vent_after;
-        _pressure_control.target_pressure_reached = false;
+        _control_state.target_pressure = target_pressure;
+        _control_state.duration_s = m.duration_s;
+        _control_state.vent_after = m.vent_after;
+        _control_state.target_pressure_reached = false;
 
-        // Start the pressure control loop
-        if (!_pressure_control.enable_vacuum && m.start_pump) {
-            reset_pressure_state_buffer();
-            _pressure_control.ramp_start_ms = 0;
-            _pressure_control.waste_full = false;
-            _pressure_control.slope_monitored_this_cycle = false;
-            _pressure_control.slew.configure(_pressure_control.pressure_abs_b,
-                                             ramp_rate);
-            _vacuum_timer.update_period(TARGET_PRESSURE_MAX_TIME_S);
+        // Start the duration timer
+        if (m.start_pump && m.duration_s > 0) {
+            _vacuum_timer.stop();
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            _vacuum_timer.update_period(m.duration_s * 1000);
             _vacuum_timer.start();
             policy.start_pressure_control(true);
         }
-        _pressure_control.enable_vacuum = m.start_pump;
+
+        // Start the pressure control loop
+        if (!_control_state.enable_vacuum && m.start_pump) {
+            reset_pressure_state_buffer();
+            _detector.reset();
+            _controller.configure_slew(current_pressure, m.ramp_rate);
+
+            // Start pressure control messages
+            policy.start_pressure_control(true);
+        }
+        _control_state.enable_vacuum = m.start_pump;
 
         send_ack_message(m.id);
     }
@@ -427,7 +343,7 @@ class PressureTask {
     auto visit_message(const messages::GetPressureStateMessage& m,
                        Policy& policy) -> void {
         // refresh if the pump is not running
-        if (!_pressure_control.enable_vacuum) {
+        if (!_control_state.enable_vacuum) {
             for (auto sensor_id :
                  {ABS_PRESSURE_A, ABS_PRESSURE_B, ATM_PRESSURE}) {
                 auto ret = update_pressure(sensor_id);
@@ -442,21 +358,21 @@ class PressureTask {
         // Convert to guage pressure
         auto target_pressure = 0.0F;
         auto current_pressure = 0.0F;
-        if (_pressure_control.target_pressure > 0) {
-            target_pressure = _pressure_control.target_pressure -
-                              _pressure_control.pressure_atm;
-            current_pressure = _pressure_control.current_pressure -
-                               _pressure_control.pressure_atm;
+        if (_control_state.target_pressure > 0) {
+            target_pressure =
+                _control_state.target_pressure - _control_state.pressure_atm;
+            current_pressure =
+                _control_state.current_pressure - _control_state.pressure_atm;
         }
         auto msg = messages::GetPressureStateResponseMessage{
             .responding_to_id = m.id,
             .target_pressure = target_pressure,
             .current_pressure = current_pressure,
-            .pressure_abs_a = _pressure_control.pressure_abs_a,
-            .pressure_abs_b = _pressure_control.pressure_abs_b,
-            .pressure_atm = _pressure_control.pressure_atm,
-            .vacuum_enabled = _pressure_control.enable_vacuum,
-            .vent_state = _pressure_control.vent_state,
+            .pressure_abs_a = _control_state.pressure_abs_a,
+            .pressure_abs_b = _control_state.pressure_abs_b,
+            .pressure_atm = _control_state.pressure_atm,
+            .vacuum_enabled = _control_state.enable_vacuum,
+            .vent_state = _control_state.vent_state,
         };
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));
@@ -465,6 +381,7 @@ class PressureTask {
     template <PressureControlPolicy Policy>
     auto visit_message(const messages::SetVentMessage& m, Policy& policy)
         -> void {
+        static_cast<void>(policy);
         auto state = static_cast<VentState>(m.state);
         auto ok = set_vent_state(state);
         auto ret = ok ? Error::NO_ERROR : Error::VENT_FAILED_ERROR;
@@ -475,14 +392,15 @@ class PressureTask {
     auto visit_message(const messages::SetPressurePIDMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
-        auto& pc = _pressure_control;
-        pc.overshoot_error = m.overshoot.value_or(pc.overshoot_error);
-        pc.k_velocity = m.k_velocity.value_or(pc.k_velocity);
-        pc.k_holding = m.k_holding.value_or(pc.k_holding);
-        auto kp = m.kp.value_or(pc.pid.kp());
-        auto ki = m.ki.value_or(pc.pid.ki());
-        auto kd = m.kd.value_or(pc.pid.kd());
-        pc.pid.set_tunings(kp, ki, kd, m.reset);
+        auto cs = _controller.get_state();
+        auto kp = m.kp.value_or(cs.kp);
+        auto ki = m.ki.value_or(cs.ki);
+        auto kd = m.kd.value_or(cs.kd);
+        auto overshoot = m.overshoot.value_or(cs.overshoot);
+        auto k_velocity = m.k_velocity.value_or(cs.k_velocity);
+        auto k_holding = m.k_holding.value_or(cs.k_holding);
+        _controller.configure_pid(kp, ki, kd, k_velocity, k_holding, overshoot,
+                                  m.reset);
         send_ack_message(m.id);
     }
 
@@ -490,14 +408,15 @@ class PressureTask {
     auto visit_message(const messages::GetPressurePIDMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
+        auto cs = _controller.get_state();
         auto msg = messages::GetPressurePIDResponseMessage{
             .responding_to_id = m.id,
-            .kp = _pressure_control.pid.kp(),
-            .ki = _pressure_control.pid.ki(),
-            .kd = _pressure_control.pid.kd(),
-            .overshoot = _pressure_control.overshoot_error,
-            .k_velocity = _pressure_control.k_velocity,
-            .k_holding = _pressure_control.k_holding,
+            .kp = cs.kp,
+            .ki = cs.ki,
+            .kd = cs.kd,
+            .overshoot = cs.overshoot,
+            .k_velocity = cs.k_velocity,
+            .k_holding = cs.k_holding,
         };
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));
@@ -516,12 +435,13 @@ class PressureTask {
         }
     }
 
-    auto update_pressures(bool reset_filter) -> void {
+    template <PressureControlPolicy Policy>
+    auto update_pressures(Policy& policy, bool reset_filter = false) -> void {
         for (auto sensor_id : {ABS_PRESSURE_A, ABS_PRESSURE_B, ATM_PRESSURE}) {
             auto ret = update_pressure(sensor_id, reset_filter);
             // Reset the sensor if there is some problem
             if (ret != NO_ERROR) {
-                _policy->sensor_reset(sensor_id);
+                policy.sensor_reset(sensor_id);
                 continue;
             }
         }
@@ -547,11 +467,11 @@ class PressureTask {
         }
 
         if (sensor_id == ABS_PRESSURE_A) {
-            _pressure_control.pressure_abs_a = pressure;
+            _control_state.pressure_abs_a = pressure;
         } else if (sensor_id == ABS_PRESSURE_B) {
-            _pressure_control.pressure_abs_b = pressure;
+            _control_state.pressure_abs_b = pressure;
         } else if (sensor_id == ATM_PRESSURE) {
-            _pressure_control.pressure_atm = pressure;
+            _control_state.pressure_atm = pressure;
         }
 
         return NO_ERROR;
@@ -560,7 +480,7 @@ class PressureTask {
     auto set_vent_state(VentState set_state) -> bool {
         _policy->set_vent_state(set_state);
         auto vent_state = _policy->get_vent_state();
-        _pressure_control.vent_state = vent_state;
+        _control_state.vent_state = vent_state;
         return vent_state == set_state;
     }
 
@@ -572,23 +492,9 @@ class PressureTask {
     }
 
     auto monitor_target_pressure() -> void {
-        if (!_pressure_control.target_pressure_reached) {
-            _pressure_control.target_pressure_reached =
+        if (!_control_state.target_pressure_reached) {
+            _control_state.target_pressure_reached =
                 maintaining_target_pressure();
-            if (_pressure_control.target_pressure_reached) {
-                // if duration is 0, continue indefinitely
-                if (_pressure_control.duration_s == 0) {
-                    _vacuum_timer.stop();
-                    return;
-                }
-                // reset the freertos timer period to be the hold duration, and
-                // start the timer
-                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-                const uint32_t duration_ms =
-                    _pressure_control.duration_s * 1000;
-                _vacuum_timer.update_period(duration_ms);
-                _vacuum_timer.start();
-            }
         }
         // if we wanted to keep checking during the hold time that the pressure
         // holds, we could do it here
@@ -596,13 +502,12 @@ class PressureTask {
 
     auto vacuum_timer_end_callback() -> void {
         _vacuum_timer.stop();
-        // we've reached target pressure and are holding
-        if (_pressure_control.target_pressure_reached) {
-            _pressure_control.enable_vacuum = false;
-        } else {
+        _control_state.enable_vacuum = false;
+        if (!_control_state.target_pressure_reached &&
+            _control_state.vent_state == VentState::CLOSED) {
             // we've reached the end of the allowed time to reach target
-            // pressure
-            _pressure_control.error = Error::PRESSURE_NOT_REACHED_ERROR;
+            // pressure while the vent was closed.
+            _control_state.error = Error::PRESSURE_NOT_REACHED_ERROR;
         }
     }
 
@@ -611,19 +516,14 @@ class PressureTask {
         _policy->start_pressure_control(false);
         set_pump_state(false, 0);
 
-        _pressure_control.pid.reset();
-        _pressure_control.slew.reset();
-        _pressure_control.current_pressure = 0;
-        _pressure_control.target_pressure = 0;
-        _pressure_control.target_rpm = 0;
-        _pressure_control.last_tick = 0;
-        _pressure_control.ramp_start_ms = 0;
-        _pressure_control.enable_vacuum = false;
-        _pressure_control.slope_monitored_this_cycle = false;
-        _pressure_control.in_ramp_phase = false;
-        _pressure_control.cumulative_rise = 0.0;
-        _pressure_control.near_target_ticks = 0.0;
-        _pressure_control.target_pressure_reached = false;
+        _detector.reset();
+        _controller.reset();
+        _control_state.current_pressure = 0;
+        _control_state.target_pressure = 0;
+        _control_state.target_rpm = 0;
+        _control_state.last_tick = 0;
+        _control_state.enable_vacuum = false;
+        _control_state.target_pressure_reached = false;
     }
 
     auto maintaining_target_pressure() -> bool {
@@ -631,7 +531,7 @@ class PressureTask {
         // tolerance; it will fail though if there are extreme transient values
         for (int i = 0; i < PRESSURE_STATE_BUFFER_LEN; i++) {
             if (std::abs(pressure_state_buffer.at(i) -
-                         _pressure_control.target_pressure) >
+                         _control_state.target_pressure) >
                 TARGET_PRESSURE_TOLERANCE_MBAR) {
                 return false;
             }
@@ -643,136 +543,20 @@ class PressureTask {
         pressure_state_buffer.fill(0);
     }
 
-    auto handle_pressure_control_outcomes() -> void {
-        if (!_pressure_control.enable_vacuum) {
+    auto handle_control_state_outcomes() -> void {
+        if (!_control_state.enable_vacuum) {
             stop_vacuum();
         }
 
         // Set the final vent state
-        auto state = static_cast<VentState>(_pressure_control.vent_after);
+        auto state = static_cast<VentState>(_control_state.vent_after);
         set_vent_state(state);
 
         // Report any errors
-        if (_pressure_control.error != Error::NO_ERROR) {
-            send_error_message(_pressure_control.error);
-            _pressure_control.error = Error::NO_ERROR;
+        if (_control_state.error != Error::NO_ERROR) {
+            send_error_message(_control_state.error);
+            _control_state.error = Error::NO_ERROR;
         }
-    }
-
-    auto check_waste_state(uint32_t timestamp) -> bool {
-        if (!_pressure_control.enable_vacuum || _pressure_control.waste_full) {
-            return false;
-        }
-
-        double current_p = _pressure_control.pressure_abs_b;
-        double p_atm = _pressure_control.pressure_atm;
-        double target_abs = _pressure_control.target_pressure;
-        double total_vacuum_range = p_atm - target_abs;
-        if (total_vacuum_range < 100.0) {
-            return false;
-        }
-
-        // Continuous delta_p for full-run spike/stall (positive = drop)
-        static double last_p = 0.0;
-        double delta_p = last_p - current_p;
-        last_p = current_p;
-
-        // Phase detection: Switch to hold if near target for a bit
-        if (std::abs(current_p - target_abs) < PRESSURE_TOLERANCE) {
-            _pressure_control.near_target_ticks++;
-            if (_pressure_control.near_target_ticks > 25) {  // ~1s at 25Hz
-                _pressure_control.in_ramp_phase = false;     // Enter hold mode
-            }
-        } else {
-            // Re-enter ramp if we drift too far from the target
-            _pressure_control.near_target_ticks = 0;
-            _pressure_control.in_ramp_phase = true;
-        }
-
-        // Ramp phase: Pressure Window + stall timeout
-        if (_pressure_control.in_ramp_phase) {
-            double p_window_start =
-                p_atm - (total_vacuum_range * WASTE_WINDOW_START_PCT);
-            double p_window_end =
-                p_atm - (total_vacuum_range * WASTE_WINDOW_END_PCT);
-
-            if (current_p < p_window_start &&
-                _pressure_control.ramp_start_ms == 0) {
-                if (current_p < p_window_end) {
-                    _pressure_control.waste_full = true;
-                    return true;
-                }
-                _pressure_control.ramp_start_ms = timestamp;
-            }
-
-            if (current_p <= p_window_end &&
-                _pressure_control.ramp_start_ms != 0) {
-                uint32_t measured_time =
-                    timestamp - _pressure_control.ramp_start_ms;
-                if (measured_time < MIN_ALLOWABLE_WINDOW_TIME_MS) {
-                    _pressure_control.waste_full = true;
-                    return true;
-                } else if (_pressure_control.baseline_captured) {
-                    if (measured_time <
-                        (_pressure_control.baseline_rise_time_ms *
-                         BASELINE_FAST_FACTOR)) {
-                        _pressure_control.waste_full = true;
-                        return true;
-                    }
-                    return false;
-                } else {
-                    // Only learn if time is reasonable when empty
-                    if (measured_time > MIN_ALLOWABLE_WINDOW_TIME_MS * 2 &&
-                        measured_time < MAX_ALLOWABLE_WINDOW_TIME_MS / 2) {
-                        _pressure_control.baseline_rise_time_ms = measured_time;
-                        _pressure_control.baseline_captured = true;
-                        return false;
-                    } else {
-                        // First run was too slow, flag as full
-                        _pressure_control.waste_full = true;
-                        return true;
-                    }
-                }
-                _pressure_control.ramp_start_ms = 0;
-                _pressure_control.slope_monitored_this_cycle = true;
-                if (_pressure_control.waste_full) {
-                    return true;
-                }
-            }
-        } else {  // Hold phase: Detect waste full (blocked flow)
-
-            // Ignore sudden inrush of air
-            if (delta_p < MAX_DRAIN_RISE_PER_TICK) {
-                _pressure_control.cumulative_rise = 0.0;
-                return false;
-            }
-
-            // Smaller rise = potential full waste (blocked flow)
-            if (delta_p < -MAX_RISE_PER_TICK) {
-                _pressure_control.waste_full = true;
-                return true;
-            }
-            // Cumulative rise over time (slow blocked-flow back-pressure)
-            if (delta_p < 0) {
-                _pressure_control.cumulative_rise -= delta_p;
-                if (_pressure_control.cumulative_rise > MAX_CUMULATIVE_RISE) {
-                    _pressure_control.waste_full = true;
-                    return true;
-                }
-            } else {
-                // Reset cumulative if drop due to normal fluctuations
-                _pressure_control.cumulative_rise = 0.0;
-            }
-        }
-        return false;
-    }
-
-    auto get_temperature() -> double {
-        auto d = std::get<LPSDriverType>(_atm_pressure.driver);
-        auto temp = _pressure_control.enable_vacuum ? d.get_temperature()
-                                                    : d.read_temperature();
-        _pressure_control.temperature = temp;
-        return temp;
     }
 
     auto send_debug_message(const char* message) -> void {
@@ -814,7 +598,9 @@ class PressureTask {
     std::array<double, PRESSURE_STATE_BUFFER_LEN> pressure_state_buffer = {0};
     uint8_t pressure_state_buffer_index = 0;
 
-    PressureControl _pressure_control = pressure_control;
+    PressureControlState _control_state = pressure_control_state;
+    PressureController _controller;
+    WasteDetector _detector;
 };
 
 }  // namespace pressure_task
