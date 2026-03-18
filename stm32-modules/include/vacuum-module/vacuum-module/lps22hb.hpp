@@ -58,6 +58,7 @@ class LPS22HB {
     }
 
     auto read_pressure(bool reset_filter = false) -> double {
+        static_cast<void>(reset_filter);
         auto ok = read_data();
         if (ok) {
             return pressure_hpa;
@@ -146,8 +147,12 @@ class LPS22HB {
         // take the complete 16-bit and then divide by the sensitivity 100
         // LSB/C.
 
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        int16_t temp_lsb = ((int16_t)raw[5] << 8) | (int16_t)raw[4];
+        const uint16_t temp_u16 = (static_cast<uint16_t>(raw[5]) << 8) |
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                                  static_cast<uint16_t>(raw[4]);
+        const auto temp_lsb = static_cast<int16_t>(temp_u16);
 
         // Convert to Celcius
         return static_cast<double>(temp_lsb) / SENSOR_SENSITIVITY_TEMPERATURE;

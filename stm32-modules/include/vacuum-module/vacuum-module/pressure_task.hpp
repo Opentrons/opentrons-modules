@@ -127,8 +127,6 @@ struct PressureControlState {
     double pressure_abs_a = 0;
     double pressure_abs_b = 0;
     double pressure_atm = 0;
-    double temperature = 0;
-    bool target_pressure_reached = false;
 
     uint32_t duration_s = 0;
     Error error = Error::NO_ERROR;
@@ -269,10 +267,6 @@ class PressureTask {
             (pressure_state_buffer_index + 1) % PRESSURE_STATE_BUFFER_LEN;
         monitor_target_pressure();
 
-        // Run Slew Limiter to get smooth trajectory in mbar
-        auto target_pressure = _pressure_control.target_pressure;
-        auto smooth_target = _pressure_control.slew.update(target_pressure, dt);
-
         auto res = _detector.check(timestamp, current_pressure, target_pressure,
                                    pressure_atm);
         if (res != waste_detector::WasteFullError::NO_ERROR) {
@@ -322,7 +316,6 @@ class PressureTask {
             // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
             _vacuum_timer.update_period(m.duration_s * 1000);
             _vacuum_timer.start();
-            policy.start_pressure_control(true);
         }
 
         // Start the pressure control loop
