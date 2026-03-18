@@ -45,12 +45,59 @@ static constexpr const uint32_t MAX_ALLOWABLE_WINDOW_TIME_MS = 20000;
 // Number of tics we need to be around the target pressure to enter hold phase
 static constexpr const uint32_t NEAR_TARGET_TICS = 25;  // ~1s at 25Hz
 
+struct WasteConfig {
+    bool enable_waste_full = true;
+    double p_window_start = WASTE_WINDOW_START_PCT;
+    double p_window_end = WASTE_WINDOW_END_PCT;
+    double baseline_fast_factor = BASELINE_FAST_FACTOR;
+    double max_delta_per_tick = MAX_DELTA_PER_TICK;
+    double max_rise_per_tick = MAX_RISE_PER_TICK;
+    double max_cummulative_rise = MAX_CUMULATIVE_RISE;
+    double p_filter_alpha = SENSOR_ALPHA;
+    double min_window_time = MIN_ALLOWABLE_WINDOW_TIME_MS;
+    double max_window_time = MAX_ALLOWABLE_WINDOW_TIME_MS;
+};
+
 class WasteDetector {
   public:
     WasteDetector() = default;
 
+    auto configure(WasteConfig c) -> void {
+        config.enable_waste_full = c.enable_waste_full;
+        if (c.p_window_start > 0) {
+            config.p_window_start = c.p_window_start;
+        }
+        if (c.p_window_end > 0) {
+            config.p_window_end = c.p_window_end;
+        }
+        if (c.baseline_fast_factor > 0) {
+            config.baseline_fast_factor = c.baseline_fast_factor;
+        };
+        if (c.max_delta_per_tick > 0) {
+            config.max_delta_per_tick = c.max_delta_per_tick;
+        }
+        if (c.max_rise_per_tick > 0) {
+            config.max_rise_per_tick = c.max_rise_per_tick;
+        }
+        if (c.max_cummulative_rise > 0) {
+            config.max_cummulative_rise = c.max_cummulative_rise;
+        }
+        if (c.p_filter_alpha > 0) {
+            config.p_filter_alpha = c.p_filter_alpha;
+        }
+        if (c.min_window_time > 0) {
+            config.min_window_time = c.min_window_time;
+        }
+        if (c.max_window_time > 0) {
+            config.max_window_time = c.max_window_time;
+        }
+    }
+
     auto check(uint32_t timestamp, double current_abs_mbar,
                double target_abs_mbar, double p_atm) -> WasteFullError {
+        if (!config.enable_waste_full) {
+            return WasteFullError::NO_ERROR;
+        }
         if (waste_full_) {
             return error;
         }
@@ -62,14 +109,14 @@ class WasteDetector {
         if (smoothed_p_ == 0) {
             smoothed_p_ = current_abs_mbar;
         } else {
-            smoothed_p_ = (SENSOR_ALPHA * current_abs_mbar) +
-                          ((1.0F - SENSOR_ALPHA) * last_p);
+            smoothed_p_ = (config.p_filter_alpha * current_abs_mbar) +
+                          ((1.0F - config.p_filter_alpha) * last_p);
         }
         auto current_p = smoothed_p_;
 
         // Continuous delta_p for full-run spike/stall (positive = drop)
         auto delta_p = last_p - current_p;
-        if (delta_p > MAX_DELTA_PER_TICK) {
+        if (delta_p > config.max_delta_per_tick) {
             waste_full_ = true;
             error = WasteFullError::MAX_DELTA_TIC_ERROR;
             return error;
@@ -90,9 +137,9 @@ class WasteDetector {
         // Ramp phase: Pressure Window + stall timeout
         if (in_ramp_phase_) {
             auto p_window_start =
-                p_atm - (total_vacuum_range * WASTE_WINDOW_START_PCT);
+                p_atm - (total_vacuum_range * config.p_window_start);
             auto p_window_end =
-                p_atm - (total_vacuum_range * WASTE_WINDOW_END_PCT);
+                p_atm - (total_vacuum_range * config.p_window_end);
 
             if (current_p < p_window_start && ramp_start_ms_ == 0) {
                 if (current_p < p_window_end) {
@@ -105,12 +152,12 @@ class WasteDetector {
 
             if (current_p <= p_window_end && ramp_start_ms_ != 0) {
                 auto measured_time = timestamp - ramp_start_ms_;
-                if (measured_time < MIN_ALLOWABLE_WINDOW_TIME_MS) {
+                if (measured_time < config.min_window_time) {
                     waste_full_ = true;
                     error = WasteFullError::RISE_TOO_FAST_ERROR;
                 } else if (baseline_captured_) {
-                    if (measured_time <
-                        (baseline_rise_time_ms_ * BASELINE_FAST_FACTOR)) {
+                    if (measured_time < (baseline_rise_time_ms_ *
+                                         config.baseline_fast_factor)) {
                         waste_full_ = true;
                         error = WasteFullError::FAST_BASELINE_ERROR;
                         return error;
@@ -118,8 +165,8 @@ class WasteDetector {
                     return WasteFullError::NO_ERROR;
                 } else {
                     // Only learn if time is reasonable when empty
-                    if (measured_time > MIN_ALLOWABLE_WINDOW_TIME_MS * 2 &&
-                        measured_time < MAX_ALLOWABLE_WINDOW_TIME_MS / 2) {
+                    if (measured_time > config.min_window_time * 2 &&
+                        measured_time < config.max_window_time / 2) {
                         baseline_rise_time_ms_ = measured_time;
                         baseline_captured_ = true;
                         return WasteFullError::NO_ERROR;
@@ -142,13 +189,13 @@ class WasteDetector {
             }
 
             // Smaller rise = potential full waste (blocked flow)
-            if (delta_p < -MAX_RISE_PER_TICK) {
+            if (delta_p < -config.max_rise_per_tick) {
                 waste_full_ = true;
                 error = WasteFullError::SUDDEN_BLOCKED_ERROR;
                 // Cumulative rise over time (slow blocked-flow back-pressure)
             } else if (delta_p < 0) {
                 cumulative_rise_ -= delta_p;
-                if (cumulative_rise_ > MAX_CUMULATIVE_RISE) {
+                if (cumulative_rise_ > config.max_cummulative_rise) {
                     waste_full_ = true;
                     error = WasteFullError::CUMMULATIVE_BLOCKED_ERROR;
                 }
@@ -170,16 +217,31 @@ class WasteDetector {
         error = WasteFullError::NO_ERROR;
     }
 
+    auto reset_baseline() -> void {
+        baseline_captured_ = false;
+        baseline_rise_time_ms_ = 0;
+    }
+
+    auto reset_config() -> void {
+        config.enable_waste_full = true;
+        config.p_window_start = WASTE_WINDOW_START_PCT;
+        config.p_window_end = WASTE_WINDOW_END_PCT;
+        config.baseline_fast_factor = BASELINE_FAST_FACTOR;
+        config.max_delta_per_tick = MAX_DELTA_PER_TICK;
+        config.max_rise_per_tick = MAX_RISE_PER_TICK;
+        config.max_cummulative_rise = MAX_CUMULATIVE_RISE;
+        config.p_filter_alpha = SENSOR_ALPHA;
+        config.min_window_time = MIN_ALLOWABLE_WINDOW_TIME_MS;
+        config.max_window_time = MAX_ALLOWABLE_WINDOW_TIME_MS;
+    }
+
     [[nodiscard]] auto get_error() -> WasteFullError { return error; }
 
     [[nodiscard]] auto baseline_captured() const -> bool {
         return baseline_captured_;
     }
 
-    auto reset_baseline() -> void {
-        baseline_captured_ = false;
-        baseline_rise_time_ms_ = 0;
-    }
+    auto get_config() -> WasteConfig { return config; }
 
   private:
     bool waste_full_ = false;
@@ -191,6 +253,7 @@ class WasteDetector {
     double cumulative_rise_ = 0.0;
     double smoothed_p_ = 0.0;
     WasteFullError error = WasteFullError::NO_ERROR;
+    WasteConfig config;
 };
 
 }  // namespace waste_detector
