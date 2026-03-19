@@ -668,7 +668,7 @@ struct SetWasteDetectionConfig {
 
     using ParseResult = std::optional<SetWasteDetectionConfig>;
     static constexpr auto prefix = std::array{'M', '1', '2', '7', ' '};
-    static constexpr const char* response = "M125 OK\n";
+    static constexpr const char* response = "M127 OK\n";
 
     using S = Arg<float, 'S'>;
     using P = Arg<float, 'P'>;
