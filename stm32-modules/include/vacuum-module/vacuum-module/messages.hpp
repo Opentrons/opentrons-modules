@@ -123,6 +123,7 @@ struct SetPressureStateMessage {
     uint32_t id = 0;
     double pressure_setpoint = 0;
     uint32_t duration_s = 0;
+    uint32_t timeout_s = 0;
     double ramp_rate = 0;
     bool start_pump = false;
     bool vent_after = true;
@@ -179,6 +180,7 @@ struct SetPressurePIDMessage {
     std::optional<double> overshoot = std::nullopt;
     std::optional<double> k_velocity = std::nullopt;
     std::optional<double> k_holding = std::nullopt;
+    std::optional<double> rel_tol_pct = std::nullopt;
     bool reset = false;
 };
 
@@ -194,6 +196,7 @@ struct GetPressurePIDResponseMessage {
     double overshoot;
     double k_velocity;
     double k_holding;
+    double rel_tol_pct;
 };
 
 struct SetWasteDetectionConfigMessage {

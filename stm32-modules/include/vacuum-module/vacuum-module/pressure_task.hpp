@@ -80,10 +80,11 @@ static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
 
 // -- Duration Threshold --
 static constexpr const uint32_t UPDATE_PERIOD_MS = 10;
+static constexpr const uint32_t PRESSURE_NOT_REACHED_TIMEOUT = 2000;
 static constexpr const uint8_t PRESSURE_STATE_BUFFER_LEN = 125;
-static constexpr const uint8_t TARGET_PRESSURE_TOLERANCE_MBAR = 10;
-static constexpr const uint32_t TARGET_PRESSURE_MAX_TIME_S = 100;
-static constexpr const uint32_t SOLID_STATE_PRESSURE_TOLERANCE = 10;
+static constexpr const double MIN_PRESSURE_TOLERANCE_MBAR = 5;
+// The percent the pressure could be off by and still be "target reached"
+static constexpr const double REL_PRESSURE_TOLERANCE_PCT = 2.0;
 
 // Debug buffer
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -132,11 +133,15 @@ struct PressureControlState {
     Error error = Error::NO_ERROR;
     bool target_pressure_reached = false;
 
+    // Percentage of the intended vacuum depth
+    double rel_tol_pct = REL_PRESSURE_TOLERANCE_PCT;
+    uint32_t start_time_ms = 0;
+    uint32_t timeout_s = 0;
+
     uint32_t last_tick = 0;
     bool enable_vacuum = false;
     VentState vent_state = VentState::CLOSED;
     bool vent_after = true;
-    bool enable_waste_full = true;
 };
 
 const PressureControlState pressure_control_state;
@@ -239,6 +244,9 @@ class PressureTask {
         auto timestamp = policy.get_time_ms();
         auto dt = (timestamp - _control_state.last_tick) * MS_TO_SECONDS;
         _control_state.last_tick = timestamp;
+        if (_control_state.start_time_ms == 0) {
+            _control_state.start_time_ms = timestamp;
+        }
 
         // Stop vacuum control
         if (!_control_state.enable_vacuum) {
@@ -308,6 +316,7 @@ class PressureTask {
 
         _control_state.target_pressure = target_pressure;
         _control_state.duration_s = m.duration_s;
+        _control_state.timeout_s = m.timeout_s;
         _control_state.vent_after = m.vent_after;
         _control_state.target_pressure_reached = false;
 
@@ -386,6 +395,9 @@ class PressureTask {
     auto visit_message(const messages::SetPressurePIDMessage& m, Policy& policy)
         -> void {
         static_cast<void>(policy);
+        auto tol = m.rel_tol_pct.value_or(_control_state.rel_tol_pct);
+        _control_state.rel_tol_pct =
+            std::clamp(tol > 0 ? tol : REL_PRESSURE_TOLERANCE_PCT, 0.0, 100.0);
         auto cs = _controller.get_state();
         auto kp = m.kp.value_or(cs.kp);
         auto ki = m.ki.value_or(cs.ki);
@@ -395,6 +407,7 @@ class PressureTask {
         auto k_holding = m.k_holding.value_or(cs.k_holding);
         _controller.configure_pid(kp, ki, kd, k_velocity, k_holding, overshoot,
                                   m.reset);
+
         send_ack_message(m.id);
     }
 
@@ -411,7 +424,7 @@ class PressureTask {
             .overshoot = cs.overshoot,
             .k_velocity = cs.k_velocity,
             .k_holding = cs.k_holding,
-        };
+            .rel_tol_pct = _control_state.rel_tol_pct};
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));
     }
@@ -531,6 +544,19 @@ class PressureTask {
 
     auto monitor_target_pressure() -> void {
         if (!_control_state.target_pressure_reached) {
+            // Pressure has not been reached within the given time
+            auto elapsed_time_s =
+                (_control_state.last_tick - _control_state.start_time_ms) *
+                MS_TO_SECONDS;
+            if (_control_state.timeout_s > 0 &&
+                elapsed_time_s > _control_state.timeout_s &&
+                _control_state.vent_state == VentState::CLOSED) {
+                // we've reached the end of the allowed time to reach target
+                // pressure while the vent was closed.
+                _control_state.error = Error::PRESSURE_NOT_REACHED_ERROR;
+                _control_state.enable_vacuum = false;
+                return;
+            }
             _control_state.target_pressure_reached =
                 maintaining_target_pressure();
         }
@@ -541,12 +567,6 @@ class PressureTask {
     auto vacuum_timer_end_callback() -> void {
         _vacuum_timer.stop();
         _control_state.enable_vacuum = false;
-        if (!_control_state.target_pressure_reached &&
-            _control_state.vent_state == VentState::CLOSED) {
-            // we've reached the end of the allowed time to reach target
-            // pressure while the vent was closed.
-            _control_state.error = Error::PRESSURE_NOT_REACHED_ERROR;
-        }
     }
 
     auto stop_vacuum() -> void {
@@ -560,17 +580,27 @@ class PressureTask {
         _control_state.target_pressure = 0;
         _control_state.target_rpm = 0;
         _control_state.last_tick = 0;
+        _control_state.start_time_ms = 0;
+        _control_state.duration_s = 0;
+        _control_state.timeout_s = 0;
         _control_state.enable_vacuum = false;
         _control_state.target_pressure_reached = false;
     }
 
     auto maintaining_target_pressure() -> bool {
-        // this could be adjusted to be a little more lenient by adjusting the
-        // tolerance; it will fail though if there are extreme transient values
-        for (int i = 0; i < PRESSURE_STATE_BUFFER_LEN; i++) {
-            if (std::abs(pressure_state_buffer.at(i) -
-                         _control_state.target_pressure) >
-                TARGET_PRESSURE_TOLERANCE_MBAR) {
+        if (pressure_state_buffer_index == 0) {
+            return false;
+        }
+
+        // Calculate effective tolerance:
+        auto target_abs = _control_state.target_pressure;
+        auto vacuum_depth = _control_state.pressure_atm - target_abs;
+        auto rel_tol = vacuum_depth * (_control_state.rel_tol_pct / 100.0);
+        auto effective_tol = std::max(rel_tol, MIN_PRESSURE_TOLERANCE_MBAR);
+
+        for (int i = 0; i < PRESSURE_STATE_BUFFER_LEN; ++i) {
+            auto stored_abs = pressure_state_buffer.at(i);
+            if (std::abs(stored_abs - target_abs) > effective_tol) {
                 return false;
             }
         }

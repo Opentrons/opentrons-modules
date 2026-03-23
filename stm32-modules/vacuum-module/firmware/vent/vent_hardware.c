@@ -32,7 +32,7 @@ void vent_hardware_gpio_init(void) {
 
     /*Configure Input GPIO pins : PA6 */
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     GPIO_InitStruct.Pin = VENT_FAULT_GPIO_Pin;
     HAL_GPIO_Init(VENT_FAULT_GPIO_Port, &GPIO_InitStruct);
