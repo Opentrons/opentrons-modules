@@ -301,6 +301,7 @@ struct SetPressureState {
      * */
     double pressure = 0;
     uint32_t duration_s = 0;
+    uint32_t timeout_s = 0;
     double ramp_rate = 0;
     bool vent_after = true;
     bool start_pump = false;
@@ -312,6 +313,7 @@ struct SetPressureState {
     using StartArg = Arg<uint8_t, 'S'>;
     using PressureArg = Arg<float, 'P'>;
     using DurationArg = Arg<uint32_t, 'D'>;
+    using TimeoutArg = Arg<uint32_t, 'T'>;
     using RampArg = Arg<float, 'R'>;
     using VentArg = Arg<uint8_t, 'V'>;
 
@@ -321,14 +323,16 @@ struct SetPressureState {
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         auto res =
-            gcode::SingleParser<StartArg, PressureArg, DurationArg, RampArg,
-                                VentArg>::parse_gcode(input, limit, prefix);
+            gcode::SingleParser<StartArg, PressureArg, DurationArg, TimeoutArg,
+                                RampArg, VentArg>::parse_gcode(input, limit,
+                                                               prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
 
         auto ret = SetPressureState{.pressure = 0.0,
                                     .duration_s = 0,
+                                    .timeout_s = 0,
                                     .ramp_rate = 0.0,
                                     .vent_after = true,
                                     .start_pump = false};
@@ -345,10 +349,15 @@ struct SetPressureState {
                 static_cast<uint32_t>(std::get<2>(arguments).value);
         }
         if (std::get<3>(arguments).present) {
-            ret.ramp_rate = static_cast<double>(std::get<3>(arguments).value);
+            ret.timeout_s = static_cast<uint32_t>(std::get<3>(arguments).value);
         }
         if (std::get<4>(arguments).present) {
-            ret.vent_after = static_cast<bool>(std::get<4>(arguments).value);
+            ret.ramp_rate = static_cast<double>(std::get<4>(arguments).value);
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (std::get<5>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            ret.vent_after = static_cast<bool>(std::get<5>(arguments).value);
         }
         return std::make_pair(ret, res.second);
     }
@@ -548,6 +557,7 @@ struct SetPressurePID {
     std::optional<double> overshoot;
     std::optional<double> k_velocity;
     std::optional<double> k_holding;
+    std::optional<double> rel_tol_pct;
     bool reset = false;
 
     using ParseResult = std::optional<SetPressurePID>;
@@ -560,6 +570,7 @@ struct SetPressurePID {
     using O = Arg<float, 'O'>;
     using V = Arg<float, 'V'>;
     using H = Arg<float, 'H'>;
+    using T = Arg<float, 'T'>;
     using R = Arg<uint8_t, 'R'>;
 
     template <typename InputIt, typename Limit>
@@ -567,7 +578,7 @@ struct SetPressurePID {
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        auto res = gcode::SingleParser<P, I, D, O, V, H, R>::parse_gcode(
+        auto res = gcode::SingleParser<P, I, D, O, V, H, T, R>::parse_gcode(
             input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
@@ -599,7 +610,12 @@ struct SetPressurePID {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (std::get<6>(arguments).present) {
             // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-            ret.reset = static_cast<bool>(std::get<6>(arguments).value);
+            ret.rel_tol_pct = static_cast<double>(std::get<6>(arguments).value);
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (std::get<7>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            ret.reset = static_cast<bool>(std::get<7>(arguments).value);
         }
         return std::make_pair(ret, res.second);
     }
@@ -624,12 +640,13 @@ struct GetPressurePID {
         std::sized_sentinel_for<InputIt, InLimit>
     static auto write_response_into(InputIt buf, InLimit limit, double kp,
                                     double ki, double kd, double overshoot,
-                                    double k_velocity, double k_holding)
-        -> InputIt {
+                                    double k_velocity, double k_holding,
+                                    double rel_tol_pct) -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf),
-                       "M126 P:%.1f I:%.1f D:%.1f O:%.1f V:%.1f H:%.1f OK\n",
-                       kp, ki, kd, overshoot, k_velocity, k_holding);
+        res = snprintf(
+            &*buf, (limit - buf),
+            "M126 P:%.1f I:%.1f D:%.1f O:%.1f V:%.1f H:%.1f T:%.2f OK\n", kp,
+            ki, kd, overshoot, k_velocity, k_holding, rel_tol_pct);
         if (res <= 0) {
             return buf;
         }
