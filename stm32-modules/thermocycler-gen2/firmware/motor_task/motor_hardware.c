@@ -5,20 +5,18 @@
 #include "firmware/motor_hardware.h"
 
 #include <stdatomic.h>
+#include <stdlib.h>  // for abs
 #include <string.h>  // for memset
-#include <stdlib.h> // for abs
 
 #include "FreeRTOS.h"
-#include "task.h"
-
+#include "firmware/motor_spi_hardware.h"
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_tim.h"
-
-#include "firmware/motor_spi_hardware.h"
+#include "task.h"
 
 #ifdef __cplusplus
 extern "C" {
-#endif // __cplusplus
+#endif  // __cplusplus
 
 // ----------------------------------------------------------------------------
 // Local definitions
@@ -49,12 +47,12 @@ extern "C" {
 /** Port for Seal Extension Limit Switch input.*/
 #define SEAL_EXTENSION_SWITCH_PORT (GPIOD)
 /** Pin for Seal Extension Limit Switch input.*/
-#define SEAL_EXTENSION_SWITCH_PIN  (GPIO_PIN_6)
+#define SEAL_EXTENSION_SWITCH_PIN (GPIO_PIN_6)
 
 /** Port for Seal Retraction Limit Switch input.*/
 #define SEAL_RETRACTION_SWITCH_PORT (GPIOC)
 /** Pin for Seal Retraction Limit Switch input.*/
-#define SEAL_RETRACTION_SWITCH_PIN  (GPIO_PIN_12)
+#define SEAL_RETRACTION_SWITCH_PIN (GPIO_PIN_12)
 
 /** Port for the Photointerrupt Enable line.*/
 #define PHOTOINTERRUPT_ENABLE_PORT (GPIOE)
@@ -91,7 +89,8 @@ extern "C" {
 /** Preload for APB to give a 10MHz clock.*/
 #define TIM6_PRELOAD (16)
 /** Calculated TIM6 period.*/
-#define TIM6_PERIOD (((TIM6_APB_FREQ/(TIM6_PRELOAD + 1)) / MOTOR_INTERRUPT_FREQ) - 1)
+#define TIM6_PERIOD \
+    (((TIM6_APB_FREQ / (TIM6_PRELOAD + 1)) / MOTOR_INTERRUPT_FREQ) - 1)
 
 /**
  * @brief Calculates the frequency of ticks to get a Lid Motor RPM. The ratio
@@ -159,61 +158,41 @@ typedef struct motor_hardware_struct {
 
 static motor_hardware_t _motor_hardware = {
     .initialized = false,
-    .callbacks = {
-        .lid_stepper_complete = NULL,
-        .seal_stepper_tick = NULL,
-        .seal_stepper_error = NULL,
-        .seal_stepper_limit_switch = NULL
-    },
-    .lid_stepper = {
-        .moving = false,
-        .direction = true,
-        .overdrive = false,
-        .step_count = 0,
-        .step_target = 0,
-        .timer = {0},
-        .dac = {0}
-    },
-    .seal = {
-        .enabled = false,
-        .moving = false,
-        .direction = false,
-        .extension_switch_armed = false,
-        .retraction_switch_armed = false,
-        .timer = {0}
-    }
-};
+    .callbacks = {.lid_stepper_complete = NULL,
+                  .seal_stepper_tick = NULL,
+                  .seal_stepper_error = NULL,
+                  .seal_stepper_limit_switch = NULL},
+    .lid_stepper = {.moving = false,
+                    .direction = true,
+                    .overdrive = false,
+                    .step_count = 0,
+                    .step_target = 0,
+                    .timer = {0},
+                    .dac = {0}},
+    .seal = {.enabled = false,
+             .moving = false,
+             .direction = false,
+             .extension_switch_armed = false,
+             .retraction_switch_armed = false,
+             .timer = {0}}};
 
 enum RCC_FLAGS {
-    NONE,
-    // high speed internal clock ready
-    HSIRDY, // = 1
-    // high speed external clock ready
-    HSERDY, // = 2
-    // main phase-locked loop clock ready
-    PLLRDY, // = 3
-    // hsi48 clock ready
-    HSI48RDY, // = 4
-    // low-speed external clock ready
-    LSERDY, // = 5
     // lse clock security system failure
-    LSECSSD, // = 6
-    // low-speed internal clock ready
-    LSIRDY, // = 7
+    LSECSSD,  // = 0
     // brown out
-    BORRST, // = 8
+    BORRST,  // = 1
     // option byte-loader reset
-    OBLRST, // = 9
+    OBLRST,  // = 2
     // pin reset
-    PINRST, // = 10
+    PINRST,  // = 3
     // software reset
-    SFTRST, // = 11
+    SFTRST,  // = 4
     // independent watchdog
-    IWDGRST, // = 12
+    IWDGRST,  // = 5
     // window watchdog
-    WWDGRST, // = 13
+    WWDGRST,  // = 6
     // low power reset
-    LPWRRST, // = 14
+    LPWRRST,  // = 7
 };
 
 // ----------------------------------------------------------------------------
@@ -239,9 +218,10 @@ void motor_hardware_setup(const motor_hardware_callbacks* callbacks) {
     configASSERT(callbacks->seal_stepper_error != NULL);
     configASSERT(callbacks->seal_stepper_limit_switch != NULL);
 
-    memcpy(&_motor_hardware.callbacks, callbacks, sizeof(_motor_hardware.callbacks));
+    memcpy(&_motor_hardware.callbacks, callbacks,
+           sizeof(_motor_hardware.callbacks));
 
-    if(!_motor_hardware.initialized) {
+    if (!_motor_hardware.initialized) {
         init_motor_gpio();
         init_dac1(&_motor_hardware.lid_stepper.dac);
         init_tim2(&_motor_hardware.lid_stepper.timer);
@@ -255,13 +235,14 @@ void motor_hardware_setup(const motor_hardware_callbacks* callbacks) {
     _motor_hardware.initialized = true;
 }
 
-//PA0/PA1/PB10/PB11 = TIM2CH1/2/3/4 (all GPIO_AF1_TIM2)
-//control via increment_step in motor_task.hpp?
-//handle end switch IT start and stop
+// PA0/PA1/PB10/PB11 = TIM2CH1/2/3/4 (all GPIO_AF1_TIM2)
+// control via increment_step in motor_task.hpp?
+// handle end switch IT start and stop
 void motor_hardware_lid_stepper_start(int32_t steps, bool overdrive) {
-    //check for fault
+    // check for fault
     _motor_hardware.lid_stepper.step_count = 0;
-    // Multiply number of steps by 2 because the timer is in toggle mode (2 interrupts = 1 microstep)
+    // Multiply number of steps by 2 because the timer is in toggle mode (2
+    // interrupts = 1 microstep)
     _motor_hardware.lid_stepper.step_target = abs(steps) * 2;
     // Set overdrive flag
     _motor_hardware.lid_stepper.overdrive = overdrive;
@@ -269,104 +250,120 @@ void motor_hardware_lid_stepper_start(int32_t steps, bool overdrive) {
     // True = opening
     _motor_hardware.lid_stepper.direction = (steps > 0);
     if (steps > 0) {
-        HAL_GPIO_WritePin(LID_STEPPER_CONTROL_Port, LID_STEPPER_DIR_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LID_STEPPER_CONTROL_Port, LID_STEPPER_DIR_Pin,
+                          GPIO_PIN_SET);
     } else {
-        HAL_GPIO_WritePin(LID_STEPPER_CONTROL_Port, LID_STEPPER_DIR_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LID_STEPPER_CONTROL_Port, LID_STEPPER_DIR_Pin,
+                          GPIO_PIN_RESET);
     }
 
-    HAL_TIM_OC_Start_IT(&_motor_hardware.lid_stepper.timer, LID_STEPPER_STEP_Channel);
+    HAL_TIM_OC_Start_IT(&_motor_hardware.lid_stepper.timer,
+                        LID_STEPPER_STEP_Channel);
 }
 
 void motor_hardware_lid_stepper_stop() {
-    HAL_TIM_OC_Stop_IT(&_motor_hardware.lid_stepper.timer, LID_STEPPER_STEP_Channel);
+    HAL_TIM_OC_Stop_IT(&_motor_hardware.lid_stepper.timer,
+                       LID_STEPPER_STEP_Channel);
 }
 
 void motor_hardware_lid_increment() {
     bool done = false;
     _motor_hardware.lid_stepper.step_count++;
     // Only check stop switches if this is NOT an overdrive
-    if(!_motor_hardware.lid_stepper.overdrive) {
-        if(_motor_hardware.lid_stepper.direction) {
+    if (!_motor_hardware.lid_stepper.overdrive) {
+        if (_motor_hardware.lid_stepper.direction) {
             // Check if lid is open
-            if(motor_hardware_lid_read_open()) {
+            if (motor_hardware_lid_read_open()) {
                 done = true;
             }
         } else {
             // Check if lid is closed
-            if(motor_hardware_lid_read_closed()) {
+            if (motor_hardware_lid_read_closed()) {
                 done = true;
             }
         }
     }
-    
-    // If the lid hit a limit switch, 
-    if (_motor_hardware.lid_stepper.step_count > (_motor_hardware.lid_stepper.step_target - 1)) {
+
+    // If the lid hit a limit switch,
+    if (_motor_hardware.lid_stepper.step_count >
+        (_motor_hardware.lid_stepper.step_target - 1)) {
         done = true;
     }
 
-    if(done) {
+    if (done) {
         motor_hardware_lid_stepper_stop();
         _motor_hardware.callbacks.lid_stepper_complete();
     }
 }
 
 void motor_hardware_lid_stepper_set_dac(uint8_t dacval) {
-    HAL_DAC_SetValue(&_motor_hardware.lid_stepper.dac, LID_STEPPER_VREF_CHANNEL, DAC_ALIGN_8B_R, dacval);
+    HAL_DAC_SetValue(&_motor_hardware.lid_stepper.dac, LID_STEPPER_VREF_CHANNEL,
+                     DAC_ALIGN_8B_R, dacval);
 }
 
 bool motor_hardware_lid_stepper_check_fault(void) {
-    return (HAL_GPIO_ReadPin(LID_STEPPER_ENABLE_Port, LID_STEPPER_FAULT_Pin) == GPIO_PIN_RESET) ? true : false;
+    return (HAL_GPIO_ReadPin(LID_STEPPER_ENABLE_Port, LID_STEPPER_FAULT_Pin) ==
+            GPIO_PIN_RESET)
+               ? true
+               : false;
 }
 
 bool motor_hardware_lid_stepper_reset(void) {
-    //if fault, try resetting
+    // if fault, try resetting
     if (motor_hardware_lid_stepper_check_fault()) {
-        HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin,
+                          GPIO_PIN_RESET);
         vTaskDelay(pdMS_TO_TICKS(100));
-        HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin,
+                          GPIO_PIN_SET);
     }
-    //return false if fault persists
+    // return false if fault persists
     return (motor_hardware_lid_stepper_check_fault() == true) ? false : true;
 }
 
 bool motor_hardware_lid_stepper_set_rpm(double rpm) {
-    if(lid_active()) {
+    if (lid_active()) {
         return false;
     }
-    if(rpm < LID_RPM_MIN || rpm > LID_RPM_MAX) {
+    if (rpm < LID_RPM_MIN || rpm > LID_RPM_MAX) {
         return false;
     }
 
     /* Compute TIM2 clock */
     uint32_t uwTimClock = HAL_RCC_GetPCLK1Freq();
     uint32_t uwPeriodValue = __HAL_TIM_CALC_PERIOD(
-                uwTimClock, 
-                _motor_hardware.lid_stepper.timer.Init.Prescaler, 
-                LID_RPM_TO_FREQ(rpm));
+        uwTimClock, _motor_hardware.lid_stepper.timer.Init.Prescaler,
+        LID_RPM_TO_FREQ(rpm));
     __HAL_TIM_SET_AUTORELOAD(&_motor_hardware.lid_stepper.timer, uwPeriodValue);
-    
+
     return true;
 }
 
 bool motor_hardware_lid_read_closed(void) {
-    return (HAL_GPIO_ReadPin(LID_CLOSED_SWITCH_PORT, LID_CLOSED_SWITCH_PIN) == GPIO_PIN_RESET) ? true : false;
+    return (HAL_GPIO_ReadPin(LID_CLOSED_SWITCH_PORT, LID_CLOSED_SWITCH_PIN) ==
+            GPIO_PIN_RESET)
+               ? true
+               : false;
 }
 
 bool motor_hardware_lid_read_open(void) {
-    return (HAL_GPIO_ReadPin(LID_OPEN_SWITCH_PORT, LID_OPEN_SWITCH_PIN) == GPIO_PIN_SET) ? true : false;
+    return (HAL_GPIO_ReadPin(LID_OPEN_SWITCH_PORT, LID_OPEN_SWITCH_PIN) ==
+            GPIO_PIN_SET)
+               ? true
+               : false;
 }
 
 bool motor_hardware_set_seal_enable(bool enable) {
     // Active low
-    HAL_GPIO_WritePin(SEAL_STEPPER_ENABLE_PORT, SEAL_STEPPER_ENABLE_PIN, 
-        (enable) ? GPIO_PIN_RESET : GPIO_PIN_SET);
+    HAL_GPIO_WritePin(SEAL_STEPPER_ENABLE_PORT, SEAL_STEPPER_ENABLE_PIN,
+                      (enable) ? GPIO_PIN_RESET : GPIO_PIN_SET);
     return true;
 }
 
 bool motor_hardware_set_seal_direction(bool direction) {
     _motor_hardware.seal.direction = direction;
-    HAL_GPIO_WritePin(SEAL_STEPPER_DIRECTION_PORT, SEAL_STEPPER_DIRECTION_PIN, 
-        direction ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(SEAL_STEPPER_DIRECTION_PORT, SEAL_STEPPER_DIRECTION_PIN,
+                      direction ? GPIO_PIN_SET : GPIO_PIN_RESET);
     return true;
 }
 
@@ -383,14 +380,15 @@ void motor_hardware_seal_interrupt(void) {
 }
 
 void motor_hardware_seal_step_pulse(void) {
-    HAL_GPIO_WritePin(SEAL_STEPPER_STEP_PORT, SEAL_STEPPER_STEP_PIN, 
+    HAL_GPIO_WritePin(SEAL_STEPPER_STEP_PORT, SEAL_STEPPER_STEP_PIN,
                       GPIO_PIN_SET);
-    HAL_GPIO_WritePin(SEAL_STEPPER_STEP_PORT, SEAL_STEPPER_STEP_PIN, 
+    HAL_GPIO_WritePin(SEAL_STEPPER_STEP_PORT, SEAL_STEPPER_STEP_PIN,
                       GPIO_PIN_RESET);
 }
 
-void motor_hardware_solenoid_engage() { //engage to clear/unlock sliding locking plate
-    //check to confirm lid closed before engaging solenoid
+void motor_hardware_solenoid_engage() {  // engage to clear/unlock sliding
+                                         // locking plate
+    // check to confirm lid closed before engaging solenoid
     HAL_GPIO_WritePin(SOLENOID_Port, SOLENOID_Pin, GPIO_PIN_SET);
 }
 
@@ -400,29 +398,33 @@ void motor_hardware_solenoid_release() {
 
 bool motor_hardware_seal_extension_switch_triggered() {
     // Active low - the switches pull to ground when triggered
-    return (HAL_GPIO_ReadPin(SEAL_EXTENSION_SWITCH_PORT, SEAL_EXTENSION_SWITCH_PIN)
-             == GPIO_PIN_RESET) ? true : false; 
+    return (HAL_GPIO_ReadPin(SEAL_EXTENSION_SWITCH_PORT,
+                             SEAL_EXTENSION_SWITCH_PIN) == GPIO_PIN_RESET)
+               ? true
+               : false;
 }
 
 bool motor_hardware_seal_retraction_switch_triggered() {
     // Active low - the switches pull to ground when triggered
-    return (HAL_GPIO_ReadPin(SEAL_RETRACTION_SWITCH_PORT, SEAL_RETRACTION_SWITCH_PIN)
-             == GPIO_PIN_RESET) ? true : false; 
+    return (HAL_GPIO_ReadPin(SEAL_RETRACTION_SWITCH_PORT,
+                             SEAL_RETRACTION_SWITCH_PIN) == GPIO_PIN_RESET)
+               ? true
+               : false;
 }
 
 void motor_hardware_seal_switch_interrupt() {
-    if(__HAL_GPIO_EXTI_GET_IT(SEAL_EXTENSION_SWITCH_PIN) != 0x00u) {
+    if (__HAL_GPIO_EXTI_GET_IT(SEAL_EXTENSION_SWITCH_PIN) != 0x00u) {
         __HAL_GPIO_EXTI_CLEAR_IT(SEAL_EXTENSION_SWITCH_PIN);
-        if(atomic_exchange(&_motor_hardware.seal.extension_switch_armed, 0)) {
-            if(_motor_hardware.callbacks.seal_stepper_limit_switch != NULL) {
+        if (atomic_exchange(&_motor_hardware.seal.extension_switch_armed, 0)) {
+            if (_motor_hardware.callbacks.seal_stepper_limit_switch != NULL) {
                 _motor_hardware.callbacks.seal_stepper_limit_switch();
             }
         }
     }
-    if(__HAL_GPIO_EXTI_GET_IT(SEAL_RETRACTION_SWITCH_PIN) != 0x00u) {
+    if (__HAL_GPIO_EXTI_GET_IT(SEAL_RETRACTION_SWITCH_PIN) != 0x00u) {
         __HAL_GPIO_EXTI_CLEAR_IT(SEAL_RETRACTION_SWITCH_PIN);
-        if(atomic_exchange(&_motor_hardware.seal.retraction_switch_armed, 0)) {
-            if(_motor_hardware.callbacks.seal_stepper_limit_switch != NULL) {
+        if (atomic_exchange(&_motor_hardware.seal.retraction_switch_armed, 0)) {
+            if (_motor_hardware.callbacks.seal_stepper_limit_switch != NULL) {
                 _motor_hardware.callbacks.seal_stepper_limit_switch();
             }
         }
@@ -442,22 +444,19 @@ void motor_hardware_seal_switch_set_disarmed() {
     _motor_hardware.seal.retraction_switch_armed = false;
 }
 
-uint16_t motor_hardware_reset_reason() {
-    return reset_reason;
-}
+uint16_t motor_hardware_reset_reason() { return reset_reason; }
 
 // ----------------------------------------------------------------------------
 // Local function implementation
 
 /**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void init_motor_gpio(void)
-{
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
+static void init_motor_gpio(void) {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
-    
+
     /* Enable GPIOx clocks */
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -473,12 +472,14 @@ static void init_motor_gpio(void)
     GPIO_InitStruct.Pin = LID_STEPPER_RESET_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     HAL_GPIO_Init(LID_STEPPER_ENABLE_Port, &GPIO_InitStruct);
-    HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_RESET_Pin,
+                      GPIO_PIN_SET);
 
     GPIO_InitStruct.Pin = LID_STEPPER_ENABLE_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     HAL_GPIO_Init(LID_STEPPER_ENABLE_Port, &GPIO_InitStruct);
-    HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_ENABLE_Pin, GPIO_PIN_RESET); //enable output at init
+    HAL_GPIO_WritePin(LID_STEPPER_ENABLE_Port, LID_STEPPER_ENABLE_Pin,
+                      GPIO_PIN_RESET);  // enable output at init
 
     GPIO_InitStruct.Pin = LID_STEPPER_FAULT_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -506,7 +507,7 @@ static void init_motor_gpio(void)
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Alternate = 0;
     HAL_GPIO_Init(LID_CLOSED_SWITCH_PORT, &GPIO_InitStruct);
-    
+
     GPIO_InitStruct.Pin = LID_OPEN_SWITCH_PIN;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
@@ -519,15 +520,16 @@ static void init_motor_gpio(void)
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-	GPIO_InitStruct.Alternate = 0;
+    GPIO_InitStruct.Alternate = 0;
     HAL_GPIO_Init(PHOTOINTERRUPT_ENABLE_PORT, &GPIO_InitStruct);
-    HAL_GPIO_WritePin(PHOTOINTERRUPT_ENABLE_PORT, PHOTOINTERRUPT_ENABLE_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(PHOTOINTERRUPT_ENABLE_PORT, PHOTOINTERRUPT_ENABLE_PIN,
+                      GPIO_PIN_SET);
 
     GPIO_InitStruct.Pin = SEAL_STEPPER_ENABLE_PIN;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-	GPIO_InitStruct.Alternate = 0;
+    GPIO_InitStruct.Alternate = 0;
     HAL_GPIO_Init(SEAL_STEPPER_ENABLE_PORT, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = SEAL_STEPPER_DIRECTION_PIN;
@@ -554,7 +556,7 @@ static void init_motor_gpio(void)
     GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
     HAL_GPIO_Init(SEAL_STEPPER_DIAG1_PORT, &GPIO_InitStruct);
 
-    // The IRQ for this line (EXTI 5 through 9) is enabled by 
+    // The IRQ for this line (EXTI 5 through 9) is enabled by
     // the thermal subsystem.
     GPIO_InitStruct.Pin = SEAL_EXTENSION_SWITCH_PIN;
     GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
@@ -598,11 +600,13 @@ static void init_dac1(DAC_HandleTypeDef* hdac) {
         .DAC_Trigger = DAC_TRIGGER_NONE,
         .DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE,
     };
-    hal_ret = HAL_DAC_ConfigChannel(hdac, &chan_config, LID_STEPPER_VREF_CHANNEL);
+    hal_ret =
+        HAL_DAC_ConfigChannel(hdac, &chan_config, LID_STEPPER_VREF_CHANNEL);
     configASSERT(hal_ret == HAL_OK);
     hal_ret = HAL_DAC_Start(hdac, LID_STEPPER_VREF_CHANNEL);
     configASSERT(hal_ret == HAL_OK);
-    hal_ret = HAL_DAC_SetValue(hdac, LID_STEPPER_VREF_CHANNEL, DAC_ALIGN_8B_R, 0);
+    hal_ret =
+        HAL_DAC_SetValue(hdac, LID_STEPPER_VREF_CHANNEL, DAC_ALIGN_8B_R, 0);
     configASSERT(hal_ret == HAL_OK);
 }
 
@@ -613,9 +617,10 @@ static void init_tim2(TIM_HandleTypeDef* htim) {
     /* Compute TIM2 clock */
     uint32_t uwTimClock = HAL_RCC_GetPCLK1Freq();
     /* Compute the prescaler value to have TIM2 counter clock equal to 1MHz */
-    uint32_t uwPrescalerValue = (uint32_t) ((uwTimClock / 1000000U) - 1U);
-    uint32_t uwPeriodValue = __HAL_TIM_CALC_PERIOD(uwTimClock, uwPrescalerValue, LID_RPM_TO_FREQ(125));
-    
+    uint32_t uwPrescalerValue = (uint32_t)((uwTimClock / 1000000U) - 1U);
+    uint32_t uwPeriodValue = __HAL_TIM_CALC_PERIOD(uwTimClock, uwPrescalerValue,
+                                                   LID_RPM_TO_FREQ(125));
+
     htim->Instance = TIM2;
     htim->Init.Prescaler = uwPrescalerValue;
     htim->Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -626,15 +631,15 @@ static void init_tim2(TIM_HandleTypeDef* htim) {
     htim->State = HAL_TIM_STATE_RESET;
     hal_ret = HAL_TIM_OC_Init(htim);
     configASSERT(hal_ret == HAL_OK);
-    
+
     htim_oc.OCMode = TIM_OCMODE_TOGGLE;
     htim_oc.OCPolarity = TIM_OCPOLARITY_HIGH;
     htim_oc.OCFastMode = TIM_OCFAST_DISABLE;
     htim_oc.OCIdleState = TIM_OCIDLESTATE_RESET;
-    hal_ret = HAL_TIM_OC_ConfigChannel(htim, &htim_oc, LID_STEPPER_STEP_Channel);
+    hal_ret =
+        HAL_TIM_OC_ConfigChannel(htim, &htim_oc, LID_STEPPER_STEP_Channel);
     configASSERT(hal_ret == HAL_OK);
 }
-
 
 static void init_tim6(TIM_HandleTypeDef* htim) {
     HAL_StatusTypeDef hal_ret;
@@ -657,9 +662,9 @@ static void init_tim6(TIM_HandleTypeDef* htim) {
 }
 
 static bool lid_active() {
-    return TIM_CHANNEL_STATE_GET
-        (&(_motor_hardware.lid_stepper.timer), LID_STEPPER_STEP_Channel) 
-        != HAL_TIM_CHANNEL_STATE_READY;
+    return TIM_CHANNEL_STATE_GET(&(_motor_hardware.lid_stepper.timer),
+                                 LID_STEPPER_STEP_Channel) !=
+           HAL_TIM_CHANNEL_STATE_READY;
 }
 
 static void save_reset_reason() {
@@ -667,61 +672,37 @@ static void save_reset_reason() {
     // reset flag matches any of them
     reset_reason = 0;
 
-    // high speed internal clock ready
-    if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSIRDY)) {
-        reset_reason |= HSIRDY;
-    }
-    // high speed external clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSERDY)) {
-        reset_reason |= HSERDY;
-    }
-    // main phase-locked loop clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PLLRDY)) {
-        reset_reason |= PLLRDY;
-    }
-    // hsi48 clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSI48RDY)) {
-        reset_reason |= HSI48RDY;
-    }
-    // low-speed external clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY)) {
-        reset_reason |= LSERDY;
-    }
     // lse clock security system failure
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSECSSD)) {
-        reset_reason |= LSECSSD;
-    }
-    // low-speed internal clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSIRDY)) {
-        reset_reason |= LSIRDY;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSECSSD)) {
+        reset_reason |= (1 << LSECSSD);
     }
     // brown out
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_BORRST)) {
-        reset_reason |= BORRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_BORRST)) {
+        reset_reason |= (1 << BORRST);
     }
     // option byte-loader reset
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_OBLRST)) {
-        reset_reason |= OBLRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_OBLRST)) {
+        reset_reason |= (1 << OBLRST);
     }
     // pin reset
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PINRST)) {
-        reset_reason |= PINRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_PINRST)) {
+        reset_reason |= (1 << PINRST);
     }
     // software reset
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
-        reset_reason |= SFTRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
+        reset_reason |= (1 << SFTRST);
     }
     // independent watchdog
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
-        reset_reason |= IWDGRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
+        reset_reason |= (1 << IWDGRST);
     }
     // window watchdog
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_WWDGRST)) {
-        reset_reason |= WWDGRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_WWDGRST)) {
+        reset_reason |= (1 << WWDGRST);
     }
     // low power reset
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LPWRRST)) {
-        reset_reason |= LPWRRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_LPWRRST)) {
+        reset_reason |= (1 << LPWRRST);
     }
 }
 
@@ -729,16 +710,16 @@ static void save_reset_reason() {
 // Overwritten HAL functions
 
 /**
-  * @brief This function handles TIM2 global interrupt (used for
-  * Lid Stepper control)
-  */
-void TIM2_IRQHandler(void) { 
-    HAL_TIM_IRQHandler(&_motor_hardware.lid_stepper.timer); 
+ * @brief This function handles TIM2 global interrupt (used for
+ * Lid Stepper control)
+ */
+void TIM2_IRQHandler(void) {
+    HAL_TIM_IRQHandler(&_motor_hardware.lid_stepper.timer);
 }
 
 /**
-  * @brief This function handles TIM6 global interrupt.
-  */
+ * @brief This function handles TIM6 global interrupt.
+ */
 void TIM6_DAC_IRQHandler(void) {
     HAL_TIM_IRQHandler(&_motor_hardware.seal.timer);
 }
@@ -748,12 +729,12 @@ void TIM6_DAC_IRQHandler(void) {
  * This flags a seal stepper error event
  */
 void EXTI3_IRQHandler(void) {
-	if(__HAL_GPIO_EXTI_GET_IT(SEAL_STEPPER_DIAG0_PIN) != 0x00u) {
-		__HAL_GPIO_EXTI_CLEAR_IT(SEAL_STEPPER_DIAG0_PIN);
-		if(_motor_hardware.callbacks.seal_stepper_error) {
-			_motor_hardware.callbacks.seal_stepper_error(MOTOR_ERROR);
-		}	
-	}
+    if (__HAL_GPIO_EXTI_GET_IT(SEAL_STEPPER_DIAG0_PIN) != 0x00u) {
+        __HAL_GPIO_EXTI_CLEAR_IT(SEAL_STEPPER_DIAG0_PIN);
+        if (_motor_hardware.callbacks.seal_stepper_error) {
+            _motor_hardware.callbacks.seal_stepper_error(MOTOR_ERROR);
+        }
+    }
 }
 
 /**
@@ -761,14 +742,14 @@ void EXTI3_IRQHandler(void) {
  * This flags a seal stepper stall event.
  */
 void EXTI4_IRQHandler(void) {
-	if(__HAL_GPIO_EXTI_GET_IT(SEAL_STEPPER_DIAG1_PIN) != 0x00u) {
-		__HAL_GPIO_EXTI_CLEAR_IT(SEAL_STEPPER_DIAG1_PIN);
-		if(_motor_hardware.callbacks.seal_stepper_error) {
-			_motor_hardware.callbacks.seal_stepper_error(MOTOR_STALL);
-		}
-	}
+    if (__HAL_GPIO_EXTI_GET_IT(SEAL_STEPPER_DIAG1_PIN) != 0x00u) {
+        __HAL_GPIO_EXTI_CLEAR_IT(SEAL_STEPPER_DIAG1_PIN);
+        if (_motor_hardware.callbacks.seal_stepper_error) {
+            _motor_hardware.callbacks.seal_stepper_error(MOTOR_STALL);
+        }
+    }
 }
 
 #ifdef __cplusplus
-} // extern "C"
-#endif // __cplusplus
+}  // extern "C"
+#endif  // __cplusplus
