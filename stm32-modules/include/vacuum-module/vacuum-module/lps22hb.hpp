@@ -108,7 +108,7 @@ class LPS22HB {
             auto status_byte = RD_BUFF[0];
             pres_ready = static_cast<bool>(status_byte & PRESSURE_READY_FLAG);
             temp_ready = static_cast<bool>(status_byte & TEMP_READY_FLAG);
-            if (pres_ready || temp_ready) {
+            if (pres_ready && temp_ready) {
                 break;
             }
         }
