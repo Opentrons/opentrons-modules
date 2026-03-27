@@ -41,10 +41,6 @@ static void save_reset_reason() {
     // reset flag matches any of them
     reset_reason = 0;
 
-    // lse clock security system failure
-    if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSECSSD)) {
-        reset_reason |= (1 << LSECSSD);
-    }
     // brown out
     if (__HAL_RCC_GET_FLAG(RCC_FLAG_BORRST)) {
         reset_reason |= (1 << BORRST);

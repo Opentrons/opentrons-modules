@@ -18,7 +18,8 @@
 // Given a desired frequency of 500kHz, we do not need to prescale the timer
 #define TIM2_PRESCALER (0)
 // Calculates out to 339
-#define TIM2_RELOAD ((TIMER_CLOCK_FREQ / (PULSE_WIDTH_FREQ * (TIM2_PRESCALER + 1))) - 1)
+#define TIM2_RELOAD \
+    ((TIMER_CLOCK_FREQ / (PULSE_WIDTH_FREQ * (TIM2_PRESCALER + 1))) - 1)
 // PWM should be scaled from 0 to MAX_PWM, inclusive
 #define MAX_PWM (TIM2_RELOAD + 1)
 
@@ -44,7 +45,8 @@
 
 #define TIM16_PRESCALER (67)
 // Calculates out to 2499
-#define TIM16_RELOAD ((TIMER_CLOCK_FREQ / (FAN_PULSE_WIDTH_FREQ * (TIM16_PRESCALER + 1))) - 1)
+#define TIM16_RELOAD \
+    ((TIMER_CLOCK_FREQ / (FAN_PULSE_WIDTH_FREQ * (TIM16_PRESCALER + 1))) - 1)
 
 // PWM should be scaled from 0 to FAN_MAX_PWM, inclusive
 #define FAN_MAX_PWM (TIM16_RELOAD + 1)
@@ -67,7 +69,6 @@ struct thermal_hardware {
     double hot_side_power;
 };
 
-
 // ***************************************************************************
 // Local variables
 
@@ -81,35 +82,22 @@ static struct thermal_hardware hardware = {
 };
 
 enum RCC_FLAGS {
-    _NONE,
-    // high speed internal clock ready
-    HSIRDY, // = 1
-    // high speed external clock ready
-    HSERDY, // = 2
-    // main phase-locked loop clock ready
-    PLLRDY, // = 3
-    // hsi48 clock ready
-    HSI48RDY, // = 4
-    // low-speed external clock ready
-    LSERDY, // = 5
     // lse clock security system failure
-    LSECSSD, // = 6
-    // low-speed internal clock ready
-    LSIRDY, // = 7
+    LSECSSD,  // = 0
     // brown out
-    BORRST, // = 8
+    BORRST,  // = 1
     // option byte-loader reset
-    OBLRST, // = 9
+    OBLRST,  // = 2
     // pin reset
-    PINRST, // = 10
+    PINRST,  // = 3
     // software reset
-    SFTRST, // = 11
+    SFTRST,  // = 4
     // independent watchdog
-    IWDGRST, // = 12
+    IWDGRST,  // = 5
     // window watchdog
-    WWDGRST, // = 13
+    WWDGRST,  // = 6
     // low power reset
-    LPWRRST, // = 14
+    LPWRRST,  // = 7
 };
 
 // ***************************************************************************
@@ -135,7 +123,7 @@ static void save_reset_reason();
 
 void thermal_hardware_init() {
     save_reset_reason();
-    if(!hardware.initialized) {
+    if (!hardware.initialized) {
         init_gpio();
         init_peltier_timer();
         init_fan_timer();
@@ -150,12 +138,10 @@ void thermal_hardware_init() {
 
 uint16_t reset_reason;
 
-uint16_t thermal_hardware_reset_reason() {
-    return reset_reason;
-}
+uint16_t thermal_hardware_reset_reason() { return reset_reason; }
 
 void thermal_hardware_enable_peltiers() {
-    if(!hardware.initialized) {
+    if (!hardware.initialized) {
         return;
     }
     hardware.enabled = true;
@@ -163,12 +149,12 @@ void thermal_hardware_enable_peltiers() {
 }
 
 void thermal_hardware_disable_peltiers() {
-    if(!hardware.initialized) {
+    if (!hardware.initialized) {
         return;
     }
     hardware.enabled = false;
     HAL_GPIO_WritePin(PELTIER_ENABLE_PORT, PELTIER_ENABLE_PIN, GPIO_PIN_RESET);
-    
+
     __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, HEATING_CHANNEL, 0);
     __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, COOLING_CHANNEL, 0);
 
@@ -177,24 +163,24 @@ void thermal_hardware_disable_peltiers() {
 }
 
 bool thermal_hardware_set_peltier_heat(double power) {
-    if((!hardware.initialized) || (!hardware.enabled)) {
+    if ((!hardware.initialized) || (!hardware.enabled)) {
         return false;
     }
 
-    if(power < MIN_PELTIER_POWER && power > 0.0F) {
+    if (power < MIN_PELTIER_POWER && power > 0.0F) {
         power = MIN_PELTIER_POWER;
     }
-    if(power < 0.0F) {
+    if (power < 0.0F) {
         power = 0.0F;
     }
-    if(power > MAX_PELTIER_POWER) {
+    if (power > MAX_PELTIER_POWER) {
         power = MAX_PELTIER_POWER;
     }
 
     uint32_t pwm = power * (double)MAX_PWM;
     __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, COOLING_CHANNEL, 0);
     __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, HEATING_CHANNEL, pwm);
-    
+
     hardware.hot_side_power = power;
     hardware.cool_side_power = 0.0F;
 
@@ -202,24 +188,24 @@ bool thermal_hardware_set_peltier_heat(double power) {
 }
 
 bool thermal_hardware_set_peltier_cool(double power) {
-    if((!hardware.initialized) || (!hardware.enabled)) {
+    if ((!hardware.initialized) || (!hardware.enabled)) {
         return false;
     }
 
-    if(power < MIN_PELTIER_POWER && power > 0.0F) {
+    if (power < MIN_PELTIER_POWER && power > 0.0F) {
         power = MIN_PELTIER_POWER;
     }
-    if(power < 0.0F) {
+    if (power < 0.0F) {
         power = 0.0F;
     }
-    if(power > MAX_PELTIER_POWER) {
+    if (power > MAX_PELTIER_POWER) {
         power = MAX_PELTIER_POWER;
     }
-    
+
     uint32_t pwm = power * (double)MAX_PWM;
     __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, HEATING_CHANNEL, 0);
     __HAL_TIM_SET_COMPARE(&hardware.peltier_timer, COOLING_CHANNEL, pwm);
-    
+
     hardware.hot_side_power = 0.0F;
     hardware.cool_side_power = power;
 
@@ -227,26 +213,28 @@ bool thermal_hardware_set_peltier_cool(double power) {
 }
 
 bool thermal_hardware_set_fan_power(double power) {
-    if(!hardware.initialized) {
+    if (!hardware.initialized) {
         return false;
     }
-    if(power > 1.0F) {
+    if (power > 1.0F) {
         return false;
     }
     uint32_t pwm = power * (double)FAN_MAX_PWM;
-    
+
     // The fan controller will default to full power if it thinks the
     // control line is disconnected, and unfortunately it thinks a 0% PWM
-    // is a disconnection. So the lowest allowable PWM is 0.01, which 
+    // is a disconnection. So the lowest allowable PWM is 0.01, which
     // still results in the fan staying still.
-    if(pwm == 0) { pwm = 1; }
+    if (pwm == 0) {
+        pwm = 1;
+    }
     __HAL_TIM_SET_COMPARE(&hardware.fan_timer, FAN_CHANNEL, pwm);
     return true;
 }
 
 void thermal_hardware_set_eeprom_write_protect(bool set) {
     HAL_GPIO_WritePin(EEPROM_WP_PORT, EEPROM_WP_PIN,
-        set ? GPIO_PIN_SET : GPIO_PIN_RESET);
+                      set ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 // ***************************************************************************
@@ -265,14 +253,16 @@ static void init_peltier_timer() {
     hardware.peltier_timer.Init.Period = TIM2_RELOAD;
     hardware.peltier_timer.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
     hardware.peltier_timer.Init.RepetitionCounter = 0;
-    hardware.peltier_timer.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    hardware.peltier_timer.Init.AutoReloadPreload =
+        TIM_AUTORELOAD_PRELOAD_DISABLE;
     hal_ret = HAL_TIM_PWM_Init(&hardware.peltier_timer);
     configASSERT(hal_ret == HAL_OK);
 
     sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
     sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
     sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-    hal_ret = HAL_TIMEx_MasterConfigSynchronization(&hardware.peltier_timer, &sMasterConfig);
+    hal_ret = HAL_TIMEx_MasterConfigSynchronization(&hardware.peltier_timer,
+                                                    &sMasterConfig);
     configASSERT(hal_ret == HAL_OK);
 
     // PWM1 means the output is enabled if the current timer count is LESS THAN
@@ -287,17 +277,15 @@ static void init_peltier_timer() {
     sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
     sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
 
-    hal_ret = HAL_TIM_PWM_ConfigChannel(&hardware.peltier_timer,
-                                        &sConfigOC,
+    hal_ret = HAL_TIM_PWM_ConfigChannel(&hardware.peltier_timer, &sConfigOC,
                                         HEATING_CHANNEL);
     configASSERT(hal_ret == HAL_OK);
 
-    hal_ret = HAL_TIM_PWM_ConfigChannel(&hardware.peltier_timer,
-                                        &sConfigOC,
+    hal_ret = HAL_TIM_PWM_ConfigChannel(&hardware.peltier_timer, &sConfigOC,
                                         COOLING_CHANNEL);
     configASSERT(hal_ret == HAL_OK);
-    
-    // Set up the PWM GPIO pins 
+
+    // Set up the PWM GPIO pins
 
     __HAL_RCC_GPIOB_CLK_ENABLE();
     /**TIM2 GPIO Configuration
@@ -326,7 +314,6 @@ static void init_fan_timer() {
     TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
     GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-
     // Configure timer 16 for PWMN control on channel 1
     hardware.fan_timer.State = HAL_TIM_STATE_RESET;
     hardware.fan_timer.Instance = TIM16;
@@ -347,7 +334,8 @@ static void init_fan_timer() {
     sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
     sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
     sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-    hal_ret = HAL_TIM_PWM_ConfigChannel(&hardware.fan_timer, &sConfigOC, FAN_CHANNEL);
+    hal_ret =
+        HAL_TIM_PWM_ConfigChannel(&hardware.fan_timer, &sConfigOC, FAN_CHANNEL);
     configASSERT(hal_ret == HAL_OK);
     sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
     sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
@@ -357,7 +345,8 @@ static void init_fan_timer() {
     sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
     sBreakDeadTimeConfig.BreakFilter = 0;
     sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
-    hal_ret = HAL_TIMEx_ConfigBreakDeadTime(&hardware.fan_timer, &sBreakDeadTimeConfig);
+    hal_ret = HAL_TIMEx_ConfigBreakDeadTime(&hardware.fan_timer,
+                                            &sBreakDeadTimeConfig);
     configASSERT(hal_ret == HAL_OK);
 
     __GPIOA_CLK_ENABLE();
@@ -395,60 +384,36 @@ static void save_reset_reason() {
     // reset flag matches any of them
     reset_reason = 0;
 
-    // high speed internal clock ready
-    if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSIRDY)) {
-        reset_reason |= HSIRDY;
-    }
-    // high speed external clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSERDY)) {
-        reset_reason |= HSERDY;
-    }
-    // main phase-locked loop clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PLLRDY)) {
-        reset_reason |= PLLRDY;
-    }
-    // hsi48 clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_HSIRDY)) {
-        reset_reason |= HSI48RDY;
-    }
-    // low-speed external clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY)) {
-        reset_reason |= LSERDY;
-    }
     // lse clock security system failure
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY)) {
-        reset_reason |= LSECSSD;
-    }
-    // low-speed internal clock ready
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSIRDY)) {
-        reset_reason |= LSIRDY;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_LSECSSD)) {
+        reset_reason |= (1 << LSECSSD);
     }
     // brown out
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_BORRST)) {
-        reset_reason |= BORRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_BORRST)) {
+        reset_reason |= (1 << BORRST);
     }
     // option byte-loader reset
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_OBLRST)) {
-        reset_reason |= OBLRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_OBLRST)) {
+        reset_reason |= (1 << OBLRST);
     }
     // pin reset
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_PINRST)) {
-        reset_reason |= PINRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_PINRST)) {
+        reset_reason |= (1 << PINRST);
     }
     // software reset
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
-        reset_reason |= SFTRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
+        reset_reason |= (1 << SFTRST);
     }
     // independent watchdog
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
-        reset_reason |= IWDGRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
+        reset_reason |= (1 << IWDGRST);
     }
     // window watchdog
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_WWDGRST)) {
-        reset_reason |= WWDGRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_WWDGRST)) {
+        reset_reason |= (1 << WWDGRST);
     }
     // low power reset
-    else if (__HAL_RCC_GET_FLAG(RCC_FLAG_LPWRRST)) {
-        reset_reason |= LPWRRST;
+    if (__HAL_RCC_GET_FLAG(RCC_FLAG_LPWRRST)) {
+        reset_reason |= (1 << LPWRRST);
     }
 }
