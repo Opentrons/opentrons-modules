@@ -14,6 +14,8 @@
 
 #include "heater_hardware.h"
 #include "systemwide.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 static void init_error(void);
 static void adc_setup(ADC_HandleTypeDef* adc);
@@ -33,7 +35,7 @@ typedef struct {
     DAC_HandleTypeDef dac1;
     COMP_HandleTypeDef comp4;
     TIM_OC_InitTypeDef pwm_config;
-    bool heater_started;
+    volatile bool heater_started;
     _Atomic heatpad_cs_state heatpad_cs_status;
     _Atomic uint16_t pwm_pulse_duration;
     uint16_t period_count;
@@ -311,6 +313,7 @@ HEATPAD_CIRCUIT_ERROR heater_hardware_power_set(heater_hardware* hardware, uint1
     if (internal->heatpad_cs_status == IDLE) {
         internal->heatpad_cs_status = RUNNING;
     }
+    taskENTER_CRITICAL();
     if (!internal->update_lock) {
         internal->pwm_pulse_duration = setting;
         internal->pwm_config.Pulse = setting;
@@ -337,6 +340,7 @@ HEATPAD_CIRCUIT_ERROR heater_hardware_power_set(heater_hardware* hardware, uint1
         internal->update_while_locked = true;
         internal->cached_pulse_setting = setting;
     }
+    taskEXIT_CRITICAL();
     return HEATPAD_CIRCUIT_NO_ERROR;
 }
 
@@ -430,21 +434,21 @@ uint64_t heater_hardware_get_offset(size_t addr_offset) {
     return *(uint64_t*)AddressToRead;
 }
 
-// The HAL_TIM_OC_DelayElapsedCallback attempts to check for heatpad open and short 
-// circuit conditions via the heatpad current sensing pin once per second. TIM4 
-// channels 2 and 4 are used to trigger this callback at 10% and 90% of the heatpad 
-// pwm period. After one second has elapsed, on the first 90% period callback, the 
-// DAC and comparator settings are updated and the pwm pulse is prevented from 
-// updating. This is done to ensure the peripherals have sufficient time to update 
-// and checking conditions are undisturbed. The following period, if the heatpad pwm 
-// pulse is greater than 20% of the pwm period, the current sensing pin will be 
-// checked to be greater than 0.2V during the 10% callback to confirm there is no 
-// open circuit, and if the heatpad pwm pulse is less than 80% of the pwm period, the 
-// current sensing pin will be checked to be less than 0.2V during the 90% callback 
-// to confirm there is no shorted circuit. Following the last check, the update_lock 
-// is removed and the comparator threshold is returned to 3.2V to detect an overcurrent 
-// condition during the remainder of the one second checking period. Locking the pwm 
-// pulse updating eliminated false positives. If there is an error, the specific error 
+// The HAL_TIM_OC_DelayElapsedCallback attempts to check for heatpad open and short
+// circuit conditions via the heatpad current sensing pin once per second. TIM4
+// channels 2 and 4 are used to trigger this callback at 10% and 90% of the heatpad
+// pwm period. After one second has elapsed, on the first 90% period callback, the
+// DAC and comparator settings are updated and the pwm pulse is prevented from
+// updating. This is done to ensure the peripherals have sufficient time to update
+// and checking conditions are undisturbed. The following period, if the heatpad pwm
+// pulse is greater than 20% of the pwm period, the current sensing pin will be
+// checked to be greater than 0.2V during the 10% callback to confirm there is no
+// open circuit, and if the heatpad pwm pulse is less than 80% of the pwm period, the
+// current sensing pin will be checked to be less than 0.2V during the 90% callback
+// to confirm there is no shorted circuit. Following the last check, the update_lock
+// is removed and the comparator threshold is returned to 3.2V to detect an overcurrent
+// condition during the remainder of the one second checking period. Locking the pwm
+// pulse updating eliminated false positives. If there is an error, the specific error
 // will be reported back by heater_hardware_power_set and an error gcode will be produced.
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -542,7 +546,7 @@ void HAL_TIMEx_Break2Callback(TIM_HandleTypeDef *htim) {
 void TIM4_IRQHandler(void)
 {
     hw_internal* internal = (hw_internal*)HEATER_HW_HANDLE->hardware_internal;
- 	HAL_TIM_IRQHandler(&internal->pad_tim);
+    HAL_TIM_IRQHandler(&internal->pad_tim);
 }
 
 static void init_error(void) {
