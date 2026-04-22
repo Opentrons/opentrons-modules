@@ -54,6 +54,6 @@ typedef enum VentState { CLOSED = 0, OPENED = 1 } VentState;
 typedef void* TaskHandle;
 
 #define MIN_PWM 0
-#define MAX_PWM 95
+#define MAX_PWM 100
 #define MIN_RPM 0.0f
 #define MAX_RPM 3500.0f
