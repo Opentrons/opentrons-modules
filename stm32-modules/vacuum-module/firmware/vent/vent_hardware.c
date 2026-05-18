@@ -8,6 +8,19 @@
 #include "firmware/vent_hardware.h"
 #include "main.h"
 
+
+DAC_HandleTypeDef hdac1;
+
+static uint8_t clamp(uint8_t val, uint8_t min, uint8_t max) {
+    if (val < min) {
+        return min;
+    }
+    if (val > max) {
+        return max;
+    }
+    return val;
+}
+
 /**
  * @brief Initialize the Vent GPIO pins
  */
@@ -26,9 +39,6 @@ void vent_hardware_gpio_init(void) {
 
     GPIO_InitStruct.Pin = VENT_IN_GPIO_Pin;
     HAL_GPIO_Init(VENT_IN_GPIO_Port, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = VENT_DAC_MCU_GPIO_Pin;
-    HAL_GPIO_Init(VENT_DAC_MCU_GPIO_Port, &GPIO_InitStruct);
 
     /*Configure Input GPIO pins : PA6 */
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -54,8 +64,19 @@ bool hw_vent_fault_detected() {
     return HAL_GPIO_ReadPin(VENT_FAULT_GPIO_Port, VENT_FAULT_GPIO_Pin);
 }
 
+void hw_set_vent_voltage(double volt) {
+    uint32_t val = (uint32_t)(clamp(volt, 0, REF_VOLTAGE)*DAC_FULLRANGE/REF_VOLTAGE);
+	HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, val);
+    if (val > 0) {
+        HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
+    } else {
+        HAL_DAC_Stop(&hdac1, DAC_CHANNEL_1);
+    }
+}
+
 void vent_hardware_init(void) {
     vent_hardware_gpio_init();
     // close the vent
+    hw_set_vent_voltage(VENT_RUN_VOLT);
     hw_set_vent_state(CLOSED);
 }
