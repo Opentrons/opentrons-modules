@@ -335,7 +335,8 @@ class HostCommsTask {
                         tx_into, tx_limit, response.target_pressure,
                         response.current_pressure, response.pressure_abs_a,
                         response.pressure_abs_b, response.pressure_atm,
-                        response.vacuum_enabled, response.vent_state);
+                        response.vacuum_enabled, response.duration_s,
+                        response.vent_state);
                 }
             },
             cache_entry);

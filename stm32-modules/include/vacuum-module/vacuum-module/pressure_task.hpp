@@ -375,6 +375,8 @@ class PressureTask {
             .pressure_abs_b = _control_state.pressure_abs_b,
             .pressure_atm = _control_state.pressure_atm,
             .vacuum_enabled = _control_state.enable_vacuum,
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            .duration_s = _vacuum_timer.get_remaining_time() / 1000,
             .vent_state = _control_state.vent_state,
         };
         static_cast<void>(
