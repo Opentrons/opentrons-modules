@@ -44,6 +44,11 @@ auto PressurePolicy::get_vent_fault() -> bool {
     return hw_vent_fault_detected();
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto PressurePolicy::set_vent_voltage(double voltage) -> void {
+    hw_set_vent_voltage(voltage);
+}
+
 auto PressurePolicy::start_pressure_control(bool enable) -> void {
     auto *handle = static_cast<TaskHandle_t>(hardware_handle);
     if (handle != nullptr) {

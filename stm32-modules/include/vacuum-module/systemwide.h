@@ -57,3 +57,8 @@ typedef void* TaskHandle;
 #define MAX_PWM 100
 #define MIN_RPM 0.0f
 #define MAX_RPM 3500.0f
+
+// Defines for the solenoid vent voltage values
+#define VENT_ACTUATE_DELAY 100
+#define VENT_RUN_VOLT 0.70
+#define VENT_HOLD_VOLT 0.38

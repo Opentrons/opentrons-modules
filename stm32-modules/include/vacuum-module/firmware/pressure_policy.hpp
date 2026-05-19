@@ -37,6 +37,7 @@ class PressurePolicy {
     auto static sleep_ms(uint32_t ms) -> void;
     [[nodiscard]] auto get_time_ms() const -> uint32_t;
     auto start_pressure_control(bool enable) -> void;
+    auto set_vent_voltage(double voltage) -> void;
     auto set_vent_state(VentState state) -> void;
     auto get_vent_state() -> VentState;
     auto get_vent_fault() -> bool;
