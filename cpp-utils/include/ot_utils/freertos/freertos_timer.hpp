@@ -6,6 +6,15 @@
 #include "task.h"
 #include "timers.h"
 
+constexpr auto ROUNDED_DIV(uint32_t A, uint32_t B) noexcept -> uint32_t {
+    return (((A) + ((B) / 2)) / (B));
+}
+
+constexpr auto TICKS_TO_MS(uint32_t ticks) noexcept -> uint32_t {
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+    return ROUNDED_DIV((ticks) * 1000, (uint32_t)configTICK_RATE_HZ);
+}
+
 namespace ot_utils::freertos_timer {
 
 class FreeRTOSTimer {
@@ -54,6 +63,15 @@ class FreeRTOSTimer {
             vTaskDelay(1);
         }
     }
+
+    auto get_remaining_time() -> uint32_t {
+        /*
+        The time in ms remaining before this timer expires and the callback is executed.
+        */
+        if (!is_running()) { return uint32_t(0); }
+        return TICKS_TO_MS(xTimerGetExpiryTime( timer ) - xTaskGetTickCount());
+    }
+
 
     void start() { xTimerStart(timer, 1); }
 

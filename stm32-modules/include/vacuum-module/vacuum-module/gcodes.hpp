@@ -386,14 +386,14 @@ struct GetPressureState {
                                     double current_pressure,
                                     double pressure_abs_a,
                                     double pressure_abs_b, double pressure_atm,
-                                    bool vacuum_enabled, VentState vent_state)
-        -> InputIt {
+                                    bool vacuum_enabled, uint32_t duration_s,
+                                    VentState vent_state) -> InputIt {
         int res = 0;
-        res =
-            snprintf(&*buf, (limit - buf),
-                     "M121 T:%.1f C:%.1f A:%.1f B:%.1f H:%.1f E:%d V:%d OK\n",
-                     target_pressure, current_pressure, pressure_abs_a,
-                     pressure_abs_b, pressure_atm, vacuum_enabled, vent_state);
+        res = snprintf(
+            &*buf, (limit - buf),
+            "M121 T:%.1f C:%.1f A:%.1f B:%.1f H:%.1f E:%d D:%ld V:%d OK\n",
+            target_pressure, current_pressure, pressure_abs_a, pressure_abs_b,
+            pressure_atm, vacuum_enabled, duration_s, vent_state);
         if (res <= 0) {
             return buf;
         }
