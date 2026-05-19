@@ -379,6 +379,8 @@ class PressureTask {
             .pressure_abs_b = _control_state.pressure_abs_b,
             .pressure_atm = _control_state.pressure_atm,
             .vacuum_enabled = _control_state.enable_vacuum,
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            .duration_s = _vacuum_timer.get_remaining_time() / 1000,
             .vent_state = _control_state.vent_state,
         };
         static_cast<void>(
@@ -533,7 +535,13 @@ class PressureTask {
     }
 
     auto set_vent_state(VentState set_state) -> bool {
+        // Use the higher run current when switching states
+        // Use the lower hold current when holding state
+        _policy->set_vent_voltage(VENT_RUN_VOLT);
         _policy->set_vent_state(set_state);
+        PressurePolicy::sleep_ms(VENT_ACTUATE_DELAY);
+        _policy->set_vent_voltage(VENT_HOLD_VOLT);
+
         auto vent_state = _policy->get_vent_state();
         _control_state.vent_state = vent_state;
         return vent_state == set_state;
