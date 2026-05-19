@@ -15,12 +15,9 @@
   ******************************************************************************
  */
 
-#pragma GCC push_options
-#pragma GCC optimize("O0")
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32g4xx_it.h"
-#include <stdint.h>
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -52,38 +49,9 @@ void NMI_Handler(void)
  */
 void HardFault_Handler(void)
 {
-    __asm volatile(
-        "tst lr, #4\n"
-        "ite eq\n"
-        "mrseq r0, msp\n"
-        "mrsne r0, psp\n"
-        "b HardFault_Handler_C\n"
-    );
-}
-
-void HardFault_Handler_C(uint32_t *hardfault_args) {
-    volatile uint32_t stacked_r0  = hardfault_args[0];
-    volatile uint32_t stacked_r1  = hardfault_args[1];
-    volatile uint32_t stacked_r2  = hardfault_args[2];
-    volatile uint32_t stacked_r3  = hardfault_args[3];
-    volatile uint32_t stacked_r12 = hardfault_args[4];
-    volatile uint32_t stacked_lr  = hardfault_args[5];
-    volatile uint32_t stacked_pc  = hardfault_args[6];   // <-- Faulting instruction
-    volatile uint32_t stacked_psr = hardfault_args[7];
-
-    (void)stacked_r0;
-    (void)stacked_r1;
-    (void)stacked_r2;
-    (void)stacked_r3;
-    (void)stacked_r12;
-    (void)stacked_lr;
-    (void)stacked_pc;
-    (void)stacked_psr;
-
-    // Optional: BKPT so GDB stops automatically
-    __asm volatile("BKPT #0");
-
-    while(1);   // Stay here for debugger
+    while (1)
+    {
+    }
 }
 
 /**
@@ -155,4 +123,3 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 __attribute__((section(".ccmram")))
 void TIM3_IRQHandler(void) { HAL_TIM_IRQHandler(&htim3); }
 
-#pragma GCC pop_options

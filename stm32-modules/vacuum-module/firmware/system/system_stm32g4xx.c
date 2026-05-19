@@ -348,9 +348,6 @@ static void led_init(void) {
 
 void HardwareInit(void) {
     HAL_Init();
-    SCB->SHCSR |= SCB_SHCSR_MEMFAULTENA_Msk |
-              SCB_SHCSR_BUSFAULTENA_Msk |
-              SCB_SHCSR_USGFAULTENA_Msk;
     SystemClock_Config();
     SystemCoreClockUpdate();
     led_init();

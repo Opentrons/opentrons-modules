@@ -1,15 +1,13 @@
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
-#include "firmware/vent_hardware.h"
-
 #include <stdint.h>
 
-#include "main.h"
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_conf.h"
 #include "stm32g4xx_hal_def.h"
 #include "stm32g4xx_hal_gpio.h"
+
+#include "firmware/vent_hardware.h"
+#include "main.h"
+
 
 DAC_HandleTypeDef hdac1;
 
@@ -51,11 +49,12 @@ void vent_hardware_gpio_init(void) {
 }
 
 static void vent_hardware_dac_init(void) {
-    __HAL_RCC_DAC1_CLK_ENABLE();
     DAC_ChannelConfTypeDef sConfig = {0};
 
     /* DAC Initialization */
     hdac1.Instance = DAC1;
+    hdac1.State    = HAL_DAC_STATE_RESET;
+    hdac1.Lock     = HAL_UNLOCKED;
     if (HAL_DAC_Init(&hdac1) != HAL_OK) {
         Error_Handler();
     }
@@ -72,7 +71,7 @@ static void vent_hardware_dac_init(void) {
         Error_Handler();
     }
 
-    HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
+    __HAL_DAC_ENABLE(&hdac1, DAC_CHANNEL_1);
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_8B_R, 0);
 }
 
@@ -108,4 +107,3 @@ void vent_hardware_init(void) {
     hw_set_vent_voltage(VENT_RUN_VOLT);
     hw_set_vent_state(CLOSED);
 }
-#pragma GCC pop_options
