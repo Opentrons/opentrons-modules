@@ -47,7 +47,8 @@ auto HeaterPolicy::set_power_output(double relative_power)
         // division since the end goal is in fact an integer
         // NOLINTNEXTLINE(bugprone-integer-division)
         static_cast<uint16_t>(static_cast<double>(HEATER_PAD_PWM_GRANULARITY) *
-                              relative_clamped),1));
+                              relative_clamped),
+        1));
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static,readability-make-member-function-const)
