@@ -110,8 +110,8 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         auto c_pressure = 190.0F;
         auto tics = 3000.0F;
         detector.reset();
-        detector.check(1000, 500.0, 200.0, 1013.0);
-        detector.check(3000, 210, 200.0, 1013.0);
+        detector.check(1000, 500.0, 505.0, 200.0, 1013.0);
+        detector.check(3000, 210, 215, 200.0, 1013.0);
         for (uint32_t i = 0; i <= NEAR_TARGET_TICS + 5; i++) {
             tics += i;
             detector.check(tics, c_pressure, c_pressure + 2, 200.0,
@@ -130,8 +130,8 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         auto c_pressure = 190.0F;
         auto tics = 3000.0F;
         detector.reset();
-        detector.check(1000, 500.0, 200.0, 1013.0);
-        detector.check(3000, 210, 200.0, 1013.0);
+        detector.check(1000, 500.0, 505.0, 200.0, 1013.0);
+        detector.check(3000, 210, 215, 200.0, 1013.0);
         for (uint32_t i = 0; i <= NEAR_TARGET_TICS + 5; i++) {
             tics += i;
             detector.check(tics, c_pressure, c_pressure + 2, 200.0,
