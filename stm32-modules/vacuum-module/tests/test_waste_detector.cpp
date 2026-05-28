@@ -118,6 +118,11 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
                            1013.0);  // ramp finished
         }
 
+        // fill window
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE; ++i) {
+            detector.check(tics, c_pressure, c_pressure + 3, 200.0, 1013.0);
+        }
+
         // Now in hold - sudden rise
         tics += 1;
         c_pressure += MAX_RISE_PER_TICK + 5;
@@ -130,16 +135,21 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         auto c_pressure = 190.0F;
         auto tics = 3000.0F;
         detector.reset();
-        detector.check(1000, 500.0, 505.0, 200.0, 1013.0);
+        detector.check(1000, 498.0, 500.0, 200.0, 1013.0);
         detector.check(3000, 210, 215, 200.0, 1013.0);
-        for (uint32_t i = 0; i <= NEAR_TARGET_TICS + 5; i++) {
+        for (uint32_t i = 0; i <= NEAR_TARGET_TICS; i++) {
             tics += i;
-            detector.check(tics, c_pressure, c_pressure + 2, 200.0,
+            detector.check(tics, c_pressure + 2, c_pressure, 200.0,
                            1013.0);  // ramp finished
         }
 
+        // fill window
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE; ++i) {
+            detector.check(tics, c_pressure, c_pressure + 3, 200.0, 1013.0);
+        }
+
         // Slow gradual rise over many ticks
-        for (int i = 0; i < 20; ++i) {
+        for (int i = 0; i < 25; ++i) {
             tics += i;
             c_pressure += 0.6;
             detector.check(tics, c_pressure, c_pressure + 2, 200.0, 1013.0);
@@ -151,11 +161,11 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
 
     SECTION("Draining air rush is correctly ignored") {
         detector.reset();
-        detector.check(1000, 500.0, 505.0, 200.0, 1013.0);
-        detector.check(3000, 239.0, 244.0, 200.0, 1013.0);
+        detector.check(1000, 502.0, 500.0, 200.0, 1013.0);
+        detector.check(3000, 246.0, 244.0, 200.0, 1013.0);
 
         // Big negative delta (air rush while draining)
-        auto err = detector.check(3100, 300.0, 305.0, 200.0, 1013.0);
+        auto err = detector.check(3100, 302.0, 300.0, 200.0, 1013.0);
         // delta_p = -61 (but we simulate big negative)
         // In real usage you'd pass the real delta, but the test confirms it
         // doesn't trigger
@@ -164,13 +174,20 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
 
     SECTION(
         "Hold phase - pressure oscillation triggers FLOW_STABLE_FULL_ERROR") {
-        WasteDetector detector;
         detector.reset();
 
         const double atm = 1013.0;
-        const double target = 200.0;
-        double current_p = 210.0;
+        const double target = 500.0;
+        double current_p = 1000.0;
         uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 200; i++) {
+            tics += i * 2;
+            current_p -= 5;  // learn normal baseline
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        REQUIRE(detector.baseline_captured());
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
 
         // 1. Get into hold phase first
         for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
@@ -179,16 +196,13 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
             current_p = target + 8.0;  // stay near target
         }
 
-        REQUIRE_FALSE(detector.get_error() ==
-                      WasteFullError::FLOW_STABLE_FULL_ERROR);
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
 
         // 2. Simulate sawtooth oscillation (high std dev) while in hold
         for (int i = 0; i < PRESSURE_WINDOW_SIZE + 5; ++i) {
             tics += 40;
-
-            // Create sawtooth: oscillating between ~target-15 and target+15
-            current_p = target + ((i % 6) * 5.0) - 15.0;  // strong oscillation
-
+            // Create sawtooth: oscillating between ~target-20 and target+20
+            current_p = target + ((i % 12) * 2.0) - 20;
             auto err =
                 detector.check(tics, current_p + 5, current_p + 3, target, atm);
 
@@ -204,26 +218,30 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
     SECTION(
         "Hold phase - low oscillation does NOT trigger "
         "FLOW_STABLE_FULL_ERROR") {
-        WasteDetector detector;
         detector.reset();
 
         const double atm = 1013.0;
-        const double target = 200.0;
-        double current_p = 205.0;
+        const double target = 500.0;
+        double current_p = 1000.0;
         uint32_t tics = 1000;
 
-        // Enter hold phase
-        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 5; ++i) {
-            tics += 40;
+        for (uint32_t i = 0; i <= 96; i++) {
+            tics += i * 2;
+            current_p -= 5;  // learn normal baseline
             detector.check(tics, current_p, current_p + 2, target, atm);
         }
+        REQUIRE(detector.baseline_captured());
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
+
+        detector.check(tics, current_p + 2, current_p, target, atm);
+        detector.check(tics + 100, current_p + 2, current_p, target, atm);
 
         // Simulate very stable pressure (low std dev)
         for (int i = 0; i < PRESSURE_WINDOW_SIZE + 10; ++i) {
             tics += 40;
             current_p = target + 3.0;  // almost flat
             auto err =
-                detector.check(tics, current_p, current_p + 2, target, atm);
+                detector.check(tics, current_p + 2, current_p, target, atm);
 
             REQUIRE(err == WasteFullError::NO_ERROR);
         }
@@ -232,33 +250,42 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
     }
 
     SECTION("Hold phase - oscillation only triggers after window is full") {
-        WasteDetector detector;
         detector.reset();
 
         const double atm = 1013.0;
-        const double target = 200.0;
-        uint32_t tics = 2000;
-        double current_p = 210.0;
+        const double target = 500.0;
+        double current_p = 1000.0;
+        uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 100; i++) {
+            tics += i * 2;
+            current_p -= 5;  // learn normal baseline
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        REQUIRE(detector.baseline_captured());
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
 
         // Enter hold
         for (uint32_t i = 0; i < NEAR_TARGET_TICS; ++i) {
             tics += 40;
-            detector.check(tics, current_p, current_p, target, atm);
+            detector.check(tics, current_p + 2, current_p, target, atm);
         }
 
         // First few samples - should NOT trigger yet
         for (int i = 0; i < PRESSURE_WINDOW_SIZE - 5; ++i) {
             tics += 40;
-            current_p = target + (i % 8) * 4.0 - 12.0;  // oscillating
-            auto err = detector.check(tics, current_p, current_p, target, atm);
+            current_p = target + ((i % 10) * 4.0) - 15.0;
+            auto err =
+                detector.check(tics, current_p + 2, current_p, target, atm);
             REQUIRE(err == WasteFullError::NO_ERROR);
         }
 
         // After window fills - should trigger
         for (int i = 0; i < 5; ++i) {
             tics += 40;
-            current_p = target + (i % 8) * 4.0 - 12.0;
-            auto err = detector.check(tics, current_p, current_p, target, atm);
+            current_p = target + ((i % 10) * 12.0) - 20.0;
+            auto err =
+                detector.check(tics, current_p + 2, current_p, target, atm);
             if (err == WasteFullError::FLOW_STABLE_FULL_ERROR) {
                 break;
             }

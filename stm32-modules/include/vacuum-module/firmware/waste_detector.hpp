@@ -205,7 +205,7 @@ class WasteDetector {
                 p_atm - (total_vacuum_range * config.p_window_end);
 
             if (current_p < p_window_start && ramp_start_ms_ == 0) {
-                if (current_p < p_window_end) {
+                if (current_p <= p_window_end) {
                     waste_full_ = true;
                     error = WasteFullError::OVER_TARGET_ERROR;
                     return error;
@@ -259,25 +259,6 @@ class WasteDetector {
                 pressure_window_full = true;
             }
 
-            // Smaller rise = potential full waste (blocked flow)
-            if (delta_p < -config.max_rise_per_tick) {
-                waste_full_ = true;
-                error = WasteFullError::SUDDEN_BLOCKED_ERROR;
-                return error;
-            }
-
-            // Cumulative rise over time (slow blocked-flow back-pressure)
-            if (delta_p < 0) {
-                cumulative_rise_ -= delta_p;
-                if (cumulative_rise_ > config.max_cummulative_rise) {
-                    waste_full_ = true;
-                    error = WasteFullError::CUMMULATIVE_BLOCKED_ERROR;
-                }
-            } else {
-                // Reset cumulative if drop due to normal fluctuations
-                cumulative_rise_ = 0.0;
-            }
-
             // Check if we are osocilating more than we should, this
             // indicates no air-flow because the waste is full.
             if (pressure_window_full) {
@@ -288,6 +269,25 @@ class WasteDetector {
                     waste_full_ = true;
                     error = WasteFullError::FLOW_STABLE_FULL_ERROR;
                     return error;
+                }
+
+                // Smaller rise = potential full waste (blocked flow)
+                if (delta_p < -config.max_rise_per_tick) {
+                    waste_full_ = true;
+                    error = WasteFullError::SUDDEN_BLOCKED_ERROR;
+                    return error;
+                }
+
+                // Cumulative rise over time (slow blocked-flow back-pressure)
+                if (delta_p < 0) {
+                    cumulative_rise_ -= delta_p;
+                    if (cumulative_rise_ > config.max_cummulative_rise) {
+                        waste_full_ = true;
+                        error = WasteFullError::CUMMULATIVE_BLOCKED_ERROR;
+                    }
+                } else {
+                    // Reset cumulative if drop due to normal fluctuations
+                    cumulative_rise_ = 0.0;
                 }
             }
         }
