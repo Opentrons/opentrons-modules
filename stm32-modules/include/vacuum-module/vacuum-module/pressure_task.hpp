@@ -266,18 +266,22 @@ class PressureTask {
 
         auto target_pressure = _control_state.target_pressure;
         auto pressure_atm = _control_state.pressure_atm;
-        auto current_pressure = _control_state.pressure_abs_b;
-        _control_state.current_pressure = current_pressure;
+        auto current_pressure_a = _control_state.pressure_abs_a;
+        auto current_pressure_b = _control_state.pressure_abs_b;
+        _control_state.current_pressure = current_pressure_b;
 
         // Handle duration and vent after
         pressure_state_buffer.at(pressure_state_buffer_index) =
-            current_pressure;
+            current_pressure_b;
         pressure_state_buffer_index =
             (pressure_state_buffer_index + 1) % PRESSURE_STATE_BUFFER_LEN;
         monitor_target_pressure();
 
-        auto res = _detector.check(timestamp, current_pressure, target_pressure,
-                                   pressure_atm);
+        // Handle waste detection
+        auto res =
+            // NOLINTNEXTLINE(readability-suspicious-call-argument)
+            _detector.check(timestamp, current_pressure_a, current_pressure_b,
+                            target_pressure, pressure_atm);
         if (res != waste_detector::WasteFullError::NO_ERROR) {
             stop_vacuum();
             set_vent_state(VentState::OPENED);
@@ -285,7 +289,7 @@ class PressureTask {
             return;
         }
 
-        auto rpm = _controller.update(dt, current_pressure, target_pressure);
+        auto rpm = _controller.update(dt, current_pressure_b, target_pressure);
         _control_state.target_rpm = rpm;
         set_pump_state(true, rpm);
     }

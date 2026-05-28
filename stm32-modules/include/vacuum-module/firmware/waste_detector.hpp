@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cmath>
 #include <cstdint>
 
@@ -15,6 +16,7 @@ enum class WasteFullError : uint8_t {
     FIRST_RUN_SLOW_ERROR = 5,
     SUDDEN_BLOCKED_ERROR = 6,
     CUMMULATIVE_BLOCKED_ERROR = 7,
+    FLOW_STABLE_FULL_ERROR = 8,
 };
 
 // Window thresholds: Measure from p1 depth to p2 depth
@@ -27,9 +29,9 @@ static constexpr const double BASELINE_FAST_FACTOR = 0.75F;
 // Allowed upward drift per tick while in hold phase
 static constexpr const double MAX_RISE_PER_TICK = 3.5;
 // Total allowed rise before flag for slow build up case
-static constexpr const double MAX_CUMULATIVE_RISE = 11.0;
+static constexpr const double MAX_CUMULATIVE_RISE = 11.5;
 // Pressure offset from target to be considered in "hold" state
-static constexpr const double PRESSURE_TOLERANCE = 10.0F;
+static constexpr const double PRESSURE_TOLERANCE = 20.0F;
 // Large negative = draining (air rush) - ignore
 static constexpr const double MAX_DRAIN_RISE_PER_TICK = -150.0;
 static constexpr const double MAX_DELTA_PER_TICK = 250.0;
@@ -43,7 +45,22 @@ static constexpr const uint32_t MIN_ALLOWABLE_WINDOW_TIME_MS = 700;
 // If the ramp takes longer than this, we flag it as a stall or leak.
 static constexpr const uint32_t MAX_ALLOWABLE_WINDOW_TIME_MS = 20000;
 // Number of tics we need to be around the target pressure to enter hold phase
-static constexpr const uint32_t NEAR_TARGET_TICS = 25;  // ~1s at 25Hz
+static constexpr const uint32_t NEAR_TARGET_TICS = 50;  // ~2s at 25Hz
+
+// Standard Deviation
+// ~800ms window for pressure std
+static constexpr uint8_t PRESSURE_WINDOW_SIZE = 20;
+// Oscillations above this means there is no air flow because the waste is full.
+static constexpr double PRESSURE_OSCILLATION_MIN_STD = 7.5;
+
+// Hose diam_m 0.0760m; ORIFICE_AREA = PI * (diam_m / 2.0) * (diam_m / 2.0)
+static constexpr const double ORIFICE_AREA = 0.00004536;  // m²
+static constexpr const double DISCHARGE_COEFF = 0.85;
+static constexpr const double AIR_DENSITY = 1.2;  // kg/m³
+// Flow rate EMI smoothing
+static constexpr const double FLOW_RATE_ALPHA = 0.1F;
+static constexpr const double FLOW_RATE_FACTOR = 1e6;
+static constexpr const double MIN_DELTA_ALPHA = 0.1F;
 
 struct WasteConfig {
     bool enable_waste_full = true;
@@ -57,6 +74,50 @@ struct WasteConfig {
     double min_window_time = MIN_ALLOWABLE_WINDOW_TIME_MS;
     double max_window_time = MAX_ALLOWABLE_WINDOW_TIME_MS;
 };
+
+auto inline calculate_flow_per_second(double pressure_a, double pressure_b,
+                                      double smoothed_delta_p) -> double {
+    auto delta_p_pa = std::abs(pressure_a - pressure_b) * 100.0;
+    if (smoothed_delta_p == 0.0) {
+        smoothed_delta_p = delta_p_pa;
+    } else {
+        smoothed_delta_p = (FLOW_RATE_ALPHA * delta_p_pa) +
+                           ((1.0 - FLOW_RATE_ALPHA) * smoothed_delta_p);
+    }
+
+    // Prevent negative or tiny values
+    if (smoothed_delta_p > MIN_DELTA_ALPHA) {
+        // Bernoulli velocity
+        const auto velocity = std::sqrt(2 * smoothed_delta_p / AIR_DENSITY);
+
+        // Volumetric flow rate in ml/s
+        return DISCHARGE_COEFF * ORIFICE_AREA * velocity * FLOW_RATE_FACTOR;
+    }
+    return 0.0;
+}
+
+// Helper: Calculate standard deviation of the fixed flow window
+template <size_t N>
+auto calculate_std_dev(const std::array<double, N>& buf, bool is_full,
+                       uint8_t cur_idx) -> double {
+    const uint8_t count = is_full ? N : cur_idx;
+    if (count < 2) {
+        return 0.0;
+    };
+
+    double mean = 0.0;
+    for (uint8_t i = 0; i < count; ++i) {
+        mean += buf.at(i);
+    }
+    mean /= count;
+
+    double sum_sq_diff = 0.0;
+    for (uint8_t i = 0; i < count; ++i) {
+        const double diff = buf.at(i) - mean;
+        sum_sq_diff += diff * diff;
+    }
+    return std::sqrt(sum_sq_diff / (count - 1));
+}
 
 class WasteDetector {
   public:
@@ -93,7 +154,7 @@ class WasteDetector {
         }
     }
 
-    auto check(uint32_t timestamp, double current_abs_mbar,
+    auto check(uint32_t timestamp, double pressure_abs_a, double pressure_abs_b,
                double target_abs_mbar, double p_atm) -> WasteFullError {
         if (!config.enable_waste_full) {
             return WasteFullError::NO_ERROR;
@@ -101,16 +162,18 @@ class WasteDetector {
         if (waste_full_) {
             return error;
         }
-
+        // Calculate flow rate
+        flow_ml_per_s = calculate_flow_per_second(
+            pressure_abs_a, pressure_abs_b, smoothed_delta_p);
         error = WasteFullError::NO_ERROR;
         auto total_vacuum_range = p_atm - target_abs_mbar;
         auto last_p = smoothed_p_;
         // EMA smoothing
         if (smoothed_p_ == 0) {
-            smoothed_p_ = current_abs_mbar;
+            smoothed_p_ = pressure_abs_b;
         } else {
-            smoothed_p_ = (config.p_filter_alpha * current_abs_mbar) +
-                          ((1.0F - config.p_filter_alpha) * last_p);
+            smoothed_p_ = (config.p_filter_alpha * pressure_abs_b) +
+                          ((1.0F - config.p_filter_alpha) * smoothed_p_);
         }
         auto current_p = smoothed_p_;
 
@@ -142,7 +205,7 @@ class WasteDetector {
                 p_atm - (total_vacuum_range * config.p_window_end);
 
             if (current_p < p_window_start && ramp_start_ms_ == 0) {
-                if (current_p < p_window_end) {
+                if (current_p <= p_window_end) {
                     waste_full_ = true;
                     error = WasteFullError::OVER_TARGET_ERROR;
                     return error;
@@ -188,20 +251,44 @@ class WasteDetector {
                 return WasteFullError::NO_ERROR;
             }
 
-            // Smaller rise = potential full waste (blocked flow)
-            if (delta_p < -config.max_rise_per_tick) {
-                waste_full_ = true;
-                error = WasteFullError::SUDDEN_BLOCKED_ERROR;
-                // Cumulative rise over time (slow blocked-flow back-pressure)
-            } else if (delta_p < 0) {
-                cumulative_rise_ -= delta_p;
-                if (cumulative_rise_ > config.max_cummulative_rise) {
+            // Add pressure to circular buffer
+            pressure_window.at(pressure_window_index) = current_p;
+            pressure_window_index =
+                (pressure_window_index + 1) % PRESSURE_WINDOW_SIZE;
+            if (pressure_window_index == 0) {
+                pressure_window_full = true;
+            }
+
+            // Check if we are osocilating more than we should, this
+            // indicates no air-flow because the waste is full.
+            if (pressure_window_full) {
+                auto pressure_std =
+                    calculate_std_dev(pressure_window, pressure_window_full,
+                                      pressure_window_index);
+                if (pressure_std > PRESSURE_OSCILLATION_MIN_STD) {
                     waste_full_ = true;
-                    error = WasteFullError::CUMMULATIVE_BLOCKED_ERROR;
+                    error = WasteFullError::FLOW_STABLE_FULL_ERROR;
+                    return error;
                 }
-            } else {
-                // Reset cumulative if drop due to normal fluctuations
-                cumulative_rise_ = 0.0;
+
+                // Smaller rise = potential full waste (blocked flow)
+                if (delta_p < -config.max_rise_per_tick) {
+                    waste_full_ = true;
+                    error = WasteFullError::SUDDEN_BLOCKED_ERROR;
+                    return error;
+                }
+
+                // Cumulative rise over time (slow blocked-flow back-pressure)
+                if (delta_p < 0) {
+                    cumulative_rise_ -= delta_p;
+                    if (cumulative_rise_ > config.max_cummulative_rise) {
+                        waste_full_ = true;
+                        error = WasteFullError::CUMMULATIVE_BLOCKED_ERROR;
+                    }
+                } else {
+                    // Reset cumulative if drop due to normal fluctuations
+                    cumulative_rise_ = 0.0;
+                }
             }
         }
         return error;
@@ -215,6 +302,11 @@ class WasteDetector {
         in_ramp_phase_ = true;
         smoothed_p_ = 0.0;
         error = WasteFullError::NO_ERROR;
+        pressure_window.fill(0);
+        pressure_window_index = 0;
+        pressure_window_full = false;
+        smoothed_delta_p = 0.0;
+        flow_ml_per_s = 0.0;
     }
 
     auto reset_baseline() -> void {
@@ -236,7 +328,7 @@ class WasteDetector {
     }
 
     [[nodiscard]] auto get_error() -> WasteFullError { return error; }
-
+    [[nodiscard]] auto get_flow_rate() const -> double { return flow_ml_per_s; }
     [[nodiscard]] auto baseline_captured() const -> bool {
         return baseline_captured_;
     }
@@ -254,6 +346,13 @@ class WasteDetector {
     double smoothed_p_ = 0.0;
     WasteFullError error = WasteFullError::NO_ERROR;
     WasteConfig config;
+
+    // standard deviation
+    std::array<double, PRESSURE_WINDOW_SIZE> pressure_window = {0.0};
+    uint8_t pressure_window_index = 0;
+    bool pressure_window_full = false;
+    double smoothed_delta_p = 0.0;
+    double flow_ml_per_s = 0.0;
 };
 
 }  // namespace waste_detector
