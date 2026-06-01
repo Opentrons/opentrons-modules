@@ -11,7 +11,7 @@ extern "C" {
 #include "systemwide.h"
 
 #define REF_VOLTAGE 3.3
-#define DAC_FULLRANGE 4096
+#define DAC_FULLRANGE 256
 
 void vent_hardware_init(void);
 void hw_set_vent_state(VentState state);
