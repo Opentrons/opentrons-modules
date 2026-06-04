@@ -367,7 +367,7 @@ class PressureTask {
 
             // Calculate target pressure as a percent
             auto p_atm = _control_state.pressure_atm;
-            auto p_percent = std::clamp<int>(m.pressure_percent, 0, 100);
+            auto p_percent = std::clamp<int>(m.pressure_percent, 0, 100.0);
             _control_state.target_pressure = p_atm * p_percent / 100.0;
 
             _control_state.duration_s = m.duration_s;

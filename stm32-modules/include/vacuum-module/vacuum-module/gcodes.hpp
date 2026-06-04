@@ -479,7 +479,9 @@ struct SetPumpState {
         if (std::get<4>(arguments).present) {
             ret.timeout_s = static_cast<uint32_t>(std::get<4>(arguments).value);
         }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (std::get<5>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
             ret.ramp_rate = static_cast<double>(std::get<5>(arguments).value);
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
