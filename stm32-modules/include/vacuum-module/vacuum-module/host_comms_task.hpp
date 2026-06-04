@@ -589,6 +589,10 @@ class HostCommsTask {
             .rpm_setpoint = gcode.target_rpm,
             .duty_cycle = gcode.duty_cycle,
             .run_pump = gcode.start_pump,
+            .duration_s = gcode.duration_s,
+            .timeout_s = gcode.timeout_s,
+            .ramp_rate = gcode.ramp_rate,
+            .vent_after = gcode.vent_after,
         };
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(

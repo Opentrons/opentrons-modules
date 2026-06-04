@@ -418,11 +418,16 @@ struct GetPressureState {
 struct SetPumpState {
     /*
      * M122- SetPumpState set state of pump control (start pump, target rpm,
-     * on/off)
+     * on/off). Supports E:<duration_s> T:<timeout_s> (D: is duty) to enable
+     * duration tracking and waste detection via notification to PressureTask.
      * */
     double target_rpm = 0;
     uint8_t duty_cycle = 0;
     bool start_pump = false;
+    uint32_t duration_s = 0;
+    uint32_t timeout_s = 0;
+    double ramp_rate = 0;
+    bool vent_after = true;
 
     using ParseResult = std::optional<SetPumpState>;
     static constexpr auto prefix = std::array{'M', '1', '2', '2', ' '};
@@ -431,20 +436,31 @@ struct SetPumpState {
     using StartArg = Arg<uint8_t, 'S'>;
     using RPMArg = Arg<uint16_t, 'R'>;
     using DutyArg = Arg<uint8_t, 'D'>;
+    using DurationArg = Arg<uint32_t, 'E'>;
+    using TimeoutArg = Arg<uint32_t, 'T'>;
+    using RampArg = Arg<float, 'A'>;
+    using VentArg = Arg<uint8_t, 'V'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        auto res = gcode::SingleParser<StartArg, RPMArg, DutyArg>::parse_gcode(
-            input, limit, prefix);
+        auto res =
+            gcode::SingleParser<StartArg, RPMArg, DutyArg, DurationArg,
+                                TimeoutArg, RampArg,
+                                VentArg>::parse_gcode(input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
 
-        auto ret =
-            SetPumpState{.target_rpm = 0, .duty_cycle = 0, .start_pump = false};
+        auto ret = SetPumpState{.target_rpm = 0,
+                                .duty_cycle = 0,
+                                .start_pump = false,
+                                .duration_s = 0,
+                                .timeout_s = 0,
+                                .ramp_rate = 0.0,
+                                .vent_after = true};
 
         auto arguments = res.first.value();
         if (std::get<0>(arguments).present) {
@@ -455,6 +471,23 @@ struct SetPumpState {
         }
         if (std::get<2>(arguments).present) {
             ret.duty_cycle = static_cast<uint8_t>(std::get<2>(arguments).value);
+        }
+        if (std::get<3>(arguments).present) {
+            ret.duration_s =
+                static_cast<uint32_t>(std::get<3>(arguments).value);
+        }
+        if (std::get<4>(arguments).present) {
+            ret.timeout_s = static_cast<uint32_t>(std::get<4>(arguments).value);
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (std::get<5>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            ret.ramp_rate = static_cast<double>(std::get<5>(arguments).value);
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (std::get<6>(arguments).present) {
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+            ret.vent_after = static_cast<bool>(std::get<6>(arguments).value);
         }
         return std::make_pair(ret, res.second);
     }

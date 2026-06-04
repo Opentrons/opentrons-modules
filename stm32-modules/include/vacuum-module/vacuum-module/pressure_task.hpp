@@ -142,6 +142,8 @@ struct PressureControlState {
     bool enable_vacuum = false;
     VentState vent_state = VentState::CLOSED;
     bool vent_after = true;
+    // if false, pump is driven externally; monitor only, no SetPump msgs sent
+    bool control_pump = true;
 };
 
 const PressureControlState pressure_control_state;
@@ -289,9 +291,12 @@ class PressureTask {
             return;
         }
 
-        auto rpm = _controller.update(dt, current_pressure_b, target_pressure);
-        _control_state.target_rpm = rpm;
-        set_pump_state(true, rpm);
+        if (_control_state.control_pump) {
+            auto rpm =
+                _controller.update(dt, current_pressure_b, target_pressure);
+            _control_state.target_rpm = rpm;
+            set_pump_state(true, rpm);
+        }
     }
 
     template <PressureControlPolicy Policy>
@@ -334,6 +339,7 @@ class PressureTask {
 
         // Start the pressure control loop
         if (!_control_state.enable_vacuum && m.start_pump) {
+            _control_state.control_pump = true;
             reset_pressure_state_buffer();
             _detector.reset();
             _controller.configure_slew(current_pressure, m.ramp_rate);
@@ -344,6 +350,47 @@ class PressureTask {
         _control_state.enable_vacuum = m.start_pump;
 
         send_ack_message(m.id);
+    }
+
+    template <PressureControlPolicy Policy>
+    auto visit_message(const messages::NotifyPumpRunMessage& m, Policy& policy)
+        -> void {
+        static_cast<void>(policy);
+        // PumpTask received direct SetPump (from_host); enable our
+        // monitoring (periodic pressure reads, waste detection, duration
+        // timer, target monitoring) so PumpTask can "use" this
+        // functionality. We must not send any SetPumpState control messages
+        // back to PumpTask.
+        // Convert target guage presure to abs pressure
+        if (m.run_pump) {
+            update_pressures(policy, true);
+
+            // Calculate target pressure as a percent
+            auto p_atm = _control_state.pressure_atm;
+            auto p_percent = std::clamp<int>(m.pressure_percent, 0, 100.0);
+            _control_state.target_pressure = p_atm * p_percent / 100.0;
+
+            _control_state.duration_s = m.duration_s;
+            _control_state.timeout_s = m.timeout_s;
+            _control_state.target_pressure_reached = false;
+            _control_state.control_pump = false;
+
+            if (!_control_state.enable_vacuum) {
+                reset_pressure_state_buffer();
+                _detector.reset();
+                policy.start_pressure_control(true);
+            }
+
+            if (m.duration_s > 0) {
+                _vacuum_timer.stop();
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                _vacuum_timer.update_period(m.duration_s * 1000);
+                _vacuum_timer.start();
+            }
+            // No ack sent here; the originating SetPump from host was already
+            // acked by PumpTask.
+        }
+        _control_state.enable_vacuum = m.run_pump;
     }
 
     template <PressureControlPolicy Policy>
@@ -584,7 +631,9 @@ class PressureTask {
     auto stop_vacuum() -> void {
         _vacuum_timer.stop();
         _policy->start_pressure_control(false);
-        set_pump_state(false, 0);
+        if (_control_state.control_pump) {
+            set_pump_state(false, 0);
+        }
 
         _detector.reset();
         _controller.reset();
@@ -597,6 +646,7 @@ class PressureTask {
         _control_state.timeout_s = 0;
         _control_state.enable_vacuum = false;
         _control_state.target_pressure_reached = false;
+        _control_state.control_pump = true;
     }
 
     auto maintaining_target_pressure() -> bool {

@@ -214,8 +214,21 @@ class PumpTask {
         }
 
         if (m.from_host) {
-            send_ack_message(m.id);
+            // Send notification to PressureTask so it can track vacuum duration
+            // and perform waste detection using its sensor access and logic.
+            // PressureTask will run monitoring but must not send control msgs
+            // (SetPumpState) back in this mode.
+            auto notify =
+                messages::NotifyPumpRunMessage{.run_pump = m.run_pump,
+                                               .pressure_percent = m.duty_cycle,
+                                               .duration_s = m.duration_s,
+                                               .timeout_s = m.timeout_s,
+                                               .ramp_rate = m.ramp_rate,
+                                               .vent_after = m.vent_after};
+            static_cast<void>(_task_registry->send_to_address(
+                notify, Queues::PressureAddress));
         }
+        send_ack_message(m.id);
     }
 
     template <PumpControlPolicy Policy>

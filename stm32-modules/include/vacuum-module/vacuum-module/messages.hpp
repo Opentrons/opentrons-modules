@@ -135,6 +135,24 @@ struct SetPumpStateMessage {
     double rpm_setpoint = 0;
     uint8_t duty_cycle = 0;
     bool run_pump = false;
+    uint32_t duration_s = 0;
+    uint32_t timeout_s = 0;
+    double ramp_rate = 0;
+    bool vent_after = true;
+};
+
+/*
+ * Internal notification from PumpTask to PressureTask when a direct/from_host
+ * SetPumpState is received. This lets PressureTask run its duration tracking
+ * and waste detection logic without sending pump control commands back.
+ */
+struct NotifyPumpRunMessage {
+    bool run_pump = false;
+    uint8_t pressure_percent = 0;
+    uint32_t duration_s = 0;
+    uint32_t timeout_s = 0;
+    double ramp_rate = 0;
+    bool vent_after = true;
 };
 
 struct GetPressureStateMessage {
@@ -252,7 +270,7 @@ using PressureMessage =
                    SetPressureStateMessage, GetPressureStateMessage,
                    SetVentMessage, SetPressurePIDMessage, GetPressurePIDMessage,
                    SetWasteDetectionConfigMessage,
-                   GetWasteDetectionConfigMessage>;
+                   GetWasteDetectionConfigMessage, NotifyPumpRunMessage>;
 
 using PumpMessage = ::std::variant<std::monostate, PumpControlMessage,
                                    SetPumpStateMessage, GetPumpStateMessage>;
