@@ -294,6 +294,9 @@ void heater_hardware_power_disable(heater_hardware* hardware, uint8_t task_conte
     HAL_TIM_PWM_Stop_IT(&internal->pad_tim, HEATER_PAD_SHORT_CHECK_TIM_CHANNEL);
     HAL_TIM_PWM_Stop_IT(&internal->pad_tim, HEATER_PAD_OPEN_CHECK_TIM_CHANNEL);
     internal->heater_started = false;
+    internal->update_lock = false;
+    internal->update_while_locked = false;
+    internal->period_count = 0;
     if (!heatpad_in_error_state()) {
         internal->heatpad_cs_status = IDLE;
     }
