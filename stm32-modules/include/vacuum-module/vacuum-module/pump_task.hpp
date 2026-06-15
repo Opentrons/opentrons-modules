@@ -25,7 +25,7 @@ static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double K_FF = MAX_PWM / MAX_RPM;
 static constexpr const double PUMP_STOP_RPM_THRESH = 500;
 static constexpr const float MIN_RAMP_RATE = 1;      // rpm/s
-static constexpr const float DEFAULT_RAMP_RATE = 3;  // rpm/s
+static constexpr const float DEFAULT_RAMP_RATE = 5;  // rpm/s
 static constexpr const float MAX_RAMP_RATE = 20;     // rpm/s
 static constexpr const double MAX_PWM_JUMP = 1;      // pwm/tick
 
@@ -205,10 +205,12 @@ class PumpTask {
         _pump_control.enable_pump = m.run_pump;
         _pump_control.manual_control = m.from_host;
         auto ramp_rate =
-            std::clamp<float>(m.ramp_rate, MIN_RAMP_RATE, DEFAULT_RAMP_RATE);
+            m.ramp_rate > 0
+                ? std::clamp<float>(m.ramp_rate, MIN_RAMP_RATE, MAX_RAMP_RATE)
+                : _pump_control.slew.get_rate_limit();
 
         if (!_pump_control.pump_running) {
-            _pump_control.slew.configure(_pump_control.target_rpm, ramp_rate);
+            _pump_control.slew.configure(_pump_control.current_rpm, ramp_rate);
             policy.enable_pump_tach(true);
             policy.start_pump_motor();
             policy.enable_pump_control(true);
@@ -216,6 +218,7 @@ class PumpTask {
         }
 
         if (m.from_host) {
+            send_ack_message(m.id);
             // Send notification to PressureTask so it can track vacuum duration
             // and perform waste detection using its sensor access and logic.
             // PressureTask will run monitoring but must not send control msgs
@@ -229,7 +232,6 @@ class PumpTask {
             static_cast<void>(_task_registry->send_to_address(
                 notify, Queues::PressureAddress));
         }
-        send_ack_message(m.id);
     }
 
     template <PumpControlPolicy Policy>

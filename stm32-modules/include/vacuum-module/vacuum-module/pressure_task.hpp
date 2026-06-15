@@ -340,14 +340,15 @@ class PressureTask {
         // Start the pressure control loop
         if (!_control_state.enable_vacuum && m.start_pump) {
             _control_state.control_pump = true;
-            _detector.reset();
             reset_pressure_state_buffer();
+            _detector.reset();
             _controller.configure_slew(current_pressure, m.ramp_rate);
 
             // Start pressure control messages
             policy.start_pressure_control(true);
         }
         _control_state.enable_vacuum = m.start_pump;
+
         send_ack_message(m.id);
     }
 

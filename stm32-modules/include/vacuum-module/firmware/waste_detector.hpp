@@ -63,8 +63,7 @@ static constexpr const double FLOW_RATE_FACTOR = 1e6;
 static constexpr const double MIN_DELTA_ALPHA = 0.1F;
 
 struct WasteConfig {
-    // Disabled until we have proper DVT hardware
-    bool enable_waste_full = false;
+    bool enable_waste_full = true;
     double p_window_start = WASTE_WINDOW_START_PCT;
     double p_window_end = WASTE_WINDOW_END_PCT;
     double baseline_fast_factor = BASELINE_FAST_FACTOR;

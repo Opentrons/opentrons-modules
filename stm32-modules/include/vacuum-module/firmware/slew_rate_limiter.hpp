@@ -33,6 +33,11 @@ class SlewRateLimiter {
     }
 
     /**
+     * @brief Get the rate limit configured.
+     */
+    auto get_rate_limit() const -> double { return _rate_limit; }
+
+    /**
      * @brief Calculates the next setpoint.
      * @param target The desired end goal.
      * @param dt_seconds Time elapsed since last call.
