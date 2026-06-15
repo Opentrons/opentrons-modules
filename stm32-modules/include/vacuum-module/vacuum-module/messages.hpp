@@ -151,7 +151,6 @@ struct NotifyPumpRunMessage {
     uint8_t pressure_percent = 0;
     uint32_t duration_s = 0;
     uint32_t timeout_s = 0;
-    double ramp_rate = 0;
     bool vent_after = true;
 };
 

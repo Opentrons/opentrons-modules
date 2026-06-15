@@ -25,9 +25,9 @@ static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double K_FF = MAX_PWM / MAX_RPM;
 static constexpr const double PUMP_STOP_RPM_THRESH = 500;
 static constexpr const float MIN_RAMP_RATE = 1;      // rpm/s
-static constexpr const float DEFAULT_RAMP_RATE = 5;  // rpm/s
+static constexpr const float DEFAULT_RAMP_RATE = 3;  // rpm/s
 static constexpr const float MAX_RAMP_RATE = 20;     // rpm/s
-static constexpr const int8_t MAX_PWM_JUMP = 1;      // pwm/tick
+static constexpr const double MAX_PWM_JUMP = 1;      // pwm/tick
 
 struct PumpControl {
     SlewRateLimiter slew;
@@ -36,7 +36,7 @@ struct PumpControl {
 
     double target_rpm = 0;
     double current_rpm = 0;
-    uint8_t current_pwm = 0;
+    double current_pwm = 0;
     uint8_t target_pwm = 0;
     bool manual_control = false;
 
@@ -174,8 +174,9 @@ class PumpTask {
         // significant back-EMF and result in large current and voltage spikes
         // which can shut down the system. Limit how fast the duty cycle changes
         // so the motor does not freak out.
+        auto target_pwm = _pump_control.target_pwm;
         auto current_pwm = _pump_control.current_pwm;
-        auto desired_pwm = _pump_control.enable_pump ? pwm : MIN_PWM;
+        auto desired_pwm = target_setpoint > 0 ? pwm : target_pwm;
         auto max_pwm_jump = _pump_control.enable_pump ? MAX_PWM_JUMP : 1;
         desired_pwm = std::clamp<uint8_t>(desired_pwm, MIN_PWM, MAX_PWM);
         if (desired_pwm > current_pwm + max_pwm_jump) {
@@ -186,10 +187,8 @@ class PumpTask {
             current_pwm = desired_pwm;
         }
 
-        // Manual override + safety clamp
-        auto target_pwm = _pump_control.target_pwm;
-        auto duty = target_pwm > 0 ? target_pwm : current_pwm;
-        duty = std::clamp<uint8_t>(duty, 0, MAX_PWM);
+        // Safety clamp
+        auto duty = std::clamp<double>(current_pwm, 0, MAX_PWM);
 
         _pump_control.current_pwm = duty;
         _pump_control.current_rpm = rpm;
@@ -205,8 +204,11 @@ class PumpTask {
             std::clamp<double>(m.rpm_setpoint, 0, MAX_RPM);
         _pump_control.enable_pump = m.run_pump;
         _pump_control.manual_control = m.from_host;
+        auto ramp_rate =
+            std::clamp<float>(m.ramp_rate, MIN_RAMP_RATE, DEFAULT_RAMP_RATE);
 
         if (!_pump_control.pump_running) {
+            _pump_control.slew.configure(_pump_control.target_rpm, ramp_rate);
             policy.enable_pump_tach(true);
             policy.start_pump_motor();
             policy.enable_pump_control(true);
@@ -223,7 +225,6 @@ class PumpTask {
                                                .pressure_percent = m.duty_cycle,
                                                .duration_s = m.duration_s,
                                                .timeout_s = m.timeout_s,
-                                               .ramp_rate = m.ramp_rate,
                                                .vent_after = m.vent_after};
             static_cast<void>(_task_registry->send_to_address(
                 notify, Queues::PressureAddress));
@@ -240,7 +241,7 @@ class PumpTask {
             .target_rpm = _pump_control.target_rpm,
             .current_rpm = _pump_control.current_rpm,
             .target_pwm = _pump_control.target_pwm,
-            .current_pwm = _pump_control.current_pwm,
+            .current_pwm = static_cast<uint8_t>(_pump_control.current_pwm),
             .pump_running = _pump_control.pump_running,
             .manual_control = _pump_control.manual_control,
         };
