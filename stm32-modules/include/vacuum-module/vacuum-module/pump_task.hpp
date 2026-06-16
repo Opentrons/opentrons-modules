@@ -206,7 +206,7 @@ class PumpTask {
         _pump_control.manual_control = m.from_host;
         auto ramp_rate =
             m.ramp_rate > 0
-                ? std::clamp<float>(m.ramp_rate, MIN_RAMP_RATE, MAX_RAMP_RATE)
+                ? std::clamp<double>(m.ramp_rate, MIN_RAMP_RATE, MAX_RAMP_RATE)
                 : _pump_control.slew.get_rate_limit();
 
         if (!_pump_control.pump_running) {
