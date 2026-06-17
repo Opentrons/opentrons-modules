@@ -372,6 +372,7 @@ class PressureTask {
 
             _control_state.duration_s = m.duration_s;
             _control_state.timeout_s = m.timeout_s;
+            _control_state.vent_after = m.vent_after;
             _control_state.target_pressure_reached = false;
             _control_state.control_pump = false;
 
@@ -631,9 +632,7 @@ class PressureTask {
     auto stop_vacuum() -> void {
         _vacuum_timer.stop();
         _policy->start_pressure_control(false);
-        if (_control_state.control_pump) {
-            set_pump_state(false, 0);
-        }
+        set_pump_state(false, 0);
 
         _detector.reset();
         _controller.reset();
