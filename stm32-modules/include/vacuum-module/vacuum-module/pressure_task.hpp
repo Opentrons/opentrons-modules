@@ -411,14 +411,12 @@ class PressureTask {
         }
 
         // Convert to guage pressure
-        auto target_pressure = 0.0F;
-        auto current_pressure = 0.0F;
-        if (_control_state.target_pressure != 0) {
-            target_pressure =
-                _control_state.target_pressure - _control_state.pressure_atm;
-            current_pressure =
-                _control_state.current_pressure - _control_state.pressure_atm;
-        }
+        auto current_pressure =
+            _control_state.pressure_abs_b - _control_state.pressure_atm;
+        auto target_pressure =
+            _control_state.target_pressure != 0
+                ? _control_state.target_pressure - _control_state.pressure_atm
+                : 0;
         auto msg = messages::GetPressureStateResponseMessage{
             .responding_to_id = m.id,
             .target_pressure = target_pressure,
