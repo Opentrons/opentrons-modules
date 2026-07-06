@@ -271,10 +271,9 @@ class PressureTask {
         // Update absolute pressure
         for (auto sensor_id : {ABS_PRESSURE_A, ABS_PRESSURE_B}) {
             auto ret = update_pressure(sensor_id);
-            // Reset the sensor if there is some problem
             if (ret != NO_ERROR) {
-                policy.sensor_reset(sensor_id);
-                continue;
+                handle_pressure_sensor_error(policy, sensor_id);
+                return;
             }
         }
 
@@ -283,7 +282,8 @@ class PressureTask {
             _atm_update_counter = 0;
             auto ret = update_pressure(ATM_PRESSURE);
             if (ret != NO_ERROR) {
-                policy.sensor_reset(ATM_PRESSURE);
+                handle_pressure_sensor_error(policy, ATM_PRESSURE);
+                return;
             }
         }
 
@@ -617,6 +617,14 @@ class PressureTask {
         auto vent_state = _policy->get_vent_state();
         _control_state.vent_state = vent_state;
         return vent_state == set_state;
+    }
+
+    template <PressureControlPolicy Policy>
+    auto handle_pressure_sensor_error(Policy& policy,
+                                    PressureSensorID sensor_id) -> void {
+        policy.sensor_reset(sensor_id);
+        _control_state.error = Error::PRESSURE_SENSOR_ERROR;
+        _control_state.enable_vacuum = false;
     }
 
     auto set_pump_state(bool run_pump, double rpm = 0.0) -> void {
