@@ -27,7 +27,7 @@ static constexpr const double PUMP_STOP_RPM_THRESH = 500;
 static constexpr const float MIN_RAMP_RATE = 1;      // rpm/s
 static constexpr const float DEFAULT_RAMP_RATE = 5;  // rpm/s
 static constexpr const float MAX_RAMP_RATE = 500;    // rpm/s
-static constexpr const double MAX_PWM_JUMP = 1;      // pwm/tick
+static constexpr const double MAX_PWM_JUMP_CAP = 5;  // pwm/tick
 
 struct PumpControl {
     SlewRateLimiter slew;
@@ -177,7 +177,13 @@ class PumpTask {
         auto target_pwm = _pump_control.target_pwm;
         auto current_pwm = _pump_control.current_pwm;
         auto desired_pwm = target_setpoint > 0 ? pwm : target_pwm;
-        auto max_pwm_jump = _pump_control.enable_pump ? MAX_PWM_JUMP : 1;
+        auto pwm_jump = _pump_control.slew.get_rate_limit() * K_FF * delta_s;
+        auto max_pwm_jump = 1;
+        if (_pump_control.enable_pump) {
+            max_pwm_jump = std::clamp<int>(
+                static_cast<int>(std::ceil(pwm_jump)), 1,
+                static_cast<int>(MAX_PWM_JUMP_CAP));
+        }
         desired_pwm = std::clamp<uint8_t>(desired_pwm, MIN_PWM, MAX_PWM);
         if (desired_pwm > current_pwm + max_pwm_jump) {
             current_pwm += max_pwm_jump;
