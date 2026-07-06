@@ -80,6 +80,7 @@ static constexpr const double CONTROL_PERIOD_S =
     CONTROL_PERIOD_MS * MS_TO_SECONDS;
 static constexpr const double MAX_CONTROL_DT_S = CONTROL_PERIOD_S * 4.0F;
 static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
+static constexpr const uint8_t ATM_PRESSURE_UPDATE_INTERVAL = 4;
 // Pump RPM slew limits aligned with pressure ramp * K_VELOCITY feed-forward.
 static constexpr const double PUMP_RAMP_MIN = 1.0F;
 static constexpr const double PUMP_RAMP_MAX = 500.0F;
@@ -274,6 +275,15 @@ class PressureTask {
             if (ret != NO_ERROR) {
                 policy.sensor_reset(sensor_id);
                 continue;
+            }
+        }
+
+        _atm_update_counter++;
+        if (_atm_update_counter >= ATM_PRESSURE_UPDATE_INTERVAL) {
+            _atm_update_counter = 0;
+            auto ret = update_pressure(ATM_PRESSURE);
+            if (ret != NO_ERROR) {
+                policy.sensor_reset(ATM_PRESSURE);
             }
         }
 
@@ -748,6 +758,7 @@ class PressureTask {
     std::array<double, PRESSURE_STATE_BUFFER_LEN> pressure_state_buffer = {0};
     uint8_t pressure_state_buffer_index = 0;
     uint8_t pressure_state_buffer_count = 0;
+    uint8_t _atm_update_counter = 0;
 
     PressureControlState _control_state = pressure_control_state;
     PressureController _controller;
