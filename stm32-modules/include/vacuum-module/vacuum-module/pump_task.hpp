@@ -24,9 +24,9 @@ static constexpr const double RPM_SAMPLE_TIME_S = CONTROL_PERIOD_MS / 1000.0F;
 static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double K_FF = MAX_PWM / MAX_RPM;
 static constexpr const double PUMP_STOP_RPM_THRESH = 500;
-static constexpr const float MIN_RAMP_RATE = 1;        // rpm/s
-static constexpr const float DEFAULT_RAMP_RATE = 5;    // rpm/s
-static constexpr const float MAX_RAMP_RATE = 500;      // rpm/s
+static constexpr const float MIN_RAMP_RATE = 1;      // rpm/s
+static constexpr const float DEFAULT_RAMP_RATE = 5;  // rpm/s
+static constexpr const float MAX_RAMP_RATE = 500;    // rpm/s
 static constexpr const double MAX_PWM_JUMP = 1;      // pwm/tick
 
 struct PumpControl {

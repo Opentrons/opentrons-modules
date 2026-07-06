@@ -75,14 +75,13 @@ class PressureController {
                 double target_abs_mbar) -> double {
         auto vacuum_depth = ATM_PRESSURE_MBAR - target_abs_mbar;
         if (vacuum_depth > 0.0) {
-            auto remaining =
-                std::max(0.0, current_abs_mbar - target_abs_mbar);
+            auto remaining = std::max(0.0, current_abs_mbar - target_abs_mbar);
             auto depth_fraction = remaining / vacuum_depth;
             auto rate_scale = 1.0;
             if (depth_fraction < ADAPTIVE_SLEW_END_FRACTION) {
-                rate_scale = std::max(
-                    MIN_RAMP_RATE / state.ramp_rate,
-                    depth_fraction / ADAPTIVE_SLEW_END_FRACTION);
+                rate_scale =
+                    std::max(MIN_RAMP_RATE / state.ramp_rate,
+                             depth_fraction / ADAPTIVE_SLEW_END_FRACTION);
             }
             _slew.set_rate_limit(state.ramp_rate * rate_scale);
         } else {
@@ -101,8 +100,7 @@ class PressureController {
         // FF. If we are Overshot (Error is very negative), we want 0 FF.
         auto total_ff_rpm = 0.0;
         auto is_relaxing = (rate_mbar_s < 0.0);
-        auto effective_overshoot =
-            compute_effective_overshoot(target_abs_mbar);
+        auto effective_overshoot = compute_effective_overshoot(target_abs_mbar);
         auto is_overshot = (error < effective_overshoot);
 
         if (!is_relaxing && !is_overshot) {
@@ -116,12 +114,13 @@ class PressureController {
             // 1013 mbar = 0% Vacuum, 0 mbar = 100% Vacuum
             ratio = std::clamp(ratio, 0.0, 1.0);
             auto ff_holding = ratio * state.k_holding;
-            auto approach_scale = std::clamp(
-                error / state.approach_band, 0.0, 1.0);
+            auto approach_scale =
+                std::clamp(error / state.approach_band, 0.0, 1.0);
             total_ff_rpm = (ff_velocity + ff_holding) * approach_scale;
         }
 
-        // Bleed integral windup as the trajectory is reached to limit overshoot.
+        // Bleed integral windup as the trajectory is reached to limit
+        // overshoot.
         if (error > 0.0) {
             _pid.arm_integrator_reset(error, std::abs(effective_overshoot));
         } else if (is_overshot) {
@@ -150,8 +149,8 @@ class PressureController {
         return _slew.get_current_setpoint();
     }
 
-    [[nodiscard]] auto compute_effective_overshoot(
-        double target_abs_mbar) const -> double {
+    [[nodiscard]] auto compute_effective_overshoot(double target_abs_mbar) const
+        -> double {
         auto vacuum_depth = ATM_PRESSURE_MBAR - target_abs_mbar;
         if (vacuum_depth <= 0.0) {
             return state.overshoot;

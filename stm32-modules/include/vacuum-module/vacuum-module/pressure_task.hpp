@@ -601,9 +601,8 @@ class PressureTask {
         auto cs = _controller.get_state();
         auto pump_ramp = std::clamp(cs.ramp_rate * cs.k_velocity, PUMP_RAMP_MIN,
                                     PUMP_RAMP_MAX);
-        auto msg = messages::SetPumpStateMessage{.rpm_setpoint = rpm,
-                                                 .run_pump = run_pump,
-                                                 .ramp_rate = pump_ramp};
+        auto msg = messages::SetPumpStateMessage{
+            .rpm_setpoint = rpm, .run_pump = run_pump, .ramp_rate = pump_ramp};
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::PumpAddress));
     }

@@ -63,4 +63,5 @@ constexpr auto write_into_async(
     constexpr const char* suffix = "\n";
     return write_string_to_iterpair(next, end, suffix);
 }
-};  // namespace errors
+
+}  // namespace errors
