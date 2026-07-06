@@ -97,6 +97,9 @@ class PressureController {
         // Bleed integral windup as the trajectory is reached to limit overshoot.
         if (error > 0.0) {
             _pid.arm_integrator_reset(error, std::abs(state.overshoot));
+        } else if (is_overshot) {
+            // Do not let integral keep driving the pump past the trajectory.
+            _pid.clear_integrator();
         }
 
         // Calculate target rpm + safety clamp

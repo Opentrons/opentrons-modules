@@ -64,6 +64,8 @@ auto PID::reset() -> void {
     _reset_trigger = NONE;
 }
 
+auto PID::clear_integrator() -> void { _last_iterm = 0; }
+
 auto PID::arm_integrator_reset(double error, double threshold) -> void {
     if (error <= 0) {
         _reset_trigger = RISING;
