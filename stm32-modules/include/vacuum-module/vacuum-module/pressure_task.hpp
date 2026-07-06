@@ -179,7 +179,7 @@ class PressureTask {
               "Vacuum Timer",
               [ThisPtr = this] { ThisPtr->vacuum_timer_end_callback(); },
               UPDATE_PERIOD_MS),
-          _controller(CONTROL_PERIOD_MS) {}
+          _controller(CONTROL_PERIOD_MS * MS_TO_SECONDS) {}
     PressureTask(const PressureTask& other) = delete;
     auto operator=(const PressureTask& other) -> PressureTask& = delete;
     PressureTask(PressureTask&& other) noexcept = delete;

@@ -12,7 +12,7 @@ namespace pressure_controller {
 static constexpr const double KP = 13.1;
 static constexpr const double KI = 4.59;
 static constexpr const double KD = 0.15;
-static constexpr const double SAMPLE_TIME = 40;
+static constexpr const double SAMPLE_TIME_S = 0.04F;
 static constexpr const double WINDUP_HIGH = MAX_RPM;
 static constexpr const double WINDUP_LOW = 0;
 // Velocity Gain
@@ -49,14 +49,15 @@ struct ConfigState {
 
 class PressureController {
   public:
-    PressureController(double sample_time = SAMPLE_TIME)
-        : _pid(KP, KI, KD, sample_time, WINDUP_HIGH, WINDUP_LOW) {}
+    PressureController(double sample_time_s = SAMPLE_TIME_S)
+        : _pid(KP, KI, KD, sample_time_s, WINDUP_HIGH, WINDUP_LOW) {}
 
     auto configure_slew(double start_pressure, double ramp_rate) -> void {
         ramp_rate = ramp_rate > 0 ? ramp_rate : DEFAULT_RAMP_RATE;
         state.ramp_rate =
             std::clamp<double>(ramp_rate, MIN_RAMP_RATE, MAX_RAMP_RATE);
         _slew.configure(start_pressure, state.ramp_rate);
+        prev_target_mbar_ = start_pressure;
     }
 
     auto configure_pid(double kp, double ki, double kd, double k_velocity,
