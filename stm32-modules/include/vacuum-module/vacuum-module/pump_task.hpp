@@ -215,6 +215,8 @@ class PumpTask {
             policy.start_pump_motor();
             policy.enable_pump_control(true);
             _pump_control.pump_running = true;
+        } else if (m.ramp_rate > 0) {
+            _pump_control.slew.set_rate_limit(ramp_rate);
         }
 
         if (m.from_host) {
