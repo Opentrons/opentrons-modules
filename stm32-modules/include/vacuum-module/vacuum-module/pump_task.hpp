@@ -142,7 +142,7 @@ class PumpTask {
         auto last_tick =
             _pump_control.last_tick ? _pump_control.last_tick : timestamp;
         auto delta_s = (timestamp - last_tick) * MS_TO_SECONDS;
-        _pump_control.last_tick = last_tick;
+        _pump_control.last_tick = timestamp;
 
         auto rpm = policy.get_pump_rpm();
         // Stop pump control
