@@ -84,7 +84,8 @@ static constexpr const double PUMP_RAMP_MAX = 500.0F;
 // -- Duration Threshold --
 static constexpr const uint32_t UPDATE_PERIOD_MS = 10;
 static constexpr const uint32_t PRESSURE_NOT_REACHED_TIMEOUT = 2000;
-static constexpr const uint8_t PRESSURE_STATE_BUFFER_LEN = 125;
+// 50 samples at 25 Hz ~= 2 seconds of in-tolerance readings.
+static constexpr const uint8_t PRESSURE_STATE_BUFFER_LEN = 50;
 static constexpr const double MIN_PRESSURE_TOLERANCE_MBAR = 5;
 // The percent the pressure could be off by and still be "target reached"
 static constexpr const double REL_PRESSURE_TOLERANCE_PCT = 2.0;
