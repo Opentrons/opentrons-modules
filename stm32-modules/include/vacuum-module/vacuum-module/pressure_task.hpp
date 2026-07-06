@@ -77,6 +77,9 @@ static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0F / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
+// Pump RPM slew limits aligned with pressure ramp * K_VELOCITY feed-forward.
+static constexpr const double PUMP_RAMP_MIN = 1.0F;
+static constexpr const double PUMP_RAMP_MAX = 500.0F;
 
 // -- Duration Threshold --
 static constexpr const uint32_t UPDATE_PERIOD_MS = 10;
@@ -594,8 +597,12 @@ class PressureTask {
     }
 
     auto set_pump_state(bool run_pump, double rpm = 0.0) -> void {
+        auto cs = _controller.get_state();
+        auto pump_ramp = std::clamp(cs.ramp_rate * cs.k_velocity, PUMP_RAMP_MIN,
+                                    PUMP_RAMP_MAX);
         auto msg = messages::SetPumpStateMessage{.rpm_setpoint = rpm,
-                                                 .run_pump = run_pump};
+                                                 .run_pump = run_pump,
+                                                 .ramp_rate = pump_ramp};
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::PumpAddress));
     }
