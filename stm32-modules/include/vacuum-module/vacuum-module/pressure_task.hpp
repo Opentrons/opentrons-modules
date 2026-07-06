@@ -76,6 +76,9 @@ static constexpr const uint32_t CONTROL_PERIOD_HZ = 25;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0F / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
+static constexpr const double CONTROL_PERIOD_S =
+    CONTROL_PERIOD_MS * MS_TO_SECONDS;
+static constexpr const double MAX_CONTROL_DT_S = CONTROL_PERIOD_S * 4.0F;
 static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
 // Pump RPM slew limits aligned with pressure ramp * K_VELOCITY feed-forward.
 static constexpr const double PUMP_RAMP_MIN = 1.0F;
@@ -248,7 +251,11 @@ class PressureTask {
         static_cast<void>(m);
         // Get delta time
         auto timestamp = policy.get_time_ms();
-        auto dt = (timestamp - _control_state.last_tick) * MS_TO_SECONDS;
+        auto dt = CONTROL_PERIOD_S;
+        if (_control_state.last_tick != 0) {
+            dt = (timestamp - _control_state.last_tick) * MS_TO_SECONDS;
+            dt = std::min(dt, MAX_CONTROL_DT_S);
+        }
         _control_state.last_tick = timestamp;
         if (_control_state.start_time_ms == 0) {
             _control_state.start_time_ms = timestamp;
@@ -347,6 +354,7 @@ class PressureTask {
             reset_pressure_state_buffer();
             _detector.reset();
             _controller.configure_slew(current_pressure, m.ramp_rate);
+            _control_state.last_tick = 0;
 
             // Start pressure control messages
             policy.start_pressure_control(true);
