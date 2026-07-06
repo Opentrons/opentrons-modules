@@ -82,6 +82,19 @@ TEST_CASE("PressureController - Update Logic", "[controller]") {
         REQUIRE(rpm_after_cross < rpm_before_cross);
     }
 
+    SECTION("Pressure slew slows in the final vacuum depth") {
+        ctrl.configure_slew(900.0, 100.0);
+        ctrl.update(0.04, 900.0, 200.0);
+        auto far_step = 900.0 - ctrl.get_smooth_target();
+
+        ctrl.reset();
+        ctrl.configure_slew(250.0, 100.0);
+        ctrl.update(0.04, 250.0, 200.0);
+        auto near_step = 250.0 - ctrl.get_smooth_target();
+
+        REQUIRE(near_step < far_step);
+    }
+
     SECTION("Feed-forward tapers near the slewed trajectory") {
         ctrl.configure_slew(1013.0, DEFAULT_RAMP_RATE);
         auto rpm_far = ctrl.update(0.04, 1013.0, 200.0);

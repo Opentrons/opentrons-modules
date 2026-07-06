@@ -31,6 +31,8 @@ static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
 static constexpr const double MIN_RAMP_RATE = 0.20F;
 static constexpr const double MAX_RAMP_RATE = 400.0F;
 static constexpr const double DEFAULT_RAMP_RATE = 50;
+// Slow the pressure slew within this fraction of total vacuum depth.
+static constexpr const double ADAPTIVE_SLEW_END_FRACTION = 0.15F;
 
 struct ConfigState {
     double ramp_rate = DEFAULT_RAMP_RATE;
@@ -69,6 +71,22 @@ class PressureController {
 
     auto update(double dt_seconds, double current_abs_mbar,
                 double target_abs_mbar) -> double {
+        auto vacuum_depth = ATM_PRESSURE_MBAR - target_abs_mbar;
+        if (vacuum_depth > 0.0) {
+            auto remaining =
+                std::max(0.0, current_abs_mbar - target_abs_mbar);
+            auto depth_fraction = remaining / vacuum_depth;
+            auto rate_scale = 1.0;
+            if (depth_fraction < ADAPTIVE_SLEW_END_FRACTION) {
+                rate_scale = std::max(
+                    MIN_RAMP_RATE / state.ramp_rate,
+                    depth_fraction / ADAPTIVE_SLEW_END_FRACTION);
+            }
+            _slew.set_rate_limit(state.ramp_rate * rate_scale);
+        } else {
+            _slew.set_rate_limit(state.ramp_rate);
+        }
+
         // Run Slew Limiter to get smooth trajectory in mbar
         auto smooth_target = _slew.update(target_abs_mbar, dt_seconds);
 
@@ -123,6 +141,10 @@ class PressureController {
     auto get_state() -> ConfigState { return state; }
 
     [[nodiscard]] auto get_target_rpm() const -> double { return target_rpm; }
+
+    [[nodiscard]] auto get_smooth_target() const -> double {
+        return _slew.get_current_setpoint();
+    }
 
   private:
     PID _pid;
