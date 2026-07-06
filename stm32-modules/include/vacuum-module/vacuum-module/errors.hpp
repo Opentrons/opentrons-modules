@@ -28,7 +28,6 @@ enum class ErrorCode : uint16_t {
     PRESSURE_NOT_REACHED_ERROR = 400,
     WASTE_FULL_ERROR = 401,
     VENT_FAILED_ERROR = 402,
-    PRESSURE_SENSOR_ERROR = 403,
     // 5xx - Pump Errors
 };
 
