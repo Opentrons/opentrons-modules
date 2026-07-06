@@ -288,6 +288,9 @@ class PressureTask {
             current_pressure_b;
         pressure_state_buffer_index =
             (pressure_state_buffer_index + 1) % PRESSURE_STATE_BUFFER_LEN;
+        if (pressure_state_buffer_count < PRESSURE_STATE_BUFFER_LEN) {
+            pressure_state_buffer_count++;
+        }
         monitor_target_pressure();
 
         // Handle waste detection
@@ -662,7 +665,7 @@ class PressureTask {
     }
 
     auto maintaining_target_pressure() -> bool {
-        if (pressure_state_buffer_index == 0) {
+        if (pressure_state_buffer_count < PRESSURE_STATE_BUFFER_LEN) {
             return false;
         }
 
@@ -673,7 +676,10 @@ class PressureTask {
         auto effective_tol = std::max(rel_tol, MIN_PRESSURE_TOLERANCE_MBAR);
 
         for (int i = 0; i < PRESSURE_STATE_BUFFER_LEN; ++i) {
-            auto stored_abs = pressure_state_buffer.at(i);
+            auto slot = (pressure_state_buffer_index +
+                         PRESSURE_STATE_BUFFER_LEN - 1 - i) %
+                        PRESSURE_STATE_BUFFER_LEN;
+            auto stored_abs = pressure_state_buffer.at(slot);
             if (std::abs(stored_abs - target_abs) > effective_tol) {
                 return false;
             }
@@ -683,6 +689,8 @@ class PressureTask {
 
     auto reset_pressure_state_buffer() -> void {
         pressure_state_buffer.fill(0);
+        pressure_state_buffer_index = 0;
+        pressure_state_buffer_count = 0;
     }
 
     auto handle_control_state_outcomes() -> void {
@@ -739,6 +747,7 @@ class PressureTask {
     PressureSensor _atm_pressure = atm_pressure;
     std::array<double, PRESSURE_STATE_BUFFER_LEN> pressure_state_buffer = {0};
     uint8_t pressure_state_buffer_index = 0;
+    uint8_t pressure_state_buffer_count = 0;
 
     PressureControlState _control_state = pressure_control_state;
     PressureController _controller;
