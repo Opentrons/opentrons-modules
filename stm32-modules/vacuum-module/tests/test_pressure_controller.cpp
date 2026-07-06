@@ -82,6 +82,15 @@ TEST_CASE("PressureController - Update Logic", "[controller]") {
         REQUIRE(rpm_after_cross < rpm_before_cross);
     }
 
+    SECTION("Overshoot threshold scales with vacuum depth") {
+        PressureController ctrl;
+        auto deep = ctrl.compute_effective_overshoot(200.0);
+        auto shallow = ctrl.compute_effective_overshoot(900.0);
+        REQUIRE(std::abs(deep) > std::abs(shallow));
+        REQUIRE(deep == Approx(-16.26).margin(0.1));
+        REQUIRE(shallow == Approx(-2.27).margin(0.1));
+    }
+
     SECTION("Pressure slew slows in the final vacuum depth") {
         ctrl.configure_slew(900.0, 100.0);
         ctrl.update(0.04, 900.0, 200.0);

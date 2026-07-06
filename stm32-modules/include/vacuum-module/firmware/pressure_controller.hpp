@@ -23,6 +23,8 @@ static constexpr const double K_VELOCITY = 20.0F;
 static constexpr const double K_HOLDING = 43.0F;
 // Disables Velocity and Holding Gain if target is overshot
 static constexpr const double OVERSHOOT_ERROR = -2.0F;
+static constexpr const double OVERSHOOT_DEPTH_PCT = 0.02F;
+static constexpr const double MAX_OVERSHOOT_MBAR = 20.0F;
 // Feed-forward tapers to zero within this band above the slewed trajectory.
 static constexpr const double APPROACH_BAND_MBAR = 80.0F;
 static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
@@ -99,7 +101,9 @@ class PressureController {
         // FF. If we are Overshot (Error is very negative), we want 0 FF.
         auto total_ff_rpm = 0.0;
         auto is_relaxing = (rate_mbar_s < 0.0);
-        auto is_overshot = (error < state.overshoot);
+        auto effective_overshoot =
+            compute_effective_overshoot(target_abs_mbar);
+        auto is_overshot = (error < effective_overshoot);
 
         if (!is_relaxing && !is_overshot) {
             // Calculate RPM needed to achieve this flow rate (Pumping)
@@ -119,7 +123,7 @@ class PressureController {
 
         // Bleed integral windup as the trajectory is reached to limit overshoot.
         if (error > 0.0) {
-            _pid.arm_integrator_reset(error, std::abs(state.overshoot));
+            _pid.arm_integrator_reset(error, std::abs(effective_overshoot));
         } else if (is_overshot) {
             // Do not let integral keep driving the pump past the trajectory.
             _pid.clear_integrator();
@@ -144,6 +148,16 @@ class PressureController {
 
     [[nodiscard]] auto get_smooth_target() const -> double {
         return _slew.get_current_setpoint();
+    }
+
+    [[nodiscard]] auto compute_effective_overshoot(
+        double target_abs_mbar) const -> double {
+        auto vacuum_depth = ATM_PRESSURE_MBAR - target_abs_mbar;
+        if (vacuum_depth <= 0.0) {
+            return state.overshoot;
+        }
+        return -std::clamp(vacuum_depth * OVERSHOOT_DEPTH_PCT,
+                           std::abs(state.overshoot), MAX_OVERSHOOT_MBAR);
     }
 
   private:
