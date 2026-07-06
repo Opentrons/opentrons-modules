@@ -94,6 +94,11 @@ class PressureController {
             total_ff_rpm = ff_velocity + ff_holding;
         }
 
+        // Bleed integral windup as the trajectory is reached to limit overshoot.
+        if (error > 0.0) {
+            _pid.arm_integrator_reset(error, std::abs(state.overshoot));
+        }
+
         // Calculate target rpm + safety clamp
         auto rpm = _pid.compute(error, dt_seconds);
         target_rpm = std::clamp<double>(total_ff_rpm + rpm, MIN_RPM, MAX_RPM);

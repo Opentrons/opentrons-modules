@@ -70,6 +70,17 @@ TEST_CASE("PressureController - Update Logic", "[controller]") {
         double second_rpm = ctrl.update(0.04, 1013.0, 200.0);
         REQUIRE(second_rpm > first_rpm);  // ramp is progressing
     }
+
+    SECTION("Integrator resets when error crosses overshoot threshold") {
+        ctrl.configure_pid(KP, KI, 0.0, 0.0, 0.0, -2.0, true);
+        ctrl.configure_slew(500.0, DEFAULT_RAMP_RATE);
+        for (int i = 0; i < 20; ++i) {
+            ctrl.update(0.04, 500.0, 200.0);
+        }
+        auto rpm_before_cross = ctrl.update(0.04, 498.0, 200.0);
+        auto rpm_after_cross = ctrl.update(0.04, 496.0, 200.0);
+        REQUIRE(rpm_after_cross < rpm_before_cross);
+    }
 }
 
 TEST_CASE("PressureController - Reset", "[controller]") {
