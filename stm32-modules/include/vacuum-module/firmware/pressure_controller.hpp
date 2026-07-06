@@ -23,6 +23,8 @@ static constexpr const double K_VELOCITY = 20.0F;
 static constexpr const double K_HOLDING = 43.0F;
 // Disables Velocity and Holding Gain if target is overshot
 static constexpr const double OVERSHOOT_ERROR = -2.0F;
+// Feed-forward tapers to zero within this band above the slewed trajectory.
+static constexpr const double APPROACH_BAND_MBAR = 80.0F;
 static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
 
 // Slew tunning
@@ -35,6 +37,7 @@ struct ConfigState {
     double k_velocity = K_VELOCITY;
     double k_holding = K_HOLDING;
     double overshoot = OVERSHOOT_ERROR;
+    double approach_band = APPROACH_BAND_MBAR;
     double kp = KP;
     double ki = KI;
     double kd = KD;
@@ -91,7 +94,9 @@ class PressureController {
             // 1013 mbar = 0% Vacuum, 0 mbar = 100% Vacuum
             ratio = std::clamp(ratio, 0.0, 1.0);
             auto ff_holding = ratio * state.k_holding;
-            total_ff_rpm = ff_velocity + ff_holding;
+            auto approach_scale = std::clamp(
+                error / state.approach_band, 0.0, 1.0);
+            total_ff_rpm = (ff_velocity + ff_holding) * approach_scale;
         }
 
         // Bleed integral windup as the trajectory is reached to limit overshoot.

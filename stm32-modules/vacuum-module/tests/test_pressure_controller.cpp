@@ -82,6 +82,15 @@ TEST_CASE("PressureController - Update Logic", "[controller]") {
         REQUIRE(rpm_after_cross < rpm_before_cross);
     }
 
+    SECTION("Feed-forward tapers near the slewed trajectory") {
+        ctrl.configure_slew(1013.0, DEFAULT_RAMP_RATE);
+        auto rpm_far = ctrl.update(0.04, 1013.0, 200.0);
+        ctrl.reset();
+        ctrl.configure_slew(250.0, DEFAULT_RAMP_RATE);
+        auto rpm_near = ctrl.update(0.04, 250.0, 200.0);
+        REQUIRE(rpm_near < rpm_far);
+    }
+
     SECTION("Overshoot clears accumulated integral term") {
         ctrl.configure_pid(0.0, 10.0, 0.0, 0.0, 0.0, -2.0, true);
         ctrl.configure_slew(500.0, DEFAULT_RAMP_RATE);
