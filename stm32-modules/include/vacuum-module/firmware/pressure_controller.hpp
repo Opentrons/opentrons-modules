@@ -132,6 +132,12 @@ class PressureController {
         // Calculate target rpm + safety clamp
         auto rpm = _pid.compute(error, dt_seconds);
         target_rpm = std::clamp<double>(total_ff_rpm + rpm, MIN_RPM, MAX_RPM);
+
+        // Brake when actual pressure drops below the final target setpoint.
+        if (current_abs_mbar < target_abs_mbar + effective_overshoot) {
+            _pid.clear_integrator();
+            target_rpm = 0.0;
+        }
         return target_rpm;
     }
 

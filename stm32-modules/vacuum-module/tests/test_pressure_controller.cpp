@@ -102,6 +102,12 @@ TEST_CASE("PressureController - Update Logic", "[controller]") {
         REQUIRE(rpm_near < rpm_far);
     }
 
+    SECTION("Overshoot past final target commands zero RPM") {
+        ctrl.configure_slew(200.0, DEFAULT_RAMP_RATE);
+        auto rpm = ctrl.update(0.04, 180.0, 200.0);
+        REQUIRE(rpm == Approx(0.0));
+    }
+
     SECTION("Overshoot clears accumulated integral term") {
         ctrl.configure_pid(0.0, 10.0, 0.0, 0.0, 0.0, -2.0, true);
         ctrl.configure_slew(500.0, DEFAULT_RAMP_RATE);
