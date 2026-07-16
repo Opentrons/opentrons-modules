@@ -10,6 +10,7 @@
 #include "firmware/freertos_message_queue.hpp"
 #include "firmware/usb_hardware.h"
 #include "hal/double_buffer.hpp"
+#include "projdefs.h"
 #include "task.h"
 #include "vacuum-module/host_comms_task.hpp"
 #include "vacuum-module/messages.hpp"
@@ -66,16 +67,22 @@ auto run(tasks::FirmwareTasks::QueueAggregator *aggregator) -> void {
         char *tx_end =
             top_task->run_once(local_task->tx_buf.accessible()->begin(),
                                local_task->tx_buf.accessible()->end());
-        if (!top_task->may_connect()) {
-            usb_hw_stop();
-        } else if (tx_end != local_task->tx_buf.accessible()->data()) {
+        // Always flush any response first (e.g. "dfu OK") before optionally
+        // stopping USB. Previously may_connect was checked first, which dropped
+        // the bootloader acknowledgement on the floor.
+        if (tx_end != local_task->tx_buf.accessible()->data()) {
             local_task->tx_buf.swap();
             usb_hw_send(
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
                 reinterpret_cast<uint8_t *>(
                     local_task->tx_buf.committed()->data()),
                 tx_end - local_task->tx_buf.committed()->data());
-            vTaskDelay(1);
+            // Allow the CDC transfer to finish on the wire before a possible
+            // USB disconnect (enter-DFU path kills the peripheral quickly).
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+        if (!top_task->may_connect()) {
+            usb_hw_stop();
         }
     }
 }

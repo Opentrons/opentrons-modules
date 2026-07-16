@@ -115,7 +115,15 @@ class SystemTask {
     template <SystemExecutionPolicy Policy>
     auto visit_message(const messages::EnterBootloaderMessage& message,
                        Policy& policy) {
-        // Must disconnect USB before restarting
+        // Acknowledge first so host_comms can TX "dfu OK" while USB is still
+        // connected. ForceUSBDisconnect must come after that response is
+        // queued; otherwise may_connect is cleared and the OK is never sent.
+        auto response =
+            messages::AcknowledgePrevious{.responding_to_id = message.id};
+        static_cast<void>(_task_registry->send_to_address(
+            response, Queues::HostCommsAddress));
+
+        // Must disconnect USB before restarting into the system bootloader
         auto id = _prep_cache.add(0);
         auto usb_msg = messages::ForceUSBDisconnect{
             .id = id, .return_address = MY_ADDRESS};
@@ -125,14 +133,9 @@ class SystemTask {
         }
 
         if (_prep_cache.empty()) {
-            // Couldn't send any messages? Enter bootloader anyways
+            // Couldn't send disconnect? Enter bootloader anyways
             policy.enter_bootloader();
         }
-
-        auto response =
-            messages::AcknowledgePrevious{.responding_to_id = message.id};
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
     }
 
     // Any Ack messages should be in response to bootloader prep messages
