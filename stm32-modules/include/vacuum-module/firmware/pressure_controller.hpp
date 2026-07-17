@@ -74,6 +74,11 @@ class PressureController {
 
     auto update(double dt_seconds, double current_abs_mbar,
                 double target_abs_mbar) -> double {
+        // Keep trajectory rate and PID sample time well-defined.
+        if (dt_seconds <= 0.0) {
+            dt_seconds = SAMPLE_TIME_S;
+        }
+
         auto vacuum_depth = ATM_PRESSURE_MBAR - target_abs_mbar;
         if (vacuum_depth > 0.0) {
             auto remaining = std::max(0.0, current_abs_mbar - target_abs_mbar);

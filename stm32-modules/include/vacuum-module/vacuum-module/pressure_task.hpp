@@ -250,11 +250,16 @@ class PressureTask {
     auto visit_message(const messages::PressureControlMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(m);
-        // Get delta time
+        // Get delta time. Fall back to the nominal period on the first tick
+        // or if the clock did not advance so PID never sees dt <= 0.
         auto timestamp = policy.get_time_ms();
         auto dt = CONTROL_PERIOD_S;
         if (_control_state.last_tick != 0) {
             dt = (timestamp - _control_state.last_tick) * MS_TO_SECONDS;
+        }
+        if (dt <= 0.0) {
+            dt = CONTROL_PERIOD_S;
+        } else {
             dt = std::min(dt, MAX_CONTROL_DT_S);
         }
         _control_state.last_tick = timestamp;

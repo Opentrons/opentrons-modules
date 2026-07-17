@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
@@ -21,6 +22,7 @@ static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0F / CONTROL_PERIOD_HZ * 1000);
 static constexpr const double RPM_SAMPLE_TIME_S = CONTROL_PERIOD_MS / 1000.0F;
+static constexpr const double MAX_CONTROL_DT_S = RPM_SAMPLE_TIME_S * 4.0F;
 static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double K_FF = MAX_PWM / MAX_RPM;
 static constexpr const double PUMP_STOP_RPM_THRESH = 500;
@@ -137,11 +139,18 @@ class PumpTask {
     auto visit_message(const messages::PumpControlMessage& m, Policy& policy)
         -> void {
         static_cast<void>(m);
-        // Get delta time
+        // Get delta time. Use the nominal control period on the first tick (or
+        // if the clock did not advance) so PID's D term never divides by zero.
         auto timestamp = policy.get_time_ms();
-        auto last_tick =
-            _pump_control.last_tick ? _pump_control.last_tick : timestamp;
-        auto delta_s = (timestamp - last_tick) * MS_TO_SECONDS;
+        auto delta_s = RPM_SAMPLE_TIME_S;
+        if (_pump_control.last_tick != 0) {
+            delta_s = (timestamp - _pump_control.last_tick) * MS_TO_SECONDS;
+        }
+        if (delta_s <= 0.0) {
+            delta_s = RPM_SAMPLE_TIME_S;
+        } else {
+            delta_s = std::min(delta_s, MAX_CONTROL_DT_S);
+        }
         _pump_control.last_tick = timestamp;
 
         auto rpm = policy.get_pump_rpm();
