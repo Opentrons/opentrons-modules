@@ -390,9 +390,10 @@ class PressureTask {
         if (m.run_pump) {
             update_pressures(policy, true);
 
-            // pressure_percent is vacuum depth (0 = ambient, 100 = full vacuum).
+            // pressure_percent is vacuum depth (0 = ambient, 100 = full
+            // vacuum).
             auto p_atm = _control_state.pressure_atm;
-            auto p_percent = std::clamp<int>(m.pressure_percent, 0, 100);
+            auto p_percent = std::clamp<int>(m.pressure_percent, 0, 100.0);
             _control_state.target_pressure =
                 p_atm * (1.0 - static_cast<double>(p_percent) / 100.0);
 

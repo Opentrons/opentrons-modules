@@ -180,9 +180,9 @@ class PumpTask {
         auto pwm_jump = _pump_control.slew.get_rate_limit() * K_FF * delta_s;
         auto max_pwm_jump = 1;
         if (_pump_control.enable_pump) {
-            max_pwm_jump = std::clamp<int>(
-                static_cast<int>(std::ceil(pwm_jump)), 1,
-                static_cast<int>(MAX_PWM_JUMP_CAP));
+            max_pwm_jump =
+                std::clamp<int>(static_cast<int>(std::ceil(pwm_jump)), 1,
+                                static_cast<int>(MAX_PWM_JUMP_CAP));
         }
         desired_pwm = std::clamp<uint8_t>(desired_pwm, MIN_PWM, MAX_PWM);
         if (desired_pwm > current_pwm + max_pwm_jump) {
