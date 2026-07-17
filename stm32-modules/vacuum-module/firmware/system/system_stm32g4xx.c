@@ -76,6 +76,7 @@
  * @{
  */
 
+#include "firmware/system_hardware.h"
 #include "firmware/system_stm32g4xx.h"
 #include "main.h"
 #include "stm32g4xx.h"
@@ -348,6 +349,9 @@ static void led_init(void) {
 
 void HardwareInit(void) {
     HAL_Init();
+    // If DFU entry left nSWBOOT0 cleared (boot from system memory), restore
+    // main-flash boot before USB comes up. May reset once via OB launch.
+    system_hardware_handle_bootloader_request();
     SystemClock_Config();
     SystemCoreClockUpdate();
     led_init();
