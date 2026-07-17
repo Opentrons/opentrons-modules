@@ -76,12 +76,20 @@ static constexpr const uint32_t CONTROL_PERIOD_HZ = 25;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0F / CONTROL_PERIOD_HZ) * 1000;
 static constexpr const double MS_TO_SECONDS = 0.001F;
+static constexpr const double CONTROL_PERIOD_S =
+    CONTROL_PERIOD_MS * MS_TO_SECONDS;
+static constexpr const double MAX_CONTROL_DT_S = CONTROL_PERIOD_S * 4.0F;
 static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
+static constexpr const uint8_t ATM_PRESSURE_UPDATE_INTERVAL = 4;
+// Pump RPM slew limits aligned with pressure ramp * K_VELOCITY feed-forward.
+static constexpr const double PUMP_RAMP_MIN = 1.0F;
+static constexpr const double PUMP_RAMP_MAX = 500.0F;
 
 // -- Duration Threshold --
 static constexpr const uint32_t UPDATE_PERIOD_MS = 10;
 static constexpr const uint32_t PRESSURE_NOT_REACHED_TIMEOUT = 2000;
-static constexpr const uint8_t PRESSURE_STATE_BUFFER_LEN = 125;
+// 50 samples at 25 Hz ~= 2 seconds of in-tolerance readings.
+static constexpr const uint8_t PRESSURE_STATE_BUFFER_LEN = 50;
 static constexpr const double MIN_PRESSURE_TOLERANCE_MBAR = 5;
 // The percent the pressure could be off by and still be "target reached"
 static constexpr const double REL_PRESSURE_TOLERANCE_PCT = 2.0;
@@ -175,7 +183,7 @@ class PressureTask {
               "Vacuum Timer",
               [ThisPtr = this] { ThisPtr->vacuum_timer_end_callback(); },
               UPDATE_PERIOD_MS),
-          _controller(CONTROL_PERIOD_MS) {}
+          _controller(CONTROL_PERIOD_MS * MS_TO_SECONDS) {}
     PressureTask(const PressureTask& other) = delete;
     auto operator=(const PressureTask& other) -> PressureTask& = delete;
     PressureTask(PressureTask&& other) noexcept = delete;
@@ -242,9 +250,18 @@ class PressureTask {
     auto visit_message(const messages::PressureControlMessage& m,
                        Policy& policy) -> void {
         static_cast<void>(m);
-        // Get delta time
+        // Get delta time. Fall back to the nominal period on the first tick
+        // or if the clock did not advance so PID never sees dt <= 0.
         auto timestamp = policy.get_time_ms();
-        auto dt = (timestamp - _control_state.last_tick) * MS_TO_SECONDS;
+        auto dt = CONTROL_PERIOD_S;
+        if (_control_state.last_tick != 0) {
+            dt = (timestamp - _control_state.last_tick) * MS_TO_SECONDS;
+        }
+        if (dt <= 0.0) {
+            dt = CONTROL_PERIOD_S;
+        } else {
+            dt = std::min(dt, MAX_CONTROL_DT_S);
+        }
         _control_state.last_tick = timestamp;
         if (_control_state.start_time_ms == 0) {
             _control_state.start_time_ms = timestamp;
@@ -266,6 +283,15 @@ class PressureTask {
             }
         }
 
+        _atm_update_counter++;
+        if (_atm_update_counter >= ATM_PRESSURE_UPDATE_INTERVAL) {
+            _atm_update_counter = 0;
+            auto ret = update_pressure(ATM_PRESSURE);
+            if (ret != NO_ERROR) {
+                policy.sensor_reset(ATM_PRESSURE);
+            }
+        }
+
         auto target_pressure = _control_state.target_pressure;
         auto pressure_atm = _control_state.pressure_atm;
         auto current_pressure_a = _control_state.pressure_abs_a;
@@ -277,6 +303,9 @@ class PressureTask {
             current_pressure_b;
         pressure_state_buffer_index =
             (pressure_state_buffer_index + 1) % PRESSURE_STATE_BUFFER_LEN;
+        if (pressure_state_buffer_count < PRESSURE_STATE_BUFFER_LEN) {
+            pressure_state_buffer_count++;
+        }
         monitor_target_pressure();
 
         // Handle waste detection
@@ -343,6 +372,7 @@ class PressureTask {
             reset_pressure_state_buffer();
             _detector.reset();
             _controller.configure_slew(current_pressure, m.ramp_rate);
+            _control_state.last_tick = 0;
 
             // Start pressure control messages
             policy.start_pressure_control(true);
@@ -365,10 +395,12 @@ class PressureTask {
         if (m.run_pump) {
             update_pressures(policy, true);
 
-            // Calculate target pressure as a percent
+            // pressure_percent is vacuum depth (0 = ambient, 100 = full
+            // vacuum).
             auto p_atm = _control_state.pressure_atm;
             auto p_percent = std::clamp<int>(m.pressure_percent, 0, 100.0);
-            _control_state.target_pressure = p_atm * p_percent / 100.0;
+            _control_state.target_pressure =
+                p_atm * (1.0 - static_cast<double>(p_percent) / 100.0);
 
             _control_state.duration_s = m.duration_s;
             _control_state.timeout_s = m.timeout_s;
@@ -594,8 +626,11 @@ class PressureTask {
     }
 
     auto set_pump_state(bool run_pump, double rpm = 0.0) -> void {
-        auto msg = messages::SetPumpStateMessage{.rpm_setpoint = rpm,
-                                                 .run_pump = run_pump};
+        auto cs = _controller.get_state();
+        auto pump_ramp = std::clamp(cs.ramp_rate * cs.k_velocity, PUMP_RAMP_MIN,
+                                    PUMP_RAMP_MAX);
+        auto msg = messages::SetPumpStateMessage{
+            .rpm_setpoint = rpm, .run_pump = run_pump, .ramp_rate = pump_ramp};
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::PumpAddress));
     }
@@ -647,7 +682,7 @@ class PressureTask {
     }
 
     auto maintaining_target_pressure() -> bool {
-        if (pressure_state_buffer_index == 0) {
+        if (pressure_state_buffer_count < PRESSURE_STATE_BUFFER_LEN) {
             return false;
         }
 
@@ -658,7 +693,10 @@ class PressureTask {
         auto effective_tol = std::max(rel_tol, MIN_PRESSURE_TOLERANCE_MBAR);
 
         for (int i = 0; i < PRESSURE_STATE_BUFFER_LEN; ++i) {
-            auto stored_abs = pressure_state_buffer.at(i);
+            auto slot = (pressure_state_buffer_index +
+                         PRESSURE_STATE_BUFFER_LEN - 1 - i) %
+                        PRESSURE_STATE_BUFFER_LEN;
+            auto stored_abs = pressure_state_buffer.at(slot);
             if (std::abs(stored_abs - target_abs) > effective_tol) {
                 return false;
             }
@@ -668,6 +706,8 @@ class PressureTask {
 
     auto reset_pressure_state_buffer() -> void {
         pressure_state_buffer.fill(0);
+        pressure_state_buffer_index = 0;
+        pressure_state_buffer_count = 0;
     }
 
     auto handle_control_state_outcomes() -> void {
@@ -724,6 +764,8 @@ class PressureTask {
     PressureSensor _atm_pressure = atm_pressure;
     std::array<double, PRESSURE_STATE_BUFFER_LEN> pressure_state_buffer = {0};
     uint8_t pressure_state_buffer_index = 0;
+    uint8_t pressure_state_buffer_count = 0;
+    uint8_t _atm_update_counter = 0;
 
     PressureControlState _control_state = pressure_control_state;
     PressureController _controller;

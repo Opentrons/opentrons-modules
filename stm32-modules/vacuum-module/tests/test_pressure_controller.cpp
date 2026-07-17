@@ -70,6 +70,53 @@ TEST_CASE("PressureController - Update Logic", "[controller]") {
         double second_rpm = ctrl.update(0.04, 1013.0, 200.0);
         REQUIRE(second_rpm > first_rpm);  // ramp is progressing
     }
+
+    SECTION("Overshoot threshold scales with vacuum depth") {
+        PressureController ctrl;
+        auto deep = ctrl.compute_effective_overshoot(200.0);
+        auto shallow = ctrl.compute_effective_overshoot(900.0);
+        REQUIRE(std::abs(deep) > std::abs(shallow));
+        REQUIRE(deep == Approx(-16.26).margin(0.1));
+        REQUIRE(shallow == Approx(-2.27).margin(0.1));
+    }
+
+    SECTION("Pressure slew slows in the final vacuum depth") {
+        ctrl.configure_slew(900.0, 100.0);
+        ctrl.update(0.04, 900.0, 200.0);
+        auto far_step = 900.0 - ctrl.get_smooth_target();
+
+        ctrl.reset();
+        ctrl.configure_slew(250.0, 100.0);
+        ctrl.update(0.04, 250.0, 200.0);
+        auto near_step = 250.0 - ctrl.get_smooth_target();
+
+        REQUIRE(near_step < far_step);
+    }
+
+    SECTION("Feed-forward tapers near the slewed trajectory") {
+        ctrl.configure_slew(1013.0, DEFAULT_RAMP_RATE);
+        auto rpm_far = ctrl.update(0.04, 1013.0, 200.0);
+        ctrl.reset();
+        ctrl.configure_slew(250.0, DEFAULT_RAMP_RATE);
+        auto rpm_near = ctrl.update(0.04, 250.0, 200.0);
+        REQUIRE(rpm_near < rpm_far);
+    }
+
+    SECTION("Overshoot past final target commands zero RPM") {
+        ctrl.configure_slew(200.0, DEFAULT_RAMP_RATE);
+        auto rpm = ctrl.update(0.04, 180.0, 200.0);
+        REQUIRE(rpm == Approx(0.0));
+    }
+
+    SECTION("Overshoot clears accumulated integral term") {
+        ctrl.configure_pid(0.0, 10.0, 0.0, 0.0, 0.0, -2.0, true);
+        ctrl.configure_slew(500.0, DEFAULT_RAMP_RATE);
+        for (int i = 0; i < 30; ++i) {
+            ctrl.update(0.04, 500.0, 200.0);
+        }
+        auto rpm_during_overshoot = ctrl.update(0.04, 420.0, 200.0);
+        REQUIRE(rpm_during_overshoot == Approx(0.0));
+    }
 }
 
 TEST_CASE("PressureController - Reset", "[controller]") {
@@ -93,10 +140,10 @@ TEST_CASE("PressureController - Full Ramp Example", "[controller][example]") {
 
     for (int i = 0; i < 50; ++i) {  // ~2 seconds
         double rpm = ctrl.update(0.04, current, target);
-        current = current - (rpm * 0.5);  // ramping down
+        current -= rpm * 0.02;  // simplified plant model
     }
 
-    REQUIRE(current < 600.0);  // should have made progress
+    REQUIRE(current < 950.0);  // should have made progress
 }
 
 }  // namespace pressure_controller

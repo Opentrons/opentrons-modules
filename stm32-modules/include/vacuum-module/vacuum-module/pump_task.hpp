@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
@@ -21,13 +22,14 @@ static constexpr const uint32_t CONTROL_PERIOD_HZ = 100;
 static constexpr const uint32_t CONTROL_PERIOD_MS =
     (1.0F / CONTROL_PERIOD_HZ * 1000);
 static constexpr const double RPM_SAMPLE_TIME_S = CONTROL_PERIOD_MS / 1000.0F;
+static constexpr const double MAX_CONTROL_DT_S = RPM_SAMPLE_TIME_S * 4.0F;
 static constexpr const double MS_TO_SECONDS = 0.001F;
 static constexpr const double K_FF = MAX_PWM / MAX_RPM;
 static constexpr const double PUMP_STOP_RPM_THRESH = 500;
 static constexpr const float MIN_RAMP_RATE = 1;      // rpm/s
 static constexpr const float DEFAULT_RAMP_RATE = 5;  // rpm/s
-static constexpr const float MAX_RAMP_RATE = 20;     // rpm/s
-static constexpr const double MAX_PWM_JUMP = 1;      // pwm/tick
+static constexpr const float MAX_RAMP_RATE = 500;    // rpm/s
+static constexpr const double MAX_PWM_JUMP_CAP = 5;  // pwm/tick
 
 struct PumpControl {
     SlewRateLimiter slew;
@@ -137,12 +139,19 @@ class PumpTask {
     auto visit_message(const messages::PumpControlMessage& m, Policy& policy)
         -> void {
         static_cast<void>(m);
-        // Get delta time
+        // Get delta time. Use the nominal control period on the first tick (or
+        // if the clock did not advance) so PID's D term never divides by zero.
         auto timestamp = policy.get_time_ms();
-        auto last_tick =
-            _pump_control.last_tick ? _pump_control.last_tick : timestamp;
-        auto delta_s = (timestamp - last_tick) * MS_TO_SECONDS;
-        _pump_control.last_tick = last_tick;
+        auto delta_s = RPM_SAMPLE_TIME_S;
+        if (_pump_control.last_tick != 0) {
+            delta_s = (timestamp - _pump_control.last_tick) * MS_TO_SECONDS;
+        }
+        if (delta_s <= 0.0) {
+            delta_s = RPM_SAMPLE_TIME_S;
+        } else {
+            delta_s = std::min(delta_s, MAX_CONTROL_DT_S);
+        }
+        _pump_control.last_tick = timestamp;
 
         auto rpm = policy.get_pump_rpm();
         // Stop pump control
@@ -177,7 +186,13 @@ class PumpTask {
         auto target_pwm = _pump_control.target_pwm;
         auto current_pwm = _pump_control.current_pwm;
         auto desired_pwm = target_setpoint > 0 ? pwm : target_pwm;
-        auto max_pwm_jump = _pump_control.enable_pump ? MAX_PWM_JUMP : 1;
+        auto pwm_jump = _pump_control.slew.get_rate_limit() * K_FF * delta_s;
+        auto max_pwm_jump = 1;
+        if (_pump_control.enable_pump) {
+            max_pwm_jump =
+                std::clamp<int>(static_cast<int>(std::ceil(pwm_jump)), 1,
+                                static_cast<int>(MAX_PWM_JUMP_CAP));
+        }
         desired_pwm = std::clamp<uint8_t>(desired_pwm, MIN_PWM, MAX_PWM);
         if (desired_pwm > current_pwm + max_pwm_jump) {
             current_pwm += max_pwm_jump;
@@ -215,6 +230,8 @@ class PumpTask {
             policy.start_pump_motor();
             policy.enable_pump_control(true);
             _pump_control.pump_running = true;
+        } else if (m.ramp_rate > 0) {
+            _pump_control.slew.set_rate_limit(ramp_rate);
         }
 
         if (m.from_host) {

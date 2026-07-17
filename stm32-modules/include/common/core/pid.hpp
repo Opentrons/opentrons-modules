@@ -48,6 +48,7 @@ class PID {
      */
     auto compute(double error, double sampletime) -> double;
     auto reset() -> void;
+    auto clear_integrator() -> void;
     [[nodiscard]] auto kp() const -> double;
     [[nodiscard]] auto ki() const -> double;
     [[nodiscard]] auto kd() const -> double;
