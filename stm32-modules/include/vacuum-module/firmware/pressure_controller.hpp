@@ -125,12 +125,12 @@ class PressureController {
             total_ff_rpm = (ff_velocity + ff_holding) * approach_scale;
         }
 
-        // Bleed integral windup as the trajectory is reached to limit
-        // overshoot.
-        if (error > 0.0) {
-            _pid.arm_integrator_reset(error, std::abs(effective_overshoot));
-        } else if (is_overshot) {
-            // Do not let integral keep driving the pump past the trajectory.
+        // Integral anti-windup: only clear when past the trajectory / final
+        // target. Do not arm a reset while still short of the final setpoint —
+        // that wiped I inside the ~2% overshoot band and left a steady ~8-10
+        // mbar shallow hold (e.g. -390 vs -400).
+        if (is_overshot ||
+            current_abs_mbar < target_abs_mbar + effective_overshoot) {
             _pid.clear_integrator();
         }
 
@@ -140,7 +140,6 @@ class PressureController {
 
         // Brake when actual pressure drops below the final target setpoint.
         if (current_abs_mbar < target_abs_mbar + effective_overshoot) {
-            _pid.clear_integrator();
             target_rpm = 0.0;
         }
         return target_rpm;
