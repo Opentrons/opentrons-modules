@@ -491,6 +491,9 @@ class PressureTask {
         auto k_holding = m.k_holding.value_or(cs.k_holding);
         _controller.configure_pid(kp, ki, kd, k_velocity, k_holding, overshoot,
                                   m.reset);
+        _controller.configure_bands(
+            m.approach_band.value_or(cs.approach_band),
+            m.slew_end_fraction.value_or(cs.slew_end_fraction));
 
         send_ack_message(m.id);
     }
@@ -508,7 +511,9 @@ class PressureTask {
             .overshoot = cs.overshoot,
             .k_velocity = cs.k_velocity,
             .k_holding = cs.k_holding,
-            .rel_tol_pct = _control_state.rel_tol_pct};
+            .rel_tol_pct = _control_state.rel_tol_pct,
+            .approach_band = cs.approach_band,
+            .slew_end_fraction = cs.slew_end_fraction};
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));
     }

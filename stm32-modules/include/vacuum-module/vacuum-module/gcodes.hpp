@@ -591,6 +591,8 @@ struct SetPressurePID {
     std::optional<double> k_velocity;
     std::optional<double> k_holding;
     std::optional<double> rel_tol_pct;
+    std::optional<double> approach_band;
+    std::optional<double> slew_end_fraction;
     bool reset = false;
 
     using ParseResult = std::optional<SetPressurePID>;
@@ -604,6 +606,8 @@ struct SetPressurePID {
     using V = Arg<float, 'V'>;
     using H = Arg<float, 'H'>;
     using T = Arg<float, 'T'>;
+    using A = Arg<float, 'A'>;
+    using S = Arg<float, 'S'>;
     using R = Arg<uint8_t, 'R'>;
 
     template <typename InputIt, typename Limit>
@@ -611,8 +615,9 @@ struct SetPressurePID {
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        auto res = gcode::SingleParser<P, I, D, O, V, H, T, R>::parse_gcode(
-            input, limit, prefix);
+        auto res =
+            gcode::SingleParser<P, I, D, O, V, H, T, A, S, R>::parse_gcode(
+                input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
@@ -647,8 +652,20 @@ struct SetPressurePID {
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (std::get<7>(arguments).present) {
+            ret.approach_band =
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                static_cast<double>(std::get<7>(arguments).value);
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (std::get<8>(arguments).present) {
+            ret.slew_end_fraction =
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+                static_cast<double>(std::get<8>(arguments).value);
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
+        if (std::get<9>(arguments).present) {
             // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-            ret.reset = static_cast<bool>(std::get<7>(arguments).value);
+            ret.reset = static_cast<bool>(std::get<9>(arguments).value);
         }
         return std::make_pair(ret, res.second);
     }
@@ -674,12 +691,14 @@ struct GetPressurePID {
     static auto write_response_into(InputIt buf, InLimit limit, double kp,
                                     double ki, double kd, double overshoot,
                                     double k_velocity, double k_holding,
-                                    double rel_tol_pct) -> InputIt {
+                                    double rel_tol_pct, double approach_band,
+                                    double slew_end_fraction) -> InputIt {
         int res = 0;
-        res = snprintf(
-            &*buf, (limit - buf),
-            "M126 P:%.1f I:%.1f D:%.1f O:%.1f V:%.1f H:%.1f T:%.2f OK\n", kp,
-            ki, kd, overshoot, k_velocity, k_holding, rel_tol_pct);
+        res = snprintf(&*buf, (limit - buf),
+                       "M126 P:%.1f I:%.1f D:%.1f O:%.1f V:%.1f H:%.1f T:%.2f "
+                       "A:%.1f S:%.2f OK\n",
+                       kp, ki, kd, overshoot, k_velocity, k_holding,
+                       rel_tol_pct, approach_band, slew_end_fraction);
         if (res <= 0) {
             return buf;
         }

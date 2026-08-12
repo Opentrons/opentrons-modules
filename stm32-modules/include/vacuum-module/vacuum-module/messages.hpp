@@ -199,6 +199,8 @@ struct SetPressurePIDMessage {
     std::optional<double> k_velocity = std::nullopt;
     std::optional<double> k_holding = std::nullopt;
     std::optional<double> rel_tol_pct = std::nullopt;
+    std::optional<double> approach_band = std::nullopt;
+    std::optional<double> slew_end_fraction = std::nullopt;
     bool reset = false;
 };
 
@@ -215,6 +217,8 @@ struct GetPressurePIDResponseMessage {
     double k_velocity;
     double k_holding;
     double rel_tol_pct;
+    double approach_band;
+    double slew_end_fraction;
 };
 
 struct SetWasteDetectionConfigMessage {

@@ -35,6 +35,17 @@ TEST_CASE("PressureController - Basic Configuration", "[controller]") {
         REQUIRE(state.k_holding == Approx(50.0));
         REQUIRE(state.overshoot == Approx(-3.0));
     }
+
+    SECTION("configure_bands updates and clamps") {
+        ctrl.configure_bands(100.0, SLEW_END_FRACTION);
+        auto state = ctrl.get_state();
+        REQUIRE(state.approach_band == Approx(100.0));
+        REQUIRE(state.slew_end_fraction == Approx(SLEW_END_FRACTION));
+        ctrl.configure_bands(0.0, 1.5);
+        state = ctrl.get_state();
+        REQUIRE(state.approach_band == Approx(MIN_APPROACH_BAND_MBAR));
+        REQUIRE(state.slew_end_fraction == Approx(MAX_SLEW_END_FRACTION));
+    }
 }
 
 TEST_CASE("PressureController - Update Logic", "[controller]") {
@@ -116,6 +127,25 @@ TEST_CASE("PressureController - Update Logic", "[controller]") {
         }
         auto rpm_during_overshoot = ctrl.update(0.04, 420.0, 200.0);
         REQUIRE(rpm_during_overshoot == Approx(0.0));
+    }
+
+    SECTION("Small residual short of final target still builds integral") {
+        // Pure I, no FF: a few mbar short of final must not zero the
+        // integrator.
+        ctrl.configure_pid(0.0, 10.0, 0.0, 0.0, 0.0, -2.0, true);
+        // Trajectory already at final target (no slew motion).
+        ctrl.configure_slew(610.0, DEFAULT_RAMP_RATE);
+        double rpm_early = 0.0;
+        double rpm_late = 0.0;
+        for (int i = 0; i < 20; ++i) {
+            // Final target 600 abs; current 608 => ~8 mbar shallow residual.
+            rpm_late = ctrl.update(0.04, 608.0, 600.0);
+            if (i == 0) {
+                rpm_early = rpm_late;
+            }
+        }
+        REQUIRE(rpm_late > rpm_early);
+        REQUIRE(rpm_late > 0.0);
     }
 }
 
