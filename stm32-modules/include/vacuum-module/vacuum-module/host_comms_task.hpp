@@ -360,7 +360,8 @@ class HostCommsTask {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.kp, response.ki,
                         response.kd, response.overshoot, response.k_velocity,
-                        response.k_holding, response.rel_tol_pct);
+                        response.k_holding, response.rel_tol_pct,
+                        response.approach_band, response.slew_end_fraction);
                 }
             },
             cache_entry);
@@ -712,6 +713,8 @@ class HostCommsTask {
             .k_velocity = gcode.k_velocity,
             .k_holding = gcode.k_holding,
             .rel_tol_pct = gcode.rel_tol_pct,
+            .approach_band = gcode.approach_band,
+            .slew_end_fraction = gcode.slew_end_fraction,
             .reset = gcode.reset,
         };
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {

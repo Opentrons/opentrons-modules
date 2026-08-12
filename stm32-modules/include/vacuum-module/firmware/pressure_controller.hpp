@@ -27,6 +27,8 @@ static constexpr const double OVERSHOOT_DEPTH_PCT = 0.02F;
 static constexpr const double MAX_OVERSHOOT_MBAR = 20.0F;
 // Feed-forward tapers to zero within this band above the slewed trajectory.
 static constexpr const double APPROACH_BAND_MBAR = 80.0F;
+static constexpr const double MIN_APPROACH_BAND_MBAR = 1.0F;
+static constexpr const double MAX_APPROACH_BAND_MBAR = 500.0F;
 static constexpr const double ATM_PRESSURE_MBAR = 1013.25;
 
 // Slew tunning
@@ -34,7 +36,9 @@ static constexpr const double MIN_RAMP_RATE = 0.20F;
 static constexpr const double MAX_RAMP_RATE = 400.0F;
 static constexpr const double DEFAULT_RAMP_RATE = 50;
 // Slow the pressure slew within this fraction of total vacuum depth.
-static constexpr const double ADAPTIVE_SLEW_END_FRACTION = 0.30F;
+static constexpr const double SLEW_END_FRACTION = 0.30F;
+static constexpr const double MIN_SLEW_END_FRACTION = 0.05F;
+static constexpr const double MAX_SLEW_END_FRACTION = 0.9F;
 
 struct ConfigState {
     double ramp_rate = DEFAULT_RAMP_RATE;
@@ -42,6 +46,7 @@ struct ConfigState {
     double k_holding = K_HOLDING;
     double overshoot = OVERSHOOT_ERROR;
     double approach_band = APPROACH_BAND_MBAR;
+    double slew_end_fraction = SLEW_END_FRACTION;
     double kp = KP;
     double ki = KI;
     double kd = KD;
@@ -72,6 +77,14 @@ class PressureController {
         _pid.set_tunings(kp, ki, kd, reset);
     }
 
+    auto configure_bands(double approach_band, double slew_end_fraction)
+        -> void {
+        state.approach_band = std::clamp(approach_band, MIN_APPROACH_BAND_MBAR,
+                                         MAX_APPROACH_BAND_MBAR);
+        state.slew_end_fraction = std::clamp(
+            slew_end_fraction, MIN_SLEW_END_FRACTION, MAX_SLEW_END_FRACTION);
+    }
+
     auto update(double dt_seconds, double current_abs_mbar,
                 double target_abs_mbar) -> double {
         // Keep trajectory rate and PID sample time well-defined.
@@ -84,10 +97,9 @@ class PressureController {
             auto remaining = std::max(0.0, current_abs_mbar - target_abs_mbar);
             auto depth_fraction = remaining / vacuum_depth;
             auto rate_scale = 1.0;
-            if (depth_fraction < ADAPTIVE_SLEW_END_FRACTION) {
-                rate_scale =
-                    std::max(MIN_RAMP_RATE / state.ramp_rate,
-                             depth_fraction / ADAPTIVE_SLEW_END_FRACTION);
+            if (depth_fraction < state.slew_end_fraction) {
+                rate_scale = std::max(MIN_RAMP_RATE / state.ramp_rate,
+                                      depth_fraction / state.slew_end_fraction);
             }
             _slew.set_rate_limit(state.ramp_rate * rate_scale);
         } else {
