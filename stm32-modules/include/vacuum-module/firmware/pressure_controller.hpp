@@ -34,7 +34,7 @@ static constexpr const double MIN_RAMP_RATE = 0.20F;
 static constexpr const double MAX_RAMP_RATE = 400.0F;
 static constexpr const double DEFAULT_RAMP_RATE = 50;
 // Slow the pressure slew within this fraction of total vacuum depth.
-static constexpr const double ADAPTIVE_SLEW_END_FRACTION = 0.15F;
+static constexpr const double ADAPTIVE_SLEW_END_FRACTION = 0.30F;
 
 struct ConfigState {
     double ramp_rate = DEFAULT_RAMP_RATE;
