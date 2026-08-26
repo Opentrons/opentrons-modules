@@ -88,7 +88,7 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         REQUIRE(err == WasteFullError::FAST_BASELINE_ERROR);
     }
 
-    SECTION("First run too slow triggers FIRST_RUN_SLOW_ERROR") {
+    SECTION("Slow first run is empty, not full — learns if under max window") {
         auto err = WasteFullError::NO_ERROR;
         auto atm_pressure = 1013.0F;
         auto t_pressure = 500;
@@ -96,13 +96,14 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         auto tics = 0.0F;
         detector.reset();
         for (uint32_t i = 0; i <= 100; i++) {
-            tics += i * 3;  // slow baseline
+            tics += i * 3;  // slow empty ramp
             c_pressure -= 5;
             err = detector.check(tics, c_pressure, c_pressure + 2, t_pressure,
                                  atm_pressure);
         }
 
-        REQUIRE(err == WasteFullError::FIRST_RUN_SLOW_ERROR);
+        REQUIRE(err == WasteFullError::NO_ERROR);
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
     }
 
     SECTION("Hold phase - sudden blocked flow triggers SUDDEN_BLOCKED_ERROR") {
@@ -123,11 +124,17 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
             detector.check(tics, c_pressure, c_pressure + 3, 200.0, 1013.0);
         }
 
-        // Now in hold - sudden rise
-        tics += 1;
-        c_pressure += MAX_RISE_PER_TICK + 5;
-        auto err =
-            detector.check(tics, c_pressure, c_pressure + 2, 200.0, 1013.0);
+        // Repeated slam while remaining inside the 20 mbar hold band
+        auto err = WasteFullError::NO_ERROR;
+        for (int i = 0; i < 4; ++i) {
+            tics += 1;
+            c_pressure += MAX_RISE_PER_TICK + 8;
+            err = detector.check(tics, c_pressure, c_pressure + 2, 200.0,
+                                 1013.0);
+            if (err == WasteFullError::SUDDEN_BLOCKED_ERROR) {
+                break;
+            }
+        }
         REQUIRE(err == WasteFullError::SUDDEN_BLOCKED_ERROR);
     }
 
@@ -148,15 +155,15 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
             detector.check(tics, c_pressure, c_pressure + 3, 200.0, 1013.0);
         }
 
-        // Slow gradual rise over many ticks
+        // ~15 mbar slow rise stays inside hold and below the 40 mbar
+        // cumulative gate (empty plate hunting is ~10 mbar).
         for (int i = 0; i < 25; ++i) {
-            tics += i;
+            tics += 1;
             c_pressure += 0.6;
             detector.check(tics, c_pressure, c_pressure + 2, 200.0, 1013.0);
         }
 
-        REQUIRE(detector.get_error() ==
-                WasteFullError::CUMMULATIVE_BLOCKED_ERROR);
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
     }
 
     SECTION("Draining air rush is correctly ignored") {
@@ -173,7 +180,8 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
     }
 
     SECTION(
-        "Hold phase - pressure oscillation triggers FLOW_STABLE_FULL_ERROR") {
+        "Hold phase - pressure oscillation does NOT trigger "
+        "FLOW_STABLE_FULL_ERROR") {
         detector.reset();
 
         const double atm = 1013.0;
@@ -189,34 +197,26 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         REQUIRE(detector.baseline_captured());
         REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
 
-        // 1. Get into hold phase first
         for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
             tics += 40;
             detector.check(tics, current_p + 5, current_p + 3, target, atm);
-            current_p = target + 8.0;  // stay near target
+            current_p = target + 8.0;
         }
 
         REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
 
-        // 2. Simulate sawtooth oscillation (high std dev) while in hold
         for (int i = 0; i < PRESSURE_WINDOW_SIZE + 5; ++i) {
             tics += 40;
-            // Create sawtooth: oscillating between ~target-20 and target+20
             current_p = target + ((i % 12) * 2.0) - 20;
             auto err =
                 detector.check(tics, current_p + 5, current_p + 3, target, atm);
-
-            if (i >= PRESSURE_WINDOW_SIZE - 1) {
-                REQUIRE(err == WasteFullError::FLOW_STABLE_FULL_ERROR);
-                REQUIRE(detector.get_error() ==
-                        WasteFullError::FLOW_STABLE_FULL_ERROR);
-                break;
-            }
+            REQUIRE(err == WasteFullError::NO_ERROR);
         }
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
     }
 
     SECTION(
-        "Hold phase - low oscillation does NOT trigger "
+        "Hold phase - quiet sealed hold eventually triggers "
         "FLOW_STABLE_FULL_ERROR") {
         detector.reset();
 
@@ -233,23 +233,354 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         REQUIRE(detector.baseline_captured());
         REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
 
-        detector.check(tics, current_p + 2, current_p, target, atm);
-        detector.check(tics + 100, current_p + 2, current_p, target, atm);
-
-        // Simulate very stable pressure (low std dev)
-        for (int i = 0; i < PRESSURE_WINDOW_SIZE + 10; ++i) {
+        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
             tics += 40;
-            current_p = target + 3.0;  // almost flat
-            auto err =
-                detector.check(tics, current_p + 2, current_p, target, atm);
-
-            REQUIRE(err == WasteFullError::NO_ERROR);
+            current_p = target + 3.0;
+            detector.check(tics, current_p + 2, current_p, target, atm);
         }
 
+        auto err = WasteFullError::NO_ERROR;
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE + STABLE_HOLD_TICKS + 5;
+             ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            err = detector.check(tics, current_p + 2, current_p, target, atm,
+                                 0.0);
+            if (err == WasteFullError::FLOW_STABLE_FULL_ERROR) {
+                break;
+            }
+        }
+        REQUIRE(err == WasteFullError::FLOW_STABLE_FULL_ERROR);
+        REQUIRE(detector.get_error() == WasteFullError::FLOW_STABLE_FULL_ERROR);
+    }
+
+    SECTION("Hold phase - quiet with pump loaded is not full") {
+        detector.reset();
+
+        const double atm = 1013.0;
+        const double target = 713.0;
+        double current_p = 1000.0;
+        uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 96; i++) {
+            tics += i * 2;
+            current_p -= 5;
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            detector.check(tics, current_p + 2, current_p, target, atm, 0.0);
+        }
+
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE + STABLE_HOLD_TICKS + 5;
+             ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            auto err = detector.check(tics, current_p + 2, current_p, target,
+                                      atm, 200.0);
+            REQUIRE(err == WasteFullError::NO_ERROR);
+        }
         REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
     }
 
-    SECTION("Hold phase - oscillation only triggers after window is full") {
+    SECTION("Hold phase - mid-depth leak RPM is not full") {
+        detector.reset();
+
+        // Depth 700 mbar: shallow RPM cap, 250 RPM must not trip.
+        const double atm = 1013.0;
+        const double target = 313.0;
+        double current_p = 1000.0;
+        uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 96; i++) {
+            tics += i * 2;
+            current_p -= 5;
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            detector.check(tics, current_p + 2, current_p, target, atm, 250.0);
+        }
+
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE + STABLE_HOLD_TICKS_DEEP + 5;
+             ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            auto err = detector.check(tics, current_p + 2, current_p, target,
+                                      atm, 250.0);
+            REQUIRE(err == WasteFullError::NO_ERROR);
+        }
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
+    }
+
+    SECTION("Hold phase - mid-depth quiet unloaded is full") {
+        detector.reset();
+
+        const double atm = 1013.0;
+        const double target = 313.0;
+        double current_p = 1000.0;
+        uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 96; i++) {
+            tics += i * 2;
+            current_p -= 5;
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            detector.check(tics, current_p + 2, current_p, target, atm, 0.0);
+        }
+
+        auto err = WasteFullError::NO_ERROR;
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE + STABLE_HOLD_TICKS + 5;
+             ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            err = detector.check(tics, current_p + 2, current_p, target, atm,
+                                 0.0);
+            if (err == WasteFullError::FLOW_STABLE_FULL_ERROR) {
+                break;
+            }
+        }
+        REQUIRE(err == WasteFullError::FLOW_STABLE_FULL_ERROR);
+        REQUIRE(detector.get_error() == WasteFullError::FLOW_STABLE_FULL_ERROR);
+    }
+
+    SECTION("Hold phase - deep target quiet hold allows higher RPM") {
+        detector.reset();
+
+        // Depth 800 mbar: 250 RPM is under the deep cap and must trip.
+        const double atm = 1013.0;
+        const double target = 213.0;
+        double current_p = 1000.0;
+        uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 96; i++) {
+            tics += i * 2;
+            current_p -= 5;
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            detector.check(tics, current_p + 2, current_p, target, atm, 250.0);
+        }
+
+        auto err = WasteFullError::NO_ERROR;
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE + STABLE_HOLD_TICKS_DEEP + 5;
+             ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            err = detector.check(tics, current_p + 2, current_p, target, atm,
+                                 250.0);
+            if (err == WasteFullError::FLOW_STABLE_FULL_ERROR) {
+                break;
+            }
+        }
+        REQUIRE(err == WasteFullError::FLOW_STABLE_FULL_ERROR);
+        REQUIRE(detector.get_error() == WasteFullError::FLOW_STABLE_FULL_ERROR);
+    }
+
+    SECTION("Hold phase - deep quiet with leak RPM is not full") {
+        detector.reset();
+
+        // Deep leak RPM must not trip.
+        const double atm = 1013.0;
+        const double target = 213.0;
+        double current_p = 1000.0;
+        uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 96; i++) {
+            tics += i * 2;
+            current_p -= 5;
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            detector.check(tics, current_p + 2, current_p, target, atm,
+                           1100.0);
+        }
+
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE + STABLE_HOLD_TICKS_DEEP + 5;
+             ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            auto err = detector.check(tics, current_p + 2, current_p, target,
+                                      atm, 1100.0);
+            REQUIRE(err == WasteFullError::NO_ERROR);
+        }
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
+    }
+
+    SECTION("Hold phase - deep quiet 15 mbar shallow is not full") {
+        detector.reset();
+
+        // 15 mbar off target must not trip.
+        const double atm = 1013.0;
+        const double target = 213.0;
+        double current_p = 1000.0;
+        uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 96; i++) {
+            tics += i * 2;
+            current_p -= 5;
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
+            tics += 40;
+            current_p = target + 15.0;
+            detector.check(tics, current_p + 2, current_p, target, atm, 250.0);
+        }
+
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE + STABLE_HOLD_TICKS_DEEP + 5;
+             ++i) {
+            tics += 40;
+            current_p = target + 15.0;
+            auto err = detector.check(tics, current_p + 2, current_p, target,
+                                      atm, 250.0);
+            REQUIRE(err == WasteFullError::NO_ERROR);
+        }
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
+    }
+
+    SECTION("Hold phase - deep quiet 6s on setpoint is not yet full") {
+        detector.reset();
+
+        const double atm = 1013.0;
+        const double target = 213.0;
+        double current_p = 1000.0;
+        uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 96; i++) {
+            tics += i * 2;
+            current_p -= 5;
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            detector.check(tics, current_p + 2, current_p, target, atm, 250.0);
+        }
+
+        // 6s is not enough at a deep target.
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE + STABLE_HOLD_TICKS; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            auto err = detector.check(tics, current_p + 2, current_p, target,
+                                      atm, 250.0);
+            REQUIRE(err == WasteFullError::NO_ERROR);
+        }
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
+    }
+
+    SECTION("Hold phase - deep noisy pressure with unloaded RPM is full") {
+        detector.reset();
+
+        // Deep hold must trip even when pressure std > 1.0.
+        const double atm = 1013.0;
+        const double target = 213.0;
+        double current_p = 1000.0;
+        uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 96; i++) {
+            tics += i * 2;
+            current_p -= 5;
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            detector.check(tics, current_p + 2, current_p, target, atm, 200.0);
+        }
+
+        auto err = WasteFullError::NO_ERROR;
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE + STABLE_HOLD_TICKS_DEEP + 5;
+             ++i) {
+            tics += 40;
+            current_p = target + ((i % 2) ? 4.0 : 0.0);
+            err = detector.check(tics, current_p + 2, current_p, target, atm,
+                                 200.0);
+            if (err == WasteFullError::FLOW_STABLE_FULL_ERROR) {
+                break;
+            }
+        }
+        REQUIRE(err == WasteFullError::FLOW_STABLE_FULL_ERROR);
+        REQUIRE(detector.get_error() == WasteFullError::FLOW_STABLE_FULL_ERROR);
+    }
+
+    SECTION("Hold phase - deep unloaded 5s then leak RPM is not full") {
+        detector.reset();
+
+        // 5s unloaded then leak RPM must not trip.
+        const double atm = 1013.0;
+        const double target = 213.0;
+        double current_p = 1000.0;
+        uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 96; i++) {
+            tics += i * 2;
+            current_p -= 5;
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            detector.check(tics, current_p + 2, current_p, target, atm, 200.0);
+        }
+
+        const int dip_ticks = PRESSURE_WINDOW_SIZE + 125;  // ~5s after window
+        for (int i = 0; i < dip_ticks; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            auto err = detector.check(tics, current_p + 2, current_p, target,
+                                      atm, 200.0);
+            REQUIRE(err == WasteFullError::NO_ERROR);
+        }
+        for (int i = 0; i < STABLE_HOLD_TICKS_DEEP + 5; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            auto err = detector.check(tics, current_p + 2, current_p, target,
+                                      atm, 1100.0);
+            REQUIRE(err == WasteFullError::NO_ERROR);
+        }
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
+    }
+
+    SECTION("Hold phase - quiet with orifice flow is not full") {
+        detector.reset();
+
+        const double atm = 1013.0;
+        const double target = 500.0;
+        double current_p = 1000.0;
+        uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 96; i++) {
+            tics += i * 2;
+            current_p -= 5;
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            detector.check(tics, current_p + 2, current_p, target, atm, 0.0);
+        }
+
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE + STABLE_HOLD_TICKS + 5;
+             ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            auto err = detector.check(tics, current_p + 15, current_p, target,
+                                      atm, 0.0);
+            REQUIRE(err == WasteFullError::NO_ERROR);
+        }
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
+    }
+
+    SECTION("Hold phase - oscillation after window fill is still not full") {
         detector.reset();
 
         const double atm = 1013.0;
@@ -265,33 +596,19 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         REQUIRE(detector.baseline_captured());
         REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
 
-        // Enter hold
         for (uint32_t i = 0; i < NEAR_TARGET_TICS; ++i) {
             tics += 40;
             detector.check(tics, current_p + 2, current_p, target, atm);
         }
 
-        // First few samples - should NOT trigger yet
-        for (int i = 0; i < PRESSURE_WINDOW_SIZE - 5; ++i) {
-            tics += 40;
-            current_p = target + ((i % 10) * 4.0) - 15.0;
-            auto err =
-                detector.check(tics, current_p + 2, current_p, target, atm);
-            REQUIRE(err == WasteFullError::NO_ERROR);
-        }
-
-        // After window fills - should trigger
-        for (int i = 0; i < 5; ++i) {
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE + 5; ++i) {
             tics += 40;
             current_p = target + ((i % 10) * 12.0) - 20.0;
             auto err =
                 detector.check(tics, current_p + 2, current_p, target, atm);
-            if (err == WasteFullError::FLOW_STABLE_FULL_ERROR) {
-                break;
-            }
+            REQUIRE(err == WasteFullError::NO_ERROR);
         }
-
-        REQUIRE(detector.get_error() == WasteFullError::FLOW_STABLE_FULL_ERROR);
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
     }
 }
 

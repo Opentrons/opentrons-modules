@@ -24,12 +24,12 @@ static constexpr const double WASTE_WINDOW_START_PCT = 0.10F;
 static constexpr const double WASTE_WINDOW_END_PCT = 0.95F;
 // Resets the baseline if the new target pressure is this percent difference
 static constexpr const double BASELINE_DEPTH_RESET = 0.30F;
-// Compare to the learned baseline. If it is N x faster than empty, it's full.
-static constexpr const double BASELINE_FAST_FACTOR = 0.75F;
-// Allowed upward drift per tick while in hold phase
-static constexpr const double MAX_RISE_PER_TICK = 3.5;
+// Compare to the learned baseline. Faster than this factor is full.
+static constexpr const double BASELINE_FAST_FACTOR = 0.50F;
+// Hold-phase vacuum increase per tick that flags a slam-shut.
+static constexpr const double MAX_RISE_PER_TICK = 12.0;
 // Total allowed rise before flag for slow build up case
-static constexpr const double MAX_CUMULATIVE_RISE = 11.5;
+static constexpr const double MAX_CUMULATIVE_RISE = 40.0;
 // Pressure offset from target to be considered in "hold" state
 static constexpr const double PRESSURE_TOLERANCE = 20.0F;
 // Large negative = draining (air rush) - ignore
@@ -42,16 +42,28 @@ static constexpr const double SENSOR_ALPHA = 0.5F;
 static constexpr const uint32_t DEFAULT_BASELINE = 600;
 // Hard Minimum: If it reaches p2 vacuum in <  this many ms, it's full.
 static constexpr const uint32_t MIN_ALLOWABLE_WINDOW_TIME_MS = 700;
-// If the ramp takes longer than this, we flag it as a stall or leak.
+// Upper bound for first-run baseline learning. Slower than this is leaky
+// empty, not full — do not raise a waste-full error.
 static constexpr const uint32_t MAX_ALLOWABLE_WINDOW_TIME_MS = 20000;
 // Number of tics we need to be around the target pressure to enter hold phase
 static constexpr const uint32_t NEAR_TARGET_TICS = 50;  // ~2s at 25Hz
 
-// Standard Deviation
-// ~800ms window for pressure std
+// ~800ms window for pressure std at 25Hz
 static constexpr uint8_t PRESSURE_WINDOW_SIZE = 20;
-// Oscillations above this means there is no air flow because the waste is full.
 static constexpr double PRESSURE_OSCILLATION_MIN_STD = 7.5;
+// Max pressure std to count a shallow hold as quiet.
+static constexpr double PRESSURE_STABLE_MAX_STD = 1.0;
+static constexpr uint8_t STABLE_HOLD_TICKS = 150;       // ~6s at 25Hz
+static constexpr uint8_t STABLE_HOLD_TICKS_DEEP = 250;  // ~10s at 25Hz
+// Commanded RPM below this counts as unloaded.
+static constexpr double PUMP_UNLOADED_MAX_RPM = 100.0;
+static constexpr double PUMP_UNLOADED_MAX_RPM_DEEP = 800.0;
+// Depth at/above this uses the deep RPM cap and 10s hold.
+static constexpr double DEEP_VACUUM_DEPTH_MBAR = 800.0;
+// Hold-trip setpoint band (tighter than PRESSURE_TOLERANCE hold entry).
+static constexpr double HOLD_SETPOINT_MAX_ERROR_MBAR = 8.0;
+// |A-B| above this is orifice flow; not sealed.
+static constexpr double FLOWING_DP_MBAR = 8.0;
 
 // Hose diam_m 0.0760m; ORIFICE_AREA = PI * (diam_m / 2.0) * (diam_m / 2.0)
 static constexpr const double ORIFICE_AREA = 0.00004536;  // m²
@@ -155,7 +167,8 @@ class WasteDetector {
     }
 
     auto check(uint32_t timestamp, double pressure_abs_a, double pressure_abs_b,
-               double target_abs_mbar, double p_atm) -> WasteFullError {
+               double target_abs_mbar, double p_atm, double pump_rpm = 0.0)
+        -> WasteFullError {
         if (!config.enable_waste_full) {
             return WasteFullError::NO_ERROR;
         }
@@ -195,6 +208,7 @@ class WasteDetector {
             // Re-enter ramp if we drift too far from the target
             near_target_ticks_ = 0;
             in_ramp_phase_ = true;
+            stable_hold_ticks_ = 0;
         }
 
         // Ramp phase: Pressure Window + stall timeout
@@ -227,16 +241,14 @@ class WasteDetector {
                     }
                     return WasteFullError::NO_ERROR;
                 } else {
-                    // Only learn if time is reasonable when empty
-                    if (measured_time > config.min_window_time * 2 &&
-                        measured_time < config.max_window_time / 2) {
+                    // First run: learn any window slower than "too fast" and
+                    // faster than a 20s stall. A slow empty ramp is not full.
+                    if (measured_time >= config.min_window_time &&
+                        measured_time < config.max_window_time) {
                         baseline_rise_time_ms_ = measured_time;
                         baseline_captured_ = true;
-                        return WasteFullError::NO_ERROR;
                     }
-                    // First run was too slow, flag as full
-                    waste_full_ = true;
-                    error = WasteFullError::FIRST_RUN_SLOW_ERROR;
+                    return WasteFullError::NO_ERROR;
                 }
                 if (waste_full_) {
                     return error;
@@ -259,16 +271,41 @@ class WasteDetector {
                 pressure_window_full = true;
             }
 
-            // Check if we are osocilating more than we should, this
-            // indicates no air-flow because the waste is full.
             if (pressure_window_full) {
-                auto pressure_std =
-                    calculate_std_dev(pressure_window, pressure_window_full,
-                                      pressure_window_index);
-                if (pressure_std > PRESSURE_OSCILLATION_MIN_STD) {
-                    waste_full_ = true;
-                    error = WasteFullError::FLOW_STABLE_FULL_ERROR;
-                    return error;
+                auto pressure_std = calculate_std_dev(
+                    pressure_window, pressure_window_full,
+                    pressure_window_index);
+                auto orifice_dp =
+                    std::abs(pressure_abs_a - pressure_abs_b);
+                // Shallow: quiet + no flow + on setpoint + RPM < 100 for 6s.
+                // Deep: no flow + on setpoint + RPM < 800 for 10s (no quiet).
+                const bool quiet = pressure_std < PRESSURE_STABLE_MAX_STD;
+                const bool no_flow = orifice_dp < FLOWING_DP_MBAR;
+                const bool at_setpoint =
+                    std::abs(current_p - target_abs_mbar) <
+                    HOLD_SETPOINT_MAX_ERROR_MBAR;
+                const bool deep_target =
+                    (p_atm - target_abs_mbar) >= DEEP_VACUUM_DEPTH_MBAR;
+                const double rpm_cap = deep_target
+                                           ? PUMP_UNLOADED_MAX_RPM_DEEP
+                                           : PUMP_UNLOADED_MAX_RPM;
+                const bool pump_unloaded = pump_rpm < rpm_cap;
+                const bool hold_ok = no_flow && pump_unloaded &&
+                                     at_setpoint && (deep_target || quiet);
+                if (hold_ok) {
+                    if (stable_hold_ticks_ < 255) {
+                        stable_hold_ticks_++;
+                    }
+                    const uint8_t needed_ticks =
+                        deep_target ? STABLE_HOLD_TICKS_DEEP
+                                    : STABLE_HOLD_TICKS;
+                    if (stable_hold_ticks_ >= needed_ticks) {
+                        waste_full_ = true;
+                        error = WasteFullError::FLOW_STABLE_FULL_ERROR;
+                        return error;
+                    }
+                } else {
+                    stable_hold_ticks_ = 0;
                 }
 
                 // Smaller rise = potential full waste (blocked flow)
@@ -305,6 +342,7 @@ class WasteDetector {
         pressure_window.fill(0);
         pressure_window_index = 0;
         pressure_window_full = false;
+        stable_hold_ticks_ = 0;
         smoothed_delta_p = 0.0;
         flow_ml_per_s = 0.0;
     }
@@ -351,6 +389,7 @@ class WasteDetector {
     std::array<double, PRESSURE_WINDOW_SIZE> pressure_window = {0.0};
     uint8_t pressure_window_index = 0;
     bool pressure_window_full = false;
+    uint8_t stable_hold_ticks_ = 0;
     double smoothed_delta_p = 0.0;
     double flow_ml_per_s = 0.0;
 };
