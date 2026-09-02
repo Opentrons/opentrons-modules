@@ -385,11 +385,10 @@ class HostCommsTask {
                 } else {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.enable_waste_full,
-                        response.p_window_start, response.p_window_end,
-                        response.baseline_fast_factor,
-                        response.max_delta_per_tick, response.max_rise_per_tick,
-                        response.max_cummulative_rise, response.p_filter_alpha,
-                        response.min_window_time, response.max_window_time);
+                        response.p_filter_alpha, response.g_sealed_max,
+                        response.flowing_dp_mbar, response.stable_hold_ms,
+                        response.stable_hold_deep_ms,
+                        response.min_waste_depth_mbar);
                 }
             },
             cache_entry);
@@ -741,15 +740,12 @@ class HostCommsTask {
         auto message = messages::SetWasteDetectionConfigMessage{
             .id = id,
             .enable_waste_full = gcode.enable_waste_full,
-            .p_window_start = gcode.p_window_start,
-            .p_window_end = gcode.p_window_end,
-            .baseline_fast_factor = gcode.baseline_fast_factor,
-            .max_delta_per_tick = gcode.max_delta_per_tick,
-            .max_rise_per_tick = gcode.max_rise_per_tick,
-            .max_cummulative_rise = gcode.max_cummulative_rise,
             .p_filter_alpha = gcode.p_filter_alpha,
-            .min_window_time = gcode.min_window_time,
-            .max_window_time = gcode.max_window_time};
+            .g_sealed_max = gcode.g_sealed_max,
+            .flowing_dp_mbar = gcode.flowing_dp_mbar,
+            .stable_hold_ms = gcode.stable_hold_ms,
+            .stable_hold_deep_ms = gcode.stable_hold_deep_ms,
+            .min_waste_depth_mbar = gcode.min_waste_depth_mbar};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);

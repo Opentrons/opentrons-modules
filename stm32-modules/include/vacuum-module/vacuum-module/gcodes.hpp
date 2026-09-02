@@ -722,32 +722,28 @@ struct GetPressurePID {
 
 struct SetWasteDetectionConfig {
     /*
-     * M127- SetWasteDetectionConfig configure the waste full detection feature
+     * M127- SetWasteDetectionConfig
+     * A filter alpha, G sealed conductance cap, H flowing |A-B| mbar,
+     * T/U sealed-hold ms (normal/deep), N min vacuum depth mbar, E enable.
      * */
-    std::optional<double> p_window_start = std::nullopt;
-    std::optional<double> p_window_end = std::nullopt;
-    std::optional<double> baseline_fast_factor = std::nullopt;
-    std::optional<double> max_delta_per_tick = std::nullopt;
-    std::optional<double> max_rise_per_tick = std::nullopt;
-    std::optional<double> max_cummulative_rise = std::nullopt;
     std::optional<double> p_filter_alpha = std::nullopt;
-    std::optional<double> min_window_time = std::nullopt;
-    std::optional<double> max_window_time = std::nullopt;
+    std::optional<double> g_sealed_max = std::nullopt;
+    std::optional<double> flowing_dp_mbar = std::nullopt;
+    std::optional<double> stable_hold_ms = std::nullopt;
+    std::optional<double> stable_hold_deep_ms = std::nullopt;
+    std::optional<double> min_waste_depth_mbar = std::nullopt;
     bool enable_waste_full = true;
 
     using ParseResult = std::optional<SetWasteDetectionConfig>;
     static constexpr auto prefix = std::array{'M', '1', '2', '7', ' '};
     static constexpr const char* response = "M127 OK\n";
 
-    using S = Arg<float, 'S'>;
-    using P = Arg<float, 'P'>;
-    using F = Arg<float, 'F'>;
-    using D = Arg<float, 'D'>;
-    using R = Arg<float, 'R'>;
-    using C = Arg<float, 'C'>;
     using A = Arg<float, 'A'>;
-    using M = Arg<float, 'M'>;
-    using X = Arg<float, 'X'>;
+    using G = Arg<float, 'G'>;
+    using H = Arg<float, 'H'>;
+    using T = Arg<float, 'T'>;
+    using U = Arg<float, 'U'>;
+    using N = Arg<float, 'N'>;
     using E = Arg<uint8_t, 'E'>;
 
     template <typename InputIt, typename Limit>
@@ -755,9 +751,8 @@ struct SetWasteDetectionConfig {
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        auto res =
-            gcode::SingleParser<S, P, F, D, R, C, A, M, X, E>::parse_gcode(
-                input, limit, prefix);
+        auto res = gcode::SingleParser<A, G, H, T, U, N, E>::parse_gcode(
+            input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
@@ -766,56 +761,38 @@ struct SetWasteDetectionConfig {
 
         auto arguments = res.first.value();
         if (std::get<0>(arguments).present) {
-            ret.p_window_start =
+            ret.p_filter_alpha =
                 static_cast<double>(std::get<0>(arguments).value);
         }
         if (std::get<1>(arguments).present) {
-            ret.p_window_end =
+            ret.g_sealed_max =
                 static_cast<double>(std::get<1>(arguments).value);
         }
         if (std::get<2>(arguments).present) {
-            ret.baseline_fast_factor =
+            ret.flowing_dp_mbar =
                 static_cast<double>(std::get<2>(arguments).value);
         }
         if (std::get<3>(arguments).present) {
-            ret.max_delta_per_tick =
+            ret.stable_hold_ms =
                 static_cast<double>(std::get<3>(arguments).value);
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (std::get<4>(arguments).present) {
-            ret.max_rise_per_tick =
+            ret.stable_hold_deep_ms =
                 // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
                 static_cast<double>(std::get<4>(arguments).value);
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (std::get<5>(arguments).present) {
-            ret.max_cummulative_rise =
+            ret.min_waste_depth_mbar =
                 // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
                 static_cast<double>(std::get<5>(arguments).value);
         }
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
         if (std::get<6>(arguments).present) {
-            ret.p_filter_alpha =
-                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-                static_cast<double>(std::get<6>(arguments).value);
-        }
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-        if (std::get<7>(arguments).present) {
-            ret.min_window_time =
-                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-                static_cast<double>(std::get<7>(arguments).value);
-        }
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-        if (std::get<8>(arguments).present) {
-            ret.max_window_time =
-                // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-                static_cast<double>(std::get<8>(arguments).value);
-        }
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-        if (std::get<9>(arguments).present) {
             ret.enable_waste_full =
                 // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers)
-                static_cast<bool>(std::get<9>(arguments).value);
+                static_cast<bool>(std::get<6>(arguments).value);
         }
         return std::make_pair(ret, res.second);
     }
@@ -838,19 +815,19 @@ struct GetWasteDetectionConfig {
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputIt, InLimit>
-    static auto write_response_into(
-        InputIt buf, InLimit limit, bool enabled, double p1, double p2,
-        double baseline_factor, double max_delta_per_tick,
-        double max_rise_per_tick, double max_cummulative_rise,
-        double p_filter_alpha, double min_window_time, double max_window_time)
-        -> InputIt {
+    static auto write_response_into(InputIt buf, InLimit limit, bool enabled,
+                                    double p_filter_alpha, double g_sealed_max,
+                                    double flowing_dp_mbar,
+                                    double stable_hold_ms,
+                                    double stable_hold_deep_ms,
+                                    double min_waste_depth_mbar) -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf),
-                       "M128 E:%d S:%.1f P:%.1f F:%.1f D:%.1f R:%.1f C:%.1f "
-                       "A:%.1f M:%.1f X:%.1f OK\n",
-                       enabled, p1, p2, baseline_factor, max_delta_per_tick,
-                       max_rise_per_tick, max_cummulative_rise, p_filter_alpha,
-                       min_window_time, max_window_time);
+        res =
+            snprintf(&*buf, (limit - buf),
+                     "M128 E:%d A:%.1f G:%.2f H:%.1f T:%.0f U:%.0f N:%.1f "
+                     "OK\n",
+                     enabled, p_filter_alpha, g_sealed_max, flowing_dp_mbar,
+                     stable_hold_ms, stable_hold_deep_ms, min_waste_depth_mbar);
         if (res <= 0) {
             return buf;
         }
