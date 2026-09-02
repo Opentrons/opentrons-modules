@@ -27,9 +27,15 @@ static constexpr const double BASELINE_DEPTH_RESET = 0.30F;
 // Compare to the learned baseline. Faster than this factor is full.
 static constexpr const double BASELINE_FAST_FACTOR = 0.50F;
 // Hold-phase vacuum increase per tick that flags a slam-shut.
-static constexpr const double MAX_RISE_PER_TICK = 12.0;
+static constexpr const double MAX_RISE_PER_TICK = 30.0;
 // Total allowed rise before flag for slow build up case
-static constexpr const double MAX_CUMULATIVE_RISE = 40.0;
+static constexpr const double MAX_CUMULATIVE_RISE = 70.0;
+// Looser hold-rise gates below this depth (empty water-on-plate hunting).
+static constexpr double SHALLOW_HOLD_RISE_DEPTH_MBAR = 300.0;
+static constexpr double SHALLOW_MAX_RISE_PER_TICK = 45.0;
+static constexpr double SHALLOW_MAX_CUMULATIVE_RISE = 90.0;
+// Decay cumulative rise on toward-vacuum ticks (hunting oscillation).
+static constexpr double CUMULATIVE_RISE_DECAY = 0.5;
 // Pressure offset from target to be considered in "hold" state
 static constexpr const double PRESSURE_TOLERANCE = 20.0F;
 // Large negative = draining (air rush) - ignore
@@ -55,8 +61,8 @@ static constexpr double PRESSURE_OSCILLATION_MIN_STD = 7.5;
 static constexpr double PRESSURE_STABLE_MAX_STD = 1.0;
 static constexpr uint8_t STABLE_HOLD_TICKS = 150;       // ~6s at 25Hz
 static constexpr uint8_t STABLE_HOLD_TICKS_DEEP = 250;  // ~10s at 25Hz
-// Commanded RPM below this counts as unloaded.
-static constexpr double PUMP_UNLOADED_MAX_RPM = 100.0;
+// Commanded RPM below this counts as unloaded (shallow).
+static constexpr double PUMP_UNLOADED_MAX_RPM = 50.0;
 static constexpr double PUMP_UNLOADED_MAX_RPM_DEEP = 800.0;
 // Depth at/above this uses the deep RPM cap and 10s hold.
 static constexpr double DEEP_VACUUM_DEPTH_MBAR = 800.0;
@@ -64,6 +70,9 @@ static constexpr double DEEP_VACUUM_DEPTH_MBAR = 800.0;
 static constexpr double HOLD_SETPOINT_MAX_ERROR_MBAR = 8.0;
 // |A-B| above this is orifice flow; not sealed.
 static constexpr double FLOWING_DP_MBAR = 8.0;
+// Sealed-hold trip only at/above this vacuum depth. Shallower targets rely on
+// ramp baseline and rise limits (empty water-on-plate mimics sealed hold).
+static constexpr double SEALED_HOLD_MIN_DEPTH_MBAR = 300.0;
 
 // Hose diam_m 0.0760m; ORIFICE_AREA = PI * (diam_m / 2.0) * (diam_m / 2.0)
 static constexpr const double ORIFICE_AREA = 0.00004536;  // m²
@@ -272,44 +281,62 @@ class WasteDetector {
             }
 
             if (pressure_window_full) {
-                auto pressure_std = calculate_std_dev(
-                    pressure_window, pressure_window_full,
-                    pressure_window_index);
-                auto orifice_dp =
-                    std::abs(pressure_abs_a - pressure_abs_b);
-                // Shallow: quiet + no flow + on setpoint + RPM < 100 for 6s.
-                // Deep: no flow + on setpoint + RPM < 800 for 10s (no quiet).
-                const bool quiet = pressure_std < PRESSURE_STABLE_MAX_STD;
-                const bool no_flow = orifice_dp < FLOWING_DP_MBAR;
-                const bool at_setpoint =
-                    std::abs(current_p - target_abs_mbar) <
-                    HOLD_SETPOINT_MAX_ERROR_MBAR;
+                const double vacuum_depth = total_vacuum_range;
                 const bool deep_target =
-                    (p_atm - target_abs_mbar) >= DEEP_VACUUM_DEPTH_MBAR;
-                const double rpm_cap = deep_target
-                                           ? PUMP_UNLOADED_MAX_RPM_DEEP
-                                           : PUMP_UNLOADED_MAX_RPM;
-                const bool pump_unloaded = pump_rpm < rpm_cap;
-                const bool hold_ok = no_flow && pump_unloaded &&
-                                     at_setpoint && (deep_target || quiet);
-                if (hold_ok) {
-                    if (stable_hold_ticks_ < 255) {
-                        stable_hold_ticks_++;
-                    }
-                    const uint8_t needed_ticks =
-                        deep_target ? STABLE_HOLD_TICKS_DEEP
-                                    : STABLE_HOLD_TICKS;
-                    if (stable_hold_ticks_ >= needed_ticks) {
-                        waste_full_ = true;
-                        error = WasteFullError::FLOW_STABLE_FULL_ERROR;
-                        return error;
+                    vacuum_depth >= DEEP_VACUUM_DEPTH_MBAR;
+                const bool sealed_hold_allowed =
+                    vacuum_depth >= SEALED_HOLD_MIN_DEPTH_MBAR;
+
+                if (sealed_hold_allowed) {
+                    auto pressure_std = calculate_std_dev(
+                        pressure_window, pressure_window_full,
+                        pressure_window_index);
+                    auto orifice_dp =
+                        std::abs(pressure_abs_a - pressure_abs_b);
+                    // Shallow: quiet + no flow + on setpoint + low RPM for 6s.
+                    // Deep: no flow + on setpoint + RPM < 800 for 10s (no quiet).
+                    const bool quiet = pressure_std < PRESSURE_STABLE_MAX_STD;
+                    const bool no_flow = orifice_dp < FLOWING_DP_MBAR;
+                    const bool at_setpoint =
+                        std::abs(current_p - target_abs_mbar) <
+                        HOLD_SETPOINT_MAX_ERROR_MBAR;
+                    const double rpm_cap = deep_target
+                                               ? PUMP_UNLOADED_MAX_RPM_DEEP
+                                               : PUMP_UNLOADED_MAX_RPM;
+                    const bool pump_unloaded = pump_rpm < rpm_cap;
+                    const bool hold_ok = no_flow && pump_unloaded &&
+                                         at_setpoint &&
+                                         (deep_target || quiet);
+                    if (hold_ok) {
+                        if (stable_hold_ticks_ < 255) {
+                            stable_hold_ticks_++;
+                        }
+                        const uint8_t needed_ticks =
+                            deep_target ? STABLE_HOLD_TICKS_DEEP
+                                        : STABLE_HOLD_TICKS;
+                        if (stable_hold_ticks_ >= needed_ticks) {
+                            waste_full_ = true;
+                            error = WasteFullError::FLOW_STABLE_FULL_ERROR;
+                            return error;
+                        }
+                    } else {
+                        stable_hold_ticks_ = 0;
                     }
                 } else {
                     stable_hold_ticks_ = 0;
                 }
 
+                const double rise_cap =
+                    vacuum_depth < SHALLOW_HOLD_RISE_DEPTH_MBAR
+                        ? SHALLOW_MAX_RISE_PER_TICK
+                        : config.max_rise_per_tick;
+                const double cumulative_cap =
+                    vacuum_depth < SHALLOW_HOLD_RISE_DEPTH_MBAR
+                        ? SHALLOW_MAX_CUMULATIVE_RISE
+                        : config.max_cummulative_rise;
+
                 // Smaller rise = potential full waste (blocked flow)
-                if (delta_p < -config.max_rise_per_tick) {
+                if (delta_p < -rise_cap) {
                     waste_full_ = true;
                     error = WasteFullError::SUDDEN_BLOCKED_ERROR;
                     return error;
@@ -318,13 +345,12 @@ class WasteDetector {
                 // Cumulative rise over time (slow blocked-flow back-pressure)
                 if (delta_p < 0) {
                     cumulative_rise_ -= delta_p;
-                    if (cumulative_rise_ > config.max_cummulative_rise) {
+                    if (cumulative_rise_ > cumulative_cap) {
                         waste_full_ = true;
                         error = WasteFullError::CUMMULATIVE_BLOCKED_ERROR;
                     }
-                } else {
-                    // Reset cumulative if drop due to normal fluctuations
-                    cumulative_rise_ = 0.0;
+                } else if (delta_p > 0) {
+                    cumulative_rise_ *= CUMULATIVE_RISE_DECAY;
                 }
             }
         }

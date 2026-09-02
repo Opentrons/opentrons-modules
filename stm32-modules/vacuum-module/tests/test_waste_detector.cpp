@@ -128,7 +128,7 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         auto err = WasteFullError::NO_ERROR;
         for (int i = 0; i < 4; ++i) {
             tics += 1;
-            c_pressure += MAX_RISE_PER_TICK + 8;
+            c_pressure += SHALLOW_MAX_RISE_PER_TICK + 5;
             err = detector.check(tics, c_pressure, c_pressure + 2, 200.0,
                                  1013.0);
             if (err == WasteFullError::SUDDEN_BLOCKED_ERROR) {
@@ -136,6 +136,27 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
             }
         }
         REQUIRE(err == WasteFullError::SUDDEN_BLOCKED_ERROR);
+    }
+
+    SECTION("Hold phase - shallow sudden rise below shallow cap is not full") {
+        auto c_pressure = 813.0F;
+        auto tics = 3000.0F;
+        detector.reset();
+        detector.check(1000, 500.0, 505.0, 813.0, 1013.0);
+        detector.check(3000, 810, 815, 813.0, 1013.0);
+        for (uint32_t i = 0; i <= NEAR_TARGET_TICS; i++) {
+            tics += i;
+            detector.check(tics, c_pressure + 2, c_pressure, 813.0, 1013.0);
+        }
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE; ++i) {
+            detector.check(tics, c_pressure, c_pressure + 3, 813.0, 1013.0);
+        }
+        for (int i = 0; i < 6; ++i) {
+            tics += 1;
+            c_pressure += 6.0;
+            detector.check(tics, c_pressure, c_pressure + 2, 813.0, 1013.0);
+        }
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
     }
 
     SECTION("Hold phase - cumulative rise triggers CUMMULATIVE_BLOCKED_ERROR") {
@@ -155,7 +176,7 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
             detector.check(tics, c_pressure, c_pressure + 3, 200.0, 1013.0);
         }
 
-        // ~15 mbar slow rise stays inside hold and below the 40 mbar
+        // ~15 mbar slow rise stays inside hold and below the 90 mbar
         // cumulative gate (empty plate hunting is ~10 mbar).
         for (int i = 0; i < 25; ++i) {
             tics += 1;
@@ -576,6 +597,84 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
             auto err = detector.check(tics, current_p + 15, current_p, target,
                                       atm, 0.0);
             REQUIRE(err == WasteFullError::NO_ERROR);
+        }
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
+    }
+
+    SECTION(
+        "Hold phase - shallow quiet unloaded hold is not sealed full") {
+        detector.reset();
+
+        // Depth 200 mbar: empty water-on-plate can look sealed at -100/-200.
+        const double atm = 1013.0;
+        const double target = 813.0;
+        double current_p = 1000.0;
+        uint32_t tics = 1000;
+
+        for (uint32_t i = 0; i <= 96; i++) {
+            tics += i * 2;
+            current_p -= 5;
+            detector.check(tics, current_p, current_p + 2, target, atm);
+        }
+        for (uint32_t i = 0; i < NEAR_TARGET_TICS + 10; ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            detector.check(tics, current_p + 2, current_p, target, atm, 0.0);
+        }
+
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE + STABLE_HOLD_TICKS + 20;
+             ++i) {
+            tics += 40;
+            current_p = target + 3.0;
+            auto err = detector.check(tics, current_p + 2, current_p, target,
+                                      atm, 0.0);
+            REQUIRE(err == WasteFullError::NO_ERROR);
+        }
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
+    }
+
+    SECTION("Hold phase - water hunting rise stays below hold gates") {
+        auto c_pressure = 813.0F;
+        auto tics = 3000.0F;
+        detector.reset();
+        detector.check(1000, 500.0, 505.0, 813.0, 1013.0);
+        detector.check(3000, 810, 815, 813.0, 1013.0);
+        for (uint32_t i = 0; i <= NEAR_TARGET_TICS; i++) {
+            tics += i;
+            detector.check(tics, c_pressure + 2, c_pressure, 813.0, 1013.0);
+        }
+
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE; ++i) {
+            detector.check(tics, c_pressure, c_pressure + 3, 813.0, 1013.0);
+        }
+
+        // ~20 mbar toward atmosphere over several ticks (r4 -100 FP pattern).
+        for (int i = 0; i < 8; ++i) {
+            tics += 1;
+            c_pressure += 2.5;
+            detector.check(tics, c_pressure, c_pressure + 2, 813.0, 1013.0);
+        }
+
+        REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
+    }
+
+    SECTION("Hold phase - shallow cumulative hunting decays without trip") {
+        auto c_pressure = 813.0F;
+        auto tics = 3000.0F;
+        detector.reset();
+        detector.check(1000, 500.0, 505.0, 813.0, 1013.0);
+        detector.check(3000, 810, 815, 813.0, 1013.0);
+        for (uint32_t i = 0; i <= NEAR_TARGET_TICS; i++) {
+            tics += i;
+            detector.check(tics, c_pressure + 2, c_pressure, 813.0, 1013.0);
+        }
+        for (int i = 0; i < PRESSURE_WINDOW_SIZE; ++i) {
+            detector.check(tics, c_pressure, c_pressure + 3, 813.0, 1013.0);
+        }
+        for (int i = 0; i < 30; ++i) {
+            tics += 1;
+            c_pressure += (i % 2) ? 3.0 : -2.0;
+            detector.check(tics, c_pressure, c_pressure + 2, 813.0, 1013.0);
         }
         REQUIRE(detector.get_error() == WasteFullError::NO_ERROR);
     }
