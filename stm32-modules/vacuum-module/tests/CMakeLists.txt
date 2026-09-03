@@ -10,6 +10,7 @@ add_executable(${TARGET_MODULE_NAME}
         test_mprll0025pa00001a.cpp
         test_pressure_controller.cpp
         test_waste_detector.cpp
+        test_m127.cpp
     )
 
 target_include_directories(${TARGET_MODULE_NAME}

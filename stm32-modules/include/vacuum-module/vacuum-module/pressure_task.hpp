@@ -308,23 +308,24 @@ class PressureTask {
         }
         monitor_target_pressure();
 
-        // Handle waste detection
-        auto res =
-            // NOLINTNEXTLINE(readability-suspicious-call-argument)
-            _detector.check(timestamp, current_pressure_a, current_pressure_b,
-                            target_pressure, pressure_atm);
-        if (res != waste_detector::WasteFullError::NO_ERROR) {
-            stop_vacuum();
-            set_vent_state(VentState::OPENED);
-            send_error_message(Error::WASTE_FULL_ERROR);
-            return;
-        }
-
         if (_control_state.control_pump) {
             auto rpm =
                 _controller.update(dt, current_pressure_b, target_pressure);
             _control_state.target_rpm = rpm;
             set_pump_state(true, rpm);
+        }
+
+        // Waste check uses commanded RPM.
+        auto res =
+            // NOLINTNEXTLINE(readability-suspicious-call-argument)
+            _detector.check(timestamp, current_pressure_a, current_pressure_b,
+                            target_pressure, pressure_atm,
+                            _control_state.target_rpm);
+        if (res != waste_detector::WasteFullError::NO_ERROR) {
+            stop_vacuum();
+            set_vent_state(VentState::OPENED);
+            send_error_message(Error::WASTE_FULL_ERROR);
+            return;
         }
     }
 
@@ -338,19 +339,7 @@ class PressureTask {
             std::clamp<double>(m.pressure_setpoint, ATM_PRESSURE_MBAR * -1, 0);
         auto target_pressure = guage_pressure + p_atm;
 
-        // Check for Significant Target Change (> 10% of the vacuum range)
         auto current_pressure = _control_state.pressure_abs_b;
-        auto current_target = _control_state.target_pressure;
-        auto vacuum_depth = std::abs(p_atm - target_pressure);
-        auto change_delta = std::abs(target_pressure - current_target);
-
-        // If the target moves by more than N % of the intended depth,
-        // the previous baseline is no longer physically representative.
-        if (_detector.baseline_captured() &&
-            (change_delta >
-             (vacuum_depth * waste_detector::BASELINE_DEPTH_RESET))) {
-            _detector.reset_baseline();
-        }
 
         _control_state.target_pressure = target_pressure;
         _control_state.duration_s = m.duration_s;
@@ -524,19 +513,14 @@ class PressureTask {
         static_cast<void>(policy);
         auto dc = _detector.get_config();
         dc.enable_waste_full = m.enable_waste_full;
-        dc.p_window_start = m.p_window_start.value_or(dc.p_window_start);
-        dc.p_window_end = m.p_window_end.value_or(dc.p_window_end);
-        dc.baseline_fast_factor =
-            m.baseline_fast_factor.value_or(dc.baseline_fast_factor);
-        dc.max_delta_per_tick =
-            m.max_delta_per_tick.value_or(dc.max_delta_per_tick);
-        dc.max_rise_per_tick =
-            m.max_rise_per_tick.value_or(dc.max_rise_per_tick);
-        dc.max_cummulative_rise =
-            m.max_cummulative_rise.value_or(dc.max_cummulative_rise);
         dc.p_filter_alpha = m.p_filter_alpha.value_or(dc.p_filter_alpha);
-        dc.min_window_time = m.min_window_time.value_or(dc.min_window_time);
-        dc.max_window_time = m.max_window_time.value_or(dc.max_window_time);
+        dc.g_sealed_max = m.g_sealed_max.value_or(dc.g_sealed_max);
+        dc.flowing_dp_mbar = m.flowing_dp_mbar.value_or(dc.flowing_dp_mbar);
+        dc.stable_hold_ms = m.stable_hold_ms.value_or(dc.stable_hold_ms);
+        dc.stable_hold_deep_ms =
+            m.stable_hold_deep_ms.value_or(dc.stable_hold_deep_ms);
+        dc.min_waste_depth_mbar =
+            m.min_waste_depth_mbar.value_or(dc.min_waste_depth_mbar);
         _detector.configure(dc);
         send_ack_message(m.id);
     }
@@ -549,15 +533,12 @@ class PressureTask {
         auto msg = messages::GetWasteDetectionConfigResponse{
             .responding_to_id = m.id,
             .enable_waste_full = dc.enable_waste_full,
-            .p_window_start = dc.p_window_start,
-            .p_window_end = dc.p_window_end,
-            .baseline_fast_factor = dc.baseline_fast_factor,
-            .max_delta_per_tick = dc.max_delta_per_tick,
-            .max_rise_per_tick = dc.max_rise_per_tick,
-            .max_cummulative_rise = dc.max_cummulative_rise,
             .p_filter_alpha = dc.p_filter_alpha,
-            .min_window_time = dc.min_window_time,
-            .max_window_time = dc.max_window_time};
+            .g_sealed_max = dc.g_sealed_max,
+            .flowing_dp_mbar = dc.flowing_dp_mbar,
+            .stable_hold_ms = dc.stable_hold_ms,
+            .stable_hold_deep_ms = dc.stable_hold_deep_ms,
+            .min_waste_depth_mbar = dc.min_waste_depth_mbar};
         static_cast<void>(
             _task_registry->send_to_address(msg, Queues::HostCommsAddress));
     }
