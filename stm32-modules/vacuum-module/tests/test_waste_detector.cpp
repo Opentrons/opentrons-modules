@@ -120,13 +120,22 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         REQUIRE(err == WasteFullError::NO_ERROR);
     }
 
-    SECTION("Shallow overshoot deadhead is full") {
+    SECTION("Shallow overshoot with hold RPM is full") {
         const double target = 813.0;  // 200 mbar
+        run_ramp(detector, 1013.0, target, 1010.0, -3.0, 80, 120, 2.0, 20.0);
+        enter_hold(detector, 1013.0, target, 2.0, 20.0);
+        auto err = hold_for(detector, 1013.0, target,
+                            samples_for(STABLE_HOLD_MS) + 5, 2.0, 20.0, -15.0);
+        REQUIRE(err == WasteFullError::FLOW_STABLE_FULL_ERROR);
+    }
+
+    SECTION("Unloaded overshoot hold is not full") {
+        const double target = 813.0;
         run_ramp(detector, 1013.0, target, 1010.0, -3.0, 80, 120, 2.0, 0.0);
         enter_hold(detector, 1013.0, target, 2.0, 0.0);
         auto err = hold_for(detector, 1013.0, target,
                             samples_for(STABLE_HOLD_MS) + 5, 2.0, 0.0, -15.0);
-        REQUIRE(err == WasteFullError::FLOW_STABLE_FULL_ERROR);
+        REQUIRE(err == WasteFullError::NO_ERROR);
     }
 
     SECTION("Sealed credit waits for near-target debounce") {
@@ -223,13 +232,22 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         REQUIRE(err == WasteFullError::FLOW_STABLE_FULL_ERROR);
     }
 
-    SECTION("Mid-depth 11 mbar overshoot deadhead is full") {
+    SECTION("Mid-depth 11 mbar overshoot with hold RPM is full") {
         const double target = 713.0;  // 300 mbar
-        run_ramp(detector, 1013.0, target, 1010.0, -5.0, 80, 120, 2.0, 0.0);
-        enter_hold(detector, 1013.0, target, 2.0, 0.0);
+        run_ramp(detector, 1013.0, target, 1010.0, -5.0, 80, 120, 2.0, 20.0);
+        enter_hold(detector, 1013.0, target, 2.0, 20.0);
         auto err = hold_for(detector, 1013.0, target,
-                            samples_for(STABLE_HOLD_MS) + 5, 2.0, 0.0, -11.0);
+                            samples_for(STABLE_HOLD_MS) + 5, 2.0, 20.0, -11.0);
         REQUIRE(err == WasteFullError::FLOW_STABLE_FULL_ERROR);
+    }
+
+    SECTION("Zero commanded RPM in hold is not full") {
+        const double target = 500.0;
+        run_ramp(detector, 1013.0, target, 1010.0, -5.0, 80, 120, 2.0, 20.0);
+        enter_hold(detector, 1013.0, target, 2.0, 20.0);
+        auto err = hold_for(detector, 1013.0, target,
+                            samples_for(STABLE_HOLD_MS) + 5, 2.0, 0.0);
+        REQUIRE(err == WasteFullError::NO_ERROR);
     }
 
     SECTION("configure() applies zero values") {

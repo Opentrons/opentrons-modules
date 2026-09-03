@@ -31,6 +31,8 @@ static constexpr double FLOWING_DP_MBAR = 8.0;
 static constexpr double MIN_WASTE_DEPTH_MBAR = 20.0;
 // Commanded RPM per mbar of current vacuum.
 static constexpr double G_SEALED_MAX = 0.50;
+// Overshoot zeros holding FF. Command 0 is not a deadhead.
+static constexpr double MIN_SEALED_RPM = 1.0;
 
 static constexpr const double ORIFICE_AREA = 0.00004536;  // m², 7.6 mm ID
 static constexpr const double DISCHARGE_COEFF = 0.85;
@@ -108,10 +110,9 @@ class WasteDetector {
 
         const double dt_ms = sample_dt_ms(timestamp);
 
-        const bool near_or_overshot =
-            (std::abs(current_p - target_abs_mbar) < PRESSURE_TOLERANCE) ||
-            (current_p < target_abs_mbar);
-        if (!near_or_overshot) {
+        const bool near_target =
+            std::abs(current_p - target_abs_mbar) < PRESSURE_TOLERANCE;
+        if (!near_target) {
             near_target_ms_ = 0.0;
             sealed_hold_ms_ = 0.0;
             return WasteFullError::NO_ERROR;
@@ -121,7 +122,7 @@ class WasteDetector {
         if (near_target_ms_ < NEAR_TARGET_MS) {
             return WasteFullError::NO_ERROR;
         }
-        return check_hold(dt_ms, vacuum_depth, orifice_dp, g);
+        return check_hold(dt_ms, vacuum_depth, orifice_dp, g, pump_rpm);
     }
 
     auto reset() -> void {
@@ -176,9 +177,10 @@ class WasteDetector {
     }
 
     auto check_hold(double dt_ms, double vacuum_depth, double orifice_dp,
-                    double g) -> WasteFullError {
-        const bool sealed =
-            (orifice_dp < config.flowing_dp_mbar) && (g < config.g_sealed_max);
+                    double g, double pump_rpm) -> WasteFullError {
+        const bool sealed = (pump_rpm >= MIN_SEALED_RPM) &&
+                            (orifice_dp < config.flowing_dp_mbar) &&
+                            (g < config.g_sealed_max);
         if (sealed) {
             sealed_hold_ms_ += dt_ms;
         } else if (sealed_hold_ms_ > dt_ms) {
