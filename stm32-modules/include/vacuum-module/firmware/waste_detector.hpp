@@ -30,7 +30,7 @@ static constexpr double DEEP_VACUUM_DEPTH_MBAR = 800.0;
 static constexpr double FLOWING_DP_MBAR = 8.0;
 static constexpr double MIN_WASTE_DEPTH_MBAR = 20.0;
 // Commanded RPM per mbar of current vacuum.
-static constexpr double G_SEALED_MAX = 0.50;
+static constexpr double G_SEALED_MAX = 0.60;
 // Overshoot zeros holding FF. Command 0 is not a deadhead.
 static constexpr double MIN_SEALED_RPM = 1.0;
 
