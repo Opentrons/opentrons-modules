@@ -42,10 +42,12 @@ When waste-full detection is enabled, every tick we check:
     dont reset the whole thing. We subtract dt from sealed_hold_ms_ AND we dont
     do the trip check on this tick.
 
-4. Hold time: Sealed clock ≥ stable_hold_ms, have we stayed "sealed" for N seconds?
+4. Hold time: Sealed clock ≥ stable_hold_ms, have we stayed "sealed" for N
+    seconds?
+
     if false, Keep watching.
     if true, trip the system and return Waste-Full error.
-             This stays latched until a reset or a new vacuum command comes in.
+        This stays latched until a reset or a new vacuum command comes in.
 */
 
 enum class WasteFullError : uint8_t {
@@ -93,23 +95,6 @@ struct WasteConfig {
     double min_waste_depth_mbar = MIN_WASTE_DEPTH_MBAR;
 };
 
-auto inline calculate_flow_per_second(double pressure_a, double pressure_b,
-                                      double& smoothed_delta_p) -> double {
-    auto delta_p_pa = std::abs(pressure_a - pressure_b) * 100.0;
-    if (smoothed_delta_p == 0.0) {
-        smoothed_delta_p = delta_p_pa;
-    } else {
-        smoothed_delta_p = (FLOW_RATE_ALPHA * delta_p_pa) +
-                           ((1.0 - FLOW_RATE_ALPHA) * smoothed_delta_p);
-    }
-
-    if (smoothed_delta_p > MIN_DELTA_ALPHA) {
-        const auto velocity = std::sqrt(2 * smoothed_delta_p / AIR_DENSITY);
-        return DISCHARGE_COEFF * ORIFICE_AREA * velocity * FLOW_RATE_FACTOR;
-    }
-    return 0.0;
-}
-
 class WasteDetector {
   public:
     WasteDetector() = default;
@@ -142,8 +127,8 @@ class WasteDetector {
             return WasteFullError::NO_ERROR;
         }
 
-        flow_ml_per_s = calculate_flow_per_second(
-            pressure_abs_a, pressure_abs_b, smoothed_delta_p);
+        flow_ml_per_s =
+            calculate_flow_per_second(pressure_abs_a, pressure_abs_b);
         error = WasteFullError::NO_ERROR;
 
         if (smoothed_p_ == 0.0) {
@@ -246,6 +231,23 @@ class WasteDetector {
             return trip(WasteFullError::FLOW_STABLE_FULL_ERROR);
         }
         return WasteFullError::NO_ERROR;
+    }
+
+    auto calculate_flow_per_second(double pressure_a, double pressure_b)
+        -> double {
+        auto delta_p_pa = std::abs(pressure_a - pressure_b) * 100.0;
+        if (smoothed_delta_p == 0.0) {
+            smoothed_delta_p = delta_p_pa;
+        } else {
+            smoothed_delta_p = (FLOW_RATE_ALPHA * delta_p_pa) +
+                               ((1.0 - FLOW_RATE_ALPHA) * smoothed_delta_p);
+        }
+
+        if (smoothed_delta_p > MIN_DELTA_ALPHA) {
+            const auto velocity = std::sqrt(2 * smoothed_delta_p / AIR_DENSITY);
+            return DISCHARGE_COEFF * ORIFICE_AREA * velocity * FLOW_RATE_FACTOR;
+        }
+        return 0.0;
     }
 
     bool waste_full_ = false;
