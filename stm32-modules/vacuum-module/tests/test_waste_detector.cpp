@@ -250,33 +250,52 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         REQUIRE(err == WasteFullError::NO_ERROR);
     }
 
-    SECTION("configure() applies zero values") {
-        auto cfg = detector.get_config();
-        cfg.min_waste_depth_mbar = 0.0;
-        cfg.g_sealed_max = 0.0;
-        cfg.stable_hold_ms = 0.0;
-        detector.configure(cfg);
-        auto got = detector.get_config();
-        REQUIRE(got.min_waste_depth_mbar == Approx(0.0));
-        REQUIRE(got.g_sealed_max == Approx(0.0));
-        REQUIRE(got.stable_hold_ms == Approx(0.0));
-    }
-
-    SECTION("configure() clamps p_filter_alpha to (0, 1]") {
+    SECTION("configure() clamps knobs to safety rails") {
         auto cfg = detector.get_config();
         cfg.p_filter_alpha = 2.0;
+        cfg.g_sealed_max = 10000.0;
+        cfg.flowing_dp_mbar = 10000.0;
+        cfg.stable_hold_ms = 2000000.0;
+        cfg.stable_hold_deep_ms = 2000000.0;
+        cfg.min_waste_depth_mbar = 5000.0;
         detector.configure(cfg);
-        REQUIRE(detector.get_config().p_filter_alpha == Approx(1.0));
+        auto got = detector.get_config();
+        REQUIRE(got.p_filter_alpha == Approx(SENSOR_ALPHA_MAX));
+        REQUIRE(got.g_sealed_max == Approx(G_SEALED_MAX_MAX));
+        REQUIRE(got.flowing_dp_mbar == Approx(FLOWING_DP_MAX_MBAR));
+        REQUIRE(got.stable_hold_ms == Approx(STABLE_HOLD_MAX_MS));
+        REQUIRE(got.stable_hold_deep_ms == Approx(STABLE_HOLD_MAX_MS));
+        REQUIRE(got.min_waste_depth_mbar == Approx(MIN_WASTE_DEPTH_MAX_MBAR));
 
-        cfg = detector.get_config();
         cfg.p_filter_alpha = 0.0;
+        cfg.g_sealed_max = 0.0;
+        cfg.flowing_dp_mbar = 0.0;
+        cfg.stable_hold_ms = 0.0;
+        cfg.stable_hold_deep_ms = 0.0;
+        cfg.min_waste_depth_mbar = 0.0;
         detector.configure(cfg);
-        REQUIRE(detector.get_config().p_filter_alpha == Approx(SENSOR_ALPHA));
+        got = detector.get_config();
+        REQUIRE(got.p_filter_alpha == Approx(SENSOR_ALPHA_MIN));
+        REQUIRE(got.g_sealed_max == Approx(G_SEALED_MAX_MIN));
+        REQUIRE(got.flowing_dp_mbar == Approx(FLOWING_DP_MIN_MBAR));
+        REQUIRE(got.stable_hold_ms == Approx(STABLE_HOLD_MIN_MS));
+        REQUIRE(got.stable_hold_deep_ms == Approx(STABLE_HOLD_MIN_MS));
+        REQUIRE(got.min_waste_depth_mbar == Approx(MIN_WASTE_DEPTH_MIN_MBAR));
 
-        cfg = detector.get_config();
         cfg.p_filter_alpha = 0.25;
+        cfg.g_sealed_max = 0.40;
+        cfg.flowing_dp_mbar = 8.0;
+        cfg.stable_hold_ms = 6000.0;
+        cfg.stable_hold_deep_ms = 10000.0;
+        cfg.min_waste_depth_mbar = 20.0;
         detector.configure(cfg);
-        REQUIRE(detector.get_config().p_filter_alpha == Approx(0.25));
+        got = detector.get_config();
+        REQUIRE(got.p_filter_alpha == Approx(0.25));
+        REQUIRE(got.g_sealed_max == Approx(0.40));
+        REQUIRE(got.flowing_dp_mbar == Approx(8.0));
+        REQUIRE(got.stable_hold_ms == Approx(6000.0));
+        REQUIRE(got.stable_hold_deep_ms == Approx(10000.0));
+        REQUIRE(got.min_waste_depth_mbar == Approx(20.0));
     }
 
     SECTION("Configured G cap is used in hold") {

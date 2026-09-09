@@ -315,7 +315,7 @@ class PressureTask {
             set_pump_state(true, rpm);
         }
 
-        // Waste check uses commanded RPM.
+        // Handle waste detection
         auto res =
             // NOLINTNEXTLINE(readability-suspicious-call-argument)
             _detector.check(timestamp, current_pressure_a, current_pressure_b,

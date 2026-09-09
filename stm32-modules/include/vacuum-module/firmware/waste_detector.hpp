@@ -3,14 +3,50 @@
 #include <cmath>
 #include <cstdint>
 
+#include "systemwide.h"
+
 namespace waste_detector {
 
-// Waste-full is inferred, not measured. Sensors A and B sit in series
-// inside the module, downstream of the waste-jug floater, so |A-B| is
-// orifice flow after the jug.
-//
-// Full: tiny sealed volume. Hold is a deadhead (low conductance, no
-// orifice flow). Empty leaky: higher RPM/depth in hold.
+/*
+The Waste-full detector checks if we are in a sealed deadhead for long enough.
+This means, we are near the target but the amount of work the pump needs
+to do is relatively small for the vacuum we need to hold.
+
+When waste-full detection is enabled, every tick we check:
+
+1. Are we near target?: |current − target| < PRESSURE_TOLERANCE mbar
+    - `current` is the EMA smoothed pressure of B
+
+    if false, Reset near_target_ms_ and sealed_hold_ms_
+
+2. Debounce: Stay near target for NEAR_TARGET_MS
+    if false, dont add or subtract to sealed_hold_ms_
+
+3. Sealed?: All the following conditions must be true to be a sealed deadhead
+    - Commanded RPM ≥ 1 - Pump is actually being asked to run
+    - |A−B| < H mbar    - Veto for large leaks, this is mostly
+        sensor-to-sensor offset but when there is wide-open path the sensors
+        show different pressures. Not the main discriminator, that's G below.
+
+    - (G = RPMcmd / vacuum) < Gcap - The work the pump is doing relative to
+        the current vacuum.
+
+        A lower G means a full deadhead, a higher G means empty or
+        leaky. The Gcap is our tuning knob, lowering the value decreases the
+        sensitivity so it makes it easier to avoid false-positives but harder to
+        trip when actually full. Raising the value increases the sensitivity so
+        it makes it easier to trip when full, but increases the chances of
+        false-positives when empty.
+
+    if false, the sealed clock decays by the same dt. This way 1-tick PID blips
+    dont reset the whole thing. We subtract dt from sealed_hold_ms_ AND we dont
+    do the trip check on this tick.
+
+4. Hold time: Sealed clock ≥ stable_hold_ms, have we stayed "sealed" for N seconds?
+    if false, Keep watching.
+    if true, trip the system and return Waste-Full error.
+             This stays latched until a reset or a new vacuum command comes in.
+*/
 
 enum class WasteFullError : uint8_t {
     NO_ERROR = 0,
@@ -23,15 +59,21 @@ static constexpr double MAX_DT_MS = static_cast<double>(CONTROL_PERIOD_MS * 4);
 static constexpr const uint32_t NEAR_TARGET_MS = 2000;
 static constexpr const double PRESSURE_TOLERANCE = 20.0F;
 static constexpr const double SENSOR_ALPHA = 0.5F;
+static constexpr double SENSOR_ALPHA_MIN = 0.001;
 
 static constexpr double STABLE_HOLD_MS = 6000.0;
 static constexpr double STABLE_HOLD_DEEP_MS = 10000.0;
+static constexpr double STABLE_HOLD_MAX_MS = 1000000.0;
 static constexpr double DEEP_VACUUM_DEPTH_MBAR = 800.0;
 static constexpr double FLOWING_DP_MBAR = 8.0;
+static constexpr double FLOWING_DP_MAX_MBAR = 500.0;
 static constexpr double MIN_WASTE_DEPTH_MBAR = 20.0;
+static constexpr double MIN_WASTE_DEPTH_MAX_MBAR = 1000.0;
 // Commanded RPM per mbar of current vacuum.
 static constexpr double G_SEALED_MAX = 0.40;
-// Overshoot zeros holding FF. Command 0 is not a deadhead.
+static constexpr double G_SEALED_MAX_MIN = 0.001;
+// MAX_RPM at the 1 mbar G floor.
+static constexpr double G_SEALED_MAX_MAX = static_cast<double>(MAX_RPM);
 static constexpr double MIN_SEALED_RPM = 1.0;
 
 static constexpr const double ORIFICE_AREA = 0.00004536;  // m², 7.6 mm ID
@@ -73,10 +115,18 @@ class WasteDetector {
     WasteDetector() = default;
 
     auto configure(WasteConfig c) -> void {
-        config = c;
-        config.p_filter_alpha = (c.p_filter_alpha <= 0.0)
-                                    ? SENSOR_ALPHA
-                                    : std::min(c.p_filter_alpha, 1.0);
+        config.enable_waste_full = c.enable_waste_full;
+        config.p_filter_alpha =
+            std::clamp(c.p_filter_alpha, SENSOR_ALPHA_MIN, 1.0);
+        config.g_sealed_max = std::clamp(c.g_sealed_max, 0.0, G_SEALED_MAX_MAX);
+        config.flowing_dp_mbar =
+            std::clamp(c.flowing_dp_mbar, 0.0, FLOWING_DP_MAX_MBAR);
+        config.stable_hold_ms =
+            std::clamp(c.stable_hold_ms, 0.0, STABLE_HOLD_MAX_MS);
+        config.stable_hold_deep_ms =
+            std::clamp(c.stable_hold_deep_ms, 0.0, STABLE_HOLD_MAX_MS);
+        config.min_waste_depth_mbar =
+            std::clamp(c.min_waste_depth_mbar, 0.0, MIN_WASTE_DEPTH_MAX_MBAR);
     }
 
     auto check(uint32_t timestamp, double pressure_abs_a, double pressure_abs_b,

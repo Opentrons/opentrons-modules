@@ -722,9 +722,7 @@ struct GetPressurePID {
 
 struct SetWasteDetectionConfig {
     /*
-     * M127- SetWasteDetectionConfig
-     * A filter alpha, G sealed conductance cap, H flowing |A-B| mbar,
-     * T/U sealed-hold ms (normal/deep), N min vacuum depth mbar, E enable.
+     * M127- SetWasteDetectionConfig configure the waste full detection feature
      * */
     std::optional<double> p_filter_alpha = std::nullopt;
     std::optional<double> g_sealed_max = std::nullopt;
