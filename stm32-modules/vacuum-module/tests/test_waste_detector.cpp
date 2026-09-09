@@ -260,7 +260,7 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         cfg.min_waste_depth_mbar = 5000.0;
         detector.configure(cfg);
         auto got = detector.get_config();
-        REQUIRE(got.p_filter_alpha == Approx(SENSOR_ALPHA_MAX));
+        REQUIRE(got.p_filter_alpha == Approx(1.0));
         REQUIRE(got.g_sealed_max == Approx(G_SEALED_MAX_MAX));
         REQUIRE(got.flowing_dp_mbar == Approx(FLOWING_DP_MAX_MBAR));
         REQUIRE(got.stable_hold_ms == Approx(STABLE_HOLD_MAX_MS));
@@ -268,19 +268,19 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         REQUIRE(got.min_waste_depth_mbar == Approx(MIN_WASTE_DEPTH_MAX_MBAR));
 
         cfg.p_filter_alpha = 0.0;
-        cfg.g_sealed_max = 0.0;
-        cfg.flowing_dp_mbar = 0.0;
-        cfg.stable_hold_ms = 0.0;
-        cfg.stable_hold_deep_ms = 0.0;
-        cfg.min_waste_depth_mbar = 0.0;
+        cfg.g_sealed_max = -1.0;
+        cfg.flowing_dp_mbar = -1.0;
+        cfg.stable_hold_ms = -1.0;
+        cfg.stable_hold_deep_ms = -1.0;
+        cfg.min_waste_depth_mbar = -1.0;
         detector.configure(cfg);
         got = detector.get_config();
         REQUIRE(got.p_filter_alpha == Approx(SENSOR_ALPHA_MIN));
-        REQUIRE(got.g_sealed_max == Approx(G_SEALED_MAX_MIN));
-        REQUIRE(got.flowing_dp_mbar == Approx(FLOWING_DP_MIN_MBAR));
-        REQUIRE(got.stable_hold_ms == Approx(STABLE_HOLD_MIN_MS));
-        REQUIRE(got.stable_hold_deep_ms == Approx(STABLE_HOLD_MIN_MS));
-        REQUIRE(got.min_waste_depth_mbar == Approx(MIN_WASTE_DEPTH_MIN_MBAR));
+        REQUIRE(got.g_sealed_max == Approx(0.0));
+        REQUIRE(got.flowing_dp_mbar == Approx(0.0));
+        REQUIRE(got.stable_hold_ms == Approx(0.0));
+        REQUIRE(got.stable_hold_deep_ms == Approx(0.0));
+        REQUIRE(got.min_waste_depth_mbar == Approx(0.0));
 
         cfg.p_filter_alpha = 0.25;
         cfg.g_sealed_max = 0.40;
