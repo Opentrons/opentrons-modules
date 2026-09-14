@@ -224,15 +224,12 @@ struct GetPressurePIDResponseMessage {
 struct SetWasteDetectionConfigMessage {
     uint32_t id = 0;
     bool enable_waste_full = true;
-    std::optional<double> p_window_start = std::nullopt;
-    std::optional<double> p_window_end = std::nullopt;
-    std::optional<double> baseline_fast_factor = std::nullopt;
-    std::optional<double> max_delta_per_tick = std::nullopt;
-    std::optional<double> max_rise_per_tick = std::nullopt;
-    std::optional<double> max_cummulative_rise = std::nullopt;
     std::optional<double> p_filter_alpha = std::nullopt;
-    std::optional<double> min_window_time = std::nullopt;
-    std::optional<double> max_window_time = std::nullopt;
+    std::optional<double> g_sealed_max = std::nullopt;
+    std::optional<double> flowing_dp_mbar = std::nullopt;
+    std::optional<double> stable_hold_ms = std::nullopt;
+    std::optional<double> stable_hold_deep_ms = std::nullopt;
+    std::optional<double> min_waste_depth_mbar = std::nullopt;
 };
 
 struct GetWasteDetectionConfigMessage {
@@ -242,15 +239,12 @@ struct GetWasteDetectionConfigMessage {
 struct GetWasteDetectionConfigResponse {
     uint32_t responding_to_id;
     bool enable_waste_full;
-    double p_window_start;
-    double p_window_end;
-    double baseline_fast_factor;
-    double max_delta_per_tick;
-    double max_rise_per_tick;
-    double max_cummulative_rise;
     double p_filter_alpha;
-    double min_window_time;
-    double max_window_time;
+    double g_sealed_max;
+    double flowing_dp_mbar;
+    double stable_hold_ms;
+    double stable_hold_deep_ms;
+    double min_waste_depth_mbar;
 };
 
 using HostCommsMessage =
