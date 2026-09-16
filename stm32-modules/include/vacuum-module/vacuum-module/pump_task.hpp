@@ -236,8 +236,7 @@ class PumpTask {
 
         if (m.from_host) {
             send_ack_message(m.id);
-            // Send notification to PressureTask so it can track vacuum duration
-            // and perform waste detection using its sensor access and logic.
+            // Send notification to PressureTask so it can track vacuum duration.
             // PressureTask will run monitoring but must not send control msgs
             // (SetPumpState) back in this mode.
             auto notify =

@@ -144,7 +144,7 @@ struct SetPumpStateMessage {
 /*
  * Internal notification from PumpTask to PressureTask when a direct/from_host
  * SetPumpState is received. This lets PressureTask run its duration tracking
- * and waste detection logic without sending pump control commands back.
+ * logic without sending pump control commands back.
  */
 struct NotifyPumpRunMessage {
     bool run_pump = false;

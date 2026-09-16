@@ -313,19 +313,19 @@ class PressureTask {
                 _controller.update(dt, current_pressure_b, target_pressure);
             _control_state.target_rpm = rpm;
             set_pump_state(true, rpm);
-        }
 
-        // Handle waste detection
-        auto res =
-            // NOLINTNEXTLINE(readability-suspicious-call-argument)
-            _detector.check(timestamp, current_pressure_a, current_pressure_b,
-                            target_pressure, pressure_atm,
-                            _control_state.target_rpm);
-        if (res != waste_detector::WasteFullError::NO_ERROR) {
-            stop_vacuum();
-            set_vent_state(VentState::OPENED);
-            send_error_message(Error::WASTE_FULL_ERROR);
-            return;
+            // Handle waste detection
+            auto res =
+                // NOLINTNEXTLINE(readability-suspicious-call-argument)
+                _detector.check(timestamp, current_pressure_a,
+                                current_pressure_b, target_pressure,
+                                pressure_atm, rpm);
+            if (res != waste_detector::WasteFullError::NO_ERROR) {
+                stop_vacuum();
+                set_vent_state(VentState::OPENED);
+                send_error_message(Error::WASTE_FULL_ERROR);
+                return;
+            }
         }
     }
 

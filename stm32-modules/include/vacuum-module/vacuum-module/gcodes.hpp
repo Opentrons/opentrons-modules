@@ -419,7 +419,7 @@ struct SetPumpState {
     /*
      * M122- SetPumpState set state of pump control (start pump, target rpm,
      * on/off). Supports E:<duration_s> T:<timeout_s> (D: is duty) to enable
-     * duration tracking and waste detection via notification to PressureTask.
+     * duration tracking via notification to PressureTask.
      * */
     double target_rpm = 0;
     uint8_t duty_cycle = 0;
