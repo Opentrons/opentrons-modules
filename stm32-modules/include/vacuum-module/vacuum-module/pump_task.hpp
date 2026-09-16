@@ -236,9 +236,9 @@ class PumpTask {
 
         if (m.from_host) {
             send_ack_message(m.id);
-            // Send notification to PressureTask so it can track vacuum duration.
-            // PressureTask will run monitoring but must not send control msgs
-            // (SetPumpState) back in this mode.
+            // Send notification to PressureTask so it can track vacuum
+            // duration. PressureTask will run monitoring but must not send
+            // control msgs (SetPumpState) back in this mode.
             auto notify =
                 messages::NotifyPumpRunMessage{.run_pump = m.run_pump,
                                                .pressure_percent = m.duty_cycle,
