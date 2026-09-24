@@ -5,7 +5,7 @@
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
 #include "firmware/ui_policy.hpp"
-#include "reference-module/ui_task.hpp"
+#include "liquid-height-tracker-module/ui_task.hpp"
 #include "task.h"
 
 namespace ui_control_task {

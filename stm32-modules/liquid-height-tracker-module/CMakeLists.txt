@@ -1,7 +1,7 @@
 #FLEX Stacker
 
 # This variable defines the name of the target for this subfolder.
-set(TARGET_MODULE_NAME "reference-module")
+set(TARGET_MODULE_NAME "liquid-height-tracker")
 
 add_subdirectory(src)
 

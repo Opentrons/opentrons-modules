@@ -4,7 +4,7 @@
 #include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/system_policy.hpp"
-#include "reference-module/system_task.hpp"
+#include "liquid-height-tracker-module/system_task.hpp"
 #include "task.h"
 
 namespace system_control_task {

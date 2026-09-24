@@ -2,7 +2,7 @@
 #include <cstring>
 
 #include "catch2/catch.hpp"
-#include "reference-module/errors.hpp"
+#include "liquid-height-tracker-module/errors.hpp"
 
 SCENARIO("testing error writing") {
     GIVEN("an error code and a buffer to write into") {

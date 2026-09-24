@@ -46,8 +46,6 @@ static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto i2c2_comms = i2c::hardware::I2C();
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static auto i2c3_comms = i2c::hardware::I2C();
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto i2c_handles = I2CHandlerStruct{};
 
 auto main() -> int {
@@ -56,7 +54,6 @@ auto main() -> int {
     i2c_hardware_init(&i2c_handles);
 
     i2c2_comms.set_handle(i2c_handles.i2c2, I2C_BUS_2);
-    i2c3_comms.set_handle(i2c_handles.i2c3, I2C_BUS_3);
 
     system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);

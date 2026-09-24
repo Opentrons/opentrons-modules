@@ -10,8 +10,8 @@
 #include "firmware/freertos_message_queue.hpp"
 #include "firmware/usb_hardware.h"
 #include "hal/double_buffer.hpp"
-#include "reference-module/host_comms_task.hpp"
-#include "reference-module/messages.hpp"
+#include "liquid-height-tracker-module/host_comms_task.hpp"
+#include "liquid-height-tracker-module/messages.hpp"
 #include "task.h"
 
 /** Sadly this must be manually duplicated from usbd_cdc.h */
