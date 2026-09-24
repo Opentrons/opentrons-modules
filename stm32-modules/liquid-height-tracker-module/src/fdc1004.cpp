@@ -9,3 +9,4 @@
 //         11=400Hz), bits [3:0] = trigger/done flags for channels 1-4 (bit 3-channel)
 //     -Result conversion: combine MSB<<8 | (LSB>>8) into a signed 24-bit value, 
 //         sign-extend from bit 23, then capacitance_pF = raw / 2^19 + capdac * 3.125
+
