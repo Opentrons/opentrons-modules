@@ -10,3 +10,7 @@
 //     -Result conversion: combine MSB<<8 | (LSB>>8) into a signed 24-bit value, 
 //         sign-extend from bit 23, then capacitance_pF = raw / 2^19 + capdac * 3.125
 
+#include "liquid-height-tracker-module/fdc1004.hpp"
+
+using namespace fdc1004;
+
