@@ -3,8 +3,8 @@
 #include <cstdint>
 
 #include "core/is31fl_driver.hpp"
-#include "ot_utils/freertos/freertos_timer.hpp"
 #include "liquid-height-tracker-module/messages.hpp"
+#include "ot_utils/freertos/freertos_timer.hpp"
 #include "ui_policy.hpp"
 
 namespace ui_task {

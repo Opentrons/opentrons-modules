@@ -47,7 +47,7 @@ execute_process(COMMAND
 
 add_subdirectory(common)
 add_subdirectory(reference-module)
-add_subdirectory(liquid-height-tracker)
+add_subdirectory(liquid-height-tracker-module)
 add_subdirectory(heater-shaker)
 add_subdirectory(thermocycler-gen2)
 add_subdirectory(tempdeck-gen3)

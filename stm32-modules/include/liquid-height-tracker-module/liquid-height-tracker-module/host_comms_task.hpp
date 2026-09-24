@@ -10,10 +10,10 @@
 #include "core/version.hpp"
 #include "errors.hpp"
 #include "hal/message_queue.hpp"
-#include "messages.hpp"
 #include "liquid-height-tracker-module/errors.hpp"
 #include "liquid-height-tracker-module/gcodes.hpp"
 #include "liquid-height-tracker-module/messages.hpp"
+#include "messages.hpp"
 
 namespace tasks {
 template <template <class> class QueueImpl>

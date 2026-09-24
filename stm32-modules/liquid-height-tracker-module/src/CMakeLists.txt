@@ -53,7 +53,7 @@ endif()
 # Configure lintable/nonlintable sources here
 set(CORE_LINTABLE_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/errors.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/fdc1004.cpp
+        # ${CMAKE_CURRENT_SOURCE_DIR}/fdc1004.cpp
         )
 set(CORE_LINTABLE_SOURCES
         ${CORE_LINTABLE_SOURCES}

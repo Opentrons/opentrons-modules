@@ -7,7 +7,7 @@
 
 #include "firmware/system_hardware.h"
 #include "firmware/system_serial_number.h"
-#include "reference-module/errors.hpp"
+#include "liquid-height-tracker-module/errors.hpp"
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto SystemPolicy::enter_bootloader() -> void {
