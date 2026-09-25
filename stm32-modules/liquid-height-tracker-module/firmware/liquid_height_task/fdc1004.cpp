@@ -1,26 +1,9 @@
-// Key facts you need from the datasheet:
-//     -I2C address is fixed: 0x50
-//     -Registers: MEAS1_MSB..MEAS4_LSB = 0x00-0x07, CONF_MEAS1..4 = 0x08-0x0B,
-//     FDC_CONF = 0x0C,
-//         MANUFACTURER_ID = 0xFE (expect 0x5449), DEVICE_ID = 0xFF (expect
-//         0x1004)
-//     -CONF_MEASx (16-bit): bits [15:13] = CHA (channel, 0-3),
-//         bits [12:10] = CHB (0b111 = disabled = single-ended),
-//         bits [9:5] = CAPDAC (0-31)
-//     -FDC_CONF: bit 15 = reset, bits [11:10] = rate (01=100Hz, 10=200Hz,
-//         11=400Hz), bits [3:0] = trigger/done flags for channels 1-4 (bit
-//         3-channel)
-//     -Result conversion: combine MSB<<8 | (LSB>>8) into a signed 24-bit value,
-//         sign-extend from bit 23, then capacitance_pF = raw / 2^19 + capdac
-//         * 3.125
-
 #include <iostream>
 
 #include "firmware/i2c_comms.hpp"
 #include "liquid-height-tracker-module/errors.hpp"
 #include "liquid-height-tracker-module/fdc1004.hpp"
 
-using namespace fdc1004;
 
 constexpr uint16_t RESET_BIT = 0x8000;
 constexpr uint16_t ADDRESS = 0x50;
@@ -30,6 +13,10 @@ constexpr uint8_t MAX_CHANNEL = 3;
 constexpr uint8_t MAX_CAPDAC = 31;
 constexpr uint16_t RATE_MASK = 0b11 << 10;
 constexpr uint16_t DONE_BIT_MASK(uint8_t channel) { return 1 << (3 - channel); }
+
+using namespace fdc1004;
+
+FDC1004::FDC1004(i2c::hardware::I2CBase* i2c) : _i2c(i2c) {}
 
 auto FDC1004::write_register(uint8_t reg, uint16_t value) -> bool {
     std::array<uint8_t, 2> data = {static_cast<uint8_t>(value >> 8),

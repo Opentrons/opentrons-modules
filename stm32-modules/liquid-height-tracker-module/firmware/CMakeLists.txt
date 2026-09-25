@@ -16,7 +16,8 @@ set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
 
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
-    ${LIQUID_TRACKER_DIR}/fdc1004_task.cpp
+    ${LIQUID_TRACKER_DIR}/freertos_fdc1004_task.cpp
+    ${LIQUID_TRACKER_DIR}/fdc1004.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
     ${COMMS_DIR}/freertos_comms_task.cpp
     ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
