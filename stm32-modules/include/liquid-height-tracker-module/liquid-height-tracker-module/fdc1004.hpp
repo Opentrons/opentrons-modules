@@ -10,7 +10,7 @@ class FDC1004 {
   public:
     static constexpr uint16_t ADDRESS = 0x50;
     enum class Rate : uint16_t { SAMPLES_100HZ = 0b01, SAMPLES_400HZ = 0b11 };
-    explicit FDC1004(i2c::hardware::I2CBase* i2c);
+    explicit FDC1004(i2c::hardware::I2CBase* i2c_bus);
     auto who_am_i() -> bool;
     auto reset() -> bool;
     auto configure_single_ended(uint8_t channel, uint8_t capdac = 0) -> bool;

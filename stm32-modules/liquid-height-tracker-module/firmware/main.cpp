@@ -1,13 +1,14 @@
 #include <functional>
+
 #include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"
+#include "firmware/freertos_fdc1004_task.hpp"  // Integrated Task Header Include Path
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
 #include "firmware/i2c_hardware.h"
 #include "firmware/system_stm32g4xx.h"
 #include "liquid-height-tracker-module/fdc1004.hpp"
 #include "ot_utils/freertos/freertos_task.hpp"
-#include "firmware/freertos_fdc1004_task.hpp" // Integrated Task Header Include Path
 #include "systemwide.h"
 #include "task.h"
 
