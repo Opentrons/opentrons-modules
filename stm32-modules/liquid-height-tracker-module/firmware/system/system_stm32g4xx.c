@@ -337,7 +337,10 @@ static void led_init(void) {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOC_CLK_ENABLE();
+  if (nSTATUS_LED_GPIO_Port == GPIOA)      __HAL_RCC_GPIOA_CLK_ENABLE();
+  else if (nSTATUS_LED_GPIO_Port == GPIOB) __HAL_RCC_GPIOB_CLK_ENABLE();
+  else if (nSTATUS_LED_GPIO_Port == GPIOC) __HAL_RCC_GPIOC_CLK_ENABLE();
+  else if (nSTATUS_LED_GPIO_Port == GPIOD) __HAL_RCC_GPIOD_CLK_ENABLE();
 
   GPIO_InitStruct.Pin = nSTATUS_LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;

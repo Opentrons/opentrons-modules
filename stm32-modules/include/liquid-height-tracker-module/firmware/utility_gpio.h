@@ -33,5 +33,5 @@ extern "C" {
 #define EEPROM_WP_PIN GPIO_PIN_10
 #define EEPROM_WP_PORT GPIOA
 
-#define nSTATUS_LED_Pin GPIO_PIN_10
-#define nSTATUS_LED_GPIO_Port GPIOC
+#define nSTATUS_LED_Pin GPIO_PIN_5
+#define nSTATUS_LED_GPIO_Port GPIOA

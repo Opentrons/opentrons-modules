@@ -23,8 +23,11 @@ using EntryPointUI = std::function<void(tasks::FirmwareTasks::QueueAggregator *,
                                         i2c::hardware::I2C *)>;
 
 namespace tasks {
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto ui_task_entry = EntryPointUI(ui_control_task::run);
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto host_comms_entry = EntryPoint(host_comms_control_task::run);
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto system_task_entry = EntryPoint(system_control_task::run);
 }  // namespace tasks
 

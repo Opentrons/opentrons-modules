@@ -99,6 +99,17 @@ struct EnterBootloaderMessage {
     uint32_t id;
 };
 
+struct GetCapacitiveStateMessage {
+    uint32_t id = 0;
+};
+
+struct GetCapacitiveStateResponseMessage {
+    uint32_t responding_to_id;
+    double capacitive_ch1;
+    double capacitive_ch2;
+    double capacitive_ch3;
+};
+
 struct ForceUSBDisconnect {
     uint32_t id;
     size_t return_address;
@@ -107,7 +118,8 @@ struct ForceUSBDisconnect {
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, DebugMessage, AcknowledgePrevious,
-                   GetSystemInfoResponse, GetResetReasonResponse>;
+                   GetSystemInfoResponse, GetResetReasonResponse, 
+                   GetCapacitiveStateResponseMessage>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
@@ -115,5 +127,7 @@ using SystemMessage =
                    GetResetReasonMessage>;
 
 using UIMessage = ::std::variant<std::monostate>;
+
+using CapacitiveMessage = ::std::variant<std::monostate, GetCapacitiveStateMessage>;
 
 };  // namespace messages

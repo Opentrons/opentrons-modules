@@ -38,20 +38,20 @@ void Error_Handler(void);
 #define n48V_FAULT_GPIO_Port GPIOC
 
 #define I2C2_SDA_Pin GPIO_PIN_8
-#define I2C2_SDA_GPIO_Port GPIOA
+#define I2C2_SDA_GPIO_Port GPIOB
 #define I2C2_SCL_Pin GPIO_PIN_9
-#define I2C2_SCL_GPIO_Port GPIOA
+#define I2C2_SCL_GPIO_Port GPIOB
 
-#define I2C3_SCL_Pin GPIO_PIN_8
-#define I2C3_SCL_GPIO_Port GPIOC
-#define I2C3_SDA_Pin GPIO_PIN_9
-#define I2C3_SDA_GPIO_Port GPIOC
+// #define I2C3_SCL_Pin GPIO_PIN_8
+// #define I2C3_SCL_GPIO_Port GPIOC
+// #define I2C3_SDA_Pin GPIO_PIN_9
+// #define I2C3_SDA_GPIO_Port GPIOC
 
 #define EEPROM_WP_PIN GPIO_PIN_10
 #define EEPROM_WP_PORT GPIOA
 
-#define nSTATUS_LED_Pin GPIO_PIN_10
-#define nSTATUS_LED_GPIO_Port GPIOC
+#define nSTATUS_LED_Pin GPIO_PIN_5
+#define nSTATUS_LED_GPIO_Port GPIOA
 #define USB_VBUS_MCU_Pin GPIO_PIN_4
 #define USB_VBUS_MCU_GPIO_Port GPIOB
 

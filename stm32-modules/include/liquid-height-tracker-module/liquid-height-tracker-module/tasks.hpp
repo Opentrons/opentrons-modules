@@ -17,10 +17,12 @@ struct Tasks {
     using SystemQueue = QueueImpl<messages::SystemMessage>;
     // Message queue for UI task
     using UIQueue = QueueImpl<messages::UIMessage>;
+    // Message queue for capacitive task
+    using CapacitiveQueue = QueueImpl<messages::CapacitiveMessage>;
 
     // Central aggregator
     using QueueAggregator =
-        queue_aggregator::QueueAggregator<HostCommsQueue, SystemQueue, UIQueue>;
+        queue_aggregator::QueueAggregator<HostCommsQueue, SystemQueue, UIQueue, CapacitiveQueue>;
 
     // Addresses
     static constexpr size_t HostCommsAddress =
@@ -29,6 +31,8 @@ struct Tasks {
         QueueAggregator::template get_queue_idx<SystemQueue>();
     static constexpr size_t UIAddress =
         QueueAggregator::template get_queue_idx<UIQueue>();
+    static constexpr size_t CapacitiveAddress =
+        QueueAggregator::template get_queue_idx<CapacitiveQueue>();
 };
 
 };  // namespace tasks

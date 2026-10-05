@@ -23,6 +23,8 @@ extern DMA_HandleTypeDef hdma_spi2_rx;
 
 extern DMA_HandleTypeDef hdma_spi2_tx;
 
+UART_HandleTypeDef hlpuart1;
+
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 /**
@@ -71,17 +73,17 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     if(hi2c->Instance==I2C2)
     {
-        __HAL_RCC_GPIOA_CLK_ENABLE();
+        __HAL_RCC_GPIOB_CLK_ENABLE();
         /**I2C2 GPIO Configuration
-        PA8     ------> I2C2_SDA
-        PA9     ------> I2C2_SCL
+        PB8     ------> I2C2_SDA
+        PB9     ------> I2C2_SCL
         */
         GPIO_InitStruct.Pin = I2C2_SDA_Pin|I2C2_SCL_Pin;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-        GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
-        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
+        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
         /* Peripheral clock enable */
         __HAL_RCC_I2C2_CLK_ENABLE();
@@ -90,28 +92,29 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
         HAL_NVIC_SetPriority(I2C2_ER_IRQn, 7, 0);
         HAL_NVIC_EnableIRQ(I2C2_EV_IRQn);
         HAL_NVIC_EnableIRQ(I2C2_ER_IRQn);
-    } else if(hi2c->Instance==I2C3)
-    {
-        __HAL_RCC_GPIOC_CLK_ENABLE();
-        /**I2C3 GPIO Configuration
-        PC8     ------> I2C3_SCL
-        PC9     ------> I2C3_SDA
-        */
-        GPIO_InitStruct.Pin = I2C3_SCL_Pin|I2C3_SDA_Pin;
-        GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
-        GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-        GPIO_InitStruct.Alternate = GPIO_AF8_I2C3;
-        HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    } 
+    // else if(hi2c->Instance==I2C3)
+    // {
+    //     __HAL_RCC_GPIOC_CLK_ENABLE();
+    //     /**I2C3 GPIO Configuration
+    //     PC8     ------> I2C3_SCL
+    //     PC9     ------> I2C3_SDA
+    //     */
+    //     GPIO_InitStruct.Pin = I2C3_SCL_Pin|I2C3_SDA_Pin;
+    //     GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    //     GPIO_InitStruct.Pull = GPIO_NOPULL;
+    //     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    //     GPIO_InitStruct.Alternate = GPIO_AF8_I2C3;
+    //     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-        /* Peripheral clock enable */
-        __HAL_RCC_I2C3_CLK_ENABLE();
+    //     /* Peripheral clock enable */
+    //     __HAL_RCC_I2C3_CLK_ENABLE();
 
-        HAL_NVIC_SetPriority(I2C3_EV_IRQn, 7, 0);
-        HAL_NVIC_SetPriority(I2C3_ER_IRQn, 7, 0);
-        HAL_NVIC_EnableIRQ(I2C3_EV_IRQn);
-        HAL_NVIC_EnableIRQ(I2C3_ER_IRQn);
-    }
+    //     HAL_NVIC_SetPriority(I2C3_EV_IRQn, 7, 0);
+    //     HAL_NVIC_SetPriority(I2C3_ER_IRQn, 7, 0);
+    //     HAL_NVIC_EnableIRQ(I2C3_EV_IRQn);
+    //     HAL_NVIC_EnableIRQ(I2C3_ER_IRQn);
+    // }
 
 }
 
@@ -135,18 +138,18 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
         HAL_GPIO_DeInit(I2C2_SDA_GPIO_Port, I2C2_SDA_Pin);
         HAL_GPIO_DeInit(I2C2_SCL_GPIO_Port, I2C2_SCL_Pin);
     }
-    else if(hi2c->Instance==I2C3)
-    {
-        /* Peripheral clock disable */
-        __HAL_RCC_I2C3_CLK_DISABLE();
+    // else if(hi2c->Instance==I2C3)
+    // {
+    //     /* Peripheral clock disable */
+    //     __HAL_RCC_I2C3_CLK_DISABLE();
 
-        /**I2C3 GPIO Configuration
-        PC8     ------> I2C3_SCL
-        PC9     ------> I2C3_SDA
-        */
-        HAL_GPIO_DeInit(I2C3_SCL_GPIO_Port, I2C3_SCL_Pin);
-        HAL_GPIO_DeInit(I2C3_SDA_GPIO_Port, I2C3_SDA_Pin);
-    }
+    //     /**I2C3 GPIO Configuration
+    //     PC8     ------> I2C3_SCL
+    //     PC9     ------> I2C3_SDA
+    //     */
+    //     HAL_GPIO_DeInit(I2C3_SCL_GPIO_Port, I2C3_SCL_Pin);
+    //     HAL_GPIO_DeInit(I2C3_SDA_GPIO_Port, I2C3_SDA_Pin);
+    // }
 }
 
 /**
@@ -159,31 +162,37 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
-    if(huart->Instance==LPUART1)
+    huart->Instance = LPUART1;
+    huart->Init.BaudRate = 115200;
+    huart->Init.WordLength = UART_WORDLENGTH_8B;
+    huart->Init.StopBits = UART_STOPBITS_1;
+    huart->Init.Parity = UART_PARITY_NONE;
+    huart->Init.Mode = UART_MODE_TX_RX;
+    huart->Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart->Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+    huart->Init.ClockPrescaler = UART_PRESCALER_DIV1;
+    huart->AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+    if(huart->Instance == LPUART1)
     {
-        /** Initializes the peripherals clocks
-         */
         PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_LPUART1;
         PeriphClkInit.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
         if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
         {
             Error_Handler();
         }
+        // 1. Enable the Low-Power UART and GPIOC clocks
+        // __HAL_RCC_LPUART1_CLK_ENABLE();
+        __HAL_RCC_GPIOA_CLK_ENABLE();
 
-        /* Peripheral clock enable */
-        __HAL_RCC_LPUART1_CLK_ENABLE();
-
-        __HAL_RCC_GPIOB_CLK_ENABLE();
-        /**LPUART1 GPIO Configuration
-        PB10     ------> LPUART1_RX
-        PB11     ------> LPUART1_TX
-        */
-        GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_11;
+        // 2. Configure PA2 and PA3 for Alternate Function 12 (AF12 is LPUART1)
+        // PA2     ------> LPUART1_TX (Wires straight to ST-LINK VCP)
+        // PA3     ------> LPUART1_RX (Wires straight to ST-LINK VCP)
+        GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-        GPIO_InitStruct.Alternate = GPIO_AF8_LPUART1;
-        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+        GPIO_InitStruct.Alternate = GPIO_AF12_LPUART1;
+        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
     }
 
 }
@@ -196,17 +205,14 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
  */
 void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
 {
-    if(huart->Instance==LPUART1)
-    {
-        /* Peripheral clock disable */
-        __HAL_RCC_LPUART1_CLK_DISABLE();
-
-        /**LPUART1 GPIO Configuration
-        PB10     ------> LPUART1_RX
-        PB11     ------> LPUART1_TX
-        */
-        HAL_GPIO_DeInit(GPIOB, GPIO_PIN_10|GPIO_PIN_11);
-    }
+  if(huart->Instance == LPUART1)
+  {
+    // 1. Disable the LPUART1 peripheral clock
+    __HAL_RCC_LPUART1_CLK_DISABLE();
+  
+    // 2. Reset PA2 and PA3 back to default digital inputs
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2|GPIO_PIN_3);
+   }
 
 }
 
