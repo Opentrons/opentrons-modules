@@ -48,8 +48,10 @@ bool serial_hardware_write(const char *data, size_t length) {
     while (offset < length) {
         size_t remaining = length - offset;
         uint16_t chunk_size = remaining > UINT16_MAX ? UINT16_MAX : remaining;
+        /* Finite timeout: HAL_MAX_DELAY can wedge forever if the UART clock
+         * is wrong on cold boot before ST-LINK VCP is ready. */
         if (HAL_UART_Transmit(&serial_uart, (uint8_t *)&data[offset],
-                              chunk_size, HAL_MAX_DELAY) != HAL_OK) {
+                              chunk_size, 100U) != HAL_OK) {
             return false;
         }
         offset += chunk_size;

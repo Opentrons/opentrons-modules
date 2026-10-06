@@ -116,12 +116,14 @@ extern "C" {
  * PLL).
  */
 #if !defined(HSE_VALUE)
-#define HSE_VALUE (16000000UL) /*!< Value of the External oscillator in Hz */
-#endif                         /* HSE_VALUE */
+/* NUCLEO-G491RE: ST-LINK MCO supplies 8 MHz to OSC_IN by default. */
+#define HSE_VALUE (8000000UL) /*!< Value of the External oscillator in Hz */
+#endif                        /* HSE_VALUE */
 
 #if !defined(HSE_STARTUP_TIMEOUT)
-#define HSE_STARTUP_TIMEOUT (100UL) /*!< Time out for HSE start up, in ms */
-#endif                              /* HSE_STARTUP_TIMEOUT */
+/* ST-LINK MCO can take ~1-2 s after cold power-on; 100 ms is too short. */
+#define HSE_STARTUP_TIMEOUT (2500UL) /*!< Time out for HSE start up, in ms */
+#endif                               /* HSE_STARTUP_TIMEOUT */
 
 /**
  * @brief Internal High Speed oscillator (HSI) value.

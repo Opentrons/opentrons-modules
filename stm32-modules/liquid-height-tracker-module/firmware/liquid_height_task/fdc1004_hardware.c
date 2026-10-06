@@ -11,7 +11,9 @@
 #define FDC1004_MAX_CHANNEL 3
 #define FDC1004_MAX_CAPDAC 31
 #define FDC1004_CHANNEL_SHIFT 13
-#define FDC1004_CHB_DISABLED (0b111 << 10)
+#define FDC1004_CHB_SHIFT 10
+#define FDC1004_CHB_DISABLED 0x7
+#define FDC1004_CHB_CAPDAC 0x4
 #define FDC1004_CAPDAC_SHIFT 5
 
 static bool fdc1004_write_register(I2C_BUS bus, uint8_t reg, uint16_t value) {
@@ -47,8 +49,9 @@ bool fdc1004_hardware_init(I2C_BUS bus, uint8_t channel, uint8_t capdac) {
         return false;
     }
 
+    uint8_t chb = (capdac > 0) ? FDC1004_CHB_CAPDAC : FDC1004_CHB_DISABLED;
     uint16_t config = ((uint16_t)channel << FDC1004_CHANNEL_SHIFT) |
-                      FDC1004_CHB_DISABLED |
+                      ((uint16_t)chb << FDC1004_CHB_SHIFT) |
                       ((uint16_t)capdac << FDC1004_CAPDAC_SHIFT);
     return fdc1004_write_register(bus, FDC1004_MEAS_CONFIG_BASE + channel,
                                   config);

@@ -82,8 +82,9 @@
 #include "stm32g4xx_hal.h"
 
 #if !defined(HSE_VALUE)
-#define HSE_VALUE 16000000U /*!< Value of the External oscillator in Hz */
-#endif                      /* HSE_VALUE */
+/* NUCLEO-G491RE: ST-LINK MCO supplies 8 MHz to OSC_IN by default. */
+#define HSE_VALUE 8000000U /*!< Value of the External oscillator in Hz */
+#endif                     /* HSE_VALUE */
 
 #if !defined(HSI_VALUE)
 #define HSI_VALUE 16000000U /*!< Value of the Internal oscillator in Hz*/
@@ -207,42 +208,48 @@ void SystemClock_Config(void) {
     /** Configure the main internal regulator output voltage
      */
     HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1_BOOST);
-    /** Initializes the RCC Oscillators according to the specified parameters
-     * in the RCC_OscInitTypeDef structure.
+
+    /**
+     * NUCLEO-G491RE: do NOT use HSE/ST-LINK MCO for SYSCLK.
+     * MCO is often late or absent on cold power-on, which previously hung
+     * boot in Error_Handler(). Drive PLL from HSI instead:
+     *   SYSCLK = 16 MHz / 4 * 85 / 2 = 170 MHz
+     * USB continues to use HSI48.
      */
-    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48|RCC_OSCILLATORTYPE_HSE;
-    RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+    RCC_OscInitStruct.OscillatorType =
+        RCC_OSCILLATORTYPE_HSI48 | RCC_OSCILLATORTYPE_HSI;
+    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+    RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
     RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
     RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV4;
     RCC_OscInitStruct.PLL.PLLN = 85;
     RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
     RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
     RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
-    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-    {
+    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
         Error_Handler();
     }
+
     /** Initializes the CPU, AHB and APB buses clocks
      */
-    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                                |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK |
+                                  RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
     RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
     RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
     RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
     RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
-    {
+    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK) {
         Error_Handler();
     }
+
     /** Initializes the peripherals clocks
      */
     PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB;
     PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
-    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-    {
+    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK) {
         Error_Handler();
     }
 }
@@ -352,17 +359,34 @@ static void led_init(void) {
 
 void HardwareInit(void) {
     HAL_Init();
+    led_init();
     SystemClock_Config();
     SystemCoreClockUpdate();
-    led_init();
+    /* Busy-wait pulse (no HAL_Delay): confirms we got past clock init. */
+    HAL_GPIO_WritePin(nSTATUS_LED_GPIO_Port, nSTATUS_LED_Pin, GPIO_PIN_SET);
+    for (volatile uint32_t d = 0; d < 800000U; ++d) {
+    }
+    HAL_GPIO_WritePin(nSTATUS_LED_GPIO_Port, nSTATUS_LED_Pin, GPIO_PIN_RESET);
 }
 
-// Implementatino of Error_Handler for STM32 HAL drivers
+// Implementation of Error_Handler for STM32 HAL drivers
 void Error_Handler(void) {
-    // TODO: add implementation to report the HAL error return state
     __disable_irq();
-    while (1) {
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    GPIO_InitTypeDef gpio = {0};
+    gpio.Pin = nSTATUS_LED_Pin;
+    gpio.Mode = GPIO_MODE_OUTPUT_PP;
+    gpio.Pull = GPIO_NOPULL;
+    gpio.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(nSTATUS_LED_GPIO_Port, &gpio);
+
+    /* Fast blink, then reset — recover from fatal init errors on cold boot. */
+    for (uint32_t i = 0; i < 40U; ++i) {
+        HAL_GPIO_TogglePin(nSTATUS_LED_GPIO_Port, nSTATUS_LED_Pin);
+        for (volatile uint32_t d = 0; d < 200000U; ++d) {
+        }
     }
+    NVIC_SystemReset();
 }
 
 /**

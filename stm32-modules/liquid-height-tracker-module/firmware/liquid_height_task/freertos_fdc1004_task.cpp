@@ -28,7 +28,7 @@ static CapacitiveQueue capacitive_queue{1, "Capacitive Queue"};
 static auto measure_channel(fdc1004::FDC1004& sensor, uint8_t channel,
                             double& capacitance_pf) -> bool {
     if (!sensor.trigger_measurement(
-            channel, fdc1004::FDC1004::Rate::SAMPLES_100HZ)) {
+            channel, fdc1004::FDC1004::Rate::SAMPLES_400HZ)) {
         return false;
     }
 
