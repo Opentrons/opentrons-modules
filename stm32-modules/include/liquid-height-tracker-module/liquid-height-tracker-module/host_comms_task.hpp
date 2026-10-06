@@ -295,10 +295,15 @@ class HostCommsTask {
                     return errors::write_into(
                         tx_into, tx_limit,
                         errors::ErrorCode::BAD_MESSAGE_ACKNOWLEDGEMENT);
+                } else if (response.with_error) {
+                    return errors::write_into(
+                        tx_into, tx_limit,
+                        errors::ErrorCode::CAPACITIVE_SENSOR_ERROR);
                 } else {
                     return cache_element.write_response_into(
                         tx_into, tx_limit, response.capacitive_ch1,
-                        response.capacitive_ch2, response.capacitive_ch3);
+                        response.capacitive_ch2, response.capacitive_ch3,
+                        response.capacitive_ch4);
                 }
             },
             cache_entry);

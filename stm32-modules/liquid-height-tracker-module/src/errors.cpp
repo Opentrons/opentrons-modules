@@ -18,6 +18,8 @@ const char* const SYSTEM_SERIAL_NUMBER_HAL_ERROR =
     "ERR302:system:HAL error, busy, or timeout";
 const char* const SYSTEM_EEPROM_ERROR =
     "ERR303:system:EEPROM communication error";
+const char* const CAPACITIVE_SENSOR_ERROR =
+    "ERR601:capacitive sensor reading failed";
 
 const char* const UNKNOWN_ERROR = "ERR-1:unknown error code\n";
 
@@ -39,6 +41,7 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_INVALID);
         HANDLE_CASE(SYSTEM_SERIAL_NUMBER_HAL_ERROR);
         HANDLE_CASE(SYSTEM_EEPROM_ERROR);
+        HANDLE_CASE(CAPACITIVE_SENSOR_ERROR);
     }
     return UNKNOWN_ERROR;
 }

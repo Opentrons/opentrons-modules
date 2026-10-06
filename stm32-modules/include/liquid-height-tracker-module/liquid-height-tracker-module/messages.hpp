@@ -105,9 +105,11 @@ struct GetCapacitiveStateMessage {
 
 struct GetCapacitiveStateResponseMessage {
     uint32_t responding_to_id;
+    bool with_error = false;
     double capacitive_ch1;
     double capacitive_ch2;
     double capacitive_ch3;
+    double capacitive_ch4;
 };
 
 struct ForceUSBDisconnect {

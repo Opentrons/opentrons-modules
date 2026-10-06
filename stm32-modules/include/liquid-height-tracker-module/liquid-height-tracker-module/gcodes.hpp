@@ -216,7 +216,7 @@ struct SetSerialNumber {
 
 struct GetCapacitiveState {
     /*
-     * M121- GetCapacitiveState get state of capacitive sensors (C1, C2, C3)
+    * M111- GetCapacitiveState gets the state of capacitive sensors (C1-C4)
      * */
     using ParseResult = std::optional<GetCapacitiveState>;
     static constexpr auto prefix = std::array{'M', '1', '1', '1'};
@@ -227,12 +227,13 @@ struct GetCapacitiveState {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     double capacitive_ch1,
                                     double capacitive_ch2,
-                                    double capacitive_ch3) -> InputIt {
+                                    double capacitive_ch3,
+                                    double capacitive_ch4) -> InputIt {
         int res = 0;
         res = snprintf(
             &*buf, (limit - buf),
-            "M111 C1:%.1f C2:%.1f C3:%.1f OK\n",
-            capacitive_ch1, capacitive_ch2, capacitive_ch3);
+            "M111 C1:%.1f C2:%.1f C3:%.1f C4:%.1f OK\n", capacitive_ch1,
+            capacitive_ch2, capacitive_ch3, capacitive_ch4);
         if (res <= 0) {
             return buf;
         }

@@ -11,13 +11,13 @@ set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
 set(LIQUID_TRACKER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/liquid_height_task")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32G491")
-set(COMMON_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/src")
 set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
 
 # Add source files that should be checked by clang-tidy here
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${LIQUID_TRACKER_DIR}/freertos_fdc1004_task.cpp
     ${LIQUID_TRACKER_DIR}/fdc1004.cpp
+        ${SYSTEM_DIR}/serial_stream.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
     ${COMMS_DIR}/freertos_comms_task.cpp
     ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
@@ -36,8 +36,10 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${SYSTEM_DIR}/hal_tick.c
     ${SYSTEM_DIR}/system_serial_number.c
     ${SYSTEM_DIR}/system_hardware.c
+        ${SYSTEM_DIR}/serial_hardware.c
     ${SYSTEM_DIR}/i2c_hardware.c
     ${UI_DIR}/ui_hardware.c
+        ${LIQUID_TRACKER_DIR}/fdc1004_hardware.c
     ${COMMS_DIR}/usbd_conf.c
     ${COMMS_DIR}/usbd_desc.c
     ${COMMS_DIR}/usb_hardware.c

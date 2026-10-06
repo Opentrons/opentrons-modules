@@ -1,13 +1,15 @@
 #include <functional>
+#include <iostream>
 
 #include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"
-#include "firmware/freertos_fdc1004_task.hpp"  // Integrated Task Header Include Path
+#include "firmware/freertos_fdc1004_task.hpp"
 #include "firmware/freertos_tasks.hpp"
 #include "firmware/i2c_comms.hpp"
 #include "firmware/i2c_hardware.h"
+#include "firmware/serial_hardware.h"
+#include "firmware/serial_stream.hpp"
 #include "firmware/system_stm32g4xx.h"
-#include "liquid-height-tracker-module/fdc1004.hpp"
 #include "ot_utils/freertos/freertos_task.hpp"
 #include "systemwide.h"
 #include "task.h"
@@ -21,6 +23,8 @@
 using EntryPoint = std::function<void(tasks::FirmwareTasks::QueueAggregator *)>;
 using EntryPointUI = std::function<void(tasks::FirmwareTasks::QueueAggregator *,
                                         i2c::hardware::I2C *)>;
+using EntryPointFDC1004 = std::function<void(
+    tasks::FirmwareTasks::QueueAggregator *, i2c::hardware::I2C *)>;
 
 namespace tasks {
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -29,6 +33,8 @@ static auto ui_task_entry = EntryPointUI(ui_control_task::run);
 static auto host_comms_entry = EntryPoint(host_comms_control_task::run);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto system_task_entry = EntryPoint(system_control_task::run);
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static auto fdc1004_task_entry = EntryPointFDC1004(fdc1004::tasks::run);
 }  // namespace tasks
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
@@ -43,28 +49,39 @@ static auto ui_task =
 static auto system_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::SYSTEM_STACK_SIZE, EntryPoint>(
         tasks::system_task_entry);
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static auto fdc1004_task = ot_utils::freertos_task::FreeRTOSTask<
+    tasks::FDC1004_STACK_SIZE, EntryPointFDC1004>(tasks::fdc1004_task_entry);
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto aggregator = tasks::FirmwareTasks::QueueAggregator();
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static auto i2c2_comms = i2c::hardware::I2C();
+static auto i2c1_comms = i2c::hardware::I2C();
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto i2c_handles = I2CHandlerStruct{};
 
 auto main() -> int {
     HardwareInit();
+
+    if (serial_hardware_init()) {
+        static constexpr char serial_startup_message[] =
+            "USART2 serial output ready\r\n";
+        static_cast<void>(serial_hardware_write(
+            serial_startup_message, sizeof(serial_startup_message) - 1));
+        serial_stream_redirect();
+        std::cout << "FDC1004 firmware started" << std::endl;
+    }
+
     i2c_hardware_init(&i2c_handles);
-    i2c2_comms.set_handle(i2c_handles.i2c2, I2C_BUS_2);
+    i2c1_comms.set_handle(i2c_handles.i2c1, I2C_BUS_1);
 
     // Start background system, host communications, and user interface tasks
     system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);
-    ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator, &i2c2_comms);
-
-    // Formally spin up the non-blocking liquid tracking task thread.
-    // This safely passes the initialized I2C communications handle reference.
-    fdc1004::tasks::FDC1004_Task_Register(&i2c2_comms);
+    ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator, &i2c1_comms);
+    fdc1004_task.start(tasks::FDC1004_TASK_PRIORITY, "FDC1004", &aggregator,
+                       &i2c1_comms);
 
     // Start the FreeRTOS scheduler
     vTaskStartScheduler();

@@ -19,6 +19,7 @@
 #include "main.h"
 #include "stm32g4xx_it.h"
 #include "FreeRTOS.h"
+#include "firmware/serial_hardware.h"
 #include "task.h"
 
 /* External variables --------------------------------------------------------*/
@@ -85,6 +86,11 @@ void UsageFault_Handler(void)
  */
 void DebugMon_Handler(void)
 {
+}
+
+void USART2_IRQHandler(void)
+{
+  serial_hardware_irq_handler();
 }
 
 /******************************************************************************/

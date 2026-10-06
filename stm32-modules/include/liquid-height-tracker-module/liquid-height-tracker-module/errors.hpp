@@ -25,6 +25,7 @@ enum class ErrorCode : uint16_t {
     SYSTEM_SERIAL_NUMBER_INVALID = 301,
     SYSTEM_SERIAL_NUMBER_HAL_ERROR = 302,
     SYSTEM_EEPROM_ERROR = 303,
+    CAPACITIVE_SENSOR_ERROR = 601,
 };
 
 auto errorstring(ErrorCode code) -> const char*;
