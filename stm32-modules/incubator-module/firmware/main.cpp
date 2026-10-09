@@ -93,8 +93,8 @@ auto main() -> int {
     system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);
     ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator, &i2c1_comms);
-    fdc1004_task.start(tasks::FDC1004_TASK_PRIORITY, "FDC1004", &aggregator,
-                       &i2c1_comms);
+    // fdc1004_task.start(tasks::FDC1004_TASK_PRIORITY, "FDC1004", &aggregator,
+    //                    &i2c1_comms);
     proximity_task.start(tasks::PROXIMITY_TASK_PRIORITY, "proximity_task",
                          &aggregator);
     main_task.start(tasks::MAIN_TASK_PRIORITY, "main_task");

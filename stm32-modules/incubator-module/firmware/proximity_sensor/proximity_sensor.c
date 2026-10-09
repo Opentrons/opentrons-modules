@@ -75,8 +75,10 @@ void proximity_sensor_init(void) {
     for (uint8_t id = 0; id < PROXIMITY_SENSOR_COUNT; ++id) {
         GPIO_InitTypeDef gpio = {0};
         gpio.Pin = pins[id].pin;
-        gpio.Mode = GPIO_MODE_IT_RISING_FALLING;
-        gpio.Pull = GPIO_PULLUP;
+        /* Plain input. An EXTI on this pin preempts USART2 and an overrun
+         * there stops command reception until reset. */
+        gpio.Mode = GPIO_MODE_INPUT;
+        gpio.Pull = GPIO_NOPULL;
         gpio.Speed = GPIO_SPEED_FREQ_LOW;
         HAL_GPIO_Init(pins[id].port, &gpio);
     }
@@ -86,8 +88,8 @@ void proximity_sensor_init(void) {
         (uint8_t*)event_queue_storage, &event_queue_state);
 
     for (uint8_t id = 0; id < PROXIMITY_SENSOR_COUNT; ++id) {
-        HAL_NVIC_SetPriority(pins[id].irq, PROXIMITY_EXTI_NVIC_PRIORITY, 0);
         HAL_NVIC_DisableIRQ(pins[id].irq);
+        NVIC_ClearPendingIRQ(pins[id].irq);
     }
     gpio_ready = true;
 }
@@ -99,14 +101,7 @@ void proximity_sensor_attach_task(TaskHandle_t task) {
         return;
     }
 
-    for (uint8_t id = 0; id < PROXIMITY_SENSOR_COUNT; ++id) {
-        __HAL_GPIO_EXTI_CLEAR_IT(pins[id].pin);
-        NVIC_ClearPendingIRQ(pins[id].irq);
-    }
     proximity_sensor_poll();
-    for (uint8_t id = 0; id < PROXIMITY_SENSOR_COUNT; ++id) {
-        HAL_NVIC_EnableIRQ(pins[id].irq);
-    }
     irq_enabled = true;
 }
 

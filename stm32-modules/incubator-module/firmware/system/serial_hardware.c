@@ -12,6 +12,8 @@
 #define SERIAL_RX_BUFFER_SIZE 128U
 #define SERIAL_TX_LOCK_TIMEOUT_MS 250U
 
+static void serial_rx_restart(void);
+
 static UART_HandleTypeDef serial_uart;
 static bool serial_initialized = false;
 static StaticSemaphore_t serial_tx_mutex_state;
@@ -81,6 +83,7 @@ bool serial_hardware_write(const char *data, size_t length) {
     if (use_lock) {
         (void)xSemaphoreGive(serial_tx_mutex);
     }
+    serial_rx_restart();
     return ok;
 }
 
@@ -101,6 +104,21 @@ bool serial_hardware_read_byte(uint8_t *byte) {
 
 void serial_hardware_irq_handler(void) {
     HAL_UART_IRQHandler(&serial_uart);
+}
+
+static void serial_rx_restart(void) {
+    if (serial_uart.RxState == HAL_UART_STATE_READY) {
+        (void)HAL_UART_Receive_IT(&serial_uart, &serial_rx_byte, 1);
+    }
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *uart) {
+    if (uart != &serial_uart) {
+        return;
+    }
+    /* Overrun stops the receive interrupt. Arm it again or commands die
+     * while transmit keeps working. */
+    serial_rx_restart();
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *uart) {

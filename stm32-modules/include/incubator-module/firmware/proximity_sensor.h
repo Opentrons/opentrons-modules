@@ -14,17 +14,23 @@ extern "C" {
  * Panasonic GX-F6A inductive proximity sensors on the Nucleo-G491RE.
  *
  * The GX-F6A is NPN normally-open: the black wire sinks to GND while metal
- * is in range and is otherwise open. Each input uses the internal pull-up,
- * so a low pin means an object is detected.
+ * is in range and is otherwise open. The board has an external pull-up on
+ * PC2, so the GPIO is configured with no internal pull. A low pin means an
+ * object is detected.
  *
- * Connect the black wire to the GPIO. The internal pull-up holds the line at
- * 3.3 V while the output is open. The sensor supply is 12-24 V; do not pull
- * the output up to that rail, or the STM32 pin will be damaged.
- * Nucleo morpho CN7 pin 35 is PC2 (EXTI2). PC3 (CN7 pin 37) is not in use.
+ * Connect the black wire to the GPIO. The external pull-up holds the line at
+ * 3.3 V while the output is open. Enabling the internal pull-up as well
+ * holds the pin high against the sensor. The sensor supply is 12-24 V; do
+ * not pull the output up to that rail, or the STM32 pin will be damaged.
+ * Nucleo morpho CN7 pin 35 is PC2. PC3 (CN7 pin 37) is not in use.
  */
 
-/** How often the background task re-reads the pins. */
-#define PROXIMITY_SAMPLE_MS 5U
+/**
+ * How often the background task re-reads the pins.
+ * The GX-F6A response frequency is 400 Hz (2.5 ms). The FreeRTOS tick is
+ * 1 ms, which is the shortest interval this loop can use.
+ */
+#define PROXIMITY_SAMPLE_MS 1U
 
 typedef enum {
     PROXIMITY_SENSOR_PC2 = 0,
@@ -37,7 +43,7 @@ typedef struct {
 } proximity_event_t;
 
 /**
- * @brief Configure PC2 as a pull-up input and create the event queue.
+ * @brief Configure PC2 as an input with no pull and create the event queue.
  *
  * EXTI stays masked until proximity_sensor_attach_task(). Call this before
  * the scheduler starts.
