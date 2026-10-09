@@ -98,9 +98,9 @@ auto run(QueueAggregator* aggregator, i2c::hardware::I2C* i2c_bus_handle)
         capacitive_sensor.configure_single_ended(2, CONFIG) &&
         capacitive_sensor.configure_single_ended(3, CONFIG);
     if (!sensor_initialized) {
-        std::cerr << "FDC1004 hardware initialization failed" << std::endl;
+        std::printf("FDC1004 hardware initialization failed\r\n");
     } else {
-        std::cout << "FDC1004 task ready for M111" << std::endl;
+        std::printf("FDC1004 task ready for M111\r\n");
     }
 
     messages::CapacitiveMessage message{};

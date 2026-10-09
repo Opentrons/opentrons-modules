@@ -18,6 +18,12 @@ constexpr uint8_t COMMS_TASK_PRIORITY = 1;
 constexpr size_t SYSTEM_STACK_SIZE = 256;
 constexpr uint8_t SYSTEM_TASK_PRIORITY = 1;
 
+constexpr size_t MOTOR_STACK_SIZE = 512;
+constexpr uint8_t MOTOR_TASK_PRIORITY = 1;
+
+constexpr size_t MOTOR_DRIVER_STACK_SIZE = 512;
+constexpr uint8_t MOTOR_DRIVER_TASK_PRIORITY = 1;
+
 constexpr size_t UI_STACK_SIZE = 256;
 constexpr uint8_t UI_TASK_PRIORITY = 1;
 

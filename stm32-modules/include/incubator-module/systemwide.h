@@ -1,6 +1,10 @@
 // included in c++ and c files
 #pragma once
 
+typedef enum MotorID {
+    MOTOR_R = 0,
+} MotorID;
+
 /* size of array for setting serial number */
 #define SYSTEM_WIDE_SERIAL_NUMBER_LENGTH 24
 

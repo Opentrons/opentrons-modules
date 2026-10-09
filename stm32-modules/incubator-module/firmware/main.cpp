@@ -9,7 +9,6 @@
 #include "firmware/i2c_hardware.h"
 #include "firmware/proximity_sensor.h"
 #include "firmware/serial_hardware.h"
-#include "firmware/serial_stream.hpp"
 #include "firmware/system_stm32g4xx.h"
 #include "ot_utils/freertos/freertos_task.hpp"
 #include "systemwide.h"
@@ -30,6 +29,10 @@ using EntryPointNoArgs = std::function<void()>;
 
 namespace tasks {
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static auto motor_driver_task_entry = EntryPoint(motor_driver_task::run);
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static auto motor_task_entry = EntryPoint(motor_control_task::run);
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto ui_task_entry = EntryPointUI(ui_control_task::run);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto host_comms_entry = EntryPoint(host_comms_control_task::run);
@@ -42,6 +45,15 @@ static auto proximity_task_entry = EntryPoint(proximity_control_task::run);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto main_task_entry = EntryPointNoArgs(main_control_task::run);
 }  // namespace tasks
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static auto driver_task =
+    ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_DRIVER_STACK_SIZE, EntryPoint>(
+        tasks::motor_driver_task_entry);
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static auto motor_task =
+    ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_STACK_SIZE, EntryPoint>(
+        tasks::motor_task_entry);
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto host_comms_task =
@@ -81,8 +93,8 @@ auto main() -> int {
             "USART2 serial output ready\r\n";
         static_cast<void>(serial_hardware_write(
             serial_startup_message, sizeof(serial_startup_message) - 1));
+            serial_startup_message, sizeof(serial_startup_message) - 1));
         serial_stream_redirect();
-        std::cout << "FDC1004 firmware started" << std::endl;
     }
 
     i2c_hardware_init(&i2c_handles);
@@ -91,6 +103,9 @@ auto main() -> int {
 
     // Start background system, host communications, and user interface tasks
     system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
+    driver_task.start(tasks::MOTOR_DRIVER_TASK_PRIORITY, "Motor Driver",
+                            &aggregator);
+    motor_task.start(tasks::MOTOR_TASK_PRIORITY, "Motor", &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);
     ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator, &i2c1_comms);
     // fdc1004_task.start(tasks::FDC1004_TASK_PRIORITY, "FDC1004", &aggregator,

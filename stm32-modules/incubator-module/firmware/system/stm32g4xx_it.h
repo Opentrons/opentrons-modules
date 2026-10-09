@@ -25,6 +25,9 @@ extern "C" {
 
 #include "systemwide.h"
 
+typedef void (*motor_interrupt_callback)(MotorID motor_id);
+void initialize_callbacks(motor_interrupt_callback callback_glue);
+
 /* Exported functions prototypes ---------------------------------------------*/
 void NMI_Handler(void);
 void HardFault_Handler(void);

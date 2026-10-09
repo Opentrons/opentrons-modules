@@ -126,12 +126,141 @@ struct ForceUSBDisconnect {
     size_t return_address;
 };
 
+struct SetMotorCurrentMessage {
+    uint32_t id;
+    MotorID motor_id;
+    float run_current;
+    float hold_current;
+};
+
+struct SetMicrostepsMessage {
+    uint32_t id;
+    MotorID motor_id;
+    uint8_t microsteps_power;
+};
+
+struct SetTMCRegisterMessage {
+    uint32_t id;
+    MotorID motor_id;
+    uint8_t reg;
+    uint32_t data;
+};
+
+struct GetTMCRegisterMessage {
+    uint32_t id;
+    MotorID motor_id;
+    uint8_t reg;
+};
+
+struct PollTMCRegisterMessage {
+    uint32_t id;
+    MotorID motor_id;
+    uint8_t reg;
+};
+
+struct StopPollTMCRegisterMessage {
+    uint32_t id;
+};
+
+struct GetTMCRegisterResponse {
+    uint32_t responding_to_id;
+    MotorID motor_id;
+    uint8_t reg;
+    uint32_t data;
+};
+
+struct MotorEnableMessage {
+    uint32_t id = 0;
+    std::optional<bool> r = std::nullopt;
+};
+
+struct MoveMotorInStepsMessage {
+    uint32_t id;
+    MotorID motor_id;
+    int32_t steps;
+    uint32_t steps_per_second;
+    uint32_t steps_per_second_sq;
+};
+
+struct MoveMotorInMmMessage {
+    uint32_t id = 0;
+    MotorID motor_id = MotorID::MOTOR_R;
+    float mm = 0;
+    std::optional<float> mm_per_second = std::nullopt;
+    std::optional<float> mm_per_second_sq = std::nullopt;
+    std::optional<float> mm_per_second_discont = std::nullopt;
+};
+
+struct MoveCompleteMessage {
+    MotorID motor_id;
+};
+
+struct StopMotorMessage {
+    uint32_t id;
+    MotorID motor_id;
+};
+
+struct GetMoveParamsMessage {
+    uint32_t id;
+    MotorID motor_id;
+};
+
+struct GetMoveParamsResponse {
+    uint32_t responding_to_id;
+    MotorID motor_id;
+    float velocity;
+    float acceleration;
+    float velocity_discont;
+};
+
+struct SetDiag0IRQMessage {
+    bool enable;
+};
+
+struct SetMotorStallGuardMessage {
+    uint32_t id = 0;
+    MotorID motor_id = MotorID::MOTOR_R;
+    bool enable = false;
+    std::optional<int32_t> sgt = std::nullopt;
+};
+
+struct GetMotorStallGuardMessage {
+    uint32_t id = 0;
+    MotorID motor_id = MotorID::MOTOR_R;
+};
+
+struct GetMotorStallGuardResponse {
+    uint32_t responding_to_id;
+    MotorID motor_id;
+    bool enabled;
+    int sgt;
+};
+
+struct HomeMotorMessage {
+    uint32_t id;
+    MotorID motor_id;
+    bool direction;
+};
+
 using HostCommsMessage =
     ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
                    ErrorMessage, DebugMessage, AcknowledgePrevious,
                    GetSystemInfoResponse, GetResetReasonResponse,
                    GetCapacitiveStateResponseMessage,
-                   GetProximityStateResponseMessage>;
+                   GetProximityStateResponseMessage, GetTMCRegisterResponse,
+                   GetMoveParamsResponse, GetMotorStallGuardResponse>;
+
+using MotorDriverMessage =
+    ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
+                   PollTMCRegisterMessage, StopPollTMCRegisterMessage,
+                   SetMotorCurrentMessage, SetMicrostepsMessage,
+                   SetMotorStallGuardMessage, GetMotorStallGuardMessage>;
+
+using MotorMessage =
+    ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
+                   StopMotorMessage, MoveCompleteMessage, MoveMotorInMmMessage,
+                   SetMicrostepsMessage, GetMoveParamsMessage,
+                   SetDiag0IRQMessage, HomeMotorMessage>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,

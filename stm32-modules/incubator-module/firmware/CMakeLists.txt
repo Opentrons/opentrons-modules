@@ -11,6 +11,7 @@ set(UI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ui")
 set(INCUBATOR_MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/incubator_task")
 set(COMMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/host_comms_task")
 set(PROXIMITY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/proximity_sensor")
+set(MOTOR_CONTROL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/motor_control")
 set(COMMON_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common/STM32G491")
 set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
 
@@ -28,6 +29,10 @@ set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${UI_DIR}/freertos_ui_task.cpp
     ${UI_DIR}/ui_policy.cpp
     ${PROXIMITY_DIR}/freertos_proximity_task.cpp
+    ${MOTOR_CONTROL_DIR}/freertos_motor_task.cpp
+    ${MOTOR_CONTROL_DIR}/freertos_motor_driver_task.cpp
+    ${MOTOR_CONTROL_DIR}/motor_driver_policy.cpp
+    ${MOTOR_CONTROL_DIR}/motor_policy.cpp
     )
 
 # Add source files that should NOT be checked by clang-tidy here
@@ -43,6 +48,8 @@ set(${TARGET_MODULE_NAME}_FW_NONLINTABLE_SRCS
     ${UI_DIR}/ui_hardware.c
         ${INCUBATOR_MODULE_DIR}/fdc1004_hardware.c
     ${PROXIMITY_DIR}/proximity_sensor.c
+    ${MOTOR_CONTROL_DIR}/motor_hardware.c
+    ${MOTOR_CONTROL_DIR}/motor_spi_hardware.c
     ${COMMS_DIR}/usbd_conf.c
     ${COMMS_DIR}/usbd_desc.c
     ${COMMS_DIR}/usb_hardware.c
