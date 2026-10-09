@@ -1,0 +1,149 @@
+#pragma once
+#include <array>
+#include <concepts>
+#include <cstdint>
+#include <optional>
+#include <variant>
+
+#include "incubator-module/errors.hpp"
+#include "systemwide.h"
+
+namespace messages {
+
+template <typename IdType, typename MessageType>
+auto get_own_id(const MessageType& message) -> IdType {
+    return message.id;
+}
+
+template <typename IdType, typename MessageType>
+auto get_responding_to_id(const MessageType& message) -> IdType {
+    return message.responding_to_id;
+}
+
+template <typename AddrType, typename MessageType>
+auto get_return_address(const MessageType& message) -> AddrType {
+    return message.return_address;
+}
+
+template <typename MessageType>
+concept Message = requires(MessageType mt) {
+    { get_own_id(mt) } -> std::same_as<uint32_t>;
+};
+
+template <typename MessageType>
+concept MessageWithReturn = requires(MessageType mt) {
+    { get_return_address(mt) } -> std::same_as<size_t>;
+}
+&&Message<MessageType>;
+
+template <typename ResponseType>
+concept Response = requires(ResponseType rt) {
+    { get_responding_to_id(rt) } -> std::same_as<uint32_t>;
+};
+
+/*
+** Message structs initiate actions. These may be changes in physical state, or
+** a request to send back some data. Each carries an ID, which should be copied
+** into the response.
+*/
+
+struct ErrorMessage {
+    errors::ErrorCode code;
+};
+
+struct DebugMessage {
+    static constexpr std::size_t MAX_LENGTH = DEBUG_MESSAGE_LENGTH;
+    std::optional<std::array<char, MAX_LENGTH>> message = std::nullopt;
+};
+
+struct AcknowledgePrevious {
+    uint32_t responding_to_id{};
+    errors::ErrorCode with_error = errors::ErrorCode::NO_ERROR;
+};
+
+struct IncomingMessageFromHost {
+    const char* buffer;
+    const char* limit;
+};
+
+struct GetSystemInfoMessage {
+    uint32_t id;
+};
+
+struct GetSystemInfoResponse {
+    uint32_t responding_to_id;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
+    std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
+    const char* fw_version;
+    const char* hw_version;
+};
+
+struct GetResetReasonMessage {
+    uint32_t id;
+};
+
+struct GetResetReasonResponse {
+    uint32_t responding_to_id;
+    uint16_t reason;
+};
+
+struct SetSerialNumberMessage {
+    uint32_t id;
+    static constexpr std::size_t SERIAL_NUMBER_LENGTH =
+        SYSTEM_WIDE_SERIAL_NUMBER_LENGTH;
+    std::array<char, SERIAL_NUMBER_LENGTH> serial_number;
+};
+
+struct EnterBootloaderMessage {
+    uint32_t id;
+};
+
+struct GetCapacitiveStateMessage {
+    uint32_t id = 0;
+};
+
+struct GetCapacitiveStateResponseMessage {
+    uint32_t responding_to_id;
+    bool with_error = false;
+    double capacitive_ch1;
+    double capacitive_ch2;
+    double capacitive_ch3;
+    double capacitive_ch4;
+};
+
+struct GetProximityStateMessage {
+    uint32_t id = 0;
+};
+
+struct GetProximityStateResponseMessage {
+    uint32_t responding_to_id;
+    bool pc2_detected;
+};
+
+struct ForceUSBDisconnect {
+    uint32_t id;
+    size_t return_address;
+};
+
+using HostCommsMessage =
+    ::std::variant<std::monostate, IncomingMessageFromHost, ForceUSBDisconnect,
+                   ErrorMessage, DebugMessage, AcknowledgePrevious,
+                   GetSystemInfoResponse, GetResetReasonResponse,
+                   GetCapacitiveStateResponseMessage,
+                   GetProximityStateResponseMessage>;
+
+using SystemMessage =
+    ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,
+                   SetSerialNumberMessage, EnterBootloaderMessage,
+                   GetResetReasonMessage>;
+
+using UIMessage = ::std::variant<std::monostate>;
+
+using CapacitiveMessage =
+    ::std::variant<std::monostate, GetCapacitiveStateMessage>;
+
+using ProximityMessage =
+    ::std::variant<std::monostate, GetProximityStateMessage>;
+
+};  // namespace messages

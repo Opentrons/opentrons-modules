@@ -81,7 +81,8 @@
                 "heater-shaker",
                 "tempdeck-gen3",
                 "flex-stacker",
-                "vacuum-module"
+                "vacuum-module",
+                "incubator-module"
             ]
         },
         {
@@ -96,7 +97,8 @@
                 "heater-shaker-build-and-test",
                 "tempdeck-gen3-build-and-test",
                 "flex-stacker-build-and-test",
-                "vacuum-module-build-and-test"
+                "vacuum-module-build-and-test",
+                "incubator-module-build-and-test"
             ]
         },
         {
@@ -219,6 +221,26 @@
             ]
         },
         {
+            "name": "incubator-module-binary",
+            "displayName": "incubator-module binary",
+            "description": "Build the incubator-module cross binary",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "incubator-module"
+            ]
+        },
+        {
+            "name": "incubator-module-debug",
+            "displayName": "incubator-module debug",
+            "description": "Build the incubator-module cross debug",
+            "configurePreset": "stm32-cross",
+            "jobs": 4,
+            "targets": [
+                "incubator-module-debug"
+            ]
+        },
+        {
             "name": "lint",
             "displayName": "lint all",
             "description": "Runs clang-tidy on all targets",
@@ -231,7 +253,8 @@
                 "thermocycler-gen2-lint",
                 "tempdeck-gen3-lint",
                 "flex-stacker-lint",
-                "vacuum-module-lint"
+                "vacuum-module-lint",
+                "incubator-module-lint"
             ]
         },
         {
@@ -247,7 +270,8 @@
                 "thermocycler-gen2-format",
                 "tempdeck-gen3-format",
                 "flex-stacker-format",
-                "vacuum-module-format"
+                "vacuum-module-format",
+                "incubator-module-format"
             ]
         },
         {
@@ -263,7 +287,8 @@
                 "thermocycler-gen2-format",
                 "tempdeck-gen3-format",
                 "flex-stacker-format",
-                "vacuum-module-format"
+                "vacuum-module-format",
+                "incubator-module-format"
             ]
         },
         {
@@ -278,7 +303,8 @@
                 "thermocycler-gen2-simulator",
                 "tempdeck-gen3-simulator",
                 "flex-stacker-simulator",
-                "vacuum-module-simulator"
+                "vacuum-module-simulator",
+                "incubator-module-simulator"
             ]
         },
         {
@@ -292,7 +318,8 @@
                 "heater-shaker-simulator",
                 "thermocycler-gen2-simulator",
                 "tempdeck-gen3-simulator",
-                "vacuum-module-simulator"
+                "vacuum-module-simulator",
+                "incubator-module-simulator"
             ]
         },
         {
@@ -308,7 +335,8 @@
                 "thermocycler-gen2-build-and-test",
                 "tempdeck-gen3-build-and-test",
                 "flex-stacker-build-and-test",
-                "vacuum-module-build-and-test"
+                "vacuum-module-build-and-test",
+                "incubator-module-build-and-test"
             ]
         },
         {
@@ -369,6 +397,16 @@
             "jobs": 4,
             "targets": [
                 "vacuum-module-build-and-test"
+            ]
+        },
+        {
+            "name": "incubator-module-tests",
+            "displayName": "tests",
+            "description": "Runs build-and-test target for incubator-module",
+            "configurePreset": "stm32-host",
+            "jobs": 4,
+            "targets": [
+                "incubator-module-build-and-test"
             ]
         },
         {
