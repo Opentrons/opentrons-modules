@@ -1,7 +1,6 @@
 #include "incubator-module/fdc1004.hpp"
 
 #include <array>
-#include <iostream>
 
 #include "firmware/i2c_comms.hpp"
 
@@ -29,8 +28,6 @@ auto FDC1004::write_register(uint8_t reg, uint16_t value) -> bool {
 auto FDC1004::read_register(uint8_t reg, uint16_t& value) -> bool {
     std::array<uint8_t, 2> data = {};
     if (_i2c->i2c_read(HAL_ADDRESS, reg, data.data(), data.size()) != 0) {
-        std::cerr << "Failed to read register 0x" << std::hex
-                  << static_cast<int>(reg) << std::dec << std::endl;
         return false;
     }
     value =

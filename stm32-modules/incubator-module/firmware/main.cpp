@@ -1,5 +1,4 @@
 #include <functional>
-#include <iostream>
 
 #include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"
@@ -9,7 +8,6 @@
 #include "firmware/i2c_hardware.h"
 #include "firmware/proximity_sensor.h"
 #include "firmware/serial_hardware.h"
-#include "firmware/serial_stream.hpp"
 #include "firmware/system_stm32g4xx.h"
 #include "ot_utils/freertos/freertos_task.hpp"
 #include "systemwide.h"
@@ -94,7 +92,6 @@ auto main() -> int {
             "USART2 serial output ready\r\n";
         static_cast<void>(serial_hardware_write(
             serial_startup_message, sizeof(serial_startup_message) - 1));
-        serial_stream_redirect();
     }
 
     i2c_hardware_init(&i2c_handles);

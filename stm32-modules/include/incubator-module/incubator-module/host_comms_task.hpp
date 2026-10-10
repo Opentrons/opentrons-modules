@@ -86,29 +86,25 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
+    auto handle_message(Message& message, InputIt tx_into, InputLimit tx_limit)
+        -> InputIt {
+        auto visit_helper = [this, tx_into,
+                             tx_limit](auto& message) -> InputIt {
+            return this->visit_message(message, tx_into, tx_limit);
+        };
+        return std::visit(visit_helper, message);
+    }
+
+    template <typename InputIt, typename InputLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputLimit, InputIt>
     auto run_once(InputIt tx_into, InputLimit tx_limit) -> InputLimit {
         auto message = Message(std::monostate());
 
         // This is the call down to the provided queue. It may block
         // indefinitely
         message_queue.recv(&message);
-
-        // We should now be guaranteed to have a message, and can visit it to do
-        // our actual work.
-
-        // we need a this-capturing lambda to pass on the call to our set of
-        // member function overloads because otherwise we would need a pointer
-        // to member function, and you can't really do that with variant visit.
-        // we also need to current the transmit buffer details in.
-        auto visit_helper = [this, tx_into,
-                             tx_limit](auto& message) -> InputIt {
-            return this->visit_message(message, tx_into, tx_limit);
-        };
-
-        // now, calling visit on the visit helper will pass through the calls to
-        // our message handlers, and will pass through whatever the messages
-        // return (aka how much data they wrote, if any) to the caller.
-        return std::visit(visit_helper, message);
+        return handle_message(message, tx_into, tx_limit);
     }
 
     [[nodiscard]] auto may_connect() const -> bool { return may_connect_latch; }

@@ -1,6 +1,5 @@
 #include "firmware/freertos_fdc1004_task.hpp"
 
-#include <iostream>
 #include <variant>
 
 #include "FreeRTOS.h"
@@ -65,19 +64,13 @@ static auto handle_state_request(
         .capacitive_ch3 = channel_3,
         .capacitive_ch4 = channel_4,
     };
-    if (!aggregator->send_to_address(response,
-                                     ::tasks::FirmwareTasks::HostCommsAddress,
-                                     pdMS_TO_TICKS(10))) {
-        std::cerr << "Failed to send FDC1004 readings to host comms"
-                  << std::endl;
-    }
+    static_cast<void>(aggregator->send_to_address(
+        response, ::tasks::FirmwareTasks::HostCommsAddress, pdMS_TO_TICKS(10)));
 }
 
 auto run(QueueAggregator* aggregator, i2c::hardware::I2C* i2c_bus_handle)
     -> void {
     if (aggregator == nullptr || i2c_bus_handle == nullptr) {
-        std::cerr << "FDC1004 task received an invalid startup argument"
-                  << std::endl;
         vTaskSuspend(nullptr);
         return;
     }
@@ -86,7 +79,6 @@ auto run(QueueAggregator* aggregator, i2c::hardware::I2C* i2c_bus_handle)
 
     capacitive_queue.provide_handle(xTaskGetCurrentTaskHandle());
     if (!aggregator->register_queue(capacitive_queue)) {
-        std::cerr << "Failed to register FDC1004 request queue" << std::endl;
         vTaskSuspend(nullptr);
         return;
     }
@@ -97,12 +89,6 @@ auto run(QueueAggregator* aggregator, i2c::hardware::I2C* i2c_bus_handle)
         capacitive_sensor.configure_single_ended(1, CONFIG) &&
         capacitive_sensor.configure_single_ended(2, CONFIG) &&
         capacitive_sensor.configure_single_ended(3, CONFIG);
-    if (!sensor_initialized) {
-        std::printf("FDC1004 hardware initialization failed\r\n");
-    } else {
-        std::printf("FDC1004 task ready for M111\r\n");
-    }
-
     messages::CapacitiveMessage message{};
     for (;;) {
         if (capacitive_queue.try_recv(&message)) {

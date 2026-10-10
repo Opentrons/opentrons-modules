@@ -2,12 +2,14 @@
  * firmware-specific functions, data, and hooks for host comms control
  */
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 
 #include "FreeRTOS.h"
 #include "firmware/firmware_tasks.hpp"
 #include "firmware/freertos_message_queue.hpp"
+#include "firmware/serial_hardware.h"
 #include "firmware/usb_hardware.h"
 #include "hal/double_buffer.hpp"
 #include "incubator-module/host_comms_task.hpp"
@@ -48,6 +50,62 @@ static CommsTaskFreeRTOS _local_task = {
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto _top_task = host_comms_task::HostCommsTask(_comms_queue, nullptr);
 
+constexpr size_t SERIAL_LINE_SIZE = 96;
+
+static auto write_response(const char *start, const char *end) -> void {
+    if (start == nullptr || end <= start) {
+        return;
+    }
+    static_cast<void>(serial_hardware_write(
+        start, static_cast<size_t>(end - start)));
+}
+
+static auto take_serial_line(char *line, size_t &length, bool &overflow)
+    -> bool {
+    uint8_t serial_byte = 0;
+    while (serial_hardware_read_byte(&serial_byte)) {
+        if (serial_byte == '\r' || serial_byte == '\n') {
+            if (length == 0 && !overflow) {
+                continue;
+            }
+            if (overflow) {
+                length = 0;
+                overflow = false;
+                static constexpr char error[] = "ERR003:gcode line too long\n";
+                write_response(error, error + sizeof(error) - 1);
+                continue;
+            }
+            line[length++] = '\n';
+            return true;
+        }
+        if (length + 1 >= SERIAL_LINE_SIZE) {
+            overflow = true;
+            continue;
+        }
+        line[length++] = static_cast<char>(serial_byte);
+    }
+    return false;
+}
+
+template <typename Task>
+auto transmit_response(CommsTaskFreeRTOS *local_task, Task *top_task,
+                       char *tx_end) -> void {
+    auto *tx_start = local_task->tx_buf.accessible()->data();
+    if (tx_end == tx_start) {
+        return;
+    }
+    write_response(tx_start, tx_end);
+    if (!top_task->may_connect()) {
+        usb_hw_stop();
+        return;
+    }
+    local_task->tx_buf.swap();
+    usb_hw_send(
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        reinterpret_cast<uint8_t *>(local_task->tx_buf.committed()->data()),
+        tx_end - local_task->tx_buf.committed()->data());
+}
+
 auto run(tasks::FirmwareTasks::QueueAggregator *aggregator) -> void {
     auto *local_task = &_local_task;
     auto *top_task = &_top_task;
@@ -62,20 +120,32 @@ auto run(tasks::FirmwareTasks::QueueAggregator *aggregator) -> void {
     usb_hw_start();
     local_task->committed_rx_buf_ptr = local_task->rx_buf.committed()->data();
     _comms_queue.set_ready();
+
+    std::array<char, SERIAL_LINE_SIZE> serial_line{};
+    size_t serial_length = 0;
+    bool serial_overflow = false;
     while (true) {
-        char *tx_end =
-            top_task->run_once(local_task->tx_buf.accessible()->begin(),
-                               local_task->tx_buf.accessible()->end());
-        if (!top_task->may_connect()) {
-            usb_hw_stop();
-        } else if (tx_end != local_task->tx_buf.accessible()->data()) {
-            local_task->tx_buf.swap();
-            usb_hw_send(
-                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-                reinterpret_cast<uint8_t *>(
-                    local_task->tx_buf.committed()->data()),
-                tx_end - local_task->tx_buf.committed()->data());
-            vTaskDelay(1);
+        auto *tx_begin = local_task->tx_buf.accessible()->begin();
+        auto *tx_limit = local_task->tx_buf.accessible()->end();
+        if (take_serial_line(serial_line.data(), serial_length,
+                             serial_overflow)) {
+            auto message = messages::HostCommsMessage(
+                messages::IncomingMessageFromHost{
+                    .buffer = serial_line.data(),
+                    .limit = serial_line.data() + serial_length});
+            transmit_response(
+                local_task, top_task,
+                top_task->handle_message(message, tx_begin, tx_limit));
+            serial_length = 0;
+        }
+
+        auto queued = messages::HostCommsMessage(std::monostate());
+        if (_comms_queue.try_recv(&queued, pdMS_TO_TICKS(1))) {
+            transmit_response(
+                local_task, top_task,
+                top_task->handle_message(
+                    queued, local_task->tx_buf.accessible()->begin(),
+                    local_task->tx_buf.accessible()->end()));
         }
     }
 }

@@ -19,7 +19,6 @@ set(GDBINIT_PATH "${CMAKE_CURRENT_BINARY_DIR}/../../common/STM32G491/gdbinit")
 set(${TARGET_MODULE_NAME}_FW_LINTABLE_SRCS
     ${INCUBATOR_MODULE_DIR}/freertos_fdc1004_task.cpp
     ${INCUBATOR_MODULE_DIR}/fdc1004.cpp
-        ${SYSTEM_DIR}/serial_stream.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
     ${COMMS_DIR}/freertos_comms_task.cpp
     ${SYSTEM_DIR}/freertos_idle_timer_task.cpp
