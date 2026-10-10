@@ -32,7 +32,7 @@ static constexpr tmc5160::TMC5160RegisterMap motor_r_config{
     .drvconf = {.bbmclks = 4},
     .glob_scale = {.global_scaler = 0x0},
     .ihold_irun = {.hold_current = 7,
-                   .run_current = 24,
+                   .run_current = 31,
                    .hold_current_delay = 1},
     .tpowerdown = {.time = tmc5160::PowerDownDelay::seconds_to_reg(0.1)},
     .tpwmthrs = {.threshold = 0x80000},
@@ -207,58 +207,6 @@ class MotorDriverTask {
         if (!_tmc5160.update_current(driver_conf_from_id(m.motor_id),
                                      tmc5160_interface, m.motor_id)) {
             response.with_error = errors::ErrorCode::TMC5160_WRITE_ERROR;
-        };
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
-    }
-
-    template <tmc5160::TMC5160InterfacePolicy Policy>
-    auto visit_message(const messages::SetMotorStallGuardMessage& m,
-                       tmc5160::TMC5160Interface<Policy>& tmc5160_interface)
-        -> void {
-        static_cast<void>(tmc5160_interface);
-        auto response = messages::AcknowledgePrevious{
-            .responding_to_id = m.id,
-            .with_error = errors::ErrorCode::NO_ERROR};
-
-        if (m.sgt.has_value() && tmc5160::TMC5160::verify_sgt_value(m.sgt)) {
-            driver_conf_from_id(m.motor_id).coolconf.sgt = m.sgt.value();
-            driver_conf_from_id(m.motor_id).gconfig.diag0_stall =
-                static_cast<int>(m.enable);
-        } else {
-            response.with_error = errors::ErrorCode::TMC5160_INVALID_VALUE;
-        }
-        if (!_tmc5160.update_coolconf(driver_conf_from_id(m.motor_id),
-                                      tmc5160_interface, m.motor_id)) {
-            response.with_error = errors::ErrorCode::TMC5160_WRITE_ERROR;
-        }
-        if (!_tmc5160.update_gconfig(driver_conf_from_id(m.motor_id),
-                                     tmc5160_interface, m.motor_id)) {
-            response.with_error = errors::ErrorCode::TMC5160_WRITE_ERROR;
-        }
-
-        if (response.with_error == errors::ErrorCode::NO_ERROR) {
-            auto message = messages::SetDiag0IRQMessage{.enable = m.enable};
-            static_cast<void>(
-                _task_registry->send_to_address(message, Queues::MotorAddress));
-        }
-        static_cast<void>(_task_registry->send_to_address(
-            response, Queues::HostCommsAddress));
-    }
-
-    template <tmc5160::TMC5160InterfacePolicy Policy>
-    auto visit_message(const messages::GetMotorStallGuardMessage& m,
-                       tmc5160::TMC5160Interface<Policy>& tmc5160_interface)
-        -> void {
-        static_cast<void>(tmc5160_interface);
-        const bool enabled = static_cast<bool>(
-            driver_conf_from_id(m.motor_id).gconfig.diag0_stall);
-        const int sgt = driver_conf_from_id(m.motor_id).coolconf.sgt;
-        auto response = messages::GetMotorStallGuardResponse{
-            .responding_to_id = m.id,
-            .motor_id = m.motor_id,
-            .enabled = enabled,
-            .sgt = sgt,
         };
         static_cast<void>(_task_registry->send_to_address(
             response, Queues::HostCommsAddress));

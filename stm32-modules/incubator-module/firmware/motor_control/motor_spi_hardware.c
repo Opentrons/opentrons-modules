@@ -16,8 +16,8 @@
 #define SPI2_COPI_Pin (GPIO_PIN_15)
 #define SPI2_Port GPIOB
 
-#define nSPI2_NSS_R_Pin (GPIO_PIN_5)
-#define nSPI2_NSS_R_GPIO_Port (GPIOA)
+#define nSPI2_NSS_R_Pin (GPIO_PIN_12)
+#define nSPI2_NSS_R_GPIO_Port (GPIOB)
 
 #define MOTOR_MAX_SPI_LEN (5)
 

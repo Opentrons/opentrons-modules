@@ -20,9 +20,6 @@ void hw_start_motor_timer(MotorID motor_id);
 bool hw_disable_motor(MotorID motor_id);
 bool hw_stop_motor(MotorID motor_id);
 void hw_set_direction(MotorID, bool direction);
-void hw_set_diag0_irq(bool enable);
-bool hw_read_diag0(void);
-bool hw_is_diag0_pin(uint16_t pin);
 bool hw_read_home_sensor(MotorID motor_id);
 
 #ifdef __cplusplus
@@ -38,13 +35,9 @@ bool hw_read_home_sensor(MotorID motor_id);
 /******************* Motor R *******************/
 
 /** Motor hardware **/
-#define R_STEP_PIN (GPIO_PIN_7)
+#define R_STEP_PIN (GPIO_PIN_8)
 #define R_STEP_PORT (GPIOA)
-#define R_DIR_PIN (GPIO_PIN_6)
-#define R_DIR_PORT (GPIOA)
-#define R_EN_PIN (GPIO_PIN_4)
+#define R_DIR_PIN (GPIO_PIN_1)
+#define R_DIR_PORT (GPIOB)
+#define R_EN_PIN (GPIO_PIN_10)
 #define R_EN_PORT (GPIOA)
-
-/**************** COMMON ********************/
-#define MOTOR_DIAG0_PIN (GPIO_PIN_12)
-#define MOTOR_DIAG0_PORT (GPIOB)

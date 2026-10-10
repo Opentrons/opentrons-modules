@@ -28,7 +28,6 @@ enum class ErrorCode : uint16_t {
     // 4xx - Motor
     MOTOR_ENABLE_FAILED = 401,
     MOTOR_DISABLE_FAILED = 402,
-    MOTOR_STALL_DETECTED = 403,
     MOTOR_QUEUE_FULL = 404,
     R_MOTOR_BUSY = 501,
     STOP_REQUESTED = 504,

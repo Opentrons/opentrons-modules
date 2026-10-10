@@ -119,15 +119,9 @@ class MotorInterruptController {
             _policy->check_home_sensor(_id)) {
             return true;
         }
-        if (!_policy->check_diag0()) {
-            _error = Error::MOTOR_STALL_DETECTED;
-            return true;
-        }
 
         return false;
     }
-
-    auto set_diag0_irq(bool enable) -> void { _policy->set_diag0_irq(enable); }
 
     [[nodiscard]] auto is_moving() const -> bool { return !_stop; }
 

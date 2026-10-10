@@ -15,9 +15,6 @@ class MotorPolicy {
     auto step(MotorID motor_id) -> void;
     auto set_direction(MotorID motor_id, bool direction) -> void;
     auto check_home_sensor(MotorID motor_id) -> bool;
-    auto set_diag0_irq(bool enable) -> void;
-    auto check_diag0() -> bool;
-    auto is_diag0_pin(uint16_t pin) -> bool;
     auto sleep_ms(uint32_t ms) -> void;
 };
 }  // namespace motor_policy

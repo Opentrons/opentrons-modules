@@ -42,19 +42,6 @@ auto MotorPolicy::check_home_sensor(MotorID motor_id) -> bool {
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::check_diag0() -> bool { return hw_read_diag0(); }
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::set_diag0_irq(bool enable) -> void {
-    hw_set_diag0_irq(enable);
-}
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto MotorPolicy::is_diag0_pin(uint16_t pin) -> bool {
-    return hw_is_diag0_pin(pin);
-}
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto MotorPolicy::sleep_ms(uint32_t ms) -> void {
     vTaskDelay(pdMS_TO_TICKS(ms));
 }

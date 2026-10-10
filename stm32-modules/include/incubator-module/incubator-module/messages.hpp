@@ -213,29 +213,6 @@ struct GetMoveParamsResponse {
     float velocity_discont;
 };
 
-struct SetDiag0IRQMessage {
-    bool enable;
-};
-
-struct SetMotorStallGuardMessage {
-    uint32_t id = 0;
-    MotorID motor_id = MotorID::MOTOR_R;
-    bool enable = false;
-    std::optional<int32_t> sgt = std::nullopt;
-};
-
-struct GetMotorStallGuardMessage {
-    uint32_t id = 0;
-    MotorID motor_id = MotorID::MOTOR_R;
-};
-
-struct GetMotorStallGuardResponse {
-    uint32_t responding_to_id;
-    MotorID motor_id;
-    bool enabled;
-    int sgt;
-};
-
 struct HomeMotorMessage {
     uint32_t id;
     MotorID motor_id;
@@ -248,19 +225,18 @@ using HostCommsMessage =
                    GetSystemInfoResponse, GetResetReasonResponse,
                    GetCapacitiveStateResponseMessage,
                    GetProximityStateResponseMessage, GetTMCRegisterResponse,
-                   GetMoveParamsResponse, GetMotorStallGuardResponse>;
+                   GetMoveParamsResponse>;
 
 using MotorDriverMessage =
     ::std::variant<std::monostate, SetTMCRegisterMessage, GetTMCRegisterMessage,
                    PollTMCRegisterMessage, StopPollTMCRegisterMessage,
-                   SetMotorCurrentMessage, SetMicrostepsMessage,
-                   SetMotorStallGuardMessage, GetMotorStallGuardMessage>;
+                   SetMotorCurrentMessage, SetMicrostepsMessage>;
 
 using MotorMessage =
     ::std::variant<std::monostate, MotorEnableMessage, MoveMotorInStepsMessage,
                    StopMotorMessage, MoveCompleteMessage, MoveMotorInMmMessage,
                    SetMicrostepsMessage, GetMoveParamsMessage,
-                   SetDiag0IRQMessage, HomeMotorMessage>;
+                   HomeMotorMessage>;
 
 using SystemMessage =
     ::std::variant<std::monostate, AcknowledgePrevious, GetSystemInfoMessage,

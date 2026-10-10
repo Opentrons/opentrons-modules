@@ -365,18 +365,6 @@ class HostCommsTask {
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
-    auto visit_message(const messages::GetMotorStallGuardResponse& response,
-                       InputIt tx_into, InputLimit tx_limit) -> InputIt {
-        char line[80] = {0};
-        snprintf(line, sizeof(line), "stallguard motor %u enabled:%d sgt:%d\n",
-                 static_cast<unsigned>(response.motor_id),
-                 static_cast<int>(response.enabled), response.sgt);
-        return write_string_to_iterpair(tx_into, tx_limit, line);
-    }
-
-    template <typename InputIt, typename InputLimit>
-    requires std::forward_iterator<InputIt> &&
-        std::sized_sentinel_for<InputLimit, InputIt>
     auto visit_gcode(const std::monostate& ignore, InputIt tx_into,
                      InputLimit tx_limit) -> std::pair<bool, InputIt> {
         static_cast<void>(ignore);

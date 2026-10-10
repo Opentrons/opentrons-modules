@@ -43,7 +43,7 @@ struct Defaults {
         static constexpr float MM_PER_REV =
             lms::GearBoxConfig::mm_per_rev(30, 30.0 / 16.0);
         static constexpr float STEPS_PER_REV = 200;
-        static constexpr float MICROSTEP = 16;
+        static constexpr float MICROSTEP = 32;
     };
 };
 
@@ -290,14 +290,6 @@ class MotorTask {
         };
         static_cast<void>(_task_registry->send_to_address(
             response, Queues::HostCommsAddress));
-    }
-
-    template <MotorControlPolicy Policy>
-    auto visit_message(const messages::SetDiag0IRQMessage& m, Policy& policy)
-        -> void {
-        static_cast<void>(policy);
-        // NOTE: The diag0 pin is shared by all motors.
-        _r_controller.set_diag0_irq(m.enable);
     }
 
     /**

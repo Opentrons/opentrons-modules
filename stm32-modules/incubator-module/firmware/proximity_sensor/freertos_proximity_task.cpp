@@ -13,14 +13,14 @@
 
 namespace {
 
-auto sensor_name(proximity_sensor_id_t id) -> const char* {
-    switch (id) {
-        case PROXIMITY_SENSOR_PC2:
-            return "PC2";
-        default:
-            return "unknown";
-    }
-}
+// auto sensor_name(proximity_sensor_id_t id) -> const char* {
+//     switch (id) {
+//         case PROXIMITY_SENSOR_PC2:
+//             return "PC2";
+//         default:
+//             return "unknown";
+//     }
+// }
 
 }  // namespace
 
@@ -85,17 +85,17 @@ auto run() -> void {
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
-        std::array<char, 48> line{};
-        const int written =
-            std::snprintf(line.data(), line.size(), "proximity %s %s\r\n",
-                          sensor_name(event.id),
-                          event.object_detected ? "detected" : "clear");
-        if (written <= 0) {
-            continue;
-        }
-        const auto length = static_cast<std::size_t>(written);
-        const auto capped = length < line.size() ? length : line.size() - 1U;
-        static_cast<void>(serial_hardware_write(line.data(), capped));
+        // std::array<char, 48> line{};
+        // const int written =
+        //     std::snprintf(line.data(), line.size(), "proximity %s %s\r\n",
+        //                   sensor_name(event.id),
+        //                   event.object_detected ? "detected" : "clear");
+        // if (written <= 0) {
+        //     continue;
+        // }
+        // const auto length = static_cast<std::size_t>(written);
+        // const auto capped = length < line.size() ? length : line.size() - 1U;
+        // static_cast<void>(serial_hardware_write(line.data(), capped));
     }
 }
 
