@@ -9,13 +9,13 @@
 #include "core/version.hpp"
 #include "errors.hpp"
 #include "firmware/motor_policy.hpp"
+#include "hal/message_queue.hpp"
 #include "incubator-module/errors.hpp"
 #include "incubator-module/messages.hpp"
 #include "incubator-module/tasks.hpp"
 #include "incubator-module/tmc5160.hpp"
 #include "incubator-module/tmc5160_interface.hpp"
 #include "incubator-module/tmc5160_registers.hpp"
-#include "hal/message_queue.hpp"
 #include "messages.hpp"
 #include "systemwide.h"
 
@@ -31,7 +31,65 @@ static constexpr tmc5160::TMC5160RegisterMap motor_r_config{
                    .shortdelay = 0},
     .drvconf = {.bbmclks = 4},
     .glob_scale = {.global_scaler = 0x0},
-    .ihold_irun = {.hold_current = 7,
+    .ihold_irun = {.hold_current = 10,
+                   .run_current = 31,
+                   .hold_current_delay = 1},
+    .tpowerdown = {.time = tmc5160::PowerDownDelay::seconds_to_reg(0.1)},
+    .tpwmthrs = {.threshold = 0x80000},
+    .tcoolthrs = {.threshold = 0x2FF},
+    .thigh = {.threshold = 0x1},
+    .chopconf = {.toff = 0b111,
+                 .hstrt = 0b111,
+                 .hend = 0b1001,
+                 .tbl = 0b1,
+                 .mres = 0b100},
+    .coolconf = {.semin = 0b11, .semax = 0b100, .sgt = 0},
+    .pwmconf = {.pwm_ofs = 0x1F,
+                .pwm_grad = 0x18,
+                .pwm_autoscale = 1,
+                .pwm_autograd = 1,
+                .pwm_reg = 4,
+                .pwm_lim = 0xC},
+};
+
+static constexpr tmc5160::TMC5160RegisterMap motor_z_config{
+    .gconfig = {.diag0_error = 0, .diag0_stall = 1},
+    .short_conf = {.s2vs_level = 0x6,
+                   .s2g_level = 0x6,
+                   .shortfilter = 1,
+                   .shortdelay = 0},
+    .drvconf = {.bbmclks = 4},
+    .glob_scale = {.global_scaler = 0x0},
+    .ihold_irun = {.hold_current = 10,
+                   .run_current = 31,
+                   .hold_current_delay = 1},
+    .tpowerdown = {.time = tmc5160::PowerDownDelay::seconds_to_reg(0.1)},
+    .tpwmthrs = {.threshold = 0x80000},
+    .tcoolthrs = {.threshold = 0x2FF},
+    .thigh = {.threshold = 0x1},
+    .chopconf = {.toff = 0b111,
+                 .hstrt = 0b111,
+                 .hend = 0b1001,
+                 .tbl = 0b1,
+                 .mres = 0b100},
+    .coolconf = {.semin = 0b11, .semax = 0b100, .sgt = 2},
+    .pwmconf = {.pwm_ofs = 0x1F,
+                .pwm_grad = 0x18,
+                .pwm_autoscale = 1,
+                .pwm_autograd = 1,
+                .pwm_reg = 4,
+                .pwm_lim = 0xC},
+};
+
+static constexpr tmc5160::TMC5160RegisterMap motor_p_config{
+    .gconfig = {.diag0_error = 0, .diag0_stall = 0},
+    .short_conf = {.s2vs_level = 0x6,
+                   .s2g_level = 0x6,
+                   .shortfilter = 1,
+                   .shortdelay = 0},
+    .drvconf = {.bbmclks = 4},
+    .glob_scale = {.global_scaler = 0x0},
+    .ihold_irun = {.hold_current = 10,
                    .run_current = 31,
                    .hold_current_delay = 1},
     .tpowerdown = {.time = tmc5160::PowerDownDelay::seconds_to_reg(0.1)},
@@ -76,7 +134,12 @@ class MotorDriverTask {
 
     auto driver_conf_from_id(MotorID motor_id) -> tmc5160::TMC5160RegisterMap& {
         switch (motor_id) {
-            case MotorID::MOTOR_R:  return _r_config;
+            case MotorID::MOTOR_R:
+                return _r_config;
+            case MotorID::MOTOR_Z:
+                return _z_config;
+            case MotorID::MOTOR_P:
+                return _p_config;
             default:
                 return _r_config;
         }
@@ -91,6 +154,14 @@ class MotorDriverTask {
         if (!_initialized) {
             if (!_tmc5160.initialize_config(motor_r_config, tmc5160_interface,
                                             MotorID::MOTOR_R)) {
+                return;
+            }
+            if (!_tmc5160.initialize_config(motor_z_config, tmc5160_interface,
+                                            MotorID::MOTOR_Z)) {
+                return;
+            }
+            if (!_tmc5160.initialize_config(motor_p_config, tmc5160_interface,
+                                            MotorID::MOTOR_P)) {
                 return;
             }
             _message_queue.set_ready();
@@ -228,5 +299,7 @@ class MotorDriverTask {
         .v_sf = 0.325,
     };
     tmc5160::TMC5160RegisterMap _r_config = motor_r_config;
+    tmc5160::TMC5160RegisterMap _z_config = motor_z_config;
+    tmc5160::TMC5160RegisterMap _p_config = motor_p_config;
 };
 }  // namespace motor_driver_task

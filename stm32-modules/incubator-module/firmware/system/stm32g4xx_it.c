@@ -26,6 +26,9 @@
 extern DMA_HandleTypeDef hdma_spi2_rx;
 extern DMA_HandleTypeDef hdma_spi2_tx;
 extern SPI_HandleTypeDef hspi2;
+extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim20;
+extern TIM_HandleTypeDef htim8;
 
 static motor_interrupt_callback interrupt_callback = NULL;
 
@@ -105,15 +108,21 @@ void USART2_IRQHandler(void)
 
 
 /**
- * TIM7 = timebase counter
- * TIM17 = step interrupt for motor R
+ * TIM1 = step interrupt for motor R
+ * TIM20 = step interrupt for motor Z
+ * TIM8 = step interrupt for motor P
  */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    if(htim->Instance == TIM7) {
-        HAL_IncTick();
-    } else if (htim->Instance == TIM17 && interrupt_callback != NULL) {
+    if (htim->Instance == TIM7) {
+      HAL_IncTick();
+    }
+    else if(htim->Instance == TIM1 && interrupt_callback != NULL) {
         interrupt_callback(MOTOR_R);
+    } else if (htim->Instance == TIM20 && interrupt_callback != NULL) {
+        interrupt_callback(MOTOR_Z);
+    } else if (htim->Instance == TIM8 && interrupt_callback != NULL) {
+        interrupt_callback(MOTOR_P);
     }
 }
 

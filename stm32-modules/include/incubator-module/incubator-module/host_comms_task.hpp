@@ -37,17 +37,19 @@ class HostCommsTask {
     using Queues = typename tasks::Tasks<QueueImpl>;
 
   private:
-    using GCodeParser = gcode::GroupParser<
-        gcode::EnterBootloader, gcode::SetSerialNumber, gcode::GetSystemInfo,
-        gcode::GetResetReason, gcode::GetCapacitiveState,
-        gcode::GetProximityState, gcode::MoveMotorInSteps, gcode::MoveMotorInMm,
-        gcode::HomeMotor, gcode::EnableMotor, gcode::DisableMotor,
-        gcode::StopMotor>;
+    using GCodeParser =
+        gcode::GroupParser<gcode::EnterBootloader, gcode::SetSerialNumber,
+                           gcode::GetSystemInfo, gcode::GetResetReason,
+                           gcode::GetCapacitiveState, gcode::GetProximityState,
+                           gcode::MoveMotorInSteps, gcode::MoveMotorInMm,
+                           gcode::HomeMotor, gcode::EnableMotor,
+                           gcode::DisableMotor, gcode::StopMotor>;
 
     using AckOnlyCache =
         AckCache<8, gcode::EnterBootloader, gcode::SetSerialNumber,
-                 gcode::MoveMotorInSteps, gcode::MoveMotorInMm, gcode::HomeMotor,
-                 gcode::EnableMotor, gcode::DisableMotor, gcode::StopMotor>;
+                 gcode::MoveMotorInSteps, gcode::MoveMotorInMm,
+                 gcode::HomeMotor, gcode::EnableMotor, gcode::DisableMotor,
+                 gcode::StopMotor>;
     using GetSystemInfoCache = AckCache<8, gcode::GetSystemInfo>;
     using GetResetReasonCache = AckCache<8, gcode::GetResetReason>;
     using GetCapacitiveStateCache = AckCache<8, gcode::GetCapacitiveState>;
@@ -491,8 +493,8 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message =
-            messages::MotorEnableMessage{.id = id, .r = true};
+        auto message = messages::MotorEnableMessage{
+            .id = id, .r = gcode.r, .z = gcode.z, .p = gcode.p};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
@@ -513,8 +515,8 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message =
-            messages::MotorEnableMessage{.id = id, .r = false};
+        auto message = messages::MotorEnableMessage{
+            .id = id, .r = gcode.r, .z = gcode.z, .p = gcode.p};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
@@ -535,8 +537,7 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message = messages::StopMotorMessage{
-            .id = id, .motor_id = MotorID::MOTOR_R};
+        auto message = messages::StopMotorMessage{.id = id};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);
@@ -545,7 +546,6 @@ class HostCommsTask {
         }
         return std::make_pair(true, tx_into);
     }
-
     template <typename InputIt, typename InputLimit>
     requires std::forward_iterator<InputIt> &&
         std::sized_sentinel_for<InputLimit, InputIt>
@@ -559,7 +559,7 @@ class HostCommsTask {
         }
         auto message = messages::MoveMotorInMmMessage{
             .id = id,
-            .motor_id = MotorID::MOTOR_R,
+            .motor_id = gcode.motor_id,
             .mm = gcode.mm,
             .mm_per_second = gcode.mm_per_second,
             .mm_per_second_sq = gcode.mm_per_second_sq,
@@ -586,7 +586,7 @@ class HostCommsTask {
         }
         auto message = messages::MoveMotorInStepsMessage{
             .id = id,
-            .motor_id = MotorID::MOTOR_R,
+            .motor_id = gcode.motor_id,
             .steps = gcode.steps,
             .steps_per_second = gcode.steps_per_second,
             .steps_per_second_sq = gcode.steps_per_second_sq};
@@ -610,8 +610,9 @@ class HostCommsTask {
                 false, errors::write_into(tx_into, tx_limit,
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
-        auto message = messages::HomeMotorMessage{
-            .id = id, .motor_id = MotorID::MOTOR_R, .direction = gcode.direction};
+        auto message = messages::HomeMotorMessage{.id = id,
+                                                  .motor_id = MotorID::MOTOR_R,
+                                                  .direction = gcode.direction};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(
                 tx_into, tx_limit, errors::ErrorCode::INTERNAL_QUEUE_FULL);

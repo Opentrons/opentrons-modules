@@ -30,6 +30,9 @@ enum class ErrorCode : uint16_t {
     MOTOR_DISABLE_FAILED = 402,
     MOTOR_QUEUE_FULL = 404,
     R_MOTOR_BUSY = 501,
+    Z_MOTOR_BUSY = 502,
+    P_MOTOR_BUSY = 503,
+
     STOP_REQUESTED = 504,
     CAPACITIVE_SENSOR_ERROR = 601,
     // 9xx - TMC5160

@@ -14,10 +14,16 @@
 #define SPI2_SCK_Pin (GPIO_PIN_13)
 #define SPI2_CIPO_Pin (GPIO_PIN_14)
 #define SPI2_COPI_Pin (GPIO_PIN_15)
-#define SPI2_Port GPIOB
+#define SPI2_Port (GPIOB)
 
 #define nSPI2_NSS_R_Pin (GPIO_PIN_12)
 #define nSPI2_NSS_R_GPIO_Port (GPIOB)
+
+#define nSPI2_NSS_Z_Pin (GPIO_PIN_7)
+#define nSPI2_NSS_Z_GPIO_Port (GPIOC)
+
+#define nSPI2_NSS_P_Pin (GPIO_PIN_8)
+#define nSPI2_NSS_P_GPIO_Port (GPIOC)
 
 #define MOTOR_MAX_SPI_LEN (5)
 
@@ -49,6 +55,8 @@ static struct motor_spi_hardware _spi = {
 
 static void disable_spi_nss(void) {
     HAL_GPIO_WritePin(nSPI2_NSS_R_GPIO_Port, nSPI2_NSS_R_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(nSPI2_NSS_Z_GPIO_Port, nSPI2_NSS_Z_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(nSPI2_NSS_P_GPIO_Port, nSPI2_NSS_P_Pin, GPIO_PIN_SET);
 }
 
 static void enable_spi_nss(MotorID motor) {
@@ -58,6 +66,14 @@ static void enable_spi_nss(MotorID motor) {
     switch(motor) {
         case MOTOR_R:
             HAL_GPIO_WritePin(nSPI2_NSS_R_GPIO_Port, nSPI2_NSS_R_Pin,
+                              GPIO_PIN_RESET);
+            break;
+        case MOTOR_Z:
+            HAL_GPIO_WritePin(nSPI2_NSS_Z_GPIO_Port, nSPI2_NSS_Z_Pin,
+                              GPIO_PIN_RESET);
+            break;
+        case MOTOR_P:
+            HAL_GPIO_WritePin(nSPI2_NSS_P_GPIO_Port, nSPI2_NSS_P_Pin,
                               GPIO_PIN_RESET);
             break;
     }
@@ -73,10 +89,13 @@ static void spi2_nss_init(void) {
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
 
-    // Initialize the NSS pins for the motor R
+    // Initialize the NSS pins for the motor R, Z, and P
     gpio.Pin = nSPI2_NSS_R_Pin;
     HAL_GPIO_Init(nSPI2_NSS_R_GPIO_Port, &gpio);
-    
+    gpio.Pin = nSPI2_NSS_Z_Pin;
+    HAL_GPIO_Init(nSPI2_NSS_Z_GPIO_Port, &gpio);
+    gpio.Pin = nSPI2_NSS_P_Pin;
+    HAL_GPIO_Init(nSPI2_NSS_P_GPIO_Port, &gpio);
     // Make sure all pins are disabled at boot
     disable_spi_nss();
 }

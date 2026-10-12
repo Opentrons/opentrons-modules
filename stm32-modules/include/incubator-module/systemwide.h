@@ -3,6 +3,8 @@
 
 typedef enum MotorID {
     MOTOR_R = 0,
+    MOTOR_Z = 1,
+    MOTOR_P = 2,
 } MotorID;
 
 /* size of array for setting serial number */

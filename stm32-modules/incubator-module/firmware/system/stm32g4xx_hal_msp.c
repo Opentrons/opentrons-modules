@@ -52,6 +52,10 @@ void HAL_MspDeInit(void)
     __HAL_RCC_SYSCFG_CLK_DISABLE();
     __HAL_RCC_PWR_CLK_DISABLE();
 
+    __HAL_RCC_TIM7_CLK_DISABLE();
+    __HAL_RCC_TIM1_CLK_DISABLE();
+    __HAL_RCC_TIM20_CLK_DISABLE();
+    __HAL_RCC_TIM8_CLK_DISABLE();
     __HAL_RCC_USB_CLK_DISABLE();
     __HAL_RCC_SYSCFG_CLK_DISABLE();
     __HAL_RCC_PWR_CLK_DISABLE();
@@ -170,9 +174,21 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
 * @param htim_base: TIM_Base handle pointer
 * @retval None
  */
-void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base) {}
+void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base) {
+    if(htim_base->Instance==TIM7) {
+        __HAL_RCC_TIM7_CLK_ENABLE();
+    }
+    else if(htim_base->Instance==TIM1) {
+        __HAL_RCC_TIM1_CLK_ENABLE();
+    } else if(htim_base->Instance==TIM20) {
+        __HAL_RCC_TIM20_CLK_ENABLE();
+    } else if(htim_base->Instance==TIM8) {
+        __HAL_RCC_TIM8_CLK_ENABLE();
+    }
+}
 
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim) {}
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim) {
+}
 
 /**
 * @brief TIM_Base MSP De-Initialization
@@ -180,4 +196,14 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim) {}
 * @param htim_base: TIM_Base handle pointer
 * @retval None
  */
-void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base) {}
+void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base) {
+    if(htim_base->Instance==TIM7) {
+        __HAL_RCC_TIM7_CLK_DISABLE();
+    } else if(htim_base->Instance==TIM1) {
+        __HAL_RCC_TIM1_CLK_DISABLE();
+    } else if(htim_base->Instance==TIM20) {
+        __HAL_RCC_TIM20_CLK_DISABLE();
+    } else if(htim_base->Instance==TIM8) {
+        __HAL_RCC_TIM8_CLK_DISABLE();
+    }
+}

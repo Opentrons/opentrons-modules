@@ -35,9 +35,23 @@ bool hw_read_home_sensor(MotorID motor_id);
 /******************* Motor R *******************/
 
 /** Motor hardware **/
-#define R_STEP_PIN (GPIO_PIN_8)
+#define R_STEP_PIN (GPIO_PIN_8)  // TIM1
 #define R_STEP_PORT (GPIOA)
 #define R_DIR_PIN (GPIO_PIN_1)
 #define R_DIR_PORT (GPIOB)
 #define R_EN_PIN (GPIO_PIN_10)
 #define R_EN_PORT (GPIOA)
+
+#define Z_STEP_PIN (GPIO_PIN_2)  // TIM20
+#define Z_STEP_PORT (GPIOB)
+#define Z_DIR_PIN (GPIO_PIN_10)
+#define Z_DIR_PORT (GPIOB)
+#define Z_EN_PIN (GPIO_PIN_7)
+#define Z_EN_PORT (GPIOA)
+
+#define P_STEP_PIN (GPIO_PIN_6)  // TIM8
+#define P_STEP_PORT (GPIOC)
+#define P_DIR_PIN (GPIO_PIN_9)
+#define P_DIR_PORT (GPIOB)
+#define P_EN_PIN (GPIO_PIN_6)
+#define P_EN_PORT (GPIOA)

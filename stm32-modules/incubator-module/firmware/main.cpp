@@ -46,9 +46,8 @@ static auto main_task_entry = EntryPointNoArgs(main_control_task::run);
 }  // namespace tasks
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static auto driver_task =
-    ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_DRIVER_STACK_SIZE, EntryPoint>(
-        tasks::motor_driver_task_entry);
+static auto driver_task = ot_utils::freertos_task::FreeRTOSTask<
+    tasks::MOTOR_DRIVER_STACK_SIZE, EntryPoint>(tasks::motor_driver_task_entry);
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static auto motor_task =
     ot_utils::freertos_task::FreeRTOSTask<tasks::MOTOR_STACK_SIZE, EntryPoint>(
@@ -101,7 +100,7 @@ auto main() -> int {
     // Start background system, host communications, and user interface tasks
     system_task.start(tasks::SYSTEM_TASK_PRIORITY, "System", &aggregator);
     driver_task.start(tasks::MOTOR_DRIVER_TASK_PRIORITY, "Motor Driver",
-                            &aggregator);
+                      &aggregator);
     motor_task.start(tasks::MOTOR_TASK_PRIORITY, "Motor", &aggregator);
     host_comms_task.start(tasks::COMMS_TASK_PRIORITY, "Comms", &aggregator);
     ui_task.start(tasks::UI_TASK_PRIORITY, "UI", &aggregator, &i2c1_comms);

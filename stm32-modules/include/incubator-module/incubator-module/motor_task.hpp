@@ -14,12 +14,12 @@
 #include "core/version.hpp"
 #include "firmware/motor_interrupt.hpp"
 #include "firmware/motor_policy.hpp"
+#include "hal/message_queue.hpp"
 #include "incubator-module/errors.hpp"
 #include "incubator-module/messages.hpp"
 #include "incubator-module/motor_utils.hpp"
 #include "incubator-module/tasks.hpp"
 #include "incubator-module/tmc5160_registers.hpp"
-#include "hal/message_queue.hpp"
 #include "messages.hpp"
 
 namespace motor_task {
@@ -36,6 +36,34 @@ using Error = errors::ErrorCode;
 
 struct Defaults {
     struct R {
+        static constexpr float SPEED = 200.0;
+        static constexpr float ACCELERATION = 1500.0;
+        static constexpr float SPEED_DISCONT = 40.0;
+
+        static constexpr float MM_PER_REV =
+            lms::GearBoxConfig::mm_per_rev(30, 30.0 / 16.0);
+        static constexpr float STEPS_PER_REV = 200;
+        static constexpr float MICROSTEP = 16;
+
+        // switch-to-switch: 192.5 mm - 5.0 mm offset
+        static constexpr float FAST_HOME_DISTANCE = 187.5;
+    };
+
+    struct Z {
+        static constexpr float SPEED = 150.0;
+        static constexpr float ACCELERATION = 500.0;
+        static constexpr float SPEED_DISCONT = 25.0;
+
+        static constexpr float MM_PER_REV =
+            lms::LeadScrewConfig::mm_per_rev(9.7536, 1.0);
+        static constexpr float STEPS_PER_REV = 200;
+        static constexpr float MICROSTEP = 16;
+
+        // switch-to-switch: 136.0 mm - 5.0 mm offset
+        static constexpr float FAST_HOME_DISTANCE = 131.0;
+    };
+
+    struct P {
         static constexpr float SPEED = 100.0;
         static constexpr float ACCELERATION = 500.0;
         static constexpr float SPEED_DISCONT = 100.0;
@@ -43,7 +71,7 @@ struct Defaults {
         static constexpr float MM_PER_REV =
             lms::GearBoxConfig::mm_per_rev(30, 30.0 / 16.0);
         static constexpr float STEPS_PER_REV = 200;
-        static constexpr float MICROSTEP = 32;
+        static constexpr float MICROSTEP = 16;
     };
 };
 
@@ -59,10 +87,13 @@ class MotorTask {
     using MotorState = motor_util::MotorState;
 
   public:
-    explicit MotorTask(Queue& q, Aggregator* aggregator, Controller& r_ctrl)
+    explicit MotorTask(Queue& q, Aggregator* aggregator, Controller& r_ctrl,
+                       Controller& z_ctrl, Controller& p_ctrl)
         : _message_queue(q),
           _task_registry(aggregator),
-          _r_controller(r_ctrl) {}
+          _r_controller(r_ctrl),
+          _z_controller(z_ctrl),
+          _p_controller(p_ctrl) {}
     MotorTask(const MotorTask& other) = delete;
     auto operator=(const MotorTask& other) -> MotorTask& = delete;
     MotorTask(MotorTask&& other) noexcept = delete;
@@ -77,6 +108,10 @@ class MotorTask {
         switch (motor_id) {
             case MotorID::MOTOR_R:
                 return _r_controller;
+            case MotorID::MOTOR_Z:
+                return _z_controller;
+            case MotorID::MOTOR_P:
+                return _p_controller;
             default:
                 return _r_controller;
         }
@@ -86,6 +121,10 @@ class MotorTask {
         switch (motor_id) {
             case MotorID::MOTOR_R:
                 return _r_state;
+            case MotorID::MOTOR_Z:
+                return _z_state;
+            case MotorID::MOTOR_P:
+                return _p_state;
             default:
                 return _r_state;
         }
@@ -101,6 +140,8 @@ class MotorTask {
 
         if (!_initialized) {
             _r_controller.initialize(&policy);
+            _z_controller.initialize(&policy);
+            _p_controller.initialize(&policy);
             _message_queue.set_ready();
             _initialized = true;
         }
@@ -117,11 +158,19 @@ class MotorTask {
         if (_r_controller.is_moving()) {
             return Error::R_MOTOR_BUSY;
         }
+        if (_z_controller.is_moving()) {
+            return Error::Z_MOTOR_BUSY;
+        }
+        if (_p_controller.is_moving()) {
+            return Error::P_MOTOR_BUSY;
+        }
         return Error::NO_ERROR;
     }
 
     auto stop_motors(Error error) -> void {
         _r_controller.stop_movement(error, true);
+        _z_controller.stop_movement(error, true);
+        _p_controller.stop_movement(error, true);
         _move_queue.reset();
     }
 
@@ -182,6 +231,8 @@ class MotorTask {
     auto visit_message(const messages::MotorEnableMessage& m, Policy& policy)
         -> void {
         motor_enable(MotorID::MOTOR_R, m.r, policy);
+        motor_enable(MotorID::MOTOR_Z, m.z, policy);
+        motor_enable(MotorID::MOTOR_P, m.p, policy);
         send_ack_message(m.id);
     }
 
@@ -257,9 +308,6 @@ class MotorTask {
             // if there's a next move in the queue, start it
             controller_from_id(next_move.motor_id).start_move(next_move);
         } else {
-            if (m.motor_id == MotorID::MOTOR_R) {
-                policy.disable_motor(m.motor_id);
-            }
             send_ack_message(controller_from_id(m.motor_id).get_response_id(),
                              controller_from_id(m.motor_id).get_error_code());
         }
@@ -316,6 +364,8 @@ class MotorTask {
     Queue& _message_queue;
     Aggregator* _task_registry;
     Controller& _r_controller;
+    Controller& _z_controller;
+    Controller& _p_controller;
     bool _initialized{false};
 
     MotorState _r_state{
@@ -325,6 +375,22 @@ class MotorTask {
         .speed_mm_per_sec = Defaults::R::SPEED,
         .accel_mm_per_sec_sq = Defaults::R::ACCELERATION,
         .speed_mm_per_sec_discont = Defaults::R::SPEED_DISCONT,
+    };
+    MotorState _z_state{
+        .lms_config = {.mm_per_rev = Defaults::Z::MM_PER_REV,
+                       .steps_per_rev = Defaults::Z::STEPS_PER_REV,
+                       .microstep = Defaults::Z::MICROSTEP},
+        .speed_mm_per_sec = Defaults::Z::SPEED,
+        .accel_mm_per_sec_sq = Defaults::Z::ACCELERATION,
+        .speed_mm_per_sec_discont = Defaults::Z::SPEED_DISCONT,
+    };
+    MotorState _p_state{
+        .lms_config = {.mm_per_rev = Defaults::P::MM_PER_REV,
+                       .steps_per_rev = Defaults::P::STEPS_PER_REV,
+                       .microstep = Defaults::P::MICROSTEP},
+        .speed_mm_per_sec = Defaults::P::SPEED,
+        .accel_mm_per_sec_sq = Defaults::P::ACCELERATION,
+        .speed_mm_per_sec_discont = Defaults::P::SPEED_DISCONT,
     };
     MoveBuffer _move_queue;
 };

@@ -172,6 +172,8 @@ struct GetTMCRegisterResponse {
 struct MotorEnableMessage {
     uint32_t id = 0;
     std::optional<bool> r = std::nullopt;
+    std::optional<bool> z = std::nullopt;
+    std::optional<bool> p = std::nullopt;
 };
 
 struct MoveMotorInStepsMessage {

@@ -22,6 +22,8 @@ const char* const MOTOR_ENABLE_FAILED = "ERR401:motor enable failed";
 const char* const MOTOR_DISABLE_FAILED = "ERR402:motor disable failed";
 const char* const MOTOR_QUEUE_FULL = "ERR404:motor queue full";
 const char* const R_MOTOR_BUSY = "ERR501:r motor busy";
+const char* const Z_MOTOR_BUSY = "ERR502:z motor busy";
+const char* const P_MOTOR_BUSY = "ERR503:p motor busy";
 const char* const STOP_REQUESTED = "ERR504:stop requested";
 const char* const CAPACITIVE_SENSOR_ERROR =
     "ERR601:capacitive sensor reading failed";
@@ -54,6 +56,8 @@ auto errors::errorstring(ErrorCode code) -> const char* {
         HANDLE_CASE(MOTOR_DISABLE_FAILED);
         HANDLE_CASE(MOTOR_QUEUE_FULL);
         HANDLE_CASE(R_MOTOR_BUSY);
+        HANDLE_CASE(Z_MOTOR_BUSY);
+        HANDLE_CASE(P_MOTOR_BUSY);
         HANDLE_CASE(STOP_REQUESTED);
         HANDLE_CASE(CAPACITIVE_SENSOR_ERROR);
         HANDLE_CASE(TMC5160_READ_ERROR);

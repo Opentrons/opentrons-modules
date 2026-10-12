@@ -56,8 +56,8 @@ static auto write_response(const char *start, const char *end) -> void {
     if (start == nullptr || end <= start) {
         return;
     }
-    static_cast<void>(serial_hardware_write(
-        start, static_cast<size_t>(end - start)));
+    static_cast<void>(
+        serial_hardware_write(start, static_cast<size_t>(end - start)));
 }
 
 static auto take_serial_line(char *line, size_t &length, bool &overflow)
@@ -129,8 +129,8 @@ auto run(tasks::FirmwareTasks::QueueAggregator *aggregator) -> void {
         auto *tx_limit = local_task->tx_buf.accessible()->end();
         if (take_serial_line(serial_line.data(), serial_length,
                              serial_overflow)) {
-            auto message = messages::HostCommsMessage(
-                messages::IncomingMessageFromHost{
+            auto message =
+                messages::HostCommsMessage(messages::IncomingMessageFromHost{
                     .buffer = serial_line.data(),
                     .limit = serial_line.data() + serial_length});
             transmit_response(

@@ -47,7 +47,7 @@ void Error_Handler(void);
 // #define I2C3_SDA_Pin GPIO_PIN_9
 // #define I2C3_SDA_GPIO_Port GPIOC
 
-#define EEPROM_WP_PIN GPIO_PIN_10
+#define EEPROM_WP_PIN GPIO_PIN_13
 #define EEPROM_WP_PORT GPIOA
 
 #define nSTATUS_LED_Pin GPIO_PIN_5
