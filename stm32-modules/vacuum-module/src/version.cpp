@@ -2,7 +2,7 @@
 
 static constexpr const char* _FW_VERSION_GENERATED = "(dev)";
 static constexpr const char* _HW_VERSION_GENERATED =
-    "Opentrons-vacuum-module-b2";
+    "Opentrons-vacuum-module-c1";
 
 const char* version::fw_version() { return _FW_VERSION_GENERATED; }
 
