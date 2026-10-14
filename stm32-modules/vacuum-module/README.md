@@ -17,7 +17,7 @@ When cross-compiling the firmware (using the `stm32-cross` cmake preset, running
 - Build the startup app, which is also packaged into the image files: `cmake --build ./build-stm32-cross --target vacuum-module-startup`
 - Delete all of the contents on a vacuum-module MCU, and wipe any memory protection: `cmake --build ./build-stm32-cross --target vacuum-module-clear`
 
-The default board revision is currently b1 (DVT). You can change the revision to the NFF board by running cmake `stm32-cross` preset again with
+The default board revision is currently c1 (PVT). You can change the revision to the NFF board by running cmake `stm32-cross` preset again with
 `cmake --preset stm32-cross -DMODULE_REVISION=nff .`; or change to EVT using `-DMODULE_REVISION=a1`.
 before re-building the firmware.
 
