@@ -611,7 +611,7 @@ class HostCommsTask {
                                           errors::ErrorCode::GCODE_CACHE_FULL));
         }
         auto message = messages::HomeMotorMessage{.id = id,
-                                                  .motor_id = MotorID::MOTOR_R,
+                                                  .motor_id = gcode.motor_id,
                                                   .direction = gcode.direction};
         if (!task_registry->send(message, TICKS_TO_WAIT_ON_SEND)) {
             auto wrote_to = errors::write_into(

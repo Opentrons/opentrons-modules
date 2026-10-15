@@ -602,13 +602,16 @@ struct MoveMotorInSteps {
 };
 
 struct HomeMotor {
+    MotorID motor_id;
     bool direction = false;
 
     using ParseResult = std::optional<HomeMotor>;
     static constexpr auto prefix = std::array{'G', '2', '8', ' '};
     static constexpr const char* response = "G28 OK\n";
 
-    using DirectionArg = RequiredMotorArg<int, 'R'>;
+    using RArg = MotorArg<int32_t, 'R'>;
+    using ZArg = MotorArg<int32_t, 'Z'>;
+    using PArg = MotorArg<int32_t, 'P'>;
 
     template <typename InputIt, typename Limit>
     requires std::forward_iterator<InputIt> &&
@@ -616,12 +619,23 @@ struct HomeMotor {
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
         auto res =
-            SingleParser<DirectionArg>::parse_gcode(input, limit, prefix);
+            SingleParser<RArg, ZArg, PArg>::parse_gcode(input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
-        auto ret =
-            HomeMotor{.direction = std::get<0>(res.first.value()).value != 0};
+        auto ret = HomeMotor{.motor_id = MotorID::MOTOR_R, .direction = false};
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.direction = static_cast<bool>(std::get<0>(arguments).value);
+        } else if (std::get<1>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_Z;
+            ret.direction = static_cast<bool>(std::get<1>(arguments).value);
+        } else if (std::get<2>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_P;
+            ret.direction = static_cast<bool>(std::get<2>(arguments).value);
+        } else {
+            return std::make_pair(ParseResult(), input);
+        }
         return std::make_pair(ret, res.second);
     }
 
