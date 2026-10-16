@@ -233,7 +233,7 @@ struct GetCapacitiveState {
      * M111- GetCapacitiveState gets the state of capacitive sensors (C1-C4)
      * */
     using ParseResult = std::optional<GetCapacitiveState>;
-    static constexpr auto prefix = std::array{'M', '1', '1', '1'};
+    static constexpr auto prefix = std::array{'M', '1', '2', '0'};
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -274,7 +274,7 @@ struct GetProximityState {
      * A value of 1 means the NPN output is sinking (object detected).
      * */
     using ParseResult = std::optional<GetProximityState>;
-    static constexpr auto prefix = std::array{'M', '1', '1', '3'};
+    static constexpr auto prefix = std::array{'M', '1', '1', '9'};
 
     template <typename InputIt, typename InLimit>
     requires std::forward_iterator<InputIt> &&
@@ -282,7 +282,7 @@ struct GetProximityState {
     static auto write_response_into(InputIt buf, InLimit limit,
                                     bool pc2_detected) -> InputIt {
         int res = 0;
-        res = snprintf(&*buf, (limit - buf), "M113 PC2:%d OK\n",
+        res = snprintf(&*buf, (limit - buf), "M119 PC2:%d OK\n",
                        pc2_detected ? 1 : 0);
         if (res <= 0) {
             return buf;
@@ -330,6 +330,69 @@ struct ArgNoVal {
     bool present = false;
 };
 
+template <typename ValueType>
+struct ArgNoPrefix {
+    static constexpr bool required = false;
+    bool present = false;
+    ValueType value = ValueType{};
+};
+
+struct GetTMCRegister {
+    MotorID motor_id;
+    uint8_t reg;
+
+    using ParseResult = std::optional<GetTMCRegister>;
+    static constexpr auto prefix = std::array{'M', '9', '2', '0', ' '};
+
+    using RArg = MotorArg<uint8_t, 'R'>;
+    using ZArg = MotorArg<uint8_t, 'Z'>;
+    using PArg = MotorArg<uint8_t, 'P'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        auto res = gcode::SingleParser<RArg, ZArg, PArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+
+        auto ret = GetTMCRegister{
+            .motor_id = MotorID::MOTOR_R,
+            .reg = 0,
+        };
+
+        auto arguments = res.first.value();
+        if (std::get<0>(arguments).present) {
+            ret.reg = std::get<0>(arguments).value;
+        } else if (std::get<1>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_Z;
+            ret.reg = std::get<1>(arguments).value;
+        } else if (std::get<2>(arguments).present) {
+            ret.motor_id = MotorID::MOTOR_P;
+            ret.reg = std::get<2>(arguments).value;
+        } else {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ret, res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    MotorID motor_id, uint8_t reg,
+                                    uint32_t data) -> InputIt {
+        auto res = snprintf(&*buf, (limit - buf), "M920 %c:%u V:%lu OK\n",
+                            motor_id_to_char(motor_id), reg, data);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
 
 template <typename ValueType, char... Chars>
 struct RequiredMotorArg {
@@ -556,8 +619,9 @@ struct MoveMotorInSteps {
         std::sized_sentinel_for<Limit, InputIt>
     static auto parse(const InputIt& input, Limit limit)
         -> std::pair<ParseResult, InputIt> {
-        auto res = SingleParser<RArg, ZArg, PArg, FreqArg, RampArg>::parse_gcode(
-            input, limit, prefix);
+        auto res =
+            SingleParser<RArg, ZArg, PArg, FreqArg, RampArg>::parse_gcode(
+                input, limit, prefix);
         if (!res.first.has_value()) {
             return std::make_pair(ParseResult(), input);
         }
@@ -646,5 +710,57 @@ struct HomeMotor {
         return write_string_to_iterpair(buf, limit, response);
     }
 };
+
+struct GetMoveParams {
+    MotorID motor_id;
+    using ParseResult = std::optional<GetMoveParams>;
+    static constexpr auto prefix = std::array{'M', '1', '2', '0'};
+
+    using RArg = ArgNoVal<'R'>;
+    using ZArg = ArgNoVal<'Z'>;
+    using PArg = ArgNoVal<'P'>;
+
+    template <typename InputIt, typename Limit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<Limit, InputIt>
+    static auto parse(const InputIt& input, Limit limit)
+        -> std::pair<ParseResult, InputIt> {
+        MotorID motor = MotorID::MOTOR_R;
+        auto res = gcode::SingleParser<RArg, ZArg, PArg>::parse_gcode(
+            input, limit, prefix);
+        if (!res.first.has_value()) {
+            return std::make_pair(ParseResult(), input);
+        }
+        auto arguments = res.first.value();
+        if (std::get<1>(arguments).present) {
+            motor = MotorID::MOTOR_Z;
+        } else if (std::get<2>(arguments).present) {
+            motor = MotorID::MOTOR_P;
+        } else if (!std::get<0>(arguments).present) {
+            return std::make_pair(ParseResult(), input);
+        }
+        return std::make_pair(ParseResult(GetMoveParams{.motor_id = motor}),
+                              res.second);
+    }
+
+    template <typename InputIt, typename InLimit>
+    requires std::forward_iterator<InputIt> &&
+        std::sized_sentinel_for<InputIt, InLimit>
+    static auto write_response_into(InputIt buf, InLimit limit,
+                                    MotorID motor_id, float velocity,
+                                    float accel, float velocity_discont)
+        -> InputIt {
+        const char motor_char = motor_id_to_char(motor_id);
+        int res = 0;
+        res = snprintf(&*buf, (limit - buf),
+                       "M120 M:%c V:%.3f A:%.3f D:%.3f OK\n", motor_char,
+                       velocity, accel, velocity_discont);
+        if (res <= 0) {
+            return buf;
+        }
+        return buf + res;
+    }
+};
+
 
 }  // namespace gcode

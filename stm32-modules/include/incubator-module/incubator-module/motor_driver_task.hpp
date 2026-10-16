@@ -75,15 +75,15 @@ static constexpr tmc5160::TMC5160RegisterMap motor_z_config{
                  .tbl = 0b1,
                  .mres = 0b100},
     .coolconf = {.semin = 0b11, .semax = 0b100, .sgt = 2},
-    .pwmconf = {
-                //.pwm_ofs = 0x1F,
-                // .pwm_grad = 0x18,
-                .pwm_ofs = 0x1E,
-                .pwm_grad = 0x0D,
-                .pwm_autoscale = 1,
-                .pwm_autograd = 1,
-                .pwm_reg = 4,
-                .pwm_lim = 0xC},
+    .pwmconf =
+        {//.pwm_ofs = 0x1F,
+         // .pwm_grad = 0x18,
+         .pwm_ofs = 0x1E,
+         .pwm_grad = 0x0D,
+         .pwm_autoscale = 1,
+         .pwm_autograd = 1,
+         .pwm_reg = 4,
+         .pwm_lim = 0xC},
 };
 
 static constexpr tmc5160::TMC5160RegisterMap motor_p_config{
@@ -107,15 +107,15 @@ static constexpr tmc5160::TMC5160RegisterMap motor_p_config{
                  .tbl = 0b1,
                  .mres = 0b100},
     .coolconf = {.semin = 0b11, .semax = 0b100, .sgt = 0},
-    .pwmconf = {
-                //.pwm_ofs = 0x1F,
-                // .pwm_grad = 0x18,
-                .pwm_ofs = 0x1E,
-                .pwm_grad = 0x0D,
-                .pwm_autoscale = 1,
-                .pwm_autograd = 1,
-                .pwm_reg = 4,
-                .pwm_lim = 0xC},
+    .pwmconf =
+        {//.pwm_ofs = 0x1F,
+         // .pwm_grad = 0x18,
+         .pwm_ofs = 0x1E,
+         .pwm_grad = 0x0D,
+         .pwm_autoscale = 1,
+         .pwm_autograd = 1,
+         .pwm_reg = 4,
+         .pwm_lim = 0xC},
 };
 
 template <template <class> class QueueImpl>
