@@ -1,0 +1,21 @@
+#ifndef SYSTEM_HARDWARE_H__
+#define SYSTEM_HARDWARE_H__
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
+
+#include <stdbool.h>
+#include <stdint.h>
+
+/**
+ * @brief Enter the bootloader. This function never returns.
+ */
+void system_hardware_enter_bootloader(void);
+void system_hardware_gpio_init(void);
+uint16_t system_hardware_reset_reason(void);
+void enable_eeprom_write(bool enable);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif  // __cplusplus
+#endif  // _SYSTEM_HARDWARE_H__
