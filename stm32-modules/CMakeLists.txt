@@ -5,9 +5,9 @@ if (${CMAKE_CROSSCOMPILING})
     find_package(OpenOCD)
     find_package(GDBSVDTools)
 
-    option(ENABLE_ASSERTIONS 
+    option(ENABLE_ASSERTIONS
         "If this option is enabled, the firmware will include locking assertions")
-    
+
     if(ENABLE_ASSERTIONS)
         # Enable assertions for all stm32 targets
         add_definitions(-DASSERTIONS_ENABLED)
@@ -23,7 +23,7 @@ else()
     find_package(codecov)
 
     # We can safely ignore test code and stm32-tools imports
-    list(APPEND LCOV_REMOVE_PATTERNS 
+    list(APPEND LCOV_REMOVE_PATTERNS
         "'${PROJECT_SOURCE_DIR}/stm32-tools/*'"
         "'${PROJECT_SOURCE_DIR}/**/tests/*.cpp'"
         "'${PROJECT_SOURCE_DIR}/*/putchar.c'")
@@ -52,5 +52,6 @@ add_subdirectory(thermocycler-gen2)
 add_subdirectory(tempdeck-gen3)
 add_subdirectory(flex-stacker)
 add_subdirectory(vacuum-module)
+add_subdirectory(plate-hotel)
 
 coverage_evaluate()
