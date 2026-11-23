@@ -325,6 +325,45 @@ TEST_CASE("WasteDetector - Core Behavior", "[waste][detector]") {
         REQUIRE(err == WasteFullError::NO_ERROR);
     }
 
+    SECTION("Atmospheric sensor offset is not orifice flow") {
+        // Rest |A-B| of 9 mbar would fail the raw 8 mbar veto. The tare
+        // learned on the way down removes it, and the sealed hold trips.
+        const double target = 500.0;
+        const double offset = 9.0;
+        run_ramp(detector, 1013.0, target, 1010.0, -5.0, 80, 120, offset, 0.0);
+        enter_hold(detector, 1013.0, target, offset, 20.0);
+        auto err = hold_for(detector, 1013.0, target,
+                            samples_for(STABLE_HOLD_MS) + 5, offset, 20.0);
+        REQUIRE(err == WasteFullError::FLOW_STABLE_FULL_ERROR);
+    }
+
+    SECTION("Orifice split above the atmospheric tare is not full") {
+        const double target = 500.0;
+        run_ramp(detector, 1013.0, target, 1010.0, -5.0, 80, 120, 6.0, 0.0);
+        enter_hold(detector, 1013.0, target, 15.0, 20.0);
+        auto err = hold_for(detector, 1013.0, target,
+                            samples_for(STABLE_HOLD_MS) + 5, 15.0, 20.0);
+        REQUIRE(err == WasteFullError::NO_ERROR);
+    }
+
+    SECTION("Deep start with no tare keeps the raw orifice veto") {
+        const double target = 500.0;
+        enter_hold(detector, 1013.0, target, 9.0, 20.0);
+        auto err = hold_for(detector, 1013.0, target,
+                            samples_for(STABLE_HOLD_MS) + 5, 9.0, 20.0);
+        REQUIRE(err == WasteFullError::NO_ERROR);
+    }
+
+    SECTION("reset() forgets the orifice tare") {
+        const double target = 500.0;
+        run_ramp(detector, 1013.0, target, 1010.0, -5.0, 80, 120, 9.0, 0.0);
+        detector.reset();
+        enter_hold(detector, 1013.0, target, 9.0, 20.0);
+        auto err = hold_for(detector, 1013.0, target,
+                            samples_for(STABLE_HOLD_MS) + 5, 9.0, 20.0);
+        REQUIRE(err == WasteFullError::NO_ERROR);
+    }
+
     SECTION("Pressure oscillation in hold is not full") {
         const double atm = 1013.0;
         const double target = 500.0;

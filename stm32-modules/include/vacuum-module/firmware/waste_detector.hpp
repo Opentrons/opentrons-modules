@@ -24,9 +24,11 @@ When waste-full detection is enabled, every tick we check:
 
 3. Sealed?: All the following conditions must be true to be a sealed deadhead
     - Commanded RPM ≥ 1 - Pump is actually being asked to run
-    - |A−B| < H mbar    - Veto for large leaks, this is mostly
-        sensor-to-sensor offset but when there is wide-open path the sensors
-        show different pressures. Not the main discriminator, that's G below.
+    - |(A−B) − tare| < H mbar - Veto for real flow across the orifice.
+        tare is the mean signed (A−B) while B is still within
+        ORIFICE_TARE_VACUUM_MBAR of atmosphere, so a fixed sensor offset is
+        not flow. If the hold is already deep before that, raw |A−B| is used.
+        Not the main discriminator, that's G below.
 
     - (G = RPMcmd / vacuum) < Gcap - The work the pump is doing relative to
         the current vacuum.
@@ -69,6 +71,8 @@ static constexpr double STABLE_HOLD_MAX_MS = 1000000.0;
 static constexpr double DEEP_VACUUM_DEPTH_MBAR = 800.0;
 static constexpr double FLOWING_DP_MBAR = 8.0;
 static constexpr double FLOWING_DP_MAX_MBAR = 500.0;
+// Learn the A−B offset only while B is this close to atmosphere.
+static constexpr double ORIFICE_TARE_VACUUM_MBAR = 20.0;
 static constexpr double MIN_WASTE_DEPTH_MBAR = 20.0;
 static constexpr double MIN_WASTE_DEPTH_MAX_MBAR = 1000.0;
 // Commanded RPM per mbar of current vacuum.
@@ -140,7 +144,8 @@ class WasteDetector {
         const double current_p = smoothed_p_;
         const double vacuum_depth = p_atm - target_abs_mbar;
         const double current_vacuum = p_atm - current_p;
-        const double orifice_dp = std::abs(pressure_abs_a - pressure_abs_b);
+        const double orifice_dp =
+            orifice_residual(pressure_abs_a, pressure_abs_b, p_atm);
         const double g = conductance(pump_rpm, current_vacuum);
 
         const double dt_ms = sample_dt_ms(timestamp);
@@ -170,6 +175,9 @@ class WasteDetector {
         have_sample_ = false;
         smoothed_delta_p = 0.0;
         flow_ml_per_s = 0.0;
+        orifice_tare_sum_ = 0.0;
+        orifice_tare_n_ = 0;
+        orifice_tare_frozen_ = false;
     }
 
     auto reset_config() -> void {
@@ -187,6 +195,25 @@ class WasteDetector {
     [[nodiscard]] auto get_config() const -> WasteConfig { return config; }
 
   private:
+    auto orifice_residual(double pressure_abs_a, double pressure_abs_b,
+                          double p_atm) -> double {
+        const double live_dp = pressure_abs_a - pressure_abs_b;
+        if (!orifice_tare_frozen_) {
+            const double vacuum_b = p_atm - pressure_abs_b;
+            if (std::abs(vacuum_b) <= ORIFICE_TARE_VACUUM_MBAR) {
+                orifice_tare_sum_ += live_dp;
+                orifice_tare_n_ += 1;
+            } else if (orifice_tare_n_ > 0) {
+                orifice_tare_frozen_ = true;
+            }
+        }
+        if (orifice_tare_n_ == 0) {
+            return std::abs(live_dp);
+        }
+        return std::abs(live_dp - (orifice_tare_sum_ /
+                                    static_cast<double>(orifice_tare_n_)));
+    }
+
     static auto conductance(double rpm, double vacuum_mbar) -> double {
         if (vacuum_mbar < 1.0) {
             return 0.0;
@@ -258,6 +285,9 @@ class WasteDetector {
     bool have_sample_ = false;
     double smoothed_delta_p = 0.0;
     double flow_ml_per_s = 0.0;
+    double orifice_tare_sum_ = 0.0;
+    uint32_t orifice_tare_n_ = 0;
+    bool orifice_tare_frozen_ = false;
     WasteConfig config;
     WasteFullError error = WasteFullError::NO_ERROR;
 };
