@@ -1,6 +1,7 @@
 #include "core/pid.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <limits>
 
@@ -65,6 +66,25 @@ auto PID::reset() -> void {
 }
 
 auto PID::clear_integrator() -> void { _last_iterm = 0; }
+
+auto PID::set_integrator(double iterm) -> void {
+    _last_iterm = std::clamp(iterm, windup_limit_low(), windup_limit_high());
+}
+
+auto PID::unwind_integrator_toward(double target, double dt_seconds) -> void {
+    if (!(dt_seconds > 0.0)) {
+        return;
+    }
+    // A few tenths of a second of brake should land near the hold RPM.
+    // One noisy sample should not.
+    constexpr double kTauS = 0.25;
+    const double clamped_target =
+        std::clamp(target, windup_limit_low(), windup_limit_high());
+    const double decay = std::exp(-dt_seconds / kTauS);
+    const double unwound =
+        clamped_target + (last_iterm() - clamped_target) * decay;
+    _last_iterm = std::clamp(unwound, windup_limit_low(), windup_limit_high());
+}
 
 auto PID::arm_integrator_reset(double error, double threshold) -> void {
     if (error <= 0) {

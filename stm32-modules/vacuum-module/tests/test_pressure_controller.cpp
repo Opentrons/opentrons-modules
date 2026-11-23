@@ -113,10 +113,29 @@ TEST_CASE("PressureController - Update Logic", "[controller]") {
         REQUIRE(rpm_near < rpm_far);
     }
 
-    SECTION("Overshoot past final target commands zero RPM") {
+    SECTION("Overshoot past final target commands the holding RPM") {
         ctrl.configure_slew(200.0, DEFAULT_RAMP_RATE);
         auto rpm = ctrl.update(0.04, 180.0, 200.0);
-        REQUIRE(rpm == Approx(0.0));
+        REQUIRE(rpm == Approx(ctrl.holding_rpm_for(200.0)).margin(0.05));
+        REQUIRE(rpm > 0.0);
+    }
+
+    SECTION("Brake unwinds a wound-up integrator toward the holding RPM") {
+        ctrl.configure_pid(0.0, 50.0, 0.0, 0.0, 80.0, -2.0, true);
+        ctrl.configure_slew(400.0, DEFAULT_RAMP_RATE);
+        double rpm_wound = 0.0;
+        for (int i = 0; i < 40; ++i) {
+            rpm_wound = ctrl.update(0.04, 420.0, 400.0);
+        }
+        double rpm_brake = 0.0;
+        for (int i = 0; i < 40; ++i) {
+            rpm_brake = ctrl.update(0.04, 350.0, 400.0);
+        }
+        auto holding = ctrl.holding_rpm_for(400.0);
+        REQUIRE(rpm_brake == Approx(holding).margin(0.05));
+        auto rpm_return = ctrl.update(0.04, 405.0, 400.0);
+        REQUIRE(rpm_return > holding * 0.5);
+        REQUIRE(rpm_return < rpm_wound * 0.25);
     }
 
     SECTION("Overshoot clears accumulated integral term") {
