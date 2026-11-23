@@ -211,7 +211,7 @@ class WasteDetector {
             return std::abs(live_dp);
         }
         return std::abs(live_dp - (orifice_tare_sum_ /
-                                    static_cast<double>(orifice_tare_n_)));
+                                   static_cast<double>(orifice_tare_n_)));
     }
 
     static auto conductance(double rpm, double vacuum_mbar) -> double {
