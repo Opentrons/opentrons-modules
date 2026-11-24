@@ -60,5 +60,5 @@ typedef void* TaskHandle;
 
 // Defines for the solenoid vent voltage values
 #define VENT_ACTUATE_DELAY 100
-#define VENT_RUN_VOLT 0.70
+#define VENT_RUN_VOLT 0.80
 #define VENT_HOLD_VOLT 0.38

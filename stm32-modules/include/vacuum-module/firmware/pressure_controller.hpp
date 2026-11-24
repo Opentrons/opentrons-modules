@@ -137,24 +137,37 @@ class PressureController {
             total_ff_rpm = (ff_velocity + ff_holding) * approach_scale;
         }
 
-        // Integral anti-windup: only clear when past the trajectory / final
-        // target. Do not arm a reset while still short of the final setpoint —
-        // that wiped I inside the ~2% overshoot band and left a steady ~8-10
-        // mbar shallow hold (e.g. -390 vs -400).
-        if (is_overshot ||
-            current_abs_mbar < target_abs_mbar + effective_overshoot) {
+        // Past the final setpoint the pump is braking. A hard zero here dumps
+        // the vacuum and the next approach restarts from a cold integrator, so
+        // the hold sawtooths. Unwind toward the holding RPM instead.
+        // Still short of the setpoint, clear only when ahead of the slewed
+        // trajectory. Clearing inside the approach band left holds 8-10 mbar
+        // shallow.
+        const bool braking =
+            current_abs_mbar < target_abs_mbar + effective_overshoot;
+        const double holding_rpm = holding_rpm_for(target_abs_mbar);
+        if (braking) {
+            const double held_iterm = _pid.last_iterm();
+            _pid.compute(error, dt_seconds);
+            _pid.set_integrator(held_iterm);
+            _pid.unwind_integrator_toward(holding_rpm, dt_seconds);
+            target_rpm = std::clamp<double>(holding_rpm, MIN_RPM, MAX_RPM);
+            return target_rpm;
+        }
+        if (is_overshot) {
             _pid.clear_integrator();
         }
 
         // Calculate target rpm + safety clamp
         auto rpm = _pid.compute(error, dt_seconds);
         target_rpm = std::clamp<double>(total_ff_rpm + rpm, MIN_RPM, MAX_RPM);
-
-        // Brake when actual pressure drops below the final target setpoint.
-        if (current_abs_mbar < target_abs_mbar + effective_overshoot) {
-            target_rpm = 0.0;
-        }
         return target_rpm;
+    }
+
+    [[nodiscard]] auto holding_rpm_for(double target_abs_mbar) const -> double {
+        auto ratio = (ATM_PRESSURE_MBAR - target_abs_mbar) / ATM_PRESSURE_MBAR;
+        ratio = std::clamp(ratio, 0.0, 1.0);
+        return ratio * state.k_holding;
     }
 
     auto reset() -> void {

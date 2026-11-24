@@ -49,6 +49,14 @@ class PID {
     auto compute(double error, double sampletime) -> double;
     auto reset() -> void;
     auto clear_integrator() -> void;
+    auto set_integrator(double iterm) -> void;
+    /**
+     * @brief Move the integral term toward @p target.
+     *
+     * The excess decays with a 0.25 s time constant. One sample does not
+     * wipe a wound-up term. A brake that lasts a few tenths of a second does.
+     */
+    auto unwind_integrator_toward(double target, double dt_seconds) -> void;
     [[nodiscard]] auto kp() const -> double;
     [[nodiscard]] auto ki() const -> double;
     [[nodiscard]] auto kd() const -> double;
